@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kuberneteskubeprometheusstack.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kuberneteskubeprometheusstack/v1alpha1/spec.proto";
+import "catalog/kubernetes/kuberneteskubeprometheusstack/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//kube-prometheus-stack-kubernetes
+message KubernetesKubePrometheusStack {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesKubePrometheusStack'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  KubernetesKubePrometheusStackSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  KubernetesKubePrometheusStackStatus status = 5;
+}
+
+//kube-prometheus-stack-kubernetes status.
+message KubernetesKubePrometheusStackStatus {
+  //stack-outputs
+  KubernetesKubePrometheusStackStackOutputs outputs = 1;
+}

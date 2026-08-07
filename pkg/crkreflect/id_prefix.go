@@ -1,7 +1,7 @@
 package crkreflect
 
 import (
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // IdPrefix returns the id prefix for a cloud resource kind

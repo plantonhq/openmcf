@@ -1,0 +1,68 @@
+# The messy-account suite: the exam with HEADROOM. Where network-staples
+# proves the measuring instrument (the deterministic baseline is pinned to
+# a perfect score on it), this suite seeds an account shaped like a real
+# company's -- and the baseline, by design, CANNOT ace it. Its pinned
+# imperfect report is the floor any smarter proposer must beat to earn its
+# place; the pinned floor test in pkg/iac/mappingeval is the floor's
+# authoritative record.
+#
+# What makes it messy, deliberately:
+#   - Two look-alike networks: prod and staging VPCs with IDENTICAL CIDRs
+#     and settings, each containing a subnet with the SAME az + CIDR --
+#     distinguishable only by Name tags and containment. The prod subnet is
+#     routed (three-resource instance); its staging twin is bare.
+#   - An uncovered tier the baseline has no mappers for: a security group
+#     (vpc_id edge into the right look-alike), a KMS key + alias (grouping
+#     needs the alias's TargetKeyId), a DynamoDB table (rich spec + a
+#     kms_key_arn edge), a container registry (whose lifecycle policy is a
+#     structurally invisible module resource).
+#   - A cross-service edge on a COVERED kind: the SQS queue is mapped by
+#     the baseline, but its kms_key_id edge into the customer-managed key
+#     is an inference no deterministic mapper attempts.
+#   - A name-derived kind (S3) so the name-derivability rule keeps applying.
+#
+# Members are suite-owned fixtures (members/) for live-proven components:
+# the modules are the same ones the components' own e2e lanes prove; this
+# suite's live lane proves the composition. Environments ride metadata.env
+# (prod/staging) as the partition-scoring answer key: this is the ONE suite
+# that grades environment assignment, because its member names deliberately
+# carry recoverable env tokens (orders-prod-*, orders-stg-*) while the
+# token-less members (the archive bucket, the uncovered tier) stay honestly
+# owed -- the AI mapper's headroom on this axis.
+#
+# Deliberately excluded kinds: awsiamrole and awsnatgateway live in the
+# identity-and-egress suite instead. Keeping them out of THIS suite is
+# still right -- the global IAM scan's account-wide noise and the NAT
+# gateway's deploy time belong in the coverage exam, not layered onto the
+# disambiguation exam -- and this suite's pinned floor stays undisturbed.
+apiVersion: qa.planton.dev/v1
+kind: MappingEvalSuite
+metadata:
+  name: messy-account
+spec:
+  members:
+    - component: awsvpc
+      manifest_path: catalog/aws/aa_eval/suites/messy-account/members/orders-prod-vpc.yaml
+    - component: awsinternetgateway
+      manifest_path: catalog/aws/aa_eval/suites/messy-account/members/orders-prod-igw.yaml
+    - component: awssubnet
+      manifest_path: catalog/aws/aa_eval/suites/messy-account/members/orders-prod-app-subnet.yaml
+    - component: awsvpc
+      manifest_path: catalog/aws/aa_eval/suites/messy-account/members/orders-stg-vpc.yaml
+    - component: awssubnet
+      manifest_path: catalog/aws/aa_eval/suites/messy-account/members/orders-stg-app-subnet.yaml
+    - component: awskmskey
+      manifest_path: catalog/aws/aa_eval/suites/messy-account/members/orders-prod-data-key.yaml
+    - component: awssecuritygroup
+      manifest_path: catalog/aws/aa_eval/suites/messy-account/members/orders-prod-app-sg.yaml
+    - component: awsdynamodb
+      manifest_path: catalog/aws/aa_eval/suites/messy-account/members/orders-prod-table.yaml
+    - component: awssqsqueue
+      manifest_path: catalog/aws/aa_eval/suites/messy-account/members/orders-prod-events.yaml
+    - component: awsecrrepo
+      manifest_path: catalog/aws/aa_eval/suites/messy-account/members/orders-api.yaml
+    - component: awss3bucket
+      manifest_path: catalog/aws/aa_eval/suites/messy-account/members/orders-archive-bucket.yaml
+  scan_scope:
+    region: us-west-2
+  grade_environment_partition: true

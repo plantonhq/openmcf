@@ -36,11 +36,11 @@ References: `@generate-planton-issue-info`, `@README.md`.
 Based on the conversation context and affected files, automatically infer labels:
 
 ### Area Labels (from file paths)
-- `apis/dev/planton/provider/**` → `area/deployment-component,area/<provider>`
+- `catalog/**` → `area/deployment-component,area/<provider>`
 - `cmd/planton/**` → `area/cli`
 - `pkg/**` → `area/pkg`
 - `internal/**` → `area/cli,area/internal`
-- `apis/**` → `area/apis`
+- `shared/**`, `qa/**`, `iac/**` → `area/apis`
 - `tools/**` → `area/tooling`
 - `.cursor/**` → `area/dx`
 - `site/**` → `area/site`

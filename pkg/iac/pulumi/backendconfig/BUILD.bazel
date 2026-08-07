@@ -17,9 +17,9 @@ go_test(
     srcs = ["backend_config_test.go"],
     embed = [":backendconfig"],
     deps = [
-        "//apis/dev/planton/provider/aws/awsvpc/v1alpha1",
-        "//apis/dev/planton/shared",
+        "//catalog/aws/awsvpc/v1alpha1",
         "//pkg/iac/pulumi/pulumiannotationkeys",
+        "//shared",
         "@com_github_stretchr_testify//assert",
     ],
 )

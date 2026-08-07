@@ -3,14 +3,14 @@ package root
 import (
 	"os"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared/iac/pulumi"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/iac/terraform"
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/iacflags"
 	"github.com/plantonhq/planton/internal/cli/iacrunner"
 	climanifest "github.com/plantonhq/planton/internal/cli/manifest"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/iac/provisioner"
+	"github.com/plantonhq/planton/shared/iac/pulumi"
+	"github.com/plantonhq/planton/shared/iac/terraform"
 	"github.com/spf13/cobra"
 )
 

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurefrontdoorroute.v1alpha1;
+
+import "catalog/azure/azurefrontdoorroute/v1alpha1/api.proto";
+import "catalog/azure/provider.proto";
+
+//azure-front-door-route stack-input
+message AzureFrontDoorRouteStackInput {
+  //target cloud-resource
+  AzureFrontDoorRoute target = 1;
+  //provider-config
+  dev.planton.azure.AzureProviderConfig provider_config = 2;
+}

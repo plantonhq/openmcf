@@ -9,10 +9,10 @@ import (
 
 	"buf.build/go/protovalidate"
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/reflection/metadatareflect"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"google.golang.org/protobuf/proto"
 	yamlv3 "gopkg.in/yaml.v3"
 )

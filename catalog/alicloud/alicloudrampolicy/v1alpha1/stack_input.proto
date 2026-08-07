@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.alicloud.alicloudrampolicy.v1alpha1;
+
+import "catalog/alicloud/alicloudrampolicy/v1alpha1/api.proto";
+import "catalog/alicloud/provider.proto";
+
+// alicloud-ram-policy stack-input
+message AliCloudRamPolicyStackInput {
+  // target cloud-resource
+  AliCloudRamPolicy target = 1;
+  // provider-config
+  dev.planton.alicloud.AliCloudProviderConfig provider_config = 2;
+}

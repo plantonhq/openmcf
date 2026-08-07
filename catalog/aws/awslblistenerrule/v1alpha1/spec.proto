@@ -1,0 +1,655 @@
+syntax = "proto3";
+
+package dev.planton.aws.awslblistenerrule.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsLbListenerRuleSpec defines an ALB listener rule: a condition-action pair
+// that routes matching requests, evaluated in priority order before the
+// listener's default action.
+//
+// The rule is the unit of per-service routing. A shared listener (say HTTPS
+// 443 on the environment's ALB) stays untouched while each service deploys
+// its own rule -- "host api.example.com forwards to the api target group",
+// "path /admin/* requires OIDC login first" -- and removes it when the
+// service goes away. That independent lifecycle, many rules per listener, is
+// why the rule is a first-class kind rather than a listener detail.
+//
+// Rules are an Application Load Balancer concept: Network Load Balancer
+// listeners route purely by port/protocol and take no rules.
+//
+// The listener is create-only: moving a rule replaces it. Priority,
+// conditions, actions, and transforms all update in place.
+message AwsLbListenerRuleSpec {
+  // The AWS region where the rule is created. Must match the listener's
+  // region. Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The listener this rule attaches to. Immutable: changing the listener
+  // replaces the rule.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef listener_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLbListener,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.listener_arn"
+  ];
+
+  // Evaluation priority among the listener's rules, 1-50000; lower values
+  // are evaluated first and must be unique per listener. When omitted, AWS
+  // assigns the next free priority after the current highest -- fine for
+  // append-only routing, but set explicit priorities when rules shadow each
+  // other (a "/api/*" rule must outrank a catch-all "/*" rule).
+  int32 priority = 3;
+
+  // What a request must match for the rule to fire. Required, 1-5 condition
+  // blocks; a request must satisfy ALL of them (conditions AND together;
+  // the values inside one condition OR together).
+  repeated AwsLbListenerRuleCondition conditions = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 5
+    }
+  ];
+
+  // What happens to a matching request. Required, at least one action. With
+  // several actions (an authenticate action chained before its forward),
+  // order follows the list; every chain ends in exactly one of forward,
+  // redirect, or fixed-response.
+  repeated AwsLbListenerRuleAction actions = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1
+  ];
+
+  // Request rewrites applied before the action runs: rewrite the host
+  // header, the URL, or both (at most one of each).
+  repeated AwsLbListenerRuleTransform transforms = 6 [(buf.validate.field).repeated.max_items = 2];
+
+  option (buf.validate.message).cel = {
+    id: "priority_range"
+    message: "priority must be between 1 and 50000 when set"
+    expression: "this.priority == 0 || (this.priority >= 1 && this.priority <= 50000)"
+  };
+}
+
+// AwsLbListenerRuleCondition is one match criterion of a rule. Exactly one
+// criterion message is set per condition block; combine several blocks to
+// AND criteria together (e.g. host AND path).
+message AwsLbListenerRuleCondition {
+  // Match on the Host header, e.g. "api.example.com" or "*.example.com"
+  // (wildcards: "*" spans any characters, "?" one character).
+  AwsLbListenerRuleHostHeaderCondition host_header = 1;
+
+  // Match on the request path, e.g. "/admin/*".
+  AwsLbListenerRulePathPatternCondition path_pattern = 2;
+
+  // Match on an arbitrary request header.
+  AwsLbListenerRuleHttpHeaderCondition http_header = 3;
+
+  // Match on the HTTP method, e.g. "GET", "POST".
+  AwsLbListenerRuleHttpRequestMethodCondition http_request_method = 4;
+
+  // Match on query-string key/value pairs.
+  AwsLbListenerRuleQueryStringCondition query_string = 5;
+
+  // Match on the client source IP (CIDR blocks). Uses the address that
+  // connected to the ALB, not X-Forwarded-For entries.
+  AwsLbListenerRuleSourceIpCondition source_ip = 6;
+
+  // Exactly one criterion per condition block, mirroring the AWS API shape.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_condition"
+    message: "exactly one of host_header, path_pattern, http_header, http_request_method, query_string, or source_ip must be set"
+    expression: "[has(this.host_header), has(this.path_pattern), has(this.http_header), has(this.http_request_method), has(this.query_string), has(this.source_ip)].filter(x, x).size() == 1"
+  };
+}
+
+// AwsLbListenerRuleHostHeaderCondition matches the Host header against
+// wildcard patterns and/or regular expressions.
+message AwsLbListenerRuleHostHeaderCondition {
+  // Wildcard hostname patterns, each up to 128 characters; the condition
+  // matches when ANY pattern matches.
+  repeated string values = 1 [(buf.validate.field).repeated.items = {
+    string: {max_len: 128}
+  }];
+
+  // Regular-expression hostname patterns, each up to 128 characters. Regex
+  // matching must be enabled on the load balancer's attributes; prefer
+  // wildcards when they express the intent.
+  repeated string regex_values = 2 [(buf.validate.field).repeated.items = {
+    string: {max_len: 128}
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "host_header_values_present"
+    message: "at least one of values or regex_values must be non-empty"
+    expression: "this.values.size() > 0 || this.regex_values.size() > 0"
+  };
+}
+
+// AwsLbListenerRulePathPatternCondition matches the request path (without
+// query string) against wildcard patterns and/or regular expressions.
+message AwsLbListenerRulePathPatternCondition {
+  // Wildcard path patterns, each up to 128 characters (e.g. "/api/*"); the
+  // condition matches when ANY pattern matches.
+  repeated string values = 1 [(buf.validate.field).repeated.items = {
+    string: {max_len: 128}
+  }];
+
+  // Regular-expression path patterns, each up to 128 characters. Regex
+  // matching must be enabled on the load balancer's attributes; prefer
+  // wildcards when they express the intent.
+  repeated string regex_values = 2 [(buf.validate.field).repeated.items = {
+    string: {max_len: 128}
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "path_pattern_values_present"
+    message: "at least one of values or regex_values must be non-empty"
+    expression: "this.values.size() > 0 || this.regex_values.size() > 0"
+  };
+}
+
+// AwsLbListenerRuleHttpHeaderCondition matches an arbitrary request header.
+message AwsLbListenerRuleHttpHeaderCondition {
+  // The header name to inspect, 1-40 characters (RFC 7230 token characters).
+  string http_header_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 40
+  ];
+
+  // Wildcard patterns for the header value, each up to 128 characters; the
+  // condition matches when ANY pattern matches.
+  repeated string values = 2 [(buf.validate.field).repeated.items = {
+    string: {max_len: 128}
+  }];
+
+  // Regular-expression patterns for the header value, each up to 128
+  // characters. Regex matching must be enabled on the load balancer's
+  // attributes.
+  repeated string regex_values = 3 [(buf.validate.field).repeated.items = {
+    string: {max_len: 128}
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "http_header_values_present"
+    message: "at least one of values or regex_values must be non-empty"
+    expression: "this.values.size() > 0 || this.regex_values.size() > 0"
+  };
+}
+
+// AwsLbListenerRuleHttpRequestMethodCondition matches the HTTP method.
+message AwsLbListenerRuleHttpRequestMethodCondition {
+  // Methods to match, e.g. "GET", "POST", or a custom method name (up to 40
+  // characters, letters/hyphens/underscores). Matching is case-sensitive and
+  // exact, per AWS.
+  repeated string values = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {
+      min_items: 1
+      items: {
+        string: {pattern: "^[A-Za-z-_]{1,40}$"}
+      }
+    }
+  ];
+}
+
+// AwsLbListenerRuleQueryStringCondition matches query-string key/value
+// pairs. The condition matches when ANY pair matches.
+message AwsLbListenerRuleQueryStringCondition {
+  // The pairs to match.
+  repeated AwsLbListenerRuleQueryStringPair pairs = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1
+  ];
+}
+
+// AwsLbListenerRuleQueryStringPair is one key/value pattern of a
+// query-string condition.
+message AwsLbListenerRuleQueryStringPair {
+  // The parameter name (wildcards allowed). When omitted, the value is
+  // matched against every parameter.
+  string key = 1;
+
+  // The value pattern (wildcards allowed).
+  string value = 2 [(buf.validate.field).required = true];
+}
+
+// AwsLbListenerRuleSourceIpCondition matches the client source address.
+message AwsLbListenerRuleSourceIpCondition {
+  // CIDR blocks to match (IPv4 or IPv6), e.g. "10.0.0.0/8",
+  // "203.0.113.0/24". The condition matches when the client address falls in
+  // ANY block.
+  repeated string values = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1
+  ];
+}
+
+// AwsLbListenerRuleAction is one step of a rule's action chain.
+//
+// Exactly one configuration message is set, and it must match type -- the
+// same discriminated-union shape the AWS API uses.
+message AwsLbListenerRuleAction {
+  // The action type. Valid values: "forward", "redirect", "fixed-response",
+  // "authenticate-cognito", "authenticate-oidc", "jwt-validation".
+  string type = 1 [(buf.validate.field).required = true];
+
+  // Explicit evaluation order within the chain, 1-50000 (lower runs first).
+  // When omitted, list position decides -- which is almost always enough.
+  int32 order = 2;
+
+  // Forward the request to one or more weighted target groups.
+  AwsLbListenerRuleActionForward forward = 3;
+
+  // Reply with an HTTP redirect.
+  AwsLbListenerRuleActionRedirect redirect = 4;
+
+  // Reply with a canned HTTP response, never touching a target.
+  AwsLbListenerRuleActionFixedResponse fixed_response = 5;
+
+  // Authenticate the client against an Amazon Cognito user pool before the
+  // terminal action runs. HTTPS listeners only.
+  AwsLbListenerRuleActionAuthenticateCognito authenticate_cognito = 6;
+
+  // Authenticate the client against any OpenID Connect provider before the
+  // terminal action runs. HTTPS listeners only.
+  AwsLbListenerRuleActionAuthenticateOidc authenticate_oidc = 7;
+
+  // Validate a JWT bearer token on the request before the terminal action
+  // runs -- API-style auth with no session cookies or login redirects.
+  // HTTPS listeners only.
+  AwsLbListenerRuleActionJwtValidation jwt_validation = 8;
+
+  option (buf.validate.message).cel = {
+    id: "action_type_valid"
+    message: "type must be one of: forward, redirect, fixed-response, authenticate-cognito, authenticate-oidc, jwt-validation"
+    expression: "this.type in ['forward', 'redirect', 'fixed-response', 'authenticate-cognito', 'authenticate-oidc', 'jwt-validation']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "order_range"
+    message: "order must be between 1 and 50000 when set"
+    expression: "this.order == 0 || (this.order >= 1 && this.order <= 50000)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "forward_config_matches_type"
+    message: "forward configuration must be set when (and only when) type is 'forward'"
+    expression: "(this.type == 'forward') == has(this.forward)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "redirect_config_matches_type"
+    message: "redirect configuration must be set when (and only when) type is 'redirect'"
+    expression: "(this.type == 'redirect') == has(this.redirect)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "fixed_response_config_matches_type"
+    message: "fixed_response configuration must be set when (and only when) type is 'fixed-response'"
+    expression: "(this.type == 'fixed-response') == has(this.fixed_response)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "authenticate_cognito_config_matches_type"
+    message: "authenticate_cognito configuration must be set when (and only when) type is 'authenticate-cognito'"
+    expression: "(this.type == 'authenticate-cognito') == has(this.authenticate_cognito)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "authenticate_oidc_config_matches_type"
+    message: "authenticate_oidc configuration must be set when (and only when) type is 'authenticate-oidc'"
+    expression: "(this.type == 'authenticate-oidc') == has(this.authenticate_oidc)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "jwt_validation_config_matches_type"
+    message: "jwt_validation configuration must be set when (and only when) type is 'jwt-validation'"
+    expression: "(this.type == 'jwt-validation') == has(this.jwt_validation)"
+  };
+}
+
+// AwsLbListenerRuleActionForward sends matching traffic to one or more
+// target groups.
+//
+// A single target group is the common case. Several weighted groups enable
+// blue/green and canary patterns scoped to just this route: shift weight from
+// the old group to the new one without touching any other rule.
+message AwsLbListenerRuleActionForward {
+  // The destination target groups, 1-5, each with an optional weight.
+  repeated AwsLbListenerRuleActionForwardTargetGroup target_groups = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 5
+    }
+  ];
+
+  // Target-group stickiness for multi-group forwards: pins a client to the
+  // group (not the individual target) that served its first request, so a
+  // session does not flap between blue and green mid-canary.
+  AwsLbListenerRuleActionForwardStickiness stickiness = 2;
+}
+
+// AwsLbListenerRuleActionForwardTargetGroup is one weighted destination of a
+// forward action.
+message AwsLbListenerRuleActionForwardTargetGroup {
+  // The target group receiving the traffic.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLbTargetGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.target_group_arn"
+  ];
+
+  // Relative traffic share, 0-999 (proportional to the sum across groups;
+  // 0 drains the group). AWS default: 1, so equal weights need no
+  // configuration.
+  int32 weight = 2;
+
+  option (buf.validate.message).cel = {
+    id: "weight_range"
+    message: "weight must be between 0 and 999"
+    expression: "this.weight >= 0 && this.weight <= 999"
+  };
+}
+
+// AwsLbListenerRuleActionForwardStickiness pins clients to the target group
+// that served their first request in a weighted forward.
+message AwsLbListenerRuleActionForwardStickiness {
+  // Whether group-level stickiness is active.
+  bool enabled = 1;
+
+  // Seconds the group association lasts, 1-604800 (7 days). Required when
+  // enabled.
+  int32 duration_seconds = 2;
+
+  option (buf.validate.message).cel = {
+    id: "duration_required_when_enabled"
+    message: "duration_seconds is required when stickiness is enabled"
+    expression: "!this.enabled || this.duration_seconds != 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "duration_range"
+    message: "duration_seconds must be between 1 and 604800 when set"
+    expression: "this.duration_seconds == 0 || (this.duration_seconds >= 1 && this.duration_seconds <= 604800)"
+  };
+}
+
+// AwsLbListenerRuleActionRedirect replies with an HTTP redirect built from
+// the original request, with any component overridden.
+//
+// The untouched components default to pass-through placeholders
+// ("#{protocol}", "#{host}", "#{port}", "#{path}", "#{query}"), so a
+// domain-migration redirect only overrides host.
+message AwsLbListenerRuleActionRedirect {
+  // The redirect status code. Required. Valid values: "HTTP_301" (permanent
+  // -- browsers cache it) or "HTTP_302" (temporary).
+  string status_code = 1 [(buf.validate.field).required = true];
+
+  // Target protocol: "HTTPS", "HTTP", or "#{protocol}" (keep the original).
+  string protocol = 2;
+
+  // Target port: a port number as a string, or "#{port}" (keep the
+  // original).
+  string port = 3;
+
+  // Target hostname, 1-128 characters; supports placeholders (e.g.
+  // "#{host}").
+  string host = 4;
+
+  // Target absolute path, starting with "/"; supports placeholders (e.g.
+  // "/#{path}" or "/new/#{path}").
+  string path = 5;
+
+  // Target query string, without the leading "?"; supports placeholders.
+  string query = 6;
+
+  option (buf.validate.message).cel = {
+    id: "redirect_status_code_valid"
+    message: "status_code must be 'HTTP_301' or 'HTTP_302'"
+    expression: "this.status_code in ['HTTP_301', 'HTTP_302']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "redirect_protocol_valid"
+    message: "protocol must be 'HTTP', 'HTTPS', or '#{protocol}' when set"
+    expression: "this.protocol == '' || this.protocol in ['HTTP', 'HTTPS', '#{protocol}']"
+  };
+}
+
+// AwsLbListenerRuleActionFixedResponse serves a canned HTTP response
+// directly from the load balancer.
+message AwsLbListenerRuleActionFixedResponse {
+  // The Content-Type of the response. Required. Valid values: "text/plain",
+  // "text/css", "text/html", "application/javascript", "application/json".
+  string content_type = 1 [(buf.validate.field).required = true];
+
+  // The HTTP status code, as a string: 2xx, 4xx, or 5xx (e.g. "404").
+  // AWS default: "503".
+  string status_code = 2;
+
+  // The response body, up to 1024 characters.
+  string message_body = 3 [(buf.validate.field).string.max_len = 1024];
+
+  option (buf.validate.message).cel = {
+    id: "fixed_response_content_type_valid"
+    message: "content_type must be one of: text/plain, text/css, text/html, application/javascript, application/json"
+    expression: "this.content_type in ['text/plain', 'text/css', 'text/html', 'application/javascript', 'application/json']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "fixed_response_status_code_valid"
+    message: "status_code must be a 2xx, 4xx, or 5xx code when set"
+    expression: "this.status_code == '' || this.status_code.matches('^[245][0-9][0-9]$')"
+  };
+}
+
+// AwsLbListenerRuleActionAuthenticateCognito fronts the terminal action with
+// an Amazon Cognito hosted-UI login for just the requests this rule matches
+// -- e.g. require login on "/admin/*" while the rest of the site stays
+// public.
+message AwsLbListenerRuleActionAuthenticateCognito {
+  // The Cognito user pool performing authentication.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_pool_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCognitoUserPool,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.user_pool_arn"
+  ];
+
+  // The app client ID within the user pool. Accepts a direct client ID or a
+  // reference to an AwsCognitoUserPoolClient resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_pool_client_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCognitoUserPoolClient,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.client_id"
+  ];
+
+  // The user pool's hosted-UI domain: the prefix of a Cognito domain (e.g.
+  // "my-app" for my-app.auth.us-west-2.amazoncognito.com) or a full custom
+  // domain. Accepts a direct domain string or a reference to the pool's
+  // user_pool_domain output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_pool_domain = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCognitoUserPool,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.user_pool_domain"
+  ];
+
+  // Extra query parameters appended to the authorization-endpoint request.
+  map<string, string> authentication_request_extra_params = 4;
+
+  // What happens to an unauthenticated request: "authenticate" (AWS default
+  // -- redirect to login), "deny" (401), or "allow" (pass through; the app
+  // sees the request without identity headers).
+  string on_unauthenticated_request = 5;
+
+  // Space-separated OAuth scopes to request. AWS default: "openid".
+  string scope = 6;
+
+  // The session cookie name. AWS default: "AWSELBAuthSessionCookie".
+  string session_cookie_name = 7;
+
+  // Seconds the authentication session stays valid. AWS default: 604800
+  // (7 days).
+  int32 session_timeout_seconds = 8;
+
+  option (buf.validate.message).cel = {
+    id: "cognito_on_unauthenticated_request_valid"
+    message: "on_unauthenticated_request must be 'deny', 'allow', or 'authenticate' when set"
+    expression: "this.on_unauthenticated_request == '' || this.on_unauthenticated_request in ['deny', 'allow', 'authenticate']"
+  };
+}
+
+// AwsLbListenerRuleActionAuthenticateOidc fronts the terminal action with
+// any OpenID Connect provider (Okta, Auth0, Entra ID, Google, ...) for just
+// the requests this rule matches.
+message AwsLbListenerRuleActionAuthenticateOidc {
+  // The OIDC issuer identifier (e.g. "https://accounts.google.com").
+  string issuer = 1 [(buf.validate.field).required = true];
+
+  // The provider's authorization endpoint URL.
+  string authorization_endpoint = 2 [(buf.validate.field).required = true];
+
+  // The provider's token endpoint URL.
+  string token_endpoint = 3 [(buf.validate.field).required = true];
+
+  // The provider's UserInfo endpoint URL.
+  string user_info_endpoint = 4 [(buf.validate.field).required = true];
+
+  // The OAuth client ID registered with the provider.
+  string client_id = 5 [(buf.validate.field).required = true];
+
+  // The OAuth client secret. Handled as a secret end to end -- never exposed
+  // in plans, logs, or the console.
+  string client_secret = 6 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Extra query parameters appended to the authorization-endpoint request.
+  map<string, string> authentication_request_extra_params = 7;
+
+  // What happens to an unauthenticated request: "authenticate" (AWS default
+  // -- redirect to login), "deny" (401), or "allow" (pass through).
+  string on_unauthenticated_request = 8;
+
+  // Space-separated OAuth scopes to request. AWS default: "openid".
+  string scope = 9;
+
+  // The session cookie name. AWS default: "AWSELBAuthSessionCookie".
+  string session_cookie_name = 10;
+
+  // Seconds the authentication session stays valid. AWS default: 604800
+  // (7 days).
+  int32 session_timeout_seconds = 11;
+
+  option (buf.validate.message).cel = {
+    id: "oidc_on_unauthenticated_request_valid"
+    message: "on_unauthenticated_request must be 'deny', 'allow', or 'authenticate' when set"
+    expression: "this.on_unauthenticated_request == '' || this.on_unauthenticated_request in ['deny', 'allow', 'authenticate']"
+  };
+}
+
+// AwsLbListenerRuleActionJwtValidation validates a JWT bearer token on each
+// matching request against a JWKS endpoint -- stateless API authentication
+// with no login redirect or session cookie. Requests with a missing or
+// invalid token are rejected at the load balancer.
+message AwsLbListenerRuleActionJwtValidation {
+  // The expected token issuer (the "iss" claim), 1-256 characters.
+  string issuer = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 256
+  ];
+
+  // The JWKS endpoint URL serving the signing keys tokens are verified
+  // against, 1-256 characters.
+  string jwks_endpoint = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 256
+  ];
+
+  // Extra claims the token must carry, beyond issuer and signature. Up to 10.
+  repeated AwsLbListenerRuleActionJwtClaim additional_claims = 3 [(buf.validate.field).repeated.max_items = 10];
+}
+
+// AwsLbListenerRuleActionJwtClaim is one required claim of a jwt-validation
+// action.
+message AwsLbListenerRuleActionJwtClaim {
+  // The claim name in the token payload (e.g. "aud", "scope").
+  string name = 1 [(buf.validate.field).required = true];
+
+  // How the claim value is encoded in the token. Valid values:
+  // "single-string", "string-array", "space-separated-values" (how OAuth
+  // "scope" claims are typically encoded).
+  string format = 2 [(buf.validate.field).required = true];
+
+  // Accepted values for the claim, 1-10 entries of up to 256 characters.
+  // The claim satisfies validation when any listed value matches.
+  repeated string values = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 10
+      items: {
+        string: {max_len: 256}
+      }
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "jwt_claim_format_valid"
+    message: "format must be 'single-string', 'string-array', or 'space-separated-values'"
+    expression: "this.format in ['single-string', 'string-array', 'space-separated-values']"
+  };
+}
+
+// AwsLbListenerRuleTransform rewrites part of a matching request before the
+// action runs. At most one host-header-rewrite and one url-rewrite per rule.
+message AwsLbListenerRuleTransform {
+  // The transform type. Required. Valid values: "host-header-rewrite",
+  // "url-rewrite".
+  string type = 1 [(buf.validate.field).required = true];
+
+  // Rewrite configuration for "host-header-rewrite".
+  AwsLbListenerRuleRewrite host_header_rewrite = 2;
+
+  // Rewrite configuration for "url-rewrite".
+  AwsLbListenerRuleRewrite url_rewrite = 3;
+
+  option (buf.validate.message).cel = {
+    id: "transform_type_valid"
+    message: "type must be 'host-header-rewrite' or 'url-rewrite'"
+    expression: "this.type in ['host-header-rewrite', 'url-rewrite']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "host_header_rewrite_matches_type"
+    message: "host_header_rewrite must be set when (and only when) type is 'host-header-rewrite'"
+    expression: "(this.type == 'host-header-rewrite') == has(this.host_header_rewrite)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "url_rewrite_matches_type"
+    message: "url_rewrite must be set when (and only when) type is 'url-rewrite'"
+    expression: "(this.type == 'url-rewrite') == has(this.url_rewrite)"
+  };
+}
+
+// AwsLbListenerRuleRewrite is a regex find-and-replace applied by a
+// transform.
+message AwsLbListenerRuleRewrite {
+  // The regular expression matched against the component being rewritten,
+  // 1-1024 characters.
+  string regex = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 1024
+  ];
+
+  // The replacement, up to 1024 characters; may reference capture groups
+  // from the regex.
+  string replace = 2 [(buf.validate.field).string.max_len = 1024];
+}

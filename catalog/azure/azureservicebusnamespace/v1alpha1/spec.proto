@@ -1,0 +1,369 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureservicebusnamespace.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureServiceBusNamespaceSpec** defines the configuration for creating an
+// Azure Service Bus namespace: the container and billing boundary for
+// enterprise messaging entities.
+//
+// Azure Service Bus is a fully managed enterprise message broker providing
+// queues (point-to-point) and topics with subscriptions (publish-subscribe),
+// with ordered delivery, sessions, duplicate detection, dead-lettering, and
+// transactions. The namespace is where the pricing tier, network posture,
+// encryption, and authentication mode are set; the messaging entities are
+// first-class kinds that reference it:
+// `AzureServiceBusQueue`, `AzureServiceBusTopic` (with
+// `AzureServiceBusSubscription` under a topic), `AzureServiceBusAuthorizationRule`
+// (SAS credentials scoped to the namespace or a single entity), and
+// `AzureServiceBusDisasterRecoveryConfig` (the geo-DR alias pairing two
+// Premium namespaces).
+//
+// **SKU tiers**:
+// - **BASIC**: queues only -- no topics, sessions, or duplicate detection.
+//   Simple fire-and-forget scenarios.
+// - **STANDARD** (default): full-featured multi-tenant tier with topics,
+//   subscriptions, sessions, and duplicate detection. The right choice for
+//   most production workloads.
+// - **PREMIUM**: dedicated messaging units with predictable latency, VNet
+//   integration (network_rule_set), customer-managed-key encryption, geo-DR,
+//   namespace partitioning, and large messages (up to 100 MB). Migrating a
+//   namespace into or out of PREMIUM replaces it (Azure cannot convert in
+//   place across the dedicated/multi-tenant boundary).
+//
+// **Authentication posture**: every namespace carries a root SAS rule
+// (`RootManageSharedAccessKey`) whose keys and connection strings surface as
+// sensitive outputs. Scoped credentials belong in
+// `AzureServiceBusAuthorizationRule`; for a keyless posture, disable
+// local_auth_enabled and grant Entra identities data-plane roles
+// (Azure Service Bus Data Owner/Sender/Receiver) via `AzureRoleAssignment`.
+//
+// **ForceNew fields** (changing these replaces the namespace -- and destroys
+// every entity in it): `namespace_name`, `premium_messaging_partitions`,
+// `sku` when moving into or out of PREMIUM, and removing
+// `customer_managed_key` once set.
+message AzureServiceBusNamespaceSpec {
+  // The Azure region where the Service Bus namespace is created.
+  // Examples: "eastus", "westus2", "westeurope", "southeastasia".
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure Resource Group the namespace lives in.
+  // Can be a literal string or a reference to an AzureResourceGroup output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The namespace name -- globally unique across Azure, because it becomes
+  // the public endpoint `{name}.servicebus.windows.net`.
+  //
+  // 6-50 characters; starts with a letter; ends with a letter or number;
+  // letters, numbers, and hyphens only. Azure additionally reserves the
+  // suffixes "-sb" and "-mgmt".
+  //
+  // **ForceNew**: changing the name replaces the namespace and every entity
+  // in it. Treat it as permanent.
+  string namespace_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 6,
+    (buf.validate.field).string.max_len = 50,
+    (buf.validate.field).cel = {
+      id: "service_bus_namespace_name_format"
+      message: "namespace_name must be 6-50 characters of letters, numbers, and hyphens, starting with a letter and ending with a letter or number"
+      expression: "this.matches('^[a-zA-Z][-a-zA-Z0-9]{4,48}[a-zA-Z0-9]$')"
+    },
+    (buf.validate.field).cel = {
+      id: "service_bus_namespace_name_reserved_suffix"
+      message: "namespace_name cannot end with '-sb' or '-mgmt' -- Azure reserves these suffixes for its own service endpoints"
+      expression: "!this.endsWith('-sb') && !this.endsWith('-mgmt')"
+    }
+  ];
+
+  // The pricing tier. Unspecified deploys STANDARD -- the full-featured
+  // multi-tenant tier that fits most production workloads. Choose PREMIUM
+  // for dedicated capacity, VNet integration, customer-managed keys, geo-DR,
+  // or messages larger than 256 KB; choose BASIC only for simple queue-only
+  // scenarios (no topics).
+  //
+  // Moving a namespace into or out of PREMIUM replaces it; BASIC <->
+  // STANDARD updates in place.
+  AzureServiceBusNamespaceSku sku = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Messaging units for the PREMIUM tier -- the dedicated processing
+  // capacity of the namespace. Required with (and only valid with) PREMIUM.
+  // Allowed values: 1, 2, 4, 8, 16. Each messaging unit provides roughly
+  // 1 MB/s ingress and 2 MB/s egress with predictable latency; scale up for
+  // high-throughput workloads (scaling updates in place).
+  optional int32 capacity = 5 [(buf.validate.field).int32 = {
+    in: [
+      1,
+      2,
+      4,
+      8,
+      16
+    ]
+  }];
+
+  // Namespace partitions for the PREMIUM tier. Partitioning spreads the
+  // namespace across multiple message stores, multiplying throughput beyond
+  // what one store sustains. Allowed values: 1 (not partitioned -- the
+  // standard choice), 2, or 4. Every queue and topic in a partitioned
+  // namespace must set partitioning_enabled to true; in a non-partitioned
+  // namespace they must not.
+  //
+  // **ForceNew**: the partition layout is fixed at creation -- changing it
+  // replaces the namespace.
+  optional int32 premium_messaging_partitions = 6 [(buf.validate.field).int32 = {
+    in: [
+      1,
+      2,
+      4
+    ]
+  }];
+
+  // Managed identity for the namespace -- required for customer-managed-key
+  // encryption (the identity unwraps the key) and usable anywhere the
+  // namespace itself must authenticate to other Azure services.
+  AzureServiceBusNamespaceIdentity identity = 7;
+
+  // Customer-managed-key encryption for messaging data at rest (BYOK).
+  // PREMIUM only, and the unwrapping user-assigned identity must be attached
+  // via the identity block. Once enabled, CMK cannot be removed -- dropping
+  // this block replaces the namespace (Azure's own contract).
+  AzureServiceBusNamespaceCustomerManagedKey customer_managed_key = 8;
+
+  // Whether SAS (shared-access-signature) authentication is allowed on the
+  // namespace. Azure's default is true. Set false for a keyless posture:
+  // clients must then authenticate with Microsoft Entra ID identities, and
+  // every SAS rule's keys -- including the root rule surfaced in this kind's
+  // outputs -- stop being usable credentials.
+  // Default: true
+  optional bool local_auth_enabled = 9 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether the namespace accepts traffic from the public internet. When
+  // false, clients reach it only through private endpoints
+  // (AzurePrivateEndpoint) or admitted VNet service endpoints.
+  // Default: true
+  optional bool public_network_access_enabled = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // The namespace firewall: which networks may reach the data plane.
+  // PREMIUM only (multi-tenant tiers do not support VNet integration or IP
+  // filtering). Declaring the block with DENY and no admitted networks is
+  // rejected -- Azure requires at least one admitted source before closing
+  // the default.
+  AzureServiceBusNamespaceNetworkRuleSet network_rule_set = 11;
+
+  // Tags to apply to the namespace, merged over the Planton-derived
+  // metadata tags (user values win on key conflicts). ARM tags are Azure's
+  // first-class governance surface -- Azure Policy enforces them and
+  // Microsoft Cost Management groups by them.
+  map<string, string> tags = 12;
+
+  option (buf.validate.message).cel = {
+    id: "service_bus_capacity_premium_only"
+    message: "capacity is the PREMIUM tier's messaging-unit dial -- remove it on BASIC/STANDARD, where Azure fixes capacity at 0"
+    expression: "!has(this.capacity) || this.sku == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "service_bus_premium_requires_capacity"
+    message: "the PREMIUM tier requires capacity -- pick 1, 2, 4, 8, or 16 messaging units (1 fits most workloads to start; scaling up later updates in place)"
+    expression: "this.sku != 3 || has(this.capacity)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "service_bus_partitions_premium_only"
+    message: "premium_messaging_partitions is a PREMIUM-tier setting -- remove it on BASIC/STANDARD"
+    expression: "!has(this.premium_messaging_partitions) || this.sku == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "service_bus_premium_requires_partitions"
+    message: "the PREMIUM tier requires premium_messaging_partitions -- set 1 unless you deliberately want a partitioned namespace (2 or 4); the layout is fixed at creation"
+    expression: "this.sku != 3 || has(this.premium_messaging_partitions)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "service_bus_cmk_requires_premium"
+    message: "customer_managed_key encryption is only available on the PREMIUM tier -- Azure rejects BYOK on multi-tenant namespaces"
+    expression: "!has(this.customer_managed_key) || this.sku == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "service_bus_cmk_requires_user_assigned_identity"
+    message: "customer_managed_key requires the identity block with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED -- the unwrapping identity must be attached to the namespace"
+    expression: "!has(this.customer_managed_key) || (has(this.identity) && this.identity.type in [2, 3])"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "service_bus_network_rules_require_premium"
+    message: "network_rule_set is only available on the PREMIUM tier -- multi-tenant namespaces do not support VNet integration or IP filtering"
+    expression: "!has(this.network_rule_set) || this.sku == 3"
+  };
+}
+
+// The pricing tier of the namespace.
+enum AzureServiceBusNamespaceSku {
+  // Not specified -- deploys STANDARD, the full-featured multi-tenant tier.
+  azure_service_bus_namespace_sku_unspecified = 0;
+
+  // Queues only -- no topics, sessions, or duplicate detection. Simple
+  // fire-and-forget scenarios.
+  BASIC = 1;
+
+  // Full-featured multi-tenant tier: queues, topics, subscriptions,
+  // sessions, duplicate detection. The right choice for most production
+  // workloads.
+  STANDARD = 2;
+
+  // Dedicated messaging units: predictable latency, VNet integration,
+  // customer-managed keys, geo-DR, partitioning, 100 MB messages. Moving
+  // into or out of PREMIUM replaces the namespace.
+  PREMIUM = 3;
+}
+
+// AzureServiceBusNamespaceIdentity configures managed identity for the
+// namespace.
+message AzureServiceBusNamespaceIdentity {
+  // The identity model: SYSTEM_ASSIGNED (Azure creates and rotates a
+  // service principal bound to the namespace's lifecycle), USER_ASSIGNED
+  // (bring identities from user_assigned_identity_ids, shareable across
+  // resources), or SYSTEM_AND_USER_ASSIGNED (both).
+  AzureServiceBusNamespaceIdentityType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The user-assigned identities to attach -- required when (and only
+  // meaningful when) type includes USER_ASSIGNED. Each entry references
+  // an AzureUserAssignedIdentity's ARM id.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "service_bus_identity_ids_match_type"
+    message: "user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED"
+    expression: "(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)"
+  };
+}
+
+// The managed-identity model for the namespace.
+enum AzureServiceBusNamespaceIdentityType {
+  // Not specified -- invalid; choose an explicit identity model.
+  azure_service_bus_namespace_identity_type_unspecified = 0;
+
+  // Azure creates a service principal bound to the namespace's lifecycle.
+  SYSTEM_ASSIGNED = 1;
+
+  // Bring your own AzureUserAssignedIdentity entries -- shareable across
+  // resources and grantable before the namespace exists.
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned principal and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// Customer-managed-key (BYOK) encryption for the namespace's messaging data.
+message AzureServiceBusNamespaceCustomerManagedKey {
+  // The Key Vault key that encrypts messaging data, by data-plane key ID.
+  // Defaults to referencing an AzureKeyVaultKey's versionless_id output so
+  // key rotations propagate automatically; pin a versioned ID only when a
+  // compliance regime demands an immutable key version. The key's vault
+  // must have purge protection enabled.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+
+  // The user-assigned identity Azure uses to unwrap the key, by ARM ID.
+  // Must be one of the identities attached via the namespace's identity
+  // block, with wrap/unwrap access on the key's vault (a "Key Vault Crypto
+  // Service Encryption User" role assignment, or the equivalent access
+  // policy).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // Whether Azure applies a second layer of encryption (infrastructure
+  // encryption) beneath the customer-managed key. **ForceNew**: fixed at
+  // the moment CMK is first configured.
+  optional bool infrastructure_encryption_enabled = 3;
+}
+
+// The namespace firewall (PREMIUM only): which networks may reach the
+// data plane.
+message AzureServiceBusNamespaceNetworkRuleSet {
+  // What happens to traffic no explicit rule admits. Unspecified keeps
+  // Azure's open default (ALLOW). DENY plus the admitted lists below is
+  // the production posture -- but Azure rejects DENY with no admitted
+  // ip_rules or network_rules.
+  AzureServiceBusNetworkDefaultAction default_action = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Whether the data plane remains reachable over public IP space for the
+  // sources the rules admit. Set false to force all admitted traffic
+  // through private endpoints and service endpoints only.
+  // Default: true
+  optional bool public_network_access_enabled = 2 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether trusted Microsoft services (Event Grid delivery, Azure Monitor
+  // diagnostics, IoT Hub routing, ...) bypass the firewall. Azure's
+  // default is false; enable it when platform services must deliver into a
+  // locked-down namespace.
+  optional bool trusted_services_allowed = 3;
+
+  // Public IPv4 addresses or CIDR ranges admitted to the data plane,
+  // e.g. "203.0.113.0/24".
+  repeated string ip_rules = 4;
+
+  // VNet subnets admitted to the data plane via service endpoints. Each
+  // subnet should carry the Microsoft.ServiceBus service endpoint.
+  repeated AzureServiceBusNamespaceNetworkRule network_rules = 5;
+
+  option (buf.validate.message).cel = {
+    id: "service_bus_deny_requires_admitted_sources"
+    message: "default_action DENY needs at least one admitted source -- add ip_rules or network_rules, or the namespace would reject all data-plane traffic (Azure refuses this configuration)"
+    expression: "this.default_action != 2 || this.ip_rules.size() > 0 || this.network_rules.size() > 0"
+  };
+}
+
+// The firewall's default action for unmatched traffic.
+enum AzureServiceBusNetworkDefaultAction {
+  // Not specified -- keeps Azure's open default (ALLOW).
+  azure_service_bus_network_default_action_unspecified = 0;
+
+  // Admit traffic no rule matches (the firewall only annotates).
+  ALLOW = 1;
+
+  // Reject traffic no rule matches -- the production posture. Requires at
+  // least one admitted ip_rule or network_rule.
+  DENY = 2;
+}
+
+// A VNet subnet admitted to the namespace's data plane.
+message AzureServiceBusNamespaceNetworkRule {
+  // The admitted subnet, by ARM ID. References an AzureSubnet's subnet_id
+  // output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Whether to admit the subnet even if it does not (yet) carry the
+  // Microsoft.ServiceBus service endpoint -- useful when the endpoint is
+  // being rolled out separately. Azure's default is false.
+  optional bool ignore_missing_vnet_service_endpoint = 2;
+}

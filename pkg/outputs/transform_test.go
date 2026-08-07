@@ -6,12 +6,12 @@ package outputs
 import (
 	"testing"
 
-	auth0v1 "github.com/plantonhq/planton/apis/dev/planton/provider/auth0/auth0resourceserver/v1alpha1"
-	awsvpcv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpc/v1alpha1"
-	gcpdnsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdnszone/v1alpha1"
-	gcpsubnetworkv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsubnetwork/v1alpha1"
-	k8spgv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespostgres/v1alpha1"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	auth0v1 "github.com/plantonhq/planton/catalog/auth0/auth0resourceserver/v1alpha1"
+	awsvpcv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsvpc/v1alpha1"
+	gcpdnsv1 "github.com/plantonhq/planton/catalog/gcp/gcpdnszone/v1alpha1"
+	gcpsubnetworkv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpsubnetwork/v1alpha1"
+	k8spgv1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespostgres/v1alpha1"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 func TestTransform_Auth0ResourceServer(t *testing.T) {

@@ -130,7 +130,7 @@ Check that the page reads like it was written by the same senior documentation w
 Compare the audited page against the AWS ALB exemplar at:
 
 ```
-apis/dev/planton/provider/aws/awsalb/v1alpha1/catalog-page.md
+catalog/aws/awsalb/v1alpha1/catalog-page.md
 ```
 
 Check for:

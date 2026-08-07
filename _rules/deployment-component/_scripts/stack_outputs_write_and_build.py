@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Deterministic tool: Write stack_outputs.proto and run apis build.
+Deterministic tool: Write stack_outputs.proto and run the proto build.
 
 Usage:
   cat stack_outputs.proto | python3 _rules/deployment-component/_scripts/stack_outputs_write_and_build.py --provider aws --kindfolder awscloudfront --stdin
@@ -36,7 +36,8 @@ def find_repo_root(start_dir: str) -> str:
 
 
 def outputs_path(repo_root: str, provider: str, kind_folder: str) -> Tuple[str, str]:
-    rel = os.path.join("apis", "dev", "planton", "provider", provider, kind_folder, "v1alpha1", "stack_outputs.proto")
+    rel = os.path.join(
+        "catalog", provider, kind_folder, "v1alpha1", "stack_outputs.proto")
     return os.path.join(repo_root, rel), rel
 
 
@@ -57,9 +58,8 @@ def normalize(segment: str) -> str:
 
 
 def run_build(repo_root: str) -> Tuple[int, str, str]:
-    apis_dir = os.path.join(repo_root, "apis")
     try:
-        p = subprocess.run(["make", "-C", apis_dir, "build"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
+        p = subprocess.run(["make", "-C", repo_root, "protos"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
         return p.returncode, p.stdout, p.stderr
     except Exception as exc:
         return 127, "", str(exc)

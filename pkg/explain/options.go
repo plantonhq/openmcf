@@ -1,9 +1,9 @@
 package explain
 
 import (
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
-	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/options"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
+	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"github.com/plantonhq/planton/shared/options"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )

@@ -21,7 +21,8 @@ spec:
     # IRSA: the role's trust policy must allow the cluster's OIDC provider
     # and the "karpenter" service account. Replace the account id and role
     # name with your controller role.
-    irsaRoleArn: arn:aws:iam::123456789012:role/karpenter-controller
+    irsaRoleArn:
+      value: arn:aws:iam::123456789012:role/karpenter-controller
     # SQS queue receiving EC2 interruption events (spot interruptions,
     # maintenance, rebalance) so Karpenter drains ahead of them.
     interruptionQueue: karpenter-interruptions

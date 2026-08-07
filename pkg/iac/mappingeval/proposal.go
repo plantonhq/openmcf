@@ -5,11 +5,11 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-	proposalv1 "github.com/plantonhq/planton/apis/dev/planton/iac/importmappingproposal/v1"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	proposalv1 "github.com/plantonhq/planton/iac/importmappingproposal/v1"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/protobufyaml"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )

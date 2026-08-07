@@ -1,0 +1,2119 @@
+syntax = "proto3";
+
+package dev.planton.aws.awskinesisfirehose.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsKinesisFirehoseSpec defines the desired configuration for an Amazon Kinesis
+// Data Firehose delivery stream.
+//
+// Firehose is a fully managed service for loading streaming data into storage
+// and analytics destinations. It captures, transforms, and delivers data --
+// without writing any custom code.
+//
+// Data enters a delivery stream from one of three sources:
+// - **Direct PUT** (default) -- applications call PutRecord/PutRecordBatch APIs
+//   directly to the delivery stream.
+// - **Kinesis Data Stream** -- Firehose reads from an existing Kinesis stream,
+//   acting as a consumer with automatic checkpointing and retry.
+// - **Amazon MSK** -- Firehose reads from a topic on an Amazon MSK cluster
+//   (provisioned or serverless), turning Kafka topics into delivery pipelines
+//   with zero consumer code.
+//
+// The delivery stream transforms and routes data to exactly ONE destination.
+// The destination type is ForceNew -- once created, you cannot change it.
+//
+// Eight destination types are supported:
+// - **Extended S3** -- data lake storage with optional Parquet/ORC conversion,
+//   dynamic partitioning, record transformation, and compression.
+// - **OpenSearch** -- direct indexing into an OpenSearch Service domain with
+//   index rotation, buffering, and VPC delivery.
+// - **OpenSearch Serverless** -- indexing into an OpenSearch Serverless
+//   collection endpoint.
+// - **HTTP Endpoint** -- generic HTTPS delivery to any endpoint (Datadog,
+//   New Relic, Sumo Logic, custom APIs).
+// - **Redshift** -- data warehouse loading via S3 intermediate + COPY command.
+// - **Splunk** -- delivery to a Splunk HTTP Event Collector (HEC) endpoint.
+// - **Snowflake** -- direct streaming into a Snowflake table via Snowpipe
+//   Streaming (key-pair authentication, optional PrivateLink).
+// - **Iceberg** -- delivery into Apache Iceberg tables managed by the AWS Glue
+//   Data Catalog, with optional per-record table routing and upserts.
+//
+// Notes:
+// - The delivery stream name (from metadata.name) is ForceNew.
+// - Server-side encryption (SSE) is only for Direct PUT sources. When using
+//   a Kinesis stream or MSK source, the source handles encryption.
+// - Every non-S3 destination requires an S3 configuration for failed (or all)
+//   records. The Extended S3 destination IS the primary S3 target.
+// - Destinations that authenticate with a credential (Redshift, Splunk,
+//   HTTP endpoint, Snowflake) can source it from AWS Secrets Manager instead
+//   of embedding it in the manifest -- prefer that for production.
+// - Credentials, region, and deployment workflow live outside this spec in
+//   stack inputs.
+message AwsKinesisFirehoseSpec {
+  // The AWS region where the resource will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // ---------------------------------------------------------------------------
+  // Source configuration (optional -- Direct PUT when absent)
+  // ---------------------------------------------------------------------------
+
+  // Kinesis Data Stream source configuration. When set, Firehose reads from
+  // the specified stream instead of accepting Direct PUT calls. The entire
+  // source configuration is ForceNew -- it cannot be changed after creation.
+  //
+  // Mutually exclusive with msk_source. When a stream source is configured,
+  // server-side encryption (sse_enabled) must NOT be set -- the source stream
+  // handles its own encryption.
+  AwsKinesisFirehoseKinesisStreamSource kinesis_stream_source = 2;
+
+  // Amazon MSK source configuration. When set, Firehose reads from a topic
+  // on the specified MSK cluster instead of accepting Direct PUT calls. The
+  // entire source configuration is ForceNew -- it cannot be changed after
+  // creation.
+  //
+  // Mutually exclusive with kinesis_stream_source. When an MSK source is
+  // configured, server-side encryption (sse_enabled) must NOT be set -- the
+  // source cluster handles its own encryption.
+  AwsKinesisFirehoseMskSource msk_source = 3;
+
+  // ---------------------------------------------------------------------------
+  // Server-side encryption (Direct PUT only)
+  // ---------------------------------------------------------------------------
+
+  // Enable server-side encryption for data at rest in the delivery stream
+  // buffer. Only valid for Direct PUT sources -- when using a Kinesis stream
+  // or MSK source, encryption is handled by the source.
+  //
+  // When true and sse_kms_key_arn is absent, uses the AWS-owned CMK.
+  // When true and sse_kms_key_arn is present, uses a customer-managed CMK.
+  bool sse_enabled = 4;
+
+  // Customer-managed KMS key ARN for server-side encryption. When set,
+  // Firehose uses this key instead of the AWS-owned CMK. Requires
+  // sse_enabled to be true.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef sse_kms_key_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Destination (exactly one required, ForceNew)
+  // ---------------------------------------------------------------------------
+
+  // Exactly one destination must be configured. The destination type is
+  // ForceNew -- changing it requires replacing the entire delivery stream.
+  // The IaC modules derive the Terraform/Pulumi destination string from
+  // which field is populated.
+  oneof destination_config {
+    option (buf.validate.oneof).required = true;
+
+    // Extended S3 destination for data lake storage. Supports compression,
+    // record transformation, dynamic partitioning, and Parquet/ORC format
+    // conversion via AWS Glue Data Catalog. The most feature-rich destination.
+    AwsKinesisFirehoseExtendedS3Destination extended_s3 = 6;
+
+    // OpenSearch destination for direct indexing into an Amazon OpenSearch
+    // Service domain. Supports index rotation, VPC delivery, and record
+    // transformation. Failed documents are backed up to S3.
+    AwsKinesisFirehoseOpenSearchDestination opensearch = 7;
+
+    // OpenSearch Serverless destination for indexing into an OpenSearch
+    // Serverless collection. Failed documents are backed up to S3.
+    AwsKinesisFirehoseOpenSearchServerlessDestination opensearch_serverless = 8;
+
+    // HTTP endpoint destination for delivery to any HTTPS endpoint. Supports
+    // custom headers, content encoding, and record transformation. Commonly
+    // used for third-party integrations (Datadog, New Relic, Sumo Logic).
+    // Failed deliveries are backed up to S3.
+    AwsKinesisFirehoseHttpEndpointDestination http_endpoint = 9;
+
+    // Redshift destination for data warehouse loading. Firehose stages data
+    // in S3, then issues a Redshift COPY command to load it. Supports record
+    // transformation and optional S3 backup of source records.
+    AwsKinesisFirehoseRedshiftDestination redshift = 10;
+
+    // Splunk destination for delivery to a Splunk HTTP Event Collector (HEC)
+    // endpoint -- Splunk Cloud, Splunk Enterprise, or Splunk-managed AWS.
+    // Failed events are backed up to S3.
+    AwsKinesisFirehoseSplunkDestination splunk = 11;
+
+    // Snowflake destination for direct streaming into a Snowflake table via
+    // Snowpipe Streaming. Authenticates with key-pair credentials (or AWS
+    // Secrets Manager) and supports PrivateLink. Failed data is backed up
+    // to S3.
+    AwsKinesisFirehoseSnowflakeDestination snowflake = 12;
+
+    // Iceberg destination for delivery into Apache Iceberg tables managed by
+    // the AWS Glue Data Catalog. Supports routing records to multiple tables
+    // and update/delete semantics via unique keys. Failed data is backed up
+    // to S3.
+    AwsKinesisFirehoseIcebergDestination iceberg = 13;
+  }
+
+  // ---------------------------------------------------------------------------
+  // CEL validations (cross-field)
+  // ---------------------------------------------------------------------------
+
+  // At most one source: Kinesis stream and MSK are mutually exclusive.
+  // (Direct PUT applies when neither is set.)
+  option (buf.validate.message).cel = {
+    id: "single_source"
+    message: "kinesis_stream_source and msk_source are mutually exclusive"
+    expression: "!(has(this.kinesis_stream_source) && has(this.msk_source))"
+  };
+
+  // SSE conflicts with a stream source. When using a Kinesis stream or MSK
+  // cluster as the source, the source handles encryption. Enabling SSE on
+  // the delivery stream would be redundant and is not allowed by AWS.
+  option (buf.validate.message).cel = {
+    id: "sse_conflicts_with_stream_source"
+    message: "sse_enabled must be false when kinesis_stream_source or msk_source is configured (the source handles encryption)"
+    expression: "(!has(this.kinesis_stream_source) && !has(this.msk_source)) || !this.sse_enabled"
+  };
+
+  // SSE KMS key requires SSE to be enabled.
+  option (buf.validate.message).cel = {
+    id: "sse_key_requires_enabled"
+    message: "sse_kms_key_arn requires sse_enabled to be true"
+    expression: "!has(this.sse_kms_key_arn) || this.sse_enabled"
+  };
+}
+
+// =============================================================================
+// Source messages
+// =============================================================================
+
+// AwsKinesisFirehoseKinesisStreamSource configures Firehose to read from an
+// existing Kinesis Data Stream. Firehose acts as a consumer with automatic
+// checkpointing, retry, and backpressure handling.
+//
+// The entire source configuration is ForceNew -- all fields require replacing
+// the delivery stream if changed.
+message AwsKinesisFirehoseKinesisStreamSource {
+  // ARN of the Kinesis Data Stream to read from. Firehose creates an internal
+  // consumer and reads all shards. The stream must exist before the delivery
+  // stream is created.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef stream_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKinesisStream,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.stream_arn"
+  ];
+
+  // IAM role ARN that grants Firehose permission to read from the Kinesis
+  // stream. The role must have kinesis:GetRecords, kinesis:GetShardIterator,
+  // kinesis:DescribeStream, and kinesis:ListShards permissions.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+}
+
+// AwsKinesisFirehoseMskSource configures Firehose to read from a topic on an
+// Amazon MSK cluster (provisioned or serverless). Firehose acts as a Kafka
+// consumer with automatic checkpointing -- no consumer application to run.
+//
+// The entire source configuration is ForceNew -- all fields require replacing
+// the delivery stream if changed.
+message AwsKinesisFirehoseMskSource {
+  // ARN of the MSK cluster to read from. The cluster must exist and have
+  // IAM access control enabled before the delivery stream is created.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef msk_cluster_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsMskCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_arn"
+  ];
+
+  // Name of the Kafka topic to read from. The topic must exist on the
+  // cluster before the delivery stream is created.
+  string topic_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // How Firehose connects to the MSK cluster:
+  // - "PRIVATE" -- connect through the cluster's private brokers inside its
+  //   VPC (the common case for provisioned and serverless clusters).
+  // - "PUBLIC" -- connect through the cluster's public endpoints (requires
+  //   public access to be enabled on the cluster).
+  string connectivity = 3 [(buf.validate.field).string.min_len = 1];
+
+  // IAM role ARN that grants Firehose permission to connect to and read from
+  // the MSK cluster. The role must have kafka:GetBootstrapBrokers,
+  // kafka:DescribeCluster, kafka:DescribeClusterV2, and the kafka-cluster:*
+  // data-plane permissions (Connect, DescribeTopic, ReadData,
+  // DescribeGroup) on the cluster, topic, and consumer group.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Start reading the topic from this point in time instead of the current
+  // offset. RFC 3339 format (e.g., "2026-05-01T00:00:00Z"). When absent,
+  // Firehose starts from the latest offset at creation time.
+  string read_from_timestamp = 5;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "connectivity_valid"
+    message: "connectivity must be 'PRIVATE' or 'PUBLIC'"
+    expression: "this.connectivity in ['PRIVATE', 'PUBLIC']"
+  };
+}
+
+// =============================================================================
+// Shared sub-messages (used across multiple destinations)
+// =============================================================================
+
+// AwsKinesisFirehoseBufferingHints controls when Firehose flushes buffered data
+// to the destination. Firehose delivers when EITHER the buffer size OR the
+// buffer interval is reached -- whichever comes first.
+message AwsKinesisFirehoseBufferingHints {
+  // Buffer interval in seconds. Firehose flushes when this time elapses since
+  // the last flush, even if the buffer size threshold has not been reached.
+  //
+  // Range: 0-900 seconds. Default varies by destination (typically 300;
+  // Splunk 60, Snowflake 0). Lower values reduce delivery latency; higher
+  // values improve batching efficiency and reduce S3 object count.
+  //
+  // Some destinations enforce a tighter maximum (Splunk: 60s) -- the
+  // destination message carries that rule.
+  int32 interval_in_seconds = 1;
+
+  // Buffer size in MiB. Firehose flushes when the accumulated data reaches
+  // this threshold.
+  //
+  // Range: 1-128 MiB. Default varies by destination (typically 5 MiB;
+  // Snowflake 1 MiB). Larger buffers produce fewer, larger objects (better
+  // for query engines); smaller buffers provide faster delivery.
+  //
+  // Some destinations enforce a tighter maximum (OpenSearch/HTTP endpoint:
+  // 100 MiB, Splunk: 5 MiB) -- the destination message carries that rule.
+  int32 size_in_mbs = 2;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "interval_range"
+    message: "interval_in_seconds must be between 0 and 900 when set"
+    expression: "this.interval_in_seconds == 0 || (this.interval_in_seconds >= 0 && this.interval_in_seconds <= 900)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "size_range"
+    message: "size_in_mbs must be between 1 and 128 when set"
+    expression: "this.size_in_mbs == 0 || (this.size_in_mbs >= 1 && this.size_in_mbs <= 128)"
+  };
+}
+
+// AwsKinesisFirehoseS3Config defines the S3 configuration used for backup or
+// error delivery. All non-S3 destinations require an S3 configuration to
+// store failed records. Redshift also uses S3 as an intermediate staging
+// area for COPY operations.
+message AwsKinesisFirehoseS3Config {
+  // S3 bucket ARN where records are delivered.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_arn"
+  ];
+
+  // IAM role ARN that grants Firehose permission to write to the S3 bucket.
+  // The role must have s3:PutObject, s3:AbortMultipartUpload,
+  // s3:GetBucketLocation, and s3:ListBucket permissions.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // S3 key prefix prepended to delivered objects. Supports Firehose expression
+  // syntax for dynamic prefixes (e.g., "errors/year=!{timestamp:yyyy}/").
+  string prefix = 3;
+
+  // S3 key prefix for error output. When Firehose cannot deliver or transform
+  // a record, it writes to this prefix. Uses the same expression syntax as prefix.
+  string error_output_prefix = 4;
+
+  // Compression format for delivered objects. Applied before writing to S3.
+  // Valid values: "UNCOMPRESSED", "GZIP", "ZIP", "Snappy", "HADOOP_SNAPPY".
+  // Default: "UNCOMPRESSED".
+  string compression_format = 5;
+
+  // Customer-managed KMS key ARN for S3 server-side encryption (SSE-KMS).
+  // When absent, S3 uses its default encryption settings (SSE-S3 or bucket
+  // default encryption).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Buffering hints for S3 delivery.
+  AwsKinesisFirehoseBufferingHints buffering = 7;
+
+  // CloudWatch logging configuration for S3 delivery errors.
+  AwsKinesisFirehoseCloudwatchLogging logging = 8;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "compression_format_valid"
+    message: "compression_format must be 'UNCOMPRESSED', 'GZIP', 'ZIP', 'Snappy', or 'HADOOP_SNAPPY' when set"
+    expression: "this.compression_format == '' || this.compression_format in ['UNCOMPRESSED', 'GZIP', 'ZIP', 'Snappy', 'HADOOP_SNAPPY']"
+  };
+}
+
+// AwsKinesisFirehoseProcessing configures the record-transformation pipeline
+// applied before delivery. Processors run in the order listed -- each
+// processor's output feeds the next.
+//
+// Common pipelines:
+// - Lambda transformation only (enrich/filter/reshape records).
+// - Metadata extraction + dynamic partitioning (extract partition keys with
+//   a JQ expression, reference them as !{partitionKeyFromQuery:...} in the
+//   Extended S3 prefix).
+// - Decompression + CloudWatch log processing (deliver CloudWatch Logs
+//   subscription data as clean JSON events).
+// - Lambda + append delimiter (transform, then newline-delimit for JSON-lines
+//   consumers).
+message AwsKinesisFirehoseProcessing {
+  // Enable the processing pipeline. When true, at least one processor should
+  // be configured.
+  bool enabled = 1;
+
+  // Ordered list of processors. Each entry configures exactly one processor
+  // type; Firehose executes them in order.
+  repeated AwsKinesisFirehoseProcessor processors = 2;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "processors_require_enabled"
+    message: "processors require enabled to be true"
+    expression: "this.enabled || this.processors.size() == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "enabled_requires_processors"
+    message: "at least one processor is required when processing is enabled"
+    expression: "!this.enabled || this.processors.size() > 0"
+  };
+}
+
+// AwsKinesisFirehoseProcessor configures exactly one processor in the
+// transformation pipeline. Set exactly one of the typed arms.
+message AwsKinesisFirehoseProcessor {
+  // Invoke an AWS Lambda function to transform records. The function
+  // receives batches of records and returns transformed records with a
+  // status (Ok, Dropped, ProcessingFailed) per record.
+  AwsKinesisFirehoseLambdaProcessor lambda = 1;
+
+  // Extract partition keys from JSON records with a JQ expression. Used
+  // with Extended S3 dynamic partitioning -- extracted keys are referenced
+  // in the S3 prefix as !{partitionKeyFromQuery:<key>}.
+  AwsKinesisFirehoseMetadataExtractionProcessor metadata_extraction = 2;
+
+  // Decompress GZIP-compressed records before delivery. Typically the first
+  // processor when the source sends compressed payloads (e.g., CloudWatch
+  // Logs subscription filters).
+  AwsKinesisFirehoseDecompressionProcessor decompression = 3;
+
+  // Unwrap CloudWatch Logs subscription envelopes into individual log
+  // events. Use after a decompression processor when the source is a
+  // CloudWatch Logs subscription filter.
+  AwsKinesisFirehoseCloudwatchLogProcessingProcessor cloudwatch_log_processing = 4;
+
+  // Append a delimiter to every record. Use to produce newline-delimited
+  // JSON (JSON lines) output for query engines and log consumers.
+  //
+  // Only supported on the extended_s3 destination -- delimiting is an
+  // S3-object formatting concern; other destinations frame records
+  // natively.
+  AwsKinesisFirehoseAppendDelimiterProcessor append_delimiter = 5;
+
+  // Split multi-record aggregates (e.g., KPL-aggregated or delimited
+  // payloads) into individual records before further processing. Required
+  // before dynamic partitioning when producers aggregate records.
+  //
+  // Only supported on the extended_s3 destination -- AWS rejects it for
+  // every other destination type at creation.
+  AwsKinesisFirehoseRecordDeaggregationProcessor record_deaggregation = 6;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "exactly_one_processor"
+    message: "exactly one processor must be set: lambda, metadata_extraction, decompression, cloudwatch_log_processing, append_delimiter, or record_deaggregation"
+    expression: "[has(this.lambda), has(this.metadata_extraction), has(this.decompression), has(this.cloudwatch_log_processing), has(this.append_delimiter), has(this.record_deaggregation)].filter(x, x).size() == 1"
+  };
+}
+
+// AwsKinesisFirehoseLambdaProcessor invokes an AWS Lambda function to
+// transform records. Firehose buffers records, invokes the function with a
+// batch, and expects each record back with a status of Ok, Dropped, or
+// ProcessingFailed.
+message AwsKinesisFirehoseLambdaProcessor {
+  // ARN of the Lambda function that transforms records. May include a
+  // version or alias qualifier to pin the deployed transformation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef lambda_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Buffer size in MiB that Firehose accumulates before invoking Lambda.
+  // Range: 1-3 MiB. Default: 3 MiB.
+  //
+  // Smaller buffers invoke Lambda more frequently with smaller batches.
+  // Larger buffers (up to 3 MiB) are more efficient and reduce Lambda
+  // invocation costs.
+  int32 buffer_size_in_mbs = 2;
+
+  // Buffer interval in seconds. Firehose invokes Lambda when this interval
+  // elapses, even if the buffer size threshold has not been reached.
+  // Range: 60-900 seconds. Default: 60 seconds.
+  int32 buffer_interval_in_seconds = 3;
+
+  // Number of times Firehose retries a failed Lambda invocation before
+  // writing the record to the error output prefix.
+  // Range: 0-300. Default: 3.
+  int32 number_of_retries = 4;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "buffer_size_range"
+    message: "buffer_size_in_mbs must be between 1 and 3 when set"
+    expression: "this.buffer_size_in_mbs == 0 || (this.buffer_size_in_mbs >= 1 && this.buffer_size_in_mbs <= 3)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "buffer_interval_range"
+    message: "buffer_interval_in_seconds must be between 60 and 900 when set"
+    expression: "this.buffer_interval_in_seconds == 0 || (this.buffer_interval_in_seconds >= 60 && this.buffer_interval_in_seconds <= 900)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "retries_range"
+    message: "number_of_retries must be between 0 and 300 when set"
+    expression: "this.number_of_retries == 0 || (this.number_of_retries >= 0 && this.number_of_retries <= 300)"
+  };
+}
+
+// AwsKinesisFirehoseMetadataExtractionProcessor extracts partition keys from
+// JSON records using a JQ expression. The extracted keys drive Extended S3
+// dynamic partitioning via !{partitionKeyFromQuery:<key>} prefix expressions.
+message AwsKinesisFirehoseMetadataExtractionProcessor {
+  // JQ expression that extracts partition keys from each JSON record.
+  // The result must be an object whose keys become partition keys.
+  //
+  // Example: "{customer_id: .customer_id, event_type: .type}" extracts two
+  // keys, referenced in the prefix as
+  // "data/customer=!{partitionKeyFromQuery:customer_id}/type=!{partitionKeyFromQuery:event_type}/".
+  string query = 1 [(buf.validate.field).string.min_len = 1];
+
+  // JSON parsing engine used to evaluate the query.
+  // Valid value: "JQ-1.6" (default -- the only engine AWS supports today).
+  string json_parsing_engine = 2;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "json_parsing_engine_valid"
+    message: "json_parsing_engine must be 'JQ-1.6' when set"
+    expression: "this.json_parsing_engine == '' || this.json_parsing_engine == 'JQ-1.6'"
+  };
+}
+
+// AwsKinesisFirehoseDecompressionProcessor decompresses compressed records
+// before delivery. The common source is CloudWatch Logs subscription data,
+// which arrives GZIP-compressed.
+message AwsKinesisFirehoseDecompressionProcessor {
+  // Compression format of the incoming records.
+  // Valid value: "GZIP" (the only format AWS supports today).
+  string compression_format = 1 [(buf.validate.field).string.min_len = 1];
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "compression_format_valid"
+    message: "compression_format must be 'GZIP'"
+    expression: "this.compression_format == 'GZIP'"
+  };
+}
+
+// AwsKinesisFirehoseCloudwatchLogProcessingProcessor unwraps CloudWatch Logs
+// subscription envelopes. A CloudWatch Logs subscription delivers batches
+// wrapped in metadata (owner, log group, subscription filters); this
+// processor extracts the individual log events.
+message AwsKinesisFirehoseCloudwatchLogProcessingProcessor {
+  // When true, extract only the log event message field, discarding the
+  // CloudWatch envelope metadata. When false, records pass through with the
+  // envelope intact.
+  bool data_message_extraction = 1;
+}
+
+// AwsKinesisFirehoseAppendDelimiterProcessor appends a delimiter to every
+// record, producing delimited output (typically JSON lines).
+message AwsKinesisFirehoseAppendDelimiterProcessor {
+  // Delimiter appended to each record. Use "\\n" for newline-delimited
+  // output -- the format Athena, Spark, and most log consumers expect.
+  string delimiter = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsKinesisFirehoseRecordDeaggregationProcessor splits aggregated payloads
+// into individual records. Producers using the Kinesis Producer Library (KPL)
+// or batching multiple JSON documents per record must de-aggregate before
+// dynamic partitioning or per-record processing.
+message AwsKinesisFirehoseRecordDeaggregationProcessor {
+  // How records are aggregated in the payload:
+  // - "JSON" -- concatenated JSON documents (no delimiter needed).
+  // - "DELIMITED" -- records separated by a custom delimiter; requires
+  //   the delimiter field.
+  string sub_record_type = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Delimiter separating sub-records, base64-encoded (e.g., "Cg==" for a
+  // newline). Required when sub_record_type is "DELIMITED".
+  string delimiter = 2;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "sub_record_type_valid"
+    message: "sub_record_type must be 'JSON' or 'DELIMITED'"
+    expression: "this.sub_record_type in ['JSON', 'DELIMITED']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "delimiter_required_when_delimited"
+    message: "delimiter is required when sub_record_type is 'DELIMITED'"
+    expression: "this.sub_record_type != 'DELIMITED' || this.delimiter != ''"
+  };
+}
+
+// AwsKinesisFirehoseCloudwatchLogging configures delivery error logging to
+// Amazon CloudWatch Logs. When enabled, Firehose publishes error information
+// for troubleshooting delivery failures.
+message AwsKinesisFirehoseCloudwatchLogging {
+  // Enable CloudWatch error logging for this delivery target.
+  bool enabled = 1;
+
+  // CloudWatch Logs log group name where errors are published.
+  // Required when enabled is true.
+  string log_group_name = 2;
+
+  // CloudWatch Logs log stream name within the log group.
+  // Required when enabled is true.
+  string log_stream_name = 3;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "log_group_required_when_enabled"
+    message: "log_group_name is required when logging is enabled"
+    expression: "!this.enabled || this.log_group_name != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "log_stream_required_when_enabled"
+    message: "log_stream_name is required when logging is enabled"
+    expression: "!this.enabled || this.log_stream_name != ''"
+  };
+}
+
+// AwsKinesisFirehoseVpcConfig configures VPC delivery for OpenSearch and
+// OpenSearch Serverless destinations. When set, Firehose creates ENIs in the
+// specified subnets to deliver data within the VPC. The entire VPC
+// configuration is ForceNew.
+message AwsKinesisFirehoseVpcConfig {
+  // Subnet IDs where Firehose creates ENIs for VPC delivery. Provide at
+  // least one subnet. For high availability, use subnets in multiple AZs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security group IDs applied to the ENIs. Must allow outbound HTTPS (443)
+  // traffic to the destination.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // IAM role ARN for Firehose to manage VPC ENIs. The role must have
+  // ec2:CreateNetworkInterface, ec2:DescribeNetworkInterfaces,
+  // ec2:DeleteNetworkInterface, and ec2:DescribeVpcs permissions.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+}
+
+// AwsKinesisFirehoseSecretsManagerConfig sources the destination credential
+// from AWS Secrets Manager instead of embedding it in the manifest. The
+// recommended authentication mode for production: the credential never
+// appears in manifests or IaC state, and rotations in Secrets Manager apply
+// without a delivery-stream update.
+//
+// Setting this block IS the switch -- when present, Secrets Manager
+// authentication is enabled and the destination's plaintext credential
+// fields must be empty. Adding or removing this block after creation
+// replaces the delivery stream (the enablement is ForceNew).
+//
+// The expected secret shape depends on the destination:
+// - Redshift: {"username": "...", "password": "..."}
+// - Splunk: {"hec_token": "..."}
+// - HTTP endpoint: {"api_key": "..."}
+// - Snowflake: {"user": "...", "private_key": "...", "key_passphrase": "..."}
+message AwsKinesisFirehoseSecretsManagerConfig {
+  // ARN of the Secrets Manager secret holding the destination credential.
+  // An ARN reference resolved by Firehose at delivery time -- never the
+  // secret material itself.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_arn = 1 [(buf.validate.field).required = true];
+
+  // IAM role ARN granting Firehose permission to read the secret
+  // (secretsmanager:GetSecretValue). When absent, the destination's
+  // delivery role is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+}
+
+// =============================================================================
+// Extended S3 destination
+// =============================================================================
+
+// AwsKinesisFirehoseExtendedS3Destination configures delivery to Amazon S3 with
+// advanced features: record transformation, dynamic partitioning, Parquet/ORC
+// format conversion, compression, and S3 backup of source records.
+//
+// This is the most feature-rich destination and the most common (~60% of all
+// Firehose delivery streams). Use it for data lakes, log archives, analytics
+// pipelines, and any scenario where data needs to land in S3.
+message AwsKinesisFirehoseExtendedS3Destination {
+  // ---------------------------------------------------------------------------
+  // Required fields
+  // ---------------------------------------------------------------------------
+
+  // S3 bucket ARN where records are delivered.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_arn"
+  ];
+
+  // IAM role ARN granting Firehose write access to the S3 bucket, KMS key
+  // (if encrypted), Lambda function (if processing), and Glue catalog (if
+  // format conversion is enabled).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // S3 delivery options
+  // ---------------------------------------------------------------------------
+
+  // S3 key prefix prepended to every delivered object. Supports Firehose
+  // expression syntax for dynamic prefixes:
+  //   "data/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
+  //
+  // When dynamic partitioning is enabled, use partitioning keys:
+  //   "data/customer=!{partitionKeyFromQuery:customer_id}/"
+  string prefix = 3;
+
+  // S3 key prefix for records that fail transformation or delivery.
+  string error_output_prefix = 4;
+
+  // Compression format applied before writing to S3. When data format
+  // conversion is enabled, compression is applied to the converted
+  // (Parquet/ORC) output -- in that case, use the format-native compression
+  // (configured in data_format_conversion) and leave this as UNCOMPRESSED.
+  //
+  // Valid values: "UNCOMPRESSED", "GZIP", "ZIP", "Snappy", "HADOOP_SNAPPY".
+  // Default: "UNCOMPRESSED".
+  string compression_format = 5;
+
+  // Customer-managed KMS key ARN for S3 server-side encryption (SSE-KMS).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Buffering hints for S3 delivery. Default: 300s interval, 5 MiB size.
+  AwsKinesisFirehoseBufferingHints buffering = 7;
+
+  // IANA time zone for S3 prefix timestamp expressions.
+  // Default: "UTC". Example: "US/Eastern", "Europe/London".
+  string custom_time_zone = 8;
+
+  // File extension appended to delivered S3 objects (e.g., ".json", ".parquet").
+  // Must start with a period. When data format conversion is enabled, the
+  // extension is typically set to match the output format.
+  string file_extension = 9;
+
+  // ---------------------------------------------------------------------------
+  // S3 source record backup
+  // ---------------------------------------------------------------------------
+
+  // S3 backup mode for source records. When "Enabled", a copy of the original
+  // (pre-transformation) records is written to s3_backup in addition to the
+  // primary destination. Useful for auditing and reprocessing.
+  //
+  // Valid values: "Disabled" (default), "Enabled".
+  string s3_backup_mode = 10;
+
+  // S3 configuration for source record backup. Required when s3_backup_mode
+  // is "Enabled".
+  AwsKinesisFirehoseS3Config s3_backup = 11;
+
+  // ---------------------------------------------------------------------------
+  // Processing, logging, and partitioning
+  // ---------------------------------------------------------------------------
+
+  // Record-transformation pipeline. Applied before compression and format
+  // conversion. For dynamic partitioning, include a metadata_extraction
+  // processor to define the partition keys.
+  AwsKinesisFirehoseProcessing processing = 12;
+
+  // CloudWatch error logging for S3 delivery failures.
+  AwsKinesisFirehoseCloudwatchLogging logging = 13;
+
+  // Dynamic partitioning configuration. Enables partitioning delivered data
+  // by record fields (e.g., customer_id, event_type) for efficient querying
+  // with Athena, Spark, or Presto. ForceNew -- cannot be enabled/disabled
+  // after creation. Define the partition keys with a metadata_extraction
+  // processor (or a Lambda processor emitting partition metadata) and
+  // reference them in the prefix.
+  AwsKinesisFirehoseDynamicPartitioning dynamic_partitioning = 14;
+
+  // Data format conversion from JSON to columnar formats (Parquet or ORC)
+  // using an AWS Glue Data Catalog schema. Dramatically improves query
+  // performance and reduces storage cost for analytics workloads.
+  AwsKinesisFirehoseDataFormatConversion data_format_conversion = 15;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "compression_format_valid"
+    message: "compression_format must be 'UNCOMPRESSED', 'GZIP', 'ZIP', 'Snappy', or 'HADOOP_SNAPPY' when set"
+    expression: "this.compression_format == '' || this.compression_format in ['UNCOMPRESSED', 'GZIP', 'ZIP', 'Snappy', 'HADOOP_SNAPPY']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "s3_backup_mode_valid"
+    message: "s3_backup_mode must be 'Disabled' or 'Enabled' when set"
+    expression: "this.s3_backup_mode == '' || this.s3_backup_mode in ['Disabled', 'Enabled']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "s3_backup_requires_enabled"
+    message: "s3_backup requires s3_backup_mode to be 'Enabled'"
+    expression: "!has(this.s3_backup) || this.s3_backup_mode == 'Enabled'"
+  };
+}
+
+// AwsKinesisFirehoseDynamicPartitioning configures dynamic partitioning for the
+// Extended S3 destination. When enabled, Firehose extracts partition keys from
+// record fields and uses them to construct S3 prefixes, creating a partitioned
+// data layout for efficient query engines (Athena, Spark, Presto).
+//
+// The entire dynamic partitioning configuration is ForceNew -- it cannot be
+// enabled or disabled after the delivery stream is created.
+message AwsKinesisFirehoseDynamicPartitioning {
+  // Enable dynamic partitioning. ForceNew -- cannot be changed after creation.
+  // When enabled, configure partition key expressions in the S3 prefix using
+  // !{partitionKeyFromQuery:...} or !{partitionKeyFromLambda:...} syntax,
+  // and define the keys with a metadata_extraction (or Lambda) processor.
+  bool enabled = 1;
+
+  // Duration in seconds that Firehose retries delivery when a partition key
+  // expression fails or the S3 PutObject call is throttled.
+  // Range: 0-7200. Default: 300 seconds.
+  int32 retry_duration_in_seconds = 2;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "retry_duration_range"
+    message: "retry_duration_in_seconds must be between 0 and 7200 when set"
+    expression: "this.retry_duration_in_seconds == 0 || (this.retry_duration_in_seconds >= 0 && this.retry_duration_in_seconds <= 7200)"
+  };
+}
+
+// AwsKinesisFirehoseDataFormatConversion configures conversion from JSON input
+// to columnar formats (Apache Parquet or Apache ORC) using an AWS Glue Data
+// Catalog schema. Columnar formats dramatically improve query performance
+// (10-100x faster for analytical queries) and reduce storage costs (60-90%
+// compression ratio).
+//
+// Prerequisites:
+// - An AWS Glue Data Catalog database and table with the schema definition
+// - The Firehose IAM role must have glue:GetTable and glue:GetTableVersions
+//   permissions on the Glue catalog
+message AwsKinesisFirehoseDataFormatConversion {
+  // Enable data format conversion. When true, output_format and schema are
+  // required.
+  bool enabled = 1;
+
+  // Input data format for deserialization. Firehose reads incoming JSON
+  // records using this deserializer.
+  //
+  // Valid values:
+  // - "OPENX_JSON" (default) -- OpenX JSON SerDe. Handles most JSON formats
+  //   including nested objects. Recommended for general use.
+  // - "HIVE_JSON" -- Apache Hive JSON SerDe. Use for Hive-compatible JSON
+  //   with custom timestamp formats.
+  string input_format = 2;
+
+  // Output columnar format for serialization. Records are converted from
+  // JSON to this format before writing to S3.
+  //
+  // Valid values:
+  // - "PARQUET" -- Apache Parquet format. Best for read-heavy analytical
+  //   workloads (Athena, Spark, Presto). Excellent compression, predicate
+  //   pushdown, and columnar pruning.
+  // - "ORC" -- Apache ORC format. Best for Hive workloads. ACID support,
+  //   bloom filters, and built-in indexing.
+  string output_format = 3;
+
+  // Compression for Parquet output. Only used when output_format is "PARQUET".
+  // Valid values: "SNAPPY" (default), "GZIP", "UNCOMPRESSED".
+  string parquet_compression = 4;
+
+  // Compression for ORC output. Only used when output_format is "ORC".
+  // Valid values: "SNAPPY" (default), "ZLIB", "NONE".
+  string orc_compression = 5;
+
+  // AWS Glue Data Catalog schema reference. Defines the table schema used
+  // for converting JSON records to the columnar format. Required when
+  // data format conversion is enabled.
+  AwsKinesisFirehoseGlueSchemaConfig schema = 6;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  // output_format and schema required when enabled.
+  option (buf.validate.message).cel = {
+    id: "output_format_required_when_enabled"
+    message: "output_format is required when data format conversion is enabled"
+    expression: "!this.enabled || this.output_format != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "schema_required_when_enabled"
+    message: "schema is required when data format conversion is enabled"
+    expression: "!this.enabled || has(this.schema)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "input_format_valid"
+    message: "input_format must be 'OPENX_JSON' or 'HIVE_JSON' when set"
+    expression: "this.input_format == '' || this.input_format in ['OPENX_JSON', 'HIVE_JSON']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "output_format_valid"
+    message: "output_format must be 'PARQUET' or 'ORC' when set"
+    expression: "this.output_format == '' || this.output_format in ['PARQUET', 'ORC']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "parquet_compression_valid"
+    message: "parquet_compression must be 'SNAPPY', 'GZIP', or 'UNCOMPRESSED' when set"
+    expression: "this.parquet_compression == '' || this.parquet_compression in ['SNAPPY', 'GZIP', 'UNCOMPRESSED']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "orc_compression_valid"
+    message: "orc_compression must be 'SNAPPY', 'ZLIB', or 'NONE' when set"
+    expression: "this.orc_compression == '' || this.orc_compression in ['SNAPPY', 'ZLIB', 'NONE']"
+  };
+
+  // parquet_compression requires output_format PARQUET.
+  option (buf.validate.message).cel = {
+    id: "parquet_compression_requires_parquet"
+    message: "parquet_compression is only valid when output_format is 'PARQUET'"
+    expression: "this.parquet_compression == '' || this.output_format == 'PARQUET'"
+  };
+
+  // orc_compression requires output_format ORC.
+  option (buf.validate.message).cel = {
+    id: "orc_compression_requires_orc"
+    message: "orc_compression is only valid when output_format is 'ORC'"
+    expression: "this.orc_compression == '' || this.output_format == 'ORC'"
+  };
+}
+
+// AwsKinesisFirehoseGlueSchemaConfig references an AWS Glue Data Catalog table
+// that defines the schema for data format conversion. The table must exist in
+// the Glue catalog before the delivery stream is created.
+message AwsKinesisFirehoseGlueSchemaConfig {
+  // Glue Data Catalog database name containing the table.
+  string database_name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Glue Data Catalog table name defining the record schema.
+  string table_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // IAM role ARN granting Firehose permission to access the Glue catalog.
+  // Must have glue:GetTable and glue:GetTableVersions permissions.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Glue Data Catalog ID (AWS account ID). When omitted, defaults to the
+  // current AWS account.
+  string catalog_id = 4;
+
+  // AWS region of the Glue catalog. When omitted, defaults to the delivery
+  // stream's region.
+  string region = 5;
+
+  // Table version to use. Default: "LATEST".
+  string version_id = 6;
+}
+
+// =============================================================================
+// OpenSearch destination
+// =============================================================================
+
+// AwsKinesisFirehoseOpenSearchDestination configures delivery to an Amazon
+// OpenSearch Service domain. Firehose indexes records directly into the
+// specified index with configurable rotation, buffering, and retry behavior.
+// Failed documents are always backed up to S3.
+//
+// Supports both public and VPC-deployed OpenSearch domains. For VPC domains,
+// configure vpc_config to enable Firehose to create ENIs in the VPC.
+message AwsKinesisFirehoseOpenSearchDestination {
+  // ---------------------------------------------------------------------------
+  // OpenSearch target (exactly one of domain_arn or cluster_endpoint)
+  // ---------------------------------------------------------------------------
+
+  // ARN of the OpenSearch domain. Mutually exclusive with cluster_endpoint.
+  // Use this for domains managed within the same AWS account.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef domain_arn = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsOpenSearchDomain,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.domain_arn"
+  ];
+
+  // OpenSearch cluster endpoint URL. Mutually exclusive with domain_arn.
+  // Use this for cross-account domains or non-standard endpoints.
+  // Format: "https://search-domain-xxxx.us-east-1.es.amazonaws.com"
+  string cluster_endpoint = 2;
+
+  // ---------------------------------------------------------------------------
+  // Indexing configuration
+  // ---------------------------------------------------------------------------
+
+  // Name of the OpenSearch index to deliver records to. Required.
+  // When index_rotation_period is set, this becomes the index prefix and
+  // Firehose appends a timestamp suffix (e.g., "logs-2026-02-15").
+  string index_name = 3 [(buf.validate.field).string.min_len = 1];
+
+  // IAM role ARN granting Firehose permission to write to OpenSearch.
+  // Must have es:ESHttpPut and es:ESHttpGet permissions on the domain.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Index rotation period. Firehose appends a timestamp suffix to index_name
+  // and creates a new index at each rotation boundary.
+  //
+  // Valid values: "NoRotation", "OneHour", "OneDay" (default), "OneWeek", "OneMonth".
+  //
+  // "NoRotation" writes all records to the same index (use for small, static datasets).
+  // "OneDay" is recommended for most log and analytics use cases.
+  string index_rotation_period = 5;
+
+  // OpenSearch document type name. Only relevant for Elasticsearch 6.x and
+  // earlier (OpenSearch does not use document types). Leave empty for
+  // OpenSearch domains.
+  string type_name = 6;
+
+  // How Firehose assigns document IDs:
+  // - "FIREHOSE_DEFAULT" -- Firehose generates a unique document ID per
+  //   record. Protects against duplicates on retry but disables OpenSearch
+  //   ID-based deduplication.
+  // - "NO_DOCUMENT_ID" -- no ID is sent; OpenSearch auto-generates one.
+  //   Improves indexing throughput and lets retried deliveries deduplicate.
+  //
+  // When empty, AWS applies its service default (FIREHOSE_DEFAULT).
+  string default_document_id_format = 7;
+
+  // ---------------------------------------------------------------------------
+  // Delivery configuration
+  // ---------------------------------------------------------------------------
+
+  // Buffering hints for OpenSearch delivery. Default: 300s interval, 5 MiB.
+  // Maximum size for OpenSearch destinations: 100 MiB.
+  AwsKinesisFirehoseBufferingHints buffering = 8;
+
+  // Retry duration in seconds for failed OpenSearch index requests.
+  // Range: 0-7200. Default: 300 seconds.
+  // Set to 0 to disable retries (failed documents go directly to S3 backup).
+  int32 retry_duration_in_seconds = 9;
+
+  // ---------------------------------------------------------------------------
+  // S3 backup (required)
+  // ---------------------------------------------------------------------------
+
+  // S3 backup mode for documents. Controls when records are written to S3.
+  //
+  // Valid values:
+  // - "FailedDocumentsOnly" (default) -- only documents that fail indexing
+  //   are backed up to S3.
+  // - "AllDocuments" -- all documents are backed up to S3 in addition to
+  //   being indexed in OpenSearch.
+  //
+  // ForceNew -- changing the backup mode replaces the delivery stream.
+  string s3_backup_mode = 10;
+
+  // S3 configuration for backing up failed (or all) documents. Required.
+  AwsKinesisFirehoseS3Config s3_config = 11 [(buf.validate.field).required = true];
+
+  // ---------------------------------------------------------------------------
+  // Optional: processing, logging, VPC
+  // ---------------------------------------------------------------------------
+
+  // Record-transformation pipeline applied before indexing.
+  AwsKinesisFirehoseProcessing processing = 12;
+
+  // CloudWatch error logging for OpenSearch delivery failures.
+  AwsKinesisFirehoseCloudwatchLogging logging = 13;
+
+  // VPC configuration for delivering to VPC-deployed OpenSearch domains.
+  // ForceNew -- the VPC config cannot be changed after creation.
+  // When absent, Firehose delivers over the public internet.
+  AwsKinesisFirehoseVpcConfig vpc_config = 14;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  // Exactly one of domain_arn or cluster_endpoint is required.
+  option (buf.validate.message).cel = {
+    id: "domain_or_endpoint_required"
+    message: "exactly one of domain_arn or cluster_endpoint must be set"
+    expression: "(has(this.domain_arn) && this.cluster_endpoint == '') || (!has(this.domain_arn) && this.cluster_endpoint != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "index_rotation_period_valid"
+    message: "index_rotation_period must be 'NoRotation', 'OneHour', 'OneDay', 'OneWeek', or 'OneMonth' when set"
+    expression: "this.index_rotation_period == '' || this.index_rotation_period in ['NoRotation', 'OneHour', 'OneDay', 'OneWeek', 'OneMonth']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "default_document_id_format_valid"
+    message: "default_document_id_format must be 'FIREHOSE_DEFAULT' or 'NO_DOCUMENT_ID' when set"
+    expression: "this.default_document_id_format == '' || this.default_document_id_format in ['FIREHOSE_DEFAULT', 'NO_DOCUMENT_ID']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "s3_backup_mode_valid"
+    message: "s3_backup_mode must be 'FailedDocumentsOnly' or 'AllDocuments' when set"
+    expression: "this.s3_backup_mode == '' || this.s3_backup_mode in ['FailedDocumentsOnly', 'AllDocuments']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "retry_duration_range"
+    message: "retry_duration_in_seconds must be between 0 and 7200 when set"
+    expression: "this.retry_duration_in_seconds == 0 || (this.retry_duration_in_seconds >= 0 && this.retry_duration_in_seconds <= 7200)"
+  };
+
+  // OpenSearch destinations cap the buffer size at 100 MiB (tighter than the
+  // shared 128 MiB envelope).
+  option (buf.validate.message).cel = {
+    id: "buffering_size_max_100"
+    message: "buffering.size_in_mbs must not exceed 100 for OpenSearch destinations"
+    expression: "!has(this.buffering) || this.buffering.size_in_mbs <= 100"
+  };
+
+  // AWS restricts the de-aggregation and delimiter processors to S3
+  // delivery -- it rejects them on every destination except extended_s3.
+  option (buf.validate.message).cel = {
+    id: "s3_only_processors"
+    message: "record_deaggregation and append_delimiter processors are only supported on the extended_s3 destination"
+    expression: "!has(this.processing) || !this.processing.processors.exists(p, has(p.record_deaggregation) || has(p.append_delimiter))"
+  };
+}
+
+// =============================================================================
+// OpenSearch Serverless destination
+// =============================================================================
+
+// AwsKinesisFirehoseOpenSearchServerlessDestination configures delivery to an
+// Amazon OpenSearch Serverless collection. Firehose indexes records into the
+// specified index on the collection endpoint. Failed documents are always
+// backed up to S3.
+//
+// OpenSearch Serverless has no domains and no index rotation -- the collection
+// scales automatically and the index is a fixed name.
+message AwsKinesisFirehoseOpenSearchServerlessDestination {
+  // ---------------------------------------------------------------------------
+  // Collection target
+  // ---------------------------------------------------------------------------
+
+  // Endpoint of the OpenSearch Serverless collection.
+  // Format: "https://<collection-id>.<region>.aoss.amazonaws.com"
+  string collection_endpoint = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Name of the index to deliver records to. Required. The index must be
+  // permitted by the collection's data access policy for the delivery role.
+  string index_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // IAM role ARN granting Firehose permission to write to the collection.
+  // The role must be granted aoss:APIAccessAll on the collection and be
+  // listed in the collection's data access policy with document-write
+  // permission on the index.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Delivery configuration
+  // ---------------------------------------------------------------------------
+
+  // Buffering hints for delivery. Default: 300s interval, 5 MiB.
+  // Maximum size for OpenSearch Serverless destinations: 100 MiB.
+  AwsKinesisFirehoseBufferingHints buffering = 4;
+
+  // Retry duration in seconds for failed index requests.
+  // Range: 0-7200. Default: 300 seconds.
+  // Set to 0 to disable retries (failed documents go directly to S3 backup).
+  int32 retry_duration_in_seconds = 5;
+
+  // ---------------------------------------------------------------------------
+  // S3 backup (required)
+  // ---------------------------------------------------------------------------
+
+  // S3 backup mode for documents. Controls when records are written to S3.
+  //
+  // Valid values:
+  // - "FailedDocumentsOnly" (default) -- only documents that fail indexing
+  //   are backed up to S3.
+  // - "AllDocuments" -- all documents are backed up to S3 in addition to
+  //   being indexed.
+  //
+  // ForceNew -- changing the backup mode replaces the delivery stream.
+  string s3_backup_mode = 6;
+
+  // S3 configuration for backing up failed (or all) documents. Required.
+  AwsKinesisFirehoseS3Config s3_config = 7 [(buf.validate.field).required = true];
+
+  // ---------------------------------------------------------------------------
+  // Optional: processing, logging, VPC
+  // ---------------------------------------------------------------------------
+
+  // Record-transformation pipeline applied before indexing.
+  AwsKinesisFirehoseProcessing processing = 8;
+
+  // CloudWatch error logging for delivery failures.
+  AwsKinesisFirehoseCloudwatchLogging logging = 9;
+
+  // VPC configuration for delivering to collections reached through a VPC
+  // endpoint. ForceNew -- the VPC config cannot be changed after creation.
+  // When absent, Firehose delivers over the public internet.
+  AwsKinesisFirehoseVpcConfig vpc_config = 10;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "collection_endpoint_https"
+    message: "collection_endpoint must start with 'https://'"
+    expression: "this.collection_endpoint.startsWith('https://')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "s3_backup_mode_valid"
+    message: "s3_backup_mode must be 'FailedDocumentsOnly' or 'AllDocuments' when set"
+    expression: "this.s3_backup_mode == '' || this.s3_backup_mode in ['FailedDocumentsOnly', 'AllDocuments']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "retry_duration_range"
+    message: "retry_duration_in_seconds must be between 0 and 7200 when set"
+    expression: "this.retry_duration_in_seconds == 0 || (this.retry_duration_in_seconds >= 0 && this.retry_duration_in_seconds <= 7200)"
+  };
+
+  // OpenSearch Serverless destinations cap the buffer size at 100 MiB
+  // (tighter than the shared 128 MiB envelope).
+  option (buf.validate.message).cel = {
+    id: "buffering_size_max_100"
+    message: "buffering.size_in_mbs must not exceed 100 for OpenSearch Serverless destinations"
+    expression: "!has(this.buffering) || this.buffering.size_in_mbs <= 100"
+  };
+
+  // AWS restricts the de-aggregation and delimiter processors to S3
+  // delivery -- it rejects them on every destination except extended_s3.
+  option (buf.validate.message).cel = {
+    id: "s3_only_processors"
+    message: "record_deaggregation and append_delimiter processors are only supported on the extended_s3 destination"
+    expression: "!has(this.processing) || !this.processing.processors.exists(p, has(p.record_deaggregation) || has(p.append_delimiter))"
+  };
+}
+
+// =============================================================================
+// HTTP endpoint destination
+// =============================================================================
+
+// AwsKinesisFirehoseHttpEndpointDestination configures delivery to any HTTPS
+// endpoint. This is the most flexible destination, commonly used for
+// third-party analytics platforms (Datadog, New Relic, Sumo Logic), custom
+// APIs, and webhook-based integrations.
+//
+// The endpoint must accept HTTPS POST requests. Firehose sends records as
+// JSON arrays in the request body and expects an HTTP 200 response.
+// Failed deliveries are backed up to S3.
+message AwsKinesisFirehoseHttpEndpointDestination {
+  // ---------------------------------------------------------------------------
+  // Endpoint configuration
+  // ---------------------------------------------------------------------------
+
+  // HTTPS URL of the destination endpoint. Must start with "https://".
+  // Maximum length: 1000 characters.
+  //
+  // Examples:
+  // - "https://http-intake.logs.datadoghq.com/v1/input"
+  // - "https://api.honeycomb.io/1/kinesis_events/your-dataset"
+  // - "https://my-api.example.com/firehose"
+  string url = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable name for the endpoint. Appears in the AWS Console and
+  // CloudWatch metrics. Maximum 256 characters.
+  string name = 2;
+
+  // Access key for endpoint authentication, sent in the
+  // X-Amz-Firehose-Access-Key header. Sensitive -- treated as a secret.
+  // Maximum 4096 characters.
+  //
+  // Mutually exclusive with secrets_manager -- prefer Secrets Manager for
+  // production so the key never appears in manifests or IaC state. Endpoints
+  // that do not require authentication may omit both.
+  string access_key = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // Source the access key from AWS Secrets Manager instead of access_key.
+  // The secret shape is {"api_key": "..."}. Setting this block enables
+  // Secrets Manager authentication (ForceNew).
+  AwsKinesisFirehoseSecretsManagerConfig secrets_manager = 4;
+
+  // IAM role ARN granting Firehose permission to deliver to the endpoint
+  // and write to the S3 backup bucket. Optional -- the S3 configuration
+  // carries its own delivery role.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Delivery configuration
+  // ---------------------------------------------------------------------------
+
+  // Buffering hints for HTTP delivery. Default: 300s interval, 5 MiB.
+  // Maximum size for HTTP endpoint destinations: 100 MiB.
+  AwsKinesisFirehoseBufferingHints buffering = 6;
+
+  // Retry duration in seconds for failed HTTP deliveries (non-2xx responses
+  // or timeouts). Range: 0-7200. Default: 300 seconds.
+  int32 retry_duration_in_seconds = 7;
+
+  // ---------------------------------------------------------------------------
+  // S3 backup (required)
+  // ---------------------------------------------------------------------------
+
+  // S3 backup mode. Controls when records are written to S3.
+  //
+  // Valid values:
+  // - "FailedDataOnly" (default) -- only records that fail HTTP delivery
+  //   are backed up to S3.
+  // - "AllData" -- all records are backed up to S3 in addition to being
+  //   sent to the HTTP endpoint.
+  string s3_backup_mode = 8;
+
+  // S3 configuration for backing up failed (or all) records. Required.
+  AwsKinesisFirehoseS3Config s3_config = 9 [(buf.validate.field).required = true];
+
+  // ---------------------------------------------------------------------------
+  // Optional: processing, logging, request configuration
+  // ---------------------------------------------------------------------------
+
+  // Record-transformation pipeline applied before HTTP delivery.
+  AwsKinesisFirehoseProcessing processing = 10;
+
+  // CloudWatch error logging for HTTP delivery failures.
+  AwsKinesisFirehoseCloudwatchLogging logging = 11;
+
+  // Request configuration for customizing the HTTP request format.
+  AwsKinesisFirehoseRequestConfig request_config = 12;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  // URL must be HTTPS.
+  option (buf.validate.message).cel = {
+    id: "url_https_required"
+    message: "url must start with 'https://'"
+    expression: "this.url.startsWith('https://')"
+  };
+
+  // Plaintext access key and Secrets Manager are mutually exclusive.
+  option (buf.validate.message).cel = {
+    id: "access_key_conflicts_with_secrets_manager"
+    message: "access_key and secrets_manager are mutually exclusive"
+    expression: "!(this.access_key != '' && has(this.secrets_manager))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "s3_backup_mode_valid"
+    message: "s3_backup_mode must be 'FailedDataOnly' or 'AllData' when set"
+    expression: "this.s3_backup_mode == '' || this.s3_backup_mode in ['FailedDataOnly', 'AllData']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "retry_duration_range"
+    message: "retry_duration_in_seconds must be between 0 and 7200 when set"
+    expression: "this.retry_duration_in_seconds == 0 || (this.retry_duration_in_seconds >= 0 && this.retry_duration_in_seconds <= 7200)"
+  };
+
+  // HTTP endpoint destinations cap the buffer size at 100 MiB (tighter than
+  // the shared 128 MiB envelope).
+  option (buf.validate.message).cel = {
+    id: "buffering_size_max_100"
+    message: "buffering.size_in_mbs must not exceed 100 for HTTP endpoint destinations"
+    expression: "!has(this.buffering) || this.buffering.size_in_mbs <= 100"
+  };
+
+  // AWS restricts the de-aggregation and delimiter processors to S3
+  // delivery -- it rejects them on every destination except extended_s3.
+  option (buf.validate.message).cel = {
+    id: "s3_only_processors"
+    message: "record_deaggregation and append_delimiter processors are only supported on the extended_s3 destination"
+    expression: "!has(this.processing) || !this.processing.processors.exists(p, has(p.record_deaggregation) || has(p.append_delimiter))"
+  };
+}
+
+// AwsKinesisFirehoseRequestConfig customizes the HTTP request sent to the
+// endpoint. Allows setting content encoding and custom headers.
+message AwsKinesisFirehoseRequestConfig {
+  // Content encoding for the HTTP request body.
+  // Valid values: "NONE" (default), "GZIP".
+  // GZIP reduces payload size but adds CPU overhead.
+  string content_encoding = 1;
+
+  // Custom key-value pairs sent as HTTP headers with every request.
+  // Use this for endpoint-specific metadata (e.g., dataset name,
+  // environment identifier, API version).
+  repeated AwsKinesisFirehoseRequestAttribute common_attributes = 2;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "content_encoding_valid"
+    message: "content_encoding must be 'NONE' or 'GZIP' when set"
+    expression: "this.content_encoding == '' || this.content_encoding in ['NONE', 'GZIP']"
+  };
+}
+
+// AwsKinesisFirehoseRequestAttribute is a key-value pair sent as a custom
+// HTTP header with every request to the HTTP endpoint.
+message AwsKinesisFirehoseRequestAttribute {
+  // Header name.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Header value.
+  string value = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// =============================================================================
+// Redshift destination
+// =============================================================================
+
+// AwsKinesisFirehoseRedshiftDestination configures delivery to an Amazon
+// Redshift data warehouse. Firehose stages records in an intermediate S3
+// bucket, then issues a Redshift COPY command to bulk-load the data into
+// the target table.
+//
+// This two-stage process (S3 staging -> COPY) is the standard Redshift
+// ingestion pattern and provides excellent throughput for large data volumes.
+//
+// Prerequisites:
+// - A Redshift cluster accessible from Firehose (public or via VPC)
+// - The target database and table must exist
+// - An S3 staging bucket with appropriate IAM permissions
+message AwsKinesisFirehoseRedshiftDestination {
+  // ---------------------------------------------------------------------------
+  // Redshift target
+  // ---------------------------------------------------------------------------
+
+  // JDBC URL of the Redshift cluster. Format:
+  //   "jdbc:redshift://<endpoint>:<port>/<database>"
+  // Example: "jdbc:redshift://my-cluster.abcdef.us-east-1.redshift.amazonaws.com:5439/mydb"
+  string cluster_jdbcurl = 1 [(buf.validate.field).string.min_len = 1];
+
+  // IAM role ARN granting Firehose permission to COPY from S3 to Redshift
+  // and write to the S3 staging bucket. Must have:
+  // - S3 read access to the staging bucket
+  // - Redshift COPY permission
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Name of the target Redshift table for the COPY command.
+  string data_table_name = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Comma-separated list of column names for the COPY command. When set,
+  // only the specified columns are loaded. When absent, COPY loads into
+  // all columns in table order.
+  string data_table_columns = 4;
+
+  // Additional COPY command options (e.g., "JSON 'auto'", "GZIP",
+  // "DELIMITER ','", "IGNOREHEADER 1"). Appended to the COPY command.
+  string copy_options = 5;
+
+  // ---------------------------------------------------------------------------
+  // Authentication (plaintext credentials XOR Secrets Manager)
+  // ---------------------------------------------------------------------------
+
+  // Redshift database username. Required together with password when
+  // authenticating with plaintext credentials; must be empty when
+  // secrets_manager is set.
+  string username = 6;
+
+  // Redshift database password. Sensitive -- the value lands in IaC state.
+  // Prefer secrets_manager for production, which keeps the credential in
+  // Secrets Manager entirely. Required together with username when
+  // authenticating with plaintext credentials.
+  string password = 7 [(dev.planton.shared.options.sensitive) = true];
+
+  // Source the credentials from AWS Secrets Manager instead of
+  // username/password. The secret shape is
+  // {"username": "...", "password": "..."}. Setting this block enables
+  // Secrets Manager authentication (ForceNew).
+  AwsKinesisFirehoseSecretsManagerConfig secrets_manager = 8;
+
+  // ---------------------------------------------------------------------------
+  // S3 intermediate staging (required)
+  // ---------------------------------------------------------------------------
+
+  // S3 configuration for the intermediate staging bucket. Firehose writes
+  // data to this S3 location, then issues a COPY command to load it into
+  // Redshift. This is NOT a backup -- it's the primary data path.
+  AwsKinesisFirehoseS3Config s3_config = 9 [(buf.validate.field).required = true];
+
+  // ---------------------------------------------------------------------------
+  // Delivery configuration
+  // ---------------------------------------------------------------------------
+
+  // Retry duration in seconds for failed Redshift COPY commands.
+  // Range: 0-7200. Default: 3600 seconds (1 hour).
+  // Redshift COPY can be slow, so a longer default is appropriate.
+  int32 retry_duration_in_seconds = 10;
+
+  // ---------------------------------------------------------------------------
+  // S3 source record backup (optional)
+  // ---------------------------------------------------------------------------
+
+  // S3 backup mode for source records (in addition to the staging S3).
+  // When "Enabled", a copy of the original records is written to
+  // s3_backup. Useful for auditing and reprocessing.
+  //
+  // Valid values: "Disabled" (default), "Enabled".
+  string s3_backup_mode = 11;
+
+  // S3 configuration for source record backup. Required when
+  // s3_backup_mode is "Enabled".
+  AwsKinesisFirehoseS3Config s3_backup = 12;
+
+  // ---------------------------------------------------------------------------
+  // Optional: processing, logging
+  // ---------------------------------------------------------------------------
+
+  // Record-transformation pipeline applied before staging to S3.
+  AwsKinesisFirehoseProcessing processing = 13;
+
+  // CloudWatch error logging for Redshift COPY failures.
+  AwsKinesisFirehoseCloudwatchLogging logging = 14;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  // Exactly one authentication mode: plaintext username+password, or
+  // Secrets Manager.
+  option (buf.validate.message).cel = {
+    id: "auth_exactly_one"
+    message: "configure exactly one authentication mode: username+password, or secrets_manager"
+    expression: "[this.username != '' && this.password != '', has(this.secrets_manager)].filter(x, x).size() == 1"
+  };
+
+  // Plaintext credentials come as a pair.
+  option (buf.validate.message).cel = {
+    id: "plaintext_credentials_pair"
+    message: "username and password must be set together"
+    expression: "(this.username == '') == (this.password == '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "retry_duration_range"
+    message: "retry_duration_in_seconds must be between 0 and 7200 when set"
+    expression: "this.retry_duration_in_seconds == 0 || (this.retry_duration_in_seconds >= 0 && this.retry_duration_in_seconds <= 7200)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "s3_backup_mode_valid"
+    message: "s3_backup_mode must be 'Disabled' or 'Enabled' when set"
+    expression: "this.s3_backup_mode == '' || this.s3_backup_mode in ['Disabled', 'Enabled']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "s3_backup_requires_enabled"
+    message: "s3_backup requires s3_backup_mode to be 'Enabled'"
+    expression: "!has(this.s3_backup) || this.s3_backup_mode == 'Enabled'"
+  };
+
+  // AWS restricts the de-aggregation and delimiter processors to S3
+  // delivery -- it rejects them on every destination except extended_s3.
+  option (buf.validate.message).cel = {
+    id: "s3_only_processors"
+    message: "record_deaggregation and append_delimiter processors are only supported on the extended_s3 destination"
+    expression: "!has(this.processing) || !this.processing.processors.exists(p, has(p.record_deaggregation) || has(p.append_delimiter))"
+  };
+}
+
+// =============================================================================
+// Splunk destination
+// =============================================================================
+
+// AwsKinesisFirehoseSplunkDestination configures delivery to a Splunk HTTP
+// Event Collector (HEC) endpoint -- Splunk Cloud, Splunk Enterprise, or a
+// Splunk-managed AWS deployment.
+//
+// Firehose POSTs events to the HEC endpoint and waits for indexer
+// acknowledgment. Failed events are backed up to S3. Splunk enforces the
+// tightest buffering of any destination (max 60 seconds / 5 MiB) to keep
+// event latency low.
+message AwsKinesisFirehoseSplunkDestination {
+  // ---------------------------------------------------------------------------
+  // HEC endpoint
+  // ---------------------------------------------------------------------------
+
+  // Splunk HTTP Event Collector endpoint URL, including the port.
+  // Examples:
+  // - "https://http-inputs-mycompany.splunkcloud.com:443"
+  // - "https://splunk.example.com:8088"
+  string hec_endpoint = 1 [(buf.validate.field).string.min_len = 1];
+
+  // HEC endpoint type:
+  // - "Raw" (default) -- events are sent to the raw endpoint as-is. Use for
+  //   preformatted events (the common case for Firehose delivery).
+  // - "Event" -- events are sent to the event endpoint and must be JSON
+  //   objects in Splunk's event format.
+  string hec_endpoint_type = 2;
+
+  // HEC token that authorizes delivery, minted in Splunk when the HEC input
+  // is created. Sensitive -- the value lands in IaC state. Prefer
+  // secrets_manager for production, which keeps the token in Secrets
+  // Manager entirely.
+  string hec_token = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // Source the HEC token from AWS Secrets Manager instead of hec_token.
+  // The secret shape is {"hec_token": "..."}. Setting this block enables
+  // Secrets Manager authentication (ForceNew).
+  AwsKinesisFirehoseSecretsManagerConfig secrets_manager = 4;
+
+  // Time in seconds that Firehose waits for the Splunk indexer
+  // acknowledgment after sending data. Unacknowledged data is retried or
+  // backed up to S3.
+  // Range: 180-600. Default: 180 seconds.
+  int32 hec_acknowledgment_timeout_in_seconds = 5;
+
+  // ---------------------------------------------------------------------------
+  // Delivery configuration
+  // ---------------------------------------------------------------------------
+
+  // Buffering hints for Splunk delivery. Default: 60s interval, 5 MiB.
+  // Splunk enforces the tightest limits of any destination:
+  // interval 0-60 seconds, size 1-5 MiB.
+  AwsKinesisFirehoseBufferingHints buffering = 6;
+
+  // Retry duration in seconds for failed or unacknowledged HEC deliveries.
+  // Range: 0-7200. Default: 3600 seconds (1 hour).
+  int32 retry_duration_in_seconds = 7;
+
+  // ---------------------------------------------------------------------------
+  // S3 backup (required)
+  // ---------------------------------------------------------------------------
+
+  // S3 backup mode for events. Controls when records are written to S3.
+  //
+  // Valid values:
+  // - "FailedEventsOnly" (default) -- only events that fail HEC delivery
+  //   are backed up to S3.
+  // - "AllEvents" -- all events are backed up to S3 in addition to being
+  //   sent to Splunk.
+  string s3_backup_mode = 8;
+
+  // S3 configuration for backing up failed (or all) events. Required.
+  AwsKinesisFirehoseS3Config s3_config = 9 [(buf.validate.field).required = true];
+
+  // ---------------------------------------------------------------------------
+  // Optional: processing, logging
+  // ---------------------------------------------------------------------------
+
+  // Record-transformation pipeline applied before HEC delivery.
+  AwsKinesisFirehoseProcessing processing = 10;
+
+  // CloudWatch error logging for Splunk delivery failures.
+  AwsKinesisFirehoseCloudwatchLogging logging = 11;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "hec_endpoint_https"
+    message: "hec_endpoint must start with 'https://'"
+    expression: "this.hec_endpoint.startsWith('https://')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "hec_endpoint_type_valid"
+    message: "hec_endpoint_type must be 'Raw' or 'Event' when set"
+    expression: "this.hec_endpoint_type == '' || this.hec_endpoint_type in ['Raw', 'Event']"
+  };
+
+  // Exactly one authentication mode: plaintext HEC token, or Secrets Manager.
+  option (buf.validate.message).cel = {
+    id: "auth_exactly_one"
+    message: "configure exactly one authentication mode: hec_token, or secrets_manager"
+    expression: "[this.hec_token != '', has(this.secrets_manager)].filter(x, x).size() == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "hec_ack_timeout_range"
+    message: "hec_acknowledgment_timeout_in_seconds must be between 180 and 600 when set"
+    expression: "this.hec_acknowledgment_timeout_in_seconds == 0 || (this.hec_acknowledgment_timeout_in_seconds >= 180 && this.hec_acknowledgment_timeout_in_seconds <= 600)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "retry_duration_range"
+    message: "retry_duration_in_seconds must be between 0 and 7200 when set"
+    expression: "this.retry_duration_in_seconds == 0 || (this.retry_duration_in_seconds >= 0 && this.retry_duration_in_seconds <= 7200)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "s3_backup_mode_valid"
+    message: "s3_backup_mode must be 'FailedEventsOnly' or 'AllEvents' when set"
+    expression: "this.s3_backup_mode == '' || this.s3_backup_mode in ['FailedEventsOnly', 'AllEvents']"
+  };
+
+  // Splunk caps buffering at 60 seconds / 5 MiB (tighter than the shared
+  // envelope).
+  option (buf.validate.message).cel = {
+    id: "buffering_splunk_limits"
+    message: "buffering for Splunk destinations must not exceed 60 seconds / 5 MiB"
+    expression: "!has(this.buffering) || (this.buffering.interval_in_seconds <= 60 && this.buffering.size_in_mbs <= 5)"
+  };
+
+  // AWS restricts the de-aggregation and delimiter processors to S3
+  // delivery -- it rejects them on every destination except extended_s3.
+  option (buf.validate.message).cel = {
+    id: "s3_only_processors"
+    message: "record_deaggregation and append_delimiter processors are only supported on the extended_s3 destination"
+    expression: "!has(this.processing) || !this.processing.processors.exists(p, has(p.record_deaggregation) || has(p.append_delimiter))"
+  };
+}
+
+// =============================================================================
+// Snowflake destination
+// =============================================================================
+
+// AwsKinesisFirehoseSnowflakeDestination configures direct streaming into a
+// Snowflake table via Snowpipe Streaming -- no intermediate S3 staging or
+// external Snowpipe configuration required. Failed data is backed up to S3.
+//
+// Authentication uses Snowflake key-pair credentials (a user and its RSA
+// private key), either inline or via AWS Secrets Manager. Password
+// authentication is not supported by the Firehose-Snowflake integration.
+//
+// Snowflake defaults to the fastest buffering of any destination (0 seconds /
+// 1 MiB) because Snowpipe Streaming is designed for near-real-time ingestion.
+message AwsKinesisFirehoseSnowflakeDestination {
+  // ---------------------------------------------------------------------------
+  // Snowflake target
+  // ---------------------------------------------------------------------------
+
+  // Snowflake account URL.
+  // Format: "https://<account-identifier>.snowflakecomputing.com"
+  string account_url = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Name of the Snowflake database containing the target table.
+  string database = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Name of the Snowflake schema containing the target table.
+  string schema = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Name of the target Snowflake table.
+  string table = 4 [(buf.validate.field).string.min_len = 1];
+
+  // IAM role ARN granting Firehose permission to write to the S3 backup
+  // bucket and read the Secrets Manager secret (when used).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Authentication (key-pair credentials XOR Secrets Manager)
+  // ---------------------------------------------------------------------------
+
+  // Snowflake user that owns the key pair. Required together with
+  // private_key when authenticating with inline credentials; must be empty
+  // when secrets_manager is set.
+  string user = 6;
+
+  // RSA private key for key-pair authentication: the PEM body only, without
+  // the "-----BEGIN/END PRIVATE KEY-----" header and footer lines.
+  // Sensitive -- the value lands in IaC state. Prefer secrets_manager for
+  // production, which keeps the key in Secrets Manager entirely.
+  string private_key = 7 [(dev.planton.shared.options.sensitive) = true];
+
+  // Passphrase for an encrypted private key. Only set when the private key
+  // is encrypted. Length: 7-255 characters. Sensitive.
+  string key_passphrase = 8 [(dev.planton.shared.options.sensitive) = true];
+
+  // Source the credentials from AWS Secrets Manager instead of
+  // user/private_key. The secret shape is
+  // {"user": "...", "private_key": "...", "key_passphrase": "..."}.
+  // Setting this block enables Secrets Manager authentication (ForceNew).
+  AwsKinesisFirehoseSecretsManagerConfig secrets_manager = 9;
+
+  // ---------------------------------------------------------------------------
+  // Data loading
+  // ---------------------------------------------------------------------------
+
+  // How records map onto the target table:
+  // - "JSON_MAPPING" (default) -- each top-level JSON key maps to a
+  //   same-named table column.
+  // - "VARIANT_CONTENT_MAPPING" -- the whole record lands in one VARIANT
+  //   column (content_column_name).
+  // - "VARIANT_CONTENT_AND_METADATA_MAPPING" -- the record lands in a
+  //   VARIANT column and Firehose metadata lands in a second VARIANT column
+  //   (metadata_column_name).
+  string data_loading_option = 10;
+
+  // Name of the VARIANT column that receives record content. Required for
+  // the VARIANT_CONTENT_MAPPING and VARIANT_CONTENT_AND_METADATA_MAPPING
+  // loading options.
+  string content_column_name = 11;
+
+  // Name of the VARIANT column that receives Firehose metadata. Required
+  // for the VARIANT_CONTENT_AND_METADATA_MAPPING loading option.
+  string metadata_column_name = 12;
+
+  // ---------------------------------------------------------------------------
+  // Snowflake role and PrivateLink
+  // ---------------------------------------------------------------------------
+
+  // Snowflake role to assume for the insert. When absent, the user's
+  // default role is used. Setting a dedicated ingestion role with
+  // insert-only privileges is the recommended least-privilege posture.
+  string snowflake_role = 13;
+
+  // AWS PrivateLink VPCE ID for private connectivity to Snowflake
+  // (privatelink account URLs). When absent, Firehose connects over the
+  // public internet. Format: "com.amazonaws.vpce.<region>.vpce-svc-<id>".
+  string private_link_vpce_id = 14;
+
+  // ---------------------------------------------------------------------------
+  // Delivery configuration
+  // ---------------------------------------------------------------------------
+
+  // Buffering hints for Snowflake delivery. Default: 0s interval, 1 MiB --
+  // near-real-time ingestion via Snowpipe Streaming. Raise the interval to
+  // trade latency for fewer, larger inserts.
+  AwsKinesisFirehoseBufferingHints buffering = 15;
+
+  // Retry duration in seconds for failed Snowflake inserts.
+  // Range: 0-7200. Default: 60 seconds.
+  int32 retry_duration_in_seconds = 16;
+
+  // ---------------------------------------------------------------------------
+  // S3 backup (required)
+  // ---------------------------------------------------------------------------
+
+  // S3 backup mode. Controls when records are written to S3.
+  //
+  // Valid values:
+  // - "FailedDataOnly" (default) -- only records that fail Snowflake
+  //   delivery are backed up to S3.
+  // - "AllData" -- all records are backed up to S3 in addition to being
+  //   delivered to Snowflake.
+  string s3_backup_mode = 17;
+
+  // S3 configuration for backing up failed (or all) records. Required.
+  AwsKinesisFirehoseS3Config s3_config = 18 [(buf.validate.field).required = true];
+
+  // ---------------------------------------------------------------------------
+  // Optional: processing, logging
+  // ---------------------------------------------------------------------------
+
+  // Record-transformation pipeline applied before delivery.
+  AwsKinesisFirehoseProcessing processing = 19;
+
+  // CloudWatch error logging for Snowflake delivery failures.
+  AwsKinesisFirehoseCloudwatchLogging logging = 20;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "account_url_https"
+    message: "account_url must start with 'https://'"
+    expression: "this.account_url.startsWith('https://')"
+  };
+
+  // Exactly one authentication mode: inline key-pair credentials, or
+  // Secrets Manager.
+  option (buf.validate.message).cel = {
+    id: "auth_exactly_one"
+    message: "configure exactly one authentication mode: user+private_key, or secrets_manager"
+    expression: "[this.user != '' && this.private_key != '', has(this.secrets_manager)].filter(x, x).size() == 1"
+  };
+
+  // Inline credentials come as a pair.
+  option (buf.validate.message).cel = {
+    id: "keypair_credentials_pair"
+    message: "user and private_key must be set together"
+    expression: "(this.user == '') == (this.private_key == '')"
+  };
+
+  // A passphrase only makes sense with an inline private key.
+  option (buf.validate.message).cel = {
+    id: "key_passphrase_requires_private_key"
+    message: "key_passphrase requires private_key"
+    expression: "this.key_passphrase == '' || this.private_key != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_loading_option_valid"
+    message: "data_loading_option must be 'JSON_MAPPING', 'VARIANT_CONTENT_MAPPING', or 'VARIANT_CONTENT_AND_METADATA_MAPPING' when set"
+    expression: "this.data_loading_option == '' || this.data_loading_option in ['JSON_MAPPING', 'VARIANT_CONTENT_MAPPING', 'VARIANT_CONTENT_AND_METADATA_MAPPING']"
+  };
+
+  // VARIANT loading options require the content column.
+  option (buf.validate.message).cel = {
+    id: "content_column_required_for_variant"
+    message: "content_column_name is required for VARIANT_CONTENT_MAPPING and VARIANT_CONTENT_AND_METADATA_MAPPING"
+    expression: "!(this.data_loading_option in ['VARIANT_CONTENT_MAPPING', 'VARIANT_CONTENT_AND_METADATA_MAPPING']) || this.content_column_name != ''"
+  };
+
+  // Content-and-metadata loading requires the metadata column.
+  option (buf.validate.message).cel = {
+    id: "metadata_column_required_for_variant_metadata"
+    message: "metadata_column_name is required for VARIANT_CONTENT_AND_METADATA_MAPPING"
+    expression: "this.data_loading_option != 'VARIANT_CONTENT_AND_METADATA_MAPPING' || this.metadata_column_name != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "retry_duration_range"
+    message: "retry_duration_in_seconds must be between 0 and 7200 when set"
+    expression: "this.retry_duration_in_seconds == 0 || (this.retry_duration_in_seconds >= 0 && this.retry_duration_in_seconds <= 7200)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "s3_backup_mode_valid"
+    message: "s3_backup_mode must be 'FailedDataOnly' or 'AllData' when set"
+    expression: "this.s3_backup_mode == '' || this.s3_backup_mode in ['FailedDataOnly', 'AllData']"
+  };
+
+  // AWS restricts the de-aggregation and delimiter processors to S3
+  // delivery -- it rejects them on every destination except extended_s3.
+  option (buf.validate.message).cel = {
+    id: "s3_only_processors"
+    message: "record_deaggregation and append_delimiter processors are only supported on the extended_s3 destination"
+    expression: "!has(this.processing) || !this.processing.processors.exists(p, has(p.record_deaggregation) || has(p.append_delimiter))"
+  };
+}
+
+// =============================================================================
+// Iceberg destination
+// =============================================================================
+
+// AwsKinesisFirehoseIcebergDestination configures delivery into Apache Iceberg
+// tables managed by the AWS Glue Data Catalog. Firehose writes Iceberg
+// snapshots directly -- no Spark job or custom writer required -- and can
+// route records to multiple tables, apply upserts via unique keys, and run
+// in append-only mode.
+//
+// Prerequisites:
+// - The Iceberg tables must exist in the Glue Data Catalog with their
+//   schemas defined.
+// - The delivery role needs Glue (glue:GetTable, glue:UpdateTable) and S3
+//   permissions on the tables' warehouse location.
+message AwsKinesisFirehoseIcebergDestination {
+  // ---------------------------------------------------------------------------
+  // Catalog target
+  // ---------------------------------------------------------------------------
+
+  // ARN of the Glue Data Catalog that owns the Iceberg tables. The catalog
+  // ARN embeds the owning account:
+  //   "arn:aws:glue:<region>:<account-id>:catalog"
+  // ForceNew -- changing the catalog replaces the delivery stream.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef catalog_arn = 1 [(buf.validate.field).required = true];
+
+  // IAM role ARN granting Firehose permission to write to the Iceberg
+  // tables: Glue table read/update and S3 read/write on the warehouse
+  // location, plus the S3 backup bucket.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Table routing
+  // ---------------------------------------------------------------------------
+
+  // Destination tables for delivered records. When exactly one table is
+  // listed, all records land there. When multiple tables are listed,
+  // records must carry routing metadata (produced by a metadata_extraction
+  // or Lambda processor) selecting the target table per record.
+  //
+  // ForceNew -- changing the table routing replaces the delivery stream.
+  repeated AwsKinesisFirehoseIcebergDestinationTable destination_tables = 3;
+
+  // Append-only mode. When true, Firehose only appends new snapshots --
+  // update/delete semantics via unique keys are disabled. ForceNew.
+  bool append_only = 4;
+
+  // ---------------------------------------------------------------------------
+  // Delivery configuration
+  // ---------------------------------------------------------------------------
+
+  // Buffering hints for Iceberg delivery. Default: 300s interval, 5 MiB.
+  AwsKinesisFirehoseBufferingHints buffering = 5;
+
+  // Retry duration in seconds for failed Iceberg commits.
+  // Range: 0-7200. Default: 300 seconds.
+  int32 retry_duration_in_seconds = 6;
+
+  // ---------------------------------------------------------------------------
+  // S3 backup (required)
+  // ---------------------------------------------------------------------------
+
+  // S3 backup mode. Controls when records are written to S3.
+  //
+  // Valid values:
+  // - "FailedDataOnly" (default) -- only records that fail Iceberg delivery
+  //   are backed up to S3.
+  // - "AllData" -- all records are backed up to S3 in addition to being
+  //   committed to Iceberg.
+  string s3_backup_mode = 7;
+
+  // S3 configuration for backing up failed (or all) records. Required.
+  AwsKinesisFirehoseS3Config s3_config = 8 [(buf.validate.field).required = true];
+
+  // ---------------------------------------------------------------------------
+  // Optional: processing, logging
+  // ---------------------------------------------------------------------------
+
+  // Record-transformation pipeline applied before the Iceberg commit. Use a
+  // metadata_extraction processor to produce per-record table routing when
+  // multiple destination tables are configured.
+  AwsKinesisFirehoseProcessing processing = 9;
+
+  // CloudWatch error logging for Iceberg delivery failures.
+  AwsKinesisFirehoseCloudwatchLogging logging = 10;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "retry_duration_range"
+    message: "retry_duration_in_seconds must be between 0 and 7200 when set"
+    expression: "this.retry_duration_in_seconds == 0 || (this.retry_duration_in_seconds >= 0 && this.retry_duration_in_seconds <= 7200)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "s3_backup_mode_valid"
+    message: "s3_backup_mode must be 'FailedDataOnly' or 'AllData' when set"
+    expression: "this.s3_backup_mode == '' || this.s3_backup_mode in ['FailedDataOnly', 'AllData']"
+  };
+
+  // AWS restricts the de-aggregation and delimiter processors to S3
+  // delivery -- it rejects them on every destination except extended_s3.
+  option (buf.validate.message).cel = {
+    id: "s3_only_processors"
+    message: "record_deaggregation and append_delimiter processors are only supported on the extended_s3 destination"
+    expression: "!has(this.processing) || !this.processing.processors.exists(p, has(p.record_deaggregation) || has(p.append_delimiter))"
+  };
+}
+
+// AwsKinesisFirehoseIcebergDestinationTable identifies one Iceberg table that
+// the delivery stream writes to, with optional upsert keys.
+message AwsKinesisFirehoseIcebergDestinationTable {
+  // Glue Data Catalog database containing the Iceberg table.
+  string database_name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Name of the Iceberg table.
+  string table_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // S3 key prefix for records that fail delivery to this table. Uses the
+  // Firehose expression syntax.
+  string s3_error_output_prefix = 3;
+
+  // Columns that uniquely identify a row, enabling update/delete semantics:
+  // an incoming record whose unique-key values match an existing row
+  // updates it instead of appending. Leave empty (with append_only) for
+  // pure append workloads.
+  repeated string unique_keys = 4;
+}

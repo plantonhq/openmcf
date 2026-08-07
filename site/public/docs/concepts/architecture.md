@@ -40,7 +40,7 @@ flowchart TD
 Every deployment component is a self-contained package at a fixed path. The Protocol Buffer definitions define the contract. The IaC modules implement it.
 
 ```text
-apis/dev/planton/provider/{provider}/{component}/v1/
+catalog/{provider}/{component}/v1/
 |
 |-- api.proto                 <- Resource envelope
 |   apiVersion, kind,           (apiVersion + kind are const-validated)

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetescertificate.v1alpha1;
+
+import "catalog/kubernetes/kubernetescertificate/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+// Input for the KubernetesCertificate IaC stack.
+message KubernetesCertificateStackInput {
+  // Target cloud-resource.
+  KubernetesCertificate target = 1;
+  // Kubernetes provider configuration (cluster credentials).
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

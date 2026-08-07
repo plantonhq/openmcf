@@ -2,7 +2,7 @@ package providerenvvars
 
 import (
 	"github.com/pkg/errors"
-	digitaloceanprovider "github.com/plantonhq/planton/apis/dev/planton/provider/digitalocean"
+	digitaloceanprovider "github.com/plantonhq/planton/catalog/digitalocean"
 )
 
 // loadDigitalOceanEnvVars loads DigitalOcean provider config and returns environment variables.

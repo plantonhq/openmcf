@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpworkloadidentitypool.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/gcp/gcpworkloadidentitypool/v1alpha1/spec.proto";
+import "catalog/gcp/gcpworkloadidentitypool/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//gcp-workload-identity-pool
+message GcpWorkloadIdentityPool {
+  string api_version = 1 [(buf.validate.field).string.const = 'gcp.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'GcpWorkloadIdentityPool'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  GcpWorkloadIdentityPoolSpec spec = 4 [(buf.validate.field).required = true];
+  GcpWorkloadIdentityPoolStatus status = 5;
+}
+
+message GcpWorkloadIdentityPoolStatus {
+  GcpWorkloadIdentityPoolStackOutputs outputs = 1;
+}

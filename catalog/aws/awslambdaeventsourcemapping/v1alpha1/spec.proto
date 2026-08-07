@@ -1,0 +1,454 @@
+syntax = "proto3";
+
+package dev.planton.aws.awslambdaeventsourcemapping.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsLambdaEventSourceMappingSpec defines an event source mapping: the
+// managed poller that reads records from an event source -- an SQS
+// queue, a Kinesis stream, a DynamoDB stream, an MSK topic, a
+// self-managed Kafka cluster, an Amazon MQ broker, or a DocumentDB
+// change stream -- batches them, and invokes a Lambda function.
+//
+// The mapping is its own node in the resource graph, not a setting of
+// the function: it has independent AWS identity (a server-assigned
+// UUID), a function may have many mappings, a mapping can be repointed
+// to a different function in place, and it is the edge that wires the
+// messaging graph (queues, streams, clusters) into compute. Pausing
+// consumption (disabled), tuning batching, and re-driving failures all
+// happen here without touching the function or the source.
+//
+// Batching guidance: the defaults (10 records for SQS, 100 for
+// streams/Kafka, up to a 0-second batching window) optimize latency.
+// For throughput and cost, raise batch_size together with
+// maximum_batching_window_seconds so the poller can actually fill the
+// larger batches.
+message AwsLambdaEventSourceMappingSpec {
+  // The AWS region the mapping is created in -- must be the region of
+  // both the function and the event source.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The Lambda function the mapping invokes. Repointing a live mapping
+  // to a different function is an in-place update -- consumption
+  // continues from the tracked position. Reference an AwsLambda
+  // function_arn output or pass a literal function ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef function_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // --- The event source (exactly one of event_source_arn or self_managed_kafka) ---
+
+  // The ARN of the AWS event source: an SQS queue (queue_arn), a
+  // Kinesis stream (stream_arn), a DynamoDB stream (the table's
+  // stream_arn output), an MSK cluster (cluster_arn -- also set
+  // topics), an Amazon MQ broker (also set queue), or a DocumentDB
+  // change stream. Create-time immutable -- a different source is a
+  // different mapping. The default reference targets AwsSqsQueue;
+  // reference other kinds explicitly (e.g. kind AwsKinesisStream
+  // fieldPath status.outputs.stream_arn, kind AwsDynamodb fieldPath
+  // status.outputs.stream_arn, kind AwsMskCluster fieldPath
+  // status.outputs.cluster_arn) or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef event_source_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSqsQueue,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_arn"
+  ];
+
+  // A self-managed (non-MSK) Apache Kafka cluster as the event source.
+  // Create-time immutable.
+  AwsLambdaEventSourceMappingSelfManagedKafka self_managed_kafka = 4;
+
+  // --- Consumption control ---
+
+  // Pause consumption without deleting the mapping -- the tracked
+  // position is retained, so re-enabling resumes where it stopped.
+  // False (the default) keeps the mapping actively polling.
+  bool disabled = 5;
+
+  // Records per invocation batch. 0 keeps the source's AWS default
+  // (10 for SQS and DocumentDB, 100 for Kinesis/DynamoDB/Kafka/MQ).
+  // Ceilings are per-source (10,000 for streams and SQS FIFO/standard
+  // with long batching; 10 for MQ) -- AWS validates the exact bound.
+  // Batches above 10 records for SQS require a batching window.
+  int32 batch_size = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // How long (seconds, 0-300) the poller gathers records before
+  // invoking, trading latency for fuller batches. 0 keeps the AWS
+  // default (invoke as soon as records are available).
+  int32 maximum_batching_window_seconds = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 300
+    }
+  ];
+
+  // Event-pattern filters applied BEFORE invocation -- records matching
+  // no filter are discarded without billing function time. Up to 10
+  // patterns, OR-ed together, each an EventBridge-style JSON pattern
+  // against the record shape of the source.
+  repeated AwsLambdaEventSourceMappingFilter filters = 8 [(buf.validate.field).repeated.max_items = 10];
+
+  // The KMS key that encrypts the filter criteria at rest. Empty uses
+  // an AWS-owned key. Reference an AwsKmsKey key_arn output or pass a
+  // literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Report per-record failures from the function ("ReportBatchItemFailures")
+  // so only the failed records of a batch are retried instead of the
+  // whole batch -- the right setting for almost every SQS and stream
+  // consumer that processes records independently.
+  repeated string function_response_types = 10 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items = {
+      string: {
+        in: ["ReportBatchItemFailures"]
+      }
+    }
+  ];
+
+  // Maximum concurrent function invocations this SQS mapping may drive,
+  // 2-1000 -- a per-mapping throttle below the function's own
+  // concurrency. 0 leaves scaling to AWS. SQS sources only.
+  int32 scaling_max_concurrency = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 2
+      lte: 1000
+    }
+  ];
+
+  // Emit the mapping's CloudWatch metrics ("EventCount" -- records
+  // delivered to the function). Off by default; metrics are billed.
+  repeated string metrics = 12 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items = {
+      string: {
+        in: ["EventCount"]
+      }
+    }
+  ];
+
+  // --- Stream sources (Kinesis / DynamoDB Streams) ---
+
+  // Where to start reading a stream source, create-time immutable:
+  // "TRIM_HORIZON" (oldest available record -- process the backlog),
+  // "LATEST" (only new records), or "AT_TIMESTAMP" (from
+  // starting_position_timestamp; Kinesis only). Required for Kinesis,
+  // DynamoDB Streams, MSK, self-managed Kafka, and DocumentDB; must
+  // stay empty for SQS and MQ.
+  string starting_position = 13 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "TRIM_HORIZON",
+        "LATEST",
+        "AT_TIMESTAMP"
+      ]
+    }
+  ];
+
+  // The UTC RFC3339 instant to start reading from (e.g.
+  // "2026-07-04T00:00:00Z"). Required with (and only meaningful for)
+  // starting_position AT_TIMESTAMP.
+  string starting_position_timestamp = 14;
+
+  // Concurrent batches processed per shard, 1-10 -- multiplies
+  // per-shard throughput while preserving per-partition-key ordering.
+  // 0 keeps the AWS default (1). Kinesis and DynamoDB streams only.
+  int32 parallelization_factor = 15 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 10
+    }
+  ];
+
+  // Discard records older than this (seconds, 60-604800), or -1 (the
+  // AWS default) to never age records out. 0 keeps the AWS default.
+  // Stream sources only.
+  int32 maximum_record_age_seconds = 16;
+
+  // Retries per failed batch before the batch is discarded (or sent
+  // to on_failure_destination_arn), 0-10000, or -1 (the AWS default)
+  // to retry until the records expire. 0 means no retries. Stream
+  // sources only.
+  optional int32 maximum_retry_attempts = 17 [(buf.validate.field).int32 = {
+    gte: -1
+    lte: 10000
+  }];
+
+  // On a function error, split the failing batch in two and retry the
+  // halves -- isolates a single poison record at the cost of
+  // reprocessing its neighbors (make the function idempotent). Stream
+  // sources only.
+  bool bisect_batch_on_function_error = 18;
+
+  // Group records into fixed windows (seconds, 0-900) for streaming
+  // aggregations -- the function receives a rolling state across the
+  // window. Stream sources only.
+  int32 tumbling_window_seconds = 19 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 900
+    }
+  ];
+
+  // Where discarded batches' metadata is sent after retries are
+  // exhausted: an SQS queue or SNS topic ARN (Kafka sources may also
+  // target an S3 bucket). Reference an AwsSqsQueue queue_arn output or
+  // pass an explicit-kind reference / literal ARN. Stream and Kafka
+  // sources only.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef on_failure_destination_arn = 20 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSqsQueue,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_arn"
+  ];
+
+  // --- Kafka sources (MSK and self-managed) ---
+
+  // The Kafka topics to consume, 1-249 characters each. Required for
+  // MSK and self-managed Kafka sources; must stay empty otherwise.
+  repeated string topics = 21 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items = {
+      string: {
+        min_len: 1
+        max_len: 249
+      }
+    }
+  ];
+
+  // The Kafka consumer group ID to join, create-time immutable. Empty
+  // lets AWS generate one. Setting it lets the mapping resume an
+  // existing group's committed offsets (starting_position is then
+  // ignored for partitions with committed offsets).
+  string kafka_consumer_group_id = 22 [(buf.validate.field).string.max_len = 200];
+
+  // Authentication and network access the poller uses to reach the
+  // source: SASL credentials, mTLS client certificates, VPC subnets
+  // and security groups (self-managed Kafka), or broker credentials
+  // (MQ). Each entry pairs a type with the Secrets Manager secret ARN
+  // or VPC resource URI it points at.
+  repeated AwsLambdaEventSourceMappingSourceAccess source_access_configurations = 23 [(buf.validate.field).repeated.max_items = 22];
+
+  // Confluent / Glue schema registry integration for Kafka sources:
+  // the poller validates and deserializes records against registered
+  // schemas before invoking the function.
+  AwsLambdaEventSourceMappingSchemaRegistry schema_registry = 24;
+
+  // Dedicated pollers for Kafka sources: pin the fleet between
+  // minimum_pollers and maximum_pollers for predictable throughput
+  // instead of AWS's reactive scaling.
+  AwsLambdaEventSourceMappingProvisionedPollers provisioned_pollers = 25;
+
+  // --- Amazon MQ ---
+
+  // The Amazon MQ broker queue to consume (exactly one). Required for
+  // MQ sources; must stay empty otherwise.
+  string mq_queue = 26 [(buf.validate.field).string.max_len = 1000];
+
+  // --- DocumentDB ---
+
+  // DocumentDB change-stream options. Required for DocumentDB sources.
+  AwsLambdaEventSourceMappingDocumentDb document_db = 27;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "exactly_one_event_source"
+    message: "provide the event source as exactly one of event_source_arn (SQS/Kinesis/DynamoDB/MSK/MQ/DocumentDB) or self_managed_kafka"
+    expression: "has(this.event_source_arn) != has(this.self_managed_kafka)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "timestamp_requires_at_timestamp"
+    message: "starting_position_timestamp is required with starting_position AT_TIMESTAMP and must stay empty otherwise"
+    expression: "(this.starting_position == 'AT_TIMESTAMP') == (this.starting_position_timestamp != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "self_managed_kafka_needs_position_and_topics"
+    message: "self-managed Kafka sources require starting_position and at least one topic"
+    expression: "!has(this.self_managed_kafka) || (this.starting_position != '' && this.topics.size() > 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "record_age_semantics"
+    message: "maximum_record_age_seconds must be -1 (never age out) or between 60 and 604800"
+    expression: "this.maximum_record_age_seconds == 0 || this.maximum_record_age_seconds == -1 || (this.maximum_record_age_seconds >= 60 && this.maximum_record_age_seconds <= 604800)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "provisioned_pollers_are_kafka_only"
+    message: "provisioned_pollers applies only to Kafka sources (MSK or self-managed) -- other sources scale automatically"
+    expression: "!has(this.provisioned_pollers) || this.topics.size() > 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "schema_registry_is_kafka_only"
+    message: "schema_registry applies only to Kafka sources (MSK or self-managed)"
+    expression: "!has(this.schema_registry) || this.topics.size() > 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mq_queue_excludes_kafka"
+    message: "mq_queue (Amazon MQ) and topics (Kafka) are different source families -- set only the one matching the event source"
+    expression: "this.mq_queue == '' || this.topics.size() == 0"
+  };
+}
+
+// AwsLambdaEventSourceMappingSelfManagedKafka locates a non-MSK Apache
+// Kafka cluster.
+message AwsLambdaEventSourceMappingSelfManagedKafka {
+  // Kafka bootstrap servers as "host:port" pairs, e.g.
+  // ["kafka1.example.com:9092", "kafka2.example.com:9092"].
+  repeated string bootstrap_servers = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsLambdaEventSourceMappingFilter is one event pattern; records
+// matching no pattern are discarded before invocation.
+message AwsLambdaEventSourceMappingFilter {
+  // An EventBridge-style JSON pattern matched against the record,
+  // e.g. {"body":{"type":["order.created"]}} for an SQS source.
+  string pattern = 1 [(buf.validate.field).string.max_len = 4096];
+}
+
+// AwsLambdaEventSourceMappingSourceAccess is one access-configuration
+// entry: how the poller authenticates to or reaches the source.
+message AwsLambdaEventSourceMappingSourceAccess {
+  // The access type: "BASIC_AUTH" (MQ / SASL PLAIN),
+  // "SASL_SCRAM_256_AUTH" / "SASL_SCRAM_512_AUTH" (Kafka SASL),
+  // "CLIENT_CERTIFICATE_TLS_AUTH" (Kafka mTLS),
+  // "SERVER_ROOT_CA_CERTIFICATE" (private CA), "VPC_SUBNET" /
+  // "VPC_SECURITY_GROUP" (self-managed Kafka networking), or
+  // "VIRTUAL_HOST" (RabbitMQ).
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "BASIC_AUTH",
+        "VPC_SUBNET",
+        "VPC_SECURITY_GROUP",
+        "SASL_SCRAM_512_AUTH",
+        "SASL_SCRAM_256_AUTH",
+        "VIRTUAL_HOST",
+        "CLIENT_CERTIFICATE_TLS_AUTH",
+        "SERVER_ROOT_CA_CERTIFICATE"
+      ]
+    }
+  ];
+
+  // The value for the type: a Secrets Manager secret ARN (auth types),
+  // "subnet:<subnet-id>" / "security_group:<sg-id>" (VPC types), or
+  // the virtual host name (VIRTUAL_HOST).
+  string uri = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsLambdaEventSourceMappingSchemaRegistry validates and deserializes
+// Kafka records against a schema registry before invocation.
+message AwsLambdaEventSourceMappingSchemaRegistry {
+  // The registry location: an AWS Glue schema registry ARN or a
+  // Confluent registry HTTPS URL.
+  string uri = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What the function receives: "JSON" (deserialized to JSON) or
+  // "SOURCE" (the original serialized bytes with the schema header
+  // stripped).
+  string event_record_format = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "JSON",
+        "SOURCE"
+      ]
+    }
+  ];
+
+  // Which record parts are validated against the registry: "KEY"
+  // and/or "VALUE".
+  repeated string validation_attributes = 3 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items = {
+      string: {
+        in: [
+          "KEY",
+          "VALUE"
+        ]
+      }
+    }
+  ];
+
+  // How the poller authenticates to the registry: type "BASIC_AUTH" /
+  // "CLIENT_CERTIFICATE_TLS_AUTH" / "SERVER_ROOT_CA_CERTIFICATE" with
+  // the Secrets Manager secret ARN in uri.
+  repeated AwsLambdaEventSourceMappingSourceAccess access_configurations = 4;
+}
+
+// AwsLambdaEventSourceMappingProvisionedPollers pins the Kafka poller
+// fleet for predictable throughput.
+message AwsLambdaEventSourceMappingProvisionedPollers {
+  // The floor of always-running pollers, 1-200. 0 keeps the AWS
+  // default (1).
+  int32 minimum_pollers = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 200
+    }
+  ];
+
+  // The ceiling of pollers AWS may scale to, 1-2000. 0 keeps the AWS
+  // default (200).
+  int32 maximum_pollers = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 2000
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "poller_bounds_ordered"
+    message: "maximum_pollers must be greater than or equal to minimum_pollers"
+    expression: "this.minimum_pollers == 0 || this.maximum_pollers == 0 || this.maximum_pollers >= this.minimum_pollers"
+  };
+}
+
+// AwsLambdaEventSourceMappingDocumentDb tunes a DocumentDB change-
+// stream source.
+message AwsLambdaEventSourceMappingDocumentDb {
+  // The database whose change stream is consumed.
+  string database_name = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 63
+  ];
+
+  // Consume a single collection's changes. Empty consumes the whole
+  // database.
+  string collection_name = 2 [(buf.validate.field).string.max_len = 57];
+
+  // What change events carry: "UpdateLookup" (the full current
+  // document alongside the change) or "Default" (the change delta
+  // only). Empty keeps the AWS default (Default).
+  string full_document = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "UpdateLookup",
+        "Default"
+      ]
+    }
+  ];
+}

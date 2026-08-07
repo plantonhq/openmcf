@@ -1,0 +1,687 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesclusterautoscaler.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "catalog/kubernetes/workload_pod.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesClusterAutoscalerSpec** installs the Kubernetes Cluster
+ * Autoscaler from the official Helm chart (`cluster-autoscaler` at
+ * https://kubernetes.github.io/autoscaler). The autoscaler grows and
+ * shrinks EXISTING node groups: when pods are unschedulable it raises the
+ * desired size of a matching group (an EC2 Auto Scaling group, an Azure
+ * VMSS, a Cluster API MachineDeployment, ...), and it scales groups back
+ * down when nodes sit underutilized.
+ *
+ * WHERE this component earns its keep: clusters whose node capacity is
+ * organized as pre-defined groups — EKS with ASGs, Cluster API /
+ * self-managed clusters, and providers without a managed autoscaler. Note
+ * that GKE and AKS ship a MANAGED autoscaler configured as a toggle on the
+ * node pool itself (on Planton, through the cluster kinds) — deploying
+ * this component there is the exception, not the rule. For AWS clusters
+ * that want right-sized machines launched on demand instead of pre-defined
+ * groups, KubernetesKarpenter is the modern alternative.
+ *
+ * ONE INSTALLATION PER CLUSTER: the autoscaler leader-elects and owns the
+ * cluster-wide scaling decision (a second installation would fight the
+ * first over every scale-up). The Helm release name is therefore fixed to
+ * "cluster-autoscaler".
+ *
+ * The typed fields below cover the chart's meaningful configuration
+ * surface; `extra_args` carries any of the autoscaler's 100+ tuning flags
+ * beyond the typed set (the chart's own extraArgs contract), and
+ * `helm_values` remains as the escape hatch for chart values (merged last,
+ * Helm `-f` semantics, identical on both engines).
+ */
+message KubernetesClusterAutoscalerSpec {
+  /**
+   * Namespace to install the autoscaler into ("kube-system" is the
+   * upstream convention — it keeps the pod under the system-critical
+   * eviction umbrella). Accepts a literal namespace name or a reference
+   * to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist. Leave false when
+   * installing into kube-system.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "9.59.0", which ships autoscaler
+   * 1.35 — chart and app versions move separately; the chart pin
+   * governs). Pin deliberately; upgrades re-run the release with the new
+   * chart. Keep the autoscaler's MINOR version aligned with the cluster's
+   * Kubernetes minor per upstream guidance (override the image tag via
+   * helm_values when the cluster runs an older minor). Pick versions from
+   * the chart repository's index (`helm search repo`): the served chart is
+   * the contract — the upstream source tree's Chart.yaml can claim a
+   * version at a tag that was never served.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "9.59.0"];
+
+  /**
+   * The node-group provider the autoscaler drives. Exactly one arm —
+   * the autoscaler binary supports many providers, but one installation
+   * talks to exactly one.
+   */
+  oneof cloud {
+    option (buf.validate.oneof).required = true;
+
+    /**
+     * AWS: EC2 Auto Scaling groups, discovered by tag or listed
+     * statically.
+     */
+    KubernetesClusterAutoscalerAws aws = 4;
+
+    /**
+     * Azure: VM scale sets, discovered by tag or listed statically —
+     * for AKS clusters that opt out of the managed autoscaler and for
+     * self-managed clusters on VMSS.
+     */
+    KubernetesClusterAutoscalerAzure azure = 5;
+
+    /**
+     * GCE: managed instance groups by name prefix — for self-managed
+     * clusters on GCE (GKE's managed autoscaler is a node-pool toggle,
+     * not this component).
+     */
+    KubernetesClusterAutoscalerGce gce = 6;
+
+    /**
+     * Cluster API: MachineDeployments/MachineSets annotated for
+     * autoscaling — the self-managed / multi-cloud arm.
+     */
+    KubernetesClusterAutoscalerClusterApi cluster_api = 7;
+
+    /**
+     * Civo: managed Kubernetes node pools on Civo.
+     */
+    KubernetesClusterAutoscalerCivo civo = 8;
+
+    /**
+     * KWOK simulation provider — nodes are FAKE (created by the KWOK
+     * controller, which must be installed on the cluster). For testing
+     * scaling policies and evaluating the autoscaler without a cloud
+     * account; never a production arm.
+     */
+    KubernetesClusterAutoscalerKwok kwok = 9;
+  }
+
+  /**
+   * Scaling behavior: expander choice, scale-down tuning, node-group
+   * balancing — the flags every real installation ends up tuning,
+   * rendered into the chart's extraArgs.
+   */
+  KubernetesClusterAutoscalerScaling scaling = 10;
+
+  /**
+   * Additional `cluster-autoscaler` flags as flag-name → value pairs
+   * (rendered into the chart's extraArgs, without the leading `--`).
+   * This IS the chart's own contract for the autoscaler's long tail of
+   * flags — use the typed `scaling` block first. Flag names are
+   * validated for shape only; unknown flags fail at pod start.
+   */
+  map<string, string> extra_args = 11 [(buf.validate.field).map.keys.string.pattern = "^[a-z0-9]+(-[a-z0-9]+)*$"];
+
+  /**
+   * Deployment sizing and platform scheduling for the autoscaler pod
+   * itself.
+   */
+  KubernetesClusterAutoscalerDeployment deployment = 12;
+
+  /**
+   * The autoscaler's own Prometheus telemetry.
+   */
+  KubernetesClusterAutoscalerPrometheus prometheus = 13;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For the chart surface beyond the typed
+   * fields (image overrides, PDB tuning, VPA, extra volumes,
+   * priority-expander ConfigMap annotations, ...) — never the substitute
+   * for them. Do not put secrets here.
+   */
+  string helm_values = 14;
+}
+
+/**
+ * AWS Auto Scaling group integration.
+ */
+message KubernetesClusterAutoscalerAws {
+  /**
+   * AWS region of the Auto Scaling groups (required by the chart for the
+   * aws provider).
+   */
+  string region = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Tag-based ASG auto-discovery: the autoscaler manages every ASG
+   * carrying the standard tags for this cluster name
+   * (k8s.io/cluster-autoscaler/enabled +
+   * k8s.io/cluster-autoscaler/<cluster_name>). The recommended mode —
+   * new node groups enroll by tagging alone. Exactly one of
+   * auto_discovery / node_groups.
+   */
+  KubernetesClusterAutoscalerAwsAutoDiscovery auto_discovery = 2;
+
+  /**
+   * Statically listed ASGs with explicit size bounds. Exactly one of
+   * auto_discovery / node_groups.
+   */
+  repeated KubernetesClusterAutoscalerNodeGroup node_groups = 3;
+
+  /**
+   * IAM role ARN for IRSA: annotates the autoscaler's service account so
+   * it calls the Auto Scaling APIs without stored keys (the role's trust
+   * policy must allow the cluster's OIDC provider and the autoscaler's
+   * service account). The keyless posture — preferred over access_keys.
+   */
+  string irsa_role_arn = 4 [(buf.validate.field).cel = {
+    id: "spec.aws.irsa_role_arn_format"
+    message: "irsa_role_arn must be an IAM role ARN (arn:aws:iam::<account>:role/<name>)"
+    expression: "this == '' || this.matches('^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/.+$')"
+  }];
+
+  /**
+   * Static AWS access keys — only for clusters without IRSA (self-managed
+   * on EC2). The secret key is stored as a managed secret and materialized
+   * into the chart's credential Secret.
+   */
+  KubernetesClusterAutoscalerAwsAccessKeys access_keys = 5;
+
+  option (buf.validate.message).cel = {
+    id: "spec.aws.discovery_xor_groups"
+    message: "configure exactly one of auto_discovery (tag-based, recommended) or node_groups (static list)"
+    expression: "has(this.auto_discovery) != (size(this.node_groups) > 0)"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.aws.irsa_xor_keys"
+    message: "irsa_role_arn and access_keys are alternative credential postures — set at most one"
+    expression: "!(this.irsa_role_arn != '' && has(this.access_keys))"
+  };
+}
+
+/**
+ * Tag-based ASG auto-discovery.
+ */
+message KubernetesClusterAutoscalerAwsAutoDiscovery {
+  /**
+   * Cluster name the discovery tags carry
+   * (k8s.io/cluster-autoscaler/<cluster_name>).
+   */
+  string cluster_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Override the ASG tags to match (chart default:
+   * k8s.io/cluster-autoscaler/enabled +
+   * k8s.io/cluster-autoscaler/<cluster_name>). Set only for
+   * non-standard tagging schemes.
+   */
+  repeated string tags = 2;
+}
+
+/**
+ * Static AWS access keys (self-managed clusters without IRSA).
+ */
+message KubernetesClusterAutoscalerAwsAccessKeys {
+  /**
+   * AWS access key ID — the public identifier of the key pair, not a
+   * secret (the guard's name heuristic treats *_id names as references,
+   * so no exemption annotation is needed); only the paired secret access
+   * key is a credential.
+   */
+  string access_key_id = 1 [(buf.validate.field).required = true];
+
+  /**
+   * AWS secret access key.
+   */
+  string secret_access_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+/**
+ * Azure VM scale set integration.
+ */
+message KubernetesClusterAutoscalerAzure {
+  /**
+   * Azure subscription the scale sets live in.
+   */
+  string subscription_id = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Resource group of the cluster/scale sets. For AKS this is the NODE
+   * resource group (the MC_* group holding the VMSS instances).
+   */
+  string resource_group = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Tag-based VMSS auto-discovery for this cluster name (scale sets
+   * tagged per upstream's Azure auto-discovery setup). Exactly one of
+   * cluster_name / node_groups.
+   */
+  string cluster_name = 3;
+
+  /**
+   * Statically listed scale sets with explicit size bounds. Exactly one
+   * of cluster_name / node_groups.
+   */
+  repeated KubernetesClusterAutoscalerNodeGroup node_groups = 4;
+
+  /**
+   * How the autoscaler authenticates to Azure. Exactly one arm.
+   */
+  KubernetesClusterAutoscalerAzureIdentity identity = 5 [(buf.validate.field).required = true];
+
+  option (buf.validate.message).cel = {
+    id: "spec.azure.discovery_xor_groups"
+    message: "configure exactly one of cluster_name (tag-based auto-discovery) or node_groups (static list)"
+    expression: "(this.cluster_name != '') != (size(this.node_groups) > 0)"
+  };
+}
+
+/**
+ * Azure credential posture — exactly one arm.
+ */
+message KubernetesClusterAutoscalerAzureIdentity {
+  /**
+   * Federated workload identity (recommended): the autoscaler's service
+   * account exchanges its token for the Entra application below. Set
+   * client_id in service_principal? No — set use_workload_identity with
+   * the pod labels handled by the chart; the federated app is configured
+   * Azure-side.
+   */
+  bool use_workload_identity = 1;
+
+  /**
+   * VM managed identity: the autoscaler uses the node's (or the
+   * specified user-assigned) managed identity.
+   */
+  bool use_managed_identity = 2;
+
+  /**
+   * Which user-assigned identity to use when the VMSS carries several
+   * (only with use_managed_identity).
+   */
+  string user_assigned_identity_id = 3;
+
+  /**
+   * Service-principal credentials (client id + secret with contributor
+   * on the cluster and node resource groups) — the declared-credential
+   * fallback.
+   */
+  KubernetesClusterAutoscalerAzureServicePrincipal service_principal = 4;
+
+  option (buf.validate.message).cel = {
+    id: "spec.azure.identity_exactly_one"
+    message: "configure exactly one Azure credential posture: use_workload_identity, use_managed_identity, or service_principal"
+    expression: "(this.use_workload_identity ? 1 : 0) + (this.use_managed_identity ? 1 : 0) + (has(this.service_principal) ? 1 : 0) == 1"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.azure.uaid_requires_msi"
+    message: "user_assigned_identity_id only applies with use_managed_identity"
+    expression: "this.user_assigned_identity_id == '' || this.use_managed_identity"
+  };
+}
+
+/**
+ * Azure service-principal credentials.
+ */
+message KubernetesClusterAutoscalerAzureServicePrincipal {
+  /**
+   * Entra tenant ID.
+   */
+  string tenant_id = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Application (client) ID of the service principal (a public
+   * identifier — not a secret).
+   */
+  string client_id = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Client secret of the service principal.
+   */
+  string client_secret = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+/**
+ * GCE managed-instance-group integration (self-managed clusters on GCE).
+ */
+message KubernetesClusterAutoscalerGce {
+  /**
+   * Managed instance groups by NAME PREFIX with size bounds (the chart's
+   * GCE contract — no tagging required).
+   */
+  repeated KubernetesClusterAutoscalerNodeGroup instance_group_prefixes = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  /**
+   * GCP service-account email for Workload Identity: annotates the
+   * autoscaler's Kubernetes service account so it calls the compute APIs
+   * keylessly (the GSA needs compute.instanceGroups permissions and a WI
+   * binding to the autoscaler's KSA). Empty = node default credentials.
+   */
+  string workload_identity_service_account_email = 2 [(buf.validate.field).cel = {
+    id: "spec.gce.wi_email_format"
+    message: "workload_identity_service_account_email must be a GCP service-account email (…@…gserviceaccount.com)"
+    expression: "this == '' || this.matches('^[a-z0-9-]+@[a-z0-9-]+(\\\\.[a-z0-9-]+)*\\\\.gserviceaccount\\\\.com$')"
+  }];
+}
+
+/**
+ * Cluster API integration (self-managed / multi-cloud clusters).
+ */
+message KubernetesClusterAutoscalerClusterApi {
+  /**
+   * Where the autoscaler finds the workload cluster and the Cluster API
+   * management objects: "incluster-incluster" (chart default — both in
+   * this cluster), "incluster-kubeconfig", "kubeconfig-incluster",
+   * "kubeconfig-kubeconfig" or "single-kubeconfig". Kubeconfig modes
+   * additionally need the kubeconfig mounted via helm_values
+   * (extraVolumeSecrets) per upstream's Cluster API guidance.
+   */
+  optional string mode = 1 [
+    (dev.planton.shared.options.default) = "incluster-incluster",
+    (buf.validate.field).cel = {
+      id: "spec.cluster_api.mode_enum"
+      message: "mode must be one of 'incluster-incluster', 'incluster-kubeconfig', 'kubeconfig-incluster', 'kubeconfig-kubeconfig' or 'single-kubeconfig'"
+      expression: "this == '' || this in ['incluster-incluster', 'incluster-kubeconfig', 'kubeconfig-incluster', 'kubeconfig-kubeconfig', 'single-kubeconfig']"
+    }
+  ];
+
+  /**
+   * NAME of the Kubernetes Secret holding the kubeconfig for the
+   * CAPI-managed workload cluster (required for the kubeconfig-* and
+   * *-kubeconfig modes). The kubeconfig itself lives in that Secret on
+   * the cluster — never here.
+   */
+  string kubeconfig_secret = 2 [(dev.planton.shared.options.sensitive_exempt_reason) = "the NAME of an in-cluster Secret resource, not credential material"];
+
+  /**
+   * Namespace to watch for CAPI machine objects (autoDiscovery.namespace).
+   * Empty watches all namespaces.
+   */
+  string namespace = 3;
+
+  /**
+   * Restrict RBAC to namespace scope instead of cluster scope
+   * (rbac.clusterScoped=false) — the least-privilege posture when the
+   * autoscaler only manages machines in one namespace.
+   */
+  bool namespace_scoped_rbac = 4;
+
+  option (buf.validate.message).cel = {
+    id: "spec.cluster_api.kubeconfig_modes_need_secret"
+    message: "the chosen mode reads a kubeconfig — set kubeconfig_secret (and mount it per upstream guidance)"
+    expression: "!(has(this.mode) && this.mode in ['incluster-kubeconfig', 'kubeconfig-incluster', 'kubeconfig-kubeconfig', 'single-kubeconfig']) || this.kubeconfig_secret != ''"
+  };
+}
+
+/**
+ * Civo managed-Kubernetes integration.
+ */
+message KubernetesClusterAutoscalerCivo {
+  /**
+   * Civo cluster ID the node pools belong to.
+   */
+  string cluster_id = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Civo region of the cluster.
+   */
+  string region = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Civo API key used to resize node pools.
+   */
+  string api_key = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  /**
+   * Civo API URL. Chart default: https://api.civo.com.
+   */
+  optional string api_url = 4 [(dev.planton.shared.options.default) = "https://api.civo.com"];
+}
+
+/**
+ * KWOK simulation provider (test/evaluation only — nodes are fake).
+ */
+message KubernetesClusterAutoscalerKwok {
+  /**
+   * Name of the ConfigMap carrying the KWOK provider configuration
+   * (node templates the simulator "launches"). Chart default:
+   * "kwok-provider-config".
+   */
+  optional string config_map_name = 1 [(dev.planton.shared.options.default) = "kwok-provider-config"];
+}
+
+/**
+ * One statically declared node group (an ASG name, a VMSS name, or a GCE
+ * instance-group name prefix, depending on the arm).
+ */
+message KubernetesClusterAutoscalerNodeGroup {
+  /**
+   * Group name (or name prefix for GCE).
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Minimum size the autoscaler may shrink the group to.
+   */
+  int32 min_size = 2 [(buf.validate.field).int32.gte = 0];
+
+  /**
+   * Maximum size the autoscaler may grow the group to.
+   */
+  int32 max_size = 3 [(buf.validate.field).int32.gte = 1];
+
+  option (buf.validate.message).cel = {
+    id: "spec.node_group.min_lte_max"
+    message: "min_size cannot exceed max_size"
+    expression: "this.min_size <= this.max_size"
+  };
+}
+
+/**
+ * Scaling behavior tuning (rendered into the autoscaler's flags).
+ */
+message KubernetesClusterAutoscalerScaling {
+  /**
+   * Node-group selection strategy when several groups could satisfy a
+   * scale-up: comma-separated ordered expanders from "random",
+   * "most-pods", "least-waste", "price", "priority", "grpc" (upstream
+   * default: random; "least-waste" is the common production choice).
+   * The "priority" expander additionally reads the
+   * cluster-autoscaler-priority-expander ConfigMap (ship it via
+   * helm_values expanderPriorities).
+   */
+  string expander = 1 [(buf.validate.field).cel = {
+    id: "spec.scaling.expander_enum"
+    message: "expander must be a comma-separated list drawn from 'random', 'most-pods', 'least-waste', 'price', 'priority', 'grpc'"
+    expression: "this == '' || this.split(',').all(e, e in ['random', 'most-pods', 'least-waste', 'price', 'priority', 'grpc'])"
+  }];
+
+  /**
+   * Treat node groups with identical instance types and labels as one,
+   * keeping their sizes balanced (the multi-AZ-ASG pattern on AWS, where
+   * one group per zone is the norm).
+   */
+  bool balance_similar_node_groups = 2;
+
+  /**
+   * Scale-down behavior.
+   */
+  KubernetesClusterAutoscalerScaleDown scale_down = 3;
+
+  /**
+   * How often the cluster is re-evaluated (Go duration; upstream default
+   * 10s). Longer intervals reduce API load on very large clusters.
+   */
+  string scan_interval = 4 [(buf.validate.field).cel = {
+    id: "spec.scaling.scan_interval_format"
+    message: "scan_interval must be a Go duration such as \"10s\""
+    expression: "this == '' || this.matches('^([0-9]+(s|m|h))+$')"
+  }];
+
+  /**
+   * How long to wait for a requested node before giving up on the group
+   * and retrying elsewhere (upstream default 15m).
+   */
+  string max_node_provision_time = 5 [(buf.validate.field).cel = {
+    id: "spec.scaling.max_provision_time_format"
+    message: "max_node_provision_time must be a Go duration such as \"15m\""
+    expression: "this == '' || this.matches('^([0-9]+(s|m|h))+$')"
+  }];
+
+  /**
+   * Do not scale down nodes running pods with local storage (emptyDir /
+   * hostPath). Upstream default: true — set false deliberately, knowing
+   * such pods lose their data on consolidation.
+   */
+  optional bool skip_nodes_with_local_storage = 6;
+
+  /**
+   * Do not scale down nodes running kube-system pods (except
+   * DaemonSets/mirror pods). Upstream default: true.
+   */
+  optional bool skip_nodes_with_system_pods = 7;
+}
+
+/**
+ * Scale-down tuning.
+ */
+message KubernetesClusterAutoscalerScaleDown {
+  /**
+   * Master switch for scale-down (upstream default: true). Disabling
+   * turns the autoscaler into scale-up-only.
+   */
+  optional bool enabled = 1;
+
+  /**
+   * Utilization (requests/allocatable) below which a node is a
+   * scale-down candidate, as a decimal fraction string (upstream default
+   * "0.5").
+   */
+  string utilization_threshold = 2 [(buf.validate.field).cel = {
+    id: "spec.scale_down.utilization_format"
+    message: "utilization_threshold must be a decimal fraction between 0 and 1 (e.g. \"0.5\")"
+    expression: "this == '' || this.matches('^0(\\\\.[0-9]+)?$|^1(\\\\.0+)?$')"
+  }];
+
+  /**
+   * How long a node must be unneeded before removal (upstream default
+   * 10m).
+   */
+  string unneeded_time = 3 [(buf.validate.field).cel = {
+    id: "spec.scale_down.unneeded_time_format"
+    message: "unneeded_time must be a Go duration such as \"10m\""
+    expression: "this == '' || this.matches('^([0-9]+(s|m|h))+$')"
+  }];
+
+  /**
+   * Cool-down after a scale-UP before scale-down resumes (upstream
+   * default 10m).
+   */
+  string delay_after_add = 4 [(buf.validate.field).cel = {
+    id: "spec.scale_down.delay_after_add_format"
+    message: "delay_after_add must be a Go duration such as \"10m\""
+    expression: "this == '' || this.matches('^([0-9]+(s|m|h))+$')"
+  }];
+
+  /**
+   * Cool-down after a node DELETION before scale-down resumes (upstream
+   * default 0s).
+   */
+  string delay_after_delete = 5 [(buf.validate.field).cel = {
+    id: "spec.scale_down.delay_after_delete_format"
+    message: "delay_after_delete must be a Go duration such as \"0s\""
+    expression: "this == '' || this.matches('^([0-9]+(s|m|h))+$')"
+  }];
+
+  /**
+   * Cool-down after a FAILED scale-down before retrying (upstream
+   * default 3m).
+   */
+  string delay_after_failure = 6 [(buf.validate.field).cel = {
+    id: "spec.scale_down.delay_after_failure_format"
+    message: "delay_after_failure must be a Go duration such as \"3m\""
+    expression: "this == '' || this.matches('^([0-9]+(s|m|h))+$')"
+  }];
+}
+
+/**
+ * Deployment sizing and platform scheduling for the autoscaler pod.
+ */
+message KubernetesClusterAutoscalerDeployment {
+  /**
+   * Replica count. Chart default: 1 — replicas leader-elect, extras are
+   * warm standbys.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Container resources. Empty = no requests/limits (upstream's example
+   * starting point is 100m/300Mi).
+   */
+  dev.planton.kubernetes.ContainerResources resources = 2;
+
+  /**
+   * PriorityClass for the autoscaler pod. Chart default:
+   * "system-cluster-critical" — the component that adds capacity must
+   * not be evicted for lack of it.
+   */
+  optional string priority_class_name = 3 [(dev.planton.shared.options.default) = "system-cluster-critical"];
+
+  /**
+   * Node selector for the autoscaler pod (e.g. a management node group —
+   * the autoscaler should not run on a node it may delete).
+   */
+  map<string, string> node_selector = 4;
+
+  /**
+   * Tolerations for the autoscaler pod.
+   */
+  repeated dev.planton.kubernetes.WorkloadToleration tolerations = 5;
+}
+
+/**
+ * The autoscaler's own telemetry.
+ */
+message KubernetesClusterAutoscalerPrometheus {
+  /**
+   * Create a ServiceMonitor for scrape discovery of the autoscaler's
+   * metrics (scale decisions, unschedulable pod counts, node-group
+   * sizes). Requires the Prometheus operator CRDs on the cluster — the
+   * release FAILS to install without them.
+   */
+  bool service_monitor = 1;
+
+  /**
+   * Prometheus release-label selector the ServiceMonitor carries (chart
+   * default "prometheus-operator" — set to your Prometheus install's
+   * selector, e.g. the kube-prometheus-stack release name).
+   */
+  string service_monitor_selector_release = 2;
+}

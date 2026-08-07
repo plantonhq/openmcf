@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	kubernetesprovider "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
+	kubernetesprovider "github.com/plantonhq/planton/catalog/kubernetes"
 	"github.com/plantonhq/planton/pkg/kubernetes/kubeconfig"
 )
 

@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	componentv1 "github.com/plantonhq/planton/apis/dev/planton/qa/componente2eprofile/v1"
-	sharedpb "github.com/plantonhq/planton/apis/dev/planton/shared"
+	componentv1 "github.com/plantonhq/planton/qa/componente2eprofile/v1"
+	sharedpb "github.com/plantonhq/planton/shared"
 )
 
 var Discover = &cobra.Command{

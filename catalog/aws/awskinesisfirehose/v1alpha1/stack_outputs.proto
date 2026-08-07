@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dev.planton.aws.awskinesisfirehose.v1alpha1;
+
+// AwsKinesisFirehoseStackOutputs captures observable identifiers from a
+// provisioned Kinesis Data Firehose delivery stream. These outputs are used
+// by downstream resources (e.g., CloudWatch alarms monitoring delivery metrics,
+// IAM policies granting PutRecord access) and for operational reference.
+message AwsKinesisFirehoseStackOutputs {
+  // The Amazon Resource Name (ARN) of the delivery stream. Used for IAM
+  // policies, CloudWatch alarm dimensions, and as a reference in other
+  // resources that need to send data to this delivery stream.
+  string delivery_stream_arn = 1;
+
+  // The name of the delivery stream. Used for Firehose API calls
+  // (PutRecord, PutRecordBatch) and for human-readable identification.
+  // The name is unique within an AWS account and region.
+  string delivery_stream_name = 2;
+
+  // Identifier of the destination configuration within the delivery stream.
+  // AWS assigns it at creation (e.g., "destinationId-000000000001"); the
+  // UpdateDestination API requires it when modifying destination settings
+  // out of band.
+  string destination_id = 3;
+
+  // Version of the delivery stream configuration. AWS increments it on
+  // every configuration update; the UpdateDestination API requires the
+  // current version as an optimistic-concurrency token.
+  string version_id = 4;
+}

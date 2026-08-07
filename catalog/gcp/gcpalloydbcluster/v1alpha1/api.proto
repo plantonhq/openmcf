@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpalloydbcluster.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/gcp/gcpalloydbcluster/v1alpha1/spec.proto";
+import "catalog/gcp/gcpalloydbcluster/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//gcp-alloydb-cluster
+message GcpAlloydbCluster {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'gcp.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'GcpAlloydbCluster'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  GcpAlloydbClusterSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  GcpAlloydbClusterStatus status = 5;
+}
+
+//gcp-alloydb-cluster status
+message GcpAlloydbClusterStatus {
+  //stack-outputs
+  GcpAlloydbClusterStackOutputs outputs = 1;
+}

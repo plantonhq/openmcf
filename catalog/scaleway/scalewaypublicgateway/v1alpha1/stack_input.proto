@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.scaleway.scalewaypublicgateway.v1alpha1;
+
+import "catalog/scaleway/provider.proto";
+import "catalog/scaleway/scalewaypublicgateway/v1alpha1/api.proto";
+
+//scaleway-public-gateway stack-input
+message ScalewayPublicGatewayStackInput {
+  //target cloud-resource
+  ScalewayPublicGateway target = 1;
+  //provider-config
+  dev.planton.scaleway.ScalewayProviderConfig provider_config = 2;
+}

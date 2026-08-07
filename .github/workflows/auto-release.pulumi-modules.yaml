@@ -39,7 +39,7 @@ on:
         required: true
         type: string
       path:
-        description: 'Path to the Pulumi module (e.g., apis/dev/planton/provider/aws/awsecsservice/v1alpha1/iac/pulumi)'
+        description: 'Path to the Pulumi module (e.g., catalog/aws/awsecsservice/v1alpha1/iac/pulumi)'
         required: true
         type: string
 

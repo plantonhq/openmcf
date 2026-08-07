@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpbackendservice.v1alpha1;
+
+// Outputs produced after provisioning a GCP Compute Engine backend service.
+message GcpBackendServiceStackOutputs {
+  // Self-link URI of the backend service. This is the value URL maps
+  // reference as a default service or path-rule target — the composition
+  // handle for routing traffic to these backends.
+  // Format: https://www.googleapis.com/compute/v1/projects/{project}/global/backendServices/{name}
+  string self_link = 1;
+
+  // Name of the backend service as it exists in GCP.
+  string backend_service_name = 2;
+
+  // Server-assigned numeric ID of the backend service.
+  string generated_id = 3;
+
+  // Server-computed fingerprint of the backend service. Used for
+  // optimistic concurrency control when updating the service outside of
+  // IaC.
+  string fingerprint = 4;
+}

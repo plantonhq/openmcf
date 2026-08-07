@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurestoragetable.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureStorageTableSpec** defines the configuration for creating a
+// Storage table inside an Azure Storage Account: the serverless NoSQL
+// key/value store of Azure storage. Applications store schemaless
+// entities addressed by partition key + row key -- device state, user
+// profiles, audit trails, IoT telemetry -- at petabyte scale with
+// single-digit-millisecond point reads and no capacity provisioning.
+// (Cosmos DB's Table API is the premium sibling -- global distribution,
+// throughput SLAs -- at a very different price point.)
+//
+// Tables are many-per-account with independent lifecycles, which is why
+// they are a first-class kind referencing the account rather than a list
+// folded into the account's spec. The parent is fixed at creation: a
+// table cannot move between accounts.
+//
+// Operational contract: the provider drives table creation and stored
+// access policies through the table DATA PLANE with shared-key
+// authorization, so the parent account must keep
+// shared_access_key_enabled true (Azure's default) for deploys to work.
+message AzureStorageTableSpec {
+  // The storage account the table lives in, by ARM ID. References an
+  // AzureStorageAccount's storage_account_id output so the account and
+  // its tables compose in one manifest set. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The table's name: 3-63 alphanumeric characters starting with a
+  // letter -- no hyphens or underscores, and never the literal word
+  // "table" (Azure reserves it). Unique within the account. Changing
+  // the name replaces the table.
+  string table_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "storage_table_name_format"
+      message: "table_name must be 3-63 alphanumeric characters starting with a letter, and cannot be the literal word \"table\""
+      expression: "this.matches('^[A-Za-z][A-Za-z0-9]{2,62}$') && this != 'table'"
+    }
+  ];
+
+  // Stored access policies (signed identifiers) for the table. Each
+  // policy anchors shared-access-signature tokens: revoking or
+  // shortening the policy immediately revokes every SAS issued against
+  // it -- the operational reason to prefer policy-anchored SAS over
+  // ad-hoc SAS. At most five policies per table (Azure's limit).
+  repeated AzureStorageTableAcl acls = 3 [(buf.validate.field).repeated.max_items = 5];
+}
+
+// A stored access policy (signed identifier) on the table.
+message AzureStorageTableAcl {
+  // The policy's identifier -- the name SAS tokens reference (1-64
+  // characters). Keep it stable: rotating the id orphans SAS tokens
+  // issued against the old one.
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // The policy's validity window and permissions. Unlike blob/share
+  // policies, Azure requires table policies to carry the full window --
+  // start, expiry, and permissions are all mandatory here.
+  repeated AzureStorageTableAclAccessPolicy access_policies = 2;
+}
+
+// The validity window and permissions of a stored access policy.
+message AzureStorageTableAclAccessPolicy {
+  // The table's data-plane permission letters, in Azure's strict order:
+  // r (read/query), a (add), u (update), d (delete). E.g. "r" for
+  // query-only consumers, "raud" for full entity access.
+  string permissions = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "storage_table_acl_permissions"
+      message: "permissions must be a non-empty combination of r, a, u, d in that order (e.g. \"r\", \"raud\")"
+      expression: "this.matches('^r?a?u?d?$') && this != ''"
+    }
+  ];
+
+  // When the policy becomes valid, RFC 3339 UTC (e.g.
+  // "2026-07-01T00:00:00Z"). Required on table policies.
+  string start = 2 [(buf.validate.field).required = true];
+
+  // When the policy expires, RFC 3339 UTC. Required on table policies
+  // -- the expiry is the revocation lever for every SAS anchored here.
+  string expiry = 3 [(buf.validate.field).required = true];
+}

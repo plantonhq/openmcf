@@ -2,7 +2,7 @@ package protodefaults
 
 import (
 	"github.com/pkg/errors"
-	options_pb "github.com/plantonhq/planton/apis/dev/planton/shared/options"
+	options_pb "github.com/plantonhq/planton/shared/options"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )

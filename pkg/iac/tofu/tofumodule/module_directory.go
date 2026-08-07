@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/staging"
 	"github.com/plantonhq/planton/internal/cli/version"
@@ -15,6 +14,7 @@ import (
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/fileutil"
 	"github.com/plantonhq/planton/pkg/iac/tofu/tofuzip"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // GetModulePathResult contains the module path and a cleanup function
@@ -269,7 +269,7 @@ func getTerraformModulePath(moduleRepoDir, kindName string) (string, error) {
 
 	kindDirPath := filepath.Join(
 		moduleRepoDir,
-		"apis/dev/planton/provider",
+		"catalog",
 		strings.ReplaceAll(kindProvider.String(), "_", ""))
 
 	terraformModulePath := filepath.Join(

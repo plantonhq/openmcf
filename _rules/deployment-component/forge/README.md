@@ -196,12 +196,12 @@ Phase 7: Presets
 [18/20] ✅ Generated initial presets
 
 Phase 8: Final Validation
-[19/20] ✅ Build validation passed (go build ./apis/.../v1/...)
-[20/20] ✅ Component tests passed (go test -v ./apis/.../v1/)
+[19/20] ✅ Build validation passed (go build ./catalog/.../v1/...)
+[20/20] ✅ Component tests passed (go test -v ./catalog/.../v1/)
 
 🎉 Component creation complete!
 
-📍 Location: apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
+📍 Location: catalog/atlas/mongodbatlas/v1alpha1/
 📊 Expected Audit Score: 95-100%
 
 Next steps:
@@ -272,7 +272,7 @@ Forge creates a **production-ready baseline**. Common customizations:
 5. Update Pulumi module to use new fields
 6. Update Terraform `variables.tf` to match
 7. Update examples in `examples.md`
-8. Run `go build ./apis/.../v1/... && go test -v ./apis/.../v1/`
+8. Run `go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/`
 
 ### Modify IaC Implementation
 1. Update Pulumi module files (`iac/pulumi/module/*.go`)

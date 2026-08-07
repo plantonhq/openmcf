@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesserviceaccount.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/workload_identity.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesServiceAccountSpec** defines the configuration for creating and managing a
+ * Kubernetes ServiceAccount — the in-cluster identity that pods run as. A ServiceAccount is
+ * the anchor of three concerns:
+ *
+ *   1. **API authentication** — pods authenticate to the kube-apiserver as the ServiceAccount,
+ *      and RBAC grants (KubernetesRbac) attach permissions to it.
+ *   2. **Registry authentication** — `image_pull_secrets` attach docker-registry credentials
+ *      that the kubelet uses when pulling images for pods running as this identity.
+ *   3. **Cloud identity federation** — `workload_identity` binds the ServiceAccount to a cloud
+ *      identity (GCP service account, AWS IAM role, or Azure managed identity) so pods reach
+ *      cloud APIs keylessly, with no long-lived credentials anywhere in the cluster.
+ *
+ * The spec covers the complete meaningful ServiceAccount surface. The upstream `secrets` list
+ * is deliberately not modeled: its only remaining behavior (mountable-secrets enforcement) is
+ * deprecated since Kubernetes v1.32, and token secrets are superseded by the TokenRequest API.
+ */
+message KubernetesServiceAccountSpec {
+  /**
+   * The name of the ServiceAccount (its `metadata.name` in the cluster).
+   * Must be a valid DNS subdomain: lowercase alphanumeric characters, hyphens, and dots,
+   * at most 253 characters. Workloads reference this name in `spec.serviceAccountName`,
+   * and RBAC subjects reference it as "system:serviceaccount:<namespace>:<name>".
+   */
+  string name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "name.dns_subdomain"
+      message: "Name must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)"
+      expression: "this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * The namespace in which the ServiceAccount is created. Accepts a literal namespace name
+   * or a reference to a KubernetesNamespace resource, so an infra chart can create the
+   * namespace and the identity in one run. When omitted, the ServiceAccount lands in the
+   * cluster's `default` namespace — the same behavior as kubectl without a namespace flag.
+   * The namespace participates in the identity's fully-qualified RBAC name and in every
+   * cloud federation subject, so charts should almost always set it explicitly.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * Additional labels to apply to the ServiceAccount.
+   * These are merged with standard Planton labels for resource tracking and governance.
+   */
+  map<string, string> labels = 4;
+
+  /**
+   * Additional annotations to apply to the ServiceAccount. Cloud workload-identity
+   * annotations should be expressed through `workload_identity` rather than written here —
+   * the typed field validates the identity handle and keeps the intent visible to the
+   * resource graph. Annotations set here are merged last and must not collide with the
+   * annotations `workload_identity` generates.
+   */
+  map<string, string> annotations = 5;
+
+  /**
+   * Docker-registry credentials the kubelet presents when pulling images for pods that run
+   * as this ServiceAccount. Each entry names a `kubernetes.io/dockerconfigjson` secret in the
+   * SAME namespace — accepts a literal secret name or a reference to a KubernetesSecret
+   * resource, so a chart can materialize the registry credential and attach it to the
+   * identity in one run. Attaching pull secrets at the ServiceAccount level frees every pod
+   * spec from repeating `imagePullSecrets`.
+   */
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef image_pull_secrets = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Names of Kubernetes Secret objects to attach, never the secret material itself"
+  ];
+
+  /**
+   * Whether pods running as this ServiceAccount automatically receive a projected API token
+   * mount. Tri-state, mirroring the Kubernetes API: unset defers to the cluster/pod-level
+   * default (mount), `false` hardens pods that never talk to the kube-apiserver (a common
+   * security-baseline requirement), and `true` makes the mount explicit. Individual pods can
+   * override this in their own spec.
+   */
+  optional bool automount_service_account_token = 7;
+
+  /**
+   * Binds this ServiceAccount to a cloud identity for keyless access to cloud APIs
+   * (GKE Workload Identity, EKS IRSA, or Azure AD Workload Identity). The module translates
+   * the selected arm into the exact annotations the cloud's webhook expects; the matching
+   * cloud-side trust configuration (IAM binding, trust policy, or federated credential) is
+   * owned by the referenced cloud identity resource. Omit for ServiceAccounts that never
+   * leave the cluster.
+   */
+  dev.planton.kubernetes.KubernetesWorkloadIdentity workload_identity = 8;
+}

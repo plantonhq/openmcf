@@ -3,7 +3,7 @@ package providerenvvars
 import (
 	"testing"
 
-	gcpprovider "github.com/plantonhq/planton/apis/dev/planton/provider/gcp"
+	gcpprovider "github.com/plantonhq/planton/catalog/gcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"

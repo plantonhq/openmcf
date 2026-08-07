@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetessignoz.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetessignoz/v1alpha1/spec.proto";
+import "catalog/kubernetes/kubernetessignoz/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// signoz-kubernetes
+message KubernetesSignoz {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesSignoz'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  KubernetesSignozSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  KubernetesSignozStatus status = 5;
+}
+
+// signoz-kubernetes status
+message KubernetesSignozStatus {
+  // stack-outputs
+  KubernetesSignozStackOutputs outputs = 1;
+}

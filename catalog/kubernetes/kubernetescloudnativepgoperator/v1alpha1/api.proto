@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetescloudnativepgoperator.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetescloudnativepgoperator/v1alpha1/spec.proto";
+import "catalog/kubernetes/kubernetescloudnativepgoperator/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// KubernetesCloudNativePgOperator installs CloudNativePG — the CNCF
+// PostgreSQL operator — on a cluster from the official Helm chart,
+// optionally with the Barman Cloud backup plugin. KubernetesPostgres
+// resources declare the databases the operator reconciles.
+message KubernetesCloudNativePgOperator {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesCloudNativePgOperator'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  KubernetesCloudNativePgOperatorSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  KubernetesCloudNativePgOperatorStatus status = 5;
+}
+
+// KubernetesCloudNativePgOperatorStatus holds the deployment status and outputs.
+message KubernetesCloudNativePgOperatorStatus {
+  // stack-outputs
+  KubernetesCloudNativePgOperatorStackOutputs outputs = 1;
+}

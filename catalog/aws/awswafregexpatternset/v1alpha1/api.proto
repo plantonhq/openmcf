@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.aws.awswafregexpatternset.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awswafregexpatternset/v1alpha1/spec.proto";
+import "catalog/aws/awswafregexpatternset/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AwsWafRegexPatternSet is the API envelope for an AWS WAFv2 regex pattern
+// set — a named, reusable collection of regular expressions that web ACL
+// rules match request components against.
+message AwsWafRegexPatternSet {
+  // api-version must be set to "aws.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
+
+  // resource-kind for this resource, must be "AwsWafRegexPatternSet".
+  string kind = 2 [(buf.validate.field).string.const = "AwsWafRegexPatternSet"];
+
+  // metadata captures identifying information (name, org, environment,
+  // labels) and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the desired configuration of the regex pattern set.
+  AwsWafRegexPatternSetSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds post-deployment information.
+  AwsWafRegexPatternSetStatus status = 5;
+}
+
+// AwsWafRegexPatternSetStatus describes the status of a WAFv2 regex pattern
+// set resource.
+message AwsWafRegexPatternSetStatus {
+  // outputs captures the observable values returned by Pulumi/Terraform
+  // after provisioning.
+  AwsWafRegexPatternSetStackOutputs outputs = 1;
+}

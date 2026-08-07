@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	kubernetesprovider "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
+	kubernetesprovider "github.com/plantonhq/planton/catalog/kubernetes"
 	"github.com/plantonhq/planton/pkg/kubernetes/execcredential"
 	"github.com/plantonhq/planton/pkg/kubernetes/kubeconfig"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"

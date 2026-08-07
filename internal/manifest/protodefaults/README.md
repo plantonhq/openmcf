@@ -54,7 +54,7 @@ Add the `(dev.planton.shared.options.default)` extension to fields that should h
 ```protobuf
 syntax = "proto3";
 
-import "dev/planton/shared/options/options.proto";
+import "shared/options/options.proto";
 
 message ExternalDnsKubernetesSpec {
   // CRITICAL: Use 'optional' keyword for all fields with defaults
@@ -275,8 +275,8 @@ Use the `(dev.planton.shared.options.recommended_default)` extension for suggest
 
 ## Related Documentation
 
-- [Custom Buf Lint Plugin](../../../buf/lint/planton/README.md) - Enforces the `optional` requirement
-- [Proto Field Options](../../../apis/project/planton/shared/options/options.proto) - Definition of the `default` extension
+- [Custom Buf Lint Plugin](../../../buf/lint/optional-linter/README.md) - Enforces the `optional` requirement
+- [Proto Field Options](../../../shared/options/options.proto) - Definition of the `default` extension
 - [Proto Field Presence](https://protobuf.dev/programming-guides/field_presence/) - Official protobuf documentation on field presence
 
 ## Contributing

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared/iac/terraform"
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/flag"
 	"github.com/plantonhq/planton/internal/cli/prompt"
@@ -12,6 +11,7 @@ import (
 	"github.com/plantonhq/planton/pkg/iac/provisioner"
 	"github.com/plantonhq/planton/pkg/iac/tofu/backendconfig"
 	"github.com/plantonhq/planton/pkg/iac/tofu/tofumodule"
+	"github.com/plantonhq/planton/shared/iac/terraform"
 	"github.com/spf13/cobra"
 )
 

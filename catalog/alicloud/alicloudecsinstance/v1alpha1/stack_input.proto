@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.alicloud.alicloudecsinstance.v1alpha1;
+
+import "catalog/alicloud/alicloudecsinstance/v1alpha1/api.proto";
+import "catalog/alicloud/provider.proto";
+
+// alicloud-ecs-instance stack-input
+message AliCloudEcsInstanceStackInput {
+  // target cloud-resource
+  AliCloudEcsInstance target = 1;
+  // provider-config
+  dev.planton.alicloud.AliCloudProviderConfig provider_config = 2;
+}

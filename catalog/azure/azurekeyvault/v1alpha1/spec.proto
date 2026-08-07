@@ -1,0 +1,486 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurekeyvault.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureKeyVaultSpec** defines the configuration for creating an Azure Key
+// Vault: the tenant-scoped container where an organization's encryption keys,
+// TLS certificates, and application secrets live behind one security
+// boundary.
+//
+// The vault is where governance is set -- authorization mode (Azure RBAC vs
+// legacy access policies), network isolation (public access, IP allowlists,
+// VNet service endpoints), deletion safety (soft delete and purge
+// protection), and the pricing tier that gates HSM-backed keys. Azure orgs
+// deliberately run FEW vaults with MANY objects inside, because every one of
+// those controls applies vault-wide.
+//
+// What lives inside the vault is composed, never bundled here: encryption
+// keys are first-class AzureKeyVaultKey resources and TLS certificates are
+// first-class AzureKeyVaultCertificate resources, each referencing this
+// vault's key_vault_id output. Secret VALUES are deliberately out of scope
+// for infrastructure-as-code -- provision the vault here and manage secret
+// content through a secrets-management workflow, so plaintext never enters
+// deployment manifests or state.
+//
+// The vault is created in the deploying credential's Azure AD tenant (a
+// vault cannot be managed cross-tenant, so modeling the tenant would only
+// invite a contradiction); the tenant_id output reports it.
+message AzureKeyVaultSpec {
+  // The Azure region where the Key Vault will be deployed (e.g. "eastus",
+  // "westeurope"). Key Vault is a regional service; changing the region
+  // replaces the vault.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the vault will be created in. Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's name
+  // output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The name of the vault: 3-24 characters of letters, digits, and hyphens,
+  // starting with a letter, ending with a letter or digit, no consecutive
+  // hyphens -- and GLOBALLY unique across all of Azure, because it becomes
+  // the vault's DNS name ({name}.vault.azure.net, the vault_uri output).
+  // Changing the name replaces the vault. A deleted vault's name stays
+  // reserved for the soft-delete retention window unless the vault is
+  // purged.
+  string vault_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z][a-zA-Z0-9-]{1,22}[a-zA-Z0-9]$",
+    (buf.validate.field).cel = {
+      id: "key_vault_name_no_consecutive_hyphens"
+      message: "vault_name cannot contain consecutive hyphens (\"--\")"
+      expression: "!this.contains('--')"
+    }
+  ];
+
+  // The pricing tier. Unspecified applies STANDARD: software-protected
+  // keys, the right tier for most workloads. PREMIUM adds HSM-backed keys
+  // (FIPS 140-2 Level 3) -- required before any AzureKeyVaultKey in this
+  // vault can use the EC_HSM/RSA_HSM key types, and for compliance regimes
+  // that mandate hardware protection (PCI-DSS, FedRAMP High). The SKU can
+  // be changed in place.
+  AzureKeyVaultSku sku = 4;
+
+  // Whether data-plane authorization uses Azure RBAC (true) or legacy
+  // vault access policies (false). Azure's own guidance is RBAC: grants
+  // become ordinary role assignments (compose AzureRoleAssignment with
+  // roles like "Key Vault Administrator" or "Key Vault Secrets User"),
+  // participate in PIM and access reviews, and support fine-grained scopes.
+  // ARM's default for a new vault is the legacy access-policy mode, but
+  // this spec defaults to RBAC as the recommended posture -- set false
+  // explicitly (and populate access_policies) to run the legacy mode.
+  // Switching modes on a live vault requires Microsoft.Authorization write
+  // permission (Owner / User Access Administrator) on the vault.
+  optional bool rbac_authorization_enabled = 5 [(dev.planton.shared.options.default) = "true"];
+
+  // Legacy access-policy grants (up to 1024). Only honored when
+  // rbac_authorization_enabled is false -- ARM stores but IGNORES access
+  // policies on an RBAC-mode vault, so populating both is almost always a
+  // mistake. Each entry grants one Azure AD principal (user, group,
+  // service principal, or managed identity) explicit permission lists over
+  // keys, secrets, certificates, and managed-storage objects in this
+  // vault. Prefer RBAC for new vaults; model policies only when an
+  // existing workload or org standard requires the legacy mode.
+  repeated AzureKeyVaultAccessPolicy access_policies = 6 [(buf.validate.field).repeated.max_items = 1024];
+
+  // Whether Azure Virtual Machines may retrieve certificates stored as
+  // secrets from this vault (the VM deployment integration). Azure's
+  // default is false.
+  bool enabled_for_deployment = 7;
+
+  // Whether Azure Disk Encryption may retrieve secrets and unwrap keys
+  // from this vault (the legacy in-guest ADE flow; modern server-side
+  // encryption uses disk encryption sets instead). Azure's default is
+  // false.
+  bool enabled_for_disk_encryption = 8;
+
+  // Whether Azure Resource Manager (template deployments) may retrieve
+  // secrets from this vault. Azure's default is false.
+  bool enabled_for_template_deployment = 9;
+
+  // Whether the vault accepts connections from the public internet.
+  // Azure's default is true. Setting false takes the vault fully private
+  // -- reachable only through private endpoints. For a public vault
+  // restricted to known networks, keep this true and use network_acls
+  // instead. Updatable in place.
+  optional bool public_network_access_enabled = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether purge protection is on: a deleted vault (or key/certificate
+  // inside it) can then only be recovered -- never permanently purged --
+  // until the soft-delete retention window expires. Azure's default is
+  // false. Turn it on for production vaults, and ALWAYS for vaults whose
+  // keys encrypt other resources (customer-managed keys refuse to enroll
+  // against a vault without it in many services). Irreversible: once
+  // enabled it cannot be disabled, and destroying the vault then means
+  // waiting out the retention window before the name frees up.
+  bool purge_protection_enabled = 11;
+
+  // How many days deleted vaults and vault objects remain recoverable
+  // (soft delete). 7-90; unspecified applies Azure's default of 90. Can
+  // only be set at creation -- changing it replaces the vault.
+  optional int32 soft_delete_retention_days = 12 [
+    (buf.validate.field).int32 = {
+      gte: 7
+      lte: 90
+    },
+    (dev.planton.shared.options.default) = "90"
+  ];
+
+  // Network access rules for a PUBLIC vault: a default action, a bypass
+  // carve-out for trusted Microsoft services, an IP allowlist, and a VNet
+  // subnet allowlist. The middle ground between "open to the internet"
+  // and "private endpoints only". Updatable in place.
+  AzureKeyVaultNetworkAcls network_acls = 13;
+
+  // Free-form tags applied to the vault, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag
+  // with the same key wins. Tags are Azure's governance surface -- Azure
+  // Policy enforces them and Microsoft Cost Management groups by them.
+  // Updatable in place.
+  map<string, string> tags = 14;
+}
+
+// One legacy access-policy grant: a principal and its permission lists.
+message AzureKeyVaultAccessPolicy {
+  // The object ID of the Azure AD principal being granted access (a user,
+  // group, service principal, or managed identity). Defaults to
+  // referencing an AzureUserAssignedIdentity's principal_id output in
+  // composed environments -- note this is the identity's PRINCIPAL id
+  // (the directory object), not its client id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef object_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.principal_id"
+  ];
+
+  // The Azure AD tenant the principal lives in. Leave unset to use the
+  // vault's own tenant (the deploying credential's tenant) -- the correct
+  // value for virtually every grant, since access policies cannot span
+  // tenants in practice.
+  optional string tenant_id = 2 [(buf.validate.field).string.uuid = true];
+
+  // For grants to a specific application acting on behalf of the
+  // principal (the rarely-used compound-identity flow): that
+  // application's client ID. Leave unset for ordinary grants.
+  optional string application_id = 3 [(buf.validate.field).string.uuid = true];
+
+  // Key permissions granted to the principal. KEY_GET + cryptographic
+  // operations (KEY_ENCRYPT/KEY_DECRYPT, KEY_WRAP_KEY/KEY_UNWRAP_KEY,
+  // KEY_SIGN/KEY_VERIFY) cover consumers; management permissions
+  // (KEY_CREATE, KEY_DELETE, rotation-policy permissions) belong to
+  // operators.
+  repeated AzureKeyVaultKeyPermission key_permissions = 4 [(buf.validate.field).repeated.items.enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // Secret permissions granted to the principal. SECRET_GET is the
+  // consumer permission; SECRET_SET/SECRET_DELETE are the writer surface.
+  repeated AzureKeyVaultSecretPermission secret_permissions = 5 [(buf.validate.field).repeated.items.enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // Certificate permissions granted to the principal. CERTIFICATE_GET
+  // covers consumers; CERTIFICATE_CREATE/CERTIFICATE_IMPORT plus the
+  // issuer-management permissions belong to certificate operators.
+  repeated AzureKeyVaultCertificatePermission certificate_permissions = 6 [(buf.validate.field).repeated.items.enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // Managed-storage-account permissions granted to the principal (the
+  // legacy Key Vault storage-key-rotation feature; rarely used today).
+  repeated AzureKeyVaultStoragePermission storage_permissions = 7 [(buf.validate.field).repeated.items.enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+}
+
+// Network access rules for the vault's public endpoint.
+message AzureKeyVaultNetworkAcls {
+  // What happens to requests matching no ip_rules or subnet rule: ALLOW
+  // leaves the vault open (the rule set is effectively off); DENY is the
+  // allowlist posture. ARM requires a value whenever network rules are
+  // configured.
+  AzureKeyVaultNetworkAclsDefaultAction default_action = 1 [(buf.validate.field).required = true];
+
+  // Whether trusted Microsoft services (Azure Backup, Disk Encryption,
+  // Azure Monitor, ...) may reach the vault even when default_action is
+  // DENY. Unspecified applies Azure's default (AZURE_SERVICES) -- the
+  // pragmatic choice that keeps first-party integrations working. NONE
+  // closes even that door.
+  AzureKeyVaultNetworkAclsBypass bypass = 2;
+
+  // Public IPv4 addresses or CIDR ranges allowed to reach the vault
+  // (office egress, VPN gateways, CI runners). E.g. "203.0.113.0/24" or
+  // "198.51.100.42".
+  repeated string ip_rules = 3 [(buf.validate.field).repeated.max_items = 200];
+
+  // Virtual-network subnets allowed to reach the vault over service
+  // endpoints, by subnet ARM ID. The referenced subnets must have the
+  // "Microsoft.KeyVault" service endpoint enabled. Defaults to
+  // referencing an AzureSubnet's subnet_id output in composed
+  // environments.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_subnet_ids = 4 [
+    (buf.validate.field).repeated.max_items = 100,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+}
+
+// The pricing tier of a Key Vault. Unspecified means STANDARD.
+enum AzureKeyVaultSku {
+  // Not specified: STANDARD.
+  azure_key_vault_sku_unspecified = 0;
+
+  // Software-protected keys and secrets -- the right tier for most
+  // workloads.
+  STANDARD = 1;
+
+  // Adds HSM-backed keys (FIPS 140-2 Level 3) -- required for the
+  // EC_HSM/RSA_HSM key types and hardware-protection compliance regimes.
+  PREMIUM = 2;
+}
+
+// The default action for vault requests matching no network rule.
+enum AzureKeyVaultNetworkAclsDefaultAction {
+  // Not specified -- invalid; ARM requires an explicit choice when
+  // network rules are configured.
+  azure_key_vault_network_acls_default_action_unspecified = 0;
+
+  // Requests matching no rules are allowed (the rule set is effectively
+  // off).
+  ALLOW = 1;
+
+  // Requests matching no rules are denied -- the allowlist posture.
+  DENY = 2;
+}
+
+// Whether trusted Microsoft services bypass the vault's network rules.
+// Unspecified means Azure's default (AzureServices).
+enum AzureKeyVaultNetworkAclsBypass {
+  // Not specified: Azure's default (AzureServices).
+  azure_key_vault_network_acls_bypass_unspecified = 0;
+
+  // Trusted Microsoft services may reach the vault despite network rules.
+  AZURE_SERVICES = 1;
+
+  // No bypass: network rules apply to everything, first-party services
+  // included.
+  NONE = 2;
+}
+
+// Data-plane permissions over KEYS a legacy access policy can grant.
+enum AzureKeyVaultKeyPermission {
+  // Not specified -- invalid; grant an explicit permission.
+  azure_key_vault_key_permission_unspecified = 0;
+
+  // Read key metadata and the public part.
+  KEY_GET = 1;
+
+  // List keys in the vault.
+  KEY_LIST = 2;
+
+  // Update a key's attributes.
+  KEY_UPDATE = 3;
+
+  // Create new keys.
+  KEY_CREATE = 4;
+
+  // Import externally generated key material.
+  KEY_IMPORT = 5;
+
+  // Delete keys (soft delete).
+  KEY_DELETE = 6;
+
+  // Recover soft-deleted keys.
+  KEY_RECOVER = 7;
+
+  // Download a protected key backup.
+  KEY_BACKUP = 8;
+
+  // Restore a key from backup.
+  KEY_RESTORE = 9;
+
+  // Decrypt with the key.
+  KEY_DECRYPT = 10;
+
+  // Encrypt with the key.
+  KEY_ENCRYPT = 11;
+
+  // Unwrap (decrypt) a data-encryption key -- the permission
+  // customer-managed-key consumers need.
+  KEY_UNWRAP_KEY = 12;
+
+  // Wrap (encrypt) a data-encryption key.
+  KEY_WRAP_KEY = 13;
+
+  // Verify a signature with the public key.
+  KEY_VERIFY = 14;
+
+  // Sign with the private key.
+  KEY_SIGN = 15;
+
+  // Permanently delete (purge) a soft-deleted key.
+  KEY_PURGE = 16;
+
+  // Release the key to a trusted execution environment (secure key
+  // release).
+  KEY_RELEASE = 17;
+
+  // Rotate the key to a new version on demand.
+  KEY_ROTATE = 18;
+
+  // Read the key's rotation policy.
+  KEY_GET_ROTATION_POLICY = 19;
+
+  // Set the key's rotation policy.
+  KEY_SET_ROTATION_POLICY = 20;
+}
+
+// Data-plane permissions over SECRETS a legacy access policy can grant.
+enum AzureKeyVaultSecretPermission {
+  // Not specified -- invalid; grant an explicit permission.
+  azure_key_vault_secret_permission_unspecified = 0;
+
+  // Read secret values -- the consumer permission.
+  SECRET_GET = 1;
+
+  // List secrets in the vault (names only, not values).
+  SECRET_LIST = 2;
+
+  // Create or update secret values.
+  SECRET_SET = 3;
+
+  // Delete secrets (soft delete).
+  SECRET_DELETE = 4;
+
+  // Recover soft-deleted secrets.
+  SECRET_RECOVER = 5;
+
+  // Download a protected secret backup.
+  SECRET_BACKUP = 6;
+
+  // Restore a secret from backup.
+  SECRET_RESTORE = 7;
+
+  // Permanently delete (purge) a soft-deleted secret.
+  SECRET_PURGE = 8;
+}
+
+// Data-plane permissions over CERTIFICATES a legacy access policy can grant.
+enum AzureKeyVaultCertificatePermission {
+  // Not specified -- invalid; grant an explicit permission.
+  azure_key_vault_certificate_permission_unspecified = 0;
+
+  // Read certificates (public part and policy) -- the consumer
+  // permission.
+  CERTIFICATE_GET = 1;
+
+  // List certificates in the vault.
+  CERTIFICATE_LIST = 2;
+
+  // Update a certificate's attributes or policy.
+  CERTIFICATE_UPDATE = 3;
+
+  // Create (enroll) new certificates.
+  CERTIFICATE_CREATE = 4;
+
+  // Import existing certificate bundles.
+  CERTIFICATE_IMPORT = 5;
+
+  // Delete certificates (soft delete).
+  CERTIFICATE_DELETE = 6;
+
+  // Recover soft-deleted certificates.
+  CERTIFICATE_RECOVER = 7;
+
+  // Download a protected certificate backup.
+  CERTIFICATE_BACKUP = 8;
+
+  // Restore a certificate from backup.
+  CERTIFICATE_RESTORE = 9;
+
+  // Manage the vault's certificate contacts (expiry notifications).
+  CERTIFICATE_MANAGE_CONTACTS = 10;
+
+  // Manage certificate-authority issuer configurations.
+  CERTIFICATE_MANAGE_ISSUERS = 11;
+
+  // Read a specific issuer configuration.
+  CERTIFICATE_GET_ISSUERS = 12;
+
+  // List issuer configurations.
+  CERTIFICATE_LIST_ISSUERS = 13;
+
+  // Create or update issuer configurations.
+  CERTIFICATE_SET_ISSUERS = 14;
+
+  // Delete issuer configurations.
+  CERTIFICATE_DELETE_ISSUERS = 15;
+
+  // Permanently delete (purge) a soft-deleted certificate.
+  CERTIFICATE_PURGE = 16;
+}
+
+// Permissions over MANAGED STORAGE ACCOUNTS a legacy access policy can grant
+// (the legacy Key Vault storage-key-rotation feature).
+enum AzureKeyVaultStoragePermission {
+  // Not specified -- invalid; grant an explicit permission.
+  azure_key_vault_storage_permission_unspecified = 0;
+
+  // Read managed storage account definitions.
+  STORAGE_GET = 1;
+
+  // List managed storage accounts.
+  STORAGE_LIST = 2;
+
+  // Create or update managed storage account definitions.
+  STORAGE_SET = 3;
+
+  // Update managed storage account attributes.
+  STORAGE_UPDATE = 4;
+
+  // Delete managed storage account definitions (soft delete).
+  STORAGE_DELETE = 5;
+
+  // Recover soft-deleted managed storage accounts.
+  STORAGE_RECOVER = 6;
+
+  // Download a protected managed-storage backup.
+  STORAGE_BACKUP = 7;
+
+  // Restore a managed storage account from backup.
+  STORAGE_RESTORE = 8;
+
+  // Permanently delete (purge) a soft-deleted managed storage account.
+  STORAGE_PURGE = 9;
+
+  // Regenerate the managed storage account's keys.
+  STORAGE_REGENERATE_KEY = 10;
+
+  // Read a SAS definition.
+  STORAGE_GET_SAS = 11;
+
+  // List SAS definitions.
+  STORAGE_LIST_SAS = 12;
+
+  // Create or update SAS definitions.
+  STORAGE_SET_SAS = 13;
+
+  // Delete SAS definitions.
+  STORAGE_DELETE_SAS = 14;
+}

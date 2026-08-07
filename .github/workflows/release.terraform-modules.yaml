@@ -14,7 +14,7 @@
 # Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/terraform/{component}/{version}.zip
 # Public URL:  https://downloads.planton.dev/releases/{tag}/modules/terraform/{component}/{version}.zip
 #
-# Path pattern: apis/dev/planton/provider/{provider}/{component}/{version}/iac/tf
+# Path pattern: catalog/{provider}/{component}/{version}/iac/tf
 #
 # Called by: .github/workflows/release.yaml (after CLI release creates the release)
 # =============================================================================
@@ -35,7 +35,7 @@ permissions:
   contents: read
 
 env:
-  PROVIDER_BASE_PATH: apis/dev/planton/provider
+  CATALOG_ROOT: catalog
   R2_BUCKET: downloads-dot-planton-dot-dev-bucket
 
 jobs:
@@ -80,7 +80,7 @@ jobs:
           PROVIDER: ${{ matrix.provider }}
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          PROVIDER_PATH="${PROVIDER_BASE_PATH}/${PROVIDER}"
+          PROVIDER_PATH="${CATALOG_ROOT}/${PROVIDER}"
           
           # Discover all components by listing directories
           if [ ! -d "$PROVIDER_PATH" ]; then

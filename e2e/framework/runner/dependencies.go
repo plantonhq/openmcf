@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -313,7 +313,7 @@ func prerequisiteManifestPath(repoRoot, componentProvider, consumer, slug string
 		if err != nil {
 			return "", err
 		}
-		consumerPrereq := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", componentProvider, consumer, consumerVersionDir, "e2e", "prerequisites", slug+".yaml")
+		consumerPrereq := filepath.Join(repoRoot, "catalog", componentProvider, consumer, consumerVersionDir, "e2e", "prerequisites", slug+".yaml")
 		if pathExists(consumerPrereq) {
 			return consumerPrereq, nil
 		}
@@ -322,7 +322,7 @@ func prerequisiteManifestPath(repoRoot, componentProvider, consumer, slug string
 	if err != nil {
 		return "", err
 	}
-	base := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", componentProvider, slug, slugVersionDir, "e2e")
+	base := filepath.Join(repoRoot, "catalog", componentProvider, slug, slugVersionDir, "e2e")
 	prereq := filepath.Join(base, "prerequisite.yaml")
 	if pathExists(prereq) {
 		return prereq, nil
@@ -415,7 +415,7 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 	if err != nil {
 		return DependencyState{}, err
 	}
-	moduleDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", componentProvider, dep.KindSlug, versionDir, "iac", "pulumi")
+	moduleDir := filepath.Join(repoRoot, "catalog", componentProvider, dep.KindSlug, versionDir, "iac", "pulumi")
 	if !pathExists(moduleDir) {
 		return DependencyState{}, errors.Errorf("dependency %q pulumi module not found at %s", dep.KindSlug, moduleDir)
 	}

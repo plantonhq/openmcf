@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurefrontdoorsecuritypolicy.v1alpha1;
+
+// **AzureFrontDoorSecurityPolicyStackOutputs** captures the outputs of
+// provisioning an Azure Front Door security policy.
+message AzureFrontDoorSecurityPolicyStackOutputs {
+  // The Azure Resource Manager ID of the security policy. Nothing
+  // composes on a security policy (it is itself the association), so
+  // this exists for operational addressing -- diagnostics, RBAC scoping,
+  // and ARM reads.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Cdn/profiles/{profile}/securityPolicies/{name}
+  string security_policy_id = 1;
+
+  // The security policy's name -- unique within its profile.
+  string security_policy_name = 2;
+}

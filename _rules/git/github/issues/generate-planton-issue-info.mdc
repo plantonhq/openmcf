@@ -244,11 +244,11 @@ Use this template:
 Infer appropriate labels based on affected files:
 
 ### Area Labels
-- `apis/dev/planton/provider/**` → `area/deployment-component`, `area/<provider>`
+- `catalog/**` → `area/deployment-component`, `area/<provider>`
 - `cmd/planton/**` → `area/cli`
 - `pkg/**` → `area/pkg`, `area/<package-name>`
 - `internal/**` → `area/cli`, `area/internal`
-- `apis/**` (general) → `area/apis`
+- `shared/**`, `qa/**`, `iac/**` (proto surfaces) → `area/apis`
 - `tools/**` → `area/tooling`
 - `_rules/deployment-component/forge/**` → `area/forge`
 - `site/**` → `area/site`

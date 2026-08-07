@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbatchjobqueue.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awsbatchjobqueue/v1alpha1/spec.proto";
+import "catalog/aws/awsbatchjobqueue/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AwsBatchJobQueue is the API envelope for an AWS Batch job queue -- the
+// submission target that routes jobs onto one or more compute environments
+// in preference order.
+message AwsBatchJobQueue {
+  // api-version must be set to "aws.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
+
+  // resource-kind for this resource, must be "AwsBatchJobQueue".
+  string kind = 2 [(buf.validate.field).string.const = "AwsBatchJobQueue"];
+
+  // metadata captures identifying information (name, org, environment,
+  // labels) and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the desired configuration of the job queue.
+  AwsBatchJobQueueSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds post-deployment information.
+  AwsBatchJobQueueStatus status = 5;
+}
+
+// AwsBatchJobQueueStatus describes the status of an AWS Batch job queue.
+message AwsBatchJobQueueStatus {
+  // outputs captures the observable values returned by Pulumi/Terraform
+  // after provisioning.
+  AwsBatchJobQueueStackOutputs outputs = 1;
+}

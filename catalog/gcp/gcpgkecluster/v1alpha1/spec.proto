@@ -1,0 +1,1072 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpgkecluster.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpGkeClusterSpec defines a GKE cluster (`google_container_cluster`) — the
+// Kubernetes control plane plus cluster-wide configuration.
+//
+// One GcpGkeCluster resource is one cluster. Node pools are separate
+// composable resources — GcpGkeNodePool — referencing this cluster by its
+// name output; the cluster's default node pool is always removed at create
+// time so every node pool is an explicitly managed, first-class node.
+// In Autopilot mode (enable_autopilot) GKE manages nodes entirely and no
+// GcpGkeNodePool resources are attached.
+//
+// Clusters are always VPC-native (alias-IP): pods and services draw from
+// secondary ranges on the referenced subnetwork — either ranges you name in
+// ip_allocation, or ranges GKE creates and manages when none are named.
+// Legacy routes-based networking is deliberately not modeled.
+message GcpGkeClusterSpec {
+  option (buf.validate.message).cel = {
+    id: "autopilot_conflicts_cluster_autoscaling"
+    message: "cluster_autoscaling (node auto-provisioning) cannot be configured on an Autopilot cluster — Autopilot manages node provisioning itself"
+    expression: "!this.enable_autopilot || !has(this.cluster_autoscaling)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "autopilot_conflicts_max_pods"
+    message: "default_max_pods_per_node cannot be set on an Autopilot cluster — Autopilot manages pod density itself"
+    expression: "!this.enable_autopilot || !has(this.default_max_pods_per_node)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "autopilot_conflicts_intranode_visibility"
+    message: "enable_intranode_visibility cannot be set on an Autopilot cluster — Autopilot controls dataplane telemetry itself"
+    expression: "!this.enable_autopilot || !this.enable_intranode_visibility"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "autopilot_conflicts_network_policy"
+    message: "enable_network_policy (Calico) cannot be set on an Autopilot cluster — Autopilot enforces NetworkPolicy through Dataplane V2 natively"
+    expression: "!this.enable_autopilot || !this.enable_network_policy"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "autopilot_conflicts_shielded_nodes"
+    message: "enable_shielded_nodes must be left unset on an Autopilot cluster — Autopilot nodes are always shielded"
+    expression: "!this.enable_autopilot || !has(this.enable_shielded_nodes)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "autopilot_conflicts_addons"
+    message: "dns_cache and stateful_ha addons cannot be enabled on an Autopilot cluster — Autopilot manages the addon set itself"
+    expression: "!this.enable_autopilot || !has(this.addons) || (!this.addons.dns_cache_enabled && !this.addons.stateful_ha_enabled)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "net_admin_requires_autopilot"
+    message: "allow_net_admin applies to Autopilot clusters only — Standard clusters always permit NET_ADMIN"
+    expression: "!this.allow_net_admin || this.enable_autopilot"
+  };
+
+  // The GCP project in which to create this cluster.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Example: "my-prod-project-123"
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Name of the GKE cluster in GCP. Immutable. If not specified, defaults to
+  // metadata.name. Must be 1-40 characters: lowercase letters, digits, and
+  // hyphens; starting with a letter and ending with a letter or digit.
+  // Example: "prod-primary"
+  string cluster_name = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[a-z]([a-z0-9-]{0,38}[a-z0-9])?$"
+  ];
+
+  // Location of the cluster's control plane. Immutable. A region
+  // ("us-central1") creates a REGIONAL cluster — control-plane replicas in
+  // three zones, higher availability, and node_locations defaulting to all
+  // zones in the region. A zone ("us-central1-a") creates a ZONAL cluster —
+  // a single control-plane instance, cheaper, with a brief control-plane
+  // outage during upgrades. Production clusters should be regional.
+  string location = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z]+-[a-z]+[0-9]+(-[a-z])?$"
+  ];
+
+  // Human-readable description of the cluster. Immutable.
+  string description = 4;
+
+  // The VPC network the cluster lives in. Accepts a network self link or a
+  // reference to a GcpVpcNetwork resource. Immutable. An explicit network is
+  // deliberately required — clusters on the legacy auto-created "default"
+  // network do not compose into reviewable infrastructure.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
+  ];
+
+  // The subnetwork nodes are attached to. Accepts a subnetwork self link or
+  // a reference to a GcpSubnetwork resource. Immutable. Must be in the same
+  // region as the cluster location. Pod and service ranges come from this
+  // subnetwork's secondary ranges (see ip_allocation).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork = 6 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+
+  // Zones in which nodes (not the control plane) run, e.g.
+  // ["us-central1-a", "us-central1-b"]. For a regional cluster this narrows
+  // node placement from all zones in the region; for a zonal cluster it adds
+  // node zones beyond the control-plane zone (multi-zonal). Mutable.
+  repeated string node_locations = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {pattern: "^[a-z]+-[a-z]+[0-9]+-[a-z]$"}
+      }
+    }
+  ];
+
+  // GCE resource labels applied to the cluster (merged with the standard
+  // platform labels). Mutable. These are cloud-billing/inventory labels, not
+  // Kubernetes object labels.
+  map<string, string> resource_labels = 8;
+
+  // Engine-side delete guard: while true (the default, matching GCP), both
+  // IaC engines refuse to destroy the cluster — the plan/preview fails until
+  // this is set to false. A cluster deletion destroys every workload on it;
+  // keep this on for anything real.
+  optional bool deletion_protection = 9 [(dev.planton.shared.options.default) = "true"];
+
+  // VPC-native pod/service IP allocation. If omitted, GKE creates and
+  // manages the secondary ranges itself — fine for dev clusters; production
+  // clusters should name planned ranges on the subnetwork for address-space
+  // governance.
+  GcpGkeClusterIpAllocation ip_allocation = 10;
+
+  // The cluster dataplane. ADVANCED_DATAPATH is Dataplane V2 (eBPF/Cilium):
+  // built-in NetworkPolicy enforcement without Calico, dataplane
+  // observability, and FQDN/Cilium policy support — the recommended choice
+  // for new clusters. LEGACY_DATAPATH is kube-proxy/iptables. Immutable.
+  string datapath_provider = 11 [(buf.validate.field).cel = {
+    id: "datapath_provider_valid"
+    message: "datapath_provider must be empty, LEGACY_DATAPATH, or ADVANCED_DATAPATH"
+    expression: "this == '' || this in ['LEGACY_DATAPATH', 'ADVANCED_DATAPATH']"
+  }];
+
+  // Default maximum pods per node for the cluster (8-256, default 110).
+  // Lower values shrink the per-node pod CIDR slice and stretch the pod
+  // range across more nodes. Immutable; node pools can override it.
+  optional int32 default_max_pods_per_node = 12 [(buf.validate.field).int32 = {
+    gte: 8
+    lte: 256
+  }];
+
+  // Mirrors pod-to-pod traffic on the same node to the VPC dataplane, making
+  // it visible to VPC flow logs and packet mirroring. Mutable.
+  bool enable_intranode_visibility = 13;
+
+  // GKE subsetting for internal L4 load balancers: backends become a subset
+  // of nodes instead of all nodes, lifting the 250-node ILB ceiling for
+  // large clusters. Enabling is one-way — it cannot be turned off without
+  // recreating the cluster.
+  bool enable_l4_ilb_subsetting = 14;
+
+  // Allows FQDN (domain-name based) NetworkPolicy rules. Requires Dataplane
+  // V2 (datapath_provider ADVANCED_DATAPATH). Mutable.
+  bool enable_fqdn_network_policy = 15;
+
+  // Allows CiliumClusterwideNetworkPolicy objects (cluster-scoped L3/L4
+  // policy). Requires Dataplane V2. Mutable.
+  bool enable_cilium_clusterwide_network_policy = 16;
+
+  // Enables multi-networking: pods can attach to additional node network
+  // interfaces (Network/GKENetworkParamSet objects). Immutable; requires
+  // Dataplane V2.
+  bool enable_multi_networking = 17;
+
+  // Outbound-only private IPv6 access from nodes/pods to Google services
+  // (PRIVATE_IPV6_GOOGLE_ACCESS_TO_GOOGLE) or bidirectional
+  // (PRIVATE_IPV6_GOOGLE_ACCESS_BIDIRECTIONAL); DISABLED turns it off.
+  string private_ipv6_google_access = 18 [(buf.validate.field).cel = {
+    id: "private_ipv6_google_access_valid"
+    message: "private_ipv6_google_access must be empty, PRIVATE_IPV6_GOOGLE_ACCESS_DISABLED, PRIVATE_IPV6_GOOGLE_ACCESS_TO_GOOGLE, or PRIVATE_IPV6_GOOGLE_ACCESS_BIDIRECTIONAL"
+    expression: "this == '' || this in ['PRIVATE_IPV6_GOOGLE_ACCESS_DISABLED', 'PRIVATE_IPV6_GOOGLE_ACCESS_TO_GOOGLE', 'PRIVATE_IPV6_GOOGLE_ACCESS_BIDIRECTIONAL']"
+  }];
+
+  // Encrypts inter-node pod traffic transparently (Dataplane V2 only):
+  // INTER_NODE_TRANSPARENT encrypts, IN_TRANSIT_ENCRYPTION_DISABLED does
+  // not. Zero application changes; small latency cost.
+  string in_transit_encryption = 19 [(buf.validate.field).cel = {
+    id: "in_transit_encryption_valid"
+    message: "in_transit_encryption must be empty, IN_TRANSIT_ENCRYPTION_DISABLED, or IN_TRANSIT_ENCRYPTION_INTER_NODE_TRANSPARENT"
+    expression: "this == '' || this in ['IN_TRANSIT_ENCRYPTION_DISABLED', 'IN_TRANSIT_ENCRYPTION_INTER_NODE_TRANSPARENT']"
+  }];
+
+  // Disables the default source NAT for pod IPs leaving the cluster —
+  // required for some routable-pod (non-masquerade) network designs where
+  // pod IPs must be preserved end to end. Mutable.
+  bool disable_default_snat = 20;
+
+  // Enables Kubernetes NetworkPolicy enforcement via Calico (the legacy
+  // enforcement path, paired with the network-policy addon). On Dataplane V2
+  // clusters leave this off — NetworkPolicy is enforced natively. Mutable.
+  bool enable_network_policy = 21;
+
+  // Cluster DNS provider configuration (Cloud DNS instead of kube-dns).
+  // If omitted, GKE uses its platform default.
+  GcpGkeClusterDnsConfig dns_config = 22;
+
+  // Gateway API support: CHANNEL_STANDARD installs the Gateway API CRDs and
+  // the GKE Gateway controller (the successor to Ingress);
+  // CHANNEL_DISABLED turns it off. Mutable.
+  string gateway_api_channel = 23 [(buf.validate.field).cel = {
+    id: "gateway_api_channel_valid"
+    message: "gateway_api_channel must be empty, CHANNEL_DISABLED, or CHANNEL_STANDARD"
+    expression: "this == '' || this in ['CHANNEL_DISABLED', 'CHANNEL_STANDARD']"
+  }];
+
+  // Allows Services of type LoadBalancer/ClusterIP to use external IPs.
+  // Off by default as a security posture (CVE-2020-8554 mitigation) —
+  // enable only if a workload genuinely needs external IPs on Services.
+  bool enable_service_external_ips = 24;
+
+  // Total egress bandwidth tier for node network performance. TIER_1
+  // unlocks up to 100 Gbps on supported machine families (N2/N2D/C2/C3...);
+  // requires gVNIC on the node pools that use it.
+  string total_egress_bandwidth_tier = 25 [(buf.validate.field).cel = {
+    id: "egress_bandwidth_tier_valid"
+    message: "total_egress_bandwidth_tier must be empty, TIER_UNSPECIFIED, or TIER_1"
+    expression: "this == '' || this in ['TIER_UNSPECIFIED', 'TIER_1']"
+  }];
+
+  // Stops GKE from reconciling the VPC firewall rules it creates for L4
+  // load balancers — for environments where firewall rules are governed
+  // externally and GKE's reconciliation fights the desired state.
+  bool disable_l4_lb_firewall_reconciliation = 26;
+
+  // Private-cluster topology: private nodes (no public node IPs) and/or a
+  // private-only control-plane endpoint. If omitted, nodes get public IPs
+  // and the control plane has a public endpoint — fine for sandboxes, not
+  // for production.
+  GcpGkeClusterPrivateCluster private_cluster = 27;
+
+  // CIDR allowlist for control-plane API access. Without it, the public
+  // endpoint (when enabled) accepts connections from any IP that presents
+  // valid credentials.
+  GcpGkeClusterMasterAuthorizedNetworks master_authorized_networks = 28;
+
+  // Control-plane endpoint surface: the DNS endpoint (a Google-managed
+  // *.gke.goog name reachable without VPC peering — the modern access path)
+  // and the IP endpoints toggle.
+  GcpGkeClusterControlPlaneEndpoints control_plane_endpoints = 29;
+
+  // Kubernetes release channel for automatic upgrades. REGULAR (default)
+  // balances freshness and stability; RAPID gets new minors first; STABLE
+  // lags for maximum soak; EXTENDED keeps a minor supported longer for slow
+  // movers; NONE opts out of channel-based auto-upgrade (you own version
+  // management via min_master_version).
+  optional GkeReleaseChannel release_channel = 30 [(dev.planton.shared.options.default) = "REGULAR"];
+
+  // Minimum Kubernetes version for the control plane, e.g. "1.31" or
+  // "1.31.4-gke.1256000". GKE may run a newer patch. Use with release
+  // channel NONE for pinned-version clusters; on a channel, prefer letting
+  // the channel drive versions.
+  string min_master_version = 31;
+
+  // Maintenance windows and exclusions controlling WHEN GKE may perform
+  // automatic control-plane and node maintenance.
+  GcpGkeClusterMaintenancePolicy maintenance_policy = 32;
+
+  // Node auto-provisioning (NAP): GKE creates and deletes node pools
+  // automatically within the resource limits you set — the cluster-level
+  // autoscaler above individual node-pool autoscaling.
+  GcpGkeClusterAutoscaling cluster_autoscaling = 33;
+
+  // Enables Vertical Pod Autoscaling: recommends (and can apply) per-pod
+  // CPU/memory requests based on observed usage. Mutable.
+  bool enable_vertical_pod_autoscaling = 34;
+
+  // Horizontal Pod Autoscaler profile. PERFORMANCE makes HPA react faster
+  // (higher-resolution metrics pipeline); NONE is the classic behavior.
+  string hpa_profile = 35 [(buf.validate.field).cel = {
+    id: "hpa_profile_valid"
+    message: "hpa_profile must be empty, NONE, or PERFORMANCE"
+    expression: "this == '' || this in ['NONE', 'PERFORMANCE']"
+  }];
+
+  // Workload Identity Federation for GKE: pods authenticate to GCP APIs as
+  // IAM service accounts via the cluster's workload pool
+  // (PROJECT_ID.svc.id.goog) — no exported service-account keys. Enabled by
+  // default; disabling it forces workloads back to node service-account
+  // scopes or key files, which is almost never the right call.
+  optional bool workload_identity_enabled = 36 [(dev.planton.shared.options.default) = "true"];
+
+  // Shielded GKE nodes: secure boot + integrity monitoring on node VMs,
+  // verifying node provenance cryptographically. GCP's default (true);
+  // leave unset on Autopilot clusters (always shielded).
+  optional bool enable_shielded_nodes = 37;
+
+  // Envelope encryption of Kubernetes secrets at the application layer with
+  // a Cloud KMS key (CMEK for etcd secrets).
+  GcpGkeClusterDatabaseEncryption database_encryption = 38;
+
+  // Binary Authorization: PROJECT_SINGLETON_POLICY_ENFORCE admits only
+  // container images that satisfy the project's Binary Authorization policy
+  // (signature/attestation-based supply-chain control); DISABLED turns
+  // enforcement off.
+  string binary_authorization_evaluation_mode = 39 [(buf.validate.field).cel = {
+    id: "binary_authorization_valid"
+    message: "binary_authorization_evaluation_mode must be empty, DISABLED, or PROJECT_SINGLETON_POLICY_ENFORCE"
+    expression: "this == '' || this in ['DISABLED', 'PROJECT_SINGLETON_POLICY_ENFORCE']"
+  }];
+
+  // GKE Security Posture dashboard: workload configuration auditing and
+  // vulnerability scanning surfaced in the console.
+  GcpGkeClusterSecurityPosture security_posture = 40;
+
+  // Google Group for RBAC: members of this group (and its subgroups) can be
+  // referenced in RBAC bindings. Must be named gke-security-groups@YOURDOMAIN.
+  string authenticator_security_group = 41;
+
+  // Legacy Attribute-Based Access Control. Leave off: ABAC predates RBAC
+  // and grants coarse permissions that defeat modern authorization. Exists
+  // only for very old workloads being migrated.
+  bool enable_legacy_abac = 42;
+
+  // Issues workload mTLS certificates via the mesh CA (used by Anthos
+  // Service Mesh / managed Istio). Requires Workload Identity.
+  bool enable_mesh_certificates = 43;
+
+  // Built-in Secret Manager add-on: mounts Secret Manager secrets into pods
+  // via the CSI driver without third-party operators.
+  bool enable_secret_manager_csi = 44;
+
+  // Confidential GKE nodes: node VMs run with hardware memory encryption
+  // (AMD SEV / SEV-SNP or Intel TDX). Immutable; restricts machine families.
+  GcpGkeClusterConfidentialNodes confidential_nodes = 45;
+
+  // Anonymous Kubernetes API authentication posture. LIMITED restricts the
+  // anonymous user to the health-check endpoints only (the hardened
+  // default on new versions); ENABLED preserves full legacy anonymous
+  // access subject to RBAC.
+  string anonymous_authentication_mode = 46 [(buf.validate.field).cel = {
+    id: "anonymous_authentication_mode_valid"
+    message: "anonymous_authentication_mode must be empty, ENABLED, or LIMITED"
+    expression: "this == '' || this in ['ENABLED', 'LIMITED']"
+  }];
+
+  // GKE Identity Service: authenticate to the Kubernetes API with external
+  // OIDC identity providers (beyond Google accounts).
+  bool enable_identity_service = 47;
+
+  // Which cluster components ship logs to Cloud Logging. If omitted, GKE's
+  // default (system components + workloads) applies.
+  GcpGkeClusterLogging logging = 48;
+
+  // Which cluster components ship metrics to Cloud Monitoring, plus managed
+  // Prometheus. If omitted, GKE's defaults apply (system metrics + managed
+  // Prometheus on current versions).
+  GcpGkeClusterMonitoring monitoring = 49;
+
+  // Cluster lifecycle notifications (upgrades, security bulletins)
+  // published to a Pub/Sub topic — the hook for upgrade automation and
+  // fleet dashboards.
+  GcpGkeClusterNotificationPubSub notification_pubsub = 50;
+
+  // Cost allocation: exports per-namespace/per-label resource usage into
+  // the billing export, so cluster cost can be attributed to teams.
+  bool enable_cost_management = 51;
+
+  // Continuous resource-usage metering into a BigQuery dataset (network
+  // egress and resource consumption records).
+  GcpGkeClusterResourceUsageExport resource_usage_export = 52;
+
+  // Cluster addons. If omitted, GKE defaults apply: HTTP load balancing,
+  // horizontal pod autoscaling, and the PD CSI driver enabled; everything
+  // else disabled.
+  GcpGkeClusterAddons addons = 53;
+
+  // Creates an Autopilot cluster: GKE provisions and manages nodes, bills
+  // per pod, and enforces a hardened posture. Immutable. Autopilot clusters
+  // take no GcpGkeNodePool resources and reject the node-management fields
+  // guarded by validation rules above.
+  bool enable_autopilot = 54;
+
+  // Autopilot only: permit workloads with NET_ADMIN capability (needed by
+  // some networking agents/service meshes on Autopilot).
+  bool allow_net_admin = 55;
+
+  // Registers the cluster with a fleet in the given project (the hub for
+  // multi-cluster features: multi-cluster ingress/services, config
+  // management, team scopes).
+  string fleet_project = 56;
+}
+
+// GcpGkeClusterIpAllocation controls VPC-native pod/service IP assignment.
+// Name existing secondary ranges OR give CIDR blocks for GKE to create
+// ranges — never both forms for the same range.
+message GcpGkeClusterIpAllocation {
+  option (buf.validate.message).cel = {
+    id: "cluster_range_name_xor_cidr"
+    message: "set either cluster_secondary_range_name (use an existing subnetwork range) or cluster_ipv4_cidr_block (GKE creates the range) — not both"
+    expression: "!(has(this.cluster_secondary_range_name) && this.cluster_ipv4_cidr_block != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "services_range_name_xor_cidr"
+    message: "set either services_secondary_range_name (use an existing subnetwork range) or services_ipv4_cidr_block (GKE creates the range) — not both"
+    expression: "!(has(this.services_secondary_range_name) && this.services_ipv4_cidr_block != '')"
+  };
+
+  // Name of an existing secondary range on the subnetwork for POD IPs.
+  // Accepts a literal range name or a reference to a GcpSubnetwork
+  // resource's secondary ranges. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_secondary_range_name = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secondary_ranges.[*].range_name"
+  ];
+
+  // Name of an existing secondary range on the subnetwork for SERVICE
+  // (ClusterIP) IPs. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef services_secondary_range_name = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secondary_ranges.[*].range_name"
+  ];
+
+  // CIDR block for a GKE-created pod range (e.g. "10.4.0.0/14"), or a
+  // netmask size (e.g. "/14") to let GKE pick the space. Immutable.
+  string cluster_ipv4_cidr_block = 3;
+
+  // CIDR block for a GKE-created services range (e.g. "10.8.0.0/20"), or a
+  // netmask size. Immutable.
+  string services_ipv4_cidr_block = 4;
+
+  // IP stack of the cluster: IPV4 (default) or IPV4_IPV6 (dual-stack;
+  // requires a dual-stack subnetwork). Immutable.
+  optional string stack_type = 5 [
+    (dev.planton.shared.options.default) = "IPV4",
+    (buf.validate.field).cel = {
+      id: "stack_type_valid"
+      message: "stack_type must be IPV4 or IPV4_IPV6"
+      expression: "this in ['IPV4', 'IPV4_IPV6']"
+    }
+  ];
+
+  // Names of ADDITIONAL existing secondary ranges node pools may use for
+  // pod IPs — the mechanism for growing pod address space after creation
+  // (added ranges are mutable; the primary pod range is not).
+  repeated string additional_pod_range_names = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {min_len: 1}
+      }
+    }
+  ];
+
+  // Disables the 2x pod-CIDR overprovisioning GKE applies per node by
+  // default — doubles node density per pod range at the cost of headroom
+  // for pod churn. Immutable.
+  bool pod_cidr_overprovision_disabled = 7;
+}
+
+// GcpGkeClusterDnsConfig selects and scopes the cluster DNS provider.
+message GcpGkeClusterDnsConfig {
+  option (buf.validate.message).cel = {
+    id: "additive_vpc_scope_requires_cloud_dns"
+    message: "additive_vpc_scope_dns_domain requires cluster_dns CLOUD_DNS"
+    expression: "this.additive_vpc_scope_dns_domain == '' || this.cluster_dns == 'CLOUD_DNS'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "dns_scope_requires_cloud_dns"
+    message: "cluster_dns_scope applies to Cloud DNS — set cluster_dns to CLOUD_DNS"
+    expression: "this.cluster_dns_scope == '' || this.cluster_dns == 'CLOUD_DNS'"
+  };
+
+  // In-cluster DNS provider: CLOUD_DNS (managed, no kube-dns pods to scale)
+  // or PLATFORM_DEFAULT (kube-dns).
+  string cluster_dns = 1 [(buf.validate.field).cel = {
+    id: "cluster_dns_valid"
+    message: "cluster_dns must be empty, PROVIDER_UNSPECIFIED, PLATFORM_DEFAULT, or CLOUD_DNS"
+    expression: "this == '' || this in ['PROVIDER_UNSPECIFIED', 'PLATFORM_DEFAULT', 'CLOUD_DNS']"
+  }];
+
+  // Cloud DNS scope: CLUSTER_SCOPE (records visible in-cluster only) or
+  // VPC_SCOPE (cluster DNS records resolvable across the whole VPC —
+  // enables VMs to resolve headless services etc.).
+  string cluster_dns_scope = 2 [(buf.validate.field).cel = {
+    id: "cluster_dns_scope_valid"
+    message: "cluster_dns_scope must be empty, DNS_SCOPE_UNSPECIFIED, CLUSTER_SCOPE, or VPC_SCOPE"
+    expression: "this == '' || this in ['DNS_SCOPE_UNSPECIFIED', 'CLUSTER_SCOPE', 'VPC_SCOPE']"
+  }];
+
+  // Custom cluster DNS suffix (default "cluster.local").
+  string cluster_dns_domain = 3;
+
+  // With CLUSTER_SCOPE Cloud DNS, ALSO publishes services under this domain
+  // VPC-wide — cluster-scoped DNS plus selective VPC visibility.
+  string additive_vpc_scope_dns_domain = 4;
+}
+
+// GcpGkeClusterPrivateCluster configures private nodes and the private
+// control-plane endpoint.
+message GcpGkeClusterPrivateCluster {
+  option (buf.validate.message).cel = {
+    id: "private_endpoint_requires_private_nodes"
+    message: "enable_private_endpoint requires enable_private_nodes — a public-node cluster cannot have a private-only control plane"
+    expression: "!this.enable_private_endpoint || this.enable_private_nodes"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "master_cidr_xor_endpoint_subnetwork"
+    message: "set either master_ipv4_cidr_block (peering-based control-plane range) or private_endpoint_subnetwork (PSC-based endpoint placement) — not both"
+    expression: "!(this.master_ipv4_cidr_block != '' && has(this.private_endpoint_subnetwork))"
+  };
+
+  // Nodes get only internal IPs. Outbound internet (image pulls from
+  // non-Google registries, external APIs) then requires Cloud NAT on the
+  // network — compose a GcpRouterNat.
+  bool enable_private_nodes = 1;
+
+  // Removes the control plane's PUBLIC endpoint entirely: kubectl works
+  // only from inside the VPC (or via the DNS endpoint / authorized
+  // networks' private enforcement). The strictest posture; requires
+  // enable_private_nodes.
+  bool enable_private_endpoint = 2;
+
+  // RFC1918 /28 block for the control plane on peering-based private
+  // clusters, e.g. "172.16.0.16/28". Must not overlap any range in the VPC.
+  // Immutable. Newer PSC-based clusters don't need it.
+  string master_ipv4_cidr_block = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^\\d+\\.\\d+\\.\\d+\\.\\d+/28$"
+  ];
+
+  // Subnetwork in which the control plane's private endpoint is placed
+  // (PSC-based private clusters). Accepts a self link or a GcpSubnetwork
+  // reference. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef private_endpoint_subnetwork = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+
+  // Makes the private control-plane endpoint reachable from other GCP
+  // regions and on-prem over interconnect/VPN (not just the cluster's
+  // region).
+  bool enable_master_global_access = 5;
+}
+
+// GcpGkeClusterMasterAuthorizedNetworks allowlists CIDRs for control-plane
+// API access.
+message GcpGkeClusterMasterAuthorizedNetworks {
+  // CIDR ranges allowed to reach the control-plane endpoint(s). An empty
+  // list with the block present means "no external networks authorized".
+  repeated GcpGkeClusterMasterAuthorizedNetworkCidr cidr_blocks = 1;
+
+  // Whether Google Cloud public IPs (e.g. Cloud Shell, Cloud Build default
+  // pools) may reach the control plane.
+  optional bool gcp_public_cidrs_access_enabled = 2;
+
+  // Enforces the allowlist on the PRIVATE endpoint too (by default only the
+  // public endpoint is filtered).
+  optional bool private_endpoint_enforcement_enabled = 3;
+}
+
+// GcpGkeClusterMasterAuthorizedNetworkCidr is one allowlisted CIDR.
+message GcpGkeClusterMasterAuthorizedNetworkCidr {
+  // The CIDR range, e.g. "203.0.113.0/24".
+  string cidr_block = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {pattern: "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$"}
+  ];
+
+  // Display label for this entry in the console.
+  string display_name = 2;
+}
+
+// GcpGkeClusterControlPlaneEndpoints configures how the control plane is
+// addressed.
+message GcpGkeClusterControlPlaneEndpoints {
+  // Allows the Google-managed DNS endpoint (*.gke.goog) to accept traffic
+  // from outside the cluster's VPC — IAM-authenticated access without
+  // peering, bastions, or public IPs. The modern alternative to juggling
+  // authorized networks.
+  bool dns_endpoint_allow_external_traffic = 1;
+
+  // Whether IP-based endpoints (the classic public/private IPs) are served
+  // at all. Set false for DNS-endpoint-only clusters — the strongest
+  // endpoint posture.
+  optional bool ip_endpoints_enabled = 2 [(dev.planton.shared.options.default) = "true"];
+}
+
+// GcpGkeClusterMaintenancePolicy controls when GKE may perform automatic
+// maintenance.
+message GcpGkeClusterMaintenancePolicy {
+  option (buf.validate.message).cel = {
+    id: "exactly_one_window"
+    message: "set exactly one of daily_window or recurring_window"
+    expression: "has(this.daily_window) != has(this.recurring_window)"
+  };
+
+  // Same 4-hour window every day, starting at this UTC time.
+  GcpGkeClusterDailyMaintenanceWindow daily_window = 1;
+
+  // RRULE-based recurring window (e.g. weekends only) — finer control than
+  // the daily window.
+  GcpGkeClusterRecurringMaintenanceWindow recurring_window = 2;
+
+  // Date ranges during which non-emergency maintenance is blocked (change
+  // freezes). Maximum 20; the allowed scope/duration depends on the release
+  // channel.
+  repeated GcpGkeClusterMaintenanceExclusion exclusions = 3 [(buf.validate.field).repeated.max_items = 20];
+}
+
+// GcpGkeClusterDailyMaintenanceWindow is a fixed daily window.
+message GcpGkeClusterDailyMaintenanceWindow {
+  // Start of the daily 4-hour window, "HH:MM" (UTC), e.g. "03:00".
+  string start_time = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {pattern: "^([0-1][0-9]|2[0-3]):[0-5][0-9]$"}
+  ];
+}
+
+// GcpGkeClusterRecurringMaintenanceWindow is an RFC5545-recurrence window.
+message GcpGkeClusterRecurringMaintenanceWindow {
+  // Window start, RFC3339, e.g. "2026-01-01T02:00:00Z".
+  string start_time = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Window end (defines the window LENGTH; recurrence drives repetition),
+  // RFC3339.
+  string end_time = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // RFC5545 RRULE, e.g. "FREQ=WEEKLY;BYDAY=SA,SU" for weekends.
+  string recurrence = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+}
+
+// GcpGkeClusterMaintenanceExclusion blocks maintenance during a date range.
+message GcpGkeClusterMaintenanceExclusion {
+  // Name of the exclusion, e.g. "year-end-freeze".
+  string exclusion_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Exclusion start, RFC3339.
+  string start_time = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Exclusion end, RFC3339.
+  string end_time = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // What the exclusion blocks: NO_UPGRADES (everything),
+  // NO_MINOR_UPGRADES, or NO_MINOR_OR_NODE_UPGRADES. Empty means
+  // NO_UPGRADES.
+  string scope = 4 [(buf.validate.field).cel = {
+    id: "exclusion_scope_valid"
+    message: "scope must be empty, NO_UPGRADES, NO_MINOR_UPGRADES, or NO_MINOR_OR_NODE_UPGRADES"
+    expression: "this == '' || this in ['NO_UPGRADES', 'NO_MINOR_UPGRADES', 'NO_MINOR_OR_NODE_UPGRADES']"
+  }];
+}
+
+// GcpGkeClusterAutoscaling configures node auto-provisioning (NAP): GKE
+// creates/deletes node pools automatically within these limits.
+message GcpGkeClusterAutoscaling {
+  option (buf.validate.message).cel = {
+    id: "nap_requires_resource_limits"
+    message: "node auto-provisioning requires resource_limits — set at least cpu and memory maximums so provisioning is bounded"
+    expression: "!this.enabled || size(this.resource_limits) > 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "limits_require_enabled"
+    message: "resource_limits apply only when enabled is true"
+    expression: "this.enabled || size(this.resource_limits) == 0"
+  };
+
+  // Whether node auto-provisioning is on.
+  bool enabled = 1;
+
+  // Cluster-wide bounds per resource type ("cpu", "memory", or an
+  // accelerator like "nvidia-tesla-t4"). NAP never provisions beyond the
+  // maximums — the cost brake.
+  repeated GcpGkeClusterAutoscalingResourceLimit resource_limits = 2;
+
+  // BALANCED (default) or OPTIMIZE_UTILIZATION (scales down harder and
+  // faster — denser packing, more pod churn).
+  optional string autoscaling_profile = 3 [
+    (dev.planton.shared.options.default) = "BALANCED",
+    (buf.validate.field).cel = {
+      id: "autoscaling_profile_valid"
+      message: "autoscaling_profile must be BALANCED or OPTIMIZE_UTILIZATION"
+      expression: "this in ['BALANCED', 'OPTIMIZE_UTILIZATION']"
+    }
+  ];
+
+  // Zones in which NAP may create node pools (defaults to the cluster's
+  // node zones).
+  repeated string auto_provisioning_locations = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {pattern: "^[a-z]+-[a-z]+[0-9]+-[a-z]$"}
+      }
+    }
+  ];
+
+  // Defaults applied to every node pool NAP creates (identity, disks,
+  // image, shielding, auto-repair/upgrade).
+  GcpGkeClusterAutoProvisioningDefaults auto_provisioning_defaults = 5;
+}
+
+// GcpGkeClusterAutoscalingResourceLimit bounds one resource type for NAP.
+message GcpGkeClusterAutoscalingResourceLimit {
+  // "cpu", "memory", or an accelerator type such as "nvidia-tesla-t4".
+  string resource_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Minimum amount kept provisioned (0 = none).
+  int64 minimum = 2 [(buf.validate.field).int64.gte = 0];
+
+  // Maximum amount NAP may provision. Required — an unbounded NAP is an
+  // unbounded bill.
+  int64 maximum = 3 [(buf.validate.field).int64.gte = 1];
+}
+
+// GcpGkeClusterAutoProvisioningDefaults sets the template NAP-created node
+// pools start from.
+message GcpGkeClusterAutoProvisioningDefaults {
+  // IAM service account NAP-created nodes run as. Accepts an email or a
+  // reference to a GcpServiceAccount resource. Defaults to the Compute
+  // Engine default SA — create a minimal dedicated SA for production.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+
+  // OAuth scopes on NAP-created nodes. With Workload Identity, the
+  // cloud-platform scope is the norm (IAM governs actual access).
+  repeated string oauth_scopes = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {min_len: 1}
+      }
+    }
+  ];
+
+  // Boot disk size in GB for NAP-created nodes (default 100).
+  optional int32 disk_size_gb = 3 [(buf.validate.field).int32 = {
+    gte: 10
+    lte: 65536
+  }];
+
+  // Boot disk type: pd-standard (default), pd-balanced, or pd-ssd.
+  string disk_type = 4 [(buf.validate.field).cel = {
+    id: "nap_disk_type_valid"
+    message: "disk_type must be empty, pd-standard, pd-balanced, or pd-ssd"
+    expression: "this == '' || this in ['pd-standard', 'pd-balanced', 'pd-ssd']"
+  }];
+
+  // Node image, e.g. "COS_CONTAINERD" (default) or "UBUNTU_CONTAINERD".
+  string image_type = 5;
+
+  // Minimum CPU platform, e.g. "Intel Ice Lake".
+  string min_cpu_platform = 6;
+
+  // Customer-managed key encrypting NAP-created node boot disks. Accepts a
+  // full crypto key path or a reference to a GcpKmsKey resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef boot_disk_kms_key = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Shielded-VM secure boot on NAP-created nodes (GCP default false).
+  bool enable_secure_boot = 8;
+
+  // Shielded-VM integrity monitoring on NAP-created nodes (GCP default
+  // true).
+  optional bool enable_integrity_monitoring = 9 [(dev.planton.shared.options.default) = "true"];
+
+  // Automatic node upgrades on NAP-created pools (GCP default true;
+  // required on a release channel).
+  optional bool auto_upgrade = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // Automatic node repair on NAP-created pools (GCP default true).
+  optional bool auto_repair = 11 [(dev.planton.shared.options.default) = "true"];
+}
+
+// GcpGkeClusterDatabaseEncryption is CMEK envelope encryption for Kubernetes
+// secrets in etcd.
+message GcpGkeClusterDatabaseEncryption {
+  option (buf.validate.message).cel = {
+    id: "encrypted_requires_key"
+    message: "state ENCRYPTED requires key_name — the Cloud KMS key that wraps Kubernetes secrets"
+    expression: "this.state != 'ENCRYPTED' || (has(this.key_name) && (has(this.key_name.value) || has(this.key_name.value_from)))"
+  };
+
+  // ENCRYPTED (secrets wrapped with key_name) or DECRYPTED.
+  string state = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "encryption_state_valid"
+      message: "state must be ENCRYPTED or DECRYPTED"
+      expression: "this in ['ENCRYPTED', 'DECRYPTED']"
+    }
+  ];
+
+  // The Cloud KMS crypto key (full path) used for envelope encryption.
+  // Accepts a literal or a reference to a GcpKmsKey resource. The GKE
+  // service agent needs Encrypter/Decrypter on it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_name = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+}
+
+// GcpGkeClusterSecurityPosture configures the GKE Security Posture
+// dashboard.
+message GcpGkeClusterSecurityPosture {
+  // Workload configuration auditing: DISABLED, BASIC, or ENTERPRISE.
+  string mode = 1 [(buf.validate.field).cel = {
+    id: "posture_mode_valid"
+    message: "mode must be empty, DISABLED, BASIC, or ENTERPRISE"
+    expression: "this == '' || this in ['DISABLED', 'BASIC', 'ENTERPRISE']"
+  }];
+
+  // Workload vulnerability scanning: VULNERABILITY_DISABLED,
+  // VULNERABILITY_BASIC, or VULNERABILITY_ENTERPRISE.
+  string vulnerability_mode = 2 [(buf.validate.field).cel = {
+    id: "vulnerability_mode_valid"
+    message: "vulnerability_mode must be empty, VULNERABILITY_DISABLED, VULNERABILITY_BASIC, or VULNERABILITY_ENTERPRISE"
+    expression: "this == '' || this in ['VULNERABILITY_DISABLED', 'VULNERABILITY_BASIC', 'VULNERABILITY_ENTERPRISE']"
+  }];
+}
+
+// GcpGkeClusterConfidentialNodes runs node VMs with hardware memory
+// encryption.
+message GcpGkeClusterConfidentialNodes {
+  // Whether Confidential GKE Nodes are enabled cluster-wide. Immutable.
+  bool enabled = 1;
+
+  // Confidential computing technology: SEV (default), SEV_SNP, or TDX.
+  // Machine-family support varies by choice.
+  string confidential_instance_type = 2 [(buf.validate.field).cel = {
+    id: "confidential_instance_type_valid"
+    message: "confidential_instance_type must be empty, SEV, SEV_SNP, or TDX"
+    expression: "this == '' || this in ['SEV', 'SEV_SNP', 'TDX']"
+  }];
+}
+
+// GcpGkeClusterLogging selects which components ship logs to Cloud Logging.
+message GcpGkeClusterLogging {
+  // Components exposing logs: SYSTEM_COMPONENTS, WORKLOADS, APISERVER,
+  // CONTROLLER_MANAGER, SCHEDULER, KCP_CONNECTION, KCP_SSHD, KCP_HPA.
+  // An empty list disables Cloud Logging integration entirely.
+  repeated string components = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {
+          in: [
+            "SYSTEM_COMPONENTS",
+            "WORKLOADS",
+            "APISERVER",
+            "CONTROLLER_MANAGER",
+            "SCHEDULER",
+            "KCP_CONNECTION",
+            "KCP_SSHD",
+            "KCP_HPA"
+          ]
+        }
+      }
+    }
+  ];
+}
+
+// GcpGkeClusterMonitoring selects metric sources and managed Prometheus.
+message GcpGkeClusterMonitoring {
+  // Components exposing metrics: SYSTEM_COMPONENTS, APISERVER, SCHEDULER,
+  // CONTROLLER_MANAGER, STORAGE, HPA, POD, DAEMONSET, DEPLOYMENT,
+  // STATEFULSET, KUBELET, CADVISOR, DCGM, JOBSET. An empty list disables
+  // Cloud Monitoring integration.
+  repeated string components = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {
+          in: [
+            "SYSTEM_COMPONENTS",
+            "APISERVER",
+            "SCHEDULER",
+            "CONTROLLER_MANAGER",
+            "STORAGE",
+            "HPA",
+            "POD",
+            "DAEMONSET",
+            "DEPLOYMENT",
+            "STATEFULSET",
+            "KUBELET",
+            "CADVISOR",
+            "DCGM",
+            "JOBSET"
+          ]
+        }
+      }
+    }
+  ];
+
+  // Google Cloud Managed Service for Prometheus: managed collection of
+  // Prometheus metrics (GKE's default on current versions). Disabling it
+  // means running your own Prometheus stack.
+  optional bool managed_prometheus_enabled = 2 [(dev.planton.shared.options.default) = "true"];
+
+  // Managed Prometheus auto-monitoring scope: ALL deploys packaged
+  // PodMonitorings for supported workloads automatically; NONE leaves
+  // monitoring configuration entirely to you.
+  string auto_monitoring_scope = 3 [(buf.validate.field).cel = {
+    id: "auto_monitoring_scope_valid"
+    message: "auto_monitoring_scope must be empty, ALL, or NONE"
+    expression: "this == '' || this in ['ALL', 'NONE']"
+  }];
+
+  // Dataplane V2 observability metrics (per-flow network telemetry).
+  bool advanced_datapath_metrics_enabled = 4;
+
+  // Dataplane V2 observability relay (Hubble-compatible flow export for
+  // in-cluster observability tooling).
+  bool advanced_datapath_relay_enabled = 5;
+}
+
+// GcpGkeClusterNotificationPubSub publishes cluster lifecycle events to
+// Pub/Sub.
+message GcpGkeClusterNotificationPubSub {
+  option (buf.validate.message).cel = {
+    id: "enabled_requires_topic"
+    message: "notification_pubsub.enabled requires topic — the Pub/Sub topic GKE publishes to"
+    expression: "!this.enabled || (has(this.topic) && (has(this.topic.value) || has(this.topic.value_from)))"
+  };
+
+  // Whether notifications are published.
+  bool enabled = 1;
+
+  // The Pub/Sub topic (projects/{project}/topics/{name}). Accepts a literal
+  // or a reference to a GcpPubSubTopic resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef topic = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpPubSubTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_id"
+  ];
+
+  // Restrict to specific event types; empty publishes all. Values:
+  // UPGRADE_EVENT, UPGRADE_AVAILABLE_EVENT, SECURITY_BULLETIN_EVENT,
+  // UPGRADE_INFO_EVENT.
+  repeated string event_types = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {
+          in: [
+            "UPGRADE_EVENT",
+            "UPGRADE_AVAILABLE_EVENT",
+            "SECURITY_BULLETIN_EVENT",
+            "UPGRADE_INFO_EVENT"
+          ]
+        }
+      }
+    }
+  ];
+}
+
+// GcpGkeClusterResourceUsageExport meters cluster resource usage into
+// BigQuery.
+message GcpGkeClusterResourceUsageExport {
+  // The BigQuery dataset receiving usage records. Accepts a dataset ID or a
+  // reference to a GcpBigQueryDataset resource. The dataset must be in the
+  // cluster's project.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bigquery_dataset_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpBigQueryDataset,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.dataset_id"
+  ];
+
+  // Also meter pod network egress (deploys a metering agent per node).
+  bool enable_network_egress_metering = 2;
+
+  // Meter resource requests/consumption (GCP default true).
+  optional bool enable_resource_consumption_metering = 3 [(dev.planton.shared.options.default) = "true"];
+}
+
+// GcpGkeClusterAddons toggles GKE-managed cluster addons. Defaults mirror
+// GKE: HTTP load balancing, horizontal pod autoscaling, and the PD CSI
+// driver on; the rest off.
+message GcpGkeClusterAddons {
+  // The GCE ingress controller backing Kubernetes Ingress/Gateway with
+  // Google Cloud Load Balancers. Disable only when bringing your own
+  // ingress stack end to end.
+  optional bool http_load_balancing_enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  // The Horizontal Pod Autoscaler controller.
+  optional bool horizontal_pod_autoscaling_enabled = 2 [(dev.planton.shared.options.default) = "true"];
+
+  // The Compute Engine Persistent Disk CSI driver (dynamic PD volumes).
+  optional bool gce_persistent_disk_csi_driver_enabled = 3 [(dev.planton.shared.options.default) = "true"];
+
+  // The Filestore CSI driver (managed NFS volumes).
+  bool gcp_filestore_csi_driver_enabled = 4;
+
+  // The Cloud Storage FUSE CSI driver (mount GCS buckets as volumes).
+  bool gcs_fuse_csi_driver_enabled = 5;
+
+  // The Backup for GKE agent (workload + volume backup/restore).
+  bool gke_backup_agent_enabled = 6;
+
+  // NodeLocal DNSCache (per-node DNS cache; reduces DNS latency and
+  // kube-dns/Cloud DNS load). Enabling recreates node pools on existing
+  // clusters.
+  bool dns_cache_enabled = 7;
+
+  // Config Connector (manage GCP resources through Kubernetes CRDs).
+  bool config_connector_enabled = 8;
+
+  // Stateful HA operator (faster failover for stateful workloads).
+  bool stateful_ha_enabled = 9;
+
+  // The Ray operator (KubeRay) for distributed Python/AI workloads.
+  bool ray_operator_enabled = 10;
+}
+
+// GkeReleaseChannel selects the cluster's Kubernetes upgrade channel.
+enum GkeReleaseChannel {
+  gke_release_channel_unspecified = 0;
+  RAPID = 1;
+  REGULAR = 2;
+  STABLE = 3;
+  NONE = 4;
+  EXTENDED = 5;
+}

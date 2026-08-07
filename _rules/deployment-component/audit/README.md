@@ -100,7 +100,7 @@ Audit evaluates **9 categories** against the ideal state:
 
 **Test Execution (2.78%):**
 - [ ] Tests compile without errors
-- [ ] Tests execute when running: `go test ./apis/.../provider/<provider>/<component>/v1/`
+- [ ] Tests execute when running: `go test ./catalog/.../provider/<provider>/<component>/v1/`
 - [ ] All tests pass (no failures)
 - [ ] Tests validate all buf.validate rules are correct
 
@@ -200,7 +200,7 @@ Where:
 **Audit Date:** 2025-11-13 14:30:22
 **Component Kind:** MongodbAtlas
 **Provider:** atlas
-**Component Path:** `apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/`
+**Component Path:** `catalog/atlas/mongodbatlas/v1alpha1/`
 **Enum Value:** 51
 **ID Prefix:** mdbatl
 ```
@@ -295,7 +295,7 @@ Blocking issues that prevent production readiness:
 ### 2. Folder Structure (4.44%)
 
 ✅ **Passed:**
-- Correct provider hierarchy: apis/dev/planton/provider/atlas/
+- Correct provider hierarchy: catalog/atlas/
 - Lowercase folder naming: mongodbatlas (matches enum)
 - v1/ subfolder exists
 
@@ -410,7 +410,7 @@ Blocking issues that prevent production readiness:
 - Pulumi architecture overview
 - Complete IaC documentation
 
-**Path to Reference:** `apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/`
+**Path to Reference:** `catalog/gcp/gcpcertmanagercert/v1alpha1/`
 
 **Recommendation:** Review GcpCertManagerCert as a template for completeness.
 ```
@@ -439,7 +439,7 @@ Blocking issues that prevent production readiness:
 Audit reports are saved with timestamps:
 
 ```
-apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/docs/audit/
+catalog/atlas/mongodbatlas/v1alpha1/docs/audit/
 ├── 2025-11-10-091500.md  # First audit (60%)
 ├── 2025-11-11-143000.md  # After adding Terraform (75%)
 └── 2025-11-13-143022.md  # After adding docs (98%)

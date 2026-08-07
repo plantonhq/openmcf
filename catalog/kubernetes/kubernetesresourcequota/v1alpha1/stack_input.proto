@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesresourcequota.v1alpha1;
+
+import "catalog/kubernetes/kubernetesresourcequota/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+/**
+ * **KubernetesResourceQuotaStackInput** defines the input structure for
+ * deploying Kubernetes namespace resource governance. It carries the target
+ * quota specification and the Kubernetes cluster configuration the IaC
+ * modules (Pulumi and Terraform) need to reach the cluster.
+ */
+message KubernetesResourceQuotaStackInput {
+  /**
+   * The target ResourceQuota resource to be created.
+   * Contains the complete specification including metadata, aggregate caps,
+   * and per-object limit defaults.
+   */
+  KubernetesResourceQuota target = 1;
+
+  /**
+   * Kubernetes cluster configuration.
+   * Contains connection details and credentials for the target Kubernetes
+   * cluster where the governance objects will be created.
+   */
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

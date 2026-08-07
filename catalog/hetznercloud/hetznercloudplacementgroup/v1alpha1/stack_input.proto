@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.hetznercloud.hetznercloudplacementgroup.v1alpha1;
+
+import "catalog/hetznercloud/hetznercloudplacementgroup/v1alpha1/api.proto";
+import "catalog/hetznercloud/provider.proto";
+
+//hetznercloud-placement-group stack-input
+message HetznerCloudPlacementGroupStackInput {
+  //target cloud-resource
+  HetznerCloudPlacementGroup target = 1;
+  //provider-config
+  dev.planton.hetznercloud.HetznerCloudProviderConfig provider_config = 2;
+}

@@ -4,10 +4,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * Build script to copy deployment component documentation from apis/ to site/public/docs/catalog/
+ * Build script to copy deployment component documentation from catalog/ to site/public/docs/catalog/
  *
- * Scans: apis/dev/planton/provider/{provider}/{component}/v1/catalog-page.md (or docs/README.md)
- * Also:  apis/dev/planton/provider/{provider}/{component}/v1/presets/*.yaml + *.md
+ * Scans: catalog/{provider}/{component}/v1/catalog-page.md (or docs/README.md)
+ * Also:  catalog/{provider}/{component}/v1/presets/*.yaml + *.md
  *
  * Outputs:
  *   site/public/docs/catalog/{provider}/{slug}/index.md          (catalog page)
@@ -782,7 +782,7 @@ async function copyComponentDocs(): Promise<void> {
   // Paths
   const scriptDir = __dirname;
   const projectRoot = path.join(scriptDir, '../..');
-  const apisRoot = path.join(projectRoot, 'apis/dev/planton/provider');
+  const apisRoot = path.join(projectRoot, 'catalog');
   const siteDocsRoot = path.join(scriptDir, '../public/docs/catalog');
 
   // Dynamically discover provider directories to clear (prevents stale files from previous builds)

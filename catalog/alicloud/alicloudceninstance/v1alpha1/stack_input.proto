@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.alicloud.alicloudceninstance.v1alpha1;
+
+import "catalog/alicloud/alicloudceninstance/v1alpha1/api.proto";
+import "catalog/alicloud/provider.proto";
+
+// alicloud-cen-instance stack-input
+message AliCloudCenInstanceStackInput {
+  // target cloud-resource
+  AliCloudCenInstance target = 1;
+  // provider-config
+  dev.planton.alicloud.AliCloudProviderConfig provider_config = 2;
+}

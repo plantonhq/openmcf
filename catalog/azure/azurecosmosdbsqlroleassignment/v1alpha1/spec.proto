@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecosmosdbsqlroleassignment.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureCosmosdbSqlRoleAssignmentSpec** defines the configuration for
+// creating a Cosmos DB SQL (NoSQL) API role assignment: the grant of a
+// Cosmos data-plane role to a Microsoft Entra principal at a scope inside
+// one Cosmos DB account.
+//
+// Cosmos DB carries its own RBAC system, separate from ARM RBAC. An ARM
+// role assignment (kind AzureRoleAssignment, even Owner) governs MANAGING
+// the account -- it grants no ability to read or write the documents
+// inside it. This assignment is how an Entra identity -- a workload's
+// managed identity, a CI principal, an operator -- gets data access. With
+// the account's local (key) authentication disabled, these grants are the
+// ONLY way clients connect: the fully keyless posture.
+//
+// The three coordinates of every grant:
+// - **role_definition_id**: WHAT is permitted. A built-in role by its
+//   well-known ID -- Data Reader `{account-id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000001`,
+//   Data Contributor `{account-id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002`
+//   -- or a custom AzureCosmosdbSqlRoleDefinition by reference.
+// - **principal_id**: WHO receives it (the Entra OBJECT ID of a managed
+//   identity, service principal, user, or group).
+// - **scope**: WHERE it applies -- the whole account, one database, or
+//   one container. Permissions inherit downward.
+//
+// Assignments are per-account: the scope and the role definition must
+// both live inside the account this assignment targets (Azure rejects
+// mismatches at apply). The role binding is updatable in place; every
+// other coordinate replaces the assignment -- the grant record model.
+message AzureCosmosdbSqlRoleAssignmentSpec {
+  // The Cosmos DB account the role assignment lives in, by ARM ID.
+  // References an AzureCosmosdbAccount's cosmosdb_account_id output so the
+  // account and its grants compose in one manifest set. The account must
+  // be a GLOBAL_DOCUMENT_DB (SQL API) account. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cosmosdb_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureCosmosdbAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cosmosdb_account_id"
+  ];
+
+  // The fully-scoped resource ID of the role definition to bind. Defaults
+  // to referencing an AzureCosmosdbSqlRoleDefinition's role_definition_id
+  // output -- the custom-role composition. For the built-in roles (which
+  // exist in every account, no definition resource needed), pass the
+  // well-known ID as a literal composed on the account's ARM ID:
+  //   roleDefinitionId:
+  //     value: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DocumentDB/databaseAccounts/{account}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002
+  // Rebinding to a different definition is an in-place update -- the one
+  // mutable coordinate of the grant.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_definition_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureCosmosdbSqlRoleDefinition,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_definition_id"
+  ];
+
+  // The Microsoft Entra object ID of the principal receiving the role.
+  // This is the OBJECT ID (also called principal ID) -- not the
+  // application (client) ID. Confusing the two is the most common grant
+  // mistake: the assignment succeeds with a client ID but grants nothing,
+  // because no directory object has that object ID.
+  //
+  // Defaults to referencing an AzureUserAssignedIdentity's principal_id
+  // output -- the dominant composition (grant a workload's managed
+  // identity access to its data). For users, groups, or externally
+  // managed service principals, pass the object ID as a literal value.
+  // Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef principal_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.principal_id"
+  ];
+
+  // The data-plane path the grant applies at. Three shapes, all inside
+  // the account this assignment targets:
+  // - The whole account: the account's ARM ID (the default reference).
+  // - One database:  `{account-id}/dbs/{database-name}`
+  // - One container: `{account-id}/dbs/{database-name}/colls/{container-name}`
+  //
+  // Permissions inherit downward -- an account-scoped grant covers every
+  // database and container. Prefer the narrowest scope that satisfies the
+  // use case (least privilege): grant on the one container an app touches,
+  // not the account. The scope must sit at or below one of the role
+  // definition's assignable_scopes.
+  //
+  // Defaults to referencing an AzureCosmosdbAccount's ARM ID. Database- or
+  // container-level scopes are literal values composed on the account ID
+  // (references cannot append path suffixes), e.g.:
+  //   scope:
+  //     value: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DocumentDB/databaseAccounts/{account}/dbs/app-data/colls/orders
+  // Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef scope = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureCosmosdbAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cosmosdb_account_id"
+  ];
+
+  // A stable UUID for the assignment's ARM resource name. Cosmos
+  // identifies a role assignment by a GUID; when omitted (recommended), a
+  // random one is generated at deploy time. Pin it only when an
+  // externally-defined GUID must be preserved, e.g. recreating an
+  // assignment that other tooling references by its full ARM ID. Changing
+  // a pinned GUID replaces the assignment.
+  string name = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+}

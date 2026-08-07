@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcppubsubsubscription.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/gcp/gcppubsubsubscription/v1alpha1/spec.proto";
+import "catalog/gcp/gcppubsubsubscription/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//gcp-pubsub-subscription
+message GcpPubSubSubscription {
+  string api_version = 1 [(buf.validate.field).string.const = 'gcp.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'GcpPubSubSubscription'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  GcpPubSubSubscriptionSpec spec = 4 [(buf.validate.field).required = true];
+  GcpPubSubSubscriptionStatus status = 5;
+}
+
+message GcpPubSubSubscriptionStatus {
+  GcpPubSubSubscriptionStackOutputs outputs = 1;
+}

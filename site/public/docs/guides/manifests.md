@@ -37,7 +37,7 @@ Once you know the kind, find the available spec fields using one of these method
 **Protocol Buffer definition** — The canonical source of truth. Every component's spec is defined at:
 
 ```
-apis/dev/planton/provider/{provider}/{component}/v1/spec.proto
+catalog/{provider}/{component}/v1/spec.proto
 ```
 
 The proto file shows every field, its type, whether it is required, and any validation rules.

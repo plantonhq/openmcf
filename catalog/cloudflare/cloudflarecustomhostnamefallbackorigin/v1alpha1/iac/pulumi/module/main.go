@@ -1,0 +1,30 @@
+package module
+
+import (
+	"github.com/pkg/errors"
+	cloudflarecustomhostnamefallbackoriginv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/cloudflare/pulumicloudflareprovider"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+// Resources is the module entry point—kept small to mirror a Terraform module's main.tf.
+func Resources(
+	ctx *pulumi.Context,
+	stackInput *cloudflarecustomhostnamefallbackoriginv1alpha1.CloudflareCustomHostnameFallbackOriginStackInput,
+) error {
+	locals := initializeLocals(ctx, stackInput)
+
+	cloudflareProvider, err := pulumicloudflareprovider.Get(
+		ctx,
+		stackInput.ProviderConfig,
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to setup cloudflare provider")
+	}
+
+	if err := fallbackOrigin(ctx, locals, cloudflareProvider); err != nil {
+		return errors.Wrap(err, "failed to create cloudflare custom hostname fallback origin")
+	}
+
+	return nil
+}

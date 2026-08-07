@@ -31,8 +31,10 @@ No service-account key is stored anywhere in the manifest.
   GKE: Velero's Kubernetes service account is annotated with the GCP
   service account, which needs storage permissions on the bucket and a
   WI binding to Velero's KSA. The email in the YAML is a placeholder
-  value — the field requires the `…gserviceaccount.com` format, so
-  replace the whole address with your GSA
+  literal — replace it with your GSA's
+  `…gserviceaccount.com` address, or reference a `GcpServiceAccount`
+  deployed in the same run (`valueFrom`), which also orders Velero
+  after the identity exists
 - **Node-agent (`fsBackup.deployNodeAgent: true`)** — the kopia-based
   DaemonSet reads volume data directly from pods and works on ANY
   volume type; it runs privileged host-path mounts of the kubelet pod

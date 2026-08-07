@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpcloudrun.v1alpha1;
+
+import "catalog/gcp/gcpcloudrun/v1alpha1/api.proto";
+import "catalog/gcp/provider.proto";
+
+//gcp-cloud-run stack-input
+message GcpCloudRunStackInput {
+  //target cloud-resource
+  GcpCloudRun target = 1;
+  //provider-config
+  dev.planton.gcp.GcpProviderConfig provider_config = 2;
+}

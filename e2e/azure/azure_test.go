@@ -16,12 +16,12 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	azuree2e "github.com/plantonhq/planton/apis/dev/planton/provider/azure/aa_e2e"
-	componentv1 "github.com/plantonhq/planton/apis/dev/planton/qa/componente2eprofile/v1"
+	azuree2e "github.com/plantonhq/planton/catalog/azure/aa_e2e"
 	"github.com/plantonhq/planton/e2e/framework/discovery"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/e2e/framework/runner"
 	profilepkg "github.com/plantonhq/planton/pkg/e2e/profile"
+	componentv1 "github.com/plantonhq/planton/qa/componente2eprofile/v1"
 )
 
 var (

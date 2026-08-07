@@ -1,0 +1,841 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureloadbalancer.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureLoadBalancerSpec** defines the configuration for creating an Azure
+// Load Balancer: Azure's Layer 4 (TCP/UDP) traffic distributor, complete
+// with its frontends, backend address pools, health probes, load-balancing
+// rules, inbound NAT rules, and outbound (SNAT) rules.
+//
+// The load balancer and its sub-resources are configured as ONE unit
+// because none of them has a life without the load balancer: a backend
+// pool, probe, or rule exists only inside its parent LB and is deployed,
+// versioned, and destroyed with it. What IS independent -- membership of a
+// pool -- is expressed from the member side (a network interface or a
+// virtual machine scale set referencing a pool by its exported ID), which
+// is Azure's own attachment model. The `backend_pool_ids` output keyed by
+// pool name is the seam members reference.
+//
+// **Public vs internal is per-frontend, not per-LB.** Each frontend IP
+// configuration is either public (references a public IP or a public IP
+// prefix) or internal (references a subnet, with an optional static
+// private address). One load balancer can carry several frontends -- e.g.
+// a public frontend for ingress and an internal one for east-west traffic.
+//
+// **SKU**: STANDARD (the default) is the production SKU -- zone-redundant,
+// SLA-backed, supports outbound rules and HA ports. GATEWAY is the niche
+// SKU for chaining network virtual appliances (requires the
+// Microsoft.Network/AllowGatewayLoadBalancer feature on the subscription).
+// Basic is not modeled: Azure retired it in September 2025.
+message AzureLoadBalancerSpec {
+  // The Azure region where the load balancer will be created.
+  // Must match the region of the backend resources (VMs, VMSS, AKS).
+  // Examples: "eastus", "westus2", "westeurope", "southeastasia".
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group where the load balancer will be created.
+  // Can be a literal string or a reference to an AzureResourceGroup output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The name of the load balancer.
+  // Must be unique within the resource group.
+  // Allowed characters: alphanumeric, underscores, hyphens, and periods.
+  // Must start with alphanumeric. Length: 1 to 80 characters.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 80
+  ];
+
+  // The SKU of the load balancer. Unspecified applies STANDARD -- the
+  // production SKU (zone redundancy, SLA, outbound rules, HA ports).
+  // GATEWAY is for chaining network virtual appliances: every backend
+  // pool must then declare tunnel interfaces, and the subscription needs
+  // the Microsoft.Network/AllowGatewayLoadBalancer feature registered
+  // (via an Azure support ticket). Fixed at creation.
+  AzureLoadBalancerSku sku = 4;
+
+  // The SKU tier. Unspecified applies REGIONAL -- a load balancer serving
+  // one region, the shape virtually every deployment uses. GLOBAL creates
+  // a cross-region load balancer whose backend pool members are the
+  // frontends of REGIONAL load balancers (set each pool address's
+  // load_balancer_frontend_ip_configuration_id). Requires STANDARD SKU.
+  // Fixed at creation.
+  AzureLoadBalancerSkuTier sku_tier = 5;
+
+  // The Azure Edge Zone the load balancer is deployed in, for
+  // edge-computing workloads that pin resources to a metro-local extended
+  // zone. Leave unset for regular regional deployment. Fixed at creation.
+  string edge_zone = 6;
+
+  // The frontend IP configurations -- the addresses that receive traffic.
+  // At least one. Each frontend is public (public IP or public IP prefix)
+  // or internal (subnet + optional static private address); one load
+  // balancer can mix both. Rules, NAT rules, and outbound rules target a
+  // frontend by its `name` (optional when exactly one frontend exists).
+  //
+  // Azure does not allow removing ALL frontends from an existing load
+  // balancer -- going from some frontends to none replaces the resource.
+  repeated AzureLoadBalancerFrontendIpConfiguration frontend_ip_configurations = 7 [(buf.validate.field).repeated.min_items = 1];
+
+  // Backend address pools that receive load-balanced traffic. Optional:
+  // a frontend-only load balancer carrying just inbound NAT rules is
+  // legal. Pool MEMBERSHIP is expressed from the member side -- a network
+  // interface or scale set references `status.outputs.backend_pool_ids.<name>`
+  // -- except for IP-based members declared inline via `addresses`.
+  repeated AzureLoadBalancerBackendPool backend_pools = 8;
+
+  // Health probes that check backend instance availability. Probes run at
+  // `interval_in_seconds` intervals; after `number_of_probes` consecutive
+  // failures the backend is removed from rotation and re-added when it
+  // recovers. Rules reference a probe by name; a rule without a probe
+  // load-balances blindly (legal, but production rules should probe).
+  repeated AzureLoadBalancerHealthProbe health_probes = 9;
+
+  // Load-balancing rules mapping a frontend port/protocol to a backend
+  // pool and port. Each rule targets one frontend by name (optional when
+  // exactly one frontend exists) and one backend pool by name (two pools
+  // only on GATEWAY SKU).
+  repeated AzureLoadBalancerRule rules = 10;
+
+  // Inbound NAT rules forwarding frontend ports to individual backend
+  // instances. Two modes per rule: a single-target rule (`frontend_port`)
+  // whose attachment is completed from the member side (a NIC's NAT-rule
+  // association referencing `status.outputs.nat_rule_ids.<name>`), or a
+  // pool-style rule (`frontend_port_start`/`_end` + `backend_pool_name`)
+  // that gives every pool member its own frontend port -- the modern
+  // replacement for the legacy NAT pool mechanism (which is deliberately
+  // not modeled).
+  repeated AzureLoadBalancerNatRule nat_rules = 11;
+
+  // Outbound rules configuring explicit SNAT: which frontend public IPs
+  // egress traffic from a backend pool uses, and how many SNAT ports each
+  // instance gets. Only legal with PUBLIC frontends on STANDARD SKU.
+  // Production pools that egress should either use an explicit outbound
+  // rule (set disable_outbound_snat on the load-balancing rules for the
+  // same pool) or a NAT gateway on the subnet.
+  repeated AzureLoadBalancerOutboundRule outbound_rules = 12;
+
+  // Free-form tags applied to the load balancer, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins. Tags are Azure's governance
+  // surface -- Azure Policy enforces them and Microsoft Cost Management
+  // groups by them. Updatable in place.
+  map<string, string> tags = 13;
+
+  option (buf.validate.message).cel = {
+    id: "lb_global_tier_requires_standard_sku"
+    message: "GLOBAL sku_tier (cross-region load balancing) is only supported on the STANDARD SKU"
+    expression: "this.sku_tier != 2 || this.sku in [0, 1]"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_gateway_pools_require_tunnel_interfaces"
+    message: "GATEWAY SKU requires every backend pool to declare tunnel_interfaces (the NVA chaining contract)"
+    expression: "this.sku != 2 || this.backend_pools.all(p, p.tunnel_interfaces.size() > 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_tunnel_interfaces_require_gateway"
+    message: "tunnel_interfaces are only supported on the GATEWAY SKU"
+    expression: "this.sku == 2 || this.backend_pools.all(p, p.tunnel_interfaces.size() == 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_rule_multi_pool_requires_gateway"
+    message: "a load-balancing rule may target two backend pools only on the GATEWAY SKU"
+    expression: "this.sku == 2 || this.rules.all(r, r.backend_pool_names.size() <= 1)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_rule_pool_names_declared"
+    message: "every rule's backend_pool_names must match pools declared in backend_pools"
+    expression: "this.rules.all(r, r.backend_pool_names.all(n, this.backend_pools.exists(p, p.name == n)))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_rule_probe_declared"
+    message: "a rule's probe_name must match a probe declared in health_probes"
+    expression: "this.rules.all(r, r.probe_name == '' || this.health_probes.exists(p, p.name == r.probe_name))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_rule_frontend_declared"
+    message: "a rule's frontend_ip_configuration_name must match a declared frontend (optional only when exactly one frontend exists)"
+    expression: "this.rules.all(r, r.frontend_ip_configuration_name == '' ? this.frontend_ip_configurations.size() == 1 : this.frontend_ip_configurations.exists(f, f.name == r.frontend_ip_configuration_name))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_nat_rule_frontend_declared"
+    message: "a NAT rule's frontend_ip_configuration_name must match a declared frontend (optional only when exactly one frontend exists)"
+    expression: "this.nat_rules.all(r, r.frontend_ip_configuration_name == '' ? this.frontend_ip_configurations.size() == 1 : this.frontend_ip_configurations.exists(f, f.name == r.frontend_ip_configuration_name))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_nat_rule_pool_declared"
+    message: "a pool-style NAT rule's backend_pool_name must match a pool declared in backend_pools"
+    expression: "this.nat_rules.all(r, r.backend_pool_name == '' || this.backend_pools.exists(p, p.name == r.backend_pool_name))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_outbound_rule_pool_declared"
+    message: "an outbound rule's backend_pool_name must match a pool declared in backend_pools"
+    expression: "this.outbound_rules.all(r, this.backend_pools.exists(p, p.name == r.backend_pool_name))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_outbound_rule_frontends_declared"
+    message: "every outbound rule frontend name must match a declared frontend"
+    expression: "this.outbound_rules.all(r, r.frontend_ip_configuration_names.all(n, this.frontend_ip_configurations.exists(f, f.name == n)))"
+  };
+}
+
+// One frontend IP configuration: an address that receives traffic. Public
+// (references a public IP or a public IP prefix) or internal (references
+// a subnet, with an optional static private address) -- exactly one of
+// the three address sources may be set.
+message AzureLoadBalancerFrontendIpConfiguration {
+  // A label for this frontend, unique within the load balancer. Rules,
+  // NAT rules, and outbound rules target the frontend by this name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 80
+  ];
+
+  // The subnet for an INTERNAL frontend, by ARM ID: the frontend gets a
+  // private address in this subnet. Mutually exclusive with the public
+  // address sources.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // The public IP for a PUBLIC frontend, by ARM ID. References a
+  // first-class AzurePublicIp (Standard SKU) so the address is visible in
+  // the resource graph, allowlistable, and reusable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef public_ip_address_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePublicIp,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.public_ip_id"
+  ];
+
+  // A public IP PREFIX for a public frontend, by ARM ID -- the frontend
+  // draws from the reserved contiguous range, used with outbound rules to
+  // scale SNAT ports across a known CIDR that downstream partners can
+  // allowlist as one block.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef public_ip_prefix_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePublicIpPrefix,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.public_ip_prefix_id"
+  ];
+
+  // For an internal frontend: pin a specific private address inside the
+  // subnet's range (it must be unassigned). Leave unset for dynamic
+  // allocation -- the address is stable for the frontend's lifetime
+  // either way; pin only when DNS, firewall rules, or service discovery
+  // are configured with the address elsewhere.
+  string private_ip_address = 5;
+
+  // The address family of an internal frontend's private address.
+  // Unspecified applies Azure's default (IPV4). An IPv6 internal frontend
+  // requires a dual-stack subnet.
+  AzureLoadBalancerPrivateIpVersion private_ip_address_version = 6;
+
+  // Availability zones for an INTERNAL frontend's private address:
+  // ["1","2","3"] for zone redundancy (the production default posture),
+  // a single zone to pin, or empty for no zone guarantee. A PUBLIC
+  // frontend's zone posture comes from the referenced public IP resource
+  // instead. Changing zones replaces the frontend.
+  repeated string zones = 7;
+
+  // The frontend IP configuration of a GATEWAY-SKU load balancer to chain
+  // this frontend behind, by ARM ID -- traffic arriving here is first
+  // steered through the gateway's network virtual appliances. Plain ARM
+  // ID because gateway frontends are addressed as sub-resources
+  // (referenceable via the gateway LB's frontend_ip_configuration_ids
+  // output). Only meaningful on a STANDARD SKU frontend.
+  string gateway_load_balancer_frontend_ip_configuration_id = 8;
+
+  option (buf.validate.message).cel = {
+    id: "lb_frontend_single_address_source"
+    message: "a frontend is either internal (subnet_id) or public (public_ip_address_id or public_ip_prefix_id) -- set at most one address source"
+    expression: "(has(this.subnet_id) ? 1 : 0) + (has(this.public_ip_address_id) ? 1 : 0) + (has(this.public_ip_prefix_id) ? 1 : 0) <= 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_frontend_static_ip_requires_subnet"
+    message: "private_ip_address (a pinned internal address) requires subnet_id"
+    expression: "this.private_ip_address == '' || has(this.subnet_id)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_frontend_zones_are_internal_only"
+    message: "zones apply to internal (subnet) frontends; a public frontend's zone posture comes from its public IP resource"
+    expression: "this.zones.size() == 0 || has(this.subnet_id)"
+  };
+}
+
+// A backend address pool: a named container for the instances that
+// receive a rule's traffic. NIC-based members join from the member side
+// (referencing this pool's exported ID); IP-based members are declared
+// inline via `addresses`.
+message AzureLoadBalancerBackendPool {
+  // The name of the backend pool, unique within the load balancer. Rules
+  // target the pool by this name, and the pool's ARM ID is exported as
+  // `status.outputs.backend_pool_ids.<name>` for member-side references.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 80
+  ];
+
+  // The virtual network of this pool's IP-based members, by ARM ID.
+  // Required when `addresses` are declared or `synchronous_mode` is set;
+  // leave unset for a plain NIC-membership pool.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_id"
+  ];
+
+  // How IP-based backend members synchronize with the pool (STANDARD SKU
+  // only, and only for vnet-scoped pools). Unspecified sends nothing --
+  // right for NIC-membership pools. AUTOMATIC lets Azure manage member
+  // lifecycle; MANUAL leaves membership entirely to the addresses list.
+  // Fixed at creation.
+  AzureLoadBalancerBackendPoolSyncMode synchronous_mode = 3;
+
+  // GATEWAY SKU only: the tunnel interfaces (VXLAN identifiers/ports)
+  // through which chained traffic reaches the network virtual appliances
+  // in this pool. Required on every pool of a GATEWAY load balancer,
+  // forbidden otherwise (spec-level validation enforces both).
+  repeated AzureLoadBalancerBackendPoolTunnelInterface tunnel_interfaces = 4;
+
+  // IP-based backend members, declared inline: appliances or servers
+  // addressed by IP rather than by NIC association (requires
+  // virtual_network_id). For a GLOBAL-tier load balancer the members are
+  // regional load balancers instead -- set each address's
+  // load_balancer_frontend_ip_configuration_id.
+  repeated AzureLoadBalancerBackendPoolAddress addresses = 5;
+
+  option (buf.validate.message).cel = {
+    id: "lb_pool_sync_mode_requires_vnet"
+    message: "synchronous_mode requires virtual_network_id (it governs IP-based membership of a vnet-scoped pool)"
+    expression: "this.synchronous_mode == 0 || has(this.virtual_network_id)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_pool_addresses_require_vnet"
+    message: "IP-based addresses require the pool's virtual_network_id (unless they reference regional load balancer frontends for a GLOBAL-tier pool)"
+    expression: "this.addresses.all(a, a.load_balancer_frontend_ip_configuration_id != '') || this.addresses.size() == 0 || has(this.virtual_network_id)"
+  };
+}
+
+// One IP-based backend member of a pool.
+message AzureLoadBalancerBackendPoolAddress {
+  // A label for this member, unique within the pool.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The member's private IP address inside the pool's virtual network
+  // (REGIONAL tier). Mutually exclusive with
+  // load_balancer_frontend_ip_configuration_id.
+  string ip_address = 2;
+
+  // For a GLOBAL-tier pool: the frontend IP configuration of the REGIONAL
+  // load balancer this member represents, by ARM ID (referenceable via
+  // that load balancer's frontend_ip_configuration_ids output). Mutually
+  // exclusive with ip_address.
+  string load_balancer_frontend_ip_configuration_id = 3;
+
+  option (buf.validate.message).cel = {
+    id: "lb_pool_address_exactly_one_target"
+    message: "each address is either an IP member (ip_address) or a regional load balancer frontend (load_balancer_frontend_ip_configuration_id) -- set exactly one"
+    expression: "(this.ip_address != '') != (this.load_balancer_frontend_ip_configuration_id != '')"
+  };
+}
+
+// A tunnel interface of a GATEWAY-SKU backend pool: the VXLAN plumbing
+// through which chained traffic reaches the network virtual appliances.
+message AzureLoadBalancerBackendPoolTunnelInterface {
+  // The VXLAN network identifier for this tunnel. The conventional pair
+  // is 800 (internal) and 801 (external).
+  int32 identifier = 1 [(buf.validate.field).int32.gte = 0];
+
+  // The port the tunnel listens on. The conventional pair is 10800
+  // (internal) and 10801 (external).
+  int32 port = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 65535
+  }];
+
+  // The traffic encapsulation protocol. VXLAN is the shape gateway
+  // chaining uses in practice.
+  AzureLoadBalancerTunnelProtocol protocol = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // Whether this tunnel carries traffic toward the appliances (INTERNAL)
+  // or back out (EXTERNAL). A chaining pool conventionally declares one
+  // of each.
+  AzureLoadBalancerTunnelType type = 4 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+}
+
+// A health probe: how the load balancer decides a backend instance is
+// healthy enough to receive traffic.
+message AzureLoadBalancerHealthProbe {
+  // The name of the health probe, unique within the load balancer.
+  // Referenced by load-balancing rules; the probe's ARM ID is exported as
+  // `status.outputs.probe_ids.<name>` (a virtual machine scale set's
+  // rolling-upgrade health probe references it).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 80
+  ];
+
+  // The probe protocol. Unspecified applies Azure's default (PROBE_TCP:
+  // port-open means healthy). PROBE_HTTP / PROBE_HTTPS send a GET to
+  // `request_path` and require HTTP 200 -- prefer them when the workload
+  // has a health endpoint, because a process can listen while unhealthy.
+  AzureLoadBalancerProbeProtocol protocol = 2;
+
+  // The port number to probe on the backend instances.
+  // Examples: 80 (HTTP), 443 (HTTPS), 8080 (app), 3306 (MySQL).
+  int32 port = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  // The URI path for PROBE_HTTP / PROBE_HTTPS probes -- required for
+  // them, forbidden for PROBE_TCP (spec-level validation enforces both).
+  // The probe sends a GET request to this path and expects HTTP 200.
+  // Examples: "/health", "/api/healthz", "/ready".
+  string request_path = 4;
+
+  // The interval between probe attempts, in seconds. Lower values detect
+  // failures faster but generate more probe traffic.
+  // Default: 15 seconds. Minimum: 5 seconds.
+  optional int32 interval_in_seconds = 5 [
+    (dev.planton.shared.options.default) = "15",
+    (buf.validate.field).int32.gte = 5
+  ];
+
+  // The number of consecutive probe failures before marking a backend
+  // unhealthy and removing it from rotation. Default: 2 (Azure default).
+  optional int32 number_of_probes = 6 [
+    (dev.planton.shared.options.default) = "2",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // The number of consecutive SUCCESSFUL probes required before an
+  // instance is considered healthy (the flap dampener). Default: 1
+  // (Azure default -- one success re-admits). Range: 1 to 100.
+  optional int32 probe_threshold = 7 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 100
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "lb_probe_request_path_matches_protocol"
+    message: "PROBE_HTTP/PROBE_HTTPS probes require request_path; PROBE_TCP probes must not set it"
+    expression: "this.protocol in [2, 3] ? this.request_path != '' : this.request_path == ''"
+  };
+}
+
+// A load-balancing rule: maps traffic arriving at a frontend
+// port/protocol to a backend pool and port.
+message AzureLoadBalancerRule {
+  // The name of the rule, unique within the load balancer.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 80
+  ];
+
+  // The frontend this rule listens on, by the frontend's `name`.
+  // Optional when the load balancer has exactly one frontend; required
+  // with several (spec-level validation enforces both).
+  string frontend_ip_configuration_name = 2;
+
+  // The transport protocol. ALL creates an HA-ports rule (every port,
+  // both TCP and UDP) -- the appliance/NVA pattern, only valid on an
+  // internal STANDARD frontend with frontend_port and backend_port 0.
+  AzureLoadBalancerTransportProtocol protocol = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The port on the frontend that receives traffic.
+  // Range: 0 to 65534. Use 0 only for HA ports (protocol ALL).
+  int32 frontend_port = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 65534
+  }];
+
+  // The port on the backend instances that receives forwarded traffic.
+  // Range: 0 to 65535. Use 0 only for HA ports (protocol ALL).
+  int32 backend_port = 5 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 65535
+  }];
+
+  // The backend pool(s) this rule routes to, by pool `name`. One pool for
+  // STANDARD SKU; a GATEWAY rule may target two pools (the dual-tunnel
+  // NVA pattern). At least one.
+  repeated string backend_pool_names = 6 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 2
+  }];
+
+  // The health probe gating this rule's backends, by probe `name`.
+  // Optional -- a rule without a probe load-balances blindly; production
+  // rules should reference one.
+  string probe_name = 7;
+
+  // Session persistence. Unspecified applies Azure's default (DEFAULT:
+  // 5-tuple hash -- effectively no persistence, best distribution).
+  // SOURCE_IP (2-tuple) and SOURCE_IP_PROTOCOL (3-tuple) pin a client to
+  // one backend -- for legacy stateful workloads only; prefer stateless
+  // backends over persistence.
+  AzureLoadBalancerLoadDistribution load_distribution = 8;
+
+  // The TCP idle timeout in minutes; idle connections beyond it are
+  // dropped. Default: 4. Range: 4 to 100. Raise for long-lived
+  // connections (WebSocket, database pools) -- or enable tcp_reset so
+  // clients at least learn of the drop.
+  optional int32 idle_timeout_in_minutes = 9 [
+    (dev.planton.shared.options.default) = "4",
+    (buf.validate.field).int32 = {
+      gte: 4
+      lte: 100
+    }
+  ];
+
+  // Floating IP (Direct Server Return): the backend sees the FRONTEND's
+  // IP as the destination instead of its own. Required for SQL Server
+  // AlwaysOn listeners and some clustering schemes; the backend OS must
+  // be configured with a loopback matching the frontend IP.
+  // Default: false.
+  optional bool floating_ip_enabled = 10 [(dev.planton.shared.options.default) = "false"];
+
+  // Send a TCP reset to both ends when a connection is dropped for idle
+  // timeout, so clients fail fast instead of discovering a dead socket on
+  // next write. Default: false (Azure's default), but production TCP
+  // rules generally want it on.
+  optional bool tcp_reset_enabled = 11 [(dev.planton.shared.options.default) = "false"];
+
+  // Disable the default outbound SNAT this rule would otherwise provide
+  // to its backend pool. Set it when the pool's egress is handled by an
+  // explicit outbound rule (required to combine the two on one pool) or
+  // by a NAT gateway -- implicit SNAT has a small, exhaustion-prone port
+  // budget. Default: false.
+  optional bool disable_outbound_snat = 12 [(dev.planton.shared.options.default) = "false"];
+
+  option (buf.validate.message).cel = {
+    id: "lb_rule_ha_ports_zero_ports"
+    message: "protocol ALL (HA ports) requires frontend_port and backend_port to be 0, and non-ALL rules must use non-zero ports"
+    expression: "this.protocol == 3 ? (this.frontend_port == 0 && this.backend_port == 0) : (this.frontend_port > 0 && this.backend_port > 0)"
+  };
+}
+
+// An inbound NAT rule: forwards a frontend port (or port range) to
+// individual backend instances -- port forwarding, not load balancing.
+message AzureLoadBalancerNatRule {
+  // The name of the NAT rule, unique within the load balancer. A
+  // single-target rule's ARM ID is exported as
+  // `status.outputs.nat_rule_ids.<name>` for the member-side NIC
+  // association that completes the attachment.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 80
+  ];
+
+  // The frontend this NAT rule listens on, by the frontend's `name`.
+  // Optional when the load balancer has exactly one frontend; required
+  // with several (spec-level validation enforces both).
+  string frontend_ip_configuration_name = 2;
+
+  // The transport protocol for the forwarded traffic.
+  AzureLoadBalancerTransportProtocol protocol = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // SINGLE-TARGET mode: the one frontend port to forward. The rule then
+  // attaches to exactly one backend NIC from the member side (the NIC's
+  // NAT-rule association). Mutually exclusive with the pool-style fields.
+  int32 frontend_port = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 65534
+  }];
+
+  // The port on the backend instance that receives the forwarded traffic.
+  int32 backend_port = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  // POOL-STYLE mode: the backend pool whose members each get a dedicated
+  // frontend port from [frontend_port_start, frontend_port_end] -- e.g.
+  // per-instance SSH across a scale set. Mutually exclusive with
+  // frontend_port; requires both range bounds.
+  string backend_pool_name = 6;
+
+  // The first frontend port of the pool-style range (inclusive).
+  int32 frontend_port_start = 7 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 65534
+  }];
+
+  // The last frontend port of the pool-style range (inclusive). The range
+  // must be at least as large as the pool's member count.
+  int32 frontend_port_end = 8 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 65535
+  }];
+
+  // Floating IP (Direct Server Return) for the forwarded traffic --
+  // the backend sees the frontend's IP as destination. Default: false.
+  optional bool floating_ip_enabled = 9 [(dev.planton.shared.options.default) = "false"];
+
+  // Send a TCP reset on idle-timeout drop so both ends fail fast.
+  // Default: false.
+  optional bool tcp_reset_enabled = 10 [(dev.planton.shared.options.default) = "false"];
+
+  // The TCP idle timeout in minutes for forwarded connections.
+  // Default: 4. Range: 4 to 30 (tighter than load-balancing rules).
+  optional int32 idle_timeout_in_minutes = 11 [
+    (dev.planton.shared.options.default) = "4",
+    (buf.validate.field).int32 = {
+      gte: 4
+      lte: 30
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "lb_nat_rule_exactly_one_mode"
+    message: "a NAT rule is single-target (frontend_port) or pool-style (backend_pool_name + frontend_port_start/end) -- set exactly one mode"
+    expression: "(this.frontend_port > 0) != (this.backend_pool_name != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lb_nat_rule_pool_style_requires_range"
+    message: "pool-style NAT rules require both frontend_port_start and frontend_port_end (and single-target rules must not set them)"
+    expression: "this.backend_pool_name != '' ? (this.frontend_port_start > 0 && this.frontend_port_end >= this.frontend_port_start) : (this.frontend_port_start == 0 && this.frontend_port_end == 0)"
+  };
+}
+
+// An outbound rule: explicit SNAT configuration -- which frontend public
+// IPs a backend pool's egress uses and how many SNAT ports each instance
+// gets. STANDARD SKU with PUBLIC frontends only.
+message AzureLoadBalancerOutboundRule {
+  // The name of the outbound rule, unique within the load balancer.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 80
+  ];
+
+  // The PUBLIC frontends whose addresses egress traffic is SNATed to, by
+  // frontend `name`. Multiple frontends multiply the available SNAT port
+  // budget. At least one.
+  repeated string frontend_ip_configuration_names = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // The backend pool whose members' outbound traffic this rule governs,
+  // by pool `name`.
+  string backend_pool_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The transport protocol the SNAT applies to. ALL covers both TCP and
+  // UDP -- the usual choice.
+  AzureLoadBalancerTransportProtocol protocol = 4 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // SNAT ports allocated to EACH backend instance. Default: 1024. Set 0
+  // to let Azure divide the frontend's port budget (64,000 per frontend
+  // IP) evenly across the pool's current size -- convenient but
+  // reallocation churns connections as the pool scales; production pools
+  // should size it explicitly (budget / max instances, in multiples of 8).
+  optional int32 allocated_outbound_ports = 5 [
+    (dev.planton.shared.options.default) = "1024",
+    (buf.validate.field).int32.gte = 0
+  ];
+
+  // Send a TCP reset on idle-timeout drop for outbound connections.
+  // Default: false.
+  optional bool tcp_reset_enabled = 6 [(dev.planton.shared.options.default) = "false"];
+
+  // The idle timeout in minutes for outbound connections. Default: 4.
+  optional int32 idle_timeout_in_minutes = 7 [
+    (dev.planton.shared.options.default) = "4",
+    (buf.validate.field).int32.gte = 4
+  ];
+}
+
+// The load balancer SKU. Unspecified means STANDARD.
+enum AzureLoadBalancerSku {
+  // Not specified: STANDARD.
+  azure_load_balancer_sku_unspecified = 0;
+
+  // The production SKU: zone redundancy, SLA, outbound rules, HA ports.
+  // (Basic is not modeled -- Azure retired it in September 2025.)
+  STANDARD = 1;
+
+  // The NVA-chaining SKU: backend pools carry tunnel interfaces and
+  // other load balancers chain their frontends through this one.
+  // Requires the Microsoft.Network/AllowGatewayLoadBalancer subscription
+  // feature (registered via an Azure support ticket).
+  GATEWAY = 2;
+}
+
+// The load balancer SKU tier. Unspecified means REGIONAL.
+enum AzureLoadBalancerSkuTier {
+  // Not specified: REGIONAL.
+  azure_load_balancer_sku_tier_unspecified = 0;
+
+  // A load balancer serving one region -- the shape virtually every
+  // deployment uses.
+  REGIONAL = 1;
+
+  // A cross-region load balancer whose backend members are REGIONAL load
+  // balancers' frontends. STANDARD SKU only.
+  GLOBAL = 2;
+}
+
+// The address family of an internal frontend's private address.
+// Unspecified means Azure's default (IPv4).
+enum AzureLoadBalancerPrivateIpVersion {
+  // Not specified: IPv4.
+  azure_load_balancer_private_ip_version_unspecified = 0;
+
+  // An IPv4 private address.
+  IPV4 = 1;
+
+  // An IPv6 private address (requires a dual-stack subnet).
+  IPV6 = 2;
+}
+
+// The transport protocol of a load-balancing, NAT, or outbound rule.
+enum AzureLoadBalancerTransportProtocol {
+  // Not specified -- invalid; every rule declares its protocol.
+  azure_load_balancer_transport_protocol_unspecified = 0;
+
+  // TCP traffic.
+  TCP = 1;
+
+  // UDP traffic.
+  UDP = 2;
+
+  // Both TCP and UDP. On a load-balancing rule this creates an HA-ports
+  // rule (internal STANDARD frontends only, ports 0); on an outbound
+  // rule it SNATs all traffic.
+  ALL = 3;
+}
+
+// The health-probe protocol. Unspecified means Azure's default (TCP).
+enum AzureLoadBalancerProbeProtocol {
+  // Not specified: PROBE_TCP.
+  azure_load_balancer_probe_protocol_unspecified = 0;
+
+  // A TCP connection attempt: port open means healthy.
+  PROBE_TCP = 1;
+
+  // An HTTP GET to request_path: 200 OK means healthy.
+  PROBE_HTTP = 2;
+
+  // An HTTPS GET to request_path: 200 OK means healthy (certificate
+  // validity is not checked).
+  PROBE_HTTPS = 3;
+}
+
+// Session persistence for a load-balancing rule. Unspecified means
+// Azure's default (DEFAULT: 5-tuple hash, no persistence).
+enum AzureLoadBalancerLoadDistribution {
+  // Not specified: DEFAULT.
+  azure_load_balancer_load_distribution_unspecified = 0;
+
+  // 5-tuple hash (source IP+port, destination IP+port, protocol):
+  // effectively no persistence, best distribution.
+  DEFAULT = 1;
+
+  // 2-tuple hash (source and destination IP): a client IP sticks to one
+  // backend across connections.
+  SOURCE_IP = 2;
+
+  // 3-tuple hash (source IP, destination IP, protocol): a client IP
+  // sticks per protocol.
+  SOURCE_IP_PROTOCOL = 3;
+}
+
+// How IP-based members of a vnet-scoped pool synchronize. Unspecified
+// sends nothing (plain NIC-membership pool).
+enum AzureLoadBalancerBackendPoolSyncMode {
+  // Not specified: no synchronous mode (NIC-membership pool).
+  azure_load_balancer_backend_pool_sync_mode_unspecified = 0;
+
+  // Azure manages IP-based member lifecycle automatically.
+  AUTOMATIC = 1;
+
+  // Membership is entirely governed by the declared addresses list.
+  MANUAL = 2;
+}
+
+// The encapsulation protocol of a GATEWAY pool's tunnel interface.
+enum AzureLoadBalancerTunnelProtocol {
+  // Not specified -- invalid; every tunnel declares its protocol.
+  azure_load_balancer_tunnel_protocol_unspecified = 0;
+
+  // No encapsulation.
+  TUNNEL_PROTOCOL_NONE = 1;
+
+  // Native (unencapsulated) forwarding.
+  NATIVE = 2;
+
+  // VXLAN encapsulation -- the shape gateway chaining uses in practice.
+  VXLAN = 3;
+}
+
+// The direction of a GATEWAY pool's tunnel interface.
+enum AzureLoadBalancerTunnelType {
+  // Not specified -- invalid; every tunnel declares its type.
+  azure_load_balancer_tunnel_type_unspecified = 0;
+
+  // No direction (rarely used).
+  TUNNEL_TYPE_NONE = 1;
+
+  // Carries traffic toward the appliances.
+  INTERNAL = 2;
+
+  // Carries traffic back out of the appliances.
+  EXTERNAL = 3;
+}

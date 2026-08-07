@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-	alicloudprovider "github.com/plantonhq/planton/apis/dev/planton/provider/alicloud"
+	alicloudprovider "github.com/plantonhq/planton/catalog/alicloud"
 )
 
 // loadAliCloudEnvVars loads Alibaba Cloud provider config and returns environment variables.

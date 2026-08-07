@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetestemporal.v1alpha1;
+
+import "catalog/kubernetes/kubernetestemporal/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+//temporal-kubernetes stack-input
+message KubernetesTemporalStackInput {
+  //target cloud-resource
+  KubernetesTemporal target = 1;
+  //provider-config
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

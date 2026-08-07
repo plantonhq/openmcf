@@ -1,0 +1,268 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuresubnet.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureSubnetSpec** defines the configuration for creating an Azure Subnet:
+// the workload segment that partitions a virtual network's address space.
+//
+// The subnet is the composition hub of Azure networking. It is where the
+// network's building blocks actually meet a workload:
+// - a route table attaches here to steer the subnet's egress (route_table_id),
+// - a network security group attaches here to filter its traffic
+//   (network_security_group_id),
+// - a NAT gateway attaches here to own its outbound connectivity
+//   (nat_gateway_id),
+// and downstream resources -- AKS clusters, databases, private endpoints,
+// load balancers, VMs -- all deploy INTO a subnet by referencing its ID.
+// Attachments are declared subnet-side because that is Azure's own model:
+// one route table, NSG, or NAT gateway serves many subnets, while a subnet
+// carries at most one of each.
+//
+// **Note:** Subnets do not have their own region -- they inherit the region
+// from their parent virtual network, which is why this spec has no `region`
+// field. They are also not tracked ARM resources, so they carry no tags.
+message AzureSubnetSpec {
+  // The parent virtual network, by ARM ID. The subnet is an ARM child of
+  // the network: the network's ID carries both the resource group and the
+  // network name, and the modules derive both from it rather than modeling
+  // redundant fields that could contradict the referenced network.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name}
+  // Changing the parent replaces the subnet.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_id"
+  ];
+
+  // The name of the subnet. Must be unique within the virtual network;
+  // 1-80 characters (alphanumerics, underscores, periods, and hyphens;
+  // must start with a letter or number and end with a letter, number, or
+  // underscore). Changing the name replaces the subnet -- and forces
+  // everything deployed into it to move -- so name it after the workload
+  // tier it carries ("app", "data", "gateway"), not after transient details.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 80,
+    (buf.validate.field).cel = {
+      id: "subnet_name_format"
+      message: "Subnet names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens"
+      expression: "this == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')"
+    }
+  ];
+
+  // The CIDR blocks assigned to the subnet, e.g. ["10.0.1.0/24"]. Every
+  // block must fall inside the parent network's address space and must not
+  // overlap other subnets. Multiple blocks are first-class: a dual-stack
+  // subnet carries an IPv4 and an IPv6 block side by side.
+  //
+  // Sizing guidance: Azure reserves 5 IPs per subnet (the first four and
+  // the last). /24 (251 usable) suits general workloads; Application
+  // Gateway needs at least /27; delegated database subnets are commonly
+  // /28. Blocks can be changed in place while the subnet is empty, but a
+  // block in use by deployed resources cannot shrink.
+  //
+  // Exactly one of address_prefixes or ip_address_pool must be set: either
+  // you plan addresses yourself (this field) or you delegate allocation to
+  // an Azure Network Manager IPAM pool (ip_address_pool).
+  repeated string address_prefixes = 3;
+
+  // Delegated address allocation from an Azure Network Manager IP Address
+  // Management (IPAM) pool -- the alternative to hand-planned
+  // address_prefixes for organizations that manage address space centrally.
+  // The actual CIDR is provisioned by the pool at deploy time and surfaced
+  // in the subnet's address_prefixes output.
+  //
+  // Exactly one of address_prefixes or ip_address_pool must be set.
+  AzureSubnetIpAddressPool ip_address_pool = 4;
+
+  // Azure service endpoints to enable on this subnet. Service endpoints
+  // route traffic to the listed Azure services over the Azure backbone
+  // instead of the public internet, and let those services' firewalls
+  // admit traffic by subnet identity.
+  //
+  // Common values: "Microsoft.Storage", "Microsoft.Sql",
+  // "Microsoft.KeyVault", "Microsoft.AzureCosmosDB", "Microsoft.ServiceBus",
+  // "Microsoft.EventHub", "Microsoft.Web", "Microsoft.ContainerRegistry",
+  // "Microsoft.AzureActiveDirectory". ("Microsoft.Storage.Global" extends
+  // storage endpoints across regions but is subscription-feature-gated.)
+  repeated string service_endpoints = 5;
+
+  // ARM IDs of Service Endpoint Policies to associate with the subnet.
+  // Endpoint policies narrow a service endpoint's reach to specific
+  // resources (e.g. only your storage accounts, not all of Azure Storage).
+  // Plain ARM IDs: service endpoint policies are not modeled as a Planton
+  // kind, being a niche zero-trust refinement of service endpoints.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/serviceEndpointPolicies/{name}
+  repeated string service_endpoint_policy_ids = 6;
+
+  // Service delegations for this subnet. A delegation hands the subnet to
+  // an Azure PaaS service, permitting it to inject service-managed
+  // resources and network rules. Delegated subnets are dedicated: the
+  // delegated service becomes the only thing that can deploy into them.
+  //
+  // Common delegations:
+  // - PostgreSQL Flexible Server: "Microsoft.DBforPostgreSQL/flexibleServers"
+  // - MySQL Flexible Server: "Microsoft.DBforMySQL/flexibleServers"
+  // - Container App Environment: "Microsoft.App/environments"
+  // - App Service VNet integration: "Microsoft.Web/serverFarms"
+  //
+  // Nearly every real subnet has zero or one delegation; the list form
+  // mirrors ARM's shape, which admits multiple.
+  repeated AzureSubnetDelegation delegations = 7;
+
+  // Network-policy evaluation for PRIVATE ENDPOINTS in this subnet.
+  // Unspecified applies Azure's default (disabled): NSG rules and route
+  // tables are NOT evaluated for private endpoint traffic, which is what
+  // almost every private-endpoint subnet wants. Enable one of the explicit
+  // modes only in zero-trust architectures that must filter or route
+  // private endpoint traffic; the granular values apply just the NSG side
+  // or just the route-table side.
+  AzureSubnetPrivateEndpointNetworkPolicies private_endpoint_network_policies = 8;
+
+  // Whether standard network policies (NSGs, user-defined routes) apply to
+  // PRIVATE LINK SERVICE resources in this subnet. Azure's default is
+  // true; set false only on subnets hosting a Private Link Service, which
+  // requires policies off. Updatable in place.
+  optional bool private_link_service_network_policies_enabled = 9 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether workloads in this subnet get Azure's implicit default outbound
+  // internet access. Azure's historical default is true, but Microsoft is
+  // retiring implicit outbound (announced for September 2025 onward for
+  // new subnets): production subnets should set this false and route
+  // egress explicitly through a NAT gateway (nat_gateway_id), a load
+  // balancer's outbound rules, or a firewall via route_table_id.
+  // Changing it requires the subnet to be empty of VMs.
+  optional bool default_outbound_access_enabled = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // Opt the subnet into cross-tenant sharing through Azure Virtual Network
+  // Manager. TENANT is the only value ARM currently accepts, and it
+  // requires default_outbound_access_enabled to be explicitly false
+  // (enforced here, mirroring ARM's own constraint). Leave unspecified for
+  // the overwhelmingly common unshared subnet.
+  AzureSubnetSharingScope sharing_scope = 11;
+
+  // The route table that steers this subnet's traffic, by ARM ID.
+  // Attaching a table replaces Azure's default system routing with the
+  // table's user-defined routes for everything in the subnet -- the
+  // firewall-egress and forced-tunneling seam. Omit for Azure's default
+  // routing. The attachment is declared here (not on the table) because
+  // one table serves many subnets; detaching is just removing this field.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef route_table_id = 12 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureRouteTable,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.route_table_id"
+  ];
+
+  // The network security group that filters this subnet's traffic, by ARM
+  // ID. The NSG's rules apply to everything deployed in the subnet --
+  // Azure's primary network access control. Omit to leave the subnet
+  // governed only by Azure's implicit default rules (allow VNet-internal
+  // and load-balancer traffic, deny other inbound). One NSG typically
+  // guards many subnets of the same tier.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network_security_group_id = 13 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureNetworkSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_security_group_id"
+  ];
+
+  // The NAT gateway that owns this subnet's outbound connectivity, by ARM
+  // ID. Attaching a NAT gateway gives every workload in the subnet stable,
+  // SNAT-exhaustion-resistant egress through the gateway's public IPs --
+  // the production answer to Azure retiring implicit outbound access
+  // (default_outbound_access_enabled). One gateway serves many subnets in
+  // the same region.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef nat_gateway_id = 14 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureNatGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.nat_gateway_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "address_source_exactly_one"
+    message: "Set exactly one address source: either address_prefixes (self-managed CIDR blocks) or ip_address_pool (Azure Network Manager IPAM allocation)"
+    expression: "(this.address_prefixes.size() > 0) != has(this.ip_address_pool)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "sharing_scope_requires_no_default_outbound"
+    message: "sharing_scope requires default_outbound_access_enabled to be explicitly false (ARM rejects a shared subnet with implicit outbound access)"
+    expression: "this.sharing_scope == 0 || (has(this.default_outbound_access_enabled) && this.default_outbound_access_enabled == false)"
+  };
+}
+
+// A delegated address allocation from an Azure Network Manager IPAM pool.
+message AzureSubnetIpAddressPool {
+  // The ARM resource ID of the Network Manager IPAM pool to allocate from.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/networkManagers/{nm}/ipamPools/{pool}
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How many IP addresses to allocate from the pool, as a positive number
+  // in string form (IPv6 allocations can exceed integer range). The
+  // allocation can grow in place but never shrink.
+  string number_of_ip_addresses = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "ipam_count_positive"
+      message: "number_of_ip_addresses must be a positive number, e.g. \"256\""
+      expression: "this.matches('^[1-9][0-9]*$')"
+    }
+  ];
+}
+
+// AzureSubnetDelegation hands the subnet to an Azure PaaS service,
+// permitting it to inject service-managed resources and network rules.
+message AzureSubnetDelegation {
+  // A label for this delegation, unique within the subnet. This is a
+  // configuration-level name (visible in the portal and IaC state), not an
+  // Azure resource name -- "postgresql" or "container-apps" reads well.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The Azure service to delegate to. Must exactly match one of Azure's
+  // supported delegation service names, e.g.
+  // "Microsoft.DBforPostgreSQL/flexibleServers", "Microsoft.App/environments",
+  // "Microsoft.Web/serverFarms", "Microsoft.ContainerInstance/containerGroups",
+  // "Microsoft.Netapp/volumes", "Microsoft.Sql/managedInstances".
+  string service_name = 2 [(buf.validate.field).required = true];
+
+  // The network actions the delegated service is permitted to perform,
+  // e.g. "Microsoft.Network/virtualNetworks/subnets/join/action". Omit to
+  // let Azure apply the service's default action set -- correct for
+  // virtually all delegations; the field exists for services that document
+  // an explicit action list.
+  repeated string actions = 3;
+}
+
+// Network-policy evaluation modes for private endpoints in a subnet.
+// Values mirror ARM's PrivateEndpointNetworkPolicies; ARM's default
+// (Disabled) is the unspecified value, so only the opt-in filtering modes
+// are explicit choices.
+enum AzureSubnetPrivateEndpointNetworkPolicies {
+  // Not specified: ARM's default -- NSG rules and route tables are not
+  // evaluated for private endpoint traffic in this subnet.
+  azure_subnet_private_endpoint_network_policies_unspecified = 0;
+
+  // Both NSG rules and route tables apply to private endpoint traffic.
+  ENABLED = 1;
+
+  // Only NSG rules apply to private endpoint traffic.
+  NETWORK_SECURITY_GROUP_ENABLED = 2;
+
+  // Only route tables apply to private endpoint traffic.
+  ROUTE_TABLE_ENABLED = 3;
+}
+
+// Cross-tenant sharing scope for a subnet through Azure Virtual Network
+// Manager. Unspecified means the subnet is not shared (ARM's default).
+enum AzureSubnetSharingScope {
+  // Not specified: the subnet is not shared beyond its own tenant.
+  azure_subnet_sharing_scope_unspecified = 0;
+
+  // The subnet is shareable across the tenant through Azure Virtual
+  // Network Manager. The only sharing mode ARM currently accepts.
+  TENANT = 1;
+}

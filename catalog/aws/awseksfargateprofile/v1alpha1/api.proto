@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.aws.awseksfargateprofile.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awseksfargateprofile/v1alpha1/spec.proto";
+import "catalog/aws/awseksfargateprofile/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AwsEksFargateProfile represents an EKS Fargate profile: the selector
+// that schedules matching Kubernetes pods onto serverless Fargate
+// compute instead of EC2 node groups.
+message AwsEksFargateProfile {
+  // api-version must be set to "aws.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
+
+  // resource-kind for this Fargate profile resource.
+  string kind = 2 [(buf.validate.field).string.const = "AwsEksFargateProfile"];
+
+  // metadata captures identifying information (name, org, version, etc.)
+  // and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the core configuration data defining how the profile is provisioned.
+  AwsEksFargateProfileSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds runtime or post-deployment information.
+  AwsEksFargateProfileStatus status = 5;
+}
+
+// AwsEksFargateProfileStatus describes the status fields for a Fargate profile resource.
+message AwsEksFargateProfileStatus {
+  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  AwsEksFargateProfileStackOutputs outputs = 1;
+}

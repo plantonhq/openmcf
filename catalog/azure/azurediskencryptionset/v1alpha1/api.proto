@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurediskencryptionset.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurediskencryptionset/v1alpha1/spec.proto";
+import "catalog/azure/azurediskencryptionset/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AzureDiskEncryptionSet is the top-level API resource for an Azure Disk
+// Encryption Set: the binding of a customer-managed Key Vault key to managed
+// disks, snapshots, and images for encryption at rest. Managed disks, VMs,
+// and VM scale sets reference it by ARM ID to opt into CMK encryption.
+message AzureDiskEncryptionSet {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureDiskEncryptionSet".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureDiskEncryptionSet'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Disk encryption set specification.
+  AzureDiskEncryptionSetSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureDiskEncryptionSetStatus status = 5;
+}
+
+// AzureDiskEncryptionSetStatus holds the deployment outputs.
+message AzureDiskEncryptionSetStatus {
+  // Stack outputs from the IaC deployment.
+  AzureDiskEncryptionSetStackOutputs outputs = 1;
+}

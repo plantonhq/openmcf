@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrusttunnelroute.v1alpha1;
+
+import "catalog/cloudflare/cloudflarezerotrusttunnelroute/v1alpha1/api.proto";
+import "catalog/cloudflare/provider.proto";
+
+//cloudflare-zero-trust-tunnel-route stack-input
+message CloudflareZeroTrustTunnelRouteStackInput {
+  //target cloud-resource
+  CloudflareZeroTrustTunnelRoute target = 1;
+  //provider-config
+  dev.planton.cloudflare.CloudflareProviderConfig provider_config = 2;
+}

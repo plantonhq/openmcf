@@ -95,7 +95,7 @@ func specFieldSet(desc protoreflect.MessageDescriptor) string {
 }
 
 // versionSegmentOf extracts the version segment from a kind message's full
-// name (dev.planton.provider.<p>.<k>.<version>.<Kind>).
+// name (dev.planton.<p>.<k>.<version>.<Kind>).
 func versionSegmentOf(fullName protoreflect.FullName) string {
 	parts := strings.Split(string(fullName), ".")
 	if len(parts) < 2 {

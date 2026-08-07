@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kuberneteskarpenterec2nodeclass.v1alpha1;
+
+import "catalog/kubernetes/kuberneteskarpenterec2nodeclass/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+// Input for the KubernetesKarpenterEc2NodeClass IaC stack.
+message KubernetesKarpenterEc2NodeClassStackInput {
+  // Target cloud-resource.
+  KubernetesKarpenterEc2NodeClass target = 1;
+  // Kubernetes provider configuration (cluster credentials).
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

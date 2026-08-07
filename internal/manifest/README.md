@@ -498,8 +498,8 @@ URL manifests are downloaded once per operation:
 
 ### Adding Support for New Kinds
 
-1. Define proto message in `apis/` directory
-2. Add to `crkreflect` kind mapping (auto-generated via `make generate-crk-reflect`)
+1. Define proto message in `catalog/` directory
+2. Add to `crkreflect` kind mapping (auto-generated via `make generate-cloud-resource-kind-map`)
 3. No changes needed in `manifest` package (automatic)
 
 ### Modifying Validation
@@ -542,7 +542,7 @@ manifest, err := manifest.LoadManifest("resource.yaml")
 **"Unsupported kind"**: 
 - Verify kind spelling (case-sensitive)
 - Check `pkg/crkreflect/kind_map_gen.go` for supported kinds
-- Run `make generate-crk-reflect` if adding new kind
+- Run `make generate-cloud-resource-kind-map` if adding new kind
 
 **"Validation failed"**:
 - Run `planton validate` for detailed errors

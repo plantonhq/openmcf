@@ -1,0 +1,520 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesflinkdeployment.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "catalog/kubernetes/options.proto";
+import "catalog/kubernetes/workload_pod.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesFlinkDeploymentSpec** declares a Flink cluster — the
+ * Kubernetes CR (`flinkdeployments.flink.apache.org/v1beta1`) that
+ * the Flink Kubernetes Operator reconciles into a JobManager, its
+ * TaskManagers, and (in application mode) the job they run.
+ * PREREQUISITE: a KubernetesFlinkOperator whose watch scope covers
+ * this namespace.
+ *
+ * TWO SHAPES, ONE FIELD APART: with `job` set this is an APPLICATION
+ * cluster — the cluster exists to run that one job and follows its
+ * lifecycle (the recommended production shape: isolation per
+ * pipeline). Without `job` it is a SESSION cluster — an empty Flink
+ * runtime that accepts jobs submitted separately (FlinkSessionJob
+ * CRs or the REST API); use it for many short-lived jobs sharing
+ * warm capacity.
+ *
+ * STATE TRUTH, READ THIS FIRST (mirrored from the operator's own
+ * validator at 1.15.0): any `job.upgrade_mode` other than
+ * "stateless" REQUIRES `state.checkpoints_dir`, and "savepoint"
+ * additionally REQUIRES `state.savepoints_dir` — both on storage
+ * every pod can reach (S3-compatible object storage is the normal
+ * answer; compose a KubernetesSeaweedFs via `state.s3`). Without
+ * them the operator rejects the deployment. "last-state" upgrades
+ * restore from the newest checkpoint and pair naturally with
+ * `state.high_availability` (also required for the operator's
+ * rollback feature).
+ *
+ * CONFIG OWNERSHIP: `flink_configuration` is Flink's own key space
+ * (taskmanager.numberOfTaskSlots, state backends, restart
+ * strategies…). The operator FORBIDS keys it owns
+ * (kubernetes.cluster-id, kubernetes.namespace, the HA cluster id) —
+ * they are derived from this resource; setting them is rejected at
+ * admission. NEVER put credentials in it — it renders into a
+ * ConfigMap in clear text; S3 credentials ride `state.s3`'s Secret
+ * selectors as pod environment instead.
+ *
+ * VERSION/IMAGE LOCKSTEP: `flink_version` names the Flink line
+ * ("v2_1" style, the CR's own enum) and the default image derives
+ * from it (`flink:<major>.<minor>` — e.g. v2_1 → flink:2.1). A
+ * custom image must carry exactly that Flink version — the operator
+ * shapes its submission protocol from the declared version and a
+ * mismatch fails at runtime, not at apply.
+ *
+ * NAME BUDGET: keep this resource's name at 45 characters or fewer —
+ * the operator derives `<name>-rest`/`<name>-taskmanager-…` child
+ * names and Kubernetes names cap at 63. Both modules fail loudly
+ * past the budget.
+ */
+message KubernetesFlinkDeploymentSpec {
+  /**
+   * Namespace to deploy into. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource. Must be inside the
+   * KubernetesFlinkOperator's watch scope. NOTE the `state.s3`
+   * credential Secrets ride secretKeyRefs, readable only from this
+   * same namespace — co-locate the deployment with its object store
+   * credentials or replicate the Secret.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before the CR and deleted with the resource.
+   * When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Flink version line, in the CR's own enum form (e.g. "v2_1" =
+   * Flink 2.1, "v1_20" = the last 1.x LTS line). Drives the default
+   * image and the operator's submission protocol. The operator
+   * REFUSES changing this after a last-state suspend — restore
+   * first, then upgrade.
+   */
+  string flink_version = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.flink_version"
+      message: "flink_version must be one of the CR enum values: v1_13…v1_20, v2_0, v2_1, v2_2."
+      expression: "this in [\"v1_13\", \"v1_14\", \"v1_15\", \"v1_16\", \"v1_17\", \"v1_18\", \"v1_19\", \"v1_20\", \"v2_0\", \"v2_1\", \"v2_2\"]"
+    }
+  ];
+
+  /**
+   * Container image for every Flink pod. Empty = the official image
+   * derived from flink_version (`flink:<major>.<minor>` — e.g.
+   * flink:2.1). Set for custom images with your job jar or
+   * connectors baked in — and keep the Flink inside identical to
+   * flink_version.
+   */
+  string image = 4;
+
+  /**
+   * The job — set it for an APPLICATION cluster (the cluster runs
+   * exactly this job and follows its lifecycle); omit it for a
+   * SESSION cluster (an empty runtime accepting external
+   * submissions).
+   */
+  KubernetesFlinkDeploymentJob job = 5;
+
+  /**
+   * The JobManager — the cluster's coordinator. Always exactly one
+   * ACTIVE JobManager; replicas beyond 1 are warm standbys and
+   * require state.high_availability (mirrored from the operator's
+   * validator).
+   */
+  KubernetesFlinkDeploymentJobManager job_manager = 6;
+
+  /**
+   * The TaskManagers — the worker processes. Sizing truth: total
+   * task slots = replicas × "taskmanager.numberOfTaskSlots" (a
+   * flink_configuration key, default 1), and a job needs
+   * `parallelism` slots to run — an under-slotted cluster holds the
+   * job in a scheduling wait, not an error.
+   */
+  KubernetesFlinkDeploymentTaskManager task_manager = 7;
+
+  /**
+   * Flink configuration, Flink's own key space (e.g.
+   * "taskmanager.numberOfTaskSlots": "2", restart strategies, state
+   * backend tuning). Keys the operator owns (kubernetes.cluster-id,
+   * kubernetes.namespace, the HA cluster id) are REJECTED at
+   * admission — they derive from this resource. State/HA
+   * directories have first-class fields under `state` — prefer
+   * them. NEVER put credentials here (renders into a ConfigMap).
+   */
+  map<string, string> flink_configuration = 8;
+
+  /**
+   * Durable state posture: checkpoint/savepoint directories, HA
+   * metadata, and the S3 credential seam. Required (in parts) by
+   * every non-stateless upgrade mode — see the spec-level STATE
+   * TRUTH.
+   */
+  KubernetesFlinkDeploymentState state = 9;
+
+  /**
+   * Deployment mode: "native" (empty default — Flink asks Kubernetes
+   * for TaskManagers on demand; the operator-recommended mode) or
+   * "standalone" (fixed resources, no Flink↔Kubernetes API traffic).
+   */
+  optional string mode = 10 [
+    (dev.planton.shared.options.default) = "native",
+    (buf.validate.field).cel = {
+      id: "spec.mode"
+      message: "mode must be \"native\" or \"standalone\"."
+      expression: "this in [\"native\", \"standalone\"]"
+    }
+  ];
+
+  /**
+   * Service account the Flink pods run as. Empty = "flink" — the
+   * account the KubernetesFlinkOperator's chart creates with
+   * reconcile RBAC (its job_service_account output). Point elsewhere
+   * only if you provision equivalent RBAC yourself.
+   */
+  optional string service_account = 11 [(dev.planton.shared.options.default) = "flink"];
+
+  /**
+   * Log4j configuration overrides (file name → content), e.g.
+   * "log4j-console.properties" → rootLogger tuning. Empty = the
+   * image defaults.
+   */
+  map<string, string> log_configuration = 12;
+
+  /**
+   * Names of existing image-pull Secrets applied to every Flink pod.
+   */
+  repeated string image_pull_secrets = 13 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing image-pull Secrets (references), not secret material"];
+
+  /**
+   * Scheduling for every Flink pod (rendered through the CR's pod
+   * template).
+   */
+  KubernetesFlinkDeploymentScheduling scheduling = 14;
+
+  /**
+   * Change this value to force the operator to restart the
+   * deployment without any spec change (the CR's restartNonce —
+   * a declarative "kick").
+   */
+  int64 restart_nonce = 15;
+
+  option (buf.validate.message).cel = {
+    id: "spec.state.checkpoints_for_stateful_upgrades"
+    expression: "!has(this.job) || !has(this.job.upgrade_mode) || this.job.upgrade_mode == \"stateless\" || (has(this.state) && size(this.state.checkpoints_dir) > 0)"
+    message: "last-state and savepoint upgrade modes need state.checkpoints_dir (the operator rejects the deployment without it — checkpoints are where the state to carry across upgrades lives). Use s3://… on a composed object store."
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spec.state.savepoints_dir_for_savepoint_mode"
+    expression: "!has(this.job) || !has(this.job.upgrade_mode) || this.job.upgrade_mode != \"savepoint\" || (has(this.state) && size(this.state.savepoints_dir) > 0)"
+    message: "The savepoint upgrade mode needs state.savepoints_dir — the operator triggers a savepoint there on every upgrade and rejects the deployment without it."
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spec.job_manager.standby_needs_ha"
+    expression: "!has(this.job_manager) || !has(this.job_manager.replicas) || this.job_manager.replicas <= 1 || (has(this.state) && has(this.state.high_availability) && this.state.high_availability.enabled)"
+    message: "JobManager replicas beyond 1 are standbys coordinated through HA metadata — enable state.high_availability (the operator rejects standby replicas without it)."
+  };
+}
+
+/**
+ * The job an application cluster runs.
+ */
+message KubernetesFlinkDeploymentJob {
+  /**
+   * URI of the job jar. `local:///…` paths point INSIDE the image
+   * (the production pattern: bake the jar); the Flink images also
+   * ship examples under /opt/flink/examples. Remote schemes
+   * (https://, s3://) download at submission.
+   */
+  string jar_uri = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Fully qualified main class. Empty = the jar manifest's
+   * Main-Class.
+   */
+  string entry_class = 2;
+
+  /**
+   * Program arguments passed to main().
+   */
+  repeated string args = 3;
+
+  /**
+   * Job parallelism — the slots the job needs (see the TaskManager
+   * sizing truth). Empty = 1.
+   */
+  optional int32 parallelism = 4 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Desired state: "running" (empty default) or "suspended" — the
+   * declarative pause. Suspending with a stateful upgrade_mode
+   * retains state for the resume; how much depends on the mode
+   * (savepoint drains to a savepoint; last-state relies on the
+   * newest checkpoint).
+   */
+  optional string state = 5 [
+    (dev.planton.shared.options.default) = "running",
+    (buf.validate.field).cel = {
+      id: "job.state"
+      message: "Job state must be \"running\" or \"suspended\"."
+      expression: "this in [\"running\", \"suspended\"]"
+    }
+  ];
+
+  /**
+   * How spec changes carry job state across the restart:
+   * "stateless" (empty default — restart from clean state; correct
+   * for stateless pipelines only), "last-state" (restore the newest
+   * checkpoint — fast, needs state.checkpoints_dir), or "savepoint"
+   * (drain through a savepoint — the operationally safest; needs
+   * both directories). The spec-level rules enforce the directory
+   * requirements.
+   */
+  optional string upgrade_mode = 6 [
+    (dev.planton.shared.options.default) = "stateless",
+    (buf.validate.field).cel = {
+      id: "job.upgrade_mode"
+      message: "upgrade_mode must be \"stateless\", \"last-state\", or \"savepoint\"."
+      expression: "this in [\"stateless\", \"last-state\", \"savepoint\"]"
+    }
+  ];
+
+  /**
+   * Savepoint path to bootstrap the FIRST start from (migrating a
+   * job into this declaration). Later restores are governed by
+   * upgrade_mode.
+   */
+  string initial_savepoint_path = 7;
+
+  /**
+   * Allow restoring from a savepoint that carries state for
+   * operators no longer in the job graph (after removing an
+   * operator from the pipeline). Off = the restore fails instead of
+   * silently dropping state.
+   */
+  bool allow_non_restored_state = 8;
+
+  /**
+   * Change this value to trigger a savepoint NOW (the CR's
+   * savepointTriggerNonce) — the declarative manual savepoint, into
+   * state.savepoints_dir.
+   */
+  int64 savepoint_trigger_nonce = 9;
+}
+
+/**
+ * The JobManager.
+ */
+message KubernetesFlinkDeploymentJobManager {
+  /**
+   * CPU and memory for the JobManager. Empty = 1 CPU / 2Gi (the
+   * upstream example sizing). Flink derives its JVM sizing from the
+   * container memory — resize instead of tuning JVM flags.
+   */
+  dev.planton.kubernetes.ContainerResources resources = 1 [(dev.planton.kubernetes.default_container_resources) = {
+    limits: {
+      cpu: "1000m"
+      memory: "2Gi"
+    }
+    requests: {
+      cpu: "250m"
+      memory: "2Gi"
+    }
+  }];
+
+  /**
+   * JobManager count. Empty = 1. More than 1 = warm standbys —
+   * requires state.high_availability (validated at the spec level).
+   */
+  optional int32 replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+/**
+ * The TaskManagers.
+ */
+message KubernetesFlinkDeploymentTaskManager {
+  /**
+   * CPU and memory for each TaskManager. Empty = 1 CPU / 2Gi. Flink
+   * derives managed/network memory from the container memory —
+   * resize instead of tuning JVM flags.
+   */
+  dev.planton.kubernetes.ContainerResources resources = 1 [(dev.planton.kubernetes.default_container_resources) = {
+    limits: {
+      cpu: "1000m"
+      memory: "2Gi"
+    }
+    requests: {
+      cpu: "250m"
+      memory: "2Gi"
+    }
+  }];
+
+  /**
+   * TaskManager count. In native mode (the default) leave this
+   * empty — Flink requests TaskManagers on demand from the job's
+   * parallelism; setting it there is ignored. In standalone mode it
+   * is the fixed worker count (empty = 1).
+   */
+  optional int32 replicas = 2 [(buf.validate.field).int32.gte = 1];
+}
+
+/**
+ * Durable state posture. The directories are Flink config sugar
+ * (state.checkpoints.dir / state.savepoints.dir /
+ * high-availability.storageDir) with the requirements the operator
+ * enforces made visible; `s3` is the credential seam that keeps
+ * secrets OUT of flink_configuration.
+ */
+message KubernetesFlinkDeploymentState {
+  /**
+   * Checkpoint directory (e.g. "s3://flink-state/checkpoints/
+   * my-pipeline"). Required for last-state and savepoint upgrade
+   * modes. Every pod must reach it — object storage, not a local
+   * path.
+   */
+  string checkpoints_dir = 1;
+
+  /**
+   * Savepoint directory (e.g. "s3://flink-state/savepoints/
+   * my-pipeline"). Required for the savepoint upgrade mode and for
+   * savepoint_trigger_nonce.
+   */
+  string savepoints_dir = 2;
+
+  /**
+   * Kubernetes-native high availability: JobManager metadata in a
+   * ConfigMap, recovery state in storage_dir. Required for
+   * JobManager standbys and the operator's rollback feature; pairs
+   * naturally with last-state upgrades.
+   */
+  KubernetesFlinkDeploymentHighAvailability high_availability = 3;
+
+  /**
+   * S3-compatible access for the s3:// directories above —
+   * endpoint + credentials as SECRET REFERENCES (rendered as pod
+   * environment, never into Flink config). Compose a
+   * KubernetesSeaweedFs: the FK default wires its S3 endpoint.
+   * Omit on clusters where pods reach object storage ambiently
+   * (IRSA/workload identity on a cloud bucket).
+   */
+  KubernetesFlinkDeploymentS3 s3 = 4;
+
+  option (buf.validate.message).cel = {
+    id: "state.ha_needs_storage_dir"
+    expression: "!has(this.high_availability) || !this.high_availability.enabled || size(this.high_availability.storage_dir) > 0"
+    message: "High availability needs high_availability.storage_dir — the recovery metadata must live on storage every JobManager can reach (s3://… on a composed object store)."
+  };
+}
+
+/**
+ * Kubernetes-native HA.
+ */
+message KubernetesFlinkDeploymentHighAvailability {
+  /**
+   * Enable Kubernetes HA services.
+   */
+  bool enabled = 1;
+
+  /**
+   * Recovery-state directory (e.g. "s3://flink-state/ha/
+   * my-pipeline"). Required when enabled.
+   */
+  string storage_dir = 2;
+}
+
+/**
+ * S3-compatible credentials and endpoint, Secret-native.
+ */
+message KubernetesFlinkDeploymentS3 {
+  /**
+   * S3 endpoint URL. Accepts a literal (e.g. an AWS regional
+   * endpoint) or a reference to a KubernetesSeaweedFs resource (its
+   * in-cluster S3 endpoint).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef endpoint = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSeaweedFs,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.s3_endpoint"
+  ];
+
+  /**
+   * Path-style addressing (bucket in the path, not the hostname).
+   * Empty = true — correct for in-cluster object stores
+   * (SeaweedFS/MinIO-compatible); set false for AWS S3 itself.
+   */
+  optional bool path_style_access = 2 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Access-key id, read from a Secret (on a KubernetesSeaweedFs:
+   * its S3 credentials Secret).
+   */
+  KubernetesFlinkDeploymentSecretSelector access_key_secret = 3 [(buf.validate.field).required = true];
+
+  /**
+   * Secret access key, read from a Secret.
+   */
+  KubernetesFlinkDeploymentSecretSelector secret_key_secret = 4 [(buf.validate.field).required = true];
+
+  /**
+   * Name of the S3 filesystem plugin jar to activate from the image's
+   * bundled plugin set (e.g. "flink-s3-fs-hadoop-2.1.3.jar" — the
+   * exact file under /opt/flink/opt in YOUR image; the version in the
+   * name must match the image's Flink patch version). A patch
+   * mismatch CrashLoopBackOffs the JobManager; the operator error
+   * never names the jar — `ls /opt/flink/opt` in the image is the
+   * diagnosis. The official images ship the plugin DISABLED: without
+   * this (or a custom image that bakes the plugin into
+   * /opt/flink/plugins) every s3:// path fails at runtime with
+   * "unsupported filesystem scheme". Leave empty only for images
+   * that pre-bake the plugin.
+   */
+  string builtin_plugin_jar = 5;
+}
+
+/**
+ * A value read from a Kubernetes Secret. Defaults compose a
+ * KubernetesSeaweedFs resource's S3 credentials Secret.
+ */
+message KubernetesFlinkDeploymentSecretSelector {
+  /**
+   * Secret name. Accepts a literal or a reference to a
+   * KubernetesSeaweedFs resource (its S3 credentials Secret).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSeaweedFs,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.s3_credentials_secret_name"
+  ];
+
+  /**
+   * Key within the Secret (on a SeaweedFS credentials Secret:
+   * "admin_access_key_id" / "admin_secret_access_key" for the admin
+   * identity, or your declared identity's keys).
+   */
+  string key = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * Pod scheduling constraints (rendered through the CR's pod
+ * template, applied to JobManager and TaskManager pods alike).
+ */
+message KubernetesFlinkDeploymentScheduling {
+  /**
+   * Node selector for the pods.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for tainted nodes.
+   */
+  repeated dev.planton.kubernetes.WorkloadToleration tolerations = 2;
+
+  /**
+   * Priority class name for the pods.
+   */
+  string priority_class_name = 3;
+}

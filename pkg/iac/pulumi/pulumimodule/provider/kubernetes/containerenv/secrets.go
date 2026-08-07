@@ -1,7 +1,7 @@
 package containerenv
 
 import (
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
+	kubernetes "github.com/plantonhq/planton/catalog/kubernetes"
 )
 
 // BuildSecretData collects literal secret values from the ContainerEnv spec

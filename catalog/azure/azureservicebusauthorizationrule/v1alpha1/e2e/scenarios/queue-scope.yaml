@@ -1,0 +1,28 @@
+# Queue-scope dispatch path: the full manage trio on one queue, through
+# the namespace -> queue fixture chain -- proving the queue-scoped
+# provider resource and the manage-requires-listen-and-send contract
+# live.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureServiceBusAuthorizationRule
+metadata:
+  name: planton-oss-e2e-sbauth-queuescope
+  id: planton-oss-e2e-sbauth-queuescope
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureservicebusauthorizationrule
+  annotations:
+    planton.dev/e2e: "true"
+    # Namespace then queue, in deploy order.
+    planton.dev/e2e-prerequisites: "catalog/azure/azureservicebusauthorizationrule/v1alpha1/e2e/fixture-namespace-queuescope.yaml, catalog/azure/azureservicebusauthorizationrule/v1alpha1/e2e/fixture-queue.yaml"
+  tags:
+    - planton-e2e
+spec:
+  ruleName: e2e-orders-manage
+  queueId:
+    valueFrom:
+      name: planton-oss-e2e-sbauth-fixture-queue
+  listen: true
+  send: true
+  manage: true

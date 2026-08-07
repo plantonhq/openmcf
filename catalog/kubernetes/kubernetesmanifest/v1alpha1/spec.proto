@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesmanifest.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+/**
+ * **KubernetesManifestSpec** deploys raw Kubernetes YAML — the catalog's
+ * bring-your-own-manifest escape hatch. Hand it any valid manifest (single or
+ * multi-document, core kinds or custom resources) and both engines apply it
+ * to the cluster exactly as written.
+ *
+ * WHEN NOT TO USE THIS: a first-class catalog component always wins. Typed
+ * components validate configuration before deploy, export composable outputs
+ * other resources can reference, and document their trade-offs field by
+ * field — raw YAML does none of that. Reach for KubernetesManifest only when
+ * the catalog has no component for what you need to apply (a vendor's
+ * install manifest, a CRD bundle, an exotic custom resource).
+ *
+ * NAMESPACE SEMANTICS (identical on both engines): documents that declare
+ * their own `metadata.namespace` keep it; namespaced documents that declare
+ * none land in `spec.namespace`. Cluster-scoped documents (CRDs,
+ * ClusterRoles, ...) are applied as-is — the anchor namespace never distorts
+ * them. The manifest content itself is never otherwise mutated: no injected
+ * labels, no rewritten fields.
+ */
+message KubernetesManifestSpec {
+  /**
+   * The anchor namespace for this manifest: namespaced documents that do not
+   * declare their own `metadata.namespace` are applied here. Accepts a
+   * literal namespace name or a reference to a KubernetesNamespace resource.
+   * Documents with an explicit namespace, and cluster-scoped documents, are
+   * unaffected.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the anchor namespace is created (with the standard Planton
+   * governance labels) before the manifest is applied, and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * The raw Kubernetes manifest YAML to apply. A single document or multiple
+   * documents separated by `---`. Every valid Kubernetes resource is
+   * accepted: core kinds, CRDs, and custom resources — including a CRD and
+   * its custom resources in the same manifest (both engines order the CRD
+   * install first).
+   *
+   * Example multi-document manifest:
+   * ```yaml
+   * apiVersion: v1
+   * kind: ConfigMap
+   * metadata:
+   *   name: app-config
+   * data:
+   *   key: value
+   * ---
+   * apiVersion: apps/v1
+   * kind: Deployment
+   * metadata:
+   *   name: app
+   * spec:
+   *   ...
+   * ```
+   */
+  string manifest_yaml = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "manifest_yaml.not_blank"
+      message: "Manifest YAML must contain at least one Kubernetes document (a non-empty YAML body)"
+      expression: "this.matches('\\\\S')"
+    }
+  ];
+
+  /**
+   * When true, neither engine waits for the applied resources to become
+   * ready — the deploy returns as soon as the API server accepts every
+   * document. When false (the default), both engines block until readiness:
+   * Deployments/DaemonSets/StatefulSets complete their rollout, and other
+   * kinds pass their engine's readiness checks. Skip the await for manifests
+   * whose readiness depends on something deployed later (e.g. a webhook
+   * configuration waiting on its service) or that intentionally stay
+   * not-ready at install time.
+   */
+  bool skip_await = 4;
+}

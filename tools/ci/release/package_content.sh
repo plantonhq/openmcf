@@ -59,10 +59,10 @@ wants() { [ -z "$TARGET" ] || [ "$TARGET" = "$1" ]; }
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 cd "$REPO_ROOT"
 
-PROVIDER_BASE="apis/dev/planton/provider"
+CATALOG_ROOT="catalog"
 
-if [ ! -d "$PROVIDER_BASE" ]; then
-  echo "ERROR: Provider base directory not found: $PROVIDER_BASE"
+if [ ! -d "$CATALOG_ROOT" ]; then
+  echo "ERROR: Catalog root directory not found: $CATALOG_ROOT"
   exit 1
 fi
 
@@ -123,8 +123,8 @@ create_zip() {
 if wants presets; then
   echo "Presets..."
   {
-    find "$PROVIDER_BASE" \( -path '*/v1alpha1/presets/*.yaml' -o -path '*/v1alpha1/presets/*.md' \) ! -path '*/_test/*'
-    echo "apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto"
+    find "$CATALOG_ROOT" \( -path '*/v1alpha1/presets/*.yaml' -o -path '*/v1alpha1/presets/*.md' \) ! -path '*/_test/*'
+    echo "shared/cloudresourcekind/cloud_resource_kind.proto"
   } | create_zip "presets.zip" "presets"
 fi
 
@@ -133,7 +133,7 @@ fi
 # Excludes hidden dirs, vendor, and node_modules (same as iac-bundler.ts).
 if wants iac-source; then
   echo "IaC source..."
-  find "$PROVIDER_BASE" -path '*/v1alpha1/iac/*' ! -path '*/_test/*' \
+  find "$CATALOG_ROOT" -path '*/v1alpha1/iac/*' ! -path '*/_test/*' \
       \( -name '*.go' -o -name '*.tf' -o -name '*.md' -o -name '*.yaml' \) \
       ! -path '*/vendor/*' \
       ! -path '*/node_modules/*' \
@@ -145,14 +145,14 @@ fi
 # ─── Catalog Pages ───────────────────────────────────────────────────────────
 if wants catalog-pages; then
   echo "Catalog pages..."
-  find "$PROVIDER_BASE" -path '*/v1alpha1/catalog-page.md' ! -path '*/_test/*' \
+  find "$CATALOG_ROOT" -path '*/v1alpha1/catalog-page.md' ! -path '*/_test/*' \
     | create_zip "catalog-pages.zip" "catalog pages"
 fi
 
 # ─── Proto Source ────────────────────────────────────────────────────────────
 if wants proto-source; then
   echo "Proto source..."
-  find "$PROVIDER_BASE" \( \
+  find "$CATALOG_ROOT" \( \
       -path '*/v1alpha1/spec.proto' \
       -o -path '*/v1alpha1/api.proto' \
       -o -path '*/v1alpha1/stack_input.proto' \
@@ -168,13 +168,13 @@ fi
 # also survives api-version directory renames, which path patterns would not.
 if wants reference-pack; then
   echo "Reference pack..."
-  find "$PROVIDER_BASE" \( \
+  find "$CATALOG_ROOT" \( \
       -name 'reference.md' \
       -o -name 'GUIDE.md' \
       -o -name 'reference-index.md' \
       -o -name 'reference-graph.yaml' \
       -o -name 'reference-commons.md' \
-      -o -path "$PROVIDER_BASE/patterns/*.md" \
+      -o -path "$CATALOG_ROOT/_patterns/*.md" \
     \) ! -path '*/_test/*' | create_zip "reference-pack.zip" "reference pack"
 fi
 

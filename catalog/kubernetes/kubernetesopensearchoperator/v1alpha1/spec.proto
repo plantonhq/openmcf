@@ -1,0 +1,224 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "catalog/kubernetes/workload_pod.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesOpenSearchOperatorSpec** installs the OpenSearch
+ * Kubernetes Operator — the opensearch-project's operator for running
+ * OpenSearch (the Apache-2.0 search and analytics engine) on
+ * Kubernetes — from the official `opensearch-operator` Helm chart
+ * (https://opensearch-project.github.io/opensearch-k8s-operator/).
+ * The operator reconciles `OpenSearchCluster` custom resources
+ * (declared with KubernetesOpenSearch) into running search clusters
+ * with managed TLS, security bootstrap, rolling upgrades and
+ * Dashboards.
+ *
+ * This component installs and configures the ENGINE. Search clusters
+ * themselves are declared with KubernetesOpenSearch resources — one
+ * per cluster — which this operator reconciles.
+ *
+ * CHART/IMAGE PINNING: pick `chart_version` from the SERVED repository
+ * index. Chart 2.8.0 pairs with the stable operator 2.8.0 image; the
+ * newer served charts (2.8.3+, 3.0.x) default their manager image to a
+ * PRERELEASE tag (verified against the served charts' own appVersion)
+ * and additionally bundle next-generation `opensearch.org` API-group
+ * CRDs the stable operator does not serve — pin those lines only after
+ * upstream cuts a stable 3.x operator release.
+ *
+ * NAMING: keep the resource name at 27 characters or fewer. The chart
+ * derives long child names from its fullname (the longest,
+ * "<fullname>-controller-manager-metrics-service", adds 36 characters),
+ * and Kubernetes caps object names at 63 — verified live: the chart
+ * truncates the fullname but NOT the names built from it, so an
+ * over-long name fails at the API server mid-install. The modules pin
+ * the fullname to the resource name, which is what makes the 27-char
+ * budget hold.
+ *
+ * CRD LIFECYCLE: the chart TEMPLATES the ten OpenSearch CRDs as
+ * release-owned resources (no keep-on-uninstall knob upstream).
+ * The modules therefore own the CRD lifecycle themselves so that
+ * uninstalling the operator never cascade-deletes OpenSearchCluster
+ * resources and their data — see the component README for the exact
+ * mechanism per engine.
+ *
+ * WATCH SCOPE: by default the operator watches ALL namespaces
+ * (cluster-wide RBAC). Set `watch_namespace` to restrict it to one
+ * namespace; pair with `use_role_bindings` to avoid cluster-wide RBAC
+ * entirely on shared clusters.
+ *
+ * The typed fields below cover the chart's meaningful configuration
+ * surface; `helm_values` remains as the escape hatch for chart values
+ * beyond them (merged last, Helm `-f` semantics, identical on both
+ * engines) — a safety valve, never the primary interface.
+ */
+message KubernetesOpenSearchOperatorSpec {
+  /**
+   * Namespace to install the operator into. Accepts a literal
+   * namespace name or a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "2.8.0"). Versions must exist
+   * as SERVED charts in the repository index
+   * (https://opensearch-project.github.io/opensearch-k8s-operator/).
+   * The chart's default manager image tag is its appVersion — the
+   * served 2.8.3/2.8.4/3.0.x charts all default to a PRERELEASE
+   * operator image (verified against the served charts), so 2.8.0 is
+   * the newest stable pairing. A version bump is a license and
+   * API-group re-check: the 3.x line migrates the CRDs from
+   * `opensearch.opster.io` to `opensearch.org`.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "2.8.0"];
+
+  /**
+   * Restrict the operator to watch a single namespace instead of the
+   * cluster-wide default. When set, OpenSearchCluster resources in
+   * other namespaces are ignored by this install. Empty = watch all
+   * namespaces (the chart default).
+   */
+  string watch_namespace = 4;
+
+  /**
+   * Use namespace-scoped RoleBindings instead of ClusterRoleBindings
+   * for the operator's RBAC. Chart default: false. Only valid together
+   * with `watch_namespace` — a cluster-wide operator cannot run on
+   * namespace-scoped permissions (the chart grants roles only in the
+   * watched namespace).
+   */
+  bool use_role_bindings = 5;
+
+  /**
+   * Operator manager log level: debug, info (the chart default), warn,
+   * or error.
+   */
+  optional string log_level = 6 [
+    (dev.planton.shared.options.default) = "info",
+    (buf.validate.field).cel = {
+      id: "spec.log_level_enum"
+      message: "log level must be debug, info, warn, or error"
+      expression: "this == '' || this in ['debug', 'info', 'warn', 'error']"
+    }
+  ];
+
+  /**
+   * Kubernetes cluster DNS domain the operator bakes into generated
+   * certificates and discovery addresses. Chart default:
+   * "cluster.local". Set only on clusters with a non-default DNS
+   * domain — a mismatch produces TLS certificates whose SANs do not
+   * match the service DNS names nodes advertise.
+   */
+  optional string dns_base = 7 [(dev.planton.shared.options.default) = "cluster.local"];
+
+  /**
+   * Recover cluster pods in parallel instead of one at a time after
+   * failures. Chart default: true (upstream marks it experimental —
+   * disable if recovery behaves unexpectedly).
+   */
+  optional bool parallel_recovery_enabled = 8 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Enable the Go pprof debug endpoints on the manager (port 6060).
+   * Chart default: false. Debugging aid only — never enable in
+   * production.
+   */
+  bool pprof_endpoints_enabled = 9;
+
+  /**
+   * Deploy the kube-rbac-proxy sidecar that shields the operator's
+   * metrics endpoint behind Kubernetes RBAC. Chart default: true.
+   * KNOW THIS: the chart's own default sidecar image
+   * (gcr.io/kubebuilder/kube-rbac-proxy) was deleted upstream and can
+   * never be pulled (verified live) — the modules re-point it at the
+   * maintainer's quay.io repository at the chart's pinned tag, so the
+   * default posture actually installs. Override the image via
+   * helm_values for air-gapped mirrors.
+   */
+  optional bool kube_rbac_proxy_enabled = 10 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Operator manager container resources. Empty = the chart defaults
+   * (requests 100m/350Mi, limits 200m/500Mi).
+   */
+  dev.planton.kubernetes.ContainerResources resources = 11;
+
+  /**
+   * Node selector for the operator pod.
+   */
+  map<string, string> node_selector = 12;
+
+  /**
+   * Tolerations for the operator pod.
+   */
+  repeated dev.planton.kubernetes.WorkloadToleration tolerations = 13;
+
+  /**
+   * Names of image-pull secrets (in the installation namespace) for
+   * pulling the manager image from a private mirror.
+   */
+  repeated string image_pull_secrets = 14 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing Kubernetes Secrets (references), not secret material"];
+
+  /**
+   * Override the operator manager image (air-gap / private-mirror
+   * path). Empty = the chart defaults
+   * (opensearchproject/opensearch-operator at the chart's appVersion).
+   */
+  KubernetesOpenSearchOperatorImage image = 15;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For the chart surface beyond the typed
+   * fields (pod annotations/labels, priority class, security contexts,
+   * extra env, probe tuning, kube-rbac-proxy image/resources, service
+   * account name, ...) — never the substitute for them. Do not put
+   * secrets here. Two keys are off limits: `installCRDs` is re-pinned
+   * by the modules after this merge (the module owns the CRD lifecycle
+   * — a Helm-owned install would cascade-delete every OpenSearchCluster
+   * on uninstall), and `nameOverride`/`fullnameOverride` break the
+   * exported deployment_name output, which derives from the chart's
+   * default naming.
+   */
+  string helm_values = 16;
+
+  option (buf.validate.message).cel = {
+    id: "spec.role_bindings_require_watch_namespace"
+    message: "use_role_bindings requires watch_namespace — namespace-scoped RBAC cannot serve a cluster-wide operator"
+    expression: "!this.use_role_bindings || this.watch_namespace != ''"
+  };
+}
+
+/**
+ * Operator manager image override.
+ */
+message KubernetesOpenSearchOperatorImage {
+  /**
+   * Image repository including registry, e.g.
+   * "my-mirror.example.com/opensearchproject/opensearch-operator".
+   * Empty = "opensearchproject/opensearch-operator".
+   */
+  string repository = 1;
+
+  /**
+   * Image tag. Empty = the chart's appVersion (the operator release
+   * paired with the pinned chart).
+   */
+  string tag = 2;
+}

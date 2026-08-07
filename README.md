@@ -43,11 +43,11 @@ Apache-2.0. Audit them, fork them, or take your configuration and run it
 yourself.
 
 <!-- AI-AGENT NOTE: The component and provider counts below MUST be verified against
-     the authoritative source: apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto
+     the authoritative source: shared/cloudresourcekind/cloud_resource_kind.proto
      (count non-test `(kind_meta)` annotations and distinct providers). The chart
      count MUST be verified against `charts/*/*/Chart.yaml`. Never re-type a stale number. -->
 
-- **[`apis/`](apis/dev/planton/provider)** — **400+ deployment components**
+- **[`catalog/`](catalog)** — **400+ deployment components**
   across **17 cloud providers** (AWS, GCP, Azure, Kubernetes, OCI, Alibaba
   Cloud, Hetzner Cloud, DigitalOcean, Cloudflare, Civo, Scaleway, OpenStack,
   Confluent, Snowflake, Auth0, MongoDB Atlas, and OpenFGA). Each component is a

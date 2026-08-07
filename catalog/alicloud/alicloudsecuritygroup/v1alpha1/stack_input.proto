@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.alicloud.alicloudsecuritygroup.v1alpha1;
+
+import "catalog/alicloud/alicloudsecuritygroup/v1alpha1/api.proto";
+import "catalog/alicloud/provider.proto";
+
+// alicloud-security-group stack-input
+message AliCloudSecurityGroupStackInput {
+  // target cloud-resource
+  AliCloudSecurityGroup target = 1;
+  // provider-config
+  dev.planton.alicloud.AliCloudProviderConfig provider_config = 2;
+}

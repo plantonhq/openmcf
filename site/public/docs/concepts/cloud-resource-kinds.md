@@ -10,7 +10,7 @@ order: 30
 Every deployment component in Planton has a unique kind name -- `AwsS3Bucket`, `KubernetesPostgres`, `GcpCloudSql`. These kind names are not arbitrary strings. They are entries in the `CloudResourceKind` enum, a Protocol Buffer enum that serves as the canonical registry of everything Planton can deploy.
 
 <!-- AI-AGENT NOTE: The deployment component count below MUST be verified against the authoritative source:
-     apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto
+     shared/cloudresourcekind/cloud_resource_kind.proto
      Count only non-test, non-unspecified enum values in the CloudResourceKind enum. -->
 
 The enum currently contains 360+ resource kinds spanning 17 cloud providers.
@@ -118,7 +118,7 @@ planton pulumi up -f my-resource.yaml
 The CLI reads the `kind` field from your manifest and uses the `CloudResourceKind` enum to:
 
 1. **Resolve the provider** -- determines which `ProviderConfig` type to use for credentials
-2. **Locate the IaC module** -- maps to `apis/dev/planton/provider/{provider}/{kind}/{version}/iac/pulumi/` or `iac/tf/`, where `{version}` is the kind's current API version from the registry (for example `v1alpha1`)
+2. **Locate the IaC module** -- maps to `catalog/{provider}/{kind}/{version}/iac/pulumi/` or `iac/tf/`, where `{version}` is the kind's current API version from the registry (for example `v1alpha1`)
 3. **Load the protobuf schema** -- determines which message type to use for validation
 4. **Construct the stack input** -- wraps your manifest and provider config into the IaC input contract
 

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.alicloud.alicloudkubernetescluster.v1alpha1;
+
+import "catalog/alicloud/alicloudkubernetescluster/v1alpha1/api.proto";
+import "catalog/alicloud/provider.proto";
+
+// alicloud-kubernetes-cluster stack-input
+message AliCloudKubernetesClusterStackInput {
+  // target cloud-resource
+  AliCloudKubernetesCluster target = 1;
+  // provider-config
+  dev.planton.alicloud.AliCloudProviderConfig provider_config = 2;
+}

@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/flag"
 	climanifest "github.com/plantonhq/planton/internal/cli/manifest"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/iac/localmodule"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumistack"
+	"github.com/plantonhq/planton/shared"
 	"github.com/spf13/cobra"
 )
 

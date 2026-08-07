@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/outputs"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 var (

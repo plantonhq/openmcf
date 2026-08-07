@@ -34,8 +34,9 @@ type evalCheck struct {
 	File string `yaml:"file"`
 	// Provider selects that provider's reference-index.md.
 	Provider string `yaml:"provider"`
-	// Catalog selects a catalog-level file relative to the provider root
-	// (reference-graph.yaml, reference-commons.md, GUIDE.md, patterns/*).
+	// Catalog selects a catalog-level file relative to the catalog root
+	// (_docs/reference-graph.yaml, _docs/reference-commons.md,
+	// _docs/GUIDE.md, _patterns/*).
 	Catalog string `yaml:"catalog"`
 	Pattern string `yaml:"pattern"`
 }
@@ -76,11 +77,11 @@ func resolveCheckPath(root string, c evalCheck) (string, error) {
 			return "", fmt.Errorf("kind %q does not resolve: %w", c.Kind, err)
 		}
 		protoDir := filepath.Dir(res.Message.ParentFile().Path())
-		return filepath.Join(root, "apis", protoDir, c.File), nil
+		return filepath.Join(root, protoDir, c.File), nil
 	case c.Provider != "":
-		return filepath.Join(root, "apis", providerPathPrefix, c.Provider, "reference-index.md"), nil
+		return filepath.Join(root, catalogPathPrefix, c.Provider, "reference-index.md"), nil
 	default:
-		return filepath.Join(root, "apis", providerPathPrefix, c.Catalog), nil
+		return filepath.Join(root, catalogPathPrefix, c.Catalog), nil
 	}
 }
 

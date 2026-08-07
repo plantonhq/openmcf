@@ -64,7 +64,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	gcpprovider "github.com/plantonhq/planton/apis/dev/planton/provider/gcp"
+	gcpprovider "github.com/plantonhq/planton/catalog/gcp"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/pulumi/pulumioutput"
 
 	"github.com/pkg/errors"

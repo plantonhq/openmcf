@@ -1,0 +1,778 @@
+syntax = "proto3";
+
+package dev.planton.aws.awslambda.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsLambdaSpec defines an AWS Lambda function: its code source (an S3
+// zip archive or an ECR container image), execution environment
+// (runtime, memory, timeout, ephemeral storage, environment variables),
+// VPC attachment, integrations (dead-letter queue, EFS mount, X-Ray
+// tracing, CloudWatch logging), and the function-scoped satellite
+// surface AWS models as separate resources but that are honestly part
+// of the function's own configuration: aliases (with weighted routing
+// and provisioned concurrency), the function URL, resource-policy
+// invoke permissions, the asynchronous-invocation config, recursion
+// detection, and runtime-update management.
+//
+// The function name comes from metadata.name (create-time immutable in
+// AWS). Everything the function composes with attaches by reference:
+// the IAM execution role, the subnets and security groups of a VPC
+// attachment, the KMS key that encrypts environment variables, the
+// dead-letter queue, the EFS access point, and the CloudWatch log
+// group. Event sources (SQS, Kinesis, DynamoDB Streams, MSK) attach
+// through the separate AwsLambdaEventSourceMapping kind, which
+// references this function -- new mappings never modify the function.
+//
+// Code-source guidance: S3 zip is the right default for most services
+// (fast cold starts, per-runtime tooling); a container image is the
+// right choice for large dependency trees (up to 10 GB), custom
+// OS-level packages, or teams standardized on image pipelines.
+message AwsLambdaSpec {
+  // The AWS region the function is created in. Must match the region
+  // of the S3 code bucket, any VPC subnets, and the EFS access point
+  // it references.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Free-form description shown in the AWS Console -- operational
+  // context for humans browsing the account. Up to 256 characters.
+  string description = 2 [(buf.validate.field).string.max_len = 256];
+
+  // The IAM execution role the function assumes: it must trust
+  // lambda.amazonaws.com and carry the policies the code needs
+  // (CloudWatch Logs at minimum -- AWSLambdaBasicExecutionRole; plus
+  // AWSLambdaVPCAccessExecutionRole for VPC attachment). Roles own
+  // their policies -- this module never attaches policies to a role it
+  // merely references. Reference an AwsIamRole role_arn output or pass
+  // a literal role ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // --- Code source (exactly one of s3 or image_uri) ---
+
+  // The deployment package as a zip archive in S3. Requires runtime
+  // and handler. Prefer a bucket in the function's own region --
+  // cross-region pulls are slower and billed.
+  AwsLambdaS3Code s3 = 4;
+
+  // The function code as a container image in ECR, e.g.
+  // "123456789012.dkr.ecr.us-east-1.amazonaws.com/repo:tag". The image
+  // defines the runtime and entrypoint, so runtime and handler must
+  // stay empty; image_config below can override the entrypoint. Images
+  // may be up to 10 GB -- the right choice for heavy dependency trees.
+  string image_uri = 5;
+
+  // Base64-encoded SHA256 of the deployment package. Set it (usually
+  // from your build pipeline) to make code updates declarative: a new
+  // hash rolls the function, an unchanged hash is a no-op even when
+  // the S3 object is rewritten in place. Leave empty to update only
+  // when the S3 key or object version changes.
+  string source_code_hash = 6;
+
+  // The KMS key that encrypts the deployment package in S3 (bring-
+  // your-own-key for the code artifact itself -- distinct from
+  // kms_key_arn, which encrypts environment variables). Only
+  // meaningful for zip deployments. Reference an AwsKmsKey key_arn
+  // output or pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_kms_key_arn = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // --- Execution environment ---
+
+  // The language runtime for zip deployments, e.g. "nodejs22.x",
+  // "python3.13", "java21", "dotnet8", "ruby3.4", "provided.al2023"
+  // (custom runtimes / native binaries). AWS retires runtimes on its
+  // own schedule and adds new ones frequently, so the accepted set is
+  // validated by AWS at deploy time rather than frozen here. Required
+  // for zip code; must stay empty for container images (the image
+  // carries its own runtime).
+  string runtime = 8;
+
+  // The function entrypoint for zip deployments. Format is
+  // runtime-specific: "index.handler" (Node.js), "module.function"
+  // (Python), "package.Class::method" (Java), "bootstrap" (custom
+  // runtimes). Required for zip code; must stay empty for container
+  // images (the image CMD/ENTRYPOINT defines it).
+  string handler = 9 [(buf.validate.field).string.max_len = 128];
+
+  // The instruction-set architecture: "x86_64" or "arm64". Empty keeps
+  // the AWS default (x86_64). arm64 (Graviton) is typically ~20%
+  // cheaper per GB-second and often faster -- prefer it whenever your
+  // runtime and native dependencies support it.
+  string architecture = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "x86_64",
+        "arm64"
+      ]
+    }
+  ];
+
+  // Memory in MB, 128-10240 for standard functions. CPU and network
+  // scale linearly with memory (a full vCPU arrives around 1769 MB),
+  // so raising memory is also how you buy CPU -- for CPU-bound code a
+  // larger size often costs LESS overall by finishing sooner. 0 keeps
+  // the AWS default (128 MB).
+  int32 memory_size_mb = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 128
+      lte: 10240
+    }
+  ];
+
+  // Maximum execution time per invocation in seconds, 1-900. Size it
+  // slightly above the worst expected runtime; API-fronted functions
+  // should stay well under their gateway's timeout. 0 keeps the AWS
+  // default (3 seconds).
+  int32 timeout_seconds = 12 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 900
+    }
+  ];
+
+  // Scratch space at /tmp in MB, 512-10240. Sized for workloads that
+  // stage files locally (media processing, ML model unpacking). Billed
+  // above the free 512 MB. 0 keeps the AWS default (512 MB).
+  int32 ephemeral_storage_mb = 13 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 512
+      lte: 10240
+    }
+  ];
+
+  // Plain-configuration environment variables available to the code at
+  // runtime. Never put secret material here -- environment variables
+  // are visible to anyone who can read the function configuration.
+  // Give the execution role access to SSM Parameter Store or Secrets
+  // Manager and resolve secrets at runtime instead.
+  map<string, string> environment = 14;
+
+  // The customer-managed KMS key that encrypts the environment
+  // variables at rest (and SnapStart snapshots). Empty uses the
+  // AWS-managed key. Reference an AwsKmsKey key_arn output or pass a
+  // literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 15 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // --- VPC attachment ---
+
+  // Subnets the function's ENIs are created in -- typically private
+  // subnets across at least two availability zones. Attaching to a VPC
+  // gives the code access to private resources (databases, caches) and
+  // removes default internet access (route through a NAT gateway to
+  // restore it). Leave empty to run outside any VPC (the default, with
+  // direct internet access). Reference AwsSubnet subnet_id outputs or
+  // pass literal subnet IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 16 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups attached to the function's ENIs. Outbound rules
+  // must allow the services the code reaches (databases, AWS
+  // endpoints, the internet via NAT). Required together with
+  // subnet_ids when attaching to a VPC. Reference AwsSecurityGroup
+  // security_group_id outputs or pass literal security group IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 17 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // Allow the VPC-attached function to make outbound IPv6 connections
+  // over dual-stack subnets. Only meaningful with a VPC attachment.
+  bool ipv6_allowed_for_dual_stack = 18;
+
+  // --- Integrations ---
+
+  // Where asynchronous invocations that exhaust their retries are
+  // sent: an SQS queue or SNS topic ARN. The execution role needs
+  // sqs:SendMessage / sns:Publish on the target. Reference an
+  // AwsSqsQueue queue_arn output, or pass an SNS topic ARN as a
+  // literal (or an explicit-kind reference to AwsSnsTopic topic_arn).
+  // For finer-grained routing (separate success/failure destinations,
+  // max event age), use async_invoke_config instead.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef dead_letter_target_arn = 19 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSqsQueue,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_arn"
+  ];
+
+  // AWS X-Ray tracing: "Active" (trace and sample invocations --
+  // requires xray:PutTraceSegments on the execution role) or
+  // "PassThrough" (only forward upstream trace headers). Empty keeps
+  // the AWS default (PassThrough).
+  string tracing_mode = 20 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Active",
+        "PassThrough"
+      ]
+    }
+  ];
+
+  // Mount an EFS access point into the execution environment --
+  // durable shared storage across invocations and functions (ML
+  // models, shared caches). Requires a VPC attachment reaching the
+  // file system's mount targets.
+  AwsLambdaFileSystemConfig file_system_config = 21;
+
+  // Container-image entrypoint overrides. Only meaningful with
+  // image_uri.
+  AwsLambdaImageConfig image_config = 22;
+
+  // Lambda layer version ARNs merged into the execution environment,
+  // in order (later layers shadow earlier ones), up to five. Layers
+  // carry shared dependencies and tooling outside the deployment
+  // package. Pass literal layer-version ARNs, e.g.
+  // "arn:aws:lambda:us-west-2:123456789012:layer:shared-libs:3".
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef layer_arns = 23 [(buf.validate.field).repeated.max_items = 5];
+
+  // --- Versioning and concurrency ---
+
+  // Publish a new immutable version on every code or configuration
+  // change. Versions are what aliases route to -- enable this when
+  // using aliases for traffic shifting or SnapStart (which only
+  // applies to published versions).
+  bool publish = 24;
+
+  // Reserved concurrency for this function. Unset: the function draws
+  // from the account's unreserved pool (no dedicated cap). 0: all
+  // invocations are throttled -- an operational kill switch. Positive:
+  // that many concurrent executions are carved out of the account
+  // pool, acting as both a guarantee and a ceiling.
+  optional int32 reserved_concurrent_executions = 25 [(buf.validate.field).int32.gte = 0];
+
+  // SnapStart: resume new execution environments from a pre-initialized
+  // snapshot instead of running init from scratch -- order-of-magnitude
+  // cold-start reduction for JVM and other slow-init runtimes. Applies
+  // to published versions only (enable publish and invoke through a
+  // version or alias to benefit).
+  bool snap_start = 26;
+
+  // --- Logging ---
+
+  // CloudWatch Logs delivery. Unset, AWS creates and writes to
+  // "/aws/lambda/<function-name>" in plain-text format with the log
+  // group owned by AWS (it survives function deletion). Configure to
+  // switch to structured JSON, tune log levels, or write into a log
+  // group you manage (retention, encryption, subscription filters).
+  AwsLambdaLoggingConfig logging_config = 27;
+
+  // A code-signing configuration ARN: AWS then rejects deployment
+  // packages whose signatures don't match the trusted signing
+  // profiles. Pass a literal ARN, e.g.
+  // "arn:aws:lambda:us-west-2:123456789012:code-signing-config:csc-...".
+  // Only meaningful for zip deployments.
+  string code_signing_config_arn = 28;
+
+  // --- Function-scoped satellites ---
+
+  // Named pointers to published versions, each optionally splitting
+  // traffic between two versions (canary) and pre-warming provisioned
+  // concurrency. Aliases are the stable invocation targets clients and
+  // event sources should reference -- repointing an alias is how you
+  // ship or roll back without touching callers. Each entry
+  // materializes as its own alias resource keyed by name, so edits are
+  // in-place.
+  repeated AwsLambdaAlias aliases = 29;
+
+  // A built-in HTTPS endpoint for the function -- the zero-
+  // infrastructure alternative to an API gateway for simple HTTP
+  // services and webhooks.
+  AwsLambdaFunctionUrl function_url = 30;
+
+  // Resource-policy statements granting other principals and services
+  // permission to invoke this function -- how S3 buckets, SNS topics,
+  // EventBridge rules, and other accounts are authorized to call it.
+  // Each entry materializes as its own permission statement keyed by
+  // statement_id, so list edits add/remove statements in place.
+  repeated AwsLambdaInvokePermission invoke_permissions = 31;
+
+  // Delivery and retry behavior for asynchronous invocations (S3
+  // events, SNS, EventBridge): retry count, event age, and on-success
+  // / on-failure destinations -- the richer successor to the
+  // dead-letter queue.
+  AwsLambdaAsyncInvokeConfig async_invoke_config = 32;
+
+  // Recursive-loop detection: "Terminate" (the AWS default -- stop
+  // runaway self-invocation loops automatically) or "Allow" (opt out
+  // for workloads that legitimately self-invoke, e.g. intentional
+  // fan-out through SQS). Empty keeps the AWS default.
+  string recursive_loop = 33 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Allow",
+        "Terminate"
+      ]
+    }
+  ];
+
+  // How runtime patches roll out to the function: automatically, only
+  // on function updates, or pinned to a specific runtime version.
+  AwsLambdaRuntimeManagement runtime_management = 34;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "exactly_one_code_source"
+    message: "provide the function code as exactly one of s3 (zip archive) or image_uri (container image)"
+    expression: "has(this.s3) != (this.image_uri != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "zip_requires_runtime_and_handler"
+    message: "zip deployments (s3) require both runtime and handler -- they tell Lambda how to start your code"
+    expression: "!has(this.s3) || (this.runtime != '' && this.handler != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "image_forbids_runtime_and_handler"
+    message: "container-image deployments must leave runtime and handler empty -- the image defines both (use image_config to override the entrypoint)"
+    expression: "this.image_uri == '' || (this.runtime == '' && this.handler == '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "image_config_requires_image"
+    message: "image_config only applies to container-image deployments (image_uri)"
+    expression: "!has(this.image_config) || this.image_uri != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "source_kms_key_is_zip_only"
+    message: "source_kms_key_arn encrypts the S3 deployment package and only applies to zip deployments"
+    expression: "!has(this.source_kms_key_arn) || has(this.s3)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "code_signing_is_zip_only"
+    message: "code_signing_config_arn only applies to zip deployments -- container images are trusted through ECR"
+    expression: "this.code_signing_config_arn == '' || has(this.s3)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "vpc_fields_travel_together"
+    message: "VPC attachment requires both subnet_ids and security_group_ids; ipv6_allowed_for_dual_stack only applies with a VPC attachment"
+    expression: "(this.subnet_ids.size() > 0) == (this.security_group_ids.size() > 0) && (!this.ipv6_allowed_for_dual_stack || this.subnet_ids.size() > 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "file_system_requires_vpc"
+    message: "mounting an EFS access point requires a VPC attachment that reaches the file system's mount targets (subnet_ids + security_group_ids)"
+    expression: "!has(this.file_system_config) || this.subnet_ids.size() > 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "snap_start_requires_publish"
+    message: "SnapStart only applies to published versions -- enable publish so versions exist to snapshot"
+    expression: "!this.snap_start || this.publish"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aliases_require_publish"
+    message: "aliases point at published versions -- enable publish so versions exist to route to"
+    expression: "this.aliases.size() == 0 || this.publish"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "alias_names_unique"
+    message: "each alias name must be unique -- aliases materialize per-name"
+    expression: "this.aliases.all(a, this.aliases.filter(b, b.name == a.name).size() == 1)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "permission_statement_ids_unique"
+    message: "each invoke permission statement_id must be unique -- permissions materialize per statement"
+    expression: "this.invoke_permissions.all(p, this.invoke_permissions.filter(q, q.statement_id == p.statement_id).size() == 1)"
+  };
+}
+
+// AwsLambdaS3Code locates the zip deployment package in S3.
+message AwsLambdaS3Code {
+  // The S3 bucket holding the deployment package. Must be in the
+  // function's region. Reference an AwsS3Bucket bucket_id output or
+  // pass a literal bucket name.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // The object key (path) of the deployment package zip.
+  string key = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Pin a specific object version (versioned buckets). Empty deploys
+  // the current version; pair with source_code_hash for fully
+  // declarative code rolls.
+  string object_version = 3;
+}
+
+// AwsLambdaImageConfig overrides the container image's own entrypoint
+// settings without rebuilding the image.
+message AwsLambdaImageConfig {
+  // Override the image ENTRYPOINT.
+  repeated string entry_point = 1;
+
+  // Override the image CMD (the handler argument for AWS base images).
+  repeated string command = 2;
+
+  // Override the image working directory.
+  string working_directory = 3;
+}
+
+// AwsLambdaFileSystemConfig mounts an EFS access point into the
+// execution environment at a /mnt path.
+message AwsLambdaFileSystemConfig {
+  // The EFS ACCESS POINT ARN (not the file system ARN). Reference an
+  // AwsEfsAccessPoint resource or pass a literal access point ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef access_point_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEfsAccessPoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.access_point_arn"
+  ];
+
+  // Where the file system appears inside the execution environment.
+  // Must be under /mnt, e.g. "/mnt/data".
+  string local_mount_path = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^/mnt/[a-zA-Z0-9-_.]+$"
+  ];
+}
+
+// AwsLambdaLoggingConfig controls CloudWatch Logs delivery: format,
+// levels, and the destination log group.
+message AwsLambdaLoggingConfig {
+  // "Text" (plain lines, the AWS default) or "JSON" (structured
+  // records with built-in level filtering). Empty keeps the AWS
+  // default. Level filtering below requires JSON.
+  string log_format = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Text",
+        "JSON"
+      ]
+    }
+  ];
+
+  // Minimum level of application (your code's) log records delivered:
+  // "TRACE", "DEBUG", "INFO", "WARN", "ERROR", or "FATAL". JSON format
+  // only. Empty delivers everything.
+  string application_log_level = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "TRACE",
+        "DEBUG",
+        "INFO",
+        "WARN",
+        "ERROR",
+        "FATAL"
+      ]
+    }
+  ];
+
+  // Minimum level of system (Lambda platform) log records delivered:
+  // "DEBUG", "INFO", or "WARN". JSON format only. Empty delivers
+  // everything.
+  string system_log_level = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "DEBUG",
+        "INFO",
+        "WARN"
+      ]
+    }
+  ];
+
+  // Write into a log group you manage -- for retention policy,
+  // KMS encryption, or subscription filters -- instead of the
+  // AWS-created "/aws/lambda/<function-name>". Reference an
+  // AwsCloudwatchLogGroup log_group_name output or pass a literal log
+  // group name. The execution role needs logs:CreateLogStream and
+  // logs:PutLogEvents on it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef log_group = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_name"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "level_filtering_requires_json"
+    message: "application_log_level and system_log_level require log_format JSON -- plain-text logs carry no level field to filter on"
+    expression: "(this.application_log_level == '' && this.system_log_level == '') || this.log_format == 'JSON'"
+  };
+}
+
+// AwsLambdaAlias is a named pointer to a published version -- the
+// stable invocation target clients and event sources reference.
+// Repointing an alias ships or rolls back without touching callers;
+// the optional routing weight canaries traffic between two versions.
+message AwsLambdaAlias {
+  // The alias name, e.g. "live", "staging". Unique within the
+  // function.
+  string name = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9-_]+$"
+  ];
+
+  // Free-form description of what this alias routes.
+  string description = 2;
+
+  // The published version this alias points to, e.g. "1", or "$LATEST"
+  // (unpublished head -- fine for dev aliases, avoid for production).
+  string function_version = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Canary routing: additional version(s) receiving a fraction of this
+  // alias's traffic, as version -> weight (0.0-1.0). E.g. {"2": 0.1}
+  // sends 10% of traffic to version 2 and 90% to function_version.
+  // AWS allows at most one additional version.
+  map<string, double> routing_additional_version_weights = 4;
+
+  // Pre-warmed execution environments kept ready for this alias --
+  // eliminates cold starts at the cost of paying for idle warmth.
+  // Applied as a provisioned-concurrency config keyed by this alias.
+  // Unset means no provisioned concurrency. AWS only allows provisioned
+  // concurrency on an alias that points at exactly one published version:
+  // not on a weighted (canary) alias, and not on $LATEST.
+  optional int32 provisioned_concurrent_executions = 5 [(buf.validate.field).int32.gte = 1];
+
+  option (buf.validate.message).cel = {
+    id: "alias_weights_exclude_provisioned_concurrency"
+    message: "AWS rejects provisioned concurrency on a weighted (canary) alias -- point the alias at a single version or drop the routing weights"
+    expression: "this.routing_additional_version_weights.size() == 0 || !has(this.provisioned_concurrent_executions)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "alias_at_most_one_additional_version"
+    message: "AWS allows at most one additional version in an alias's routing config"
+    expression: "this.routing_additional_version_weights.size() <= 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "alias_weights_are_traffic_fractions"
+    message: "routing weights are fractions of this alias's traffic -- each must be between 0.0 and 1.0"
+    expression: "this.routing_additional_version_weights.all(v, this.routing_additional_version_weights[v] >= 0.0 && this.routing_additional_version_weights[v] <= 1.0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "alias_latest_excludes_provisioned_concurrency"
+    message: "provisioned concurrency cannot target $LATEST -- point the alias at a published version"
+    expression: "this.function_version != '$LATEST' || !has(this.provisioned_concurrent_executions)"
+  };
+}
+
+// AwsLambdaFunctionUrl exposes the function through a built-in HTTPS
+// endpoint -- the zero-infrastructure alternative to an API gateway.
+message AwsLambdaFunctionUrl {
+  // Who may invoke the URL: "AWS_IAM" (callers sign requests with
+  // SigV4 -- the safe default) or "NONE" (public -- anyone with the
+  // URL; AWS still requires an explicit public invoke permission,
+  // which the module manages). Choose NONE only for genuinely public
+  // webhooks and pair it with your own request validation.
+  string authorization_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "AWS_IAM",
+        "NONE"
+      ]
+    }
+  ];
+
+  // "BUFFERED" (the default -- response returned whole, up to 6 MB) or
+  // "RESPONSE_STREAM" (stream the response as it is produced, up to
+  // 20 MB soft cap -- for large payloads and time-to-first-byte).
+  // Empty keeps the AWS default.
+  string invoke_mode = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "BUFFERED",
+        "RESPONSE_STREAM"
+      ]
+    }
+  ];
+
+  // Cross-origin resource sharing for browser callers.
+  AwsLambdaFunctionUrlCors cors = 3;
+}
+
+// AwsLambdaFunctionUrlCors configures CORS on the function URL.
+message AwsLambdaFunctionUrlCors {
+  // Allow credentials (cookies, authorization headers) in cross-origin
+  // requests.
+  bool allow_credentials = 1;
+
+  // Origins allowed to call the URL, e.g. "https://app.example.com";
+  // "*" allows all.
+  repeated string allow_origins = 2;
+
+  // HTTP methods allowed, e.g. "GET", "POST"; "*" allows all.
+  repeated string allow_methods = 3;
+
+  // Request headers allowed, e.g. "content-type", "authorization".
+  repeated string allow_headers = 4;
+
+  // Response headers exposed to browser scripts.
+  repeated string expose_headers = 5;
+
+  // How long (seconds) browsers may cache the preflight response,
+  // up to 86400 (24h). 0 keeps the AWS default (0 -- no caching).
+  int32 max_age_seconds = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 86400
+    }
+  ];
+}
+
+// AwsLambdaInvokePermission is one statement in the function's
+// resource policy -- how external principals and AWS services are
+// authorized to invoke it. Statements are create/delete only in AWS
+// (any field change replaces the statement -- harmless, since a
+// statement carries no state).
+message AwsLambdaInvokePermission {
+  // Unique statement identifier within the function's policy, e.g.
+  // "allow-s3-uploads-bucket". The per-name key each entry
+  // materializes under.
+  string statement_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 100,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9-_]+$"
+  ];
+
+  // Who is allowed to invoke: a service principal (e.g.
+  // "s3.amazonaws.com", "sns.amazonaws.com", "events.amazonaws.com"),
+  // an AWS account ID, or an IAM principal ARN.
+  string principal = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The Lambda action granted. Empty keeps the sensible default
+  // ("lambda:InvokeFunction"); "lambda:InvokeFunctionUrl" grants URL
+  // invocation instead.
+  string action = 3;
+
+  // Scope a service-principal grant to one source resource, e.g. the
+  // S3 bucket ARN or SNS topic ARN that may invoke. Strongly
+  // recommended for service principals -- without it ANY resource of
+  // that service in ANY account with knowledge of the function name
+  // could invoke (the confused-deputy problem).
+  string source_arn = 4;
+
+  // Scope a service-principal grant to sources owned by this account
+  // ID -- the coarser companion to source_arn.
+  string source_account = 5;
+
+  // Grant access to every account in an AWS Organization by org ID,
+  // e.g. "o-a1b2c3d4e5".
+  string principal_org_id = 6;
+
+  // Required auth type when granting "lambda:InvokeFunctionUrl":
+  // "AWS_IAM" or "NONE" (the public-URL grant).
+  string function_url_auth_type = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AWS_IAM",
+        "NONE"
+      ]
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "url_auth_type_requires_url_action"
+    message: "function_url_auth_type only applies when action is lambda:InvokeFunctionUrl"
+    expression: "this.function_url_auth_type == '' || this.action == 'lambda:InvokeFunctionUrl'"
+  };
+}
+
+// AwsLambdaAsyncInvokeConfig shapes asynchronous invocations (S3
+// events, SNS, EventBridge): retries, event age, and where outcomes
+// are delivered. The richer successor to the dead-letter queue --
+// destinations carry the full invocation record, not just the payload.
+message AwsLambdaAsyncInvokeConfig {
+  // Retries after a failed asynchronous invocation, 0-2. Unset keeps
+  // the AWS default (2).
+  optional int32 maximum_retry_attempts = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 2
+  }];
+
+  // How long (seconds) an event may wait in the internal queue before
+  // Lambda discards it, 60-21600. 0 keeps the AWS default (21600 --
+  // 6 hours).
+  int32 maximum_event_age_seconds = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 60
+      lte: 21600
+    }
+  ];
+
+  // Where successful invocation records are delivered: an SQS queue,
+  // SNS topic, EventBridge bus, or Lambda function ARN. Reference an
+  // AwsSqsQueue queue_arn output (or an explicit-kind reference /
+  // literal ARN for the other targets). The execution role needs send
+  // rights on the destination.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef on_success_destination_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSqsQueue,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_arn"
+  ];
+
+  // Where failed invocation records are delivered after retries are
+  // exhausted -- same target types as on_success_destination_arn.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef on_failure_destination_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSqsQueue,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_arn"
+  ];
+}
+
+// AwsLambdaRuntimeManagement controls how AWS rolls runtime patches to
+// the function.
+message AwsLambdaRuntimeManagement {
+  // "Auto" (the AWS default -- receive runtime patches as AWS releases
+  // them), "FunctionUpdate" (patches apply only when the function is
+  // next updated -- change-window control), or "Manual" (pin to the
+  // exact runtime version in runtime_version_arn -- an emergency
+  // rollback tool, not a steady state).
+  string update_runtime_on = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Auto",
+        "FunctionUpdate",
+        "Manual"
+      ]
+    }
+  ];
+
+  // The exact runtime version ARN to pin, required with (and only
+  // meaningful for) "Manual". Obtain it from the function's runtime
+  // update events or the Lambda console.
+  string runtime_version_arn = 2;
+
+  option (buf.validate.message).cel = {
+    id: "manual_pin_requires_version_arn"
+    message: "update_runtime_on Manual requires runtime_version_arn (the exact runtime build to pin); other modes must leave it empty"
+    expression: "(this.update_runtime_on == 'Manual') == (this.runtime_version_arn != '')"
+  };
+}

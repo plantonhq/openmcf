@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	proposalv1 "github.com/plantonhq/planton/apis/dev/planton/iac/importmappingproposal/v1"
+	proposalv1 "github.com/plantonhq/planton/iac/importmappingproposal/v1"
 	"github.com/plantonhq/planton/pkg/iac/mappingeval"
 	"github.com/plantonhq/planton/pkg/iac/mappingeval/baseline"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -241,7 +241,7 @@ func setManifestEnv(t *testing.T, p *proposalv1.ImportMappingProposal, claimIden
 
 func loadMessySuite(t *testing.T, root string) *mappingeval.LoadedSuite {
 	t.Helper()
-	suite, err := mappingeval.LoadSuite(root, filepath.Join(root, "apis/dev/planton/provider/aws/aa_eval/suites/messy-account.yaml"))
+	suite, err := mappingeval.LoadSuite(root, filepath.Join(root, "catalog/aws/aa_eval/suites/messy-account.yaml"))
 	if err != nil {
 		t.Fatalf("loading messy-account suite: %v", err)
 	}

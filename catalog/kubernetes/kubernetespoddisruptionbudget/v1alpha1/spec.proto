@@ -1,0 +1,198 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetespoddisruptionbudget.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesPodDisruptionBudgetSpec** limits how many of a set of pods may
+ * be taken down VOLUNTARILY at once — node drains, cluster upgrades,
+ * autoscaler consolidation. The eviction API refuses to evict a selected pod
+ * when doing so would breach the budget; involuntary failures (node crashes,
+ * OOM kills) are not governed.
+ *
+ * A standalone budget is the right shape for pods a Planton workload kind
+ * does not manage: operator-managed pods (a database operator's replicas),
+ * non-Planton deployments, or selector-level coverage across several
+ * workloads. For a Planton Deployment/StatefulSet's OWN pods, prefer the
+ * workload's built-in `availability.pod_disruption_budget` block — it derives
+ * the selector automatically and cannot drift from the workload's labels.
+ *
+ * Selectors compose with Planton workloads through the documented label
+ * contract: every workload kind stamps the `app` label (set to the workload's
+ * `metadata.name`) on its pods and exports the full set as its
+ * `selector_labels` output — so `match_labels: {app: <name>}` targets one
+ * workload's pods.
+ *
+ * The spec covers the complete policy/v1 PodDisruptionBudgetSpec surface.
+ */
+message KubernetesPodDisruptionBudgetSpec {
+  /**
+   * The namespace the budget lives in — it governs only pods in its own
+   * namespace. Accepts a literal namespace name or a reference to a
+   * KubernetesNamespace resource. When omitted, the budget lands in the
+   * cluster's `default` namespace.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * The name of the PodDisruptionBudget (its `metadata.name` in the
+   * cluster). Must be a valid DNS subdomain: lowercase alphanumeric
+   * characters, hyphens, and dots, at most 253 characters.
+   */
+  string name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "name.dns_subdomain"
+      message: "Name must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)"
+      expression: "this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * Additional labels to apply to the PodDisruptionBudget object.
+   * Merged with the standard Planton governance labels.
+   */
+  map<string, string> labels = 3;
+
+  /**
+   * Annotations to apply to the PodDisruptionBudget object.
+   */
+  map<string, string> annotations = 4;
+
+  /**
+   * Selects the pods this budget protects, within the budget's namespace.
+   * Required: an EMPTY selector (present but with no match_labels or
+   * match_expressions) protects ALL pods in the namespace — declare that
+   * shape explicitly; a budget with NO selector protects nothing in policy/v1
+   * and is always a mistake. To protect one Planton workload's pods, match on
+   * its `app` label: `match_labels: {app: <workload-name>}`.
+   */
+  KubernetesPodDisruptionBudgetLabelSelector selector = 5 [(buf.validate.field).required = true];
+
+  /**
+   * Minimum pods that must stay available — absolute ("2") or percentage
+   * ("50%", of desired replicas). Percentages round UP when computing the
+   * floor. "100%" blocks ALL voluntary evictions — it also blocks node
+   * drains, so use it only for pods that must never move. Set exactly one of
+   * min_available or max_unavailable.
+   */
+  string min_available = 6 [(buf.validate.field).cel = {
+    id: "min_available.int_or_percent"
+    message: "min_available must be an absolute number (\"2\") or a percentage between 0% and 100% (\"50%\")"
+    expression: "this == '' || this.matches('^[0-9]+$') || (this.matches('^[0-9]+%$') && int(this.substring(0, this.size() - 1)) <= 100)"
+  }];
+
+  /**
+   * Maximum pods that may be down — absolute or percentage (percentages
+   * round UP, giving evictions more room). "0" blocks all voluntary
+   * evictions. Alternative to min_available; do not set both. For workloads
+   * that scale, prefer max_unavailable — it tracks replica count where an
+   * absolute min_available floor goes stale.
+   */
+  string max_unavailable = 7 [(buf.validate.field).cel = {
+    id: "max_unavailable.int_or_percent"
+    message: "max_unavailable must be an absolute number (\"1\") or a percentage between 0% and 100% (\"25%\")"
+    expression: "this == '' || this.matches('^[0-9]+$') || (this.matches('^[0-9]+%$') && int(this.substring(0, this.size() - 1)) <= 100)"
+  }];
+
+  /**
+   * **KubernetesPodDisruptionBudgetUnhealthyPodEvictionPolicy** is how the
+   * budget treats running-but-not-ready pods.
+   */
+  enum KubernetesPodDisruptionBudgetUnhealthyPodEvictionPolicy {
+    // Unspecified. Defaults to if_healthy_budget.
+    kubernetes_pod_disruption_budget_unhealthy_pod_eviction_policy_unspecified = 0;
+
+    // Not-yet-ready pods may be evicted only while the healthy count meets
+    // the budget — the default, most conservative behavior.
+    if_healthy_budget = 1;
+
+    // Not-yet-ready pods may ALWAYS be evicted. Prevents a crash-looping
+    // application from wedging node drains forever — the practical choice
+    // for budgets over workloads that can crash-loop.
+    always_allow = 2;
+  }
+
+  /**
+   * How running-but-not-ready pods are treated by the eviction API.
+   * Default: if_healthy_budget
+   */
+  optional KubernetesPodDisruptionBudgetUnhealthyPodEvictionPolicy unhealthy_pod_eviction_policy = 8 [
+    (dev.planton.shared.options.default) = "if_healthy_budget",
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  // The API rejects a budget with both bounds ("minAvailable and
+  // maxUnavailable cannot be both set"); one must be chosen here because a
+  // budget with neither protects nothing.
+  option (buf.validate.message).cel = {
+    id: "availability.exactly_one"
+    message: "Set exactly one of min_available or max_unavailable"
+    expression: "(this.min_available != '' && this.max_unavailable == '') || (this.min_available == '' && this.max_unavailable != '')"
+  };
+}
+
+/**
+ * **KubernetesPodDisruptionBudgetLabelSelector** is a standard Kubernetes
+ * label selector: exact-match labels and/or set-based expressions. Both parts
+ * must match (they AND together); an empty selector matches everything in the
+ * namespace.
+ */
+message KubernetesPodDisruptionBudgetLabelSelector {
+  /**
+   * Exact-match label requirements: every key/value pair listed must be
+   * present, e.g. {"app": "checkout"}.
+   */
+  map<string, string> match_labels = 1;
+
+  /**
+   * Set-based label requirements, for selections exact-match cannot express
+   * (key existence, value-in-set).
+   */
+  repeated KubernetesPodDisruptionBudgetLabelSelectorRequirement match_expressions = 2;
+}
+
+/**
+ * **KubernetesPodDisruptionBudgetLabelSelectorRequirement** is one set-based
+ * label requirement.
+ */
+message KubernetesPodDisruptionBudgetLabelSelectorRequirement {
+  /**
+   * The label key the requirement applies to.
+   */
+  string key = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * The relationship between the key and the values: "In" (value must be one
+   * of `values`), "NotIn" (must not be), "Exists" (key present, `values` must
+   * be empty), or "DoesNotExist" (key absent, `values` must be empty).
+   */
+  string operator = 2 [(buf.validate.field).string = {
+    in: [
+      "In",
+      "NotIn",
+      "Exists",
+      "DoesNotExist"
+    ]
+  }];
+
+  /**
+   * The values compared against the label's value. Required (non-empty) for
+   * In/NotIn; must be empty for Exists/DoesNotExist.
+   */
+  repeated string values = 3;
+
+  // Enforce the values-vs-operator contract the Kubernetes API applies at admission.
+  option (buf.validate.message).cel = {
+    id: "operator_values_contract"
+    message: "values must be non-empty for In/NotIn and empty for Exists/DoesNotExist"
+    expression: "((this.operator == 'In' || this.operator == 'NotIn') && this.values.size() > 0) || ((this.operator == 'Exists' || this.operator == 'DoesNotExist') && this.values.size() == 0)"
+  };
+}

@@ -16,7 +16,7 @@ func tortureConversionsDir(t *testing.T) string {
 		t.Fatal("cannot resolve caller location")
 	}
 	return filepath.Join(filepath.Dir(thisFile), "..", "..", "..",
-		"apis", "dev", "planton", "provider", "_test", "testcloudresourcegeneric", "conversions")
+		"catalog", "_test", "testcloudresourcegeneric", "conversions")
 }
 
 // The offline upgrade end to end THROUGH THE EMBED: an old-version manifest

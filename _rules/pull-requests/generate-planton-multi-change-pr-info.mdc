@@ -177,9 +177,10 @@ Each change section should:
 
 Use the same scope heuristics as `@pr-info`:
 
-- APIs
-  - `apis/project/planton/**` → `apis/project/planton`
-  - Other files under `apis/**` (e.g., `generated`) → `apis`
+- Catalog (deployment components)
+  - `catalog/<provider>/<kind>/**` → `catalog/<provider>/<kind>`
+  - Multiple kinds under the same provider → `catalog/<provider>`
+  - Shared proto surfaces (`shared/**`, `qa/**`, `iac/**`) → `shared`, `qa`, or `iac`
 
 - Charts (multi-cloud Lego blocks)
   - `charts/<provider>/<chart>/**` → `charts/<provider>/<chart>`

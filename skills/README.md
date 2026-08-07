@@ -56,6 +56,6 @@ agent's judgment are proven against a live engine before they ship.
 
 Skills carry judgment and workflow. Component facts (what a deployment
 component is, its fields, its examples) live in the generated reference
-pages beside each component's protos (`apis/dev/planton/provider/...`) and
+pages beside each component's protos (`catalog/...`) and
 are composed into agents by reference — never duplicated into a skill's
 prose, where they would rot.

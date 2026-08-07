@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudwatchcompositealarm.v1alpha1;
+
+import "catalog/aws/awscloudwatchcompositealarm/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsCloudwatchCompositeAlarmStackInput is the input for the
+// aws-cloudwatch-composite-alarm IaC modules.
+message AwsCloudwatchCompositeAlarmStackInput {
+  // target cloud-resource
+  AwsCloudwatchCompositeAlarm target = 1;
+
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

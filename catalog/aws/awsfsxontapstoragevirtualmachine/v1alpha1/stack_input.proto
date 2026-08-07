@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsfsxontapstoragevirtualmachine.v1alpha1;
+
+import "catalog/aws/awsfsxontapstoragevirtualmachine/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// aws-fsx-ontap-storage-virtual-machine stack-input
+message AwsFsxOntapStorageVirtualMachineStackInput {
+  // target cloud-resource
+  AwsFsxOntapStorageVirtualMachine target = 1;
+  // provider-credential
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

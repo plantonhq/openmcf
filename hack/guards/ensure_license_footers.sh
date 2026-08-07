@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Guard: every component README (apis/dev/planton/**/<component>/v1/README.md),
+# Guard: every component README (catalog/**/<component>/v1/README.md),
 # every infra chart README (the README.md beside a chart's Chart.yaml, at any
 # nesting depth), and every helm chart README (helm/<chart>/README.md) must end
 # with the canonical license footer.
@@ -41,7 +41,7 @@ done < <(
   # guard). The pattern cannot match v1/docs/README.md or v1/iac/**/README.md.
   # find -path globs cross slashes ('v*' would also span 'v1alpha1/docs'),
   # so the api-version segment is constrained with a grep grammar filter.
-  find apis/dev/planton -name 'README.md' 2>/dev/null | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/README\.md$'
+  find catalog -name 'README.md' 2>/dev/null | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/README\.md$'
   # Helm chart READMEs: helm/<chart>/README.md — published distribution surfaces.
   find helm -mindepth 2 -maxdepth 2 -name README.md 2>/dev/null
 )

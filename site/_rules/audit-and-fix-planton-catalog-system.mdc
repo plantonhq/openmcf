@@ -19,7 +19,7 @@ alwaysApply: false
 The canonical authority for provider definitions is `cloud_resource_provider.proto`:
 
 ```
-apis/dev/planton/shared/cloudresourcekind/cloud_resource_provider.proto
+shared/cloudresourcekind/cloud_resource_provider.proto
 ```
 
 Every provider enum value has a `provider_meta` annotation with `group` and `display_name`. The catalog system must reflect these values. When auditing, always read this proto first.
@@ -34,7 +34,7 @@ Read these files during any catalog system audit:
 
 | File | Role |
 |------|------|
-| `site/scripts/copy-component-docs.ts` | Main build script. Scans `apis/dev/planton/provider/` for catalog pages, extracts titles, strips provider prefixes, generates slugs, rewrites internal links, copies presets, generates provider index pages. Contains `PROVIDER_DISPLAY_NAMES` and `PROVIDER_PREFIXES` maps. |
+| `site/scripts/copy-component-docs.ts` | Main build script. Scans `catalog/` for catalog pages, extracts titles, strips provider prefixes, generates slugs, rewrites internal links, copies presets, generates provider index pages. Contains `PROVIDER_DISPLAY_NAMES` and `PROVIDER_PREFIXES` maps. |
 | `site/scripts/generate-docs-structure.ts` | Scans `site/public/docs/` after copy-docs runs. Reads frontmatter from all markdown files and produces `site/public/docs-structure.json`, which drives the sidebar and catalog grid at runtime. |
 
 ### React Components (render at runtime from docs-structure.json)
@@ -96,8 +96,8 @@ The interface shape must include `name`, `title`, `path`, and `componentCount`. 
 
 ```
 Source:
-  apis/dev/planton/provider/{provider}/{component}/v1/catalog-page.md
-  apis/dev/planton/provider/{provider}/{component}/v1/presets/*.yaml + *.md
+  catalog/{provider}/{component}/v1/catalog-page.md
+  catalog/{provider}/{component}/v1/presets/*.yaml + *.md
 
   |  yarn copy-docs  (copy-component-docs.ts)
   v
@@ -217,7 +217,7 @@ For components with presets at `v1/presets/`:
 
 ### Adding a New Provider
 
-When a new provider is added to `cloud_resource_provider.proto` and its component directories exist under `apis/dev/planton/provider/{newprovider}/`:
+When a new provider is added to `cloud_resource_provider.proto` and its component directories exist under `catalog/{newprovider}/`:
 
 1. Add entry to `PROVIDER_DISPLAY_NAMES` in `copy-component-docs.ts`
    - Key: provider directory name (e.g., `'hetznercloud'`)
@@ -253,7 +253,7 @@ If a provider shows as "HETZNERCLOUD" instead of "HETZNER CLOUD":
 
 If sidebar shows "Hetzner Cloud Certificate" instead of "Certificate":
 
-1. Check what prefix the catalog-page.md H1 uses: `head -1 apis/dev/planton/provider/{provider}/{component}/v1/catalog-page.md`
+1. Check what prefix the catalog-page.md H1 uses: `head -1 catalog/{provider}/{component}/v1/catalog-page.md`
 2. Add or fix the entry in `PROVIDER_PREFIXES` in `copy-component-docs.ts`
 3. Ensure the prefix string ends with a trailing space
 4. Rebuild: `cd site && yarn copy-docs && yarn generate-structure`
@@ -262,7 +262,7 @@ If sidebar shows "Hetzner Cloud Certificate" instead of "Certificate":
 
 If a provider enum value is renamed in the proto (e.g., `open_fga` to `openfga`):
 
-1. Rename the directory under `apis/dev/planton/provider/`
+1. Rename the directory under `catalog/`
 2. Update the key in all four maps: `PROVIDER_DISPLAY_NAMES`, `PROVIDER_PREFIXES`, `PROVIDER_ICON_OVERRIDES` (if present), and any icon SVG filename
 3. Rebuild: `cd site && yarn copy-docs && yarn generate-structure`
 

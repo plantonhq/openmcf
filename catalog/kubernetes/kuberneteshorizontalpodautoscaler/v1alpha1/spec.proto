@@ -1,0 +1,576 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kuberneteshorizontalpodautoscaler.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesHorizontalPodAutoscalerSpec** scales a workload's replica count
+ * automatically between a floor and a ceiling, driven by observed metrics —
+ * the full autoscaling/v2 surface: resource utilization (CPU/memory),
+ * per-container resources, custom per-pod metrics, metrics on other objects,
+ * and external metrics (queue depths, cloud load balancer QPS), plus
+ * fine-grained scaling BEHAVIOR (per-direction velocity policies and
+ * stabilization windows).
+ *
+ * When several metrics are configured, each proposes a replica count and the
+ * HIGHEST wins — metrics OR together toward scale-out. Resource metrics
+ * require a metrics source in the cluster (metrics-server for CPU/memory;
+ * custom/external metrics need an adapter such as prometheus-adapter or
+ * KEDA).
+ *
+ * A standalone autoscaler is the right shape for scale targets a Planton
+ * workload kind does not manage — operator-managed Deployments, non-Planton
+ * workloads — and for the advanced v2 surface (custom/object/external
+ * metrics, behavior tuning). For simple CPU/memory autoscaling of a Planton
+ * Deployment's own replicas, prefer the workload's built-in
+ * `availability.horizontal_pod_autoscaling` block. Never point BOTH at the
+ * same target: two controllers fighting over one replica count flaps the
+ * fleet.
+ *
+ * The workload's `replicas` becomes advisory once an HPA governs it — the
+ * autoscaler owns the count from then on.
+ */
+message KubernetesHorizontalPodAutoscalerSpec {
+  /**
+   * The namespace the autoscaler lives in — it MUST be the scale target's
+   * own namespace (an HPA cannot scale across namespaces). Accepts a literal
+   * namespace name or a reference to a KubernetesNamespace resource. When
+   * omitted, the autoscaler lands in the cluster's `default` namespace.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * The name of the HorizontalPodAutoscaler (its `metadata.name` in the
+   * cluster). Must be a valid DNS subdomain: lowercase alphanumeric
+   * characters, hyphens, and dots, at most 253 characters.
+   */
+  string name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "name.dns_subdomain"
+      message: "Name must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)"
+      expression: "this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * Additional labels to apply to the HorizontalPodAutoscaler object.
+   * Merged with the standard Planton governance labels.
+   */
+  map<string, string> labels = 3;
+
+  /**
+   * Annotations to apply to the HorizontalPodAutoscaler object.
+   */
+  map<string, string> annotations = 4;
+
+  /**
+   * The workload whose replica count this autoscaler owns.
+   */
+  KubernetesHorizontalPodAutoscalerScaleTarget scale_target = 5 [(buf.validate.field).required = true];
+
+  /**
+   * The replica floor — the autoscaler never scales below it. Kubernetes
+   * defaults to 1. (Scaling to zero is feature-gated upstream and requires
+   * at least one object/external metric; it is deliberately not modeled.)
+   */
+  optional int32 min_replicas = 6 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * The replica ceiling — required, and the honest capacity conversation:
+   * what is the most this workload may cost? Must be at least min_replicas.
+   */
+  int32 max_replicas = 7 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * The metrics driving the scale decision. Each proposes a replica count;
+   * the highest wins. When EMPTY, Kubernetes applies its default: 80%
+   * average CPU utilization (requires pods to declare CPU requests —
+   * utilization is measured against requests).
+   */
+  repeated KubernetesHorizontalPodAutoscalerMetric metrics = 8;
+
+  /**
+   * Per-direction scaling velocity and stabilization tuning. Omit for the
+   * Kubernetes defaults: scale up fast (double or +4 pods per 15s, no
+   * stabilization), scale down conservatively (to the recommendation's
+   * 300-second high-water mark).
+   */
+  KubernetesHorizontalPodAutoscalerBehavior behavior = 9;
+
+  // The ceiling must accommodate the floor.
+  option (buf.validate.message).cel = {
+    id: "replicas.ceiling_gte_floor"
+    message: "max_replicas must be greater than or equal to min_replicas"
+    expression: "!has(this.min_replicas) || this.max_replicas >= this.min_replicas"
+  };
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerScaleTarget** identifies the workload
+ * being scaled — anything exposing the `scale` subresource.
+ */
+message KubernetesHorizontalPodAutoscalerScaleTarget {
+  /**
+   * The API version of the target.
+   * Default: apps/v1
+   */
+  optional string api_version = 1 [(dev.planton.shared.options.default) = "apps/v1"];
+
+  /**
+   * The kind of the target — "Deployment" (the default), "StatefulSet",
+   * "ReplicaSet", or a custom resource that exposes the scale subresource.
+   * DaemonSets cannot be horizontally scaled (one pod per node by
+   * definition).
+   * Default: Deployment
+   */
+  optional string kind = 2 [
+    (dev.planton.shared.options.default) = "Deployment",
+    (buf.validate.field).cel = {
+      id: "kind.not_daemonset"
+      message: "A DaemonSet cannot be a scale target — it runs one pod per node by definition"
+      expression: "this != 'DaemonSet'"
+    }
+  ];
+
+  /**
+   * The name of the target workload, in the autoscaler's own namespace.
+   * Accepts a literal name or a reference to a KubernetesDeployment resource
+   * (for other kinds, reference their exported name output explicitly).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesDeployment,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.deployment_name"
+  ];
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerMetricType** is the metric source
+ * family. (File-scope enum: protobuf enum values share their enclosing
+ * scope, and these names intentionally mirror the metric source field names
+ * inside KubernetesHorizontalPodAutoscalerMetric.)
+ */
+enum KubernetesHorizontalPodAutoscalerMetricType {
+  // Unspecified.
+  kubernetes_horizontal_pod_autoscaler_metric_type_unspecified = 0;
+
+  // A pod resource (cpu/memory) averaged across the target's pods —
+  // requires metrics-server. The workhorse.
+  resource = 1;
+
+  // A resource metric for ONE named container in each pod — isolates the
+  // app container from sidecars that would skew the pod-level average.
+  container_resource = 2;
+
+  // A custom metric exposed per pod (e.g. requests-per-second), averaged —
+  // requires a custom-metrics adapter.
+  pods = 3;
+
+  // A metric describing ONE other object (e.g. an Ingress's
+  // requests-per-second) — requires a custom-metrics adapter.
+  object = 4;
+
+  // A metric from outside the cluster (queue depth, cloud LB QPS) —
+  // requires an external-metrics adapter. For event-driven scale-to-zero
+  // semantics, KEDA builds on this.
+  external = 5;
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerMetric** is one metric driving the scale
+ * decision. Set `type` and exactly the matching source field.
+ */
+message KubernetesHorizontalPodAutoscalerMetric {
+  /**
+   * The metric source family; exactly the matching source field must be set.
+   */
+  KubernetesHorizontalPodAutoscalerMetricType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  /**
+   * Resource metric source (type: resource).
+   */
+  KubernetesHorizontalPodAutoscalerResourceMetric resource = 2;
+
+  /**
+   * Container resource metric source (type: container_resource).
+   */
+  KubernetesHorizontalPodAutoscalerContainerResourceMetric container_resource = 3;
+
+  /**
+   * Per-pod custom metric source (type: pods).
+   */
+  KubernetesHorizontalPodAutoscalerPodsMetric pods = 4;
+
+  /**
+   * Object metric source (type: object).
+   */
+  KubernetesHorizontalPodAutoscalerObjectMetric object = 5;
+
+  /**
+   * External metric source (type: external).
+   */
+  KubernetesHorizontalPodAutoscalerExternalMetric external = 6;
+
+  // Exactly the source matching the declared type — a mismatch deploys a
+  // metric the controller ignores.
+  option (buf.validate.message).cel = {
+    id: "metric.source_matches_type"
+    message: "Set exactly the source field matching the metric type (resource → resource, container_resource → container_resource, pods → pods, object → object, external → external)"
+    expression: "(this.type == 1 && has(this.resource) && !has(this.container_resource) && !has(this.pods) && !has(this.object) && !has(this.external)) || (this.type == 2 && has(this.container_resource) && !has(this.resource) && !has(this.pods) && !has(this.object) && !has(this.external)) || (this.type == 3 && has(this.pods) && !has(this.resource) && !has(this.container_resource) && !has(this.object) && !has(this.external)) || (this.type == 4 && has(this.object) && !has(this.resource) && !has(this.container_resource) && !has(this.pods) && !has(this.external)) || (this.type == 5 && has(this.external) && !has(this.resource) && !has(this.container_resource) && !has(this.pods) && !has(this.object))"
+  };
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerResourceMetric** scales on a pod
+ * resource averaged across the target's pods.
+ */
+message KubernetesHorizontalPodAutoscalerResourceMetric {
+  /**
+   * The resource: "cpu" or "memory". CPU is the reliable scaling signal;
+   * memory rarely falls after scale-out, which makes it a poor scale-in
+   * driver.
+   */
+  string name = 1 [(buf.validate.field).string = {
+    in: [
+      "cpu",
+      "memory"
+    ]
+  }];
+
+  /**
+   * The target the average is held at.
+   */
+  KubernetesHorizontalPodAutoscalerMetricTarget target = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerContainerResourceMetric** scales on one
+ * container's resource, isolating it from sidecars.
+ */
+message KubernetesHorizontalPodAutoscalerContainerResourceMetric {
+  /**
+   * The resource: "cpu" or "memory".
+   */
+  string name = 1 [(buf.validate.field).string = {
+    in: [
+      "cpu",
+      "memory"
+    ]
+  }];
+
+  /**
+   * The container name within the target's pods (e.g. the app container's
+   * name), as declared in the pod template.
+   */
+  string container = 2 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * The target the average is held at.
+   */
+  KubernetesHorizontalPodAutoscalerMetricTarget target = 3 [(buf.validate.field).required = true];
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerPodsMetric** scales on a custom metric
+ * exposed per pod, averaged across pods.
+ */
+message KubernetesHorizontalPodAutoscalerPodsMetric {
+  /**
+   * The metric identity, as exposed by the custom-metrics adapter.
+   */
+  KubernetesHorizontalPodAutoscalerMetricIdentifier metric = 1 [(buf.validate.field).required = true];
+
+  /**
+   * The target — pods metrics support average_value (per-pod average).
+   */
+  KubernetesHorizontalPodAutoscalerMetricTarget target = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerObjectMetric** scales on a metric
+ * describing one other Kubernetes object.
+ */
+message KubernetesHorizontalPodAutoscalerObjectMetric {
+  /**
+   * The object the metric describes (e.g. an Ingress).
+   */
+  KubernetesHorizontalPodAutoscalerObjectReference described_object = 1 [(buf.validate.field).required = true];
+
+  /**
+   * The metric identity, as exposed by the custom-metrics adapter.
+   */
+  KubernetesHorizontalPodAutoscalerMetricIdentifier metric = 2 [(buf.validate.field).required = true];
+
+  /**
+   * The target — object metrics support value (the object's metric directly)
+   * or average_value (divided across the target's pods).
+   */
+  KubernetesHorizontalPodAutoscalerMetricTarget target = 3 [(buf.validate.field).required = true];
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerExternalMetric** scales on a metric from
+ * outside the cluster.
+ */
+message KubernetesHorizontalPodAutoscalerExternalMetric {
+  /**
+   * The metric identity, as exposed by the external-metrics adapter. The
+   * selector narrows which series is read (e.g. one queue's depth).
+   */
+  KubernetesHorizontalPodAutoscalerMetricIdentifier metric = 1 [(buf.validate.field).required = true];
+
+  /**
+   * The target — external metrics support value or average_value (divided
+   * across the target's pods; the usual choice, e.g. "30 queue messages per
+   * pod").
+   */
+  KubernetesHorizontalPodAutoscalerMetricTarget target = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerObjectReference** identifies one
+ * Kubernetes object a metric describes.
+ */
+message KubernetesHorizontalPodAutoscalerObjectReference {
+  /**
+   * The API version of the described object (e.g. "networking.k8s.io/v1").
+   */
+  string api_version = 1;
+
+  /**
+   * The kind of the described object (e.g. "Ingress").
+   */
+  string kind = 2 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * The name of the described object, in the autoscaler's namespace.
+   */
+  string name = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerMetricIdentifier** names a custom or
+ * external metric, optionally narrowed by a label selector.
+ */
+message KubernetesHorizontalPodAutoscalerMetricIdentifier {
+  /**
+   * The metric name, as the metrics adapter exposes it.
+   */
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Label selector passed to the metrics adapter to scope the series (e.g.
+   * {queue: "orders"}). Omit to read the metric unscoped.
+   */
+  map<string, string> match_labels = 2;
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerMetricTargetType** is how a metric's
+ * target value is expressed. (File-scope enum: protobuf enum values share
+ * their enclosing scope, and these names intentionally mirror the value
+ * field names inside KubernetesHorizontalPodAutoscalerMetricTarget.)
+ */
+enum KubernetesHorizontalPodAutoscalerMetricTargetType {
+  // Unspecified.
+  kubernetes_horizontal_pod_autoscaler_metric_target_type_unspecified = 0;
+
+  // A percentage of the pods' RESOURCE REQUESTS, averaged (e.g. 60 = hold
+  // average usage at 60% of requests). Resource and container_resource
+  // metrics only; requires the pods to declare requests.
+  utilization = 1;
+
+  // A raw quantity compared to the metric directly (object/external
+  // metrics). Maps to the API's "Value" target type — named raw_value here
+  // because generated code cannot use the bare word "value" as an enum
+  // constant.
+  raw_value = 2;
+
+  // A quantity averaged across the target's pods (pods metrics; the usual
+  // form for object/external too, e.g. "30 messages per pod").
+  average_value = 3;
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerMetricTarget** is the value a metric is
+ * held at — exactly one of the three target forms.
+ */
+message KubernetesHorizontalPodAutoscalerMetricTarget {
+  /**
+   * How the target value is expressed; the matching value field must be set.
+   */
+  KubernetesHorizontalPodAutoscalerMetricTargetType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  /**
+   * Target percentage of requests for utilization targets (e.g. 60).
+   */
+  optional int32 average_utilization = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  /**
+   * Target raw quantity for value targets (e.g. "1k", "100").
+   */
+  string value = 3 [(buf.validate.field).cel = {
+    id: "value.quantity"
+    message: "value must be a Kubernetes quantity (e.g. \"100\", \"1k\", \"500m\")"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$')"
+  }];
+
+  /**
+   * Target per-pod average quantity for average_value targets (e.g. "30",
+   * "500Mi").
+   */
+  string average_value = 4 [(buf.validate.field).cel = {
+    id: "average_value.quantity"
+    message: "average_value must be a Kubernetes quantity (e.g. \"30\", \"500Mi\")"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$')"
+  }];
+
+  // Exactly the value form matching the declared type.
+  option (buf.validate.message).cel = {
+    id: "target.value_matches_type"
+    message: "Set exactly the value field matching the target type: average_utilization for utilization, value for raw_value, average_value for average_value"
+    expression: "(this.type == 1 && has(this.average_utilization) && this.value == '' && this.average_value == '') || (this.type == 2 && !has(this.average_utilization) && this.value != '' && this.average_value == '') || (this.type == 3 && !has(this.average_utilization) && this.value == '' && this.average_value != '')"
+  };
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerBehavior** tunes scaling velocity per
+ * direction.
+ */
+message KubernetesHorizontalPodAutoscalerBehavior {
+  /**
+   * Scale-UP tuning. Kubernetes default: no stabilization, allow the higher
+   * of doubling or +4 pods per 15 seconds.
+   */
+  KubernetesHorizontalPodAutoscalerScalingRules scale_up = 1;
+
+  /**
+   * Scale-DOWN tuning. Kubernetes default: 300-second stabilization (scale
+   * down to the recommendation's 5-minute high-water mark), all pods
+   * removable in one step. Lengthen the window for spiky traffic; add a
+   * percent policy to bleed capacity gradually.
+   */
+  KubernetesHorizontalPodAutoscalerScalingRules scale_down = 2;
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerScalingRules** tunes one scaling
+ * direction: how long to wait before acting, and how fast to move.
+ */
+message KubernetesHorizontalPodAutoscalerScalingRules {
+  /**
+   * Seconds of past recommendations considered before acting in this
+   * direction (0–3600). The flap damper: the safest recommendation in the
+   * window wins. 0 = act immediately.
+   */
+  optional int32 stabilization_window_seconds = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 3600
+  }];
+
+  /**
+   * **KubernetesHorizontalPodAutoscalerSelectPolicy** picks which policy
+   * applies when several are listed.
+   */
+  enum KubernetesHorizontalPodAutoscalerSelectPolicy {
+    // Unspecified. Defaults to max_change.
+    kubernetes_horizontal_pod_autoscaler_select_policy_unspecified = 0;
+
+    // Use the policy allowing the LARGEST change — the default.
+    max_change = 1;
+
+    // Use the policy allowing the SMALLEST change — the conservative
+    // combinator.
+    min_change = 2;
+
+    // Disable scaling in this direction entirely (e.g. freeze scale-down
+    // during an incident while leaving scale-up live).
+    disabled = 3;
+  }
+
+  /**
+   * Which of the listed policies applies.
+   * Default: max_change
+   */
+  optional KubernetesHorizontalPodAutoscalerSelectPolicy select_policy = 2 [
+    (dev.planton.shared.options.default) = "max_change",
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  /**
+   * The velocity policies for this direction. Each caps the change per
+   * period; select_policy arbitrates between them.
+   */
+  repeated KubernetesHorizontalPodAutoscalerScalingPolicy policies = 3;
+
+  // A disabled direction with policies is contradictory; policies without
+  // select semantics are fine (max_change default applies).
+  option (buf.validate.message).cel = {
+    id: "disabled.no_policies"
+    message: "A direction with select_policy \"disabled\" must not list policies — disabled turns the direction off entirely"
+    expression: "!has(this.select_policy) || this.select_policy != 3 || this.policies.size() == 0"
+  };
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerScalingPolicy** caps the replica change
+ * in one direction: at most `value` pods (or percent) per `period_seconds`.
+ */
+message KubernetesHorizontalPodAutoscalerScalingPolicy {
+  /**
+   * **KubernetesHorizontalPodAutoscalerScalingPolicyType** is the unit of the
+   * cap.
+   */
+  enum KubernetesHorizontalPodAutoscalerScalingPolicyType {
+    // Unspecified.
+    kubernetes_horizontal_pod_autoscaler_scaling_policy_type_unspecified = 0;
+
+    // Cap by absolute pod count per period.
+    pods = 1;
+
+    // Cap by percentage of current replicas per period.
+    percent = 2;
+  }
+
+  /**
+   * The unit of the cap.
+   */
+  KubernetesHorizontalPodAutoscalerScalingPolicyType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  /**
+   * The maximum change per period: pod count (type: pods) or percentage of
+   * current replicas (type: percent). Must be positive.
+   */
+  int32 value = 2 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * The window the cap applies over, in seconds (1–1800).
+   */
+  int32 period_seconds = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1800
+  }];
+}

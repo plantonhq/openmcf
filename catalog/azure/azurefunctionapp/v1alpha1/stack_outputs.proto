@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurefunctionapp.v1alpha1;
+
+// **AzureFunctionAppStackOutputs** captures the outputs of provisioning an
+// Azure Linux Function App.
+//
+// The primary output is `function_app_id`, the ARM resource ID. The
+// `default_hostname` is the most commonly consumed output -- it provides
+// the FQDN for HTTP-triggered functions.
+//
+// Identity outputs (`identity_principal_id`, `identity_tenant_id`) are
+// populated when the Function App has a system-assigned managed identity.
+// These are used for setting up RBAC role assignments on Azure resources
+// (e.g., granting the Function App access to Key Vault, Storage, or databases).
+//
+// The `custom_domain_verification_id` is needed when binding custom domains
+// to the Function App via DNS TXT record verification.
+//
+// **Leaf resource**: Nothing references AzureFunctionApp outputs downstream.
+// These outputs are consumed by users, infra chart visibility, and external
+// DNS/domain configuration.
+message AzureFunctionAppStackOutputs {
+  // The Azure Resource Manager ID of the Function App.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/sites/{name}
+  string function_app_id = 1;
+
+  // The default hostname of the Function App.
+  // Format: {name}.azurewebsites.net
+  //
+  // This is the primary endpoint for HTTP-triggered functions.
+  // Custom domains can be added via Azure portal or DNS configuration.
+  string default_hostname = 2;
+
+  // Outbound IP addresses used by the Function App.
+  // These IPs should be allowed in downstream firewall rules (e.g.,
+  // database firewall, third-party API whitelists).
+  //
+  // Note: On Consumption plans, outbound IPs are shared across the region
+  // and may change. On Dedicated/Premium plans, IPs are stable.
+  repeated string outbound_ip_addresses = 3;
+
+  // The principal ID of the system-assigned managed identity.
+  // Populated only when the Function App has a system-assigned identity
+  // (identity.type includes "SystemAssigned").
+  //
+  // Used for granting RBAC roles: e.g., "Key Vault Secrets User",
+  // "Storage Blob Data Contributor".
+  string identity_principal_id = 4;
+
+  // The tenant ID of the system-assigned managed identity.
+  // Paired with identity_principal_id for RBAC configuration.
+  string identity_tenant_id = 5;
+
+  // The custom domain verification ID.
+  // Used when binding custom domains to the Function App. Add this value
+  // as a TXT record at `asuid.{custom-domain}` to verify domain ownership.
+  string custom_domain_verification_id = 6;
+
+  // The resource kind string as reported by Azure.
+  // Example: "functionapp,linux"
+  string kind = 7;
+
+  // Every outbound IP address the platform could EVER route this app's
+  // traffic through (a superset of outbound_ip_addresses, which lists
+  // only the currently active set). Use THIS list for downstream
+  // firewall allowlists that must survive scale events and platform
+  // moves.
+  repeated string possible_outbound_ip_addresses = 8;
+
+  // The ARM ID of the App Service Environment hosting the app -- set
+  // only when the app's plan runs on Isolated SKUs inside an ASE.
+  string hosting_environment_id = 9;
+
+  // The site-level publishing credential's username (the Kudu/SCM
+  // basic-auth user). Paired with site_credential_password; only usable
+  // while the basic-auth publishing toggles are enabled.
+  string site_credential_name = 10;
+
+  // The site-level publishing credential's password. SECRET-BEARING:
+  // anyone holding it can deploy code to the app over Web Deploy/SCM
+  // while basic-auth publishing is enabled -- treat it like an admin
+  // password (disable the basic-auth toggles to revoke the surface
+  // entirely).
+  string site_credential_password = 11;
+}

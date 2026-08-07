@@ -18,8 +18,8 @@ SCOPE
 TOOLS
 - Reader: `_rules/deployment-component/_scripts/stack_input_reader.py`
 - Writer+Build: `_rules/deployment-component/_scripts/stack_input_write_and_build.py`
-- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1alpha1/stack_input.proto`
-  and `aws/awsalb/v1/stack_input.proto` -- canonical provisioner/pulumi/terraform/target/credential wiring.
+- Reference components (live ground truth): `catalog/aws/awsvpc/v1alpha1/stack_input.proto`
+  and `catalog/aws/awsalb/v1alpha1/stack_input.proto` -- canonical provisioner/pulumi/terraform/target/credential wiring.
 
 SEQUENTIAL STEPS
 1) Read: `python3 _rules/deployment-component/_scripts/stack_input_reader.py --provider <provider> --kindfolder <kindfolder>`

@@ -40,7 +40,7 @@ import (
 	"fmt"
 	"reflect"
 
-	azureprovider "github.com/plantonhq/planton/apis/dev/planton/provider/azure"
+	azureprovider "github.com/plantonhq/planton/catalog/azure"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/pulumi/pulumioutput"
 
 	"github.com/pkg/errors"

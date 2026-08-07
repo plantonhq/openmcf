@@ -3,7 +3,7 @@ package pulumiazurenativeprovider
 import (
 	"testing"
 
-	azureprovider "github.com/plantonhq/planton/apis/dev/planton/provider/azure"
+	azureprovider "github.com/plantonhq/planton/catalog/azure"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

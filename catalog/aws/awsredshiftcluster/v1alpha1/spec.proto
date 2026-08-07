@@ -1,0 +1,483 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsredshiftcluster.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsRedshiftClusterSpec defines an Amazon Redshift provisioned cluster --
+// a petabyte-scale columnar data warehouse for analytical (OLAP) SQL
+// workloads over structured and semi-structured data.
+//
+// The cluster identifier comes from metadata.name. Subnets, security
+// groups, IAM roles, KMS keys, and Elastic IPs compose by reference --
+// this cluster never creates or mutates resources that deserve to be
+// their own nodes. Ingress rules belong on the referenced
+// AwsSecurityGroup nodes, never inside this cluster.
+//
+// Audit logging and cross-region snapshot copy are cluster settings with
+// no identity of their own (AWS keys both by the cluster identifier), so
+// they are folded in as sub-messages rather than modeled as standalone
+// kinds. Redshift Serverless is a different product (namespaces +
+// workgroups, no cluster) and is deliberately not modeled here.
+message AwsRedshiftClusterSpec {
+  // The AWS region the cluster is created in. Must match the region of
+  // the subnets, security groups, and KMS keys it references.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Subnets for the cluster's Redshift subnet group. Provide at least
+  // two subnets in DISTINCT availability zones so the cluster (and a
+  // Multi-AZ standby, if enabled) has somewhere to land. Reference
+  // AwsSubnet subnet_id outputs or pass literal subnet IDs. The module
+  // manages the subnet group itself (pure glue: a named list of
+  // subnets); alternatively point cluster_subnet_group_name at an
+  // existing group. Changing the subnet group replaces the cluster.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Name of an existing Redshift subnet group to place the cluster in,
+  // instead of providing subnet_ids. Changing the subnet group replaces
+  // the cluster.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_subnet_group_name = 3;
+
+  // Security groups attached to the cluster (the cluster's
+  // vpc_security_group_ids). Empty uses the VPC's default security
+  // group (the AWS default). Reference AwsSecurityGroup
+  // security_group_id outputs or pass literal SG IDs -- warehouse
+  // ingress rules (e.g. port 5439 from your BI tooling) belong on the
+  // referenced AwsSecurityGroup node, never inside this cluster.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // Pin the cluster to one availability zone. Empty lets AWS place it
+  // -- preferred. Changing the zone on a live cluster requires
+  // availability_zone_relocation_enabled; without relocation the pin is
+  // create-time only.
+  string availability_zone = 5;
+
+  // Allow the cluster to be relocated to another availability zone
+  // during outages or on demand -- zero data loss, brief
+  // unavailability. Requires RA3 node types and a cluster port in the
+  // ranges 5431-5455 or 8191-8215 (an AWS relocation constraint).
+  // Mutually exclusive with multi_az: relocation recovers by moving the
+  // single cluster, Multi-AZ recovers by failing over to a standby.
+  bool availability_zone_relocation_enabled = 6;
+
+  // Give the cluster a public IP so it can be reached from outside the
+  // VPC. Off by default -- warehouses almost always stay private behind
+  // VPC routing (and Query Editor / private BI reach them fine).
+  bool publicly_accessible = 7;
+
+  // A static public IPv4 address for the cluster's leader node.
+  // Requires publicly_accessible. Reference an AwsElasticIp public_ip
+  // output or pass a literal Elastic IP ADDRESS (Redshift takes the IP
+  // itself, not an allocation ID).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef elastic_ip = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsElasticIp,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.public_ip"
+  ];
+
+  // Force all COPY and UNLOAD traffic between the cluster and data
+  // repositories (S3, DynamoDB, ...) through the VPC instead of the
+  // public internet -- enabling VPC flow logs, endpoints, and other
+  // network controls to see and govern warehouse data movement.
+  bool enhanced_vpc_routing = 9;
+
+  // The port the cluster accepts connections on. 0 keeps the AWS
+  // default (5439). Redshift accepts 1115-65535; if
+  // availability_zone_relocation_enabled is on, AWS additionally
+  // requires the port to be within 5431-5455 or 8191-8215.
+  int32 port = 10;
+
+  // The compute/storage class of every node. RA3 classes (ra3.large,
+  // ra3.xlplus, ra3.4xlarge, ra3.16xlarge) decouple compute from
+  // managed storage that tiers between SSD and S3 automatically -- the
+  // right call for nearly all new clusters and the only family that
+  // supports multi_az and availability-zone relocation. DC2 classes
+  // (dc2.large, dc2.8xlarge) are the legacy dense-compute family with
+  // node-local SSD only. Resizing to a different class is an in-place
+  // (but access-interrupting) classic/elastic resize, never a replace.
+  string node_type = 11 [(buf.validate.field).required = true];
+
+  // How many nodes the cluster runs. 0 keeps the AWS default (1, a
+  // single-node cluster where leader and compute share one node).
+  // 2+ creates a multi-node cluster with a dedicated leader --
+  // required for production and for multi_az. Resize is in-place.
+  int32 number_of_nodes = 12;
+
+  // The Redshift engine version. Empty keeps the AWS default ("1.0" --
+  // the only version family Redshift has ever shipped); actual engine
+  // patches ride maintenance_track_name and allow_version_upgrade.
+  string cluster_version = 13;
+
+  // The name of the first database created in the cluster. Empty keeps
+  // the AWS default ("dev"). 1-64 lowercase alphanumeric/underscore
+  // characters.
+  string database_name = 14;
+
+  // The admin username. Required for a brand-new cluster -- AWS has no
+  // default and rejects a blank value at CreateCluster. Only clusters
+  // restored from a snapshot leave it empty and inherit the source's
+  // credentials. Create-time only -- changing it replaces the cluster.
+  string master_username = 15;
+
+  // Let AWS manage the admin password in Secrets Manager: AWS
+  // generates it, stores it, rotates it on schedule, and no secret ever
+  // touches this manifest or the IaC state. The managed secret's ARN is
+  // exported as the master_password_secret_arn output. Mutually
+  // exclusive with master_password -- and the recommended posture.
+  bool manage_master_password = 16 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // The admin password, supplied directly (8-64 chars with at least one
+  // uppercase letter, one lowercase letter, and one digit). Stored in
+  // IaC state -- prefer manage_master_password, which keeps the secret
+  // in Secrets Manager entirely. Mutually exclusive with
+  // manage_master_password.
+  string master_password = 17 [(dev.planton.shared.options.sensitive) = true];
+
+  // The KMS key that encrypts the Secrets Manager secret holding the
+  // managed admin password. Empty uses the AWS-managed
+  // aws/secretsmanager key. Only meaningful with
+  // manage_master_password. Reference an AwsKmsKey key_arn output or
+  // pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef master_password_secret_kms_key_id = 18 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Encrypt cluster storage at rest. AWS defaults new clusters to
+  // encrypted, and this spec keeps that default -- set false only for
+  // a deliberate, exceptional reason. Toggling encryption on a live
+  // cluster is an in-place but long-running migration.
+  optional bool encrypted = 19 [(dev.planton.shared.options.default) = "true"];
+
+  // The KMS key for cluster storage encryption when encrypted is true.
+  // Empty uses the AWS-managed Redshift service key. Reference an
+  // AwsKmsKey key_arn output or pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 20 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Run a Multi-AZ deployment: compute in two availability zones with
+  // automatic failover and a single endpoint. Requires RA3 node types
+  // and a multi-node cluster. Mutually exclusive with
+  // availability_zone_relocation_enabled.
+  bool multi_az = 21;
+
+  // IAM roles the cluster assumes to access other AWS services during
+  // COPY, UNLOAD, CREATE EXTERNAL FUNCTION, and Redshift Spectrum
+  // queries (S3, DynamoDB, Glue, Lambda, ...). AWS allows up to 10
+  // associated roles. Reference AwsIamRole role_arn outputs or pass
+  // literal role ARNs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef iam_roles = 22 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The IAM role assumed when a SQL command does not name one
+  // explicitly (e.g. COPY ... IAM_ROLE default). Must also be present
+  // in iam_roles. Reference an AwsIamRole role_arn output or pass a
+  // literal role ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef default_iam_role_arn = 23 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Days automated snapshots are retained, 0-35. 0 disables automated
+  // snapshots entirely (not recommended); unset keeps the AWS default
+  // (1 day). Production warehouses typically want 7+.
+  optional int32 automated_snapshot_retention_period = 24 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 35,
+    (dev.planton.shared.options.default) = "1"
+  ];
+
+  // Days MANUAL snapshots are retained: 1-3653, or -1 to retain
+  // indefinitely. 0 keeps the AWS default (-1, indefinite). Applies to
+  // new manual snapshots taken after the change.
+  int32 manual_snapshot_retention_period = 25;
+
+  // The weekly maintenance window in UTC, format
+  // "ddd:hh24:mi-ddd:hh24:mi" (e.g. "sat:03:00-sat:04:00"). Empty lets
+  // AWS assign one.
+  string preferred_maintenance_window = 26 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$"
+  ];
+
+  // The maintenance track the cluster follows. Empty keeps the AWS
+  // default ("current" -- the latest approved release). "trailing"
+  // stays one release behind; a snapshot restore can also land on a
+  // named preview/source track inherited from its source cluster.
+  string maintenance_track_name = 27;
+
+  // Permit engine version upgrades during the maintenance window. AWS
+  // defaults this to true; disable only when upgrade timing must be
+  // controlled manually.
+  optional bool allow_version_upgrade = 28 [(dev.planton.shared.options.default) = "true"];
+
+  // Apply modifications immediately instead of waiting for the next
+  // maintenance window. Immediate changes can interrupt connections;
+  // deferred changes wait quietly. AWS defaults to deferred.
+  bool apply_immediately = 29;
+
+  // Skip the final snapshot when the cluster is deleted. When false
+  // (the safe default), final_snapshot_identifier must be set -- AWS
+  // refuses to delete without knowing the snapshot name.
+  bool skip_final_snapshot = 30;
+
+  // The name for the final snapshot taken on deletion. Required when
+  // skip_final_snapshot is false.
+  string final_snapshot_identifier = 31;
+
+  // Restore the cluster from an existing snapshot by NAME at create
+  // time. Create-time only; mutually exclusive with snapshot_arn. The
+  // restored cluster inherits the snapshot's credentials, so
+  // master_username stays empty.
+  string snapshot_identifier = 32;
+
+  // Restore the cluster from an existing snapshot by ARN at create
+  // time -- the shape cross-account/cross-region snapshot shares use.
+  // Create-time only; mutually exclusive with snapshot_identifier.
+  string snapshot_arn = 33;
+
+  // The name of the cluster the source snapshot was taken from.
+  // Required by AWS only when the snapshot name alone is ambiguous
+  // (shared snapshots). Only meaningful alongside snapshot_identifier.
+  string snapshot_cluster_identifier = 34;
+
+  // The AWS account that owns the source snapshot, for restoring from
+  // a snapshot shared by another account. Only meaningful alongside a
+  // restore source.
+  string owner_account = 35;
+
+  // Audit logging for the cluster -- connection attempts, user
+  // activity, and user changes delivered to S3 or CloudWatch Logs. A
+  // cluster setting keyed by the cluster itself (folded, never a
+  // standalone node).
+  AwsRedshiftClusterLogging logging = 36;
+
+  // Cross-region disaster recovery: automatically copy this cluster's
+  // snapshots to another region. A cluster setting keyed by the
+  // cluster itself (folded, never a standalone node).
+  AwsRedshiftClusterSnapshotCopy snapshot_copy = 37;
+
+  // The name of an existing cluster parameter group to use. Mutually
+  // exclusive with `parameters` -- either bring your own group or let
+  // the module manage one from inline parameters.
+  string cluster_parameter_group_name = 38;
+
+  // Cluster-level engine parameters (e.g. "require_ssl",
+  // "enable_user_activity_logging", "wlm_json_configuration"), managed
+  // as a dedicated parameter group owned by this cluster (the group is
+  // glue -- a named parameter list -- so it stays folded). Mutually
+  // exclusive with cluster_parameter_group_name.
+  repeated AwsRedshiftClusterParameter parameters = 39;
+
+  // The parameter-group family for the managed group created from
+  // `parameters`. Empty keeps "redshift-1.0" -- the long-standing
+  // family AWS accepts on every cluster. AWS introduced "redshift-2.0"
+  // with the Redshift patch 2.0 generation (new clusters' default
+  // group is default.redshift-2.0); set it here when the managed group
+  // should track that family. Only meaningful alongside `parameters`.
+  string parameter_group_family = 40;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "subnets_or_group"
+    message: "provide at least two subnet_ids (distinct AZs) or an existing cluster_subnet_group_name"
+    expression: "(this.subnet_ids.size() >= 2) || has(this.cluster_subnet_group_name)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "port_range"
+    message: "port must be between 1115 and 65535 when set -- 0 keeps the AWS default (5439)"
+    expression: "this.port == 0 || (this.port >= 1115 && this.port <= 65535)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "number_of_nodes_range"
+    message: "number_of_nodes must be between 1 and 128 when set -- 0 keeps the AWS default (1, single-node)"
+    expression: "this.number_of_nodes == 0 || (this.number_of_nodes >= 1 && this.number_of_nodes <= 128)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "password_xor_managed"
+    message: "master_password cannot be set when manage_master_password is true -- pick one password strategy"
+    expression: "this.manage_master_password ? this.master_password == '' : true"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "master_username_required_unless_derived"
+    message: "master_username is required for a new cluster -- AWS rejects a blank username; only snapshot restores inherit credentials from their source"
+    expression: "this.master_username != '' || this.snapshot_identifier != '' || this.snapshot_arn != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "relocation_xor_multi_az"
+    message: "availability_zone_relocation_enabled and multi_az are mutually exclusive -- relocation moves the single cluster between zones, Multi-AZ fails over to a standby"
+    expression: "!(this.availability_zone_relocation_enabled && this.multi_az)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "elastic_ip_requires_public"
+    message: "elastic_ip requires publicly_accessible -- a private cluster has no public IP to bind the address to"
+    expression: "!has(this.elastic_ip) || this.publicly_accessible"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "manual_snapshot_retention_range"
+    message: "manual_snapshot_retention_period must be -1 (indefinite) or between 1 and 3653 when set -- 0 keeps the AWS default (indefinite)"
+    expression: "this.manual_snapshot_retention_period == 0 || this.manual_snapshot_retention_period == -1 || (this.manual_snapshot_retention_period >= 1 && this.manual_snapshot_retention_period <= 3653)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "final_snapshot_id_required_when_not_skipping"
+    message: "final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the cluster without a final snapshot name"
+    expression: "this.skip_final_snapshot ? true : this.final_snapshot_identifier != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "snapshot_id_xor_arn"
+    message: "snapshot_identifier and snapshot_arn are mutually exclusive create-time restore sources"
+    expression: "this.snapshot_identifier == '' || this.snapshot_arn == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "snapshot_cluster_requires_snapshot_id"
+    message: "snapshot_cluster_identifier is only meaningful alongside snapshot_identifier -- it disambiguates a snapshot NAME, never an ARN"
+    expression: "this.snapshot_cluster_identifier == '' || this.snapshot_identifier != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "owner_account_requires_restore"
+    message: "owner_account is only meaningful alongside a restore source (snapshot_identifier or snapshot_arn)"
+    expression: "this.owner_account == '' || this.snapshot_identifier != '' || this.snapshot_arn != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "own_parameters_xor_existing_group"
+    message: "parameters and cluster_parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group"
+    expression: "this.cluster_parameter_group_name == '' || this.parameters.size() == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "family_requires_parameters"
+    message: "parameter_group_family is only meaningful alongside inline parameters -- an existing group carries its own family"
+    expression: "this.parameter_group_family == '' || this.parameters.size() > 0"
+  };
+}
+
+// AwsRedshiftClusterLogging delivers the cluster's audit logs --
+// connection attempts, executed queries, and user DDL changes -- to S3
+// or CloudWatch Logs.
+message AwsRedshiftClusterLogging {
+  // Where audit logs are delivered: "s3" writes log files to an S3
+  // bucket (the bucket needs a policy granting the Redshift service
+  // write access); "cloudwatch" streams them to CloudWatch Logs --
+  // the modern destination with retention, metric filters, and
+  // subscriptions.
+  string log_destination_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "s3",
+        "cloudwatch"
+      ]
+    }
+  ];
+
+  // The S3 bucket audit logs are written to. Required when
+  // log_destination_type is "s3".
+  string s3_bucket_name = 2;
+
+  // An optional key prefix for log objects within the S3 bucket.
+  string s3_key_prefix = 3;
+
+  // Which audit log types to export: "connectionlog" (connection
+  // attempts), "useractivitylog" (every executed query -- requires the
+  // enable_user_activity_logging cluster parameter), "userlog" (user
+  // create/alter/drop events). Required for "cloudwatch"; ignored for
+  // "s3" (S3 delivery always carries all three).
+  repeated string log_exports = 4 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "connectionlog",
+        "useractivitylog",
+        "userlog"
+      ]
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "s3_bucket_required"
+    message: "s3_bucket_name is required when log_destination_type is 's3'"
+    expression: "this.log_destination_type == 's3' ? this.s3_bucket_name != '' : true"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "cloudwatch_exports_required"
+    message: "log_exports must have at least one entry when log_destination_type is 'cloudwatch'"
+    expression: "this.log_destination_type == 'cloudwatch' ? this.log_exports.size() > 0 : true"
+  };
+}
+
+// AwsRedshiftClusterSnapshotCopy automatically copies the cluster's
+// snapshots to another AWS region for disaster recovery. Changing the
+// destination region tears the copy configuration down and re-enables
+// it against the new region.
+message AwsRedshiftClusterSnapshotCopy {
+  // The region snapshots are copied to. Must differ from the cluster's
+  // own region. Required.
+  string destination_region = 1 [(buf.validate.field).required = true];
+
+  // Days copied AUTOMATED snapshots are retained in the destination
+  // region, 1-35. 0 keeps the AWS default (7).
+  int32 retention_period = 2;
+
+  // Days copied MANUAL snapshots are retained in the destination
+  // region: 1-3653, or -1 to retain indefinitely. 0 keeps the AWS
+  // default (-1, indefinite).
+  int32 manual_snapshot_retention_period = 3;
+
+  // The snapshot copy grant that lets Redshift encrypt copied
+  // snapshots with a KMS key in the destination region. Required by
+  // AWS when the cluster is KMS-encrypted; irrelevant otherwise.
+  string snapshot_copy_grant_name = 4;
+
+  option (buf.validate.message).cel = {
+    id: "copy_retention_range"
+    message: "retention_period must be between 1 and 35 when set -- 0 keeps the AWS default (7)"
+    expression: "this.retention_period == 0 || (this.retention_period >= 1 && this.retention_period <= 35)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "copy_manual_retention_range"
+    message: "manual_snapshot_retention_period must be -1 (indefinite) or between 1 and 3653 when set -- 0 keeps the AWS default (indefinite)"
+    expression: "this.manual_snapshot_retention_period == 0 || this.manual_snapshot_retention_period == -1 || (this.manual_snapshot_retention_period >= 1 && this.manual_snapshot_retention_period <= 3653)"
+  };
+}
+
+// AwsRedshiftClusterParameter is one cluster-level engine parameter,
+// applied through the module-managed parameter group (family
+// redshift-1.0 unless parameter_group_family selects another).
+message AwsRedshiftClusterParameter {
+  // The parameter name (e.g. "require_ssl",
+  // "enable_user_activity_logging", "max_concurrency_scaling_clusters",
+  // "wlm_json_configuration"). Required.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The parameter value. Required.
+  string value = 2 [(buf.validate.field).required = true];
+}

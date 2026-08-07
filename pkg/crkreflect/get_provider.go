@@ -1,7 +1,7 @@
 package crkreflect
 
 import (
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // GetProvider returns the Cloud‑resource **provider** recorded in the

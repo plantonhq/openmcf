@@ -36,7 +36,7 @@ Usage: In Ask mode, invoke explicitly as `@pr-info`.
 ```
 
 ### Examples of valid scopes (Planton)
-- `apis/project/planton`
+- `catalog/aws/awsvpc`
 - `charts/aws/eks-platform`
 - `charts/aws/terraform-backend`
 - `charts/gcp/gke-environment`
@@ -71,9 +71,10 @@ Usage: In Ask mode, invoke explicitly as `@pr-info`.
 ## Repository-aware scope heuristics (Planton)
 Determine the `<scope-path>` from the changed files. Use the most impacted area by lines changed; if multiple, see multi-area guidance.
 
-- APIs
-  - `apis/project/planton/**` → `apis/project/planton`
-  - Other files under `apis/**` (e.g., `generated`) → `apis`
+- Catalog (deployment components)
+  - `catalog/<provider>/<kind>/**` → `catalog/<provider>/<kind>`
+  - Multiple kinds under the same provider → `catalog/<provider>`
+  - Shared proto surfaces (`shared/**`, `qa/**`, `iac/**`) → `shared`, `qa`, or `iac`
 
 - Charts (multi-cloud Lego blocks)
   - `charts/<provider>/<chart>/**` → `charts/<provider>/<chart>`

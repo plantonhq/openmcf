@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	suitev1 "github.com/plantonhq/planton/apis/dev/planton/qa/mappingevalsuite/v1"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/protobufyaml"
+	suitev1 "github.com/plantonhq/planton/qa/mappingevalsuite/v1"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"google.golang.org/protobuf/proto"
 )
 

@@ -20,7 +20,8 @@ def find_repo_root(start_dir: str) -> str:
 
 
 def stack_input_path(repo_root: str, provider: str, kind_folder: str) -> Tuple[str, str]:
-    rel = os.path.join("apis", "dev", "planton", "provider", provider, kind_folder, "v1alpha1", "stack_input.proto")
+    rel = os.path.join(
+        "catalog", provider, kind_folder, "v1alpha1", "stack_input.proto")
     return os.path.join(repo_root, rel), rel
 
 
@@ -41,16 +42,15 @@ def norm(seg: str) -> str:
 
 
 def run_build(repo_root: str) -> Tuple[int, str, str]:
-    apis_dir = os.path.join(repo_root, "apis")
     try:
-        p = subprocess.run(["make", "-C", apis_dir, "build"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
+        p = subprocess.run(["make", "-C", repo_root, "protos"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
         return p.returncode, p.stdout, p.stderr
     except Exception as exc:
         return 127, "", str(exc)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Write stack_input.proto and run apis build")
+    parser = argparse.ArgumentParser(description="Write stack_input.proto and run the proto build")
     parser.add_argument("--provider", required=True)
     parser.add_argument("--kindfolder", required=True)
     g = parser.add_mutually_exclusive_group(required=True)

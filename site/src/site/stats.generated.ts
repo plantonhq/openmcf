@@ -8,11 +8,11 @@
  */
 export const generatedStats = {
   /** Annotated cloud-resource kinds (catalog breadth). */
-  components: 562,
+  components: 613,
   /** Cloud providers in the catalog. */
   providers: 17,
   /** Ready-made infra charts (stacks). */
-  charts: 64,
+  charts: 10,
 } as const;
 
 export type GeneratedStats = typeof generatedStats;

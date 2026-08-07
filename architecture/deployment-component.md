@@ -156,7 +156,7 @@ The following sections define the complete, ideal state of any deployment compon
 
 ### 1. Cloud Resource Registry
 
-**Location:** `apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto`
+**Location:** `shared/cloudresourcekind/cloud_resource_kind.proto`
 
 **Requirements:**
 
@@ -203,15 +203,15 @@ GcpCertManagerCert = 616 [(kind_meta) = {
 
 ### 2. Folder Structure
 
-**Base Path:** `apis/dev/planton/provider/<provider>/<component>/v1/`
+**Base Path:** `catalog/<provider>/<component>/v1/`
 
 **Requirements:**
 
 - [ ] **Correct Provider Hierarchy** - Component folder is under the correct provider:
-  - `apis/dev/planton/provider/aws/<component>/v1/`
-  - `apis/dev/planton/provider/gcp/<component>/v1/`
-  - `apis/dev/planton/provider/azure/<component>/v1/`
-  - `apis/dev/planton/provider/kubernetes/<component>/v1/`
+  - `catalog/aws/<component>/v1/`
+  - `catalog/gcp/<component>/v1/`
+  - `catalog/azure/<component>/v1/`
+  - `catalog/kubernetes/<component>/v1/`
   - etc.
 
 - [ ] **Lowercase Folder Naming** - Component folder name matches the `CloudResourceKind` enum value but in all lowercase
@@ -222,7 +222,7 @@ GcpCertManagerCert = 616 [(kind_meta) = {
 
 **Example Structure:**
 ```
-apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/
+catalog/gcp/gcpcertmanagercert/v1alpha1/
 ├── api.proto
 ├── spec.proto
 ├── stack_input.proto
@@ -276,13 +276,13 @@ apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/
 
 - [ ] **File Exists** - `v1/api.proto` is present
 - [ ] **Correct Package** - Package declaration matches path:
-  - `package dev.planton.provider.<provider>.<component>.v1;`
+  - `package dev.planton.<provider>.<component>.v1;`
 - [ ] **Standard Imports** - Imports common proto dependencies:
   ```protobuf
   import "buf/validate/validate.proto";
-  import "dev/planton/provider/<provider>/<component>/v1/spec.proto";
-  import "dev/planton/provider/<provider>/<component>/v1/stack_outputs.proto";
-  import "dev/planton/shared/metadata.proto";
+  import "catalog/<provider>/<component>/v1/spec.proto";
+  import "catalog/<provider>/<component>/v1/stack_outputs.proto";
+  import "shared/metadata.proto";
   ```
 - [ ] **Resource Message** - Defines `<Kind>` message with KRM structure:
   ```protobuf
@@ -350,8 +350,8 @@ message GcpCertManagerCertSpec {
 - [ ] **Correct Package** - Package declaration matches path
 - [ ] **Standard Imports** - Imports common dependencies:
   ```protobuf
-  import "dev/planton/provider/<provider>/<component>/v1/api.proto";
-  import "dev/planton/provider/<provider>/provider.proto";
+  import "catalog/<provider>/<component>/v1/api.proto";
+  import "catalog/<provider>/provider.proto";
   ```
 - [ ] **StackInput Message** - Defines `<Kind>StackInput` message with the target resource and the provider config:
   ```protobuf
@@ -363,9 +363,9 @@ message GcpCertManagerCertSpec {
   }
   ```
 - [ ] **Provider Config Field** - References the correct provider config type (the `<Provider>ProviderConfig` message from `provider/<provider>/provider.proto`, consistent with the `provider_config = 2` example above):
-  - AWS: `dev.planton.provider.aws.AwsProviderConfig`
-  - GCP: `dev.planton.provider.gcp.GcpProviderConfig`
-  - Kubernetes: `dev.planton.provider.kubernetes.KubernetesProviderConfig`
+  - AWS: `dev.planton.aws.AwsProviderConfig`
+  - GCP: `dev.planton.gcp.GcpProviderConfig`
+  - Kubernetes: `dev.planton.kubernetes.KubernetesProviderConfig`
 
 #### 3.4 stack_outputs.proto
 
@@ -427,7 +427,7 @@ message GcpCertManagerCertStackOutputs {
 - [ ] **Tests Execute** - All tests run successfully (no compilation errors)
 - [ ] **Tests Pass** - All tests pass when running component-specific test:
   ```bash
-  go test ./apis/dev/planton/provider/<provider>/<component>/v1/
+  go test ./catalog/<provider>/<component>/v1/
   ```
 - [ ] **Meaningful Coverage** - Tests cover critical validation paths:
   - Happy path (valid configurations)

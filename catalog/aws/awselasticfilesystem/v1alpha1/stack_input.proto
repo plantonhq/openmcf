@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awselasticfilesystem.v1alpha1;
+
+import "catalog/aws/awselasticfilesystem/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// aws-elastic-file-system stack-input
+message AwsElasticFileSystemStackInput {
+  // target cloud-resource
+  AwsElasticFileSystem target = 1;
+  // provider-credential
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

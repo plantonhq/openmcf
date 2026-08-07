@@ -10,7 +10,7 @@ authored, in two tiers:
 
 | Tier | Kind | Location | Owns |
 |------|------|----------|------|
-| Provider | `ProviderImportCatalog` | `apis/dev/planton/provider/{provider}/aa_import/catalog.yaml` | Import-ID **format** per resource type (`"{bucket}"`, `"{vpc_id}"`), plus `config_only_attributes` — attributes that exist only in IaC configuration and can never round-trip through import |
+| Provider | `ProviderImportCatalog` | `catalog/{provider}/aa_import/catalog.yaml` | Import-ID **format** per resource type (`"{bucket}"`, `"{vpc_id}"`), plus `config_only_attributes` — attributes that exist only in IaC configuration and can never round-trip through import |
 | Component | `ComponentImportMap` | `{component}/v1/iac/import-map.yaml` | The **value source** per `{placeholder}`: metadata.name (optionally with a literal suffix, for convention-named satellites like `<name>-hpa`), a spec field, a stack output, a pasted ARN's part, the enumerated address's instance key, or a module-hardcoded literal (a typed-CR module's apiVersion/kind) — with "where to find this" guidance for anything only the user can supply |
 
 An id_format has two optionality forms, with deliberately different literal
@@ -55,7 +55,7 @@ back to asking. The resolved value feeds the import operation and is never
 logged or persisted.
 
 Both are proto-backed KRM documents (`iac.planton.dev/v1`, protos under
-`apis/dev/planton/iac/`), parsed through `pkg/protobufyaml` like the E2E
+`iac/`), parsed through `pkg/protobufyaml` like the E2E
 profiles.
 
 ## Correctness is machine-proven, never review-trusted

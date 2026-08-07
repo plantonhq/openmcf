@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awshttpapidomain.v1alpha1;
+
+import "catalog/aws/awshttpapidomain/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsHttpApiDomainStackInput is the input for the aws-http-api-domain IaC
+// modules.
+message AwsHttpApiDomainStackInput {
+  // target cloud-resource
+  AwsHttpApiDomain target = 1;
+
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

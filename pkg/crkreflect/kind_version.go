@@ -4,7 +4,7 @@ import (
 	"regexp"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // versionGrammar is the maturity-channel version grammar: v1alpha1 → v1beta1
@@ -17,7 +17,7 @@ var versionGrammar = regexp.MustCompile(`^v\d+((alpha|beta)\d+)?$`)
 // KindVersion returns the kind's declared API version — the version half of
 // the manifest apiVersion (e.g. "aws.planton.dev/v1alpha1" carries "v1") and the
 // version segment of the kind's component directory
-// (apis/dev/planton/provider/<provider>/<kind>/<version>/).
+// (catalog/<provider>/<kind>/<version>/).
 func KindVersion(kind cloudresourcekind.CloudResourceKind) (string, error) {
 	kindMeta, err := KindMeta(kind)
 	if err != nil {

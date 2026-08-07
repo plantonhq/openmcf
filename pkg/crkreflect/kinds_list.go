@@ -3,7 +3,7 @@ package crkreflect
 import (
 	"sort"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // KindsList returns every registered kind (excluding the unspecified zero

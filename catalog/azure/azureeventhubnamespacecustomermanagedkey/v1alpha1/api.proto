@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventhubnamespacecustomermanagedkey.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureeventhubnamespacecustomermanagedkey/v1alpha1/spec.proto";
+import "catalog/azure/azureeventhubnamespacecustomermanagedkey/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AzureEventHubNamespaceCustomerManagedKey is the top-level API resource
+// for customer-managed-key (BYOK) encryption on an Event Hubs namespace.
+// It applies your Key Vault keys onto a single-tenant namespace (dedicated
+// cluster or PREMIUM) as a second step after the namespace's identity has
+// vault access -- and once enabled, CMK can never be removed (Azure's own
+// contract).
+message AzureEventHubNamespaceCustomerManagedKey {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureEventHubNamespaceCustomerManagedKey'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureEventHubNamespaceCustomerManagedKeySpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureEventHubNamespaceCustomerManagedKeyStatus status = 5;
+}
+
+// AzureEventHubNamespaceCustomerManagedKeyStatus holds the deployment
+// status and outputs.
+message AzureEventHubNamespaceCustomerManagedKeyStatus {
+  // stack-outputs
+  AzureEventHubNamespaceCustomerManagedKeyStackOutputs outputs = 1;
+}

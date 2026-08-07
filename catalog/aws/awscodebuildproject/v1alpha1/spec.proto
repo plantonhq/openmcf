@@ -1,0 +1,1154 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscodebuildproject.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsCodeBuildProjectSpec defines the specification for an AWS CodeBuild
+// project with an optional webhook for source-triggered builds.
+//
+// AWS CodeBuild is a fully managed build service that compiles source code,
+// runs tests, and produces deployable artifacts. This component creates a
+// CodeBuild project — the build configuration unit — and optionally a webhook
+// for automatic build triggers from source providers.
+//
+// Bundling rationale: a webhook is 1:1 with a project and useless in
+// isolation — source-triggered projects are incomplete without one, while
+// CodePipeline-triggered and manual projects omit it. A resource policy is a
+// single project-keyed document, so it folds. Source credentials (an
+// account/region-wide Git credential store), report groups, and reserved
+// capacity fleets have independent lifecycles shared across projects and are
+// deliberately excluded; the project joins a fleet through
+// environment.fleet_arn.
+message AwsCodeBuildProjectSpec {
+  // The AWS region where the resource will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // source defines where the primary build input comes from and how to
+  // fetch it. Its source_identifier must stay empty — identifiers exist only
+  // to name secondary sources.
+  AwsCodeBuildSource source = 2 [(buf.validate.field).required = true];
+
+  // secondary_sources add up to 12 extra inputs alongside the primary
+  // source (e.g., a shared build-tooling repository next to the application
+  // repository). Each entry MUST set source_identifier; the buildspec
+  // addresses the checkout via $CODEBUILD_SRC_DIR_<source_identifier>.
+  repeated AwsCodeBuildSource secondary_sources = 3 [(buf.validate.field).repeated.max_items = 12];
+
+  // secondary_source_versions pin a branch, tag, or commit per secondary
+  // source (by its source_identifier). Secondary sources without an entry
+  // build from their default branch.
+  repeated AwsCodeBuildSecondarySourceVersion secondary_source_versions = 4 [(buf.validate.field).repeated.max_items = 12];
+
+  // environment defines the build container: image, compute, and variables.
+  AwsCodeBuildEnvironment environment = 5 [(buf.validate.field).required = true];
+
+  // artifacts defines where the primary build output goes. Its
+  // artifact_identifier is optional on the primary output.
+  AwsCodeBuildArtifacts artifacts = 6 [(buf.validate.field).required = true];
+
+  // secondary_artifacts add up to 12 extra output locations (e.g., publish
+  // a container context to one bucket and test reports to another). Each
+  // entry MUST set artifact_identifier, matching the identifier used in the
+  // buildspec's secondary-artifacts section.
+  repeated AwsCodeBuildArtifacts secondary_artifacts = 7 [(buf.validate.field).repeated.max_items = 12];
+
+  // service_role is the IAM role ARN that grants CodeBuild permission to
+  // access source code, write artifacts, publish logs, and interact with
+  // other AWS services during the build.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_role = 8 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // description is a human-readable description of the project (max 255 chars).
+  string description = 9 [(buf.validate.field).string.max_len = 255];
+
+  // encryption_key is the ARN of a KMS key used to encrypt build artifacts.
+  // If omitted, CodeBuild uses the AWS-managed key for S3.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef encryption_key = 10 [
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Foreign-key reference to an AwsKmsKey (the KMS key ARN), not secret key material.",
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // build_timeout is the maximum duration of a single build, in minutes.
+  // Range: 5-2160 (36 hours). Default: 60. Not supported for Lambda compute
+  // environment types (LINUX_LAMBDA_CONTAINER, ARM_LAMBDA_CONTAINER), where
+  // AWS caps every build at the Lambda maximum instead.
+  optional int32 build_timeout = 11 [
+    (dev.planton.shared.options.default) = "60",
+    (buf.validate.field).int32 = {
+      gte: 5
+      lte: 2160
+    }
+  ];
+
+  // queued_timeout is the maximum time a build can wait in the queue before
+  // timing out, in minutes. Range: 5-480 (8 hours). Default: 480. Not
+  // supported for Lambda compute environment types.
+  optional int32 queued_timeout = 12 [
+    (dev.planton.shared.options.default) = "480",
+    (buf.validate.field).int32 = {
+      gte: 5
+      lte: 480
+    }
+  ];
+
+  // concurrent_build_limit caps the number of concurrent builds. Useful for
+  // cost control. Minimum 1. Omit to allow unlimited concurrency.
+  int32 concurrent_build_limit = 13 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // auto_retry_limit is the number of ADDITIONAL automatic retries after a
+  // failed build (e.g., 2 means up to three attempts total). AWS allows up
+  // to 10. Omit (or 0) to disable automatic retry.
+  int32 auto_retry_limit = 14 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 10
+    }
+  ];
+
+  // badge_enabled publishes a dynamic build badge for the project. The badge
+  // URL is exported as the badge_url stack output and can be embedded in a
+  // repository README. Not supported for CODEPIPELINE or S3 sources.
+  bool badge_enabled = 15;
+
+  // source_version is the default branch, tag, or commit ID to build.
+  // For GitHub: branch name, tag, or full commit SHA.
+  // For S3: object version ID.
+  string source_version = 16;
+
+  // cache configures build caching to speed up subsequent builds.
+  AwsCodeBuildCache cache = 17;
+
+  // logs_config controls where build logs are sent.
+  AwsCodeBuildLogsConfig logs_config = 18;
+
+  // vpc_config places the build in a VPC, giving it access to private
+  // resources such as RDS databases, ElastiCache clusters, or internal APIs.
+  AwsCodeBuildVpcConfig vpc_config = 19;
+
+  // file_system_locations mount Amazon EFS file systems into the build
+  // container — useful for large shared caches (e.g., a Gradle or Bazel
+  // cache) that outlive individual builds. Requires vpc_config placing the
+  // build in subnets that can reach the file system's mount targets.
+  repeated AwsCodeBuildFileSystemLocation file_system_locations = 20;
+
+  // build_batch_config enables batch builds — a single StartBuildBatch call
+  // fans out into multiple coordinated builds defined by the buildspec's
+  // batch section (build graphs, build lists, matrix builds).
+  AwsCodeBuildBatchConfig build_batch_config = 21;
+
+  // project_visibility controls whether the project's builds are publicly
+  // readable.
+  //   PRIVATE:     Only principals in the account can view builds (default)
+  //   PUBLIC_READ: Build results, logs, and artifacts are world-readable —
+  //                used by open-source projects publishing CI results
+  optional string project_visibility = 22 [
+    (dev.planton.shared.options.default) = "PRIVATE",
+    (buf.validate.field).string = {
+      in: [
+        "PRIVATE",
+        "PUBLIC_READ"
+      ]
+    }
+  ];
+
+  // resource_access_role is the IAM role CodeBuild uses to read the CloudWatch
+  // logs and S3 artifacts it exposes for public builds. Required when
+  // project_visibility is PUBLIC_READ.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_access_role = 23 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // resource_policy is a resource-based IAM policy document attached to the
+  // project — the mechanism for cross-account access (e.g., letting a
+  // central CI account start builds in this account). Provide the policy as
+  // a structured JSON document.
+  google.protobuf.Struct resource_policy = 24;
+
+  // webhook configures automatic build triggers from the source provider.
+  // Only valid when source type supports webhooks: GITHUB, BITBUCKET,
+  // GITHUB_ENTERPRISE, GITLAB, GITLAB_SELF_MANAGED, CODECOMMIT.
+  // Omit for CodePipeline-triggered or manual-only projects.
+  AwsCodeBuildWebhook webhook = 25;
+
+  // Cross-field validations
+
+  // source.type and artifacts.type must both be CODEPIPELINE or neither.
+  option (buf.validate.message).cel = {
+    id: "codepipeline_source_artifacts_match"
+    message: "when source.type is CODEPIPELINE, artifacts.type must also be CODEPIPELINE (and vice versa)"
+    expression: "(this.source.type == 'CODEPIPELINE') == (this.artifacts.type == 'CODEPIPELINE')"
+  };
+
+  // source.location required for all source types except CODEPIPELINE and NO_SOURCE.
+  option (buf.validate.message).cel = {
+    id: "source_location_required"
+    message: "source.location is required when source.type is not CODEPIPELINE or NO_SOURCE"
+    expression: "this.source.type in ['CODEPIPELINE', 'NO_SOURCE'] || this.source.location != ''"
+  };
+
+  // buildspec is required when there is no source repository.
+  option (buf.validate.message).cel = {
+    id: "buildspec_required_for_no_source"
+    message: "source.buildspec is required when source.type is NO_SOURCE"
+    expression: "this.source.type != 'NO_SOURCE' || this.source.buildspec != ''"
+  };
+
+  // The primary source has no identifier; identifiers name secondary sources.
+  option (buf.validate.message).cel = {
+    id: "primary_source_no_identifier"
+    message: "source.source_identifier must be empty on the primary source; it is only used to name secondary sources"
+    expression: "this.source.source_identifier == ''"
+  };
+
+  // Every secondary source must be named.
+  option (buf.validate.message).cel = {
+    id: "secondary_sources_require_identifier"
+    message: "every secondary_sources entry must set source_identifier"
+    expression: "this.secondary_sources.all(s, s.source_identifier != '')"
+  };
+
+  // Every secondary artifact must be named.
+  option (buf.validate.message).cel = {
+    id: "secondary_artifacts_require_identifier"
+    message: "every secondary_artifacts entry must set artifact_identifier"
+    expression: "this.secondary_artifacts.all(a, a.artifact_identifier != '')"
+  };
+
+  // S3 artifacts require a bucket location.
+  option (buf.validate.message).cel = {
+    id: "s3_artifacts_require_location"
+    message: "artifacts.location is required when artifacts.type is S3"
+    expression: "this.artifacts.type != 'S3' || has(this.artifacts.location)"
+  };
+
+  // S3 cache requires a bucket location.
+  option (buf.validate.message).cel = {
+    id: "s3_cache_requires_location"
+    message: "cache.location is required when cache.type is S3"
+    expression: "!has(this.cache) || this.cache.type != 'S3' || has(this.cache.location)"
+  };
+
+  // Lambda compute ignores build/queued timeouts — reject rather than
+  // silently drop (AWS caps Lambda builds itself; the provider suppresses
+  // these fields for Lambda environment types).
+  option (buf.validate.message).cel = {
+    id: "lambda_env_no_timeouts"
+    message: "build_timeout and queued_timeout are not supported for Lambda environment types (LINUX_LAMBDA_CONTAINER, ARM_LAMBDA_CONTAINER)"
+    expression: "!(this.environment.type in ['LINUX_LAMBDA_CONTAINER', 'ARM_LAMBDA_CONTAINER']) || (!has(this.build_timeout) && !has(this.queued_timeout))"
+  };
+
+  // Lambda compute cannot run privileged (no Docker daemon in Lambda).
+  option (buf.validate.message).cel = {
+    id: "lambda_env_no_privileged_mode"
+    message: "environment.privileged_mode is not supported for Lambda environment types"
+    expression: "!(this.environment.type in ['LINUX_LAMBDA_CONTAINER', 'ARM_LAMBDA_CONTAINER']) || !this.environment.privileged_mode"
+  };
+
+  // A private-registry credential only takes effect with SERVICE_ROLE pulls.
+  option (buf.validate.message).cel = {
+    id: "registry_credential_requires_service_role_pull"
+    message: "environment.registry_credential requires environment.image_pull_credentials_type to be SERVICE_ROLE"
+    expression: "!has(this.environment.registry_credential) || (has(this.environment.image_pull_credentials_type) && this.environment.image_pull_credentials_type == 'SERVICE_ROLE')"
+  };
+
+  // Public projects need the role CodeBuild uses to read logs/artifacts.
+  option (buf.validate.message).cel = {
+    id: "public_visibility_requires_resource_access_role"
+    message: "resource_access_role is required when project_visibility is PUBLIC_READ"
+    expression: "!has(this.project_visibility) || this.project_visibility != 'PUBLIC_READ' || has(this.resource_access_role)"
+  };
+
+  // Webhook is only valid with source types that support it.
+  option (buf.validate.message).cel = {
+    id: "webhook_requires_compatible_source"
+    message: "webhook is only valid when source.type supports webhooks (GITHUB, BITBUCKET, GITHUB_ENTERPRISE, GITLAB, GITLAB_SELF_MANAGED, CODECOMMIT)"
+    expression: "!has(this.webhook) || this.source.type in ['GITHUB', 'BITBUCKET', 'GITHUB_ENTERPRISE', 'GITLAB', 'GITLAB_SELF_MANAGED', 'CODECOMMIT']"
+  };
+
+  // Build badges are rendered from source-provider commit status — not
+  // available for CODEPIPELINE or S3 sources.
+  option (buf.validate.message).cel = {
+    id: "badge_requires_repository_source"
+    message: "badge_enabled is not supported when source.type is CODEPIPELINE, S3, or NO_SOURCE"
+    expression: "!this.badge_enabled || !(this.source.type in ['CODEPIPELINE', 'S3', 'NO_SOURCE'])"
+  };
+
+  // Git submodule fetching only applies to Git-hosted sources the provider
+  // sends the setting for.
+  option (buf.validate.message).cel = {
+    id: "git_submodules_require_git_source"
+    message: "git_submodules_config is only supported for BITBUCKET, CODECOMMIT, GITHUB, and GITHUB_ENTERPRISE sources"
+    expression: "(!has(this.source.git_submodules_config) || this.source.type in ['BITBUCKET', 'CODECOMMIT', 'GITHUB', 'GITHUB_ENTERPRISE']) && this.secondary_sources.all(s, !has(s.git_submodules_config) || s.type in ['BITBUCKET', 'CODECOMMIT', 'GITHUB', 'GITHUB_ENTERPRISE'])"
+  };
+
+  // Commit-status reporting only applies to sources with a commit-status API.
+  option (buf.validate.message).cel = {
+    id: "build_status_requires_supported_source"
+    message: "report_build_status and build_status_config are only supported for GITHUB, BITBUCKET, GITHUB_ENTERPRISE, GITLAB, and GITLAB_SELF_MANAGED sources"
+    expression: "((!this.source.report_build_status && !has(this.source.build_status_config)) || this.source.type in ['GITHUB', 'BITBUCKET', 'GITHUB_ENTERPRISE', 'GITLAB', 'GITLAB_SELF_MANAGED']) && this.secondary_sources.all(s, (!s.report_build_status && !has(s.build_status_config)) || s.type in ['GITHUB', 'BITBUCKET', 'GITHUB_ENTERPRISE', 'GITLAB', 'GITLAB_SELF_MANAGED'])"
+  };
+}
+
+// AwsCodeBuildSource defines a source code location and retrieval settings.
+// The same shape describes the primary source (spec.source) and secondary
+// sources (spec.secondary_sources); only secondary sources carry a
+// source_identifier.
+message AwsCodeBuildSource {
+  // type is the source provider.
+  //   GITHUB:                GitHub.com repository
+  //   BITBUCKET:             Bitbucket Cloud repository
+  //   CODECOMMIT:            AWS CodeCommit repository
+  //   CODEPIPELINE:          Source provided by CodePipeline (no location needed)
+  //   GITHUB_ENTERPRISE:     GitHub Enterprise Server
+  //   GITLAB:                GitLab.com repository
+  //   GITLAB_SELF_MANAGED:   Self-hosted GitLab instance
+  //   NO_SOURCE:             No source — buildspec must be provided inline
+  //   S3:                    S3 bucket containing source archive
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "GITHUB",
+        "BITBUCKET",
+        "CODECOMMIT",
+        "CODEPIPELINE",
+        "GITHUB_ENTERPRISE",
+        "GITLAB",
+        "GITLAB_SELF_MANAGED",
+        "NO_SOURCE",
+        "S3"
+      ]
+    }
+  ];
+
+  // location is the source code repository URL or S3 path.
+  // Required for all types except CODEPIPELINE and NO_SOURCE.
+  // Format depends on type:
+  //   GITHUB/BITBUCKET/GITLAB: https URL (e.g., https://github.com/owner/repo.git)
+  //   CODECOMMIT: HTTPS clone URL
+  //   S3: bucket/path (e.g., my-bucket/source.zip)
+  //   GITHUB_ENTERPRISE: HTTPS URL of the repo
+  string location = 2;
+
+  // buildspec is the build specification, either as an inline YAML string or
+  // a path relative to the source root (e.g., "buildspec.yml").
+  // If omitted, CodeBuild looks for buildspec.yml at the source root.
+  // Required when source type is NO_SOURCE.
+  string buildspec = 3;
+
+  // git_clone_depth limits the Git clone depth. 0 means full clone.
+  // Only applicable for Git-based source types.
+  int32 git_clone_depth = 4 [(buf.validate.field).int32.gte = 0];
+
+  // git_submodules_config controls Git submodule fetching during the source
+  // download phase. Presence of the block opts into explicit submodule
+  // handling. Only supported for BITBUCKET, CODECOMMIT, GITHUB, and
+  // GITHUB_ENTERPRISE sources.
+  AwsCodeBuildGitSubmodulesConfig git_submodules_config = 5;
+
+  // insecure_ssl skips TLS certificate verification when fetching source —
+  // only for GitHub Enterprise / self-managed GitLab instances with
+  // self-signed certificates. Never enable against public providers.
+  bool insecure_ssl = 6;
+
+  // report_build_status reports build start and finish status back to the
+  // source provider (e.g., GitHub commit status checks).
+  // Only applicable for GITHUB, BITBUCKET, GITHUB_ENTERPRISE, GITLAB,
+  // GITLAB_SELF_MANAGED.
+  bool report_build_status = 7;
+
+  // build_status_config customizes how the commit status is reported —
+  // the status-check context label and the URL it links to. Only applicable
+  // to the same source types as report_build_status.
+  AwsCodeBuildBuildStatusConfig build_status_config = 8;
+
+  // auth pins how CodeBuild authenticates to this source, overriding the
+  // account-level source credential. The modern path is CODECONNECTIONS: a
+  // CodeConnections (formerly CodeStar Connections) connection ARN that
+  // grants repository access without long-lived tokens. SECRETS_MANAGER
+  // points at a secret holding a provider token; OAUTH uses the legacy
+  // account-level OAuth grant.
+  AwsCodeBuildSourceAuth auth = 9;
+
+  // source_identifier names this source inside the project. REQUIRED for
+  // secondary sources (the buildspec addresses the checkout as
+  // $CODEBUILD_SRC_DIR_<source_identifier>); must stay EMPTY on the primary
+  // source. Alphanumeric and underscore.
+  string source_identifier = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 128
+      pattern: "^[A-Za-z0-9_]+$"
+    }
+  ];
+}
+
+// AwsCodeBuildGitSubmodulesConfig controls Git submodule handling.
+message AwsCodeBuildGitSubmodulesConfig {
+  // fetch_submodules fetches all Git submodules during the source download
+  // phase when true.
+  bool fetch_submodules = 1;
+}
+
+// AwsCodeBuildBuildStatusConfig customizes commit-status reporting back to
+// the source provider.
+message AwsCodeBuildBuildStatusConfig {
+  // context is the status-check label shown by the provider (e.g., the
+  // GitHub status context). Defaults to the CodeBuild project identity when
+  // omitted.
+  string context = 1;
+
+  // target_url is the URL the reported status links to. Defaults to the
+  // CodeBuild console page for the build when omitted.
+  string target_url = 2;
+}
+
+// AwsCodeBuildSourceAuth pins the authorization CodeBuild uses for a source.
+message AwsCodeBuildSourceAuth {
+  // type is the authorization mechanism.
+  //   CODECONNECTIONS:  A CodeConnections connection (recommended; no stored
+  //                     tokens, resource is the connection ARN)
+  //   SECRETS_MANAGER:  A Secrets Manager secret holding the provider token
+  //                     (resource is the secret ARN)
+  //   OAUTH:            The account-level OAuth authorization (legacy)
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "CODECONNECTIONS",
+        "SECRETS_MANAGER",
+        "OAUTH"
+      ]
+    }
+  ];
+
+  // resource is the ARN of the authorization object — the CodeConnections
+  // connection ARN or the Secrets Manager secret ARN, depending on type.
+  // Always a reference, never the credential value itself.
+  string resource = 2 [(buf.validate.field).required = true];
+}
+
+// AwsCodeBuildSecondarySourceVersion pins the version (branch, tag, or
+// commit) a secondary source builds from.
+message AwsCodeBuildSecondarySourceVersion {
+  // source_identifier matches the source_identifier of an entry in
+  // secondary_sources.
+  string source_identifier = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      max_len: 128
+      pattern: "^[A-Za-z0-9_]+$"
+    }
+  ];
+
+  // source_version is the branch name, tag, commit SHA, or S3 object
+  // version for that source.
+  string source_version = 2 [(buf.validate.field).required = true];
+}
+
+// AwsCodeBuildEnvironment defines the build container configuration.
+message AwsCodeBuildEnvironment {
+  // type is the build environment type.
+  //   LINUX_CONTAINER:               Standard Linux (x86_64)
+  //   LINUX_GPU_CONTAINER:           Linux with GPU support
+  //   ARM_CONTAINER:                 Linux (ARM64)
+  //   WINDOWS_CONTAINER:             Windows (legacy alias; prefer the
+  //                                  versioned Windows Server types)
+  //   WINDOWS_SERVER_2019_CONTAINER: Windows Server 2019
+  //   WINDOWS_SERVER_2022_CONTAINER: Windows Server 2022
+  //   LINUX_LAMBDA_CONTAINER:        Lambda-based Linux (x86_64) — fastest
+  //                                  start, no privileged mode or timeouts
+  //   ARM_LAMBDA_CONTAINER:          Lambda-based Linux (ARM64)
+  //   LINUX_EC2:                     EC2-based Linux (reserved fleets)
+  //   ARM_EC2:                       EC2-based Linux ARM (reserved fleets)
+  //   WINDOWS_EC2:                   EC2-based Windows (reserved fleets)
+  //   MAC_ARM:                       macOS on Apple Silicon (reserved
+  //                                  fleets only — iOS/macOS builds)
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "LINUX_CONTAINER",
+        "LINUX_GPU_CONTAINER",
+        "ARM_CONTAINER",
+        "WINDOWS_CONTAINER",
+        "WINDOWS_SERVER_2019_CONTAINER",
+        "WINDOWS_SERVER_2022_CONTAINER",
+        "LINUX_LAMBDA_CONTAINER",
+        "ARM_LAMBDA_CONTAINER",
+        "LINUX_EC2",
+        "ARM_EC2",
+        "WINDOWS_EC2",
+        "MAC_ARM"
+      ]
+    }
+  ];
+
+  // compute_type is the compute capacity for the build container.
+  //   Standard:  BUILD_GENERAL1_SMALL, BUILD_GENERAL1_MEDIUM,
+  //              BUILD_GENERAL1_LARGE, BUILD_GENERAL1_XLARGE,
+  //              BUILD_GENERAL1_2XLARGE
+  //   Lambda:    BUILD_LAMBDA_1GB through BUILD_LAMBDA_10GB
+  //   Fleets:    ATTRIBUTE_BASED_COMPUTE (the fleet picks machines by
+  //              attributes), CUSTOM_INSTANCE_TYPE (the fleet pins an EC2
+  //              instance type) — both only meaningful when the project or
+  //              its fleet uses reserved capacity
+  string compute_type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "BUILD_GENERAL1_SMALL",
+        "BUILD_GENERAL1_MEDIUM",
+        "BUILD_GENERAL1_LARGE",
+        "BUILD_GENERAL1_XLARGE",
+        "BUILD_GENERAL1_2XLARGE",
+        "BUILD_LAMBDA_1GB",
+        "BUILD_LAMBDA_2GB",
+        "BUILD_LAMBDA_4GB",
+        "BUILD_LAMBDA_8GB",
+        "BUILD_LAMBDA_10GB",
+        "ATTRIBUTE_BASED_COMPUTE",
+        "CUSTOM_INSTANCE_TYPE"
+      ]
+    }
+  ];
+
+  // image is the Docker image identifier for the build environment.
+  // Use AWS managed images (e.g., "aws/codebuild/amazonlinux2-x86_64-standard:5.0")
+  // or a custom image URI from ECR or Docker Hub.
+  string image = 3 [(buf.validate.field).required = true];
+
+  // certificate is an S3 path (bucket/key ending in .pem or .zip) to a
+  // certificate bundle the build trusts — for reaching source providers or
+  // registries behind private CAs.
+  string certificate = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "\\.(pem|zip)$"
+  ];
+
+  // privileged_mode enables Docker daemon access inside the build container.
+  // Required for building Docker images. Not supported for Lambda types.
+  bool privileged_mode = 5;
+
+  // image_pull_credentials_type controls how the build image is pulled.
+  //   CODEBUILD:    CodeBuild uses its own credentials (default, for AWS images)
+  //   SERVICE_ROLE: CodeBuild uses the project's service role (for ECR private images)
+  optional string image_pull_credentials_type = 6 [
+    (dev.planton.shared.options.default) = "CODEBUILD",
+    (buf.validate.field).string = {
+      in: [
+        "CODEBUILD",
+        "SERVICE_ROLE"
+      ]
+    }
+  ];
+
+  // environment_variables define key-value pairs available during the build.
+  // Supports plaintext values, SSM Parameter Store references, and
+  // Secrets Manager references.
+  repeated AwsCodeBuildEnvironmentVariable environment_variables = 7;
+
+  // registry_credential provides credentials for pulling the build image
+  // from a private Docker registry. Only needed when image_pull_credentials_type
+  // is SERVICE_ROLE and the image is in a non-ECR private registry.
+  AwsCodeBuildRegistryCredential registry_credential = 8;
+
+  // docker_server provisions a persistent, dedicated Docker server for the
+  // project's builds — Docker layer state survives across builds, giving
+  // dramatically faster image builds than a per-build daemon. Choose the
+  // server's compute size independently of the build compute.
+  AwsCodeBuildDockerServer docker_server = 9;
+
+  // fleet_arn joins this project to a reserved-capacity fleet — a pool of
+  // pre-provisioned, always-warm build machines (zero queue/provisioning
+  // time; required for MAC_ARM and the EC2 environment types). The fleet is
+  // a shared, account-level resource managed outside this project; reference
+  // it by ARN.
+  string fleet_arn = 10;
+}
+
+// AwsCodeBuildDockerServer configures the project's persistent Docker server.
+message AwsCodeBuildDockerServer {
+  // compute_type sizes the Docker server (same scale as the build compute
+  // types, e.g. BUILD_GENERAL1_MEDIUM).
+  string compute_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "BUILD_GENERAL1_SMALL",
+        "BUILD_GENERAL1_MEDIUM",
+        "BUILD_GENERAL1_LARGE",
+        "BUILD_GENERAL1_XLARGE",
+        "BUILD_GENERAL1_2XLARGE"
+      ]
+    }
+  ];
+
+  // security_group_ids attach VPC security groups to the Docker server when
+  // the project runs inside a VPC. Maximum 5.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 2 [
+    (buf.validate.field).repeated.max_items = 5,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}
+
+// AwsCodeBuildEnvironmentVariable defines a build environment variable.
+message AwsCodeBuildEnvironmentVariable {
+  // name is the environment variable name.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // value is the environment variable value. For PARAMETER_STORE type,
+  // this is the SSM parameter name. For SECRETS_MANAGER, this is the
+  // secret ARN or name. Never put secret material in a PLAINTEXT value —
+  // it is visible to anyone who can describe the project.
+  string value = 2 [(buf.validate.field).required = true];
+
+  // type controls how the value is interpreted.
+  //   PLAINTEXT:       Value is used as-is (default)
+  //   PARAMETER_STORE: Value is an SSM Parameter Store parameter name
+  //   SECRETS_MANAGER: Value is a Secrets Manager secret ARN or name
+  optional string type = 3 [
+    (dev.planton.shared.options.default) = "PLAINTEXT",
+    (buf.validate.field).string = {
+      in: [
+        "PLAINTEXT",
+        "PARAMETER_STORE",
+        "SECRETS_MANAGER"
+      ]
+    }
+  ];
+}
+
+// AwsCodeBuildRegistryCredential provides credentials for pulling images
+// from a private Docker registry.
+message AwsCodeBuildRegistryCredential {
+  // credential is the ARN or name of the Secrets Manager secret containing
+  // the Docker registry credentials (username + password).
+  string credential = 1 [
+    (dev.planton.shared.options.sensitive_exempt_reason) = "ARN or name of a Secrets Manager secret (a reference), not the secret value itself.",
+    (buf.validate.field).required = true
+  ];
+
+  // credential_provider is the credential provider type.
+  // Currently only SECRETS_MANAGER is supported by AWS.
+  string credential_provider = 2 [
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Provider-type selector (constant SECRETS_MANAGER), not a secret value; the secret is `credential`.",
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.const = "SECRETS_MANAGER"
+  ];
+}
+
+// AwsCodeBuildArtifacts defines a build output configuration. The same shape
+// describes the primary output (spec.artifacts) and secondary outputs
+// (spec.secondary_artifacts); secondary outputs MUST carry an
+// artifact_identifier.
+message AwsCodeBuildArtifacts {
+  // type is the artifact output type.
+  //   NO_ARTIFACTS:  No output artifacts (CI-only builds, or push to ECR in buildspec)
+  //   S3:            Write artifacts to an S3 bucket
+  //   CODEPIPELINE:  Artifacts managed by CodePipeline
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "NO_ARTIFACTS",
+        "S3",
+        "CODEPIPELINE"
+      ]
+    }
+  ];
+
+  // location is the S3 bucket name for artifact output.
+  // Required when type is S3.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef location = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // name is the artifact output name (object key in S3).
+  string name = 3;
+
+  // path is the S3 prefix for the artifact output.
+  string path = 4;
+
+  // packaging controls how artifacts are packaged.
+  //   NONE: No packaging (files uploaded as-is)
+  //   ZIP:  Files packaged into a ZIP archive
+  string packaging = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "NONE",
+        "ZIP"
+      ]
+    }
+  ];
+
+  // namespace_type controls whether artifact paths include the build ID.
+  //   NONE:     No namespace (artifacts at path/name)
+  //   BUILD_ID: Artifacts at path/<build-id>/name
+  string namespace_type = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "NONE",
+        "BUILD_ID"
+      ]
+    }
+  ];
+
+  // encryption_disabled disables server-side encryption for artifacts.
+  // By default, CodeBuild encrypts artifacts using the project's encryption key.
+  bool encryption_disabled = 7;
+
+  // override_artifact_name lets the buildspec's artifacts.name override the
+  // name configured here — used for per-build artifact names (e.g., embedding
+  // the version or commit).
+  bool override_artifact_name = 8;
+
+  // bucket_owner_access grants the owning account of the destination bucket
+  // access to the uploaded artifacts (for cross-account artifact buckets).
+  //   NONE:      Bucket owner gets no access (default)
+  //   READ_ONLY: Bucket owner can read the artifacts
+  //   FULL:      Bucket owner has full control
+  string bucket_owner_access = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "NONE",
+        "READ_ONLY",
+        "FULL"
+      ]
+    }
+  ];
+
+  // artifact_identifier names this output. REQUIRED for secondary artifacts
+  // (matching the buildspec's secondary-artifacts key); optional on the
+  // primary output. Alphanumeric and underscore.
+  string artifact_identifier = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 128
+      pattern: "^[A-Za-z0-9_]+$"
+    }
+  ];
+}
+
+// AwsCodeBuildCache configures build caching to speed up subsequent builds.
+message AwsCodeBuildCache {
+  // type is the cache type.
+  //   NO_CACHE: Caching disabled (default)
+  //   S3:       Cache stored in an S3 bucket
+  //   LOCAL:    Cache stored on the build host (ephemeral, useful for Docker layers)
+  optional string type = 1 [
+    (dev.planton.shared.options.default) = "NO_CACHE",
+    (buf.validate.field).string = {
+      in: [
+        "NO_CACHE",
+        "S3",
+        "LOCAL"
+      ]
+    }
+  ];
+
+  // location is the S3 bucket and optional prefix for cache storage.
+  // Required when type is S3. Format: "bucket-name" or "bucket-name/prefix".
+  dev.planton.shared.foreignkey.v1.StringValueOrRef location = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // modes specifies what to cache when type is LOCAL.
+  //   LOCAL_SOURCE_CACHE:        Cache Git metadata
+  //   LOCAL_DOCKER_LAYER_CACHE:  Cache Docker layers
+  //   LOCAL_CUSTOM_CACHE:        Cache paths specified in buildspec
+  repeated string modes = 3 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "LOCAL_SOURCE_CACHE",
+        "LOCAL_DOCKER_LAYER_CACHE",
+        "LOCAL_CUSTOM_CACHE"
+      ]
+    }
+  }];
+
+  // cache_namespace scopes S3 cache keys so multiple projects (or branches)
+  // can share one cache bucket without collisions.
+  string cache_namespace = 4;
+}
+
+// AwsCodeBuildLogsConfig controls where build logs are sent.
+message AwsCodeBuildLogsConfig {
+  // cloudwatch_logs configures CloudWatch Logs for build output.
+  AwsCodeBuildCloudWatchLogs cloudwatch_logs = 1;
+
+  // s3_logs configures S3 logging for build output.
+  AwsCodeBuildS3Logs s3_logs = 2;
+}
+
+// AwsCodeBuildCloudWatchLogs configures CloudWatch Logs for builds.
+message AwsCodeBuildCloudWatchLogs {
+  // status controls whether CloudWatch logging is enabled.
+  // Default: ENABLED.
+  optional string status = 1 [
+    (dev.planton.shared.options.default) = "ENABLED",
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
+  ];
+
+  // group_name is the CloudWatch Logs log group name.
+  // If omitted, CodeBuild creates a default log group.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef group_name = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_name"
+  ];
+
+  // stream_name is the CloudWatch Logs log stream name prefix.
+  // If omitted, CodeBuild generates a default stream name.
+  string stream_name = 3;
+}
+
+// AwsCodeBuildS3Logs configures S3 logging for builds.
+message AwsCodeBuildS3Logs {
+  // status controls whether S3 logging is enabled.
+  // Default: DISABLED.
+  optional string status = 1 [
+    (dev.planton.shared.options.default) = "DISABLED",
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
+  ];
+
+  // location is the S3 bucket and prefix for log storage. AWS requires the
+  // prefix — the format is "bucket-name/prefix" (or the bucket ARN); a bare
+  // bucket name is rejected. When composing from an AwsS3Bucket reference,
+  // append the prefix to the referenced bucket_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef location = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // encryption_disabled disables server-side encryption for log files.
+  bool encryption_disabled = 3;
+
+  // bucket_owner_access grants the owning account of the log bucket access
+  // to the uploaded log files (for centralized cross-account log buckets).
+  string bucket_owner_access = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "NONE",
+        "READ_ONLY",
+        "FULL"
+      ]
+    }
+  ];
+}
+
+// AwsCodeBuildVpcConfig places the build environment inside a VPC, enabling
+// access to private resources (RDS, ElastiCache, internal APIs, etc.).
+message AwsCodeBuildVpcConfig {
+  // vpc_id is the VPC where build containers are launched.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // subnet_ids are the VPC subnets where build containers are placed.
+  // Use private subnets for security. Maximum 16 subnets.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 16,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // security_group_ids are the VPC security groups applied to build containers.
+  // Maximum 5 security groups.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 5,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}
+
+// AwsCodeBuildFileSystemLocation mounts an Amazon EFS file system into the
+// build container. Requires vpc_config so builds run in subnets that can
+// reach the file system's mount targets.
+message AwsCodeBuildFileSystemLocation {
+  // identifier names this mount; CodeBuild exposes it to the build as the
+  // environment variable CODEBUILD_<identifier> (uppercased).
+  string identifier = 1 [(buf.validate.field).required = true];
+
+  // location is the EFS mount source in the form
+  // <file-system-dns>:/<path>, e.g.
+  // "fs-0abc123.efs.us-east-1.amazonaws.com:/build-cache". The DNS name
+  // composes from an AwsElasticFileSystem's file_system_id as
+  // <file_system_id>.efs.<region>.amazonaws.com.
+  string location = 2 [(buf.validate.field).required = true];
+
+  // mount_point is the absolute path inside the build container where the
+  // file system is mounted (e.g., "/mnt/build-cache").
+  string mount_point = 3 [(buf.validate.field).required = true];
+
+  // mount_options are NFS mount options. Omit for the EFS recommended
+  // defaults (nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2).
+  string mount_options = 4;
+
+  // type is the file system protocol. AWS currently supports only EFS.
+  optional string type = 5 [
+    (dev.planton.shared.options.default) = "EFS",
+    (buf.validate.field).string.const = "EFS"
+  ];
+}
+
+// AwsCodeBuildBatchConfig enables and constrains batch builds.
+message AwsCodeBuildBatchConfig {
+  // service_role is the IAM role CodeBuild assumes to launch the child
+  // builds of a batch. May be the project's service role or a dedicated one.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_role = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // combine_artifacts merges the child builds' artifacts into a single
+  // artifact location for the whole batch.
+  bool combine_artifacts = 2;
+
+  // timeout_in_mins is the maximum duration of the entire batch, in minutes
+  // (5-2160).
+  int32 timeout_in_mins = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 5
+      lte: 2160
+    }
+  ];
+
+  // restrictions bound what the batch's child builds may consume.
+  AwsCodeBuildBatchRestrictions restrictions = 4;
+}
+
+// AwsCodeBuildBatchRestrictions bounds batch child builds.
+message AwsCodeBuildBatchRestrictions {
+  // compute_types_allowed restricts which compute types child builds may
+  // request (values from the environment compute_type set). Empty allows all.
+  repeated string compute_types_allowed = 1 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "BUILD_GENERAL1_SMALL",
+        "BUILD_GENERAL1_MEDIUM",
+        "BUILD_GENERAL1_LARGE",
+        "BUILD_GENERAL1_XLARGE",
+        "BUILD_GENERAL1_2XLARGE",
+        "BUILD_LAMBDA_1GB",
+        "BUILD_LAMBDA_2GB",
+        "BUILD_LAMBDA_4GB",
+        "BUILD_LAMBDA_8GB",
+        "BUILD_LAMBDA_10GB",
+        "ATTRIBUTE_BASED_COMPUTE",
+        "CUSTOM_INSTANCE_TYPE"
+      ]
+    }
+  }];
+
+  // maximum_builds_allowed caps how many child builds one batch may spawn
+  // (1-100).
+  int32 maximum_builds_allowed = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 100
+    }
+  ];
+}
+
+// AwsCodeBuildWebhook configures automatic build triggers from the source
+// provider. Creates a webhook that listens for repository events.
+message AwsCodeBuildWebhook {
+  // build_type controls the build type triggered by the webhook.
+  //   BUILD:                  Standard single build (default)
+  //   BUILD_BATCH:            Batch build (requires build_batch_config)
+  //   RUNNER_BUILDKITE_BUILD: The project acts as a Buildkite runner —
+  //                           webhook events dispatch Buildkite jobs
+  string build_type = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "BUILD",
+        "BUILD_BATCH",
+        "RUNNER_BUILDKITE_BUILD"
+      ]
+    }
+  ];
+
+  // manual_creation makes CodeBuild return the payload URL and HMAC secret
+  // WITHOUT registering the webhook with the provider — you configure the
+  // repository webhook by hand from the webhook_payload_url and
+  // webhook_secret stack outputs. Required for GitHub Enterprise; useful
+  // when the connection lacks admin rights on the repository.
+  bool manual_creation = 2;
+
+  // filter_groups define which repository events trigger a build.
+  // Multiple groups are OR'd together — a build triggers if ANY group matches.
+  // Within a group, filters are AND'd — ALL filters in the group must match.
+  repeated AwsCodeBuildWebhookFilterGroup filter_groups = 3;
+
+  // scope_configuration widens the webhook beyond one repository — an
+  // organization- or group-level webhook (used with runner projects and
+  // org-wide CI). The webhook then fires for every repository in scope.
+  AwsCodeBuildWebhookScopeConfiguration scope_configuration = 4;
+
+  // pull_request_build_policy gates pull-request-triggered builds behind a
+  // comment approval — protection against untrusted code running in CI from
+  // fork PRs.
+  AwsCodeBuildWebhookPullRequestBuildPolicy pull_request_build_policy = 5;
+}
+
+// AwsCodeBuildWebhookFilterGroup is a set of filters that are AND'd together.
+// A build triggers when ALL filters in the group match the webhook event.
+message AwsCodeBuildWebhookFilterGroup {
+  // filters are the individual conditions in this group.
+  repeated AwsCodeBuildWebhookFilter filters = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsCodeBuildWebhookFilter defines a single condition for webhook filtering.
+message AwsCodeBuildWebhookFilter {
+  // type is the event field to match against.
+  //   EVENT:             Event type (PUSH, PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED, ...)
+  //   BASE_REF:          Base branch for PRs (regex)
+  //   HEAD_REF:          Branch or tag name (regex)
+  //   ACTOR_ACCOUNT_ID:  Source provider account ID
+  //   FILE_PATH:         Changed file paths (regex)
+  //   COMMIT_MESSAGE:    Commit message (regex)
+  //   WORKFLOW_NAME:     GitHub Actions workflow name (runner projects)
+  //   TAG_NAME:          Release tag name (regex)
+  //   RELEASE_NAME:      Release name (regex)
+  //   REPOSITORY_NAME:   Repository name (org-scoped webhooks; regex)
+  //   ORGANIZATION_NAME: Organization name (global-scoped webhooks; regex)
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "EVENT",
+        "BASE_REF",
+        "HEAD_REF",
+        "ACTOR_ACCOUNT_ID",
+        "FILE_PATH",
+        "COMMIT_MESSAGE",
+        "WORKFLOW_NAME",
+        "TAG_NAME",
+        "RELEASE_NAME",
+        "REPOSITORY_NAME",
+        "ORGANIZATION_NAME"
+      ]
+    }
+  ];
+
+  // pattern is the regex pattern or comma-separated event list to match.
+  // For EVENT type: comma-separated values like "PUSH, PULL_REQUEST_CREATED".
+  // For other types: a regex pattern (e.g., "^refs/heads/main$").
+  string pattern = 2 [(buf.validate.field).required = true];
+
+  // exclude_matched_pattern inverts the match — the filter passes when the
+  // pattern does NOT match. Useful for excluding branches or paths.
+  bool exclude_matched_pattern = 3;
+}
+
+// AwsCodeBuildWebhookScopeConfiguration widens a webhook to an organization
+// or group scope.
+message AwsCodeBuildWebhookScopeConfiguration {
+  // name is the organization (GitHub) or group (GitLab) the webhook covers.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // scope is the webhook's coverage.
+  //   GITHUB_ORGANIZATION: All repositories in a GitHub organization
+  //   GITHUB_GLOBAL:       All repositories the connection can reach
+  //   GITLAB_GROUP:        All projects in a GitLab group
+  string scope = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "GITHUB_ORGANIZATION",
+        "GITHUB_GLOBAL",
+        "GITLAB_GROUP"
+      ]
+    }
+  ];
+
+  // domain is the self-hosted provider domain (GitHub Enterprise Server /
+  // self-managed GitLab). Omit for the cloud-hosted providers.
+  string domain = 3;
+}
+
+// AwsCodeBuildWebhookPullRequestBuildPolicy gates PR-triggered builds behind
+// comment approval.
+message AwsCodeBuildWebhookPullRequestBuildPolicy {
+  // requires_comment_approval controls which pull requests need an approval
+  // comment before building.
+  //   DISABLED:           All PRs build immediately (default provider behavior)
+  //   FORK_PULL_REQUESTS: Only PRs from forks wait for approval — the common
+  //                       open-source posture (protects secrets from
+  //                       untrusted fork code)
+  //   ALL_PULL_REQUESTS:  Every PR waits for an approval comment
+  string requires_comment_approval = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "DISABLED",
+        "FORK_PULL_REQUESTS",
+        "ALL_PULL_REQUESTS"
+      ]
+    }
+  ];
+
+  // approver_roles are the repository roles whose comments count as
+  // approval. Defaults are provider-managed when empty.
+  repeated string approver_roles = 2 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "GITHUB_READ",
+        "GITHUB_TRIAGE",
+        "GITHUB_WRITE",
+        "GITHUB_MAINTAIN",
+        "GITHUB_ADMIN",
+        "GITLAB_GUEST",
+        "GITLAB_PLANNER",
+        "GITLAB_REPORTER",
+        "GITLAB_DEVELOPER",
+        "GITLAB_MAINTAINER",
+        "GITLAB_OWNER",
+        "BITBUCKET_READ",
+        "BITBUCKET_WRITE",
+        "BITBUCKET_ADMIN"
+      ]
+    }
+  }];
+}

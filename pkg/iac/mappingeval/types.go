@@ -1,7 +1,7 @@
 package mappingeval
 
 import (
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"google.golang.org/protobuf/proto"
 )
 

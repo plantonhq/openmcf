@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventhubnamespace.v1alpha1;
+
+import "shared/options/options.proto";
+
+// **AzureEventHubNamespaceStackOutputs** captures the outputs of
+// provisioning an Azure Event Hubs namespace.
+//
+// `namespace_id` is the ARM identity every child kind references
+// (AzureEventHub, AzureEventHubAuthorizationRule, AzureEventHubSchemaGroup,
+// AzureEventHubDisasterRecoveryConfig,
+// AzureEventHubNamespaceCustomerManagedKey) and the scope for
+// namespace-wide data-plane role assignments.
+//
+// The `default_*` outputs carry the root SAS rule's
+// (RootManageSharedAccessKey) credentials -- full manage rights over the
+// whole namespace. They exist for quick starts and break-glass use;
+// production workloads should mint least-privilege credentials with
+// AzureEventHubAuthorizationRule, or go keyless
+// (local_authentication_enabled false + Entra data-plane roles), which
+// makes these keys unusable.
+message AzureEventHubNamespaceStackOutputs {
+  // The Azure Resource Manager ID of the namespace.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.EventHub/namespaces/{name}
+  //
+  // The parent reference for every Event Hubs child kind, the scope for
+  // namespace-wide data-plane RBAC, and the private-endpoint target
+  // (subresource name: "namespace").
+  string namespace_id = 1;
+
+  // The namespace name -- what SDKs, connection strings, and the Kafka
+  // bootstrap address identify the namespace by. The AMQP/Kafka host is
+  // {namespace_name}.servicebus.windows.net (Event Hubs shares the
+  // Service Bus DNS zone).
+  string namespace_name = 2;
+
+  // The system-assigned identity's principal (object) ID -- grant this
+  // identity access on other resources (e.g. Storage for capture, Key
+  // Vault for CMK). Empty unless the identity block includes
+  // SYSTEM_ASSIGNED.
+  string identity_principal_id = 3;
+
+  // The root SAS rule's primary connection string (full manage rights on
+  // the namespace). Secret-bearing: it embeds the primary key.
+  // Format: Endpoint=sb://{name}.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey={key}
+  string default_primary_connection_string = 4 [(dev.planton.shared.options.sensitive) = true];
+
+  // The root SAS rule's secondary connection string -- the rotation
+  // partner: move clients here, regenerate the primary, move back.
+  string default_secondary_connection_string = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // The root SAS rule's primary key, for SDKs that take the key and key
+  // name separately or mint their own SAS tokens.
+  string default_primary_key = 6 [(dev.planton.shared.options.sensitive) = true];
+
+  // The root SAS rule's secondary key -- the rotation partner.
+  string default_secondary_key = 7 [(dev.planton.shared.options.sensitive) = true];
+
+  // The root SAS rule's primary connection string addressing the geo-DR
+  // alias hostname instead of the namespace hostname. Only meaningful
+  // when the namespace carries an AzureEventHubDisasterRecoveryConfig
+  // pairing; empty otherwise. Clients configured with the alias keep
+  // working across a failover.
+  string default_primary_connection_string_alias = 8 [(dev.planton.shared.options.sensitive) = true];
+
+  // The secondary alias connection string -- the rotation partner.
+  string default_secondary_connection_string_alias = 9 [(dev.planton.shared.options.sensitive) = true];
+}

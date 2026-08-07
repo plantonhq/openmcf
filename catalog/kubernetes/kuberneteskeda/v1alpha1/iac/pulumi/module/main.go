@@ -1,0 +1,83 @@
+package module
+
+import (
+	"github.com/pkg/errors"
+	kuberneteskedav1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kuberneteskeda/v1alpha1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
+	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+// Resources installs KEDA from the official Helm chart as a real Helm
+// release. The typed spec renders into chart values (values.go); the
+// helm_values escape hatch merges last with Helm -f semantics — the exact
+// semantic twin of the Terraform module's helm_release with
+// values = [typed, helm_values].
+//
+// The release name is FIXED ("keda"): the component registers the
+// cluster-wide v1beta1.external.metrics.k8s.io APIService, a singleton —
+// one installation per cluster is an upstream constraint.
+func Resources(ctx *pulumi.Context, stackInput *kuberneteskedav1alpha1.KubernetesKedaStackInput) error {
+	locals := initializeLocals(ctx, stackInput)
+
+	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
+		stackInput.ProviderConfig, "kubernetes")
+	if err != nil {
+		return errors.Wrap(err, "failed to create kubernetes provider")
+	}
+
+	// ------------------------------ namespace ----------------------------
+	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
+	if err != nil {
+		return errors.Wrap(err, "failed to create namespace")
+	}
+
+	var releaseDeps []pulumi.ResourceOption
+	if createdNamespace != nil {
+		releaseDeps = append(releaseDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
+	}
+
+	// ------------------------------ helm release --------------------------
+	mergedValues, err := buildHelmValues(locals)
+	if err != nil {
+		return errors.Wrap(err, "failed to build helm values")
+	}
+
+	releaseArgs := &helmv3.ReleaseArgs{
+		Name:      pulumi.String(vars.ReleaseName),
+		Namespace: pulumi.String(locals.Namespace),
+		Chart:     pulumi.String(vars.HelmChartName),
+		Version:   pulumi.String(locals.ChartVersion),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(vars.HelmChartRepo),
+		},
+		Values: pulumi.ToMap(mergedValues),
+		// The module owns namespace creation (create_namespace flag).
+		CreateNamespace: pulumi.Bool(false),
+		// Wait for the components to become Available — a KEDA that never
+		// becomes ready (a ServiceMonitor rendered without the Prometheus
+		// operator CRDs is THE classic install failure; broken internal
+		// TLS wiring the other) should fail THIS deploy with a readiness
+		// timeout, not surface later as ScaledObjects that mysteriously
+		// never scale.
+		Atomic:        pulumi.Bool(true),
+		CleanupOnFail: pulumi.Bool(true),
+		Timeout:       pulumi.Int(300),
+	}
+
+	opts := append([]pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}, releaseDeps...)
+
+	_, err = helmv3.NewRelease(ctx, vars.ReleaseName, releaseArgs, opts...)
+	if err != nil {
+		return errors.Wrap(err, "failed to install keda helm release")
+	}
+
+	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
+	ctx.Export(OpReleaseName, pulumi.String(vars.ReleaseName))
+	// The chart's operator ServiceAccount name is fixed ("keda-operator")
+	// regardless of release name — the subject cloud-side keyless bindings
+	// are written against.
+	ctx.Export(OpOperatorServiceAccountName, pulumi.String(vars.OperatorServiceAccountName))
+
+	return nil
+}

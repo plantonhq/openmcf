@@ -12,8 +12,8 @@ go_library(
     importpath = "github.com/plantonhq/planton/pkg/conversion",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/dev/planton/shared/cloudresourcekind",
         "//pkg/crkreflect",
+        "//shared/cloudresourcekind",
         "@com_github_google_cel_go//cel:go_default_library",
         "@io_k8s_sigs_yaml//:yaml",
         "@org_golang_google_protobuf//reflect/protoreflect",
@@ -31,10 +31,10 @@ go_test(
     ],
     embed = [":conversion"],
     deps = [
-        "//apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1",
-        "//apis/dev/planton/shared/cloudresourcekind",
+        "//catalog/_test/testcloudresourcegeneric/v1alpha1",
         "//pkg/conversion/embedded",
         "//pkg/crkreflect",
+        "//shared/cloudresourcekind",
         "@io_k8s_sigs_yaml//:yaml",
     ],
 )

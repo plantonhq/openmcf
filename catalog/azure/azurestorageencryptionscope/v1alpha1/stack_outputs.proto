@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurestorageencryptionscope.v1alpha1;
+
+// **AzureStorageEncryptionScopeStackOutputs** captures the outputs of
+// provisioning an encryption scope.
+message AzureStorageEncryptionScopeStackOutputs {
+  // The Azure Resource Manager ID of the encryption scope.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{account}/encryptionScopes/{name}
+  string encryption_scope_id = 1;
+
+  // The scope's name -- what containers (default_encryption_scope),
+  // ADLS filesystems, and per-blob upload options reference within the
+  // account.
+  string encryption_scope_name = 2;
+
+  // The name of the storage account the scope lives in, parsed from the
+  // resolved account ID -- saves consumers a second reference when they
+  // need the account/scope pair.
+  string storage_account_name = 3;
+}

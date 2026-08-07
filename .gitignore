@@ -1,5 +1,7 @@
 .idea
 .DS_Store
+# Python bytecode from the _rules/ workflow scripts
+__pycache__/
 generated/
 # Rendered InfraChart output from `planton chart build` (chart-root artifact)
 charts/*/*/template.yaml
@@ -11,10 +13,8 @@ site/node_modules/
 site/build/
 site/.yarn/*
 site/!next-env.d.ts
-apis/internal/
-apis/generated/
-# Pinned proto toolchain, provisioned by `make proto-tools` in apis/
-apis/.tools/
+# Pinned proto toolchain, provisioned by `make proto-tools`
+.tools/
 
 # Swap the comments on the following lines if you don't wish to use zero-installs
 # Documentation here: https://yarnpkg.com/features/zero-installs
@@ -44,10 +44,6 @@ cursor/
 **/iac/pulumi/pulumi
 _cursor/
 _a-gitignored-workspace
-# Backend generated files
-backend/apis/gen/
-backend/bin/
-backend/server
 
 # Web-app generated files
 web-app/src/gen/

@@ -18,7 +18,7 @@ import (
 	// the conversion-source version must be linked explicitly. (The real
 	// bundle is buf-built from the proto tree and carries every version
 	// regardless of linkage.)
-	_ "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1"
+	_ "github.com/plantonhq/planton/catalog/_test/testcloudresourcegeneric/v1alpha1"
 )
 
 // The catalog-as-data certification case: a built bundle must carry BOTH of
@@ -45,7 +45,7 @@ func TestCertify_BundleCarriesBothTortureVersions(t *testing.T) {
 	bundlePath := filepath.Join(dir, "catalog-bundle.zip")
 	if _, err := catalogbundle.Build(catalogbundle.BuildInput{
 		DescriptorSetPath: descriptorsPath,
-		ProviderBaseDir:   filepath.Join(TortureKindRoot(t), "..", ".."),
+		CatalogDir:        filepath.Join(TortureKindRoot(t), "..", ".."),
 		OutputPath:        bundlePath,
 	}); err != nil {
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func TestCertify_BundleCarriesBothTortureVersions(t *testing.T) {
 
 	for _, version := range []string{"v1alpha1", "v1alpha2"} {
 		name := protoreflect.FullName(
-			"dev.planton.provider._test.testcloudresourcegeneric." + version + ".TestCloudResourceGeneric")
+			"dev.planton._test.testcloudresourcegeneric." + version + ".TestCloudResourceGeneric")
 		if _, err := bundle.Files.FindDescriptorByName(name); err != nil {
 			t.Errorf("the bundle must carry %s (the %s schema) -- stored documents at that version cannot be served without it", name, version)
 		}

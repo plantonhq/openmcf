@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevirtualmachinescaleset.v1alpha1;
+
+import "catalog/azure/azurevirtualmachinescaleset/v1alpha1/api.proto";
+import "catalog/azure/provider.proto";
+
+//azure-virtual-machine-scale-set stack-input
+message AzureVirtualMachineScaleSetStackInput {
+  //target cloud-resource
+  AzureVirtualMachineScaleSet target = 1;
+  //provider-config
+  dev.planton.azure.AzureProviderConfig provider_config = 2;
+}

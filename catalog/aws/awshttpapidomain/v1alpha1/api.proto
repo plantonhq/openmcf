@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.aws.awshttpapidomain.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awshttpapidomain/v1alpha1/spec.proto";
+import "catalog/aws/awshttpapidomain/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AwsHttpApiDomain is the API envelope for an API Gateway v2 custom domain
+// name -- the production front door that binds an owned domain and its ACM
+// certificate to one or more HTTP APIs through path-keyed mappings.
+message AwsHttpApiDomain {
+  // api-version must be set to "aws.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
+
+  // resource-kind for this resource, must be "AwsHttpApiDomain".
+  string kind = 2 [(buf.validate.field).string.const = "AwsHttpApiDomain"];
+
+  // metadata captures identifying information (name, org, environment,
+  // labels) and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the desired configuration of the custom domain.
+  AwsHttpApiDomainSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds post-deployment information.
+  AwsHttpApiDomainStatus status = 5;
+}
+
+// AwsHttpApiDomainStatus describes the status of an API Gateway v2 custom
+// domain resource.
+message AwsHttpApiDomainStatus {
+  // outputs captures the observable values returned by Pulumi/Terraform
+  // after provisioning.
+  AwsHttpApiDomainStackOutputs outputs = 1;
+}

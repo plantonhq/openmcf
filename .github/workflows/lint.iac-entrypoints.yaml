@@ -15,14 +15,14 @@ name: lint.iac-entrypoints
 on:
   pull_request:
     paths:
-      - 'apis/**'
+      - 'catalog/**'
       - 'hack/guards/ensure_pulumi_entrypoints.sh'
       - '.github/workflows/lint.iac-entrypoints.yaml'
   push:
     branches:
       - main
     paths:
-      - 'apis/**'
+      - 'catalog/**'
       - 'hack/guards/ensure_pulumi_entrypoints.sh'
       - '.github/workflows/lint.iac-entrypoints.yaml'
 

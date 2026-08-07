@@ -70,7 +70,7 @@ Read the Terraform provider source in the workspace to determine:
 
 **Step 0.2 -- Determine enum number**
 
-Read `apis/dev/planton/shared/cloudresourcekind/cloud_resource_provider.proto` -- find the highest `CloudResourceProvider` enum value and add 1.
+Read `shared/cloudresourcekind/cloud_resource_provider.proto` -- find the highest `CloudResourceProvider` enum value and add 1.
 
 **Step 0.3 -- Derive naming conventions**
 
@@ -99,12 +99,12 @@ Present the following to the user in a clear table and ask for explicit confirma
 
 **Goal:** Define the provider config proto and register the provider in the shared provider enum.
 
-**Step 1.1 -- CREATE `apis/dev/planton/provider/<provider_package>/provider.proto`**
+**Step 1.1 -- CREATE `catalog/<provider_package>/provider.proto`**
 
 Follow the pattern from existing providers. The proto file MUST include:
 
 - `syntax = "proto3";`
-- `package dev.planton.provider.<provider_package>;`
+- `package dev.planton.<provider_package>;`
 - `import "buf/validate/validate.proto";`
 - A top-level doc comment explaining the provider, auth model, field-to-env-var mapping, and docs links
 - The `<ProtoConfigName>` message with:
@@ -113,10 +113,10 @@ Follow the pattern from existing providers. The proto file MUST include:
   - For **flat** providers: all fields at the top level (see `provider/scaleway/provider.proto`)
   - For **multi-method** providers: a `oneof credentials` block with sub-messages per method, plus common fields outside the oneof (see `provider/openstack/provider.proto`)
 
-**Pattern reference (flat):** `apis/dev/planton/provider/scaleway/provider.proto`
-**Pattern reference (multi-method):** `apis/dev/planton/provider/openstack/provider.proto`
+**Pattern reference (flat):** `catalog/scaleway/provider.proto`
+**Pattern reference (multi-method):** `catalog/openstack/provider.proto`
 
-**Step 1.2 -- MODIFY `apis/dev/planton/shared/cloudresourcekind/cloud_resource_provider.proto`**
+**Step 1.2 -- MODIFY `shared/cloudresourcekind/cloud_resource_provider.proto`**
 
 Add the new enum entry at the end of the `CloudResourceProvider` enum (before the closing brace), following the exact format:
 
@@ -135,7 +135,7 @@ Add the new enum entry at the end of the `CloudResourceProvider` enum (before th
 
 **Goal:** Create the CLI help constants and Bazel build file for the provider package.
 
-**Step 2.1 -- CREATE `apis/dev/planton/provider/<provider_package>/cli_help.go`**
+**Step 2.1 -- CREATE `catalog/<provider_package>/cli_help.go`**
 
 This file defines 6 constants that drive the terminal experience when users encounter credential errors. Quality here directly impacts UX.
 
@@ -167,7 +167,7 @@ const ProviderDisplayName = "<ProviderDisplayName>"
 const ProviderDocsURL = "<terraform_registry_url>"
 ```
 
-**Pattern reference:** `apis/dev/planton/provider/scaleway/cli_help.go`
+**Pattern reference:** `catalog/scaleway/cli_help.go`
 
 Guidelines:
 - Group required fields first, then optional with a `# Optional` separator
@@ -175,7 +175,7 @@ Guidelines:
 - Comment out optional fields in `ConfigFileExample`
 - Include a package-level doc comment explaining the auth model and what drives these constants
 
-**Step 2.2 -- CREATE `apis/dev/planton/provider/<provider_package>/BUILD.bazel`**
+**Step 2.2 -- CREATE `catalog/<provider_package>/BUILD.bazel`**
 
 ```starlark
 load("@rules_go//go:def.bzl", "go_library")
@@ -186,7 +186,7 @@ go_library(
         "cli_help.go",
         "provider.pb.go",
     ],
-    importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/<provider_package>",
+    importpath = "github.com/plantonhq/planton/catalog/<provider_package>",
     visibility = ["//visibility:public"],
     deps = [
         "@build_buf_gen_go_bufbuild_protovalidate_protocolbuffers_go//buf/validate",
@@ -196,7 +196,7 @@ go_library(
 )
 ```
 
-**Pattern reference:** `apis/dev/planton/provider/scaleway/BUILD.bazel`
+**Pattern reference:** `catalog/scaleway/BUILD.bazel`
 
 Note: If the provider proto uses `oneof` with sub-messages, the deps may need additional entries. Check the generated `provider.pb.go` after Phase 3 and update if needed.
 
@@ -216,8 +216,8 @@ This executes: `buf generate` (in `apis/`), copies Go stubs into `apis/`, compil
 
 **Verify:**
 
-1. `apis/dev/planton/provider/<provider_package>/provider.pb.go` exists and contains the generated Go types.
-2. `apis/dev/planton/shared/cloudresourcekind/cloud_resource_provider.pb.go` is regenerated with the new enum entry.
+1. `catalog/<provider_package>/provider.pb.go` exists and contains the generated Go types.
+2. `shared/cloudresourcekind/cloud_resource_provider.pb.go` is regenerated with the new enum entry.
 
 If `make protos` fails, fix proto syntax errors (wrong import paths, missing semicolons, duplicate field numbers) and retry (up to 3 attempts).
 
@@ -234,7 +234,7 @@ package providerenvvars
 
 import (
     "github.com/pkg/errors"
-    <provider_alias> "github.com/plantonhq/planton/apis/dev/planton/provider/<provider_package>"
+    <provider_alias> "github.com/plantonhq/planton/catalog/<provider_package>"
 )
 
 // load<ProviderPascal>EnvVars loads <ProviderDisplayName> provider config and returns environment variables.
@@ -281,7 +281,7 @@ Insert the case in the existing switch statement, maintaining alphabetical order
 
 **Step 5.1 -- MODIFY `pkg/iac/stackinput/providerdetect/guidance.go`**
 
-1. Add the import: `<provider_alias> "github.com/plantonhq/planton/apis/dev/planton/provider/<provider_package>"`
+1. Add the import: `<provider_alias> "github.com/plantonhq/planton/catalog/<provider_package>"`
 2. Add a case in ALL 4 switch functions:
    - `ProviderConfigExample()`: return `<provider_alias>.ConfigFileExample`
    - `ProviderConfigFilename()`: return `<provider_alias>.ConfigFileName`
@@ -296,7 +296,7 @@ case cloudresourcekind.CloudResourceProvider_<provider_id>:
 
 **Step 5.2 -- MODIFY `pkg/iac/stackinput/providerdetect/validate.go`**
 
-1. Add the import: `<provider_alias> "github.com/plantonhq/planton/apis/dev/planton/provider/<provider_package>"`
+1. Add the import: `<provider_alias> "github.com/plantonhq/planton/catalog/<provider_package>"`
 2. Add a case in `getProviderConfigProto()`:
 
 ```go
@@ -364,7 +364,7 @@ Run the following build commands and fix any errors (retry up to 3 times per com
 
 1. **Proto stubs compile:**
    ```bash
-   cd apis && go build ./dev/planton/provider/<provider_package>/...
+   cd apis && go build ./catalog/<provider_package>/...
    ```
 
 2. **Stack input compiles:**
@@ -478,13 +478,13 @@ Provider integration complete!
 These files serve as the canonical patterns. When in doubt, read the Scaleway implementation (flat model) or OpenStack implementation (multi-method model) and follow exactly.
 
 ### Proto Layer
-- `apis/dev/planton/provider/scaleway/provider.proto` -- flat provider config
-- `apis/dev/planton/provider/openstack/provider.proto` -- multi-method provider config
-- `apis/dev/planton/shared/cloudresourcekind/cloud_resource_provider.proto` -- provider enum
+- `catalog/scaleway/provider.proto` -- flat provider config
+- `catalog/openstack/provider.proto` -- multi-method provider config
+- `shared/cloudresourcekind/cloud_resource_provider.proto` -- provider enum
 
 ### Provider Package
-- `apis/dev/planton/provider/scaleway/cli_help.go` -- CLI constants
-- `apis/dev/planton/provider/scaleway/BUILD.bazel` -- Bazel build
+- `catalog/scaleway/cli_help.go` -- CLI constants
+- `catalog/scaleway/BUILD.bazel` -- Bazel build
 
 ### Stack Input / Env Vars
 - `pkg/iac/stackinput/providerenvvars/scaleway.go` -- flat env var loader

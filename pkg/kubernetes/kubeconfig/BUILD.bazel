@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/pkg/kubernetes/kubeconfig",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/dev/planton/provider/kubernetes",
+        "//catalog/kubernetes",
         "//pkg/kubernetes/execcredential",
         "@com_github_pkg_errors//:errors",
         "@io_k8s_sigs_yaml//:yaml",
@@ -18,7 +18,7 @@ go_test(
     srcs = ["kubeconfig_test.go"],
     embed = [":kubeconfig"],
     deps = [
-        "//apis/dev/planton/provider/kubernetes",
+        "//catalog/kubernetes",
         "//pkg/kubernetes/execcredential",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",

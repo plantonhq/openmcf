@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbatchjobqueue.v1alpha1;
+
+import "catalog/aws/awsbatchjobqueue/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsBatchJobQueueStackInput is the input for the aws-batch-job-queue IaC
+// modules.
+message AwsBatchJobQueueStackInput {
+  // target cloud-resource
+  AwsBatchJobQueue target = 1;
+
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

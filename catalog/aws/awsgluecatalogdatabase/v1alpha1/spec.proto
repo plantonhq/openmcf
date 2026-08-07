@@ -1,0 +1,189 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsgluecatalogdatabase.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// AwsGlueCatalogDatabaseSpec defines the desired configuration for an AWS Glue
+// Data Catalog database.
+//
+// A Glue Data Catalog database is a metadata container that organizes table
+// definitions (schemas) for data stored in Amazon S3, Amazon Redshift, Amazon
+// RDS, and other data stores. It is the namespace layer that Amazon Athena, AWS
+// Glue ETL jobs, Glue Crawlers, Amazon Redshift Spectrum, and Amazon EMR use to
+// discover and query data.
+//
+// Think of it as a "schema" in a traditional RDBMS but for a serverless data
+// lake: the database itself holds no data, only metadata about where data lives
+// and how it is structured.
+//
+// Three creation shapes:
+// - A regular database (the common case): optionally set description,
+//   location_uri, parameters, and Lake Formation create-table permissions.
+// - A resource link (target_database): a pointer to a database shared from
+//   another account or region via AWS RAM / Lake Formation -- the linked
+//   database's tables become queryable locally.
+// - A federated database (federated_database): projects an external source
+//   (e.g. a Redshift datashare) into the catalog through a Glue connection.
+//
+// Notes:
+// - The database name (from metadata.name) cannot be changed after creation
+//   (ForceNew). Naming constraints: 1-255 characters, and AWS rejects
+//   uppercase letters; use lowercase letters, numbers, and underscores.
+// - Credentials, region, and deployment workflow live outside this spec in
+//   stack inputs.
+message AwsGlueCatalogDatabaseSpec {
+  // The AWS region where the resource will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // ---------------------------------------------------------------------------
+  // Metadata
+  // ---------------------------------------------------------------------------
+
+  // Human-readable description of the database. Helps teams understand the
+  // purpose and contents of this catalog namespace.
+  //
+  // Maximum 2048 characters (enforced by the AWS API).
+  //
+  // Examples:
+  // - "Sales analytics data lake — raw and curated tables from the sales pipeline"
+  // - "Clickstream events from web and mobile applications"
+  string description = 2 [(buf.validate.field).string.max_len = 2048];
+
+  // ID of the Data Catalog in which to create the database. Defaults to the
+  // AWS account ID of the deploying account; set it only to create the
+  // database inside ANOTHER account's catalog (a cross-account governance
+  // pattern that requires a matching catalog resource policy on that
+  // account). Fixed at creation time (changing it replaces the database).
+  string catalog_id = 3;
+
+  // ---------------------------------------------------------------------------
+  // Storage location
+  // ---------------------------------------------------------------------------
+
+  // Default S3 URI for tables created in this database. When a Glue Crawler or
+  // CREATE TABLE statement does not specify a location, this path is used as the
+  // base directory.
+  //
+  // Format: "s3://bucket-name/optional-prefix/"
+  //
+  // When omitted, each table must specify its own storage location explicitly.
+  // Setting this is recommended for organized data lakes where all tables in a
+  // database share a common S3 prefix.
+  //
+  // This is a plain string (not StringValueOrRef) because it is an S3 URI with
+  // a user-defined path prefix, not a direct resource identifier.
+  string location_uri = 4;
+
+  // Free-form key-value properties attached to the database. Consumed by
+  // engines and governance tooling that read catalog metadata -- for example
+  // classification hints, team ownership labels, or engine-specific switches.
+  // These are catalog metadata, NOT AWS resource tags (identity tags derive
+  // from metadata.name/org/env automatically).
+  map<string, string> parameters = 5;
+
+  // ---------------------------------------------------------------------------
+  // Lake Formation governance
+  // ---------------------------------------------------------------------------
+
+  // Default Lake Formation permissions granted on tables CREATED in this
+  // database. When omitted, AWS applies its default grant -- ALL permissions
+  // to the virtual group IAM_ALLOWED_PRINCIPALS -- which keeps plain
+  // IAM-policy access working (the compatibility mode most accounts run in).
+  //
+  // Lake Formation-governed data lakes typically override this: grant to
+  // specific principals, or supply an entry with an empty permission list to
+  // stop granting IAM_ALLOWED_PRINCIPALS on new tables entirely (the
+  // recommended hardening step when migrating to Lake Formation permissions).
+  repeated AwsGlueCatalogDatabasePrincipalPermissions create_table_default_permissions = 6;
+
+  // ---------------------------------------------------------------------------
+  // Cross-account / cross-region sharing
+  // ---------------------------------------------------------------------------
+
+  // Creates this database as a RESOURCE LINK: a local pointer to a database
+  // that lives in another account or region and was shared via AWS RAM /
+  // Lake Formation. Queries against the link (from Athena, Redshift Spectrum,
+  // EMR) resolve to the target database's tables, subject to the permissions
+  // granted on the share.
+  //
+  // A resource link carries no storage or schema of its own, so combining it
+  // with location_uri or create-table permissions has no effect; leave those
+  // unset. Fixed at creation time (changing it replaces the database).
+  AwsGlueCatalogDatabaseTarget target_database = 7;
+
+  // Creates this database as a FEDERATED database: a projection of an
+  // external data source into the catalog through a Glue connection. The
+  // primary use today is querying Amazon Redshift datashares from Athena and
+  // other catalog consumers without copying data.
+  AwsGlueCatalogDatabaseFederation federated_database = 8;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  // A database is exactly one shape: regular, resource link, or federated.
+  option (buf.validate.message).cel = {
+    id: "target_xor_federated"
+    message: "target_database (resource link) and federated_database cannot be combined; a database is exactly one shape"
+    expression: "!(has(this.target_database) && has(this.federated_database))"
+  };
+}
+
+// AwsGlueCatalogDatabasePrincipalPermissions is one default grant applied to
+// tables created in the database: a set of Lake Formation permissions for one
+// principal.
+message AwsGlueCatalogDatabasePrincipalPermissions {
+  // Lake Formation permissions to grant. Valid values: "ALL", "SELECT",
+  // "ALTER", "DROP", "DELETE", "INSERT", "CREATE_DATABASE", "CREATE_TABLE",
+  // "DATA_LOCATION_ACCESS". An entry with an EMPTY list (and no principal)
+  // is meaningful: it disables the default IAM_ALLOWED_PRINCIPALS grant on
+  // newly created tables.
+  repeated string permissions = 1 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "ALL",
+      "SELECT",
+      "ALTER",
+      "DROP",
+      "DELETE",
+      "INSERT",
+      "CREATE_DATABASE",
+      "CREATE_TABLE",
+      "DATA_LOCATION_ACCESS"
+    ]
+  }];
+
+  // The principal receiving the grant: an IAM user/role ARN, an AWS account
+  // ID, or the virtual group "IAM_ALLOWED_PRINCIPALS" (grants to any
+  // principal whose IAM policy allows the action -- Lake Formation's
+  // IAM-compatibility mode). 1-255 characters when set.
+  string principal = 2 [(buf.validate.field).string.max_len = 255];
+}
+
+// AwsGlueCatalogDatabaseTarget identifies the shared database a resource link
+// points to. All three coordinates are fixed at creation time.
+message AwsGlueCatalogDatabaseTarget {
+  // ID of the Data Catalog that owns the target database -- the sharing
+  // account's AWS account ID.
+  string catalog_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Name of the target database inside the owning catalog.
+  string database_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Region of the target database, e.g. "us-east-1". Set for cross-REGION
+  // links; omit when the target lives in the same region as this database.
+  string region = 3;
+}
+
+// AwsGlueCatalogDatabaseFederation connects the database to an external data
+// source through a Glue connection.
+message AwsGlueCatalogDatabaseFederation {
+  // Unique identifier of the federated source, e.g. the Redshift datashare
+  // ARN being projected into the catalog.
+  string identifier = 1;
+
+  // Name of the Glue connection that carries the federation, e.g.
+  // "aws:redshift" for the AWS-managed Redshift federation connection.
+  string connection_name = 2;
+}

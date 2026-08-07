@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsmwaaenvironment.v1alpha1;
+
+import "catalog/aws/awsmwaaenvironment/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// aws-mwaa-environment stack-input
+message AwsMwaaEnvironmentStackInput {
+  // target cloud-resource
+  AwsMwaaEnvironment target = 1;
+  // provider-credential
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	gcpe2e "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/aa_e2e"
+	gcpe2e "github.com/plantonhq/planton/catalog/gcp/aa_e2e"
 	"github.com/plantonhq/planton/e2e/framework/discovery"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/e2e/framework/runner"
@@ -872,7 +872,7 @@ func stageCloudFunctionSource(t *testing.T, engine string) {
 	if err != nil {
 		t.Fatalf("failed to resolve gcpcloudfunction version dir: %v", err)
 	}
-	fixtureDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "gcp",
+	fixtureDir := filepath.Join(repoRoot, "catalog", "gcp",
 		"gcpcloudfunction", fixtureVersionDir, "e2e", "fixtures", "function-source")
 	zipBytes, err := zipDirectory(fixtureDir)
 	if err != nil {

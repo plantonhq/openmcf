@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	digitaloceanprovider "github.com/plantonhq/planton/apis/dev/planton/provider/digitalocean"
+	digitaloceanprovider "github.com/plantonhq/planton/catalog/digitalocean"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/pulumi/pulumioutput"
 
 	"github.com/pkg/errors"

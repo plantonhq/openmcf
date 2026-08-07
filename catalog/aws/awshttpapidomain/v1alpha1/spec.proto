@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package dev.planton.aws.awshttpapidomain.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsHttpApiDomainSpec defines the desired configuration for an API Gateway
+// v2 custom domain name -- the production front door for HTTP APIs. It binds
+// an owned domain (e.g. "api.example.com") to an ACM certificate and maps one
+// or more APIs onto the domain through API mappings.
+//
+// A custom domain is deliberately its own resource rather than a field on the
+// API: a domain outlives any one API, many APIs can be mapped onto one domain
+// under different path keys (e.g. "orders" and "billing"), and the domain's
+// certificate rotates on its own lifecycle.
+//
+// DNS is composed, not embedded: the domain exports target_domain_name and
+// hosted_zone_id -- create an alias record with AwsRoute53DnsRecord pointing
+// your domain at those outputs. The certificate is composed the same way,
+// referencing an AwsCertManagerCert (or any ACM certificate ARN) that covers
+// the domain name.
+//
+// Design notes:
+// - The domain_name itself is immutable (changing it replaces the resource).
+// - API Gateway v2 domains only support the REGIONAL endpoint type and the
+//   TLS_1_2 security policy, so neither is a spec field -- the modules set
+//   them. (Edge-optimized domains are a REST API v1 feature.)
+// - The certificate must be issued in the SAME region as the domain and must
+//   cover the domain name (exact match or wildcard).
+// - routing_mode (routing rules) is deliberately not modeled: header/path
+//   rule-based routing is a separate resource family; the default
+//   API-mapping-only mode covers the mapping surface this component models.
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsHttpApiDomainSpec {
+  // The AWS region where the domain name will be created. Must match the
+  // region of the certificate and of the APIs mapped onto the domain.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The fully qualified custom domain name (e.g. "api.example.com").
+  // Immutable after creation -- changing it replaces the domain. Must be
+  // lowercase. A wildcard domain ("*.example.com") is allowed and matches
+  // all first-level subdomains, but requires a certificate that covers the
+  // wildcard.
+  string domain_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+    pattern: "^[a-z0-9*.-]+$"
+  }];
+
+  // The ACM certificate for TLS termination on this domain. The certificate
+  // must be issued (or imported) in the same region as the domain and must
+  // cover domain_name (exact or wildcard match). Accepts a direct certificate
+  // ARN or a reference to an AwsCertManagerCert resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef certificate_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCertManagerCert,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cert_arn"
+  ];
+
+  // IP address type for the domain's endpoint.
+  // - "ipv4": Resolve to IPv4 addresses only.
+  // - "dualstack": Resolve to both IPv4 and IPv6.
+  // When omitted, AWS applies its default (dualstack for new domains).
+  string ip_address_type = 4;
+
+  // Mutual TLS (mTLS) authentication for the domain. When configured, API
+  // Gateway requires clients to present a certificate chaining to a CA in
+  // the truststore before any request reaches an API. Common for B2B and
+  // machine-to-machine APIs. When mTLS is enabled, also set
+  // disable_execute_api_endpoint=true on the mapped APIs -- otherwise
+  // callers can bypass mTLS via the default execute-api endpoint.
+  AwsHttpApiDomainMutualTls mutual_tls = 5;
+
+  // APIs mapped onto this domain. Each mapping binds one API's stage under
+  // an optional path key: an empty api_mapping_key serves the API at the
+  // domain root ("https://api.example.com/"), while a key like "orders"
+  // serves it under "https://api.example.com/orders/". Multiple APIs
+  // compose onto one domain by using distinct keys.
+  repeated AwsHttpApiDomainApiMapping api_mappings = 6;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  // IP address type must be valid when set.
+  option (buf.validate.message).cel = {
+    id: "ip_address_type_valid"
+    message: "ip_address_type must be 'ipv4' or 'dualstack' when set"
+    expression: "this.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack']"
+  };
+
+  // Mapping keys must be unique -- two mappings with the same key (including
+  // two root mappings with an empty key) would conflict in API Gateway.
+  option (buf.validate.message).cel = {
+    id: "api_mapping_keys_unique"
+    message: "api_mapping_key values must be unique across api_mappings (only one API can serve the domain root, and each path key can carry one API)"
+    expression: "this.api_mappings.all(m1, this.api_mappings.filter(m2, m2.api_mapping_key == m1.api_mapping_key).size() == 1)"
+  };
+}
+
+// AwsHttpApiDomainMutualTls configures mutual TLS client authentication for
+// the domain using an S3-hosted truststore.
+message AwsHttpApiDomainMutualTls {
+  // S3 URI of the truststore -- a PEM bundle of the CA certificates that
+  // client certificates must chain to (e.g.
+  // "s3://my-bucket/truststore.pem"). The bucket must be in the same region
+  // as the domain.
+  string truststore_uri = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^s3://.+"
+  }];
+
+  // Optional S3 object version of the truststore. Pin a version so
+  // truststore updates are an explicit, auditable change rather than a
+  // silent side effect of overwriting the object.
+  string truststore_version = 2;
+}
+
+// AwsHttpApiDomainApiMapping binds one API's stage onto the domain under an
+// optional path key.
+message AwsHttpApiDomainApiMapping {
+  // The API to map onto the domain. Accepts a direct API ID or a reference
+  // to an AwsHttpApiGateway resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef api_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsHttpApiGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.api_id"
+  ];
+
+  // The stage of the API to serve. For HTTP APIs managed by
+  // AwsHttpApiGateway this is the stage name exported in the API's outputs
+  // (typically "$default").
+  string stage = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Path key under which the API is served (e.g. "orders" serves the API at
+  // "https://<domain>/orders/..."). Leave empty to serve the API at the
+  // domain root. Must not contain slashes -- nested keys are not supported
+  // by API Gateway v2.
+  string api_mapping_key = 3 [(buf.validate.field).string.pattern = "^[^/]*$"];
+}

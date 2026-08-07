@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecontainerappenvironment.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurecontainerappenvironment/v1alpha1/spec.proto";
+import "catalog/azure/azurecontainerappenvironment/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AzureContainerAppEnvironment is the top-level API resource for an Azure
+// Container Apps Managed Environment. It defines the hosting platform for
+// Azure Container Apps, providing the execution boundary, networking,
+// logging, and compute configuration.
+message AzureContainerAppEnvironment {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureContainerAppEnvironment'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureContainerAppEnvironmentSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureContainerAppEnvironmentStatus status = 5;
+}
+
+// AzureContainerAppEnvironmentStatus holds the deployment status and outputs.
+message AzureContainerAppEnvironmentStatus {
+  // stack-outputs
+  AzureContainerAppEnvironmentStackOutputs outputs = 1;
+}

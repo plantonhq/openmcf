@@ -2,9 +2,9 @@ package providerenvvars
 
 import (
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/iac/provider/aws/awswebidentity"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"gopkg.in/yaml.v3"
 )
 

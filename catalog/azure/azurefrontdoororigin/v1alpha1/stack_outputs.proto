@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurefrontdoororigin.v1alpha1;
+
+// **AzureFrontDoorOriginStackOutputs** captures the outputs of
+// provisioning an Azure Front Door origin.
+message AzureFrontDoorOriginStackOutputs {
+  // The Azure Resource Manager ID of the origin -- what
+  // AzureFrontDoorRoute's origin_ids list references to sequence route
+  // deployment after the backends exist.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Cdn/profiles/{profile}/originGroups/{group}/origins/{name}
+  string origin_id = 1;
+
+  // The origin's name -- unique within its origin group.
+  string origin_name = 2;
+}

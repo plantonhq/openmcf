@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsapprunnerobservabilityconfiguration.v1alpha1;
+
+import "catalog/aws/awsapprunnerobservabilityconfiguration/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsAppRunnerObservabilityConfigurationStackInput is the input for the
+// aws-app-runner-observability-configuration IaC modules.
+message AwsAppRunnerObservabilityConfigurationStackInput {
+  // target cloud-resource
+  AwsAppRunnerObservabilityConfiguration target = 1;
+
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

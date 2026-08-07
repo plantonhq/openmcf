@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetessparkoperator.v1alpha1;
+
+import "catalog/kubernetes/kubernetessparkoperator/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+//spark-operator-kubernetes stack-input
+message KubernetesSparkOperatorStackInput {
+  //target cloud-resource
+  KubernetesSparkOperator target = 1;
+  //provider-config
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

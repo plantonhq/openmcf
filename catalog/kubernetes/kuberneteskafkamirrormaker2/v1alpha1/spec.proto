@@ -1,0 +1,407 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kuberneteskafkamirrormaker2.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "catalog/kubernetes/strimzi_kafka_client.proto";
+import "catalog/kubernetes/workload_pod.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesKafkaMirrorMaker2Spec** declares a MirrorMaker 2
+ * replication engine on the Strimzi `KafkaMirrorMaker2` custom
+ * resource — continuous, offset-aware mirroring of topics and
+ * consumer groups from one or more SOURCE Kafka clusters into one
+ * TARGET cluster. This is the migration on-ramp: point a mirror at a
+ * running Confluent / MSK / self-hosted cluster, let it replicate
+ * topics, records and consumer positions into your Strimzi-managed
+ * cluster, then cut consumers over with their offsets intact
+ * (checkpointing translates source offsets to target offsets).
+ *
+ * SHAPE (the Strimzi model on this line): ONE `target` cluster — the
+ * Connect-style engine runs against it — and one `mirrors` entry per
+ * source cluster, each carrying its own connection and what to
+ * replicate. Under the hood each mirror runs a MirrorSourceConnector
+ * (records + topic configuration) and a MirrorCheckpointConnector
+ * (consumer-group offset translation).
+ *
+ * TOPIC NAMING: mirrored topics are prefixed with the source's
+ * `alias` by default ("prod-msk.orders"). To keep ORIGINAL names —
+ * the usual migration posture — set the mirror's
+ * `source_connector.config` entry "replication.policy.class" to
+ * "org.apache.kafka.connect.mirror.IdentityReplicationPolicy" (set
+ * the same on the checkpoint connector).
+ *
+ * The GROUP IDENTITY fields on `target` (`group_id` and the three
+ * storage topics) default from metadata.name and MUST be unique per
+ * Connect-protocol workload (Connect clusters included) sharing the
+ * target Kafka cluster.
+ */
+message KubernetesKafkaMirrorMaker2Spec {
+  /**
+   * Namespace for the MirrorMaker 2 deployment. Accepts a literal
+   * namespace name or a reference to a KubernetesNamespace resource.
+   * The namespace must be watched by a Strimzi operator
+   * installation.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Kafka version the MirrorMaker 2 workers run (e.g. "4.3.0").
+   * Empty = the operator's default version.
+   */
+  string version = 3;
+
+  /**
+   * Number of worker pods. Mirroring tasks spread across workers —
+   * scale with source partition counts.
+   */
+  optional int32 replicas = 4 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * The TARGET cluster — where mirrored data lands and where the
+   * engine keeps its state.
+   */
+  KubernetesKafkaMirrorMaker2Target target = 5 [(buf.validate.field).required = true];
+
+  /**
+   * One entry per SOURCE cluster to mirror from. Source aliases must
+   * be unique (they prefix mirrored topic names under the default
+   * replication policy) and must differ from the target's alias.
+   */
+  repeated KubernetesKafkaMirrorMaker2Mirror mirrors = 6 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "spec.mirrors.unique_aliases"
+      message: "each mirror's source alias must be unique — aliases identify clusters in the replication flow and prefix mirrored topic names"
+      expression: "this.map(m, m.source.alias).unique()"
+    }
+  ];
+
+  /**
+   * CPU/memory for each worker pod. Empty = no requests/limits
+   * (fine for kind/dev; always set for production).
+   */
+  dev.planton.kubernetes.ContainerResources resources = 7;
+
+  /**
+   * JVM heap for the workers (rendered as -Xms/-Xmx). Empty =
+   * Strimzi's dynamic default. Set both to the SAME value for
+   * production.
+   */
+  KubernetesKafkaMirrorMaker2Jvm jvm = 8;
+
+  /**
+   * Rack awareness for the workers (e.g.
+   * "topology.kubernetes.io/zone"). Requires nodes labeled with the
+   * key.
+   */
+  KubernetesKafkaMirrorMaker2Rack rack = 9;
+
+  /**
+   * JMX Prometheus metrics. When enabled, the module renders the
+   * canonical Strimzi connect-metrics ConfigMap and wires it as the
+   * deployment's metricsConfig — mirroring lag rides the standard
+   * Connect/MirrorMaker metric families.
+   */
+  KubernetesKafkaMirrorMaker2Metrics metrics = 10;
+
+  /**
+   * Node selector for the worker pods.
+   */
+  map<string, string> node_selector = 11;
+
+  /**
+   * Tolerations for the worker pods.
+   */
+  repeated dev.planton.kubernetes.WorkloadToleration tolerations = 12;
+
+  option (buf.validate.message).cel = {
+    id: "spec.target_alias_distinct_from_sources"
+    message: "the target alias must differ from every mirror's source alias — aliases identify clusters in the replication flow, and a duplicate collapses source and target into one identity (remember the target alias defaults to \"target\")"
+    expression: "!has(this.target) || this.mirrors.all(m, !has(m.source) || m.source.alias != ((has(this.target.alias) && this.target.alias != '') ? this.target.alias : 'target'))"
+  };
+}
+
+/**
+ * The target cluster connection + engine identity.
+ */
+message KubernetesKafkaMirrorMaker2Target {
+  /**
+   * Alias identifying the target cluster in the replication flow
+   * (e.g. "target", "onprem"). Empty = "target". Must differ from
+   * every mirror's source alias.
+   */
+  optional string alias = 1 [
+    (dev.planton.shared.options.default) = "target",
+    (buf.validate.field).cel = {
+      id: "spec.target.alias.format"
+      message: "alias may use alphanumerics, '.', '_' and '-'"
+      expression: "this == '' || this.matches('^[a-zA-Z0-9._-]+$')"
+    }
+  ];
+
+  /**
+   * Bootstrap address of the target Kafka cluster, as host:port.
+   * Accepts a literal address or a reference to a KubernetesKafka
+   * resource, which resolves to its in-cluster bootstrap endpoint —
+   * the migrate-INTO-Planton wiring.
+   *
+   * containment_exempt: the mirror WRITES TO this cluster; it is not
+   * deployed inside it.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bootstrap_servers = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafka,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.internal_bootstrap_endpoint",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "mirrors to"
+  ];
+
+  /**
+   * TLS trust for the target connection. For a Strimzi-managed
+   * target, reference the KubernetesKafka resource to trust its
+   * cluster CA. Omitted = plaintext.
+   */
+  dev.planton.kubernetes.StrimziKafkaClientTls tls = 3;
+
+  /**
+   * How the workers authenticate to the target. Must match the
+   * target listener's authentication type.
+   */
+  dev.planton.kubernetes.StrimziKafkaClientAuthentication authentication = 4;
+
+  /**
+   * Engine group ID on the target. Empty = the resource's
+   * metadata.name. MUST be unique among Connect-protocol workloads
+   * sharing the target cluster.
+   */
+  string group_id = 5;
+
+  /**
+   * Topic storing the engine's connector configurations on the
+   * target. Empty = "<metadata.name>-mirrormaker2-configs".
+   */
+  string config_storage_topic = 6;
+
+  /**
+   * Topic storing connector/task status. Empty =
+   * "<metadata.name>-mirrormaker2-status".
+   */
+  string status_storage_topic = 7;
+
+  /**
+   * Topic storing mirroring offsets. Empty =
+   * "<metadata.name>-mirrormaker2-offsets".
+   */
+  string offset_storage_topic = 8;
+
+  /**
+   * Additional target-cluster client configuration (producer/admin
+   * tuning). Values are configuration strings — write numbers and
+   * booleans as strings. Connection, identity and security entries
+   * are operator-owned and configured through their typed fields.
+   */
+  map<string, string> config = 9;
+}
+
+/**
+ * One source cluster and what to mirror from it.
+ */
+message KubernetesKafkaMirrorMaker2Mirror {
+  /**
+   * The source cluster connection.
+   */
+  KubernetesKafkaMirrorMaker2Source source = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Regex of topics to mirror (Kafka regex form; comma-separated
+   * lists also work, e.g. "orders,payments.*"). The recommended
+   * starting point mirrors everything except internal topics.
+   */
+  optional string topics_pattern = 2 [(dev.planton.shared.options.default) = ".*"];
+
+  /**
+   * Regex of topics to EXCLUDE (applied after topics_pattern). Empty
+   * = the engine's built-in exclusions (internal/replica topics).
+   */
+  string topics_exclude_pattern = 3;
+
+  /**
+   * Regex of consumer groups whose offsets to checkpoint into the
+   * target — what makes consumer cutover seamless.
+   */
+  optional string groups_pattern = 4 [(dev.planton.shared.options.default) = ".*"];
+
+  /**
+   * Regex of consumer groups to EXCLUDE.
+   */
+  string groups_exclude_pattern = 5;
+
+  /**
+   * The MirrorSourceConnector — replicates records and topic
+   * configuration. Set replication.policy.class here (and on
+   * checkpoint_connector) to IdentityReplicationPolicy to keep
+   * original topic names — the usual migration posture.
+   */
+  KubernetesKafkaMirrorMaker2Connector source_connector = 6;
+
+  /**
+   * The MirrorCheckpointConnector — translates committed consumer
+   * offsets from source to target so consumers cut over without
+   * reprocessing or data loss. Keep its replication.policy.class in
+   * lockstep with source_connector's.
+   */
+  KubernetesKafkaMirrorMaker2Connector checkpoint_connector = 7;
+}
+
+/**
+ * A source cluster connection.
+ */
+message KubernetesKafkaMirrorMaker2Source {
+  /**
+   * Alias identifying this source in the replication flow (e.g.
+   * "prod-msk", "confluent"). Prefixes mirrored topic names under
+   * the default replication policy — pick a name you can live with
+   * in topic lists, or switch to IdentityReplicationPolicy.
+   */
+  string alias = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.mirrors.source.alias.format"
+      message: "alias may use alphanumerics, '.', '_' and '-'"
+      expression: "this.matches('^[a-zA-Z0-9._-]+$')"
+    }
+  ];
+
+  /**
+   * Bootstrap address of the source cluster, as host:port — for
+   * migrations this is usually an EXTERNAL address (Confluent / MSK
+   * bootstrap, a datacenter cluster). Accepts a literal address or a
+   * reference to a KubernetesKafka resource.
+   *
+   * containment_exempt: the mirror READS FROM this cluster; it is not
+   * deployed inside it.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bootstrap_servers = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafka,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.internal_bootstrap_endpoint",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "mirrors from"
+  ];
+
+  /**
+   * TLS trust for the source connection. Omitted = plaintext.
+   */
+  dev.planton.kubernetes.StrimziKafkaClientTls tls = 3;
+
+  /**
+   * How the workers authenticate to the source (for Confluent Cloud:
+   * plain with the API key/secret; for MSK SCRAM: scram-sha-512).
+   */
+  dev.planton.kubernetes.StrimziKafkaClientAuthentication authentication = 4;
+
+  /**
+   * Additional source-cluster client configuration (consumer
+   * tuning). Values are configuration strings.
+   */
+  map<string, string> config = 5;
+}
+
+/**
+ * Per-mirror connector tuning.
+ */
+message KubernetesKafkaMirrorMaker2Connector {
+  /**
+   * Maximum parallel tasks. For the source connector, match the
+   * source's partition volume; empty = the Connect default (1).
+   */
+  optional int32 tasks_max = 1 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Connector configuration entries (replication.policy.class,
+   * refresh intervals, sync.group.offsets.enabled, ...). Values are
+   * configuration strings — write numbers and booleans as strings.
+   */
+  map<string, string> config = 2 [(buf.validate.field).cel = {
+    id: "spec.mirrors.connector.config.no_plugin_version"
+    message: "connector.plugin.version is not accepted in mirror connector config on this Strimzi line — the engine pins its own connector versions"
+    expression: "!('connector.plugin.version' in this)"
+  }];
+
+  /**
+   * Automatic restart of failed connectors/tasks with incremental
+   * back-off — strongly recommended for long-running migrations
+   * (transient source outages otherwise leave the mirror FAILED).
+   */
+  KubernetesKafkaMirrorMaker2AutoRestart auto_restart = 3;
+}
+
+/**
+ * Automatic restart policy.
+ */
+message KubernetesKafkaMirrorMaker2AutoRestart {
+  /**
+   * Enable automatic restarts.
+   */
+  bool enabled = 1;
+
+  /**
+   * Give up after this many consecutive restarts. Empty = the
+   * operator default (7).
+   */
+  optional int32 max_restarts = 2 [(buf.validate.field).int32.gte = 1];
+}
+
+/**
+ * JVM heap.
+ */
+message KubernetesKafkaMirrorMaker2Jvm {
+  /**
+   * Initial heap (-Xms), e.g. "1g". Set equal to xmx in production.
+   */
+  string xms = 1;
+
+  /**
+   * Maximum heap (-Xmx), e.g. "1g".
+   */
+  string xmx = 2;
+}
+
+/**
+ * Rack awareness.
+ */
+message KubernetesKafkaMirrorMaker2Rack {
+  /**
+   * Node label whose value identifies a node's failure domain.
+   */
+  string topology_key = 1 [(buf.validate.field).required = true];
+}
+
+/**
+ * JMX Prometheus metrics.
+ */
+message KubernetesKafkaMirrorMaker2Metrics {
+  /**
+   * Render the canonical Strimzi JMX exporter rules ConfigMap and
+   * enable the metrics endpoint on every worker.
+   */
+  bool enabled = 1;
+}

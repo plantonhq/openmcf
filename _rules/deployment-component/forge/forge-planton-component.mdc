@@ -161,7 +161,7 @@ reference-carrying names, let the field comment state the not-secret rationale i
 This is identified in rule 001 and applied in rule 002. The ratcheting gate
 `planton secret-coverage --check` fails the build on any unannotated secret-looking field, so a
 forged component is not done until the gate is green. Authority: the option comments in
-`dev/planton/shared/options/options.proto`.
+`shared/options/options.proto`.
 
 FOREIGN-KEY FIELD-PATH FORMAT (verify against the CONSUMING API)
 When wiring `default_kind_field_path` for a network/resource reference, verify which
@@ -326,7 +326,7 @@ Every component with a Terraform module ships its import-ID recipes, so the
 platform's guided import can derive identifiers instead of asking the user
 (`pkg/iac/importmap/README.md` is the authoritative reference):
 
-1. **Provider catalog** (`apis/dev/planton/provider/<provider>/aa_import/catalog.yaml`):
+1. **Provider catalog** (`catalog/<provider>/aa_import/catalog.yaml`):
    an entry per resource type the module declares -- the import-ID format from
    the PROVIDER's import documentation (read the provider docs/source, never
    guess), the Pulumi type token, and any `config_only_attributes` (attributes
@@ -369,14 +369,14 @@ header and treat its recipe as offline-validated only.
 ### Phase 8: Final Validation (Rules 018-019)
 
 18. **018-build-validation** - Verify component Go code compiles AND the Pulumi entrypoint
-    builds as the release builds it. Runs BOTH `go build ./apis/.../v1/...` (recursive, catches
-    module/proto errors) and `go build -o /dev/null ./apis/.../v1/iac/pulumi` (non-recursive,
+    builds as the release builds it. Runs BOTH `go build ./catalog/.../v1/...` (recursive, catches
+    module/proto errors) and `go build -o /dev/null ./catalog/.../v1/iac/pulumi` (non-recursive,
     the release contract -- requires a `package main` at the entrypoint root). Also asserts the
     entrypoint lives at `iac/pulumi/` root with no `main/` or `entrypoint/` subdir, AND that
     `iac/pulumi/Pulumi.yaml` exists: without the project file `pulumi stack init` fails at
     deploy time with a misleading "pass the fully qualified name" error, and NO offline check
     (go build, tofu validate, spec tests) can catch its absence -- only a live run does.
-19. **019-test-validation** - Run `go test -v ./apis/.../v1/` (verify component tests pass)
+19. **019-test-validation** - Run `go test -v ./catalog/.../v1/` (verify component tests pass)
     - Validates spec_test.go tests all buf.validate rules
     - Ensures validation rules are syntactically and semantically correct
 20. **Site catalog regen** - Run `yarn copy-docs && yarn generate-structure` in `site/`
@@ -432,7 +432,7 @@ If score is lower, the audit report will identify gaps and suggest fixes.
 Steps 018–019 prove the component compiles and its schema validates. **Live E2E**
 proves the IaC modules actually create, verify, and destroy real resources via
 the provider API. Every component ships an `e2e/profile.yaml` + `e2e/scenarios/*.yaml`,
-and the provider harness (`apis/dev/planton/provider/<provider>/aa_e2e/`) runs them
+and the provider harness (`catalog/<provider>/aa_e2e/`) runs them
 on both Pulumi and Terraform.
 
 Live E2E needs provider credentials. **Never ask the human to paste them, and never
@@ -1186,7 +1186,7 @@ After forge completes, the component should have:
 ✅ **Import recipes shipped and proven** (Phase 6c) -- catalog entries for every module resource type, component import map with derivable-first value sources, offline conformance green, live import round-trip green
 ✅ Supporting files (manifests, module overviews)
 ✅ Initial presets generated (2-3 common configuration templates)
-✅ Build validation passed -- BOTH `go build ./apis/.../v1/...` AND the release-equivalent `go build -o /dev/null ./apis/.../v1/iac/pulumi`
-✅ Component test validation passed (`go test -v ./apis/.../v1/`)
+✅ Build validation passed -- BOTH `go build ./catalog/.../v1/...` AND the release-equivalent `go build -o /dev/null ./catalog/.../v1/iac/pulumi`
+✅ Component test validation passed (`go test -v ./catalog/.../v1/`)
 
 **Result:** A production-ready deployment component matching 95-100% of ideal state with all tests passing!

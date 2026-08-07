@@ -1,7 +1,7 @@
 # =============================================================================
 # License Footer Guard
 # =============================================================================
-# Fails the PR if any component README (apis/dev/planton/**/<component>/v1/
+# Fails the PR if any component README (catalog/**/<component>/v1/
 # README.md), infra chart README (charts/<provider>/<name>/README.md), or helm
 # chart README (helm/<chart>/README.md) does not end with the canonical
 # license footer:
@@ -21,7 +21,7 @@ name: lint.license-footers
 on:
   pull_request:
     paths:
-      - 'apis/dev/planton/**'
+      - 'catalog/**'
       - 'charts/**'
       - 'helm/**'
       - 'hack/guards/ensure_license_footers.sh'
@@ -30,7 +30,7 @@ on:
     branches:
       - main
     paths:
-      - 'apis/dev/planton/**'
+      - 'catalog/**'
       - 'charts/**'
       - 'helm/**'
       - 'hack/guards/ensure_license_footers.sh'

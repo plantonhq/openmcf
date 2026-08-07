@@ -34,17 +34,17 @@ metadata:
   name: my-attach
   annotations:
     planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-wal-disk
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-data-disk
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackVolumeAttach.app-data-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-data-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackVolumeAttach.data-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackVolumeAttach.my-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   instanceId: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e

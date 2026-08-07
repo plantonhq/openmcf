@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssecuritygroup.v1alpha1;
+
+import "catalog/aws/awssecuritygroup/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+//aws-security-group stack-input
+message AwsSecurityGroupStackInput {
+  //target cloud-resource
+  AwsSecurityGroup target = 1;
+  //provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

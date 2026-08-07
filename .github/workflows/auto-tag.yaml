@@ -34,8 +34,8 @@ on:
       - 'internal/**'
       - 'pkg/**'
       - 'site/**'
-      - 'apis/**/iac/pulumi/**'
-      - 'apis/**/iac/tf/**'
+      - 'catalog/**/iac/pulumi/**'
+      - 'catalog/**/iac/tf/**'
       - 'main.go'
       - 'go.mod'
       - 'go.sum'
@@ -155,14 +155,14 @@ jobs:
           # the guard can count unique components across BOTH iac flavors.
           if [ "${{ inputs.force_pulumi_all }}" = "true" ]; then
             echo "Pulumi: forced all via manual dispatch"
-            PULUMI_DIRS=$(find apis/dev/planton/provider -type d -name "pulumi" -path "*/iac/pulumi" 2>/dev/null | sort)
+            PULUMI_DIRS=$(find catalog -type d -name "pulumi" -path "*/iac/pulumi" 2>/dev/null | sort)
           else
             PULUMI_DIRS=$(echo "$CHANGED_FILES" | bash tools/ci/release/detect_module_dirs.sh --pulumi)
           fi
 
           if [ "${{ inputs.force_terraform_all }}" = "true" ]; then
             echo "Terraform: forced all via manual dispatch"
-            TERRAFORM_DIRS=$(find apis/dev/planton/provider -type d -name "tf" -path "*/iac/tf" 2>/dev/null | sort)
+            TERRAFORM_DIRS=$(find catalog -type d -name "tf" -path "*/iac/tf" 2>/dev/null | sort)
           else
             TERRAFORM_DIRS=$(echo "$CHANGED_FILES" | bash tools/ci/release/detect_module_dirs.sh --terraform)
           fi
@@ -173,7 +173,7 @@ jobs:
           # _test providers are excluded (they are never tagged).
           CHANGED_COMPONENTS=$( (echo "$PULUMI_DIRS"; echo "$TERRAFORM_DIRS") | \
             grep -v '^$' | \
-            sed 's|apis/dev/planton/provider/\([^/]*/[^/]*\)/.*|\1|' | \
+            sed 's|catalog/\([^/]*/[^/]*\)/.*|\1|' | \
             grep -v '^_test/' | sort -u)
           COMPONENT_COUNT=$(echo "$CHANGED_COMPONENTS" | grep -c . || true)
           echo "Changed components: ${COMPONENT_COUNT}"
@@ -263,8 +263,8 @@ jobs:
           PULUMI_JSON="[]"
 
           for dir in $PULUMI_DIRS; do
-            PROVIDER=$(echo "$dir" | sed 's|apis/dev/planton/provider/\([^/]*\)/.*|\1|')
-            COMPONENT=$(echo "$dir" | sed 's|apis/dev/planton/provider/[^/]*/\([^/]*\)/.*|\1|')
+            PROVIDER=$(echo "$dir" | sed 's|catalog/\([^/]*\)/.*|\1|')
+            COMPONENT=$(echo "$dir" | sed 's|catalog/[^/]*/\([^/]*\)/.*|\1|')
 
             # Skip test providers
             if [ "$PROVIDER" = "_test" ]; then
@@ -301,8 +301,8 @@ jobs:
           TERRAFORM_JSON="[]"
 
           for dir in $TERRAFORM_DIRS; do
-            PROVIDER=$(echo "$dir" | sed 's|apis/dev/planton/provider/\([^/]*\)/.*|\1|')
-            COMPONENT=$(echo "$dir" | sed 's|apis/dev/planton/provider/[^/]*/\([^/]*\)/.*|\1|')
+            PROVIDER=$(echo "$dir" | sed 's|catalog/\([^/]*\)/.*|\1|')
+            COMPONENT=$(echo "$dir" | sed 's|catalog/[^/]*/\([^/]*\)/.*|\1|')
 
             # Skip test providers
             if [ "$PROVIDER" = "_test" ]; then

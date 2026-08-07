@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.civo.civodnszone.v1alpha1;
+
+import "catalog/civo/civodnszone/v1alpha1/api.proto";
+import "catalog/civo/provider.proto";
+
+//civo-dns-zone stack-input
+message CivoDnsZoneStackInput {
+  //target cloud-resource
+  CivoDnsZone target = 1;
+  //provider-config
+  dev.planton.civo.CivoProviderConfig provider_config = 2;
+}

@@ -1,0 +1,576 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpcloudfunction.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpCloudFunctionSpec defines a Cloud Functions (Gen 2) function
+// (`google_cloudfunctions2_function`) — source-based serverless compute
+// built on Cloud Run and Eventarc. You ship a source archive; Cloud Build
+// containerizes it with buildpacks and Cloud Run serves it, so every Gen 2
+// function is backed by a real Cloud Run service (the
+// `cloud_run_service_id` output).
+//
+// The spec mirrors the API's two-config split: build_config owns HOW the
+// source becomes a container (runtime, entry point, source location, build
+// identity), service_config owns HOW it runs (resources, environment,
+// secrets, networking, scaling, invocation policy). The trigger decides
+// what invokes it — HTTPS requests, or a CloudEvent delivered by Eventarc.
+//
+// Private VPC resources (Cloud SQL private IP, Memorystore) are reached
+// through a Serverless VPC Access connector (GcpServerlessVpcConnector),
+// attached by reference via service_config.vpc_connector.
+message GcpCloudFunctionSpec {
+  // The GCP project the function is created in. Accepts a literal project
+  // ID or a reference to a GcpProject resource. If omitted, the provider's
+  // default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Region the function is deployed in, e.g. "us-central1". Immutable.
+  string region = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]+$"}
+  ];
+
+  // Name of the function in GCP. Immutable. If not specified, defaults to
+  // metadata.name. Must be 1-63 characters: lowercase letters, digits, and
+  // hyphens; starting with a letter.
+  string function_name = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      pattern: "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$"
+      max_len: 63
+    }
+  ];
+
+  // Human-readable description of what the function does.
+  string description = 4;
+
+  // Labels applied to the function object. User labels are merged beneath
+  // Planton's attribution labels and shared with Google's billing system.
+  map<string, string> labels = 5;
+
+  // Cloud KMS key encrypting the function's resources (CMEK) — the
+  // container image and source artifacts. The Cloud Functions and Artifact
+  // Registry service agents must hold cryptoKeyEncrypterDecrypter on it,
+  // and CMEK deployments require a customer-managed docker_repository.
+  // Accepts a full crypto-key path or a reference to a GcpKmsKey resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_name = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // How the source becomes a runnable container: runtime, entry point,
+  // source location, and build identity. Required.
+  GcpCloudFunctionBuildConfig build_config = 7 [(buf.validate.field).required = true];
+
+  // How the function runs: compute resources, environment, secrets,
+  // networking, scaling, and invocation policy.
+  GcpCloudFunctionServiceConfig service_config = 8;
+
+  // What invokes the function. If not specified, defaults to HTTP.
+  GcpCloudFunctionTrigger trigger = 9;
+}
+
+// GcpCloudFunctionBuildConfig defines how Cloud Build turns the source
+// archive into the container Cloud Run serves.
+message GcpCloudFunctionBuildConfig {
+  // Runtime the function executes in, e.g. "python312", "nodejs22",
+  // "go123", "java21". Any current Gen 2 runtime GCP publishes is valid —
+  // run `gcloud functions runtimes list` for the live set; deprecated
+  // runtimes are rejected by the API at deploy time.
+  string runtime = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      pattern: "^[a-z][a-z0-9]*$"
+      max_len: 32
+    }
+  ];
+
+  // Name of the function in source code that will be executed (the entry
+  // point). For example: "hello_http" in Python, "helloHttp" in Node.js.
+  string entry_point = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    }
+  ];
+
+  // Where the source code lives. Required.
+  GcpCloudFunctionSource source = 3 [(buf.validate.field).required = true];
+
+  // Environment variables available at build time (e.g. buildpack knobs
+  // like GOOGLE_ENTRYPOINT). Not injected into the runtime — use
+  // service_config.environment_variables for that.
+  map<string, string> build_environment_variables = 4;
+
+  // Service account Cloud Build runs the build as — the identity that
+  // reads the source and pushes the image. FULLY-QUALIFIED resource name
+  // (projects/{project}/serviceAccounts/{email}), not a bare email.
+  // Accepts a literal or a reference to a GcpServiceAccount resource. If
+  // omitted, GCP uses its default build identity.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
+  ];
+
+  // Cloud Build Custom Worker Pool that builds the function — for builds
+  // that must run inside a private network perimeter. Format:
+  // projects/{project}/locations/{region}/workerPools/{name}.
+  string worker_pool = 6;
+
+  // User-managed Artifact Registry repository the built container is
+  // stored in, optionally CMEK-protected (required when kms_key_name is
+  // set). FULLY-QUALIFIED path
+  // (projects/{project}/locations/{location}/repositories/{name}).
+  // Accepts a literal path or a reference to a GcpArtifactRegistryRepo
+  // resource (its repository_path output is exactly this value). If
+  // omitted, GCP manages a default repository.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef docker_repository = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpArtifactRegistryRepo,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.repository_path"
+  ];
+
+  // How the runtime base image is patched. AUTOMATIC (the API default when
+  // unset) applies security updates continuously; ON_DEPLOY pins the
+  // runtime version at deploy time so instances never change under you
+  // between deploys.
+  GcpCloudFunctionBuildUpdatePolicy update_policy = 8 [(dev.planton.shared.options.recommended_default) = "AUTOMATIC"];
+}
+
+// GcpCloudFunctionBuildUpdatePolicy controls when the runtime base image
+// picks up updates.
+enum GcpCloudFunctionBuildUpdatePolicy {
+  // Runtime security updates apply automatically (the API default).
+  AUTOMATIC = 0;
+
+  // The runtime version is pinned at deploy time; updates arrive only on
+  // the next deploy.
+  ON_DEPLOY = 1;
+}
+
+// GcpCloudFunctionSource specifies where the source code lives: a GCS
+// archive (the standard path) or a Cloud Source Repositories revision.
+// Exactly one.
+message GcpCloudFunctionSource {
+  option (buf.validate.message).cel = {
+    id: "source.exactly_one"
+    message: "choose exactly one source: storageSource (a GCS zip archive) or repoSource (a Cloud Source Repositories revision)"
+    expression: "(has(this.storage_source) ? 1 : 0) + (has(this.repo_source) ? 1 : 0) == 1"
+  };
+
+  // Source archive in Google Cloud Storage — a .zip of the function code
+  // and dependency manifest. The standard path for CI/CD-shipped source.
+  GcpCloudFunctionStorageSource storage_source = 1;
+
+  // Source in Cloud Source Repositories. Note GCP deprecated CSR for new
+  // customers in June 2024 — existing repositories keep working, but new
+  // integrations should ship archives to GCS instead.
+  GcpCloudFunctionRepoSource repo_source = 2;
+}
+
+// GcpCloudFunctionStorageSource points at a source .zip in GCS.
+message GcpCloudFunctionStorageSource {
+  // GCS bucket holding the source archive. The build service account needs
+  // read access. Accepts a literal bucket name or a reference to a
+  // GcpGcsBucket resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpGcsBucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Object name (path) of the source archive in the bucket, e.g.
+  // "functions/my-function-v1.2.3.zip". Version the object name per
+  // release — a changed object name is what makes the deploy roll.
+  string object = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Generation number of the object to pin an exact object version even
+  // if the path is overwritten. If unset, the current generation is used.
+  optional int64 generation = 3;
+}
+
+// GcpCloudFunctionRepoSource points at a Cloud Source Repositories
+// revision — exactly one of branch, tag, or commit.
+message GcpCloudFunctionRepoSource {
+  option (buf.validate.message).cel = {
+    id: "repo_source.exactly_one_revision"
+    message: "pin the source to exactly one revision: branchName, tagName, or commitSha"
+    expression: "(this.branch_name != '' ? 1 : 0) + (this.tag_name != '' ? 1 : 0) + (this.commit_sha != '' ? 1 : 0) == 1"
+  };
+
+  // Name of the Cloud Source Repository, e.g. "my-repo".
+  string repo_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Branch to build from (the branch's current HEAD at deploy time).
+  string branch_name = 2;
+
+  // Tag to build from.
+  string tag_name = 3;
+
+  // Exact commit to build from — the only fully reproducible pin.
+  string commit_sha = 4;
+
+  // Directory within the repository containing the function source. If
+  // unset, the repository root is used.
+  string dir = 5;
+
+  // Invert the revision match: build from revisions that do NOT match
+  // the configured branch/tag regex.
+  bool invert_regex = 6;
+
+  // Project that owns the repository, when it lives outside the
+  // function's project. Immutable.
+  string project_id = 7;
+}
+
+// GcpCloudFunctionServiceConfig defines how the function runs: the
+// Cloud Run service behind it — resources, environment, secrets,
+// networking, scaling, and invocation policy.
+message GcpCloudFunctionServiceConfig {
+  // Email of the IAM service account the function runs as — the identity
+  // whose permissions the code exercises when calling other GCP APIs.
+  // Accepts a literal email or a reference to a GcpServiceAccount
+  // resource. If omitted, the project's Compute Engine default service
+  // account is used — fine for experiments, too broad for production.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account_email = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+
+  // Memory available to each instance, as a quantity string: "256M",
+  // "512M", "1Gi", "16Gi". CPU scales with memory unless available_cpu is
+  // set explicitly. If unset, GCP defaults to 256M.
+  string available_memory = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {pattern: "^[0-9]+(\\.[0-9]+)?(k|M|G|Mi|Gi)?$"},
+    (dev.planton.shared.options.recommended_default) = "256M"
+  ];
+
+  // CPUs available to each instance, e.g. "1", "2", "0.5". If unset, GCP
+  // derives CPU from memory. Concurrency above 1 requires at least 1 CPU.
+  string available_cpu = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {pattern: "^[0-9]+(\\.[0-9]+)?$"}
+  ];
+
+  // Per-request timeout in seconds. HTTP functions support up to 3600
+  // (60 minutes); event-driven functions are capped at 540 by Eventarc's
+  // delivery timeout. If unset, GCP defaults to 60.
+  int32 timeout_seconds = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 3600
+    },
+    (dev.planton.shared.options.recommended_default) = "60"
+  ];
+
+  // Concurrent requests each instance handles (1-1000). GCP defaults to 1
+  // — every request gets its own instance, safe for any runtime. Raising
+  // it cuts instance count and cold starts for I/O-bound code, but needs
+  // at least 1 CPU and thread-safe code.
+  int32 max_instance_request_concurrency = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 1000
+    },
+    (dev.planton.shared.options.recommended_default) = "1"
+  ];
+
+  // Environment variables injected into the runtime as plain-text
+  // KEY=VALUE pairs. Configuration only — never place credentials here;
+  // use secret_environment_variables so material stays in Secret Manager.
+  map<string, string> environment_variables = 6;
+
+  // Secret Manager references injected as environment variables. The
+  // material never appears in the spec — each entry names a secret and
+  // version resolved at instance start. The runtime service account needs
+  // roles/secretmanager.secretAccessor on each secret.
+  repeated GcpCloudFunctionSecretEnvVar secret_environment_variables = 7;
+
+  // Secret Manager secret versions projected as files under a mount path
+  // — for consumers that read credentials from disk (certificates, config
+  // files). Same accessor-role requirement as secret env vars.
+  repeated GcpCloudFunctionSecretVolume secret_volumes = 8;
+
+  // Serverless VPC Access connector routing the function's egress into a
+  // VPC — how the function reaches private IPs (Cloud SQL private IP,
+  // Memorystore, internal load balancers). Accepts the connector's full
+  // resource name (projects/*/locations/*/connectors/*) or a reference to
+  // a GcpServerlessVpcConnector resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_connector = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServerlessVpcConnector,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+
+  // Which egress traffic uses the connector: only RFC1918/private
+  // destinations (the default; public egress keeps the normal path), or
+  // everything (enables static egress IPs via Cloud NAT).
+  GcpCloudFunctionVpcEgressSetting vpc_connector_egress_settings = 10 [(dev.planton.shared.options.recommended_default) = "PRIVATE_RANGES_ONLY"];
+
+  // Who can reach the function's endpoint at the network level. Use
+  // ALLOW_INTERNAL_ONLY for private functions, ALLOW_INTERNAL_AND_GCLB
+  // when fronting with an external Application Load Balancer.
+  GcpCloudFunctionIngressSetting ingress_settings = 11 [(dev.planton.shared.options.recommended_default) = "ALLOW_ALL"];
+
+  // Instance scaling bounds.
+  GcpCloudFunctionScalingConfig scaling = 12;
+
+  // Whether 100% of traffic goes to the latest revision as soon as it is
+  // ready (the API default, true). Set false to hold traffic on the
+  // previous revision — the lever for manual canary/rollback via the
+  // underlying Cloud Run service.
+  optional bool all_traffic_on_latest_revision = 13 [(dev.planton.shared.options.default) = "true"];
+
+  // Binary Authorization policy checked before instances start, e.g.
+  // "default" or "projects/{project}/platforms/gae/policies/{policy}".
+  string binary_authorization_policy = 14;
+
+  // Makes the function publicly invokable by unauthenticated callers by
+  // granting run.invoker to allUsers on the underlying Cloud Run service.
+  // Leave false for private functions and grant invoker to specific
+  // identities instead.
+  bool allow_unauthenticated = 15 [(dev.planton.shared.options.recommended_default) = "false"];
+}
+
+// GcpCloudFunctionSecretEnvVar resolves one Secret Manager secret version
+// into one environment variable at instance start.
+message GcpCloudFunctionSecretEnvVar {
+  // Environment variable name, e.g. "DATABASE_PASSWORD".
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {pattern: "^[A-Za-z_][A-Za-z0-9_]*$"}
+  ];
+
+  // The secret: a short name for a secret in the function's project
+  // ("my-secret"). Cross-project secrets set project_id.
+  string secret = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Secret Manager secret NAME/identifier only — the secret material itself never appears in the spec"
+  ];
+
+  // Secret version to resolve: a version number or "latest" — the common
+  // choice, at the cost of new instances silently picking up rotations.
+  string version = 3 [(dev.planton.shared.options.recommended_default) = "latest"];
+
+  // Project the secret lives in, when it is not the function's project.
+  string project_id = 4;
+}
+
+// GcpCloudFunctionSecretVolume projects Secret Manager secret versions as
+// files under a mount path.
+message GcpCloudFunctionSecretVolume {
+  // Absolute path the volume is mounted at, e.g. "/etc/secrets". Each
+  // configured version appears as a file under it.
+  string mount_path = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The secret: a short name for a secret in the function's project.
+  // Cross-project secrets set project_id.
+  string secret = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Secret Manager secret NAME/identifier only — the secret material itself never appears in the spec"
+  ];
+
+  // Project the secret lives in, when it is not the function's project.
+  string project_id = 3;
+
+  // Which versions land at which relative paths. If empty, the "latest"
+  // version is projected at a file named after the secret.
+  repeated GcpCloudFunctionSecretVolumeVersion versions = 4;
+}
+
+// GcpCloudFunctionSecretVolumeVersion maps one secret version to one file.
+message GcpCloudFunctionSecretVolumeVersion {
+  // Secret version to project: a version number or "latest".
+  string version = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Relative path of the file under the volume's mount path.
+  string path = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// GcpCloudFunctionScalingConfig defines instance scaling bounds.
+message GcpCloudFunctionScalingConfig {
+  option (buf.validate.message).cel = {
+    id: "scaling.min_lte_max"
+    message: "minInstanceCount cannot exceed maxInstanceCount"
+    expression: "this.min_instance_count <= this.max_instance_count"
+  };
+
+  // Minimum instances kept warm. Above 0 eliminates cold starts at idle
+  // compute cost — for latency-sensitive production endpoints.
+  int32 min_instance_count = 1 [
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 100
+    },
+    (dev.planton.shared.options.recommended_default) = "0"
+  ];
+
+  // Maximum instances the function scales to — the cost and downstream-
+  // pressure ceiling (a runaway event storm stops here).
+  int32 max_instance_count = 2 [
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 3000
+    },
+    (dev.planton.shared.options.recommended_default) = "100"
+  ];
+}
+
+// GcpCloudFunctionTrigger defines what invokes the function: HTTPS
+// requests or a CloudEvent delivered by Eventarc.
+message GcpCloudFunctionTrigger {
+  option (buf.validate.message).cel = {
+    id: "trigger.event_trigger_required"
+    message: "an EVENT_TRIGGER function needs the eventTrigger block (eventType and its filters)"
+    expression: "this.trigger_type != 1 || has(this.event_trigger)"
+  };
+
+  // Type of trigger. Defaults to HTTP if not specified.
+  GcpCloudFunctionTriggerType trigger_type = 1 [(dev.planton.shared.options.recommended_default) = "HTTP"];
+
+  // Event trigger configuration. Required when trigger_type is
+  // EVENT_TRIGGER.
+  GcpCloudFunctionEventTrigger event_trigger = 2;
+}
+
+// GcpCloudFunctionEventTrigger wires the function to a CloudEvent source
+// through Eventarc (Pub/Sub, Storage, Firestore, audit logs, ...).
+message GcpCloudFunctionEventTrigger {
+  // Event type that triggers the function, in CloudEvents format:
+  // - "google.cloud.pubsub.topic.v1.messagePublished" (Pub/Sub)
+  // - "google.cloud.storage.object.v1.finalized" (object created)
+  // - "google.cloud.storage.object.v1.deleted" (object deleted)
+  // - "google.cloud.firestore.document.v1.written" (document write)
+  string event_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Pub/Sub topic for messagePublished triggers. Accepts the full
+  // resource name (projects/{project}/topics/{name}) or a reference to a
+  // GcpPubSubTopic resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef pubsub_topic = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpPubSubTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_id"
+  ];
+
+  // Event filters narrowing which events invoke the function. For Storage
+  // triggers, filter by bucket: attribute="bucket" value="my-bucket". For
+  // Firestore, filter by document path pattern.
+  repeated GcpCloudFunctionEventFilter event_filters = 3;
+
+  // Region the trigger listens in. Storage/audit-log sources fire in the
+  // bucket's region (multi-region sources use "us"/"eu"); if unset, GCP
+  // uses the function's region.
+  string trigger_region = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {pattern: "^[a-z]+(-[a-z]+[0-9]+)?$"}
+  ];
+
+  // Retry policy for failed deliveries. RETRY_POLICY_RETRY redelivers
+  // with exponential backoff (at-least-once — handlers must be
+  // idempotent); RETRY_POLICY_DO_NOT_RETRY delivers at most once.
+  GcpCloudFunctionRetryPolicy retry_policy = 5 [(dev.planton.shared.options.recommended_default) = "RETRY_POLICY_DO_NOT_RETRY"];
+
+  // Email of the service account Eventarc uses to invoke the function —
+  // it needs run.invoker on the underlying service. Accepts a literal
+  // email or a reference to a GcpServiceAccount resource. If omitted, the
+  // default compute service account is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account_email = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+}
+
+// GcpCloudFunctionEventFilter filters events by attribute value.
+message GcpCloudFunctionEventFilter {
+  // Attribute to filter on (e.g. "bucket" for Storage events).
+  string attribute = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Value to match.
+  string value = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Matching operator. Unset means exact match; "match-path-pattern"
+  // (the only other value GCP accepts) enables path-pattern wildcards for
+  // Firestore/audit-log filters.
+  optional string operator = 3;
+}
+
+// GcpCloudFunctionTriggerType defines how the function is invoked.
+enum GcpCloudFunctionTriggerType {
+  // Invoked via HTTPS requests at the function's URL.
+  HTTP = 0;
+
+  // Invoked when a CloudEvent is delivered by Eventarc.
+  EVENT_TRIGGER = 1;
+}
+
+// GcpCloudFunctionIngressSetting controls network ingress to the function.
+enum GcpCloudFunctionIngressSetting {
+  // Reachable from the public internet (invocation still subject to IAM).
+  ALLOW_ALL = 0;
+
+  // Reachable only from within the project's VPC networks and internal
+  // GCP services.
+  ALLOW_INTERNAL_ONLY = 1;
+
+  // Reachable from internal sources and through Cloud Load Balancing —
+  // the setting for functions fronted by an external Application Load
+  // Balancer.
+  ALLOW_INTERNAL_AND_GCLB = 2;
+}
+
+// GcpCloudFunctionVpcEgressSetting controls which egress uses the VPC
+// connector.
+enum GcpCloudFunctionVpcEgressSetting {
+  // Only RFC1918/private destinations route through the connector; public
+  // egress keeps the normal path.
+  PRIVATE_RANGES_ONLY = 0;
+
+  // All outbound traffic routes through the connector — enables static
+  // egress IPs via Cloud NAT.
+  ALL_TRAFFIC = 1;
+}
+
+// GcpCloudFunctionRetryPolicy defines redelivery behavior for
+// event-driven functions.
+enum GcpCloudFunctionRetryPolicy {
+  // Deliver at most once; failed invocations are not retried.
+  RETRY_POLICY_DO_NOT_RETRY = 0;
+
+  // Redeliver with exponential backoff (at-least-once) — handlers must be
+  // idempotent.
+  RETRY_POLICY_RETRY = 1;
+}

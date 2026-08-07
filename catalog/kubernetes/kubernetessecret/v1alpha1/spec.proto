@@ -1,0 +1,237 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetessecret.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+/**
+ * **KubernetesSecretSpec** defines the configuration for creating and managing a Kubernetes Secret.
+ * This spec implements a "Secret-as-a-Service" pattern, providing type-safe configuration for all
+ * standard Kubernetes secret types while keeping values as plain strings matching the Kubernetes API.
+ * It is the confidential mirror of KubernetesConfigMap.
+ *
+ * The type-safe oneof design ensures that exactly one secret type is configured per resource,
+ * with type-specific fields and validations for each variant. Every standard secret type is
+ * expressible: Opaque (with UTF-8 and binary entries), TLS, docker-registry, basic-auth,
+ * ssh-auth, and service-account-token.
+ */
+message KubernetesSecretSpec {
+  /**
+   * The name of the Kubernetes Secret.
+   * Must be a valid DNS subdomain name (lowercase alphanumeric, hyphens, and dots).
+   */
+  string name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "name.dns_subdomain"
+      message: "Name must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)"
+      expression: "this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * The namespace in which the Secret is created. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource, so an infra chart can create the namespace
+   * and the Secret in one run. When omitted, the Secret lands in the cluster's `default`
+   * namespace — the same behavior as kubectl without a namespace flag.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * Additional labels to apply to the secret.
+   * These are merged with standard Planton labels for resource tracking and governance.
+   */
+  map<string, string> labels = 4;
+
+  /**
+   * Additional annotations to apply to the secret.
+   */
+  map<string, string> annotations = 5;
+
+  /**
+   * When true, the secret data cannot be updated after creation.
+   * Immutable secrets provide protection against accidental updates and
+   * improve cluster performance by reducing watch load on the API server.
+   */
+  bool immutable = 6;
+
+  /**
+   * Type-safe secret data. Exactly one variant must be provided.
+   * The variant determines the Kubernetes secret type and required fields.
+   */
+  oneof secret_data {
+    // Opaque secret with arbitrary key-value string data.
+    // Maps to Kubernetes secret type "Opaque".
+    KubernetesSecretOpaqueData opaque = 7;
+
+    // TLS secret containing a certificate and private key.
+    // Maps to Kubernetes secret type "kubernetes.io/tls".
+    KubernetesSecretTlsData tls = 8;
+
+    // Docker registry credentials for image pulls.
+    // Maps to Kubernetes secret type "kubernetes.io/dockerconfigjson".
+    KubernetesSecretDockerConfigJsonData docker_config_json = 9;
+
+    // Basic authentication credentials (username/password).
+    // Maps to Kubernetes secret type "kubernetes.io/basic-auth".
+    KubernetesSecretBasicAuthData basic_auth = 10;
+
+    // SSH authentication credentials (private key).
+    // Maps to Kubernetes secret type "kubernetes.io/ssh-auth".
+    KubernetesSecretSshAuthData ssh_auth = 11;
+
+    // Long-lived API token bound to a ServiceAccount, populated by the cluster's
+    // token controller. Maps to Kubernetes secret type "kubernetes.io/service-account-token".
+    KubernetesSecretServiceAccountTokenData service_account_token = 12;
+  }
+
+  // Message-level validation: exactly one secret_data variant must be set
+  option (buf.validate.message).cel = {
+    id: "secret_data_required"
+    message: "Exactly one secret data type must be provided (opaque, tls, docker_config_json, basic_auth, ssh_auth, or service_account_token)"
+    expression: "has(this.opaque) || has(this.tls) || has(this.docker_config_json) || has(this.basic_auth) || has(this.ssh_auth) || has(this.service_account_token)"
+  };
+}
+
+/**
+ * **KubernetesSecretOpaqueData** defines data for an Opaque secret.
+ * This is the most common secret type, used for arbitrary key-value pairs.
+ */
+message KubernetesSecretOpaqueData {
+  /**
+   * Key-value pairs of secret data.
+   * Values are plain strings (Kubernetes stringData semantics); Kubernetes stores them
+   * base64-encoded at rest. Use `binary_data` for values that are not valid UTF-8.
+   */
+  map<string, string> data = 1;
+
+  /**
+   * Binary secret entries with base64-encoded values — the exact wire form the Kubernetes
+   * API uses for `data` in YAML manifests. Use this for payloads that are not valid UTF-8
+   * (keystores, certificates in binary form, serialized blobs). Keys must not overlap with
+   * `data` keys: both maps merge into the same underlying Secret data.
+   */
+  map<string, string> binary_data = 2 [
+    (buf.validate.field).map.keys.string.max_len = 253,
+    (buf.validate.field).map.keys.string.pattern = "^[-._a-zA-Z0-9]+$",
+    (buf.validate.field).map.values.string.pattern = "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+  ];
+
+  // An Opaque secret with no entries at all stores nothing.
+  option (buf.validate.message).cel = {
+    id: "opaque_data_required"
+    message: "at least one entry is required in data or binary_data"
+    expression: "this.data.size() > 0 || this.binary_data.size() > 0"
+  };
+
+  // A key may live in data OR binary_data, never both — they merge into one Secret data map.
+  option (buf.validate.message).cel = {
+    id: "data_keys_no_overlap"
+    message: "data and binary_data must not contain the same key"
+    expression: "this.data.all(k, !(k in this.binary_data))"
+  };
+}
+
+/**
+ * **KubernetesSecretTlsData** defines data for a TLS secret.
+ * Used for storing TLS certificates and private keys, commonly consumed by
+ * Ingress controllers and other TLS-terminating services.
+ */
+message KubernetesSecretTlsData {
+  /**
+   * PEM-encoded TLS certificate (or certificate chain).
+   * Stored as the "tls.crt" key in the Kubernetes Secret.
+   */
+  string tls_crt = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * PEM-encoded TLS private key.
+   * Stored as the "tls.key" key in the Kubernetes Secret.
+   */
+  string tls_key = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+/**
+ * **KubernetesSecretDockerConfigJsonData** defines data for a Docker registry secret.
+ * Used for authenticating with container registries during image pulls.
+ * The IaC module constructs the .dockerconfigjson JSON from these fields.
+ */
+message KubernetesSecretDockerConfigJsonData {
+  /**
+   * Docker registry server URL (e.g., "https://index.docker.io/v1/", "gcr.io", "ghcr.io").
+   */
+  string registry_server = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Username for registry authentication.
+   */
+  string username = 2 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Password or access token for registry authentication.
+   */
+  string password = 3 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Optional email associated with the registry account.
+   */
+  string email = 4;
+}
+
+/**
+ * **KubernetesSecretBasicAuthData** defines data for a basic authentication secret.
+ * Used for services that require username/password authentication.
+ */
+message KubernetesSecretBasicAuthData {
+  /**
+   * Username for basic authentication.
+   * Stored as the "username" key in the Kubernetes Secret.
+   */
+  string username = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Password for basic authentication.
+   * Stored as the "password" key in the Kubernetes Secret.
+   */
+  string password = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+/**
+ * **KubernetesSecretSshAuthData** defines data for an SSH authentication secret.
+ * Used for Git operations, SSH tunneling, and other SSH-based authentication.
+ */
+message KubernetesSecretSshAuthData {
+  /**
+   * PEM-encoded SSH private key.
+   * Stored as the "ssh-privatekey" key in the Kubernetes Secret.
+   */
+  string ssh_private_key = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+/**
+ * **KubernetesSecretServiceAccountTokenData** requests a long-lived API token for a
+ * ServiceAccount. The secret carries no data of its own: the cluster's token controller
+ * populates the "token", "ca.crt", and "namespace" keys after creation. Kubernetes has
+ * favored short-lived projected tokens since v1.24, so reserve this type for integrations
+ * that genuinely need a non-expiring token (external systems polling the API, legacy
+ * clients that cannot refresh).
+ */
+message KubernetesSecretServiceAccountTokenData {
+  /**
+   * The name of the ServiceAccount the token authenticates as. Applied as the
+   * "kubernetes.io/service-account.name" annotation; the ServiceAccount must exist in the
+   * same namespace as the Secret. Accepts a literal name or a reference to a
+   * KubernetesServiceAccount resource, so a chart can create the identity and its
+   * long-lived token in one run.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+}

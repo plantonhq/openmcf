@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awstransitgateway.v1alpha1;
+
+import "catalog/aws/awstransitgateway/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsTransitGatewayStackInput provides the inputs to the IaC modules
+// (Pulumi or Terraform) that provision the Transit Gateway and its
+// VPC attachments.
+message AwsTransitGatewayStackInput {
+  // target cloud-resource
+  AwsTransitGateway target = 1;
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

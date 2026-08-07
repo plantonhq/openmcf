@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpvpcnetwork.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// Allowed values for VPC dynamic routing mode.
+enum GcpVpcNetworkRoutingMode {
+  REGIONAL = 0;
+  GLOBAL = 1;
+}
+
+// BGP best-path selection settings for the VPC network. All fields are
+// mutable in the provider — tightening routing policy applies network-wide.
+message GcpVpcNetworkBgpBestPathSelection {
+  // The BGP best selection algorithm: LEGACY (default) or STANDARD.
+  string mode = 1 [(buf.validate.field).cel = {
+    id: "valid_bgp_mode"
+    message: "mode must be LEGACY or STANDARD"
+    expression: "this == '' || this in ['LEGACY', 'STANDARD']"
+  }];
+
+  // When mode is STANDARD, enables comparison of MED across routes with
+  // different neighbor ASNs.
+  bool always_compare_med = 2;
+
+  // When mode is STANDARD, controls inter-regional cost behavior in the BPS
+  // algorithm: DEFAULT or ADD_COST_TO_MED.
+  string inter_region_cost = 3 [(buf.validate.field).cel = {
+    id: "valid_inter_region_cost"
+    message: "inter_region_cost must be DEFAULT or ADD_COST_TO_MED"
+    expression: "this == '' || this in ['DEFAULT', 'ADD_COST_TO_MED']"
+  }];
+}
+
+// GcpVpcNetworkSpec defines configuration for a Google Cloud VPC (Virtual Private Cloud).
+//
+// Private services access (Cloud SQL / AlloyDB / Memorystore private IP) is NOT
+// bundled here — compose GcpGlobalAddress (VPC_PEERING range) +
+// GcpServiceNetworkingConnection instead.
+message GcpVpcNetworkSpec {
+  // The GCP project that owns this VPC network.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable: changing it destroys and recreates the network.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Whether to use auto subnet mode (true) or custom subnet mode (false).
+  // **Default:** false (custom mode). Auto mode is not recommended for production.
+  bool auto_create_subnetworks = 2;
+
+  // Dynamic routing mode for the VPC's Cloud Routers: REGIONAL or GLOBAL.
+  // **Default:** REGIONAL (Cloud Router advertises routes only in one region).
+  // Use GLOBAL only for multi-region routing needs.
+  optional GcpVpcNetworkRoutingMode routing_mode = 3 [(dev.planton.shared.options.default) = "REGIONAL"];
+
+  // Name of the VPC network to create in GCP.
+  // Must be 1-63 characters, lowercase letters, numbers, or hyphens.
+  // Must start with a lowercase letter and end with a lowercase letter or number.
+  // Example: "my-vpc-network", "prod-network"
+  string network_name = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$"
+  ];
+
+  // Human-readable description of the network. Immutable: changing it
+  // destroys and recreates the network.
+  string description = 5 [(buf.validate.field).string.max_len = 2048];
+
+  // Maximum Transmission Unit in bytes (1300–8896). Default 1460.
+  // Jumbo frames (up to 8896) apply within the VPC; traffic to the internet
+  // or other VPCs may still be subject to lower effective MTUs.
+  optional int32 mtu = 6 [(buf.validate.field).int32 = {
+    gte: 1300
+    lte: 8896
+  }];
+
+  // Enable ULA internal IPv6 on this network. When true, GCP assigns a /48
+  // from the fd20::/20 ULA prefix (or uses internal_ipv6_range when set).
+  bool enable_ula_internal_ipv6 = 7;
+
+  // When enabling ULA internal IPv6, optionally specify the /48 range from
+  // fd20::/20. Immutable. If omitted, GCP allocates one automatically.
+  string internal_ipv6_range = 8;
+
+  // Order in which firewall policies and classic firewall rules are evaluated.
+  // Default AFTER_CLASSIC_FIREWALL.
+  string network_firewall_policy_enforcement_order = 9 [(buf.validate.field).cel = {
+    id: "valid_firewall_order"
+    message: "network_firewall_policy_enforcement_order must be BEFORE_CLASSIC_FIREWALL or AFTER_CLASSIC_FIREWALL"
+    expression: "this == '' || this in ['BEFORE_CLASSIC_FIREWALL', 'AFTER_CLASSIC_FIREWALL']"
+  }];
+
+  // Full or partial URL of a network profile to apply at creation time.
+  // Immutable.
+  string network_profile = 10;
+
+  // BGP best-path selection settings for the network.
+  GcpVpcNetworkBgpBestPathSelection bgp_best_path_selection = 11;
+
+  // When true, default routes (0.0.0.0/0) are not created automatically.
+  // Immutable.
+  bool delete_default_routes_on_create = 12;
+}

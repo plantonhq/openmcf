@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/buf/lint/optional-linter/rules",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/dev/planton/shared/options",
+        "//shared/options",
         "@build_buf_go_bufplugin//check:go_default_library",
         "@build_buf_go_bufplugin//check/checkutil:go_default_library",
         "@org_golang_google_protobuf//proto",

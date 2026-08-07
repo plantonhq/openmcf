@@ -1,0 +1,19 @@
+# The multi-instance coexistence proof: a SECOND controller deploys while
+# the first (the manifest-path fixture below) is live. Distinct namespaces,
+# distinct IngressClasses, distinct leader-election identities — all derived
+# from metadata.name by the module, so nothing collides. This is the
+# public + internal traffic-split pattern.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesIngressNginx
+metadata:
+  name: e2e-ingx-second
+  annotations:
+    planton.dev/e2e-prerequisites: "catalog/kubernetes/kubernetesingressnginx/v1alpha1/e2e/fixture-first-controller.yaml"
+spec:
+  namespace:
+    value: e2e-ingx-second-ns
+  createNamespace: true
+  ingressClass:
+    name: e2e-nginx-b
+  service:
+    type: node_port

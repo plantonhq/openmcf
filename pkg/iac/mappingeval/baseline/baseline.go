@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	proposalv1 "github.com/plantonhq/planton/apis/dev/planton/iac/importmappingproposal/v1"
+	proposalv1 "github.com/plantonhq/planton/iac/importmappingproposal/v1"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/iac/envpartition"
 	"github.com/plantonhq/planton/pkg/iac/envpartition/awsscan"

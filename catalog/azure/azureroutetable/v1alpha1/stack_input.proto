@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureroutetable.v1alpha1;
+
+import "catalog/azure/azureroutetable/v1alpha1/api.proto";
+import "catalog/azure/provider.proto";
+
+// AzureRouteTableStackInput is the input to the IaC modules (Pulumi/Terraform).
+// It contains the target resource definition and Azure provider credentials.
+message AzureRouteTableStackInput {
+  // The route table resource to deploy.
+  AzureRouteTable target = 1;
+
+  // Azure provider configuration (credentials).
+  dev.planton.azure.AzureProviderConfig provider_config = 2;
+}

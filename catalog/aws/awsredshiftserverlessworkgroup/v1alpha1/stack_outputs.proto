@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1;
+
+// AwsRedshiftServerlessWorkgroupStackOutputs captures the observable
+// identifiers and connection endpoint of the workgroup after deployment.
+message AwsRedshiftServerlessWorkgroupStackOutputs {
+  // The workgroup name -- the handle the Redshift Serverless APIs, the
+  // credentials API (GetCredentials), and custom domain associations
+  // address the workgroup by.
+  string workgroup_name = 1;
+
+  // The unique identifier AWS assigns to the workgroup.
+  string workgroup_id = 2;
+
+  // The Amazon Resource Name of the workgroup, for IAM policies and
+  // usage limits.
+  string arn = 3;
+
+  // The DNS hostname SQL clients connect to.
+  string endpoint_address = 4;
+
+  // The port the workgroup accepts connections on.
+  int32 port = 5;
+}

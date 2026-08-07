@@ -1,0 +1,297 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpbackendbucket.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpBackendBucketSpec defines a Compute Engine backend bucket — the piece
+// that serves a Cloud Storage bucket's objects through an external HTTP(S)
+// load balancer, optionally cached at Google's edge by Cloud CDN. It is the
+// static-content counterpart of a backend service: URL maps route paths like
+// /assets/* to a backend bucket while dynamic paths go to backend services.
+//
+// The backend bucket is deliberately a separate node from the bucket itself:
+// one GCS bucket can sit behind several backend buckets with different CDN
+// policies, and swapping the origin bucket is an in-place update that leaves
+// the URL map untouched.
+//
+// CDN behavior is a policy ON this resource, not a separate GCP object —
+// enable_cdn turns caching on and cdn_policy tunes how responses are cached,
+// keyed, and invalidated.
+message GcpBackendBucketSpec {
+  // The GCP project that owns the backend bucket (which may differ from the
+  // project owning the GCS bucket — cross-project origins are valid).
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable: changing it destroys and recreates the backend bucket.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Name of the backend bucket in GCP. Must be 1-63 characters: lowercase
+  // letters, digits, and hyphens; must start with a letter and end with a
+  // letter or digit. If not specified, defaults to metadata.name.
+  // Immutable: changing it destroys and recreates the backend bucket,
+  // briefly breaking every URL map that references the old self_link.
+  string backend_bucket_name = 2 [(buf.validate.field).cel = {
+    id: "valid_backend_bucket_name"
+    message: "backend_bucket_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')"
+  }];
+
+  // The Cloud Storage bucket whose objects are served — the origin.
+  // Reference a GcpGcsBucket resource or provide the bucket name directly.
+  // Mutable: pointing at a different bucket is an in-place update, which
+  // makes origin swaps (e.g. blue/green static releases) cheap.
+  // Objects must be publicly readable (or served via signed URLs/cookies) —
+  // the load balancer does not authenticate to the bucket.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_name = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpGcsBucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // What this backend bucket serves and which URL maps use it — write it for
+  // the operator tracing a route later. Mutable.
+  string description = 4 [(buf.validate.field).string.max_len = 2048];
+
+  // Cache responses at Google's edge with Cloud CDN. Off by default: without
+  // it every request is proxied to the bucket. Turning it on activates
+  // cdn_policy (or sensible CDN defaults when cdn_policy is omitted).
+  // Cannot be enabled together with load_balancing_scheme INTERNAL_MANAGED —
+  // Cloud CDN only fronts external load balancers. Mutable.
+  bool enable_cdn = 5;
+
+  // How Cloud CDN caches responses from this origin. Only meaningful with
+  // enable_cdn — GCP ignores the policy while CDN is off.
+  GcpBackendBucketCdnPolicy cdn_policy = 6;
+
+  // Whether the load balancer compresses responses (gzip/brotli) for clients
+  // that ask for it. AUTOMATIC compresses compressible content types;
+  // DISABLED (the GCP default when unset) never compresses. Compression is
+  // applied by the load balancer, not the bucket — objects stay uncompressed
+  // at the origin. Mutable.
+  string compression_mode = 7 [(buf.validate.field).cel = {
+    id: "valid_compression_mode"
+    message: "compression_mode must be AUTOMATIC or DISABLED"
+    expression: "this == '' || this in ['AUTOMATIC', 'DISABLED']"
+  }];
+
+  // Response headers the load balancer adds to every response served from
+  // this backend, in "Header-Name: value" form. Values may use variables
+  // like {cdn_cache_status}. Typical uses: security headers
+  // (Strict-Transport-Security) and cache observability
+  // (X-Cache-Status: {cdn_cache_status}). Mutable.
+  repeated string custom_response_headers = 8 [
+    (buf.validate.field).repeated.max_items = 25,
+    (buf.validate.field).repeated.items.string.pattern = "^[^:]+:.*$"
+  ];
+
+  // Cloud Armor EDGE security policy filtering requests before they reach
+  // the cache or the origin (rate limiting and geo/IP blocking at the edge).
+  // Reference a GcpCloudArmorPolicy of type CLOUD_ARMOR_EDGE — standard
+  // backend policies are not valid here. Mutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef edge_security_policy = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpCloudArmorPolicy,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.policy_self_link"
+  ];
+
+  // Which load balancer family this backend serves. Leave unset for global
+  // EXTERNAL HTTP(S) load balancers — the overwhelmingly common case for
+  // static content. INTERNAL_MANAGED serves cross-region internal
+  // Application Load Balancers instead, and is incompatible with Cloud CDN.
+  // Immutable: changing it destroys and recreates the backend bucket.
+  string load_balancing_scheme = 10 [(buf.validate.field).cel = {
+    id: "valid_load_balancing_scheme"
+    message: "load_balancing_scheme must be INTERNAL_MANAGED, or left unset for external load balancers"
+    expression: "this == '' || this == 'INTERNAL_MANAGED'"
+  }];
+
+  // Keys for signing Cloud CDN signed URLs and signed cookies — the
+  // mechanism for serving private content from the cache with expiring,
+  // tamper-proof links. GCP allows at most 3 keys per backend bucket so one
+  // can be rotated while another stays live. Each key's material is a
+  // secret; rotate by adding a new key, re-signing URLs, then removing the
+  // old one.
+  repeated GcpBackendBucketSignedUrlKey signed_url_keys = 11 [(buf.validate.field).repeated.max_items = 3];
+
+  option (buf.validate.message).cel = {
+    id: "cdn_requires_external_scheme"
+    message: "Cloud CDN cannot be enabled on an INTERNAL_MANAGED backend bucket — CDN only fronts external load balancers"
+    expression: "!this.enable_cdn || this.load_balancing_scheme != 'INTERNAL_MANAGED'"
+  };
+}
+
+// How Cloud CDN caches responses from this backend bucket. TTLs are only
+// respected in cache modes that use them; GCP applies its own defaults for
+// any field left unset (cache_mode CACHE_ALL_STATIC, client/default TTL
+// 3600s, max TTL 86400s).
+message GcpBackendBucketCdnPolicy {
+  // What gets cached. CACHE_ALL_STATIC (the GCP default) caches static
+  // content types and honors origin cache headers for the rest;
+  // USE_ORIGIN_HEADERS caches only what the origin explicitly marks
+  // cacheable (TTL fields must be unset — the origin controls lifetimes);
+  // FORCE_CACHE_ALL caches everything, ignoring origin headers (never
+  // combine with private or per-user content; max_ttl must be unset).
+  string cache_mode = 1 [(buf.validate.field).cel = {
+    id: "valid_cache_mode"
+    message: "cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL"
+    expression: "this == '' || this in ['CACHE_ALL_STATIC', 'USE_ORIGIN_HEADERS', 'FORCE_CACHE_ALL']"
+  }];
+
+  // Seconds a response may be cached by browsers and other downstream
+  // caches (sets the max-age clients see; GCP default 3600, max 86400).
+  // Keep it shorter than default_ttl so edge caches revalidate before
+  // clients do.
+  int32 client_ttl = 2 [(buf.validate.field).cel = {
+    id: "valid_client_ttl"
+    message: "client_ttl must be between 0 and 86400 seconds (1 day)"
+    expression: "this >= 0 && this <= 86400"
+  }];
+
+  // Seconds the edge caches a response when the origin sets no caching
+  // headers (GCP default 3600, max 31622400 = 1 year). The workhorse TTL
+  // for CACHE_ALL_STATIC and FORCE_CACHE_ALL.
+  int32 default_ttl = 3 [(buf.validate.field).cel = {
+    id: "valid_default_ttl"
+    message: "default_ttl must be between 0 and 31622400 seconds (1 year)"
+    expression: "this >= 0 && this <= 31622400"
+  }];
+
+  // Upper bound in seconds on any cache lifetime, capping even origin
+  // headers that ask for longer (GCP default 86400, max 31622400). Not
+  // allowed with USE_ORIGIN_HEADERS or FORCE_CACHE_ALL cache modes.
+  int32 max_ttl = 4 [(buf.validate.field).cel = {
+    id: "valid_max_ttl"
+    message: "max_ttl must be between 0 and 31622400 seconds (1 year)"
+    expression: "this >= 0 && this <= 31622400"
+  }];
+
+  // Cache error responses (404s, redirects) at the edge so failing paths do
+  // not hammer the origin. Pair with negative_caching_policy to set
+  // per-status TTLs; without it GCP applies default lifetimes.
+  bool negative_caching = 5;
+
+  // Per-status-code TTLs for negative caching. Only effective with
+  // negative_caching enabled. Codes limited by GCP to 300, 301, 308, 404,
+  // 405, 410, 421, 451, and 501.
+  repeated GcpBackendBucketNegativeCachingPolicy negative_caching_policy = 6;
+
+  // Seconds the edge may keep serving a stale response while it revalidates
+  // with the origin in the background (max 86400; 0 disables). Smooths over
+  // brief origin outages for content that tolerates slight staleness.
+  int32 serve_while_stale = 7 [(buf.validate.field).cel = {
+    id: "valid_serve_while_stale"
+    message: "serve_while_stale must be between 0 and 86400 seconds (1 day)"
+    expression: "this >= 0 && this <= 86400"
+  }];
+
+  // Collapse concurrent cache-miss requests for the same object into one
+  // origin fetch. Protects the origin from thundering herds on cache
+  // expiry of popular objects.
+  bool request_coalescing = 8;
+
+  // Seconds a response to a SIGNED request stays fresh in the cache before
+  // revalidation (max 86400). Only meaningful with signed URLs or cookies;
+  // after this window the edge revalidates, though the signature's own
+  // expiry still governs access.
+  int32 signed_url_cache_max_age_sec = 9 [(buf.validate.field).cel = {
+    id: "valid_signed_url_cache_max_age"
+    message: "signed_url_cache_max_age_sec must be between 0 and 86400 seconds (1 day)"
+    expression: "this >= 0 && this <= 86400"
+  }];
+
+  // What forms the cache key beyond the URL host and path. Leave unset to
+  // ignore query strings and headers entirely — the best hit rate for
+  // immutable, fingerprinted assets.
+  GcpBackendBucketCacheKeyPolicy cache_key_policy = 10;
+
+  // Skip the cache entirely for requests carrying any of these headers
+  // (at most 5) — an escape hatch for debugging or per-request freshness
+  // (e.g. a Pragma: no-cache internal tooling header).
+  repeated GcpBackendBucketBypassCacheOnRequestHeader bypass_cache_on_request_headers = 11 [(buf.validate.field).repeated.max_items = 5];
+
+  option (buf.validate.message).cel = {
+    id: "origin_headers_mode_forbids_ttls"
+    message: "with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)"
+    expression: "this.cache_mode != 'USE_ORIGIN_HEADERS' || (this.client_ttl == 0 && this.default_ttl == 0 && this.max_ttl == 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "force_cache_all_forbids_max_ttl"
+    message: "with cache_mode FORCE_CACHE_ALL every response is cached for default_ttl — remove max_ttl (GCP would silently ignore it)"
+    expression: "this.cache_mode != 'FORCE_CACHE_ALL' || this.max_ttl == 0"
+  };
+}
+
+// TTL override for one negative (error/redirect) status code.
+message GcpBackendBucketNegativeCachingPolicy {
+  // The HTTP status code to cache. GCP supports 300, 301, 308, 404, 405,
+  // 410, 421, 451, and 501.
+  int32 code = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_negative_caching_code"
+      message: "code must be one of 300, 301, 308, 404, 405, 410, 421, 451, or 501 — the status codes Cloud CDN can negative-cache"
+      expression: "this in [300, 301, 308, 404, 405, 410, 421, 451, 501]"
+    }
+  ];
+
+  // Seconds responses with this status are cached at the edge
+  // (0 to 1800 = 30 minutes).
+  int32 ttl = 2 [(buf.validate.field).cel = {
+    id: "valid_negative_caching_ttl"
+    message: "ttl must be between 0 and 1800 seconds (30 minutes)"
+    expression: "this >= 0 && this <= 1800"
+  }];
+}
+
+// Which request attributes join the URL in the cache key. Narrower keys
+// mean better hit rates; wider keys prevent serving one variant to clients
+// that requested another.
+message GcpBackendBucketCacheKeyPolicy {
+  // Query parameters included in the cache key (all others are ignored).
+  // Include only parameters that genuinely change the response — e.g. an
+  // image resizer's "w" and "h" — so equivalent requests share a cache
+  // entry.
+  repeated string query_string_whitelist = 1 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Request headers whose values join the cache key — for origins that vary
+  // responses by header (e.g. Accept for image format negotiation). Each
+  // distinct value creates a separate cache entry, so keep this list short.
+  repeated string include_http_headers = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+}
+
+// One request header whose presence bypasses the CDN cache.
+message GcpBackendBucketBypassCacheOnRequestHeader {
+  // The header name to match (case-insensitive); any value triggers the
+  // bypass.
+  string header_name = 1 [(buf.validate.field).required = true];
+}
+
+// One named key for Cloud CDN signed URLs and signed cookies.
+message GcpBackendBucketSignedUrlKey {
+  // Name of the key, referenced by the key_name parameter of signed URLs.
+  // Must be 1-63 characters: lowercase letters, digits, and hyphens; must
+  // start with a letter and end with a letter or digit. Immutable: renaming
+  // replaces the key, invalidating URLs signed with the old name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$"
+  ];
+
+  // The 128-bit signing key, base64url-encoded (RFC 4648 §5) — generate one
+  // with: head -c 16 /dev/urandom | base64 | tr '+/' '-_'. 22 characters of
+  // base64url, with or without the trailing == padding. Anyone holding this
+  // value can mint valid signed URLs, so it is handled as a secret.
+  // Immutable per key name: rotating means adding a new key and removing
+  // the old.
+  string key_value = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9_-]{22}(==)?$",
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}

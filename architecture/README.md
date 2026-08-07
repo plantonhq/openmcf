@@ -1091,7 +1091,7 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 
 5. **Local Testing**
    ```bash
-   cd apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/iac/pulumi
+   cd catalog/atlas/mongodbatlas/v1alpha1/iac/pulumi
    planton pulumi update --manifest ../hack/manifest.yaml --module-dir .
    ```
    - Test Pulumi module locally (the CLI builds the stack input and drives the module)
@@ -1117,7 +1117,7 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 
 ```bash
 # 1. Edit spec.proto
-vim apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/spec.proto
+vim catalog/atlas/mongodbatlas/v1alpha1/spec.proto
 
 # 2. Add field with validation
 # message Spec {
@@ -1232,7 +1232,7 @@ git push origin main
 ```bash
 # Start from the default module
 git clone https://github.com/plantonhq/planton
-cp -R planton/apis/dev/planton/provider/aws/awsrdsinstance/*/iac/tf my-rds-module
+cp -R planton/catalog/aws/awsrdsinstance/*/iac/tf my-rds-module
 cd my-rds-module
 # Edit to add organizational defaults, then version it in your own repository
 
@@ -1270,7 +1270,7 @@ derives the module directory for the manifest's kind from the tree.
 **Example (Python):**
 
 ```python
-from planton.apis.dev.planton.provider.kubernetes.workload.postgreskubernetes.v1 import api_pb2
+from planton.apis.dev.planton.kubernetes.workload.postgreskubernetes.v1 import api_pb2
 import yaml
 import subprocess
 
@@ -1545,7 +1545,7 @@ planton version
 
 Test validation rules:
 ```bash
-cd apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1
+cd catalog/atlas/mongodbatlas/v1alpha1
 go test -v
 ```
 
@@ -1553,7 +1553,7 @@ go test -v
 
 Test IaC modules locally:
 ```bash
-cd apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/iac/pulumi
+cd catalog/atlas/mongodbatlas/v1alpha1/iac/pulumi
 planton pulumi preview --manifest ../hack/manifest.yaml --module-dir .
 ```
 
@@ -1574,7 +1574,7 @@ planton pulumi destroy --manifest test.yaml --stack test
 - Lifecycle operation READMEs (`_rules/deployment-component/*/README.md`)
 
 **Examples:**
-- Browse complete components (`apis/dev/planton/provider/`)
+- Browse complete components (`catalog/`)
 - Run audit on gold-standard components
 - Compare incomplete vs complete components
 
@@ -1631,7 +1631,7 @@ planton version
 ```
 
 **Next Steps:**
-- Browse deployment components in `apis/dev/planton/provider/`
+- Browse deployment components in `catalog/`
 - Read lifecycle management guides in `_rules/deployment-component/`
 - Try deploying a component locally
 - Contribute new components or improvements

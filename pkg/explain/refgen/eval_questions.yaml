@@ -21,7 +21,7 @@
 #     (reference.md or GUIDE.md).
 #   - `provider`: that provider's reference-index.md.
 #   - `catalog`: a catalog-level file relative to the provider root
-#     (reference-graph.yaml, reference-commons.md, GUIDE.md, patterns/*).
+#     (_docs/reference-graph.yaml, _docs/reference-commons.md, _docs/GUIDE.md, _patterns/*).
 #   - Patterns are RE2 regexes matched against the whole file.
 #   - Pin checks to durable facts (spec fields, enums, outputs, graph
 #     edges, grammar, judgment statements) -- never to counts or coverage
@@ -153,9 +153,9 @@ questions:
       AwsInternetGateway.spec.vpcId, and AwsEgressOnlyInternetGateway
       .spec.vpcId -- all reading status.outputs.vpc_id.
     checks:
-      - catalog: reference-graph.yaml
+      - catalog: _docs/reference-graph.yaml
         pattern: 'from: "AwsInternetGateway"\n    field: "spec\.vpcId"\n    to: "AwsVpc"'
-      - catalog: reference-graph.yaml
+      - catalog: _docs/reference-graph.yaml
         pattern: 'from: "AwsClientVpn"\n    field: "spec\.vpcId"\n    to: "AwsVpc"'
 
   - id: q09
@@ -170,7 +170,7 @@ questions:
       alternatives map carries the row; the kind's own guide carries the
       "Substitutes for: Redis" line.)
     checks:
-      - catalog: GUIDE.md
+      - catalog: _docs/GUIDE.md
         pattern: '\| Redis \| KubernetesValkey \|'
       - kind: KubernetesValkey
         file: GUIDE.md
@@ -203,9 +203,9 @@ questions:
       namespace in its IaC state and teardown/ownership breaks for the
       rest -- the namespace-ownership pattern carries the judgment.
     checks:
-      - catalog: patterns/namespace-ownership.md
+      - catalog: _patterns/namespace-ownership.md
         pattern: 'createNamespace'
-      - catalog: patterns/namespace-ownership.md
+      - catalog: _patterns/namespace-ownership.md
         pattern: '(?i)who owns the namespace'
 
   - id: q12
@@ -219,7 +219,7 @@ questions:
       operator-prerequisite pattern states this and the three watch
       postures.
     checks:
-      - catalog: patterns/operator-prerequisite.md
+      - catalog: _patterns/operator-prerequisite.md
         pattern: 'draws NO edge on the architecture diagram'
 
   - id: q13
@@ -234,9 +234,9 @@ questions:
       in manifest YAML stay camelCase -- the commons page states the
       asymmetry.
     checks:
-      - catalog: reference-commons.md
+      - catalog: _docs/reference-commons.md
         pattern: '\*\*fieldPath strings are snake_case\*\*'
-      - catalog: reference-commons.md
+      - catalog: _docs/reference-commons.md
         pattern: 'asymmetry'
 
   - id: q14

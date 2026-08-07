@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.alicloud.alicloudcontainerregistry.v1alpha1;
+
+import "catalog/alicloud/alicloudcontainerregistry/v1alpha1/api.proto";
+import "catalog/alicloud/provider.proto";
+
+// alicloud-container-registry stack-input
+message AliCloudContainerRegistryStackInput {
+  // target cloud-resource
+  AliCloudContainerRegistry target = 1;
+  // provider-config
+  dev.planton.alicloud.AliCloudProviderConfig provider_config = 2;
+}

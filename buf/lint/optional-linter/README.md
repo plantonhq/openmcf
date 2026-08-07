@@ -46,7 +46,7 @@ message Example {
 
 ## Installation
 
-The plugin is automatically built and used when you run `make protos` in the `apis/` directory.
+The plugin is automatically built and used when you run `make protos` at the repo root.
 
 ### Manual Installation
 
@@ -59,7 +59,7 @@ make build
 
 ## Usage
 
-The plugin is automatically configured in `apis/buf.yaml` and runs as part of `buf lint`:
+The plugin is automatically configured in the repo root `buf.yaml` and runs as part of `buf lint`:
 
 ```yaml
 version: v2
@@ -74,8 +74,7 @@ plugins:
 ### Running Lint
 
 ```bash
-cd apis
-make lint
+make buf-lint
 ```
 
 This will:
@@ -137,7 +136,7 @@ To add a new custom lint rule:
    })
    ```
 
-4. Add the rule ID to `apis/buf.yaml` under `lint.use`:
+4. Add the rule ID to the repo root `buf.yaml` under `lint.use`:
    ```yaml
    lint:
      use:
@@ -166,8 +165,7 @@ make build-wasm   # WebAssembly binary for BSR
 The plugin is tested by running it against the actual proto files in the repository:
 
 ```bash
-cd apis
-make lint
+make buf-lint
 ```
 
 All existing proto files should pass validation (no violations).

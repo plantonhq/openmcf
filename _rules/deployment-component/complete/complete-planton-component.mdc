@@ -108,9 +108,9 @@ Phase 3: Enhance Presets
 
 Phase 4: Final Validation
 [11/14] ✅ Proto stubs regenerated (make protos)
-[12/14] ✅ Component tests passed (go test ./apis/.../v1/)
-[13/14] ✅ Build validation passed (go build ./apis/.../v1/...)
-[14/14] ✅ Component tests passed (go test -v ./apis/.../v1/)
+[12/14] ✅ Component tests passed (go test ./catalog/.../v1/)
+[13/14] ✅ Build validation passed (go build ./catalog/.../v1/...)
+[14/14] ✅ Component tests passed (go test -v ./catalog/.../v1/)
 ```
 
 **What Gets Created:**
@@ -128,11 +128,11 @@ The update --fill-gaps scenario will run appropriate forge flow rules to create:
 **Validation (Execute in Sequence):**
 - After proto file creation/changes: Run `make protos` to regenerate Go stubs
 - After each creation: Validate builds and tests pass
-- Run component-specific tests: `go test ./apis/dev/planton/provider/<provider>/<component>/v1/`
+- Run component-specific tests: `go test ./catalog/<provider>/<component>/v1/`
   - Validates buf.validate rules in spec.proto are correct
   - Validates spec_test.go tests pass with current validation logic
-- After Pulumi/Go code changes: Run `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` to validate complete build
-- Run full test suite: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` to validate all tests pass
+- After Pulumi/Go code changes: Run `go build ./catalog/<provider>/<component>/v1/...` to validate complete build
+- Run full test suite: `go test -v ./catalog/<provider>/<component>/v1/` to validate all tests pass
 - Retries up to 3 times on fixable errors
 - Reports progress in real-time
 
@@ -442,8 +442,8 @@ Updates Applied Successfully:
   ✅ Examples enhanced
 
 Validation Results:
-  ✅ Build passed (go build ./apis/.../v1/...)
-  ❌ Tests failed (go test -v ./apis/.../v1/)
+  ✅ Build passed (go build ./catalog/.../v1/...)
+  ❌ Tests failed (go test -v ./catalog/.../v1/)
 
 Test Failures:
   1. spec_test.go:45 - Validation test failed
@@ -667,8 +667,8 @@ Phase 2: Documentation
 Phase 3: Validation
   [10/13] ✅ Proto stubs regenerated (make protos)
   [11/13] ✅ Component tests passed (spec_test.go)
-  [12/13] ✅ Build passed (go build ./apis/.../v1/...)
-  [13/13] ✅ Component tests passed (go test -v ./apis/.../v1/)
+  [12/13] ✅ Build passed (go build ./catalog/.../v1/...)
+  [13/13] ✅ Component tests passed (go test -v ./catalog/.../v1/)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -771,14 +771,14 @@ After complete finishes successfully:
 ✅ All important gaps filled (unless target <95%)
 ✅ spec_test.go exists with validation tests
 ✅ Proto stubs regenerated if proto files changed (`make protos`)
-✅ Component tests execute and pass (`go test ./apis/.../v1/`)
-✅ Build validation passed (`go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`)
-✅ Full test suite passed (`go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`)
+✅ Component tests execute and pass (`go test ./catalog/.../v1/`)
+✅ Build validation passed (`go build ./catalog/<provider>/<component>/v1/...`)
+✅ Full test suite passed (`go test -v ./catalog/<provider>/<component>/v1/`)
 ✅ Two audit reports generated (before/after)
 ✅ Summary report shows improvement
 ✅ Files ready to commit
 
-**Critical:** All validation steps must pass for component to be considered complete. The complete operation executes `make protos`, component tests, `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`, and `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` as part of the validation workflow.
+**Critical:** All validation steps must pass for component to be considered complete. The complete operation executes `make protos`, component tests, `go build ./catalog/<provider>/<component>/v1/...`, and `go test -v ./catalog/<provider>/<component>/v1/` as part of the validation workflow.
 
 ## Examples
 

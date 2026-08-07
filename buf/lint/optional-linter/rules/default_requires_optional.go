@@ -6,7 +6,7 @@ import (
 
 	"buf.build/go/bufplugin/check"
 	"buf.build/go/bufplugin/check/checkutil"
-	options_pb "github.com/plantonhq/planton/apis/dev/planton/shared/options"
+	options_pb "github.com/plantonhq/planton/shared/options"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"

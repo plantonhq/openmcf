@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	rulev1 "github.com/plantonhq/planton/apis/dev/planton/iac/environmentpartitionrule/v1"
+	rulev1 "github.com/plantonhq/planton/iac/environmentpartitionrule/v1"
 )
 
 // testRule compiles a small vocabulary shaped like the default rule.

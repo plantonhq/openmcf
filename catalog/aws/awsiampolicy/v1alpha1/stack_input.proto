@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsiampolicy.v1alpha1;
+
+import "catalog/aws/awsiampolicy/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+//aws-iam-policy stack-input
+message AwsIamPolicyStackInput {
+  //target cloud-resource
+  AwsIamPolicy target = 1;
+  //provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

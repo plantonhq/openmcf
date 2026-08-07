@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecosmosdbmongodatabase.v1alpha1;
+
+// **AzureCosmosdbMongoDatabaseStackOutputs** captures the outputs of
+// provisioning a Cosmos DB MongoDB API database.
+//
+// No endpoint or credential outputs on purpose: connectivity and the
+// MongoDB connection strings live on the ACCOUNT (AzureCosmosdbAccount's
+// outputs); the database is addressed inside that connection by name.
+message AzureCosmosdbMongoDatabaseStackOutputs {
+  // The Azure Resource Manager ID of the database -- what
+  // AzureCosmosdbMongoCollection's mongo_database_id references, and
+  // the management-plane scope for database-level operations.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DocumentDB/databaseAccounts/{account}/mongodbDatabases/{name}
+  string mongo_database_id = 1;
+
+  // The database's name -- what MongoDB drivers reference inside the
+  // account's connection.
+  string mongo_database_name = 2;
+
+  // The name of the Cosmos DB account the database lives in, parsed
+  // from the resolved account ID -- saves consumers a second reference
+  // when they need the account/database pair.
+  string cosmosdb_account_name = 3;
+}

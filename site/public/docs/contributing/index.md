@@ -105,16 +105,16 @@ For faster iteration when working on a single component, run tests directly in t
 
 ```bash
 # Run proto validation tests for a specific component
-go test -v ./apis/dev/planton/provider/aws/awss3bucket/v1alpha1/...
+go test -v ./catalog/aws/awss3bucket/v1alpha1/...
 
 # Build check for a Pulumi module
-go build ./apis/dev/planton/provider/aws/awss3bucket/v1alpha1/iac/pulumi/...
+go build ./catalog/aws/awss3bucket/v1alpha1/iac/pulumi/...
 
 # Vet check
-go vet ./apis/dev/planton/provider/aws/awss3bucket/v1alpha1/iac/pulumi/...
+go vet ./catalog/aws/awss3bucket/v1alpha1/iac/pulumi/...
 
 # Validate a Terraform module
-cd apis/dev/planton/provider/aws/awss3bucket/v1alpha1/iac/tf
+cd catalog/aws/awss3bucket/v1alpha1/iac/tf
 terraform init && terraform validate
 ```
 

@@ -1,0 +1,30 @@
+# A minimal mirror: one source (the manifest-path source fixture) into
+# the target fixture. The storage replication-factor entries are "-1"
+# (broker default) because the engine's default of 3 cannot be satisfied
+# on the single-broker target. The source fixture deploys via the
+# manifest-path annotation — the registry chain provides the target.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKafkaMirrorMaker2
+metadata:
+  name: e2e-mm2-minimal
+  annotations:
+    planton.dev/e2e-prerequisites: "catalog/kubernetes/kuberneteskafkamirrormaker2/v1alpha1/e2e/fixtures/kafka-source.yaml"
+spec:
+  namespace:
+    value: e2e-kaf-fix
+  replicas: 1
+  target:
+    bootstrap_servers:
+      valueFrom:
+        name: e2e-kaf-fix
+    config:
+      config.storage.replication.factor: "-1"
+      offset.storage.replication.factor: "-1"
+      status.storage.replication.factor: "-1"
+  mirrors:
+    - source:
+        alias: src
+        bootstrap_servers:
+          valueFrom:
+            name: e2e-kaf-src
+      topics_pattern: "e2e-.*"

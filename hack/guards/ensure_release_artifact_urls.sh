@@ -65,7 +65,7 @@ echo "Probing release artifact URLs at tag: $tag"
 for entry in "${probe_components[@]}"; do
   provider="${entry%%/*}"
   component="${entry##*/}"
-  component_dir="apis/dev/planton/provider/${provider}/${component}"
+  component_dir="catalog/${provider}/${component}"
 
   if [ ! -d "$component_dir" ]; then
     echo "ERROR: component directory not found: $component_dir (update probe_components)" >&2

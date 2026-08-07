@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kuberneteskarapace.v1alpha1;
+
+import "catalog/kubernetes/kuberneteskarapace/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+//kubernetes-karapace stack-input
+message KubernetesKarapaceStackInput {
+  //target cloud-resource
+  KubernetesKarapace target = 1;
+  //provider-config
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

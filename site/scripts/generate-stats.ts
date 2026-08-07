@@ -5,8 +5,8 @@
  * copy can never drift into a stale hardcoded count.
  *
  * Reads (from the repo root):
- *   - apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto  -> component count (`(kind_meta)` annotations)
- *   - apis/dev/planton/provider/*                                          -> provider count
+ *   - shared/cloudresourcekind/cloud_resource_kind.proto  -> component count (`(kind_meta)` annotations)
+ *   - catalog/*                                          -> provider count
  *   - charts/<provider>/<chart>/Chart.yaml                                 -> chart count
  *
  * Writes: src/site/stats.generated.ts
@@ -22,7 +22,7 @@ const siteRoot = path.join(scriptDir, "..");
 function countKinds(): number {
   const protoPath = path.join(
     projectRoot,
-    "apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto",
+    "shared/cloudresourcekind/cloud_resource_kind.proto",
   );
   const src = fs.readFileSync(protoPath, "utf-8");
   const matches = src.match(/\(kind_meta\)/g);
@@ -30,7 +30,7 @@ function countKinds(): number {
 }
 
 function countProviders(): number {
-  const providerDir = path.join(projectRoot, "apis/dev/planton/provider");
+  const providerDir = path.join(projectRoot, "catalog");
   if (!fs.existsSync(providerDir)) return 0;
   return fs
     .readdirSync(providerDir, { withFileTypes: true })

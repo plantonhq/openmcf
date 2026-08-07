@@ -1,8 +1,8 @@
 package iacflags
 
 import (
-	"github.com/plantonhq/planton/apis/dev/planton/shared/iac/terraform"
 	"github.com/plantonhq/planton/internal/cli/flag"
+	"github.com/plantonhq/planton/shared/iac/terraform"
 	"github.com/spf13/cobra"
 )
 

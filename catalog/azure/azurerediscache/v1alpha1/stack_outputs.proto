@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurerediscache.v1alpha1;
+
+// **AzureRedisCacheStackOutputs** captures the outputs of provisioning an
+// Azure Cache for Redis instance.
+//
+// For application connectivity, `primary_connection_string` is the
+// ready-to-use answer (host, SSL port, and key in one string). Frameworks
+// that want separate values compose `hostname`, `ssl_port`, and
+// `primary_access_key`. Keyless (Entra) clients need only `hostname` --
+// they authenticate with tokens under access-policy assignments instead of
+// keys.
+//
+// The access keys and connection strings are SECRET-BEARING: treat any
+// output that embeds them as a credential in downstream configuration.
+message AzureRedisCacheStackOutputs {
+  // The Azure Resource Manager ID of the Redis cache.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Cache/redis/{name}
+  //
+  // The reference target for everything that composes with the cache:
+  // AzureRedisLinkedServer (geo-replication), AzureRedisCacheAccessPolicy
+  // and AzureRedisCacheAccessPolicyAssignment (Entra data-plane RBAC), and
+  // AzurePrivateEndpoint (private connectivity).
+  string redis_cache_id = 1;
+
+  // The cache's name -- the DNS label of the endpoint and the value
+  // sibling resources address the cache by within its resource group.
+  string redis_cache_name = 2;
+
+  // The Azure region the cache lives in. AzureRedisLinkedServer references
+  // this as the linked cache's location, so geo-replication composes
+  // without hand-repeating the region.
+  string region = 3;
+
+  // The resource group the cache lives in.
+  string resource_group_name = 4;
+
+  // The cache's DNS hostname: {cache_name}.redis.cache.windows.net.
+  // Keyless (Entra) clients need only this -- tokens replace keys.
+  string hostname = 5;
+
+  // The plaintext non-SSL port (6379). Only open when
+  // non_ssl_port_enabled is true.
+  int32 port = 6;
+
+  // The TLS port (6380) -- the port every production client should use.
+  int32 ssl_port = 7;
+
+  // The primary access key (a SECRET). Used as the password in Redis
+  // connection strings. Empty when access-keys authentication is disabled.
+  string primary_access_key = 8;
+
+  // The secondary access key (a SECRET). Kept live so clients can be
+  // rotated to it while the primary is regenerated, and vice versa --
+  // zero-downtime key rotation.
+  string secondary_access_key = 9;
+
+  // Ready-to-use primary connection string (a SECRET -- embeds the
+  // primary key): {hostname}:{ssl_port},password={key},ssl=True,abortConnect=False
+  string primary_connection_string = 10;
+
+  // Ready-to-use secondary connection string (a SECRET -- embeds the
+  // secondary key), for the rotation window.
+  string secondary_connection_string = 11;
+
+  // The system-assigned identity's principal (object) ID -- what RBAC
+  // grants target when the identity block requests SYSTEM_ASSIGNED. Empty
+  // otherwise.
+  string identity_principal_id = 12;
+}

@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesairflow.v1alpha1;
+
+import "catalog/kubernetes/kubernetes.proto";
+
+/**
+ * **KubernetesAirflowStackOutputs** — the composition handles a
+ * deployed Airflow exports. Humans and API clients reach the API
+ * server (UI + REST API) through its service handle (compose
+ * exposure kinds over it); the admin credential and the module-owned
+ * connection Secrets are exported by NAME for downstream
+ * composition.
+ */
+message KubernetesAirflowStackOutputs {
+  // Namespace Airflow runs in.
+  string namespace = 1;
+
+  // Name of the API server Service (`<name>-api-server`) — the UI +
+  // REST API front door. The handle exposure kinds route to.
+  string api_server_service = 2;
+
+  // In-cluster API server endpoint,
+  // `http://<name>-api-server.<namespace>.svc.cluster.local:8080` —
+  // what in-cluster clients (and the REST API's callers) use.
+  string api_server_endpoint = 3;
+
+  // The admin user's credential: the Secret and key holding the
+  // bootstrap admin password (module-generated `<name>-admin-auth`
+  // unless an existing Secret was declared). Username lives in the
+  // spec (`admin_user.username`, default "admin"). Empty when
+  // `admin_user.create` is false — no bootstrap credential exists to
+  // point at.
+  dev.planton.kubernetes.KubernetesSecretKey admin_password_secret = 4;
+
+  // Name of the module-owned Secret holding the metadata database
+  // connection URI (key `connection`) — the credential handle other
+  // tools (e.g. a data-lineage sidecar) can mount to reach the same
+  // database.
+  string metadata_connection_secret_name = 5;
+
+  // Name of the module-owned Secret holding the Celery broker URL
+  // (key `connection`); empty when no Celery executor is declared.
+  string broker_url_secret_name = 6;
+
+  // Name of the Secret holding the Fernet key (`fernet-key` key) —
+  // back it up: losing the Fernet key orphans every credential
+  // Airflow has stored.
+  string fernet_key_secret_name = 7;
+
+  // Port-forward command for reaching the Airflow UI from a
+  // workstation when no exposure is composed
+  // (`kubectl port-forward svc/<name>-api-server -n <namespace> 8080:8080`).
+  string port_forward_command = 8;
+}

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurerediscacheaccesspolicyassignment.v1alpha1;
+
+import "catalog/azure/azurerediscacheaccesspolicyassignment/v1alpha1/api.proto";
+import "catalog/azure/provider.proto";
+
+//azure-redis-cache-access-policy-assignment stack-input
+message AzureRedisCacheAccessPolicyAssignmentStackInput {
+  //target cloud-resource
+  AzureRedisCacheAccessPolicyAssignment target = 1;
+  //provider-config
+  dev.planton.azure.AzureProviderConfig provider_config = 2;
+}

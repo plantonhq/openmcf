@@ -1,0 +1,35 @@
+# Minimal AzureStorageContainer scenario: a private container on the
+# scenario-local fixture account, carrying metadata to prove the
+# key/value pass-through on both engines.
+#
+# The account reference resolves against the extra fixture's captured
+# outputs through the field's default kind (fixture RG -> scenario-local
+# account -> this container). Access type stays private -- the fixture
+# account keeps Azure's allow-nested-public default, so a public access
+# type would also work, but private is the posture the kind teaches.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageContainer
+metadata:
+  name: planton-oss-e2e-azurestoragecontainer-smoke
+  id: planton-oss-e2e-azurestoragecontainer-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestoragecontainer
+  annotations:
+    planton.dev/e2e: "true"
+    # Scenario-local account (minimal-account.yaml) instead of a registry
+    # prerequisite: storage-account names are globally unique and
+    # sequential subtests that destroy and recreate the same name hang on
+    # recreate.
+    planton.dev/e2e-prerequisites: "catalog/azure/azurestoragecontainer/v1alpha1/e2e/minimal-account.yaml"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-storagecontainer-fixture-account
+  containerName: smoke-uploads
+  metadata:
+    purpose: smoke

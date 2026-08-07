@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsroute53zone.v1alpha1;
+
+// AwsRoute53ZoneStackOutputs captures observable identifiers from a
+// provisioned Route 53 hosted zone.
+//
+// The primary output is `zone_id` — the join key every DNS-composing resource
+// uses: AwsRoute53DnsRecord targets a zone by it, AwsCertManagerCert points
+// DNS validation at it, and AwsAlb/AwsNlb register their alias records
+// through it.
+message AwsRoute53ZoneStackOutputs {
+  // The hosted zone ID (e.g. "Z1D633PJN98FT9"). The identifier used by every
+  // resource that composes onto this zone.
+  string zone_id = 1;
+
+  // The zone's domain name as normalized by Route 53 (trailing dot removed),
+  // e.g. "example.com".
+  string zone_name = 2;
+
+  // The four authoritative name servers assigned to the zone. For a public
+  // zone, these are the values to set as the domain's NS delegation at the
+  // registrar.
+  repeated string nameservers = 3;
+
+  // The first (primary) name server of the zone's delegation set — the one
+  // used as the SOA MNAME.
+  string primary_name_server = 4;
+
+  // The Amazon Resource Name of the hosted zone
+  // (arn:aws:route53:::hostedzone/<zone_id>). Used in IAM policies scoping
+  // route53:ChangeResourceRecordSets to specific zones.
+  string zone_arn = 5;
+}

@@ -1,7 +1,10 @@
 ---
 description: Proto Validation coding guidelines for Planton
 globs:
-  - apis/**/*.proto
+  - catalog/**/*.proto
+  - shared/**/*.proto
+  - qa/**/*.proto
+  - iac/**/*.proto
 alwaysApply: false
 ---
 
@@ -60,7 +63,7 @@ option (buf.validate.message).cel = {
   - Valid scenarios for each configuration combination
   - Invalid scenarios to ensure validation catches errors
   - Cross-field validation rules
-- Run `make build` in apis/ to regenerate proto files after changes
+- Run `make protos` at the repo root to regenerate proto stubs after changes
 - Test format: Use ginkgo/gomega similar to existing test files
 
 ## Default Field Options
@@ -73,7 +76,7 @@ When a field should have a default value that Planton applies automatically:
 
 ### Import
 ```protobuf
-import "dev/planton/shared/options/options.proto";
+import "shared/options/options.proto";
 ```
 
 ### Syntax

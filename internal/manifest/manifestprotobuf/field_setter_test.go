@@ -1,7 +1,7 @@
 package manifestprotobuf
 
 import (
-	kubernetesvalkeyv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1alpha1"
+	kubernetesvalkeyv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesvalkey/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 	"testing"

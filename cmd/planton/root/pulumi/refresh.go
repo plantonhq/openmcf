@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/iac/pulumi"
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/flag"
 	climanifest "github.com/plantonhq/planton/internal/cli/manifest"
@@ -14,6 +12,8 @@ import (
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumistack"
 	"github.com/plantonhq/planton/pkg/iac/stackinput/stackinputproviderconfig"
 	"github.com/plantonhq/planton/pkg/kubernetes/kubecontext"
+	"github.com/plantonhq/planton/shared"
+	"github.com/plantonhq/planton/shared/iac/pulumi"
 	"github.com/spf13/cobra"
 )
 

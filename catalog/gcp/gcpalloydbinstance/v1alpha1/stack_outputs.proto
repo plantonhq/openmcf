@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpalloydbinstance.v1alpha1;
+
+// GcpAlloydbInstanceStackOutputs captures values returned after provisioning
+// an AlloyDB instance.
+message GcpAlloydbInstanceStackOutputs {
+  // Fully qualified instance resource name.
+  // Format: projects/{project}/locations/{location}/clusters/{cluster}/instances/{instance}
+  string instance_name = 1;
+
+  // Private IP address of the instance (primary connection endpoint).
+  string ip_address = 2;
+
+  // Current state of the instance (e.g. READY, CREATING).
+  string state = 3;
+}

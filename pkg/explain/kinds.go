@@ -4,9 +4,9 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/protodocs"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // DefaultEngine explains this repo's own schema universe: the cloud-resource

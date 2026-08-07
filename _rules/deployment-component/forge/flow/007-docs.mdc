@@ -16,11 +16,11 @@ TOOLS
   The writer guarantees the README ends with the canonical license footer (the attribution
   that travels with a copied component; enforced in CI by lint.license-footers) — drafts may
   include it or omit it, the tool ensures exactly one.
-- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1alpha1/README.md`
-  and `aws/awsalb/v1/README.md` -- canonical user-facing README structure and tone.
+- Reference components (live ground truth): `catalog/aws/awsvpc/v1alpha1/README.md`
+  and `catalog/aws/awsalb/v1alpha1/README.md` -- canonical user-facing README structure and tone.
 
 SCOPE
-- Target: `apis/dev/planton/provider/<provider>/<kindfolder>/v1/`
+- Target: `catalog/<provider>/<kindfolder>/v1/`
 - Create/update `README.md`.
 
 SEQUENTIAL STEPS

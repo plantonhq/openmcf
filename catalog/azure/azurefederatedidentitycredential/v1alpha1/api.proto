@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurefederatedidentitycredential.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurefederatedidentitycredential/v1alpha1/spec.proto";
+import "catalog/azure/azurefederatedidentitycredential/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AzureFederatedIdentityCredential is the top-level API resource for a
+// federated identity credential -- a keyless OIDC trust rule on a
+// user-assigned managed identity. It is modeled as a first-class composable
+// resource so an identity, the external workloads trusted to act as it, and
+// the grants it holds are independent nodes in an environment's graph.
+message AzureFederatedIdentityCredential {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureFederatedIdentityCredential'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureFederatedIdentityCredentialSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureFederatedIdentityCredentialStatus status = 5;
+}
+
+// AzureFederatedIdentityCredentialStatus holds the deployment status and outputs.
+message AzureFederatedIdentityCredentialStatus {
+  // stack-outputs
+  AzureFederatedIdentityCredentialStackOutputs outputs = 1;
+}

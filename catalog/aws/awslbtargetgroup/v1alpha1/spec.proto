@@ -1,0 +1,560 @@
+syntax = "proto3";
+
+package dev.planton.aws.awslbtargetgroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsLbTargetGroupSpec defines an ELBv2 target group: the routing destination
+// that listeners and listener rules forward traffic to.
+//
+// A target group is the composition point of AWS load balancing. It has its own
+// lifecycle (it exists independently of any load balancer), its own ARN, and it
+// is referenced from many places at once: listener default actions, listener
+// rule forward actions, ECS services (as their deployment target), and
+// auto-scaling groups (which register instances into it). One target group can
+// receive traffic from several listeners, and one listener can spread traffic
+// across several weighted target groups -- which is why it is a first-class
+// resource rather than a detail of the load balancer.
+//
+// The same kind serves both Application and Network Load Balancers, exactly as
+// AWS models it: the protocol decides the family (HTTP/HTTPS for ALB;
+// TCP/UDP/TCP_UDP/TLS for NLB), and the family decides which tuning fields
+// apply. Field comments call out the scope of every family-specific field.
+// Gateway Load Balancer (GENEVE) target groups are deliberately not modeled --
+// there is no gateway load balancer kind to compose them with.
+//
+// The target group name comes from metadata.name. AWS limits the name to 32
+// characters; both IaC modules truncate longer names deterministically.
+// Name, port, protocol, protocol_version, vpc_id, target_type, and
+// ip_address_type are create-only in AWS: changing any of them replaces the
+// target group (and the IaC engine re-creates dependent listener attachments).
+message AwsLbTargetGroupSpec {
+  // The AWS region where the target group is created.
+  // Must match the region of the VPC and of any load balancer that forwards
+  // to this group. Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The VPC the targets live in. Required for "instance", "ip", and "alb"
+  // target types; ignored for "lambda" (a Lambda function is not addressed
+  // through a VPC). Immutable: changing the VPC replaces the target group.
+  //
+  // Requiredness is enforced by the IaC modules rather than a proto rule:
+  // message-level CEL cannot inspect StringValueOrRef fields without breaking
+  // protovalidate-java, so both engines fail fast with a clear error when the
+  // VPC is missing for a non-lambda target type.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // How targets are registered into this group. Immutable.
+  // - "instance" (default): targets are EC2 instance IDs; NLB health checks
+  //   use the instance's primary private IP.
+  // - "ip": targets are IP addresses from the VPC CIDR or peered/on-premises
+  //   ranges routable through the VPC. The type ECS awsvpc tasks and most
+  //   Kubernetes pod-IP integrations use.
+  // - "lambda": the single target is a Lambda function; the load balancer
+  //   invokes it directly, so port/protocol/vpc_id do not apply.
+  // - "alb": the single target is an Application Load Balancer -- the
+  //   NLB-in-front-of-ALB pattern that combines static Layer-4 IPs with
+  //   Layer-7 routing.
+  string target_type = 3 [(dev.planton.shared.options.recommended_default) = "instance"];
+
+  // The port targets receive traffic on, 1-65535. Required for every target
+  // type except "lambda". Individual target registrations can override it
+  // per target. Immutable.
+  int32 port = 4;
+
+  // The protocol used between the load balancer and the targets. Decides the
+  // load balancer family this group can attach to. Immutable.
+  // - ALB: "HTTP", "HTTPS".
+  // - NLB: "TCP", "UDP", "TCP_UDP", "TLS".
+  // Required for every target type except "lambda". A TLS listener may
+  // forward to TCP targets (the NLB terminates TLS); an HTTPS listener may
+  // forward to HTTP targets (the ALB terminates TLS).
+  string protocol = 5;
+
+  // The application-layer protocol between an ALB and HTTP/HTTPS targets.
+  // Valid values: "HTTP1" (default), "HTTP2", "GRPC". Immutable.
+  // Choose "GRPC" for gRPC services (enables gRPC-native health-check
+  // matchers) and "HTTP2" for end-to-end HTTP/2. Only meaningful when
+  // protocol is HTTP or HTTPS.
+  string protocol_version = 6;
+
+  // The address family of registered targets, for "instance" and "ip" target
+  // types. Valid values: "ipv4" (default), "ipv6". Immutable. An IPv6 target
+  // group requires a dualstack load balancer.
+  string ip_address_type = 7;
+
+  // Health check configuration. When omitted, AWS applies protocol-appropriate
+  // defaults (HTTP GET "/" for ALB protocols; TCP reachability on the traffic
+  // port for NLB protocols).
+  AwsLbTargetGroupHealthCheck health_check = 8;
+
+  // Session stickiness. ALB supports cookie-based stickiness ("lb_cookie",
+  // "app_cookie"); NLB supports source-IP stickiness ("source_ip"). When
+  // omitted, stickiness is disabled.
+  AwsLbTargetGroupStickiness stickiness = 9;
+
+  // Seconds the load balancer waits before completing deregistration of a
+  // draining target, letting in-flight requests finish. Range 0-3600.
+  // AWS default: 300. Not supported for "lambda" targets.
+  int32 deregistration_delay_seconds = 10 [(dev.planton.shared.options.recommended_default) = "300"];
+
+  // ALB only. Seconds during which a newly registered target receives a
+  // linearly increasing share of traffic, letting caches warm before full
+  // load arrives. 0 disables slow start (AWS default); otherwise 30-900.
+  // Incompatible with the "least_outstanding_requests" algorithm and with
+  // stickiness.
+  int32 slow_start_seconds = 11;
+
+  // ALB only. How the load balancer picks a target for each request.
+  // Valid values: "round_robin" (default), "least_outstanding_requests",
+  // "weighted_random". "least_outstanding_requests" suits uneven request
+  // costs; "weighted_random" is required for anomaly mitigation.
+  string load_balancing_algorithm_type = 12;
+
+  // ALB only. Automatic anomaly mitigation: the load balancer detects targets
+  // returning anomalous responses and reduces their traffic share. Valid
+  // values: "on", "off" (default). Requires
+  // load_balancing_algorithm_type = "weighted_random".
+  string load_balancing_anomaly_mitigation = 13;
+
+  // Whether traffic may cross Availability Zones on its way to targets in
+  // this group, overriding the load balancer's own cross-zone setting.
+  // Valid values: "true", "false", "use_load_balancer_configuration"
+  // (default). A string tri-state, mirroring the AWS API: the third value
+  // means "inherit from the load balancer".
+  string load_balancing_cross_zone_enabled = 14;
+
+  // NLB only. Whether targets see the original client IP in the IP header.
+  // AWS defaults this per target type -- enabled for "instance" targets,
+  // disabled for "ip" targets -- so leaving it unset keeps the AWS default
+  // for whichever type is in use (the reason this field is optional rather
+  // than a plain bool: false must be distinguishable from unset).
+  optional bool preserve_client_ip = 15;
+
+  // NLB only. Send the Proxy Protocol v2 header on connections to targets,
+  // carrying client connection metadata (source/destination address and
+  // port, VPC endpoint ID). Targets must be configured to parse the header
+  // -- enabling this against an unaware backend breaks the connection.
+  bool proxy_protocol_v2 = 16;
+
+  // NLB only. Terminate connections to a deregistered target when the
+  // deregistration delay expires instead of waiting for the client to close
+  // them. Recommended for long-lived connections (WebSocket, gRPC streams,
+  // database protocols) that would otherwise pin draining targets.
+  bool connection_termination = 17;
+
+  // Lambda targets only. Deliver multi-value HTTP headers and query
+  // parameters to the function as arrays instead of last-value-wins strings.
+  bool lambda_multi_value_headers_enabled = 18;
+
+  // Group-level health policy: DNS failover and unhealthy-state routing
+  // thresholds that act on the group as a whole (ALB and NLB).
+  AwsLbTargetGroupHealthPolicy target_group_health = 19;
+
+  // NLB TCP/TLS only. What happens to established connections while a target
+  // is in an unhealthy state.
+  AwsLbTargetGroupTargetHealthState target_health_state = 20;
+
+  // Static target registrations managed with the group. Most architectures
+  // leave this empty -- ECS services, auto-scaling groups, and Kubernetes
+  // controllers register their own targets dynamically -- but standalone
+  // EC2 instances, fixed IPs, a Lambda function, or an inner ALB are
+  // registered here. Registrations are folded into this kind (not a separate
+  // resource) because a registration is pure glue with no referenceable
+  // identity of its own.
+  repeated AwsLbTargetGroupTarget targets = 21;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "target_type_valid"
+    message: "target_type must be 'instance', 'ip', 'lambda', or 'alb' when set"
+    expression: "this.target_type == '' || this.target_type in ['instance', 'ip', 'lambda', 'alb']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "protocol_valid"
+    message: "protocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS"
+    expression: "this.protocol == '' || this.protocol in ['HTTP', 'HTTPS', 'TCP', 'UDP', 'TCP_UDP', 'TLS']"
+  };
+
+  // Everything except a Lambda function is addressed by port + protocol.
+  option (buf.validate.message).cel = {
+    id: "port_protocol_required_unless_lambda"
+    message: "port and protocol are required unless target_type is 'lambda'"
+    expression: "this.target_type == 'lambda' || (this.port != 0 && this.protocol != '')"
+  };
+
+  // A Lambda target is invoked directly, never addressed by port/protocol.
+  option (buf.validate.message).cel = {
+    id: "lambda_takes_no_port_or_protocol"
+    message: "port, protocol, and protocol_version do not apply when target_type is 'lambda'"
+    expression: "this.target_type != 'lambda' || (this.port == 0 && this.protocol == '' && this.protocol_version == '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "port_range"
+    message: "port must be between 1 and 65535 when set"
+    expression: "this.port == 0 || (this.port >= 1 && this.port <= 65535)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "protocol_version_valid"
+    message: "protocol_version must be 'HTTP1', 'HTTP2', or 'GRPC' when set"
+    expression: "this.protocol_version == '' || this.protocol_version in ['HTTP1', 'HTTP2', 'GRPC']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "protocol_version_only_for_alb_protocols"
+    message: "protocol_version only applies when protocol is 'HTTP' or 'HTTPS'"
+    expression: "this.protocol_version == '' || this.protocol in ['HTTP', 'HTTPS']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "ip_address_type_valid"
+    message: "ip_address_type must be 'ipv4' or 'ipv6' when set"
+    expression: "this.ip_address_type == '' || this.ip_address_type in ['ipv4', 'ipv6']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "deregistration_delay_range"
+    message: "deregistration_delay_seconds must be between 0 and 3600"
+    expression: "this.deregistration_delay_seconds >= 0 && this.deregistration_delay_seconds <= 3600"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "slow_start_range"
+    message: "slow_start_seconds must be 0 (disabled) or between 30 and 900"
+    expression: "this.slow_start_seconds == 0 || (this.slow_start_seconds >= 30 && this.slow_start_seconds <= 900)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "slow_start_only_for_alb_protocols"
+    message: "slow_start_seconds only applies when protocol is 'HTTP' or 'HTTPS'"
+    expression: "this.slow_start_seconds == 0 || this.protocol in ['HTTP', 'HTTPS']"
+  };
+
+  // AWS rejects slow start combined with stickiness or with the
+  // least_outstanding_requests algorithm; catching it here beats a failed
+  // apply.
+  option (buf.validate.message).cel = {
+    id: "slow_start_incompatible_with_stickiness"
+    message: "slow_start_seconds cannot be combined with stickiness"
+    expression: "this.slow_start_seconds == 0 || !has(this.stickiness)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "slow_start_incompatible_with_least_outstanding_requests"
+    message: "slow_start_seconds cannot be combined with the 'least_outstanding_requests' algorithm"
+    expression: "this.slow_start_seconds == 0 || this.load_balancing_algorithm_type != 'least_outstanding_requests'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "load_balancing_algorithm_valid"
+    message: "load_balancing_algorithm_type must be 'round_robin', 'least_outstanding_requests', or 'weighted_random' when set"
+    expression: "this.load_balancing_algorithm_type == '' || this.load_balancing_algorithm_type in ['round_robin', 'least_outstanding_requests', 'weighted_random']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "anomaly_mitigation_valid"
+    message: "load_balancing_anomaly_mitigation must be 'on' or 'off' when set"
+    expression: "this.load_balancing_anomaly_mitigation == '' || this.load_balancing_anomaly_mitigation in ['on', 'off']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "anomaly_mitigation_requires_weighted_random"
+    message: "load_balancing_anomaly_mitigation = 'on' requires load_balancing_algorithm_type = 'weighted_random'"
+    expression: "this.load_balancing_anomaly_mitigation != 'on' || this.load_balancing_algorithm_type == 'weighted_random'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "cross_zone_valid"
+    message: "load_balancing_cross_zone_enabled must be 'true', 'false', or 'use_load_balancer_configuration' when set"
+    expression: "this.load_balancing_cross_zone_enabled == '' || this.load_balancing_cross_zone_enabled in ['true', 'false', 'use_load_balancer_configuration']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "proxy_protocol_v2_only_for_nlb_protocols"
+    message: "proxy_protocol_v2 only applies when protocol is TCP, UDP, TCP_UDP, or TLS"
+    expression: "!this.proxy_protocol_v2 || this.protocol in ['TCP', 'UDP', 'TCP_UDP', 'TLS']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "connection_termination_only_for_nlb_protocols"
+    message: "connection_termination only applies when protocol is TCP, UDP, TCP_UDP, or TLS"
+    expression: "!this.connection_termination || this.protocol in ['TCP', 'UDP', 'TCP_UDP', 'TLS']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lambda_multi_value_headers_only_for_lambda"
+    message: "lambda_multi_value_headers_enabled only applies when target_type is 'lambda'"
+    expression: "!this.lambda_multi_value_headers_enabled || this.target_type == 'lambda'"
+  };
+}
+
+// AwsLbTargetGroupHealthCheck defines how the load balancer decides whether a
+// target may receive traffic.
+//
+// The health-check protocol is independent of the traffic protocol: an NLB
+// TCP target group can run HTTP health checks against an application
+// readiness endpoint, and that is usually the right choice -- a TCP check
+// only proves the port is open, not that the application can serve.
+message AwsLbTargetGroupHealthCheck {
+  // Whether health checks run at all. AWS default: true. Health checks can
+  // only be disabled for "lambda" target groups; every other type requires
+  // them. Optional rather than plain bool so that false ("disable") is
+  // distinguishable from unset ("keep the AWS default of true").
+  optional bool enabled = 1;
+
+  // Protocol for the health check probe: "HTTP", "HTTPS", or "TCP".
+  // AWS default: "HTTP" for ALB-protocol groups, "TCP" for NLB-protocol
+  // groups. TCP health checks are not allowed when the traffic protocol is
+  // HTTP/HTTPS. Not applicable to "lambda" targets (always an invocation).
+  string protocol = 2;
+
+  // Port for the health check probe: "traffic-port" (AWS default -- probe
+  // whatever port each target receives traffic on) or a specific port number
+  // as a string (e.g. "8081" for a dedicated health/admin port).
+  string port = 3;
+
+  // Destination path for HTTP/HTTPS probes. AWS default: "/". For GRPC
+  // protocol_version, the path is a fully-qualified gRPC method name
+  // (AWS default "/AWS.ALB/healthcheck"). Not valid for TCP probes.
+  string path = 4;
+
+  // Consecutive successful probes before an unhealthy target is considered
+  // healthy. Range 2-10. AWS default: 5 (ALB) / 3 (NLB).
+  int32 healthy_threshold = 5;
+
+  // Consecutive failed probes before a healthy target is considered
+  // unhealthy. Range 2-10. AWS default: 2 (ALB) / 3 (NLB).
+  int32 unhealthy_threshold = 6;
+
+  // Seconds between probes of an individual target. Range 5-300.
+  // AWS default: 30.
+  int32 interval_seconds = 7;
+
+  // Seconds to wait for a probe response before counting it failed. Must be
+  // smaller than interval_seconds. Range 2-120. AWS defaults vary by
+  // protocol (HTTP: 5-6, TCP: 10).
+  int32 timeout_seconds = 8;
+
+  // Response codes that count as healthy, for HTTP/HTTPS probes.
+  // HTTP matchers: a code ("200"), a range ("200-299"), or a list
+  // ("200,202"). AWS default: "200".
+  // GRPC matchers (protocol_version = "GRPC"): gRPC status codes, e.g. "0"
+  // or "0-99". AWS default: "12" -- gRPC UNIMPLEMENTED, so a bare health
+  // stub counts as healthy; set "0" to require an OK response.
+  // Not valid for TCP probes (a TCP probe has no response body to match).
+  string matcher = 9;
+
+  // ---------------------------------------------------------------------------
+  // Health check CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "health_check_protocol_valid"
+    message: "protocol must be 'HTTP', 'HTTPS', or 'TCP' when set"
+    expression: "this.protocol == '' || this.protocol in ['HTTP', 'HTTPS', 'TCP']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "health_check_path_not_for_tcp"
+    message: "path is not valid for TCP health checks"
+    expression: "this.path == '' || this.protocol != 'TCP'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "health_check_matcher_not_for_tcp"
+    message: "matcher is not valid for TCP health checks"
+    expression: "this.matcher == '' || this.protocol != 'TCP'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "healthy_threshold_range"
+    message: "healthy_threshold must be between 2 and 10 when set"
+    expression: "this.healthy_threshold == 0 || (this.healthy_threshold >= 2 && this.healthy_threshold <= 10)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "unhealthy_threshold_range"
+    message: "unhealthy_threshold must be between 2 and 10 when set"
+    expression: "this.unhealthy_threshold == 0 || (this.unhealthy_threshold >= 2 && this.unhealthy_threshold <= 10)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "interval_range"
+    message: "interval_seconds must be between 5 and 300 when set"
+    expression: "this.interval_seconds == 0 || (this.interval_seconds >= 5 && this.interval_seconds <= 300)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "timeout_range"
+    message: "timeout_seconds must be between 2 and 120 when set"
+    expression: "this.timeout_seconds == 0 || (this.timeout_seconds >= 2 && this.timeout_seconds <= 120)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "timeout_less_than_interval"
+    message: "timeout_seconds must be smaller than interval_seconds"
+    expression: "this.timeout_seconds == 0 || this.interval_seconds == 0 || this.timeout_seconds < this.interval_seconds"
+  };
+}
+
+// AwsLbTargetGroupStickiness pins a client to the target that served its
+// first request, for workloads that keep per-client state on the target.
+//
+// Prefer stateless targets when possible: stickiness skews load distribution
+// and interacts badly with slow start (AWS rejects the combination).
+message AwsLbTargetGroupStickiness {
+  // The stickiness mechanism. Required.
+  // - "lb_cookie" (ALB): the load balancer issues and manages its own
+  //   cookie (AWSALB); duration-based.
+  // - "app_cookie" (ALB): the application issues the cookie named in
+  //   cookie_name; the load balancer follows it.
+  // - "source_ip" (NLB): affinity by client source IP.
+  string type = 1 [(buf.validate.field).required = true];
+
+  // Whether stickiness is active. AWS default: true (configuring the block
+  // implies enabling it). Optional rather than plain bool so that false
+  // ("configured but switched off") is distinguishable from unset.
+  optional bool enabled = 2;
+
+  // Seconds a "lb_cookie" or "app_cookie" association lasts before the
+  // client is re-balanced. Range 1-604800 (7 days). AWS default: 86400
+  // (1 day). Not applicable to "source_ip".
+  int32 cookie_duration_seconds = 3;
+
+  // The application cookie the load balancer follows. Required for
+  // "app_cookie", not valid otherwise. Must not begin with "AWSALB" (those
+  // names are reserved for the load balancer's own cookies).
+  string cookie_name = 4;
+
+  // ---------------------------------------------------------------------------
+  // Stickiness CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "stickiness_type_valid"
+    message: "type must be 'lb_cookie', 'app_cookie', or 'source_ip'"
+    expression: "this.type in ['lb_cookie', 'app_cookie', 'source_ip']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "cookie_name_only_for_app_cookie"
+    message: "cookie_name is required for 'app_cookie' and not valid for other types"
+    expression: "(this.type == 'app_cookie') == (this.cookie_name != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "cookie_duration_only_for_cookie_types"
+    message: "cookie_duration_seconds only applies to 'lb_cookie' and 'app_cookie'"
+    expression: "this.cookie_duration_seconds == 0 || this.type in ['lb_cookie', 'app_cookie']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "cookie_duration_range"
+    message: "cookie_duration_seconds must be between 1 and 604800 when set"
+    expression: "this.cookie_duration_seconds == 0 || (this.cookie_duration_seconds >= 1 && this.cookie_duration_seconds <= 604800)"
+  };
+}
+
+// AwsLbTargetGroupHealthPolicy sets group-level thresholds that act on the
+// target group as a whole rather than on individual targets.
+message AwsLbTargetGroupHealthPolicy {
+  // DNS failover: when healthy targets drop below the threshold, the load
+  // balancer's DNS stops resolving to the affected Availability Zone (or to
+  // the whole load balancer), shifting clients elsewhere.
+  AwsLbTargetGroupDnsFailover dns_failover = 1;
+
+  // Unhealthy-state routing: when healthy targets drop below the threshold,
+  // the load balancer routes to ALL targets -- including unhealthy ones --
+  // on the theory that a partially working target beats a rejected request
+  // during a mass failure.
+  AwsLbTargetGroupUnhealthyStateRouting unhealthy_state_routing = 2;
+}
+
+// AwsLbTargetGroupDnsFailover expresses the DNS-failover threshold as an
+// absolute count and/or a percentage. AWS evaluates whichever is breached
+// first. Both fields are strings because AWS accepts "off" to disable a
+// criterion.
+message AwsLbTargetGroupDnsFailover {
+  // Minimum number of healthy targets, as a string: a number (e.g. "2") or
+  // "off" (AWS default) to disable the count criterion.
+  string minimum_healthy_targets_count = 1;
+
+  // Minimum percentage of healthy targets, as a string: "1"-"100" or "off"
+  // (AWS default) to disable the percentage criterion.
+  string minimum_healthy_targets_percentage = 2;
+}
+
+// AwsLbTargetGroupUnhealthyStateRouting expresses the unhealthy-state-routing
+// threshold. The count is a plain number here (AWS default: 1) -- unlike DNS
+// failover, this criterion has no "off" value.
+message AwsLbTargetGroupUnhealthyStateRouting {
+  // Minimum number of healthy targets, 1-max. AWS default: 1.
+  int32 minimum_healthy_targets_count = 1;
+
+  // Minimum percentage of healthy targets, as a string: "1"-"100" or "off"
+  // (AWS default) to disable the percentage criterion.
+  string minimum_healthy_targets_percentage = 2;
+}
+
+// AwsLbTargetGroupTargetHealthState controls established-connection handling
+// while a target is unhealthy. NLB TCP/TLS target groups only.
+message AwsLbTargetGroupTargetHealthState {
+  // When false, the NLB keeps established connections to a target that turns
+  // unhealthy (AWS default behavior); when true, it terminates them. Keeping
+  // connections suits long-lived sessions that may ride out a transient
+  // health blip; terminating suits strict fail-fast backends.
+  bool enable_unhealthy_connection_termination = 1;
+
+  // Seconds an unhealthy target keeps draining established connections
+  // before they are terminated. Only meaningful when
+  // enable_unhealthy_connection_termination is false. Range 0-360000.
+  // AWS default: 0.
+  int32 unhealthy_draining_interval_seconds = 2;
+
+  option (buf.validate.message).cel = {
+    id: "draining_interval_range"
+    message: "unhealthy_draining_interval_seconds must be between 0 and 360000"
+    expression: "this.unhealthy_draining_interval_seconds >= 0 && this.unhealthy_draining_interval_seconds <= 360000"
+  };
+}
+
+// AwsLbTargetGroupTarget statically registers one target into the group.
+message AwsLbTargetGroupTarget {
+  // What the target is, per the group's target_type:
+  // - "instance": an EC2 instance ID (defaults to referencing an
+  //   AwsEc2Instance's instance_id output).
+  // - "ip": a literal IP address inside the VPC or a routable peered range.
+  // - "lambda": the Lambda function ARN.
+  // - "alb": the inner Application Load Balancer's ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEc2Instance,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.instance_id"
+  ];
+
+  // Overrides the group's port for this one target, 1-65535. Lets one group
+  // spread traffic across heterogeneous ports (e.g. several containers on
+  // one host).
+  int32 port = 2;
+
+  // For "ip" targets outside the load balancer's VPC (peered VPC,
+  // on-premises): the literal string "all". Leave unset for in-VPC targets.
+  string availability_zone = 3;
+
+  option (buf.validate.message).cel = {
+    id: "target_port_range"
+    message: "port must be between 1 and 65535 when set"
+    expression: "this.port == 0 || (this.port >= 1 && this.port <= 65535)"
+  };
+}

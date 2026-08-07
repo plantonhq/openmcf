@@ -40,13 +40,13 @@ These paths are always available on this machine:
 |----------|------|
 | Planton repo (this repo) | `~/scm/github.com/plantonhq/planton` |
 | InfraCharts | `~/scm/github.com/plantonhq/planton/charts` |
-| Provider proto specs | `~/scm/github.com/plantonhq/planton/apis/dev/planton/provider/<provider>/<kind>/v1/spec.proto` |
-| Shared relationship proto | `~/scm/github.com/plantonhq/planton/apis/dev/planton/shared/relationship/v1/relationship.proto` |
-| CloudResourceKind enum | `~/scm/github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto` |
+| Provider proto specs | `~/scm/github.com/plantonhq/planton/catalog/<provider>/<kind>/v1/spec.proto` |
+| Shared relationship proto | `~/scm/github.com/plantonhq/planton/shared/relationship/v1/relationship.proto` |
+| CloudResourceKind enum | `~/scm/github.com/plantonhq/planton/shared/cloudresourcekind/cloud_resource_kind.proto` |
 
 **Proto path convention**: For a resource kind like `AwsS3Bucket`, the spec lives at:
 ```
-apis/dev/planton/provider/aws/awss3bucket/v1alpha1/spec.proto
+catalog/aws/awss3bucket/v1alpha1/spec.proto
 ```
 The directory name is the kind in lowercase with no separators (e.g., `OciObjectStorageBucket` → `ociobjectstoragebucket`).
 
@@ -153,7 +153,7 @@ Do not guess field names. Do not assume enum values. Do not infer message struct
 
 For each error:
 
-1. **Identify the resource kind** from the error message (e.g., `dev.planton.provider.aws.awss3bucket.v1alpha1.AwsS3BucketSpec`).
+1. **Identify the resource kind** from the error message (e.g., `dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec`).
 2. **Read the spec.proto** at the corresponding path in planton.
 3. **Find the correct field/enum/structure** in the proto definition.
 4. **Apply the fix** in the template YAML.

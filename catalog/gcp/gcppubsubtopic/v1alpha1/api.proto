@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcppubsubtopic.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/gcp/gcppubsubtopic/v1alpha1/spec.proto";
+import "catalog/gcp/gcppubsubtopic/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//gcp-pubsub-topic
+message GcpPubSubTopic {
+  string api_version = 1 [(buf.validate.field).string.const = 'gcp.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'GcpPubSubTopic'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  GcpPubSubTopicSpec spec = 4 [(buf.validate.field).required = true];
+  GcpPubSubTopicStatus status = 5;
+}
+
+message GcpPubSubTopicStatus {
+  GcpPubSubTopicStackOutputs outputs = 1;
+}

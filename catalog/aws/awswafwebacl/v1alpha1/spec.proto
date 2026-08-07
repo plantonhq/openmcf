@@ -1,0 +1,1951 @@
+syntax = "proto3";
+
+package dev.planton.aws.awswafwebacl.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsWafWebAclSpec defines the desired configuration for an AWS WAFv2 Web ACL.
+//
+// A Web ACL (Web Access Control List) is the top-level WAFv2 resource that
+// protects AWS applications from web exploits, bots, and abuse. It contains an
+// ordered set of rules that inspect incoming web requests and take actions
+// (allow, block, count, CAPTCHA, challenge) based on matching conditions.
+//
+// Web ACLs protect:
+// - Application Load Balancers, API Gateway REST APIs, AppSync GraphQL APIs,
+//   Cognito user pools, App Runner services, Verified Access instances
+//   (REGIONAL scope — associated from the protected resource's side, e.g.
+//   AwsAlb.spec.web_acl_arn)
+// - CloudFront distributions (CLOUDFRONT scope — must be created in
+//   us-east-1; referenced from AwsCloudFront.spec.web_acl_arn)
+//
+// Rules are evaluated in priority order (lowest number first). When a rule
+// matches, its action is taken and evaluation stops (count/CAPTCHA-passed
+// requests continue to later rules). If no rule matches, the default_action
+// applies.
+//
+// The full WAFv2 statement language is modeled as a typed, recursive tree
+// (AwsWafWebAclStatement): managed rule groups (with ATP/ACFP/Bot
+// Control/anti-DDoS configs), rate limiting (including custom aggregation
+// keys), IP set / regex pattern set / rule group references, geo, byte /
+// SQLi / XSS / size / regex / label / ASN matching, and AND/OR/NOT
+// composition. A raw-JSON custom_statement escape hatch remains for anything
+// AWS ships before this spec models it.
+//
+// Every rule consumes Web ACL Capacity Units (WCUs); the default account
+// limit is 5,000 WCUs per web ACL (the deployed total is exported as the
+// `capacity` stack output).
+//
+// Associations are NOT bundled: a web ACL protects at most one scope's worth
+// of resources, but which resources it protects is each resource's own
+// setting — the protected resource (ALB, CloudFront distribution) references
+// this web ACL's ARN output, never the other way around.
+//
+// Logging IS bundled (the logging field) because a web ACL has at most one
+// logging configuration and it shares the ACL's lifecycle.
+message AwsWafWebAclSpec {
+  // The AWS region where the resource will be created.
+  // For CLOUDFRONT scope this must be "us-east-1" (the WAF global region).
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // ---------------------------------------------------------------------------
+  // Scope and identity
+  // ---------------------------------------------------------------------------
+
+  // Scope determines where the Web ACL can be used. Create-time immutable
+  // (ForceNew) — changing it replaces the web ACL.
+  //
+  // "REGIONAL" — protects ALB, API Gateway, AppSync, Cognito, App Runner,
+  // and Verified Access resources in the web ACL's own region.
+  //
+  // "CLOUDFRONT" — protects CloudFront distributions. The Web ACL MUST be
+  // created in us-east-1 (region must be "us-east-1").
+  string scope = 2 [(buf.validate.field).required = true];
+
+  // ---------------------------------------------------------------------------
+  // Default action
+  // ---------------------------------------------------------------------------
+
+  // Action to take when no rule matches a request. This is the "baseline"
+  // security posture:
+  // - "allow" (permissive): allow all traffic unless a rule blocks it.
+  //   Use when most traffic is legitimate (e.g., public website).
+  // - "block" (restrictive): block all traffic unless a rule allows it.
+  //   Use when most traffic should be denied (e.g., private API).
+  AwsWafWebAclDefaultAction default_action = 3 [(buf.validate.field).required = true];
+
+  // Human-readable description of the Web ACL. AWS restricts the character
+  // set: letters, digits, whitespace, and _ + = : # @ / - , . only (notably
+  // NO parentheses), 3-256 characters — WAF rejects anything else at create
+  // time, so the constraint is enforced here where the failure is immediate
+  // and readable.
+  string description = 4 [
+    (buf.validate.field).string.max_len = 256,
+    (buf.validate.field).cel = {
+      id: "description_charset"
+      message: "description may only contain letters, digits, whitespace, and _+=:#@/-,. (no parentheses), and must be at least 3 characters when set"
+      expression: "this == '' || this.matches('^[\\\\w+=:#@/,.-][\\\\w+=:#@/,.\\\\s-]+[\\\\w+=:#@/,.-]$')"
+    }
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Rules
+  // ---------------------------------------------------------------------------
+
+  // Ordered set of rules evaluated against each incoming request. Rules are
+  // evaluated by priority (lowest number first). When a rule matches, its
+  // action is taken and evaluation stops for that request.
+  //
+  // When no rules are provided, only the default_action applies. This is
+  // valid but uncommon — most Web ACLs have at least one managed rule group.
+  repeated AwsWafWebAclRule rules = 5;
+
+  // ---------------------------------------------------------------------------
+  // Visibility (CloudWatch metrics)
+  // ---------------------------------------------------------------------------
+
+  // CloudWatch metrics configuration for the Web ACL itself.
+  //
+  // When omitted, the IaC module applies sensible defaults:
+  // - cloudwatch_metrics_enabled = true
+  // - sampled_requests_enabled = true
+  // - metric_name = resource name
+  AwsWafWebAclVisibilityConfig visibility_config = 6;
+
+  // ---------------------------------------------------------------------------
+  // Custom response bodies
+  // ---------------------------------------------------------------------------
+
+  // Reusable response body templates that can be referenced by block actions
+  // via custom_response_body_key. Define branded error pages or structured
+  // error responses here and reference them by key from individual rules.
+  //
+  // Each entry requires a unique key (used as the reference), content string,
+  // and content_type.
+  repeated AwsWafWebAclCustomResponseBody custom_response_bodies = 7;
+
+  // ---------------------------------------------------------------------------
+  // Token domains
+  // ---------------------------------------------------------------------------
+
+  // Domains to accept in web request tokens for CAPTCHA and Challenge actions.
+  // Required when using CAPTCHA/Challenge with multiple domains that share
+  // the same Web ACL. When omitted, tokens are scoped to the request domain.
+  repeated string token_domains = 8 [(dev.planton.shared.options.sensitive_exempt_reason) = "Domain names for CAPTCHA/Challenge token scoping, not secret values."];
+
+  // ---------------------------------------------------------------------------
+  // CAPTCHA / Challenge immunity
+  // ---------------------------------------------------------------------------
+
+  // How long a client's successful CAPTCHA solve remains valid, web-ACL-wide
+  // (immunity time in seconds, 60–259,200; AWS default 300). Rules can
+  // override this per rule via the rule's captcha_config.
+  AwsWafWebAclImmunityTimeConfig captcha_config = 9;
+
+  // How long a client's successful silent-challenge response remains valid,
+  // web-ACL-wide (immunity time in seconds, 300–259,200; AWS default 300).
+  // Rules can override this per rule via the rule's challenge_config.
+  AwsWafWebAclImmunityTimeConfig challenge_config = 10;
+
+  // ---------------------------------------------------------------------------
+  // Request-body inspection limits
+  // ---------------------------------------------------------------------------
+
+  // Per-resource-type request BODY inspection size limits. By default WAF
+  // inspects only the first 16 KB of a request body; raise the limit (to 32,
+  // 48, or 64 KB) for APIs that carry large JSON payloads whose tail must
+  // still be inspected. Larger limits increase WCU cost of body-inspecting
+  // rules. CloudFront also supports raising this; the other resource types
+  // are capped per their entry.
+  AwsWafWebAclAssociationConfig association_config = 11;
+
+  // ---------------------------------------------------------------------------
+  // Data protection (log/metric field masking)
+  // ---------------------------------------------------------------------------
+
+  // Field-level data protection: replace or hash specified request fields
+  // (headers, cookies, query strings, body) in ALL WAF outputs — logs,
+  // sampled requests, and rule match details — before they leave WAF. This
+  // is stronger than the logging block's redacted fields (which only affect
+  // the logging destination): use it for PII that must never appear anywhere.
+  AwsWafWebAclDataProtectionConfig data_protection_config = 12;
+
+  // ---------------------------------------------------------------------------
+  // Logging
+  // ---------------------------------------------------------------------------
+
+  // Optional logging configuration. When provided, WAF sends detailed request
+  // logs to the specified destination (CloudWatch Logs, S3, or Kinesis
+  // Firehose).
+  //
+  // Important naming constraint: the destination resource name must start with
+  // "aws-waf-logs-" (enforced by AWS). For example:
+  // - CloudWatch Log Group: "aws-waf-logs-my-acl"
+  // - S3 Bucket: "aws-waf-logs-my-acl"
+  // - Kinesis Firehose: "aws-waf-logs-my-acl"
+  AwsWafWebAclLoggingConfig logging = 13;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  // scope must be REGIONAL or CLOUDFRONT.
+  option (buf.validate.message).cel = {
+    id: "scope_valid"
+    message: "scope must be 'REGIONAL' or 'CLOUDFRONT'"
+    expression: "this.scope in ['REGIONAL', 'CLOUDFRONT']"
+  };
+
+  // CloudFront-scoped ACLs live in the WAF global region.
+  option (buf.validate.message).cel = {
+    id: "cloudfront_scope_requires_us_east_1"
+    message: "CloudFront-scoped web ACLs live in the global (us-east-1) region — set region to 'us-east-1' when scope is 'CLOUDFRONT'"
+    expression: "this.scope != 'CLOUDFRONT' || this.region == 'us-east-1'"
+  };
+}
+
+// AwsWafWebAclDefaultAction defines the action taken when no rule matches
+// an incoming request.
+message AwsWafWebAclDefaultAction {
+  // Action type: "allow" or "block".
+  string type = 1 [(buf.validate.field).required = true];
+
+  // Custom response configuration for block actions. Only valid when
+  // type is "block". Specifies the HTTP response code and optional body
+  // to return to blocked requests.
+  AwsWafWebAclCustomResponse custom_response = 2;
+
+  // Custom request headers to insert for allow actions. Only valid when
+  // type is "allow". Headers are added to the request before forwarding
+  // to the protected resource.
+  repeated AwsWafWebAclCustomHeader custom_request_headers = 3;
+
+  // type must be allow or block.
+  option (buf.validate.message).cel = {
+    id: "default_action_type_valid"
+    message: "type must be 'allow' or 'block'"
+    expression: "this.type in ['allow', 'block']"
+  };
+
+  // custom_response only valid for block actions.
+  option (buf.validate.message).cel = {
+    id: "custom_response_only_for_block"
+    message: "custom_response is only valid when default action type is 'block'"
+    expression: "!has(this.custom_response) || this.type == 'block'"
+  };
+
+  // custom_request_headers only valid for allow actions.
+  option (buf.validate.message).cel = {
+    id: "custom_request_headers_only_for_allow"
+    message: "custom_request_headers is only valid when default action type is 'allow'"
+    expression: "size(this.custom_request_headers) == 0 || this.type == 'allow'"
+  };
+}
+
+// AwsWafWebAclRule defines a single rule in the Web ACL. Each rule evaluates
+// incoming requests against a statement (match condition) and takes an action
+// when the statement matches.
+//
+// Rules are evaluated in priority order (lowest priority number first). When
+// a rule matches, its action is taken and evaluation stops for that request
+// (count actions and passed CAPTCHA/challenge continue evaluation).
+//
+// There are two action models:
+// - Match rules (rate_based, geo_match, ip_set_reference, byte_match, ...):
+//   Use the `action` field to specify what happens on match.
+// - Group rules (managed_rule_group, rule_group_reference): Use the
+//   `override_action` field to either use the group's own per-rule actions
+//   ("none") or override everything to count ("count") for testing.
+message AwsWafWebAclRule {
+  // Unique name for this rule. Used in CloudWatch metrics and log entries.
+  // 1-128 characters, must be unique within the Web ACL.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    }
+  ];
+
+  // Evaluation priority. Lower numbers are evaluated first. Must be unique
+  // across all rules in the Web ACL. Range: 0-2147483647.
+  int32 priority = 2 [(buf.validate.field).required = true];
+
+  // The match condition for this rule — exactly one statement type must be
+  // set inside (see AwsWafWebAclStatement for the full statement language,
+  // including AND/OR/NOT composition and the custom_statement escape hatch).
+  AwsWafWebAclStatement statement = 3 [(buf.validate.field).required = true];
+
+  // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
+
+  // Action for match rules (everything except managed_rule_group and
+  // rule_group_reference). Specifies what happens when the rule matches.
+  //
+  // Valid values: "allow", "block", "count", "captcha", "challenge".
+  //
+  // Required for match rules. Must NOT be set for group rules.
+  string action = 4;
+
+  // Override action for group rules (managed_rule_group,
+  // rule_group_reference). Controls whether the group's own actions are used
+  // or overridden.
+  //
+  // Valid values:
+  // - "none": Use the rule group's configured actions as-is (most common).
+  // - "count": Override all actions to count (useful for testing/monitoring
+  //   a new rule group before enforcing).
+  //
+  // Required for group rules. Must NOT be set for match rules.
+  string override_action = 5;
+
+  // ---------------------------------------------------------------------------
+  // Action customization
+  // ---------------------------------------------------------------------------
+
+  // Custom response for block actions. Only valid when action is "block".
+  // Specifies the HTTP response code and optional body.
+  AwsWafWebAclCustomResponse custom_response = 6;
+
+  // Custom request headers to insert for allow/count/captcha/challenge actions.
+  // Headers are added to the request before forwarding to the protected resource.
+  repeated AwsWafWebAclCustomHeader custom_request_headers = 7;
+
+  // ---------------------------------------------------------------------------
+  // Metadata
+  // ---------------------------------------------------------------------------
+
+  // Labels added to requests that match this rule. Labels are key-value pairs
+  // (namespace:name format) that can be matched by label_match statements in
+  // subsequent rules, enabling multi-stage rule evaluation.
+  repeated string rule_labels = 8;
+
+  // CloudWatch metrics configuration for this rule. When omitted, the IaC
+  // module applies sensible defaults:
+  // - cloudwatch_metrics_enabled = true
+  // - sampled_requests_enabled = true
+  // - metric_name = rule name
+  AwsWafWebAclVisibilityConfig visibility_config = 9;
+
+  // Per-rule CAPTCHA immunity time override (seconds a solved CAPTCHA stays
+  // valid for requests matching THIS rule). Overrides the web ACL's
+  // captcha_config. Only meaningful for rules whose action (or a managed
+  // group's internal rules) can serve a CAPTCHA.
+  AwsWafWebAclImmunityTimeConfig captcha_config = 10;
+
+  // Per-rule challenge immunity time override (seconds a passed silent
+  // challenge stays valid for requests matching THIS rule). Overrides the
+  // web ACL's challenge_config.
+  AwsWafWebAclImmunityTimeConfig challenge_config = 11;
+
+  // ---------------------------------------------------------------------------
+  // Rule-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  // action must be valid when set.
+  option (buf.validate.message).cel = {
+    id: "rule_action_valid"
+    message: "action must be 'allow', 'block', 'count', 'captcha', or 'challenge' when set"
+    expression: "this.action == '' || this.action in ['allow', 'block', 'count', 'captcha', 'challenge']"
+  };
+
+  // override_action must be valid when set.
+  option (buf.validate.message).cel = {
+    id: "rule_override_action_valid"
+    message: "override_action must be 'count' or 'none' when set"
+    expression: "this.override_action == '' || this.override_action in ['count', 'none']"
+  };
+
+  // Group statements (managed group / rule group reference) require
+  // override_action, not action.
+  option (buf.validate.message).cel = {
+    id: "group_rule_requires_override_action"
+    message: "managed_rule_group and rule_group_reference rules must use override_action (not action)"
+    expression: "!has(this.statement) || (!has(this.statement.managed_rule_group) && !has(this.statement.rule_group_reference)) || (this.override_action != '' && this.action == '')"
+  };
+
+  // Match statements require action, not override_action.
+  option (buf.validate.message).cel = {
+    id: "match_rule_requires_action"
+    message: "match rules (everything except managed_rule_group and rule_group_reference) must use action (not override_action)"
+    expression: "!has(this.statement) || has(this.statement.managed_rule_group) || has(this.statement.rule_group_reference) || (this.action != '' && this.override_action == '')"
+  };
+
+  // custom_response only valid for block action.
+  option (buf.validate.message).cel = {
+    id: "rule_custom_response_only_for_block"
+    message: "custom_response is only valid when action is 'block'"
+    expression: "!has(this.custom_response) || this.action == 'block'"
+  };
+}
+
+// AwsWafWebAclStatement is the WAFv2 match-statement language as a typed,
+// recursive tree — the same recursive shape the AWS API itself uses. Exactly
+// one statement type must be set per node.
+//
+// Composition: and_statement / or_statement / not_statement nest further
+// statements. AWS accepts deep nesting, but two statement classes are
+// position-restricted BY AWS (enforced at deploy time):
+// - managed_rule_group and rule_group_reference can ONLY appear at a rule's
+//   top level — never inside AND/OR/NOT and never inside a scope-down.
+// - rate_based can only appear at a rule's top level or directly inside a
+//   rule group — never inside AND/OR/NOT or a scope-down.
+//
+// Statements that inspect a request component (byte_match, sqli_match,
+// xss_match, size_constraint, regex_match, regex_pattern_set_reference)
+// take a field_to_match (WHAT to inspect) and text_transformations (how to
+// normalize it before matching — always applied in priority order; use one
+// NONE transformation when no normalization is wanted).
+message AwsWafWebAclStatement {
+  oneof statement {
+    option (buf.validate.oneof).required = true;
+
+    // AWS Managed Rule Group or marketplace rule group — pre-built,
+    // vendor-maintained rule collections (Core rule set, SQLi, bot control,
+    // account takeover prevention, ...). Rule top-level only (AWS rejects it
+    // nested inside AND/OR/NOT or scope-downs); the containing rule must use
+    // override_action.
+    AwsWafWebAclManagedRuleGroupStatement managed_rule_group = 1;
+
+    // Rate-based rule that tracks and limits request rates per aggregation
+    // key (source IP by default; forwarded IP, or up to 5 custom keys).
+    // Rule top-level only; the containing rule uses action for what happens
+    // when the limit is exceeded.
+    AwsWafWebAclRateBasedStatement rate_based = 2;
+
+    // Reference to YOUR OWN WAFv2 rule group by ARN (a reusable rule
+    // collection you manage outside this web ACL). Rule top-level only; the
+    // containing rule must use override_action.
+    AwsWafWebAclRuleGroupReferenceStatement rule_group_reference = 3;
+
+    // Match source IPs against a WAFv2 IP set (AwsWafIpSet) — the allow-list
+    // / deny-list building block.
+    AwsWafWebAclIpSetReferenceStatement ip_set_reference = 4;
+
+    // Match a request component against a WAFv2 regex pattern set
+    // (AwsWafRegexPatternSet) — matches when ANY regex in the set matches.
+    AwsWafWebAclRegexPatternSetReferenceStatement regex_pattern_set_reference = 5;
+
+    // Match requests by country of origin (from the source IP or a
+    // forwarded header).
+    AwsWafWebAclGeoMatchStatement geo_match = 6;
+
+    // Match a string (or its position) inside a request component — the
+    // workhorse for path prefixes, header values, user-agent substrings.
+    AwsWafWebAclByteMatchStatement byte_match = 7;
+
+    // Detect SQL-injection attack patterns in a request component.
+    AwsWafWebAclSqliMatchStatement sqli_match = 8;
+
+    // Detect cross-site-scripting attack patterns in a request component.
+    AwsWafWebAclXssMatchStatement xss_match = 9;
+
+    // Compare the byte size of a request component against a threshold
+    // (e.g. block bodies over 8 KB, or URI paths longer than 128 bytes).
+    AwsWafWebAclSizeConstraintStatement size_constraint = 10;
+
+    // Match a request component against a single inline regular expression.
+    // For regexes shared across rules, prefer regex_pattern_set_reference.
+    AwsWafWebAclRegexMatchStatement regex_match = 11;
+
+    // Match labels added to the request by EARLIER rules (rule_labels) or by
+    // managed rule groups — the mechanism for multi-stage evaluation
+    // ("managed group flagged it as bot AND it hit /checkout → block").
+    AwsWafWebAclLabelMatchStatement label_match = 12;
+
+    // Match requests by the autonomous system number (ASN) of the source
+    // address — block or rate-limit whole networks/hosting providers.
+    AwsWafWebAclAsnMatchStatement asn_match = 13;
+
+    // Logical AND — matches when ALL nested statements match.
+    AwsWafWebAclAndStatement and_statement = 14;
+
+    // Logical OR — matches when ANY nested statement matches.
+    AwsWafWebAclOrStatement or_statement = 15;
+
+    // Logical NOT — matches when the nested statement does NOT match.
+    AwsWafWebAclNotStatement not_statement = 16;
+
+    // Escape hatch for any WAFv2 statement AWS ships before this spec models
+    // it. Provide the raw AWS WAFv2 JSON statement structure as a Struct,
+    // with PascalCase keys exactly as the AWS API expects.
+    //
+    // Example:
+    //   customStatement:
+    //     SqliMatchStatement:
+    //       FieldToMatch:
+    //         Body: {}
+    //       TextTransformations:
+    //         - Priority: 0
+    //           Type: URL_DECODE
+    google.protobuf.Struct custom_statement = 17;
+  }
+}
+
+// AwsWafWebAclAndStatement matches when ALL nested statements match.
+message AwsWafWebAclAndStatement {
+  // The statements to AND together. At least two (AND of one is the
+  // statement itself).
+  repeated AwsWafWebAclStatement statements = 1 [(buf.validate.field).repeated.min_items = 2];
+}
+
+// AwsWafWebAclOrStatement matches when ANY nested statement matches.
+message AwsWafWebAclOrStatement {
+  // The statements to OR together. At least two (OR of one is the statement
+  // itself).
+  repeated AwsWafWebAclStatement statements = 1 [(buf.validate.field).repeated.min_items = 2];
+}
+
+// AwsWafWebAclNotStatement matches when the nested statement does NOT match.
+message AwsWafWebAclNotStatement {
+  // The statement to negate.
+  AwsWafWebAclStatement statement = 1 [(buf.validate.field).required = true];
+}
+
+// AwsWafWebAclManagedRuleGroupStatement references an AWS Managed Rule Group
+// or a marketplace rule group. Managed rule groups are pre-configured
+// collections of rules maintained by AWS or third-party vendors.
+//
+// Common AWS Managed Rule Groups:
+// - AWSManagedRulesCommonRuleSet — Core rule set (XSS, file inclusion, etc.)
+// - AWSManagedRulesKnownBadInputsRuleSet — Known bad input patterns
+// - AWSManagedRulesSQLiRuleSet — SQL injection protection
+// - AWSManagedRulesAmazonIpReputationList — IP reputation filtering
+// - AWSManagedRulesAnonymousIpList — Anonymous IP blocking (VPN, Tor, etc.)
+// - AWSManagedRulesBotControlRuleSet — Bot detection (requires
+//   managed_rule_group_configs.bot_control)
+// - AWSManagedRulesATPRuleSet — Account takeover prevention (requires
+//   managed_rule_group_configs.account_takeover_prevention)
+// - AWSManagedRulesACFPRuleSet — Fake-account-creation prevention (requires
+//   managed_rule_group_configs.account_creation_fraud_prevention)
+// - AWSManagedRulesAntiDDoSRuleSet — Layer-7 DDoS mitigation (configured via
+//   managed_rule_group_configs.anti_ddos)
+//
+// Each managed rule group consumes Web ACL Capacity Units (WCUs). The total
+// across all rules must not exceed the account's WCU limit (default 5,000).
+message AwsWafWebAclManagedRuleGroupStatement {
+  // Name of the managed rule group (e.g., "AWSManagedRulesCommonRuleSet").
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    }
+  ];
+
+  // Vendor that publishes the rule group.
+  // "AWS" for AWS Managed Rules, or the marketplace vendor name.
+  string vendor_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    }
+  ];
+
+  // Pin to a specific version of the managed rule group (e.g., "Version_1.0").
+  // When omitted, WAF uses the vendor's default (typically the latest) version.
+  // Pinning prevents unexpected behavior changes when the vendor updates rules.
+  string version = 3;
+
+  // Override the action for specific rules within the managed group. This is
+  // essential for tuning: you can set individual rules to "count" while the
+  // rest of the group enforces, allowing you to identify false positives
+  // before enabling enforcement.
+  repeated AwsWafWebAclRuleActionOverride rule_action_overrides = 4;
+
+  // Optional scope-down statement to narrow which requests the managed rule
+  // group evaluates: only requests matching it are inspected by the group
+  // (e.g. run Bot Control — a paid add-on — only on /api paths). AWS forbids
+  // group references and rate-based statements inside a scope-down.
+  AwsWafWebAclStatement scope_down_statement = 5 [(buf.validate.field).cel = {
+    id: "scope_down_statement_arms"
+    message: "a scope-down statement cannot contain managed_rule_group, rule_group_reference, or rate_based statements (AWS restriction)"
+    expression: "!has(this.managed_rule_group) && !has(this.rule_group_reference) && !has(this.rate_based)"
+  }];
+
+  // Additional configuration for the intelligent-threat managed rule groups
+  // (Bot Control, Account Takeover Prevention, Account Creation Fraud
+  // Prevention, anti-DDoS). Required by those groups; meaningless for the
+  // ordinary protection packs (Common, SQLi, KnownBadInputs, ...).
+  AwsWafWebAclManagedRuleGroupConfigs managed_rule_group_configs = 6;
+}
+
+// AwsWafWebAclManagedRuleGroupConfigs carries the group-specific
+// configuration that the intelligent-threat managed rule groups require.
+// Set exactly the block matching the referenced group.
+message AwsWafWebAclManagedRuleGroupConfigs {
+  // Configuration for AWSManagedRulesBotControlRuleSet.
+  AwsWafWebAclBotControlConfig bot_control = 1;
+
+  // Configuration for AWSManagedRulesATPRuleSet (account takeover
+  // prevention — credential stuffing / login abuse detection).
+  AwsWafWebAclAtpConfig account_takeover_prevention = 2;
+
+  // Configuration for AWSManagedRulesACFPRuleSet (account creation fraud
+  // prevention — fake sign-up detection).
+  AwsWafWebAclAcfpConfig account_creation_fraud_prevention = 3;
+
+  // Configuration for AWSManagedRulesAntiDDoSRuleSet (layer-7 DDoS
+  // mitigation with client-side silent challenges).
+  AwsWafWebAclAntiDdosConfig anti_ddos = 4;
+}
+
+// AwsWafWebAclBotControlConfig configures the Bot Control managed rule group.
+message AwsWafWebAclBotControlConfig {
+  // Inspection level:
+  // - "COMMON": self-identifying bots and simple automation (lower WCU/cost).
+  // - "TARGETED": adds ML-based detection of sophisticated bots, browser
+  //   interrogation, and CAPTCHA/challenge actions (higher WCU/cost).
+  string inspection_level = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "COMMON",
+        "TARGETED"
+      ]
+    }
+  ];
+
+  // Whether TARGETED inspection uses machine learning to analyze traffic
+  // statistics for bot patterns. AWS defaults this to true — set false only
+  // to opt out of ML analysis. Ignored for COMMON.
+  optional bool enable_machine_learning = 2;
+}
+
+// AwsWafWebAclFieldIdentifier names a single field in the login/sign-up
+// request payload (JSON pointer for JSON payloads, e.g. "/password"; form
+// field name for FORM_ENCODED payloads).
+message AwsWafWebAclFieldIdentifier {
+  // The field's identifier. 1–512 characters.
+  string identifier = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 512
+    }
+  ];
+}
+
+// AwsWafWebAclFieldIdentifiers names a set of related payload fields (e.g.
+// all address fields on a sign-up form).
+message AwsWafWebAclFieldIdentifiers {
+  // The fields' identifiers.
+  repeated string identifiers = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclAtpConfig configures the Account Takeover Prevention managed
+// rule group: WHERE logins happen (login_path), WHAT the login request
+// carries (request_inspection), and how to recognize failed/successful
+// logins in your responses (response_inspection).
+message AwsWafWebAclAtpConfig {
+  // The path of your login endpoint (e.g. "/api/v1/login"). ATP inspects
+  // only requests to this path.
+  string login_path = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 256
+    }
+  ];
+
+  // Treat login_path as a regular expression instead of a literal path.
+  bool enable_regex_in_path = 2;
+
+  // How to find the username and password in the login request.
+  AwsWafWebAclAtpRequestInspection request_inspection = 3;
+
+  // How to recognize login success vs failure in your RESPONSES, so ATP can
+  // track failure rates per client. Not available for CLOUDFRONT-scope ACLs.
+  AwsWafWebAclResponseInspection response_inspection = 4;
+}
+
+// AwsWafWebAclAtpRequestInspection tells ATP where the credentials live in
+// the login request payload.
+message AwsWafWebAclAtpRequestInspection {
+  // Payload encoding of the login request: "JSON" or "FORM_ENCODED".
+  string payload_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "JSON",
+        "FORM_ENCODED"
+      ]
+    }
+  ];
+
+  // The username field (JSON pointer like "/email", or form field name).
+  AwsWafWebAclFieldIdentifier username_field = 2 [(buf.validate.field).required = true];
+
+  // The password field (JSON pointer like "/password", or form field name).
+  AwsWafWebAclFieldIdentifier password_field = 3 [(buf.validate.field).required = true];
+}
+
+// AwsWafWebAclAcfpConfig configures the Account Creation Fraud Prevention
+// managed rule group: WHERE accounts are created and WHAT the sign-up
+// request carries.
+message AwsWafWebAclAcfpConfig {
+  // The path of your account-creation API endpoint (e.g. "/api/signup").
+  string creation_path = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 256
+    }
+  ];
+
+  // The path of the page presenting the sign-up form (e.g. "/register").
+  string registration_page_path = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 256
+    }
+  ];
+
+  // Treat the paths as regular expressions instead of literal paths.
+  bool enable_regex_in_path = 3;
+
+  // How to find the sign-up fields in the account-creation request.
+  AwsWafWebAclAcfpRequestInspection request_inspection = 4 [(buf.validate.field).required = true];
+
+  // How to recognize sign-up success vs failure in your RESPONSES. Not
+  // available for CLOUDFRONT-scope ACLs.
+  AwsWafWebAclResponseInspection response_inspection = 5;
+}
+
+// AwsWafWebAclAcfpRequestInspection tells ACFP where the sign-up fields live
+// in the account-creation request payload.
+message AwsWafWebAclAcfpRequestInspection {
+  // Payload encoding of the sign-up request: "JSON" or "FORM_ENCODED".
+  string payload_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "JSON",
+        "FORM_ENCODED"
+      ]
+    }
+  ];
+
+  // The username field, when the form has one.
+  AwsWafWebAclFieldIdentifier username_field = 2;
+
+  // The password field, when the form has one.
+  AwsWafWebAclFieldIdentifier password_field = 3;
+
+  // The email field, when the form has one.
+  AwsWafWebAclFieldIdentifier email_field = 4;
+
+  // The phone-number fields, when the form has them.
+  AwsWafWebAclFieldIdentifiers phone_number_fields = 5;
+
+  // The address fields, when the form has them.
+  AwsWafWebAclFieldIdentifiers address_fields = 6;
+}
+
+// AwsWafWebAclResponseInspection teaches ATP/ACFP to distinguish successful
+// from failed attempts by inspecting YOUR responses — the signal the groups
+// use to track per-client failure rates. Configure exactly the component
+// your application uses to signal the outcome.
+message AwsWafWebAclResponseInspection {
+  // Outcome signaled by HTTP status codes.
+  AwsWafWebAclResponseInspectionStatusCode status_code = 1;
+
+  // Outcome signaled by a response header value.
+  AwsWafWebAclResponseInspectionHeader header = 2;
+
+  // Outcome signaled by a JSON field in the response body.
+  AwsWafWebAclResponseInspectionJson body_json = 3;
+
+  // Outcome signaled by text appearing in the response body.
+  AwsWafWebAclResponseInspectionBodyContains body_contains = 4;
+}
+
+// AwsWafWebAclResponseInspectionStatusCode marks which HTTP status codes mean
+// success vs failure.
+message AwsWafWebAclResponseInspectionStatusCode {
+  // Status codes that mean the attempt SUCCEEDED (e.g. [200, 302]).
+  repeated int32 success_codes = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Status codes that mean the attempt FAILED (e.g. [401, 403]).
+  repeated int32 failure_codes = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclResponseInspectionHeader marks which response-header values
+// mean success vs failure.
+message AwsWafWebAclResponseInspectionHeader {
+  // The header to inspect (e.g. "x-login-result").
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 256
+    }
+  ];
+
+  // Header values that mean the attempt SUCCEEDED.
+  repeated string success_values = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Header values that mean the attempt FAILED.
+  repeated string failure_values = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclResponseInspectionJson marks which values of a JSON body field
+// mean success vs failure.
+message AwsWafWebAclResponseInspectionJson {
+  // JSON pointer to the field to inspect (e.g. "/result").
+  string identifier = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 256
+    }
+  ];
+
+  // Field values that mean the attempt SUCCEEDED.
+  repeated string success_values = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Field values that mean the attempt FAILED.
+  repeated string failure_values = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclResponseInspectionBodyContains marks which body substrings mean
+// success vs failure (first 65,536 bytes inspected).
+message AwsWafWebAclResponseInspectionBodyContains {
+  // Body substrings that mean the attempt SUCCEEDED.
+  repeated string success_strings = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Body substrings that mean the attempt FAILED.
+  repeated string failure_strings = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclAntiDdosConfig configures the anti-DDoS managed rule group's
+// sensitivity and its client-side challenge behavior during a detected
+// layer-7 DDoS event.
+message AwsWafWebAclAntiDdosConfig {
+  // Client-side action configuration — what the group does to suspicious
+  // clients during a DDoS event.
+  AwsWafWebAclAntiDdosClientSideAction client_side_action = 1 [(buf.validate.field).required = true];
+
+  // How aggressively the group's blocking rule matches during an event:
+  // "LOW" (default — blocks only confident matches), "MEDIUM", or "HIGH"
+  // (blocks more aggressively, more false-positive risk).
+  string sensitivity_to_block = 2 [(buf.validate.field).cel = {
+    id: "sensitivity_to_block_valid"
+    message: "sensitivity_to_block must be 'LOW', 'MEDIUM', or 'HIGH' when set"
+    expression: "this == '' || this in ['LOW', 'MEDIUM', 'HIGH']"
+  }];
+}
+
+// AwsWafWebAclAntiDdosClientSideAction configures the silent browser
+// challenge the anti-DDoS group serves during an event.
+message AwsWafWebAclAntiDdosClientSideAction {
+  // "ENABLED" — serve silent challenges to suspicious clients during an
+  // event (recommended). "DISABLED" — the group only labels traffic.
+  string usage_of_action = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
+  ];
+
+  // How readily clients are challenged during an event: "LOW", "MEDIUM", or
+  // "HIGH" (AWS default HIGH — challenge liberally).
+  string sensitivity = 2 [(buf.validate.field).cel = {
+    id: "sensitivity_valid"
+    message: "sensitivity must be 'LOW', 'MEDIUM', or 'HIGH' when set"
+    expression: "this == '' || this in ['LOW', 'MEDIUM', 'HIGH']"
+  }];
+
+  // Regexes for URI paths to EXEMPT from client-side challenges (up to 5) —
+  // paths that must stay reachable by non-browser clients (webhooks, health
+  // checks) even mid-event.
+  repeated string exempt_uri_regular_expressions = 3 [
+    (buf.validate.field).repeated.max_items = 5,
+    (buf.validate.field).repeated.items.string = {
+      min_len: 1
+      max_len: 512
+    }
+  ];
+}
+
+// AwsWafWebAclRuleActionOverride overrides the action for a specific rule
+// within a managed rule group or referenced rule group. This is the primary
+// mechanism for tuning rule groups without disabling them entirely.
+//
+// Common workflow: Set a new managed rule group's override_action to "none"
+// (enforce), but override specific noisy rules to "count" until you verify
+// they don't produce false positives. Then remove the override to enforce.
+message AwsWafWebAclRuleActionOverride {
+  // Name of the rule within the group to override.
+  // Must match a rule name defined in the rule group.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Action to use instead of the rule's configured action.
+  // Valid values: "allow", "block", "count", "captcha", "challenge".
+  // Most commonly set to "count" for monitoring without enforcement.
+  string action = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // action must be valid.
+  option (buf.validate.message).cel = {
+    id: "override_action_type_valid"
+    message: "action must be 'allow', 'block', 'count', 'captcha', or 'challenge'"
+    expression: "this.action in ['allow', 'block', 'count', 'captcha', 'challenge']"
+  };
+}
+
+// AwsWafWebAclRuleGroupReferenceStatement references your own WAFv2 rule
+// group by ARN — a reusable rule collection with its own reserved capacity,
+// managed outside this web ACL. Rule top-level only; the containing rule
+// must use override_action.
+message AwsWafWebAclRuleGroupReferenceStatement {
+  // ARN of the WAFv2 rule group. Must be in the same scope (and for
+  // REGIONAL, the same region) as this web ACL.
+  string arn = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Override the action for specific rules within the referenced group
+  // (the managed-rule-group tuning workflow applies identically).
+  repeated AwsWafWebAclRuleActionOverride rule_action_overrides = 2;
+}
+
+// AwsWafWebAclRateBasedStatement tracks and limits request rates. When the
+// rate of requests from a tracked key (source IP by default) exceeds the
+// configured limit within the evaluation window, the rule's action is taken
+// for subsequent requests from that key until the rate drops below the limit.
+//
+// Rate-based rules are effective against:
+// - DDoS attacks and HTTP floods
+// - Brute-force login attempts
+// - API abuse and scraping
+// - Credential stuffing
+//
+// AWS restricts placement: a rate-based statement can only sit at a rule's
+// top level — never inside AND/OR/NOT or a scope-down statement.
+message AwsWafWebAclRateBasedStatement {
+  // Maximum number of requests allowed from a single tracked key within the
+  // evaluation window. When exceeded, the rule's action applies.
+  // Range: 10 to 2,000,000,000.
+  //
+  // Common values:
+  // - 100-500: Strict API rate limiting
+  // - 1000-2000: Standard web application protection
+  // - 10000+: DDoS mitigation for high-traffic endpoints
+  int32 limit = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 10
+      lte: 2000000000
+    }
+  ];
+
+  // Duration in seconds over which request rates are evaluated.
+  // Valid values: 60, 120, 300 (default), 600.
+  // Shorter windows detect bursts faster but may produce more false positives.
+  int32 evaluation_window_sec = 2;
+
+  // How to aggregate requests for rate tracking.
+  //
+  // Valid values:
+  // - "IP" (default): Track by source IP address. Simplest and most common.
+  // - "FORWARDED_IP": Track by IP from a forwarded header (e.g., X-Forwarded-For).
+  //   Requires forwarded_ip_config. Use when behind a proxy or CDN.
+  // - "CONSTANT": Count all requests as one group (global rate limit).
+  //   Requires a scope_down_statement to be useful.
+  // - "CUSTOM_KEYS": Track by a composite of up to 5 request properties
+  //   (custom_keys) — e.g. rate-limit per (IP, URI path) pair, per session
+  //   cookie, or per API key header.
+  string aggregate_key_type = 3;
+
+  // The composite aggregation key for CUSTOM_KEYS: each entry contributes
+  // one request property, and requests sharing ALL properties are counted
+  // together. Up to 5 keys. To ALSO include the source IP in the composite,
+  // add an `ip` (or `forwarded_ip`) key entry.
+  repeated AwsWafWebAclRateBasedCustomKey custom_keys = 4 [(buf.validate.field).repeated.max_items = 5];
+
+  // Forwarded IP configuration. Required when aggregate_key_type is
+  // "FORWARDED_IP". Specifies which header contains the real client IP
+  // and how to handle missing or invalid headers.
+  AwsWafWebAclForwardedIpConfig forwarded_ip_config = 5;
+
+  // Optional scope-down statement to narrow which requests are counted
+  // toward the rate limit. Only requests matching this statement contribute
+  // to the rate calculation (e.g. rate-limit only POST /login). AWS forbids
+  // group references and rate-based statements inside a scope-down.
+  AwsWafWebAclStatement scope_down_statement = 6 [(buf.validate.field).cel = {
+    id: "scope_down_statement_arms"
+    message: "a scope-down statement cannot contain managed_rule_group, rule_group_reference, or rate_based statements (AWS restriction)"
+    expression: "!has(this.managed_rule_group) && !has(this.rule_group_reference) && !has(this.rate_based)"
+  }];
+
+  // evaluation_window_sec must be a valid value when set.
+  option (buf.validate.message).cel = {
+    id: "evaluation_window_valid"
+    message: "evaluation_window_sec must be 60, 120, 300, or 600 when set"
+    expression: "this.evaluation_window_sec == 0 || this.evaluation_window_sec in [60, 120, 300, 600]"
+  };
+
+  // aggregate_key_type must be valid when set.
+  option (buf.validate.message).cel = {
+    id: "aggregate_key_type_valid"
+    message: "aggregate_key_type must be 'IP', 'FORWARDED_IP', 'CONSTANT', or 'CUSTOM_KEYS' when set"
+    expression: "this.aggregate_key_type == '' || this.aggregate_key_type in ['IP', 'FORWARDED_IP', 'CONSTANT', 'CUSTOM_KEYS']"
+  };
+
+  // forwarded_ip_config required when aggregate_key_type is FORWARDED_IP.
+  option (buf.validate.message).cel = {
+    id: "forwarded_ip_config_required"
+    message: "forwarded_ip_config is required when aggregate_key_type is 'FORWARDED_IP'"
+    expression: "this.aggregate_key_type != 'FORWARDED_IP' || has(this.forwarded_ip_config)"
+  };
+
+  // custom_keys pair with (and require) the CUSTOM_KEYS aggregate type.
+  option (buf.validate.message).cel = {
+    id: "custom_keys_pairing"
+    message: "custom_keys requires aggregate_key_type 'CUSTOM_KEYS', and 'CUSTOM_KEYS' requires at least one custom key"
+    expression: "(this.aggregate_key_type == 'CUSTOM_KEYS') == (size(this.custom_keys) > 0)"
+  };
+}
+
+// AwsWafWebAclRateBasedCustomKey contributes one request property to a
+// composite rate-aggregation key. Exactly one property type must be set.
+message AwsWafWebAclRateBasedCustomKey {
+  oneof key {
+    option (buf.validate.oneof).required = true;
+
+    // Aggregate on a request header's value.
+    AwsWafWebAclKeyWithTransformations header = 1;
+
+    // Aggregate on a cookie's value.
+    AwsWafWebAclKeyWithTransformations cookie = 2;
+
+    // Aggregate on a query argument's value.
+    AwsWafWebAclKeyWithTransformations query_argument = 3;
+
+    // Aggregate on the whole query string.
+    AwsWafWebAclTransformationsOnlyKey query_string = 4;
+
+    // Aggregate on the URI path.
+    AwsWafWebAclTransformationsOnlyKey uri_path = 5;
+
+    // Aggregate on the HTTP method (GET/POST/...).
+    bool http_method = 6 [(buf.validate.field).bool.const = true];
+
+    // Aggregate on the source IP (adds IP to a composite key — with this as
+    // the ONLY key, prefer aggregate_key_type "IP" instead).
+    bool ip = 7 [(buf.validate.field).bool.const = true];
+
+    // Aggregate on the forwarded client IP (requires the statement's
+    // forwarded_ip_config to locate the header).
+    bool forwarded_ip = 8 [(buf.validate.field).bool.const = true];
+
+    // Aggregate on the source address's autonomous system number — one
+    // bucket per network operator.
+    bool asn = 9 [(buf.validate.field).bool.const = true];
+
+    // Aggregate on the presence of a label namespace on the request (set by
+    // earlier rules or managed groups).
+    AwsWafWebAclLabelNamespaceKey label_namespace = 10;
+
+    // Aggregate on the JA3 TLS-client fingerprint.
+    AwsWafWebAclFingerprintKey ja3_fingerprint = 11;
+
+    // Aggregate on the JA4 TLS-client fingerprint.
+    AwsWafWebAclFingerprintKey ja4_fingerprint = 12;
+  }
+}
+
+// AwsWafWebAclKeyWithTransformations names a header/cookie/query-argument
+// and how to normalize its value before aggregation.
+message AwsWafWebAclKeyWithTransformations {
+  // The header, cookie, or query-argument name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Normalizations applied (in priority order) before the value is used as
+  // an aggregation key. Use one NONE transformation for the raw value.
+  repeated AwsWafWebAclTextTransformation text_transformations = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclTransformationsOnlyKey aggregates on a request component that
+// needs no name (query string, URI path), with normalization.
+message AwsWafWebAclTransformationsOnlyKey {
+  // Normalizations applied (in priority order) before the component is used
+  // as an aggregation key. Use one NONE transformation for the raw value.
+  repeated AwsWafWebAclTextTransformation text_transformations = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclLabelNamespaceKey aggregates on a label namespace prefix.
+message AwsWafWebAclLabelNamespaceKey {
+  // The label namespace to aggregate on, ending with ':' (e.g.
+  // "awswaf:managed:aws:bot-control:").
+  string namespace = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// AwsWafWebAclFingerprintKey aggregates on a TLS client fingerprint.
+message AwsWafWebAclFingerprintKey {
+  // How to handle requests without a fingerprint: "MATCH" (aggregate them
+  // together) or "NO_MATCH" (leave them out).
+  string fallback_behavior = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "MATCH",
+        "NO_MATCH"
+      ]
+    }
+  ];
+}
+
+// AwsWafWebAclGeoMatchStatement matches requests based on the country of
+// origin determined from the source IP address (or a forwarded IP header).
+//
+// Common use cases:
+// - Block traffic from embargoed or high-risk countries
+// - Allow traffic only from countries where your service operates
+// - Apply different rules based on geographic region
+message AwsWafWebAclGeoMatchStatement {
+  // ISO 3166-1 alpha-2 country codes to match against.
+  // Examples: "US", "CA", "GB", "DE", "JP", "AU".
+  //
+  // At least one country code is required.
+  repeated string country_codes = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1
+  ];
+
+  // Optional forwarded IP configuration. Use when the Web ACL is behind a
+  // proxy or CDN and the real client IP is in a forwarded header.
+  AwsWafWebAclForwardedIpConfig forwarded_ip_config = 2;
+}
+
+// AwsWafWebAclIpSetReferenceStatement matches source IPs against a WAFv2 IP
+// set (AwsWafIpSet) — the allow-list / deny-list building block. The action
+// (allow, block, count, CAPTCHA) lives on the referencing rule, so the same
+// set can back an allow rule in one ACL and a block rule in another.
+message AwsWafWebAclIpSetReferenceStatement {
+  // The IP set to match against — reference an AwsWafIpSet or provide a
+  // literal WAFv2 IP set ARN. The set must be in the same scope (and for
+  // REGIONAL, the same region) as this web ACL.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsWafIpSet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.ip_set_arn"
+  ];
+
+  // Optional forwarded IP configuration. Use when the Web ACL is behind a
+  // proxy or CDN and the real client IP is in a forwarded header.
+  //
+  // When set, the position field controls which IP from the forwarded header
+  // is matched against the IP Set (FIRST, LAST, or ANY).
+  AwsWafWebAclForwardedIpConfig forwarded_ip_config = 2;
+}
+
+// AwsWafWebAclRegexPatternSetReferenceStatement matches a request component
+// against a WAFv2 regex pattern set (AwsWafRegexPatternSet) — matches when
+// ANY regex in the set matches the inspected component.
+message AwsWafWebAclRegexPatternSetReferenceStatement {
+  // The pattern set to match against — reference an AwsWafRegexPatternSet or
+  // provide a literal WAFv2 regex pattern set ARN. The set must be in the
+  // same scope (and for REGIONAL, the same region) as this web ACL.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsWafRegexPatternSet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.regex_pattern_set_arn"
+  ];
+
+  // The request component to inspect.
+  AwsWafWebAclFieldToMatch field_to_match = 2 [(buf.validate.field).required = true];
+
+  // Normalizations applied (in priority order) before matching. Use one
+  // NONE transformation when no normalization is wanted.
+  repeated AwsWafWebAclTextTransformation text_transformations = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclByteMatchStatement matches a string inside a request component
+// — the workhorse statement for path prefixes ("/admin"), header values,
+// user-agent substrings, and API-key formats.
+message AwsWafWebAclByteMatchStatement {
+  // The string to search for (1–200 bytes). WAF compares raw bytes after
+  // text transformations are applied.
+  string search_string = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 200
+    }
+  ];
+
+  // Where the string must appear in the inspected component:
+  // "EXACTLY", "STARTS_WITH", "ENDS_WITH", "CONTAINS", or "CONTAINS_WORD"
+  // (CONTAINS_WORD requires alphanumeric-boundary separation).
+  string positional_constraint = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "EXACTLY",
+        "STARTS_WITH",
+        "ENDS_WITH",
+        "CONTAINS",
+        "CONTAINS_WORD"
+      ]
+    }
+  ];
+
+  // The request component to inspect.
+  AwsWafWebAclFieldToMatch field_to_match = 3 [(buf.validate.field).required = true];
+
+  // Normalizations applied (in priority order) before matching. Use one
+  // NONE transformation when no normalization is wanted.
+  repeated AwsWafWebAclTextTransformation text_transformations = 4 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclSqliMatchStatement detects SQL-injection attack patterns in a
+// request component. Prefer AWSManagedRulesSQLiRuleSet for broad coverage;
+// use this statement to add SQLi inspection to specific components the
+// managed group doesn't cover, or to tune sensitivity per component.
+message AwsWafWebAclSqliMatchStatement {
+  // The request component to inspect.
+  AwsWafWebAclFieldToMatch field_to_match = 1 [(buf.validate.field).required = true];
+
+  // Normalizations applied (in priority order) before detection — URL_DECODE
+  // and HTML_ENTITY_DECODE defeat common encoding evasion.
+  repeated AwsWafWebAclTextTransformation text_transformations = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Detection sensitivity: "LOW" (default — fewer false positives) or
+  // "HIGH" (catches more injection styles, more false-positive risk).
+  string sensitivity_level = 3 [(buf.validate.field).cel = {
+    id: "sensitivity_level_valid"
+    message: "sensitivity_level must be 'LOW' or 'HIGH' when set"
+    expression: "this == '' || this in ['LOW', 'HIGH']"
+  }];
+}
+
+// AwsWafWebAclXssMatchStatement detects cross-site-scripting attack patterns
+// in a request component.
+message AwsWafWebAclXssMatchStatement {
+  // The request component to inspect.
+  AwsWafWebAclFieldToMatch field_to_match = 1 [(buf.validate.field).required = true];
+
+  // Normalizations applied (in priority order) before detection —
+  // HTML_ENTITY_DECODE and URL_DECODE defeat common encoding evasion.
+  repeated AwsWafWebAclTextTransformation text_transformations = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclSizeConstraintStatement compares the byte size of a request
+// component against a threshold — e.g. block request bodies over 8 KB,
+// or flag URI paths longer than 128 bytes. Size is measured AFTER text
+// transformations are applied.
+message AwsWafWebAclSizeConstraintStatement {
+  // The comparison: "EQ", "NE", "LE", "LT", "GE", or "GT"
+  // (component_size <op> size).
+  string comparison_operator = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "EQ",
+        "NE",
+        "LE",
+        "LT",
+        "GE",
+        "GT"
+      ]
+    }
+  ];
+
+  // The size threshold in bytes. The provider caps this at 2,147,483,647
+  // (int32 max) even though the AWS API documents a 21,474,836,480 ceiling —
+  // the tighter bound is what a deployment can actually carry. Typed int32
+  // deliberately: protojson stringifies 64-bit integers, which would corrupt
+  // the rule-JSON document both engines build from this tree.
+  int32 size = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 2147483647
+  }];
+
+  // The request component to measure.
+  AwsWafWebAclFieldToMatch field_to_match = 3 [(buf.validate.field).required = true];
+
+  // Normalizations applied (in priority order) before measuring. Use one
+  // NONE transformation to measure the raw component.
+  repeated AwsWafWebAclTextTransformation text_transformations = 4 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclRegexMatchStatement matches a request component against a
+// single inline regular expression. For regexes shared across rules, prefer
+// a regex_pattern_set_reference. AWS supports a subset of PCRE — no
+// backreferences or lookaround.
+message AwsWafWebAclRegexMatchStatement {
+  // The regular expression (1–512 characters).
+  string regex_string = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 512
+    }
+  ];
+
+  // The request component to inspect.
+  AwsWafWebAclFieldToMatch field_to_match = 2 [(buf.validate.field).required = true];
+
+  // Normalizations applied (in priority order) before matching. Use one
+  // NONE transformation when no normalization is wanted.
+  repeated AwsWafWebAclTextTransformation text_transformations = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclLabelMatchStatement matches labels that EARLIER rules (via
+// rule_labels) or managed rule groups added to the request — the mechanism
+// for multi-stage evaluation. Example: match label
+// "awswaf:managed:aws:bot-control:bot:category:monitoring" added by Bot
+// Control, and allow it despite a later blanket bot block.
+message AwsWafWebAclLabelMatchStatement {
+  // Match granularity: "LABEL" (the full label string) or "NAMESPACE" (any
+  // label whose namespace prefix matches key).
+  string scope = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "LABEL",
+        "NAMESPACE"
+      ]
+    }
+  ];
+
+  // The label (for scope LABEL, e.g. "awswaf:111122223333:rulegroup:testRules:label:testLabel")
+  // or namespace prefix ending in ':' (for scope NAMESPACE).
+  string key = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 1024
+    }
+  ];
+}
+
+// AwsWafWebAclAsnMatchStatement matches requests by the autonomous system
+// number (ASN) of the source address — block or rate-limit entire networks
+// or hosting providers (e.g. traffic from bulletproof-hosting ASNs).
+message AwsWafWebAclAsnMatchStatement {
+  // The ASNs to match (1–100 entries), e.g. 64496. Typed uint32 — ASNs are
+  // 32-bit unsigned (4-byte ASNs reach 4,294,967,295), and protojson
+  // stringifies 64-bit integers, which would corrupt the rule-JSON document
+  // both engines build from this tree.
+  repeated uint32 asn_list = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 100
+  ];
+
+  // Optional forwarded IP configuration — derive the ASN from a forwarded
+  // client IP instead of the source address.
+  AwsWafWebAclForwardedIpConfig forwarded_ip_config = 2;
+}
+
+// AwsWafWebAclFieldToMatch selects WHICH request component a match statement
+// inspects. Exactly one component must be set.
+//
+// Body-derived components (body, json_body) are inspected only up to the
+// web ACL's inspection size limit (16 KB default; raise per resource type
+// via the spec's association_config) — configure oversize_handling for what
+// happens when the body is larger.
+message AwsWafWebAclFieldToMatch {
+  oneof field {
+    option (buf.validate.oneof).required = true;
+
+    // Inspect the URI path (e.g. "/images/daily-ad.jpg").
+    bool uri_path = 1 [(buf.validate.field).bool.const = true];
+
+    // Inspect the whole query string (everything after the '?').
+    bool query_string = 2 [(buf.validate.field).bool.const = true];
+
+    // Inspect the HTTP method (GET, POST, ...).
+    bool method = 3 [(buf.validate.field).bool.const = true];
+
+    // Inspect all query arguments' values (max 30 arguments, 10 KB).
+    bool all_query_arguments = 4 [(buf.validate.field).bool.const = true];
+
+    // Inspect a single named header (e.g. "User-Agent").
+    AwsWafWebAclSingleField single_header = 5;
+
+    // Inspect a single named query argument's value (max 30 characters for
+    // the name).
+    AwsWafWebAclSingleField single_query_argument = 6;
+
+    // Inspect the raw request body.
+    AwsWafWebAclBodyMatch body = 7;
+
+    // Inspect the request body parsed as JSON — match against keys, values,
+    // or both, over all elements or specific JSON pointer paths.
+    AwsWafWebAclJsonBodyMatch json_body = 8;
+
+    // Inspect multiple headers by pattern (all, an include list, or an
+    // exclude list).
+    AwsWafWebAclHeadersMatch headers = 9;
+
+    // Inspect cookies by pattern (all, an include list, or an exclude list).
+    AwsWafWebAclCookiesMatch cookies = 10;
+
+    // Inspect the comma-delimited list of header NAMES in receive order —
+    // header-order fingerprinting of clients.
+    AwsWafWebAclHeaderOrderMatch header_order = 11;
+
+    // Inspect the JA3 TLS-client fingerprint (a 32-character hash of the
+    // TLS ClientHello — fingerprints the client software).
+    AwsWafWebAclFingerprintMatch ja3_fingerprint = 12;
+
+    // Inspect the JA4 TLS-client fingerprint (the successor fingerprint
+    // format to JA3).
+    AwsWafWebAclFingerprintMatch ja4_fingerprint = 13;
+
+    // Inspect the URI fragment (the part after '#'). Rarely sent by
+    // browsers; useful for API clients that forward fragments.
+    AwsWafWebAclUriFragmentMatch uri_fragment = 14;
+  }
+}
+
+// AwsWafWebAclSingleField names one header or one query argument to inspect.
+message AwsWafWebAclSingleField {
+  // The header or query-argument name (case-insensitive for headers).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// AwsWafWebAclBodyMatch inspects the raw request body.
+message AwsWafWebAclBodyMatch {
+  // What to do when the body exceeds the inspection size limit:
+  // "CONTINUE" (default — inspect what fits), "MATCH" (treat oversize as a
+  // rule match — the safe choice for block rules), or "NO_MATCH".
+  string oversize_handling = 1 [(buf.validate.field).cel = {
+    id: "oversize_handling_valid"
+    message: "oversize_handling must be 'CONTINUE', 'MATCH', or 'NO_MATCH' when set"
+    expression: "this == '' || this in ['CONTINUE', 'MATCH', 'NO_MATCH']"
+  }];
+}
+
+// AwsWafWebAclJsonBodyMatch inspects the request body parsed as JSON.
+message AwsWafWebAclJsonBodyMatch {
+  // Which parts of the JSON to match against: "ALL" (keys and values),
+  // "KEY", or "VALUE".
+  string match_scope = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "ALL",
+        "KEY",
+        "VALUE"
+      ]
+    }
+  ];
+
+  // JSON pointer paths to inspect (e.g. "/user/name"). When empty, ALL
+  // elements are inspected.
+  repeated string included_paths = 2;
+
+  // What to do when the body is not valid JSON: "MATCH", "NO_MATCH", or
+  // "EVALUATE_AS_STRING" (fall back to raw-string inspection). When unset,
+  // AWS applies its default host-of-checks behavior.
+  string invalid_fallback_behavior = 3 [(buf.validate.field).cel = {
+    id: "invalid_fallback_behavior_valid"
+    message: "invalid_fallback_behavior must be 'MATCH', 'NO_MATCH', or 'EVALUATE_AS_STRING' when set"
+    expression: "this == '' || this in ['MATCH', 'NO_MATCH', 'EVALUATE_AS_STRING']"
+  }];
+
+  // What to do when the body exceeds the inspection size limit:
+  // "CONTINUE" (default), "MATCH", or "NO_MATCH".
+  string oversize_handling = 4 [(buf.validate.field).cel = {
+    id: "oversize_handling_valid"
+    message: "oversize_handling must be 'CONTINUE', 'MATCH', or 'NO_MATCH' when set"
+    expression: "this == '' || this in ['CONTINUE', 'MATCH', 'NO_MATCH']"
+  }];
+}
+
+// AwsWafWebAclHeadersMatch inspects multiple request headers by pattern.
+message AwsWafWebAclHeadersMatch {
+  // Which headers to inspect: set exactly one of all / included_headers /
+  // excluded_headers.
+  AwsWafWebAclNamePattern match_pattern = 1 [(buf.validate.field).required = true];
+
+  // Which parts to match against: "ALL" (names and values), "KEY" (names),
+  // or "VALUE" (values).
+  string match_scope = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "ALL",
+        "KEY",
+        "VALUE"
+      ]
+    }
+  ];
+
+  // What to do when the headers exceed WAF's inspection limit (200 headers /
+  // 8 KB): "CONTINUE", "MATCH", or "NO_MATCH". Required by AWS.
+  string oversize_handling = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "CONTINUE",
+        "MATCH",
+        "NO_MATCH"
+      ]
+    }
+  ];
+}
+
+// AwsWafWebAclCookiesMatch inspects request cookies by pattern.
+message AwsWafWebAclCookiesMatch {
+  // Which cookies to inspect: set exactly one of all / included_names
+  // (cookie names) / excluded_names (cookie names).
+  AwsWafWebAclNamePattern match_pattern = 1 [(buf.validate.field).required = true];
+
+  // Which parts to match against: "ALL" (names and values), "KEY" (names),
+  // or "VALUE" (values).
+  string match_scope = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "ALL",
+        "KEY",
+        "VALUE"
+      ]
+    }
+  ];
+
+  // What to do when the cookies exceed WAF's inspection limit (200 cookies /
+  // 8 KB): "CONTINUE", "MATCH", or "NO_MATCH". Required by AWS.
+  string oversize_handling = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "CONTINUE",
+        "MATCH",
+        "NO_MATCH"
+      ]
+    }
+  ];
+}
+
+// AwsWafWebAclNamePattern selects names for headers/cookies inspection:
+// exactly one selection mode must be set.
+message AwsWafWebAclNamePattern {
+  // Inspect all headers/cookies.
+  bool all = 1;
+
+  // Inspect only these names (max 199).
+  repeated string included_names = 2 [(buf.validate.field).repeated.max_items = 199];
+
+  // Inspect all EXCEPT these names (max 199).
+  repeated string excluded_names = 3 [(buf.validate.field).repeated.max_items = 199];
+
+  // Exactly one selection mode.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_pattern"
+    message: "set exactly one of all, included_names, or excluded_names"
+    expression: "(this.all ? 1 : 0) + (size(this.included_names) > 0 ? 1 : 0) + (size(this.excluded_names) > 0 ? 1 : 0) == 1"
+  };
+}
+
+// AwsWafWebAclHeaderOrderMatch inspects the comma-delimited list of header
+// names in the order received — a client-fingerprinting signal.
+message AwsWafWebAclHeaderOrderMatch {
+  // What to do when the headers exceed WAF's inspection limit:
+  // "CONTINUE", "MATCH", or "NO_MATCH". Required by AWS.
+  string oversize_handling = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "CONTINUE",
+        "MATCH",
+        "NO_MATCH"
+      ]
+    }
+  ];
+}
+
+// AwsWafWebAclFingerprintMatch inspects a TLS client fingerprint (JA3/JA4).
+message AwsWafWebAclFingerprintMatch {
+  // What to do when the request has no fingerprint: "MATCH" or "NO_MATCH".
+  string fallback_behavior = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "MATCH",
+        "NO_MATCH"
+      ]
+    }
+  ];
+}
+
+// AwsWafWebAclUriFragmentMatch inspects the URI fragment (after '#').
+message AwsWafWebAclUriFragmentMatch {
+  // What to do when the request has no fragment: "MATCH" or "NO_MATCH".
+  // When unset, AWS treats missing fragments as NO_MATCH.
+  string fallback_behavior = 1 [(buf.validate.field).cel = {
+    id: "fallback_behavior_valid"
+    message: "fallback_behavior must be 'MATCH' or 'NO_MATCH' when set"
+    expression: "this == '' || this in ['MATCH', 'NO_MATCH']"
+  }];
+}
+
+// AwsWafWebAclTextTransformation is one normalization step applied to the
+// inspected component before matching, defeating encoding-based evasion.
+// Transformations run in ascending priority order.
+message AwsWafWebAclTextTransformation {
+  // Order of this transformation relative to its siblings (lower first).
+  // Priorities must be unique within one statement.
+  int32 priority = 1 [(buf.validate.field).int32.gte = 0];
+
+  // The transformation. "NONE" for raw bytes; common evasion-defeaters are
+  // "URL_DECODE", "HTML_ENTITY_DECODE", "LOWERCASE", "COMPRESS_WHITE_SPACE",
+  // and "CMD_LINE" (for command-injection inspection).
+  string type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "NONE",
+        "COMPRESS_WHITE_SPACE",
+        "HTML_ENTITY_DECODE",
+        "LOWERCASE",
+        "CMD_LINE",
+        "URL_DECODE",
+        "BASE64_DECODE",
+        "HEX_DECODE",
+        "MD5",
+        "REPLACE_COMMENTS",
+        "ESCAPE_SEQ_DECODE",
+        "SQL_HEX_DECODE",
+        "CSS_DECODE",
+        "JS_DECODE",
+        "NORMALIZE_PATH",
+        "NORMALIZE_PATH_WIN",
+        "REMOVE_NULLS",
+        "REPLACE_NULLS",
+        "BASE64_DECODE_EXT",
+        "URL_DECODE_UNI",
+        "UTF8_TO_UNICODE"
+      ]
+    }
+  ];
+}
+
+// AwsWafWebAclForwardedIpConfig specifies how to extract the real client IP
+// from a forwarded header when the Web ACL sits behind a proxy, CDN, or
+// load balancer that adds client IP information to the request.
+//
+// Used by: geo_match, ip_set_reference, asn_match, and rate_based
+// (FORWARDED_IP) statements.
+message AwsWafWebAclForwardedIpConfig {
+  // Name of the HTTP header containing the forwarded IP address.
+  // Common values: "X-Forwarded-For", "X-Real-IP", "True-Client-IP".
+  string header_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How to handle requests with missing or invalid forwarded IP headers.
+  // - "MATCH": Treat as a match (allows the rule to process the request).
+  // - "NO_MATCH": Treat as no match (skips the rule for this request).
+  string fallback_behavior = 2 [(buf.validate.field).required = true];
+
+  // Which IP address to use from multi-value forwarded headers.
+  // Only applicable for IP Set reference rules (ignored by geo_match,
+  // asn_match, and rate_based).
+  //
+  // - "FIRST": Use the first IP in the header (closest to the client).
+  // - "LAST": Use the last IP (closest to the server).
+  // - "ANY": Match if any IP in the header matches the IP Set.
+  //
+  // When omitted, defaults to "FIRST".
+  string position = 3;
+
+  // fallback_behavior must be valid.
+  option (buf.validate.message).cel = {
+    id: "fallback_behavior_valid"
+    message: "fallback_behavior must be 'MATCH' or 'NO_MATCH'"
+    expression: "this.fallback_behavior in ['MATCH', 'NO_MATCH']"
+  };
+
+  // position must be valid when set.
+  option (buf.validate.message).cel = {
+    id: "position_valid"
+    message: "position must be 'FIRST', 'LAST', or 'ANY' when set"
+    expression: "this.position == '' || this.position in ['FIRST', 'LAST', 'ANY']"
+  };
+}
+
+// AwsWafWebAclVisibilityConfig controls CloudWatch metrics and request
+// sampling for a Web ACL or individual rule. Every Web ACL and rule in AWS
+// requires a visibility configuration.
+//
+// When this message is omitted (on either the spec or a rule), the IaC module
+// applies sensible defaults: metrics enabled, sampling enabled, and the
+// metric_name derived from the resource or rule name.
+message AwsWafWebAclVisibilityConfig {
+  // Enable CloudWatch metrics for this Web ACL or rule.
+  // Default: true (applied by IaC module when omitted).
+  bool cloudwatch_metrics_enabled = 1;
+
+  // Enable request sampling for this Web ACL or rule. Sampled requests are
+  // viewable in the AWS WAF console for debugging rule matches.
+  // Default: true (applied by IaC module when omitted).
+  bool sampled_requests_enabled = 2;
+
+  // CloudWatch metric name for this Web ACL or rule. Must be unique within
+  // the Web ACL's rules.
+  // Default: resource name (Web ACL) or rule name (applied by IaC module).
+  string metric_name = 3;
+}
+
+// AwsWafWebAclImmunityTimeConfig sets how long a client's successful
+// CAPTCHA solve or challenge response stays valid before the client is
+// re-challenged.
+message AwsWafWebAclImmunityTimeConfig {
+  // Immunity time in seconds. CAPTCHA: 60–259,200 (AWS default 300).
+  // Challenge: 300–259,200 (AWS default 300). Typed int32 (the max fits) —
+  // protojson stringifies 64-bit integers, which would corrupt the rule-JSON
+  // document for the per-rule configs living inside the rules subtree.
+  int32 immunity_time_sec = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 60
+      lte: 259200
+    }
+  ];
+}
+
+// AwsWafWebAclAssociationConfig raises the request BODY inspection size
+// limit per protected-resource type. Default is 16 KB; larger limits
+// increase the WCU cost of body-inspecting rules.
+message AwsWafWebAclAssociationConfig {
+  // Body inspection limit for CloudFront distributions ("KB_16", "KB_32",
+  // "KB_48", or "KB_64").
+  string cloudfront_request_body_limit = 1 [(buf.validate.field).cel = {
+    id: "body_limit_valid"
+    message: "the request body limit must be 'KB_16', 'KB_32', 'KB_48', or 'KB_64' when set"
+    expression: "this == '' || this in ['KB_16', 'KB_32', 'KB_48', 'KB_64']"
+  }];
+
+  // Body inspection limit for API Gateway REST APIs.
+  string api_gateway_request_body_limit = 2 [(buf.validate.field).cel = {
+    id: "body_limit_valid"
+    message: "the request body limit must be 'KB_16', 'KB_32', 'KB_48', or 'KB_64' when set"
+    expression: "this == '' || this in ['KB_16', 'KB_32', 'KB_48', 'KB_64']"
+  }];
+
+  // Body inspection limit for Cognito user pools.
+  string cognito_user_pool_request_body_limit = 3 [(buf.validate.field).cel = {
+    id: "body_limit_valid"
+    message: "the request body limit must be 'KB_16', 'KB_32', 'KB_48', or 'KB_64' when set"
+    expression: "this == '' || this in ['KB_16', 'KB_32', 'KB_48', 'KB_64']"
+  }];
+
+  // Body inspection limit for App Runner services.
+  string app_runner_service_request_body_limit = 4 [(buf.validate.field).cel = {
+    id: "body_limit_valid"
+    message: "the request body limit must be 'KB_16', 'KB_32', 'KB_48', or 'KB_64' when set"
+    expression: "this == '' || this in ['KB_16', 'KB_32', 'KB_48', 'KB_64']"
+  }];
+
+  // Body inspection limit for Verified Access instances.
+  string verified_access_instance_request_body_limit = 5 [(buf.validate.field).cel = {
+    id: "body_limit_valid"
+    message: "the request body limit must be 'KB_16', 'KB_32', 'KB_48', or 'KB_64' when set"
+    expression: "this == '' || this in ['KB_16', 'KB_32', 'KB_48', 'KB_64']"
+  }];
+}
+
+// AwsWafWebAclDataProtectionConfig lists the request fields to mask in ALL
+// WAF outputs (logs, sampled requests, rule match details) before they
+// leave WAF.
+message AwsWafWebAclDataProtectionConfig {
+  // The fields to protect (up to 26 entries).
+  repeated AwsWafWebAclDataProtection data_protections = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 26
+  ];
+}
+
+// AwsWafWebAclDataProtection masks one request field class in WAF outputs.
+message AwsWafWebAclDataProtection {
+  // The field class to protect: "SINGLE_HEADER", "SINGLE_COOKIE",
+  // "SINGLE_QUERY_ARGUMENT", "QUERY_STRING", or "BODY".
+  string field_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "SINGLE_HEADER",
+        "SINGLE_COOKIE",
+        "SINGLE_QUERY_ARGUMENT",
+        "QUERY_STRING",
+        "BODY"
+      ]
+    }
+  ];
+
+  // The specific keys to protect for the SINGLE_* field types (header names,
+  // cookie names, query-argument names; up to 100). Not applicable to
+  // QUERY_STRING/BODY (which protect the whole component).
+  repeated string field_keys = 2 [(buf.validate.field).repeated.max_items = 100];
+
+  // How to mask: "SUBSTITUTION" (replace with a fixed placeholder) or
+  // "HASH" (replace with a one-way hash, preserving correlate-ability).
+  string action = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "SUBSTITUTION",
+        "HASH"
+      ]
+    }
+  ];
+
+  // Also exclude this field from rule MATCH details in logs.
+  bool exclude_rule_match_details = 4;
+
+  // Also exclude this field from rate-based rule details in logs.
+  bool exclude_rate_based_details = 5;
+
+  // SINGLE_* field types need field_keys; whole-component types must not
+  // carry them.
+  option (buf.validate.message).cel = {
+    id: "field_keys_pairing"
+    message: "field_keys is required for SINGLE_HEADER/SINGLE_COOKIE/SINGLE_QUERY_ARGUMENT and must be empty for QUERY_STRING/BODY"
+    expression: "(this.field_type in ['SINGLE_HEADER', 'SINGLE_COOKIE', 'SINGLE_QUERY_ARGUMENT']) == (size(this.field_keys) > 0)"
+  };
+}
+
+// AwsWafWebAclCustomResponse defines the HTTP response returned to clients
+// when a request is blocked. Use this to provide branded error pages or
+// structured API error responses instead of the default AWS WAF block page.
+message AwsWafWebAclCustomResponse {
+  // HTTP response status code to return. Range: 200-600.
+  // Common values: 403 (Forbidden), 429 (Too Many Requests), 503 (Service Unavailable).
+  int32 response_code = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 200
+      lte: 600
+    }
+  ];
+
+  // Key referencing a custom_response_body defined at the Web ACL level.
+  // When set, the response body from the matching custom_response_body is
+  // returned with the specified response_code and content type.
+  string custom_response_body_key = 2;
+
+  // Additional HTTP headers to include in the block response.
+  repeated AwsWafWebAclCustomHeader response_headers = 3;
+}
+
+// AwsWafWebAclCustomHeader defines an HTTP header name-value pair for custom
+// request handling (inserted into forwarded requests) or custom responses
+// (returned in block responses).
+message AwsWafWebAclCustomHeader {
+  // HTTP header name (case-insensitive).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // HTTP header value.
+  string value = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// AwsWafWebAclCustomResponseBody defines a reusable response body template
+// that can be referenced by block actions via custom_response_body_key.
+//
+// Define common error pages once and reference them from multiple rules to
+// maintain consistent user experience across different block scenarios.
+message AwsWafWebAclCustomResponseBody {
+  // Unique key used to reference this response body from custom_response
+  // configurations. Must be unique within the Web ACL.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The response body content (HTML, plain text, or JSON). Max 10,240 bytes.
+  string content = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 10240
+    }
+  ];
+
+  // MIME type of the content.
+  // Valid values: "TEXT_PLAIN", "TEXT_HTML", "APPLICATION_JSON".
+  string content_type = 3 [(buf.validate.field).required = true];
+
+  // content_type must be valid.
+  option (buf.validate.message).cel = {
+    id: "content_type_valid"
+    message: "content_type must be 'TEXT_PLAIN', 'TEXT_HTML', or 'APPLICATION_JSON'"
+    expression: "this.content_type in ['TEXT_PLAIN', 'TEXT_HTML', 'APPLICATION_JSON']"
+  };
+}
+
+// AwsWafWebAclLoggingConfig defines the logging destination and optional
+// field redaction for WAF request logs.
+//
+// WAF logging captures detailed information about each request inspected by
+// the Web ACL, including matched rules, actions taken, and request metadata.
+// This data is essential for security monitoring, forensics, and WAF tuning.
+//
+// Important: The destination resource name must start with "aws-waf-logs-"
+// (enforced by AWS at the API level).
+//
+// For masking that applies to ALL WAF outputs (not just the log
+// destination), see the spec's data_protection_config.
+message AwsWafWebAclLoggingConfig {
+  // ARN of the logging destination. Must be one of:
+  // - CloudWatch Logs log group ARN
+  // - S3 bucket ARN
+  // - Kinesis Firehose delivery stream ARN
+  //
+  // The destination resource name must start with "aws-waf-logs-".
+  //
+  // No default_kind is set because the destination can be any of three
+  // different resource types.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef destination_arn = 1 [(buf.validate.field).required = true];
+
+  // HTTP header names to redact from logs. Redacted headers appear as
+  // "REDACTED" in log entries instead of their actual values.
+  //
+  // Common headers to redact: "Authorization", "Cookie", "X-Api-Key".
+  repeated string redacted_header_names = 2;
+
+  // Redact the URI path from log entries. When true, the URI path appears
+  // as "REDACTED" in logs.
+  bool redact_uri_path = 3;
+
+  // Redact the query string from log entries. When true, query string
+  // parameters appear as "REDACTED" in logs.
+  bool redact_query_string = 4;
+}

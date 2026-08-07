@@ -2,7 +2,7 @@
 // operational face of pkg/catalogbundle, used by the Makefile targets and
 // the release/CI lanes:
 //
-//	go run ./pkg/catalogbundle/cli build  --descriptors <fds> --provider-base <dir> --out <zip> [--tag <tag>]
+//	go run ./pkg/catalogbundle/cli build  --descriptors <fds> --catalog-dir <dir> --out <zip> [--tag <tag>]
 //	go run ./pkg/catalogbundle/cli verify --bundle <zip>
 //
 // verify loads the bundle (checksum self-verification included) and runs the
@@ -32,7 +32,7 @@ func run() error {
 	case "build":
 		fs := flag.NewFlagSet("build", flag.ExitOnError)
 		descriptors := fs.String("descriptors", "", "buf-built FileDescriptorSet path")
-		providerBase := fs.String("provider-base", "apis/dev/planton/provider", "provider tree holding conversions/ and presets/")
+		catalogDir := fs.String("catalog-dir", "catalog", "catalog tree holding conversions/ and presets/")
 		out := fs.String("out", "", "bundle zip to write")
 		tag := fs.String("tag", "", "release tag stamped into the manifest")
 		if err := fs.Parse(os.Args[2:]); err != nil {
@@ -43,7 +43,7 @@ func run() error {
 		}
 		manifest, err := catalogbundle.Build(catalogbundle.BuildInput{
 			DescriptorSetPath: *descriptors,
-			ProviderBaseDir:   *providerBase,
+			CatalogDir:        *catalogDir,
 			ReleaseTag:        *tag,
 			OutputPath:        *out,
 		})

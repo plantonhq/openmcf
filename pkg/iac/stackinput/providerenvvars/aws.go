@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	awsprovider "github.com/plantonhq/planton/apis/dev/planton/provider/aws"
+	awsprovider "github.com/plantonhq/planton/catalog/aws"
 	"github.com/plantonhq/planton/pkg/iac/provider/aws/awswebidentity"
 )
 

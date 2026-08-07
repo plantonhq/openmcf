@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesharbor.v1alpha1;
+
+import "catalog/kubernetes/kubernetes.proto";
+
+/**
+ * **KubernetesHarborStackOutputs** — the composition handles a
+ * deployed Harbor exports: the front-door Service for exposure
+ * kinds, the per-component Services, and the admin credential
+ * Secret.
+ */
+message KubernetesHarborStackOutputs {
+  /** Namespace Harbor is installed into. */
+  string namespace = 1;
+
+  /**
+   * The front-door Service (nginx) — the ONE service clients and
+   * composed exposure kinds point at; it proxies UI, API, and OCI
+   * traffic. Named after this resource.
+   */
+  string expose_service = 2;
+
+  /**
+   * In-cluster URL of the front door, e.g.
+   * `http://<expose_service>.<namespace>.svc.cluster.local:80`
+   * (https/443 when expose.tls is enabled).
+   */
+  string kube_endpoint = 3;
+
+  /**
+   * The declared external URL — the address OCI clients must use
+   * (token-service auth is bound to it).
+   */
+  string external_url = 4;
+
+  /** Core (API) Service name. */
+  string core_service = 5;
+
+  /** Portal (web UI) Service name. */
+  string portal_service = 6;
+
+  /** Registry (OCI distribution) Service name. */
+  string registry_service = 7;
+
+  /** Jobservice Service name. */
+  string jobservice_service = 8;
+
+  /** Trivy Service name — empty when the scanner is disabled. */
+  string trivy_service = 9;
+
+  /**
+   * Internal database Service name — set only on the internal
+   * database arm (empty when composing an external PostgreSQL).
+   */
+  string database_service = 10;
+
+  /**
+   * Internal Redis Service name — set only on the internal cache
+   * arm.
+   */
+  string redis_service = 11;
+
+  /** Admin username — always "admin" (a Harbor constant). */
+  string admin_username = 12;
+
+  /**
+   * The Secret holding the admin password: the module-owned
+   * `<name>-admin-auth` (key HARBOR_ADMIN_PASSWORD) on the
+   * generated arm, or the user's declared Secret/key. Retrieve:
+   * `kubectl get secret <name> -n <namespace> -o
+   * jsonpath='{.data.<key>}' | base64 -d`.
+   */
+  dev.planton.kubernetes.KubernetesSecretKey admin_password_secret = 13;
+
+  /**
+   * Copy-paste command to reach the UI/API from a workstation.
+   * NOTE pushes/pulls through this tunnel only authenticate when
+   * external_url matches the forwarded address (see the spec's
+   * external_url comment).
+   */
+  string port_forward_command = 14;
+}

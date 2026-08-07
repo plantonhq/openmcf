@@ -28,7 +28,7 @@ type wisdomFile struct {
 // and catalog-root GUIDE.md files plus everything in the patterns library.
 func wisdomFiles(t *testing.T, root string) []wisdomFile {
 	t.Helper()
-	catalogRoot := filepath.Join(root, "apis", providerPathPrefix)
+	catalogRoot := filepath.Join(root, catalogPathPrefix)
 	var files []wisdomFile
 	err := filepath.WalkDir(catalogRoot, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -37,7 +37,7 @@ func wisdomFiles(t *testing.T, root string) []wisdomFile {
 		if d.IsDir() {
 			return nil
 		}
-		inPatterns := strings.Contains(path, string(filepath.Separator)+"patterns"+string(filepath.Separator))
+		inPatterns := strings.Contains(path, string(filepath.Separator)+"_patterns"+string(filepath.Separator))
 		if d.Name() != "GUIDE.md" && !inPatterns {
 			return nil
 		}
@@ -70,8 +70,8 @@ func registryKindDirs(t *testing.T) map[string]bool {
 			t.Fatalf("resolve kind %s: %v", name, err)
 		}
 		protoDir := filepath.Dir(res.Message.ParentFile().Path())
-		if strings.HasPrefix(protoDir, providerPathPrefix) {
-			dirs[filepath.Join("apis", protoDir)] = true
+		if strings.HasPrefix(protoDir, catalogPathPrefix) {
+			dirs[protoDir] = true
 		}
 	}
 	return dirs
@@ -84,7 +84,7 @@ func registryKindDirs(t *testing.T) map[string]bool {
 func TestWisdomGuidePlacement(t *testing.T) {
 	root := repoRoot(t)
 	kindDirs := registryKindDirs(t)
-	catalogRootGuide := filepath.Join("apis", providerPathPrefix, "GUIDE.md")
+	catalogRootGuide := filepath.Join(catalogPathPrefix, "_docs", "GUIDE.md")
 
 	for _, file := range wisdomFiles(t, root) {
 		if filepath.Base(file.relPath) != "GUIDE.md" {

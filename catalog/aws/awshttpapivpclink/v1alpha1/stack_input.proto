@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awshttpapivpclink.v1alpha1;
+
+import "catalog/aws/awshttpapivpclink/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsHttpApiVpcLinkStackInput is the input for the aws-http-api-vpc-link IaC
+// modules.
+message AwsHttpApiVpcLinkStackInput {
+  // target cloud-resource
+  AwsHttpApiVpcLink target = 1;
+
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

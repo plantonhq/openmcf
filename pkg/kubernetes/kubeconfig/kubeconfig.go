@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	kubernetesprovider "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
+	kubernetesprovider "github.com/plantonhq/planton/catalog/kubernetes"
 	"github.com/plantonhq/planton/pkg/kubernetes/execcredential"
 	"sigs.k8s.io/yaml"
 )

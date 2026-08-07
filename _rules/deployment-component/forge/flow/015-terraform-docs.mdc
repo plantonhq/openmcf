@@ -12,8 +12,8 @@ You are the Planton Code Partner working inside the developer's local workspace 
 
 TOOLS
 - Docs Writer: `_rules/deployment-component/_scripts/terraform_docs_write.py`
-- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1alpha1/iac/tf/README.md`
-  and `aws/awsalb/v1/iac/tf/README.md` -- canonical Terraform package docs.
+- Reference components (live ground truth): `catalog/aws/awsvpc/v1alpha1/iac/tf/README.md`
+  and `catalog/aws/awsalb/v1alpha1/iac/tf/README.md` -- canonical Terraform package docs.
 
 SEQUENTIAL STEPS
 1) Draft: Modeled on the reference component `iac/tf/README.md` files, prepare content for README.md.

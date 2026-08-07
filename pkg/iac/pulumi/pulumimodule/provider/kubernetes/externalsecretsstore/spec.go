@@ -21,7 +21,7 @@ package externalsecretsstore
 
 import (
 	"github.com/pkg/errors"
-	kubernetesprovider "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
+	kubernetesprovider "github.com/plantonhq/planton/catalog/kubernetes"
 )
 
 // CredentialSecret is one Kubernetes Secret a module must create in the

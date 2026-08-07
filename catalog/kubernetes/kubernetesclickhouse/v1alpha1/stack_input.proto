@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesclickhouse.v1alpha1;
+
+import "catalog/kubernetes/kubernetesclickhouse/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+// click-house-kubernetes stack-input
+message KubernetesClickHouseStackInput {
+  // target cloud-resource
+  KubernetesClickHouse target = 1;
+  // provider-credential
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+  // kubernetes namespace
+  string kubernetes_namespace = 3;
+}

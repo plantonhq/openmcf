@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetestektonoperator.v1alpha1;
+
+import "catalog/kubernetes/kubernetestektonoperator/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+// KubernetesTektonOperatorStackInput defines the inputs required for the Tekton Operator IaC modules.
+message KubernetesTektonOperatorStackInput {
+  // target cloud-resource
+  KubernetesTektonOperator target = 1;
+  // provider-config for Kubernetes
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

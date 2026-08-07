@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/hetznercloud/pulumihcloudprovider",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/dev/planton/provider/hetznercloud",
+        "//catalog/hetznercloud",
         "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_hcloud_sdk//go/hcloud",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",

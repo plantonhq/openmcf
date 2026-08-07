@@ -1,0 +1,545 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesistio.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "catalog/kubernetes/workload_pod.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesIstioSpec** installs the Istio service-mesh CONTROL PLANE from the
+ * official Helm charts (`base` + `istiod`, plus `cni` + `ztunnel` in ambient mode,
+ * all from https://istio-release.storage.googleapis.com/charts). istiod is the
+ * mesh's brain: it validates mesh configuration, issues workload certificates, and
+ * programs the data plane (sidecar proxies, ambient node proxies, and gateways).
+ *
+ * This component deploys NO gateways and NO ingress. Istio implements the
+ * Kubernetes Gateway API natively: creating a KubernetesGateway with
+ * `gateway_class_name: istio` makes istiod provision and program the gateway
+ * deployment automatically, and the route kinds (KubernetesHttpRoute, ...) attach
+ * to it. North-south exposure therefore composes from the Gateway API kinds;
+ * mesh traffic POLICY composes from the typed Istio kinds (KubernetesDestinationRule,
+ * KubernetesPeerAuthentication, KubernetesAuthorizationPolicy, ...), which require
+ * only the CRDs — installed with this component, or standalone via
+ * KubernetesIstioBaseCrds on clusters that use the policy APIs without a mesh.
+ *
+ * Data plane choice is first-class: `sidecar` (the classic per-pod proxy, injected
+ * into workload pods) or `ambient` (no sidecars — a per-node ztunnel DaemonSet
+ * carries mTLS/L4, waypoint proxies add L7 where needed; enrollment is per
+ * namespace/pod via the `istio.io/dataplane-mode: ambient` label).
+ *
+ * The typed fields below cover the charts' meaningful configuration surface;
+ * `helm_values` remains as the per-release escape hatch for values beyond them
+ * (merged last, Helm `-f` semantics, identical on both engines) — a safety valve,
+ * never the primary interface.
+ */
+message KubernetesIstioSpec {
+  /**
+   * Namespace to install the control plane into ("istio-system" by convention —
+   * istiod, and in ambient mode the CNI agent and ztunnel, all live here).
+   * Accepts a literal namespace name or a reference to a KubernetesNamespace
+   * resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton governance
+   * labels) before installing and deleted with the resource. When false, the
+   * namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version for every release this component installs (base, istiod,
+   * and in ambient mode cni + ztunnel — Istio versions its charts in lockstep
+   * with the product, e.g. "1.30.3"). Pin deliberately.
+   *
+   * IMPORTANT (upgrades): Istio supports sequential, single-minor upgrades only
+   * (1.28 -> 1.29 -> 1.30); skipping minors in place is unsupported. An existing
+   * mesh on an older minor must step through each minor, or run a revisioned
+   * canary control plane (`revision`) and migrate workloads.
+   */
+  optional string version = 3 [
+    (dev.planton.shared.options.default) = "1.30.3",
+    (buf.validate.field).string = {pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+  ];
+
+  /**
+   * Control-plane revision name (e.g. "1-30-3"). Empty runs the unnamed
+   * DEFAULT revision — the standard posture. Setting a revision names the
+   * istiod deployment `istiod-<revision>` and scopes injection to workloads
+   * labeled `istio.io/rev: <revision>` (organizations that always run
+   * revisioned control planes). One KubernetesIstio per cluster: the CRDs and
+   * the validation-webhook plumbing are cluster singletons, so side-by-side
+   * canary control planes are deliberately not modeled — upgrade in place,
+   * one minor at a time. Must be a DNS-1123 label (lowercase alphanumerics
+   * and '-').
+   */
+  optional string revision = 4 [(buf.validate.field).string = {
+    max_len: 56
+    pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+  }];
+
+  /**
+   * The mesh's data plane mode. `sidecar` (the default) injects a proxy container
+   * into each workload pod; `ambient` runs sidecar-less (per-node ztunnel for
+   * L4/mTLS + optional waypoints for L7) and additionally installs the istio-cni
+   * node agent and ztunnel DaemonSets. Choose at install time — switching modes
+   * later is a workload-by-workload migration, not a flag flip.
+   */
+  optional string dataplane_mode = 5 [
+    (dev.planton.shared.options.default) = "sidecar",
+    (buf.validate.field).string = {
+      in: [
+        "sidecar",
+        "ambient"
+      ]
+    }
+  ];
+
+  /**
+   * istiod (control-plane) tuning: sizing, autoscaling, scheduling, logging.
+   *
+   * CRD note: the module applies the Istio CRDs (DestinationRule,
+   * AuthorizationPolicy, ...) itself via server-side apply, OUTSIDE the Helm
+   * release — never Helm-owned. Helm-owned CRDs cannot be adopted from an
+   * existing install, so a cluster running the CRDs-only
+   * KubernetesIstioBaseCrds could never upgrade to the full mesh; module-
+   * owned CRDs are co-ownable by both kinds, making that migration a plain
+   * redeploy. Destroying this component removes the CRDs with everything
+   * else (standard engine semantics — mesh configuration objects cascade).
+   */
+  KubernetesIstioIstiod istiod = 6;
+
+  /**
+   * Mesh-wide runtime configuration (MeshConfig): trust domain, outbound traffic
+   * policy, access logging, multi-cluster identity. Everything else in MeshConfig
+   * is reachable via helm_values.istiod (meshConfig.*).
+   */
+  KubernetesIstioMeshConfig mesh_config = 7;
+
+  /**
+   * Defaults for the sidecar proxies injected into workload pods (sidecar mode)
+   * and gateway proxies. Ignored by ambient ztunnel (size it via `ztunnel`).
+   */
+  KubernetesIstioProxy proxy = 8;
+
+  /**
+   * Sidecar injection behavior (sidecar mode only).
+   */
+  KubernetesIstioSidecarInjector sidecar_injector = 9;
+
+  /**
+   * istio-cni node agent tuning. In ambient mode the CNI agent is ALWAYS
+   * installed (it is how traffic reaches ztunnel). In sidecar mode it is opt-in
+   * (`enabled: true`) and replaces the injected privileged init-container with a
+   * node-level agent — required on platforms that forbid NET_ADMIN init
+   * containers (e.g. OpenShift), recommended for tighter pod security everywhere.
+   */
+  KubernetesIstioCni cni = 10;
+
+  /**
+   * ztunnel (ambient node proxy) tuning. Only meaningful in ambient mode.
+   */
+  KubernetesIstioZtunnel ztunnel = 11;
+
+  /**
+   * Defaults applied to the gateway deployments istiod auto-provisions for
+   * Gateway API Gateways with `gateway_class_name: istio`.
+   */
+  KubernetesIstioGatewayDefaults gateway_defaults = 12;
+
+  /**
+   * Image source overrides for every Istio image (pilot, proxy, cni, ztunnel) —
+   * the air-gapped/mirror and variant knobs.
+   */
+  KubernetesIstioImages images = 13;
+
+  /**
+   * Per-release escape hatches: additional chart values as YAML documents,
+   * merged LAST over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For chart surface beyond the typed fields —
+   * never the substitute for them. Do not put secrets here.
+   */
+  KubernetesIstioHelmValues helm_values = 14;
+
+  // ztunnel/cni tuning only applies when those releases install.
+  option (buf.validate.message).cel = {
+    id: "istio.ztunnel_requires_ambient"
+    message: "ztunnel settings apply only when dataplane_mode is 'ambient' — the ztunnel release is not installed in sidecar mode"
+    expression: "!has(this.ztunnel) || (has(this.dataplane_mode) && this.dataplane_mode == 'ambient')"
+  };
+  option (buf.validate.message).cel = {
+    id: "istio.sidecar_injector_requires_sidecar_mode"
+    message: "sidecar_injector settings apply only when dataplane_mode is 'sidecar' — ambient workloads are not injected"
+    expression: "!has(this.sidecar_injector) || !(has(this.dataplane_mode) && this.dataplane_mode == 'ambient')"
+  };
+}
+
+/**
+ * istiod control-plane tuning.
+ */
+message KubernetesIstioIstiod {
+  /**
+   * Fixed replica count. Chart default: 1. Mutually exclusive with `autoscale`
+   * (the chart's HPA owns the replica count when autoscaling).
+   */
+  optional int32 replicas = 1 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Horizontal autoscaling for istiod. The chart enables this by default
+   * (min 1 / max 5 at 80% CPU).
+   */
+  KubernetesIstioIstiodAutoscale autoscale = 2;
+
+  /**
+   * istiod container CPU/memory requests and limits. Chart default request:
+   * 500m CPU / 2Gi memory.
+   */
+  dev.planton.kubernetes.ContainerResources resources = 3;
+
+  /**
+   * Control-plane log level, per scope as `<scope>:<level>` pairs joined by
+   * commas, or a bare default like "default:info". Chart default: "default:info".
+   */
+  optional string log_level = 4 [(dev.planton.shared.options.default) = "default:info"];
+
+  /**
+   * When true (chart default), a PodDisruptionBudget (minAvailable 1) guards the
+   * control plane during node drains — meaningful with more than one replica.
+   */
+  optional bool pod_disruption_budget = 5 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * PriorityClass for control-plane pods. Set "system-cluster-critical" on
+   * production clusters so istiod is never evicted before the workloads that
+   * depend on it.
+   */
+  string priority_class_name = 6;
+
+  /**
+   * Node selector for istiod pods.
+   */
+  map<string, string> node_selector = 7;
+
+  /**
+   * Tolerations for istiod pods.
+   */
+  repeated dev.planton.kubernetes.WorkloadToleration tolerations = 8;
+
+  // A fixed replica count and autoscaling contradict each other.
+  option (buf.validate.message).cel = {
+    id: "istio_istiod.replicas_xor_autoscale"
+    message: "replicas and autoscale cannot both be set — the HPA owns the replica count when autoscaling is enabled"
+    expression: "!(has(this.replicas) && has(this.autoscale) && (!has(this.autoscale.enabled) || this.autoscale.enabled))"
+  };
+}
+
+/**
+ * istiod horizontal autoscaling.
+ */
+message KubernetesIstioIstiodAutoscale {
+  /**
+   * Enable the chart-managed HPA. Chart default: true.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Minimum replicas. Chart default: 1.
+   */
+  optional int32 min_replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Maximum replicas. Chart default: 5.
+   */
+  optional int32 max_replicas = 3 [
+    (dev.planton.shared.options.default) = "5",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Target average CPU utilization percentage. Chart default: 80.
+   */
+  optional int32 target_cpu_utilization_percent = 4 [
+    (dev.planton.shared.options.default) = "80",
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 100
+  ];
+
+  // A max below min renders an HPA the API server rejects at apply.
+  option (buf.validate.message).cel = {
+    id: "istio_istiod_autoscale.max_gte_min"
+    message: "max_replicas must be greater than or equal to min_replicas"
+    expression: "!has(this.min_replicas) || !has(this.max_replicas) || this.max_replicas >= this.min_replicas"
+  };
+}
+
+/**
+ * Mesh-wide runtime configuration (the essentials of MeshConfig).
+ */
+message KubernetesIstioMeshConfig {
+  /**
+   * The trust domain anchoring every workload identity the mesh issues
+   * (SPIFFE IDs are `spiffe://<trust_domain>/ns/<ns>/sa/<sa>`). Upstream
+   * default: "cluster.local". Set a stable, organization-unique value before
+   * production — changing it later re-identifies every workload.
+   */
+  optional string trust_domain = 1 [(dev.planton.shared.options.default) = "cluster.local"];
+
+  /**
+   * What sidecars do with traffic to destinations OUTSIDE the mesh's service
+   * registry. ALLOW_ANY (upstream default) passes it through; REGISTRY_ONLY
+   * blocks it — the egress-lockdown posture, where every external service must
+   * be declared with a KubernetesServiceEntry.
+   */
+  optional string outbound_traffic_policy_mode = 2 [(buf.validate.field).string = {
+    in: [
+      "ALLOW_ANY",
+      "REGISTRY_ONLY"
+    ]
+  }];
+
+  /**
+   * File path for the proxies' access logs (e.g. "/dev/stdout" to enable mesh
+   * access logging everywhere). Empty (upstream default) disables file access
+   * logging; per-workload control belongs to KubernetesTelemetry.
+   */
+  string access_log_file = 3;
+
+  /**
+   * Cluster name for multi-cluster meshes — must be unique per cluster within
+   * the mesh and consistent across the control plane and data plane installs.
+   * Empty is correct for single-cluster meshes.
+   */
+  string cluster_name = 4;
+
+  /**
+   * Network name for multi-network meshes (maps this cluster's endpoints into
+   * MeshNetworks). Empty is correct for single-network meshes.
+   */
+  string network = 5;
+
+  /**
+   * Mesh identifier for mesh federation / telemetry aggregation across meshes.
+   * Upstream defaults it to the trust domain when empty.
+   */
+  string mesh_id = 6;
+
+  /**
+   * When true (upstream default), Prometheus annotations on workloads are merged
+   * with the proxy's own metrics so one scrape endpoint serves both.
+   */
+  optional bool enable_prometheus_merge = 7 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * Sidecar/gateway proxy defaults.
+ */
+message KubernetesIstioProxy {
+  /**
+   * Per-proxy container CPU/memory requests and limits. Chart default:
+   * request 100m/128Mi, limit 2000m/1Gi. These multiply across every injected
+   * pod — size deliberately on large meshes.
+   */
+  dev.planton.kubernetes.ContainerResources resources = 1;
+
+  /**
+   * Proxy log level. Chart default: "warning".
+   */
+  optional string log_level = 2 [(buf.validate.field).string = {
+    in: [
+      "trace",
+      "debug",
+      "info",
+      "warning",
+      "error",
+      "critical",
+      "off"
+    ]
+  }];
+
+  /**
+   * The injector's default policy. "enabled" (chart default) injects any pod in
+   * an injection-labeled namespace unless the pod opts out; "disabled" injects
+   * only pods that explicitly opt in via the `sidecar.istio.io/inject: "true"`
+   * annotation.
+   */
+  optional string auto_inject = 3 [(buf.validate.field).string = {
+    in: [
+      "enabled",
+      "disabled"
+    ]
+  }];
+
+  /**
+   * The cluster's DNS domain. Chart default: "cluster.local" — must match the
+   * cluster's actual kubelet/DNS configuration on the rare clusters that
+   * customize it.
+   */
+  optional string cluster_domain = 4 [(dev.planton.shared.options.default) = "cluster.local"];
+}
+
+/**
+ * Sidecar injection behavior.
+ */
+message KubernetesIstioSidecarInjector {
+  /**
+   * When true, sidecars are injected in ALL namespaces except those labeled
+   * `istio-injection=disabled` (opt-out model). Chart default false: only
+   * namespaces labeled `istio-injection=enabled` are injected (opt-in model).
+   */
+  bool enable_namespaces_by_default = 1;
+
+  /**
+   * When true (chart default), the injector rewrites workload HTTP liveness/
+   * readiness probes to route through the sidecar so kubelet probes keep working
+   * under strict mTLS.
+   */
+  optional bool rewrite_app_http_probe = 2 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * istio-cni node agent configuration.
+ */
+message KubernetesIstioCni {
+  /**
+   * Install the istio-cni node agent in SIDECAR mode (replaces the injected
+   * privileged init-container with a node-level agent). Ambient mode ignores
+   * this flag — the agent always installs there.
+   */
+  bool enabled = 1;
+
+  /**
+   * Namespaces the CNI agent never configures traffic redirection in. Chart
+   * default: ["kube-system"].
+   */
+  repeated string exclude_namespaces = 2;
+
+  /**
+   * Directory of the CNI binaries on nodes. Chart default: /opt/cni/bin.
+   * Platform-specific overrides belong here (e.g. some managed platforms use
+   * /home/kubernetes/bin — see the upstream platform profiles).
+   */
+  optional string cni_bin_dir = 3;
+
+  /**
+   * Directory of the CNI config files on nodes. Chart default: /etc/cni/net.d.
+   */
+  optional string cni_conf_dir = 4;
+
+  /**
+   * Deploy the Istio CNI config as a chained plugin (chart default true).
+   * Platforms that reject chained plugins (e.g. OpenShift) set false for a
+   * standalone config file.
+   */
+  optional bool chained = 5 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * ztunnel (ambient node proxy) configuration.
+ */
+message KubernetesIstioZtunnel {
+  /**
+   * ztunnel container CPU/memory requests and limits. Chart default request:
+   * 200m CPU / 512Mi memory (sized for ~200k-pod clusters; scale with cluster
+   * size and connection volume).
+   */
+  dev.planton.kubernetes.ContainerResources resources = 1;
+
+  /**
+   * ztunnel log level. Chart default: "info".
+   */
+  optional string log_level = 2 [(buf.validate.field).string = {
+    in: [
+      "trace",
+      "debug",
+      "info",
+      "warn",
+      "error"
+    ]
+  }];
+}
+
+/**
+ * Defaults for auto-provisioned Gateway API gateway deployments.
+ */
+message KubernetesIstioGatewayDefaults {
+  /**
+   * Service type for gateways provisioned from the `istio` GatewayClass.
+   * Upstream default: LoadBalancer. Set NodePort or ClusterIP on clusters
+   * without a cloud load-balancer controller (bare metal, kind, k3s) — a
+   * per-Gateway override also exists via the Gateway's `infrastructure`
+   * parameters.
+   */
+  optional string service_type = 1 [(buf.validate.field).string = {
+    in: [
+      "ClusterIP",
+      "NodePort",
+      "LoadBalancer"
+    ]
+  }];
+}
+
+/**
+ * Image source configuration.
+ */
+message KubernetesIstioImages {
+  /**
+   * Registry/hub serving all Istio images (pilot, proxyv2, install-cni,
+   * ztunnel) — the air-gapped/mirror knob. Empty = docker.io/istio.
+   */
+  string hub = 1;
+
+  /**
+   * Image variant: "distroless" (recommended hardening; ambient's own profile
+   * default) or "debug". Empty = the release's default variant.
+   */
+  optional string variant = 2 [(buf.validate.field).string = {
+    in: [
+      "debug",
+      "distroless"
+    ]
+  }];
+
+  /**
+   * Names of image-pull Secrets (in the install namespace) attached to every
+   * Istio ServiceAccount — required when `hub` points at a private registry.
+   */
+  repeated string image_pull_secrets = 3 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing Secret objects, not secret material — the Secrets themselves are referenced, never carried"];
+}
+
+/**
+ * Per-release Helm value escape hatches (each a YAML document, merged last).
+ */
+message KubernetesIstioHelmValues {
+  /**
+   * Extra values for the `base` release (CRDs, validation webhook plumbing).
+   */
+  string base = 1;
+
+  /**
+   * Extra values for the `istiod` release — the main chart: meshConfig.*,
+   * pilot.env, sidecarInjectorWebhook.*, and everything else istiod.
+   */
+  string istiod = 2;
+
+  /**
+   * Extra values for the `cni` release (installed in ambient mode or when
+   * cni.enabled).
+   */
+  string cni = 3;
+
+  /**
+   * Extra values for the `ztunnel` release (installed in ambient mode).
+   */
+  string ztunnel = 4;
+}

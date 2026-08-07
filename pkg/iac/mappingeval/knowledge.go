@@ -2,11 +2,11 @@ package mappingeval
 
 import (
 	"github.com/pkg/errors"
-	componentv1 "github.com/plantonhq/planton/apis/dev/planton/iac/componentimportmap/v1"
-	providerv1 "github.com/plantonhq/planton/apis/dev/planton/iac/providerimportcatalog/v1"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	componentv1 "github.com/plantonhq/planton/iac/componentimportmap/v1"
+	providerv1 "github.com/plantonhq/planton/iac/providerimportcatalog/v1"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/iac/importmap"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // ScoreOptionsFromCatalog derives the scorer's declared knowledge from the

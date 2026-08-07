@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesseaweedfs.v1alpha1;
+
+//seaweedfs-kubernetes stack outputs
+message KubernetesSeaweedFsStackOutputs {
+  //namespace the store runs in.
+  string namespace = 1;
+
+  //Helm release name (= metadata.name).
+  string release_name = 2;
+
+  //in-cluster S3 endpoint clients point their SDKs at,
+  //e.g. http://main-s3.object-store.svc.cluster.local:8333
+  //(the filer service when the gateway is embedded, the dedicated
+  //gateway service when s3.dedicated is set). Empty when the S3
+  //gateway is disabled.
+  string s3_endpoint = 3;
+
+  //name of the Secret holding the S3 credentials — keys
+  //admin_access_key_id / admin_secret_access_key /
+  //read_access_key_id / read_secret_access_key (the chart-generated
+  //`<name>-s3-secret`, or the referenced existing config secret).
+  //Empty when auth is disabled.
+  string s3_credentials_secret_name = 4;
+
+  //name of the filer Service (file namespace HTTP API, port 8888).
+  string filer_service_name = 5;
+
+  //name of the master Service (cluster coordination, port 9333).
+  string master_service_name = 6;
+
+  //in-cluster admin console endpoint, e.g.
+  //http://main-admin.object-store.svc.cluster.local:23646.
+  //Empty when the console is disabled.
+  string admin_endpoint = 7;
+
+  //name of the Secret holding the admin-console credentials (keys
+  //user / password). Empty when the console is disabled.
+  string admin_auth_secret_name = 8;
+
+  //command to port-forward the S3 endpoint to a developer laptop,
+  //e.g. kubectl port-forward svc/main-s3 -n object-store 8333:8333
+  string port_forward_command = 9;
+}

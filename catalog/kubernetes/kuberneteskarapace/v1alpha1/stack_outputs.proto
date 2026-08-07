@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kuberneteskarapace.v1alpha1;
+
+/**
+ * **KubernetesKarapaceStackOutputs** — the handles a schema registry
+ * exports for composition. Producers, consumers, Connect converters
+ * and consoles configure `endpoint` as their schema.registry.url.
+ */
+message KubernetesKarapaceStackOutputs {
+  // Namespace the registry runs in.
+  string namespace = 1;
+
+  // Name of the registry Service.
+  string service_name = 2;
+
+  // In-cluster registry endpoint
+  // (`http(s)://<name>.<namespace>.svc.cluster.local:<port>`) — the
+  // schema.registry.url value for clients.
+  string endpoint = 3;
+
+  // In-cluster REST-proxy endpoint (empty when the rest_proxy role
+  // is not enabled).
+  string rest_proxy_endpoint = 4;
+
+  // The Kafka topic storing the schemas.
+  string schemas_topic = 5;
+}

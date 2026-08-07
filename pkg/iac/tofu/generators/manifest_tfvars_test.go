@@ -6,11 +6,11 @@ import (
 
 	"github.com/hashicorp/hcl/v2/hclparse"
 
-	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
-	peerauthv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespeerauthentication/v1alpha1"
-	kubernetesvalkeyv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1alpha1"
-	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	"github.com/plantonhq/planton/catalog/kubernetes"
+	peerauthv1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespeerauthentication/v1alpha1"
+	kubernetesvalkeyv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesvalkey/v1alpha1"
+	"github.com/plantonhq/planton/shared"
+	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 )
 
 // newPeerAuthManifest builds a KubernetesPeerAuthentication (a manifest-projection

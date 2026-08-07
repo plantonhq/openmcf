@@ -1,0 +1,161 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurediskencryptionset.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureDiskEncryptionSetSpec** defines an Azure Disk Encryption Set: the
+// resource that binds a customer-managed key (CMK) to managed disks,
+// snapshots, and images so their data is encrypted at rest with a key you
+// control in Key Vault rather than a platform-managed key. Managed disks,
+// VMs, and VM scale sets reference a disk encryption set by ARM ID
+// (disk_encryption_set_id) to opt their OS and data disks into CMK
+// encryption.
+//
+// The set carries a managed identity that unwraps the key at runtime: that
+// identity must be granted crypto access ("Key Vault Crypto Service
+// Encryption User", or get/wrapKey/unwrapKey) on the key before disks can
+// use the set. The referenced Key Vault must have purge protection enabled
+// -- Azure requires it for any vault backing disk encryption.
+message AzureDiskEncryptionSetSpec {
+  // The Azure region the set is created in. Must match the region of the
+  // disks that reference it. Fixed at creation.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the set is created in. Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's name
+  // output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The name of the set, unique within the resource group. 1-80 characters
+  // (letters, numbers, underscores, hyphens, periods; cannot start with an
+  // underscore or end with a hyphen or period). Fixed at creation.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 80
+  ];
+
+  // The Key Vault key that encrypts disks bound to this set. Defaults to
+  // referencing an AzureKeyVaultKey's versionless_id output, which pairs
+  // with auto_key_rotation_enabled = true (the recommended posture): the
+  // set follows the key's current version automatically as it rotates.
+  //
+  // The key's versioning must match the rotation setting -- a VERSIONLESS
+  // key id (no version suffix) when auto_key_rotation_enabled is true, a
+  // VERSIONED key id when it is false. Azure enforces this at apply; both
+  // engines pass the referenced id through and the provider validates it.
+  // (A field-level CEL cannot express this because it cannot dereference a
+  // StringValueOrRef's resolved value; keep the reference and the rotation
+  // flag consistent -- point at versionless_id for rotation, key_id for a
+  // pinned version.)
+  //
+  // Keys backed by Azure Key Vault Managed HSM (a separate premium
+  // service) are not modeled -- this field carries standard Key Vault key
+  // URLs only.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+
+  // Whether the set automatically follows the key's latest version as it
+  // rotates. True (the recommended posture) requires a VERSIONLESS key id;
+  // false pins the set to one VERSIONED key id and requires manual rotation.
+  // Azure's default is false; leave unset to keep that, or set true and
+  // reference the key's versionless_id.
+  optional bool auto_key_rotation_enabled = 5;
+
+  // What the set encrypts. Unspecified applies Azure's default
+  // (ENCRYPTION_AT_REST_WITH_CUSTOMER_KEY -- disks encrypted with your CMK
+  // only). Fixed at creation.
+  AzureDiskEncryptionSetEncryptionType encryption_type = 6;
+
+  // The client ID of a multi-tenant application used to access the key in a
+  // Key Vault in a DIFFERENT Entra tenant (cross-tenant CMK). Leave empty
+  // for the same-tenant case (the norm). Must be a UUID.
+  string federated_client_id = 7 [(buf.validate.field).cel = {
+    id: "federated_client_id_uuid"
+    message: "federated_client_id must be a UUID"
+    expression: "this == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+  }];
+
+  // The managed identity the set uses to unwrap the key. Required -- a set
+  // cannot read its key without an identity. SYSTEM_ASSIGNED is the common
+  // choice (Azure creates and rotates it); USER_ASSIGNED brings an identity
+  // you manage and can grant vault access to BEFORE the set exists (avoiding
+  // the system-assigned chicken-and-egg). Whichever you use, its principal
+  // must be granted crypto access on the key.
+  AzureDiskEncryptionSetIdentity identity = 8 [(buf.validate.field).required = true];
+
+  // Free-form tags applied to the set, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag with
+  // the same key wins. Updatable in place.
+  map<string, string> tags = 9;
+}
+
+// What a disk encryption set encrypts. Unspecified means Azure's default
+// (customer-key only).
+enum AzureDiskEncryptionSetEncryptionType {
+  // Not specified: Azure's default (EncryptionAtRestWithCustomerKey).
+  azure_disk_encryption_set_encryption_type_unspecified = 0;
+
+  // Disks encrypted at rest with the customer-managed key only.
+  ENCRYPTION_AT_REST_WITH_CUSTOMER_KEY = 1;
+
+  // Double encryption: a platform-managed key plus the customer-managed
+  // key, for defense in depth.
+  ENCRYPTION_AT_REST_WITH_PLATFORM_AND_CUSTOMER_KEYS = 2;
+
+  // Confidential-VM guest-state encryption with the customer-managed key
+  // (for confidential VMs).
+  CONFIDENTIAL_VM_ENCRYPTED_WITH_CUSTOMER_KEY = 3;
+}
+
+// The managed identity a disk encryption set uses to unwrap its key.
+message AzureDiskEncryptionSetIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure with
+  // the set; USER_ASSIGNED brings identities you manage (letting you grant
+  // vault access before the set exists); SYSTEM_AND_USER_ASSIGNED carries
+  // both. Changing from a user-assigned flavor to SYSTEM_ASSIGNED replaces
+  // the set.
+  AzureDiskEncryptionSetIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the set, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so the Key Vault crypto grant can be
+  // composed before the set is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "des_identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The managed-identity flavor of a disk encryption set.
+enum AzureDiskEncryptionSetIdentityType {
+  // Not specified -- invalid; a type must be chosen.
+  azure_disk_encryption_set_identity_type_unspecified = 0;
+
+  // Azure creates and rotates a system-assigned identity with the set.
+  SYSTEM_ASSIGNED = 1;
+
+  // One or more user-assigned identities you manage.
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and one or more user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}

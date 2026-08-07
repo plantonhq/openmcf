@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscognitouserpoolclient.v1alpha1;
+
+import "catalog/aws/awscognitouserpoolclient/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsCognitoUserPoolClientStackInput is the input for the
+// aws-cognito-user-pool-client IaC modules.
+message AwsCognitoUserPoolClientStackInput {
+  // target cloud-resource
+  AwsCognitoUserPoolClient target = 1;
+
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

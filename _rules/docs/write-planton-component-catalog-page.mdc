@@ -10,7 +10,7 @@ alwaysApply: false
 
 **Trigger**: User references this rule or asks to write/create a catalog page for a component.
 
-**Output**: A single file at `apis/dev/planton/provider/{provider}/{component}/v1/catalog-page.md`
+**Output**: A single file at `catalog/{provider}/{component}/v1/catalog-page.md`
 
 ---
 
@@ -220,7 +220,7 @@ Before marking the catalog page complete, verify all 6 checks:
 For a concrete example of a completed catalog page, read:
 
 ```
-apis/dev/planton/provider/aws/awsalb/v1alpha1/catalog-page.md
+catalog/aws/awsalb/v1alpha1/catalog-page.md
 ```
 
 This is the gold standard. Match its structure, tone, density, and level of detail.

@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesmlflow.v1alpha1;
+
+import "catalog/kubernetes/kubernetes.proto";
+
+/**
+ * **KubernetesMlflowStackOutputs** — the composition handles a
+ * deployed MLflow exports. ML clients (`mlflow` SDKs, pipelines,
+ * training jobs) point MLFLOW_TRACKING_URI at the tracking endpoint;
+ * the admin credential is exported as a Secret handle.
+ */
+message KubernetesMlflowStackOutputs {
+  // Namespace MLflow runs in.
+  string namespace = 1;
+
+  // Name of the MLflow Service (`<name>`) — the handle exposure
+  // kinds route to.
+  string service = 2;
+
+  // In-cluster tracking endpoint,
+  // `http://<name>.<namespace>.svc.cluster.local:5000` — set it as
+  // MLFLOW_TRACKING_URI in training jobs and pipelines (with auth
+  // on, pair it with MLFLOW_TRACKING_USERNAME/PASSWORD).
+  string tracking_endpoint = 3;
+
+  // The admin credential: the Secret and key holding the bootstrap
+  // admin password (module-generated `<name>-admin-auth` unless an
+  // existing Secret was declared). Username lives in the spec
+  // (`auth.admin_username`, default "admin"). Empty when auth is
+  // disabled.
+  dev.planton.kubernetes.KubernetesSecretKey admin_password_secret = 4;
+
+  // Name of the module-owned Secret holding the backend-store
+  // connection URI (key `uri`) — empty on the sqlite arm (no
+  // external database to share).
+  string backend_store_uri_secret_name = 5;
+
+  // Port-forward command for reaching the MLflow UI from a
+  // workstation when no exposure is composed
+  // (`kubectl port-forward svc/<name> -n <namespace> 5000:5000`).
+  string port_forward_command = 6;
+}

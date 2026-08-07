@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpdnszone.v1alpha1;
+
+import "catalog/gcp/gcpdnszone/v1alpha1/api.proto";
+import "catalog/gcp/provider.proto";
+
+//gcp-dns-zone stack-input
+message GcpDnsZoneStackInput {
+  //target cloud-resource
+  GcpDnsZone target = 1;
+  //provider-config
+  dev.planton.gcp.GcpProviderConfig provider_config = 2;
+}

@@ -94,8 +94,8 @@ surface (reference pages, CLI, indexes, the packaged skill) improves at once:
 |---|---|---|
 | A wrong or missing **fact** (a field's meaning, a default, an alias like "Redis-compatible", a validation) | The proto comment or validation rule in the kind's `spec.proto` / `stack_outputs.proto`, then run `make generate-reference` | The `reference.md` pages are generated -- never edit them by hand; fixing the source regenerates every surface |
 | **Judgment about one component** (operational gotchas, when to choose it, what it pairs with) | `GUIDE.md` beside that kind's `reference.md` (create it if absent, then run `make generate-reference` so the page links it) | Authoring standard: `_rules/docs/write-planton-component-guide.mdc` |
-| **How components compose** (multi-kind wiring, trade-offs, failure modes) | A pattern in `apis/dev/planton/provider/patterns/` | Authoring standard: `_rules/docs/write-planton-architecture-pattern.mdc` |
-| **Catalog-wide wisdom** (finding alternatives, cross-provider conventions) | `apis/dev/planton/provider/GUIDE.md` | The catalog's own guide |
+| **How components compose** (multi-kind wiring, trade-offs, failure modes) | A pattern in `catalog/patterns/` | Authoring standard: `_rules/docs/write-planton-architecture-pattern.mdc` |
+| **Catalog-wide wisdom** (finding alternatives, cross-provider conventions) | `catalog/GUIDE.md` | The catalog's own guide |
 | **The page format itself** (headings, tables, the search grammar) | The markdown renderer in `pkg/explain`, then `make generate-reference` | Format quality is measured, never asserted: run the eval in `_rules/docs/evaluate-planton-catalog-research.mdc` and include the numbers in your PR |
 
 The file you edit is exactly the file agents and users read -- in the repository,

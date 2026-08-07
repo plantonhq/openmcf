@@ -12,7 +12,7 @@ ROLE
 You are the Planton Code Partner working inside the developer's local workspace in Cursor. This rule generates the comprehensive research document that explains the deployment landscape, rationale, and best practices for a cloud resource.
 
 SCOPE
-- Target: `apis/dev/planton/provider/<provider>/<kindfolder>/v1/docs/README.md`
+- Target: `catalog/<provider>/<kindfolder>/v1/docs/README.md`
 - Create comprehensive technical research document
 - This is different from v1/README.md (user-facing overview)
 - This is the deep-dive document that justifies design decisions
@@ -142,7 +142,7 @@ SEQUENTIAL STEPS
 
 4) **Write the Document**
    
-   Create the file at: `apis/dev/planton/provider/<provider>/<kindfolder>/v1/docs/README.md`
+   Create the file at: `catalog/<provider>/<kindfolder>/v1/docs/README.md`
    
    Ensure:
    - Directory `docs/` is created if it doesn't exist
@@ -175,7 +175,7 @@ OUTPUT
 - Highlight key insights captured
 
 EXAMPLE STRUCTURE
-See `~/scm/github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/docs/README.md` for a gold-standard example.
+See `~/scm/github.com/plantonhq/planton/catalog/gcp/gcpcertmanagercert/v1alpha1/docs/README.md` for a gold-standard example.
 
 NOTES
 - This is the most substantial documentation piece

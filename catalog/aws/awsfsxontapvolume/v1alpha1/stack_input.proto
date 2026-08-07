@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsfsxontapvolume.v1alpha1;
+
+import "catalog/aws/awsfsxontapvolume/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// aws-fsx-ontap-volume stack-input
+message AwsFsxOntapVolumeStackInput {
+  // target cloud-resource
+  AwsFsxOntapVolume target = 1;
+  // provider-credential
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssesemailidentity.v1alpha1;
+
+import "catalog/aws/awssesemailidentity/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsSesEmailIdentityStackInput is the input for the
+// aws-ses-email-identity IaC modules.
+message AwsSesEmailIdentityStackInput {
+  // target cloud-resource
+  AwsSesEmailIdentity target = 1;
+
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

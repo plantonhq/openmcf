@@ -31,8 +31,8 @@ For development CLI versions, the binary/archive download step is skipped and th
 
 The `--local-module` global flag bypasses the entire resolution chain and derives the module path from a local Planton repository checkout:
 
-- Pulumi: `{repo}/apis/dev/planton/provider/{provider}/{kind}/{version}/iac/pulumi`
-- Terraform/OpenTofu: `{repo}/apis/dev/planton/provider/{provider}/{kind}/{version}/iac/tf`
+- Pulumi: `{repo}/catalog/{provider}/{kind}/{version}/iac/pulumi`
+- Terraform/OpenTofu: `{repo}/catalog/{provider}/{kind}/{version}/iac/tf`
 
 The `{version}` segment is the kind's current API version, resolved from the kind registry (for example `v1alpha1`).
 

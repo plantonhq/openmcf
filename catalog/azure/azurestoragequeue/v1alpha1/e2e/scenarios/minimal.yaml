@@ -1,0 +1,33 @@
+# Minimal AzureStorageQueue scenario: a work queue on the scenario-local
+# fixture account, carrying metadata to prove the key/value pass-through
+# on both engines.
+#
+# The account reference resolves against the extra fixture's captured
+# outputs through the field's default kind (fixture RG -> scenario-local
+# account -> this queue).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageQueue
+metadata:
+  name: planton-oss-e2e-azurestoragequeue-smoke
+  id: planton-oss-e2e-azurestoragequeue-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestoragequeue
+  annotations:
+    planton.dev/e2e: "true"
+    # Scenario-local account (minimal-account.yaml) instead of a registry
+    # prerequisite: storage-account names are globally unique and
+    # sequential subtests that destroy and recreate the same name hang on
+    # recreate.
+    planton.dev/e2e-prerequisites: "catalog/azure/azurestoragequeue/v1alpha1/e2e/minimal-account.yaml"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-storagequeue-fixture-account
+  queueName: smoke-work-items
+  metadata:
+    purpose: smoke

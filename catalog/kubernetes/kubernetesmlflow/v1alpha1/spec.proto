@@ -1,0 +1,864 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesmlflow.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "catalog/kubernetes/workload_pod.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesMlflowSpec** deploys the MLflow tracking server and
+ * model registry — where ML experiments, runs, metrics, models and
+ * their artifacts live (https://mlflow.org).
+ *
+ * WHAT GETS INSTALLED: the module renders its own typed manifests
+ * (Deployment, Service, Secrets, and optionally a PVC and a
+ * garbage-collection CronJob) around the OFFICIAL MLflow image
+ * (`ghcr.io/mlflow/mlflow`). MLflow publishes no Helm chart — this
+ * module IS the distribution, shaped after upstream's own deployment
+ * reference.
+ *
+ * TWO KINDS OF STATE, TWO BACKENDS:
+ *
+ *   - The BACKEND STORE holds experiments, runs, metrics, params and
+ *     the model registry: PostgreSQL (a KubernetesPostgres composes
+ *     naturally — the production path) or sqlite on a PVC (the
+ *     zero-dependency default; single replica only).
+ *   - The ARTIFACT STORE holds the big binary outputs (models,
+ *     datasets, plots): an S3-compatible store (a KubernetesSeaweedFs
+ *     composes naturally), AWS S3, GCS, Azure Blob, or a local PVC
+ *     (the default). The server PROXIES artifact traffic — clients
+ *     talk only to MLflow and never need store credentials.
+ *
+ * SECURED BY DEFAULT: upstream's server is OPEN unless auth is
+ * configured, and upstream's own auth example ships
+ * admin/password1234. This kind enables basic authentication by
+ * default with a module-generated admin password (`<name>-admin-auth`)
+ * — the upstream defaults never ship. Auth state (users,
+ * permissions) follows the backend store: the same PostgreSQL
+ * database, or a sqlite file beside the tracking data on the PVC.
+ *
+ * CREDENTIALS ARE SECRET-NATIVE: the backend-store connection URI
+ * (which embeds the database password) is composed AT APPLY TIME
+ * into a module-owned Secret from the referenced credential Secret
+ * and reaches the server as an environment variable — nothing
+ * credential-bearing appears in any rendered manifest. Artifact-store
+ * credentials ride environment variables from their Secrets the same
+ * way.
+ *
+ * EXPOSURE: the Service stays ClusterIP; expose it via first-class
+ * kinds over the exported service handle.
+ */
+message KubernetesMlflowSpec {
+  /**
+   * Namespace to install into. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist. KNOW
+   * THIS: the module reads the database credential Secret to compose
+   * the connection URI, and a Secret can only be read from the
+   * workload's OWN namespace — co-locate MLflow with its database
+   * (the default composition) or replicate the credential Secret
+   * into this namespace.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * The tracking server container: replicas, image and sizing.
+   */
+  KubernetesMlflowServer server = 3;
+
+  /**
+   * The backend store — experiments, runs, metrics, the model
+   * registry, and (with auth on) users and permissions. Empty =
+   * sqlite on a PVC (single replica only — fine for a team server;
+   * declare postgres for production).
+   */
+  KubernetesMlflowBackendStore backend_store = 4;
+
+  /**
+   * The artifact store — where models, datasets and other run
+   * artifacts physically live. The server proxies all artifact
+   * traffic, so clients never need these credentials. Empty = a
+   * local PVC (artifacts live with the server — fine to start;
+   * declare an object store for production durability and size).
+   */
+  KubernetesMlflowArtifactStore artifact_store = 5;
+
+  /**
+   * Basic authentication. Empty = ENABLED with a module-generated
+   * admin password — never the open server, never upstream's
+   * admin/password1234 default.
+   */
+  KubernetesMlflowAuth auth = 6;
+
+  /**
+   * Periodic hard-deletion of soft-deleted runs and experiments
+   * (`mlflow gc`). Off by default — deleted runs stay restorable
+   * until you enable it.
+   */
+  KubernetesMlflowGc gc = 7;
+
+  /**
+   * The MLflow Service — this kind keeps it ClusterIP (compose
+   * exposure kinds over the exported handle); the annotations
+   * surface carries cloud LB configuration when you flip the type.
+   */
+  KubernetesMlflowService service = 8;
+
+  /**
+   * Prometheus metrics: expose them on the server and optionally
+   * render a ServiceMonitor for operator-based scraping (requires
+   * the Prometheus operator CRDs — a KubernetesKubePrometheusStack
+   * composes naturally).
+   */
+  KubernetesMlflowMetrics metrics = 9;
+
+  /**
+   * Pod scheduling for the server (and GC job) pods.
+   */
+  KubernetesMlflowScheduling scheduling = 10;
+
+  /**
+   * Extra environment variables injected into the server container
+   * (plain values — e.g. MLFLOW_* tuning flags). For secret values
+   * use `extra_env_from_secret`.
+   */
+  map<string, string> extra_env = 11;
+
+  /**
+   * Extra environment variables sourced from existing Secrets —
+   * name → Secret reference. The escape hatch for auth/storage
+   * integrations beyond the typed arms.
+   */
+  map<string, KubernetesMlflowSecretKeyRef> extra_env_from_secret = 12;
+
+  /**
+   * Extra command-line arguments appended to `mlflow server` — the
+   * escape hatch for server flags the typed fields do not model
+   * (e.g. --gunicorn-opts). Never put secret material here;
+   * arguments are visible in the rendered pod spec.
+   */
+  repeated string extra_args = 13;
+
+  option (buf.validate.message).cel = {
+    id: "server.replicas_need_postgres"
+    message: "Running more than one MLflow replica requires the postgres backend store — sqlite is a single-writer file on a ReadWriteOnce volume and a second replica would corrupt it (this also covers auth state, which follows the backend store)."
+    expression: "!has(this.server) || !has(this.server.replicas) || this.server.replicas <= 1 || (has(this.backend_store) && has(this.backend_store.postgres))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "server.replicas_need_object_artifacts"
+    message: "Running more than one MLflow replica requires an object artifact store (s3_compatible, aws_s3, gcs or azure_blob) — the PVC artifact arm is ReadWriteOnce and mounts on a single pod."
+    expression: "!has(this.server) || !has(this.server.replicas) || this.server.replicas <= 1 || (has(this.artifact_store) && !has(this.artifact_store.pvc))"
+  };
+}
+
+/**
+ * The tracking server container.
+ */
+message KubernetesMlflowServer {
+  /**
+   * Server replicas. Empty = 1. More than one requires the postgres
+   * backend AND an object artifact store (enforced) — the server
+   * itself is stateless once both states live externally.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {gte: 1}
+  ];
+
+  /**
+   * Container image. Empty = the official image
+   * (`ghcr.io/mlflow/mlflow`, `-full` variant at this kind's pinned
+   * MLflow release) — override for private mirrors or a custom
+   * image. The variant matters (verified live: the pod crash-loops
+   * otherwise): the bare `vX.Y.Z` image is core MLflow only — no
+   * database drivers (psycopg2/PyMySQL), no object-store clients
+   * (boto3/GCS/Azure), and no basic-auth dependency (Flask-WTF) —
+   * so the postgres/mysql backends, every remote artifact store,
+   * and the secured-by-default sign-in all require the `-full`
+   * variant (published upstream since v3.9.0). A mirror or custom
+   * image must carry the same dependency set.
+   */
+  KubernetesMlflowImage image = 2;
+
+  /**
+   * Number of uvicorn worker processes. Empty = the server default
+   * (4). More workers = more concurrent API requests per pod.
+   */
+  optional int32 workers = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 64
+  }];
+
+  /**
+   * CPU/memory for the server container. Empty = no requests (fine
+   * for dev; size for production — tracking servers are mostly
+   * memory-bound on large experiment queries).
+   */
+  dev.planton.kubernetes.ContainerResources resources = 4;
+}
+
+/**
+ * A container image reference (combined registry/repository form
+ * plus a tag).
+ */
+message KubernetesMlflowImage {
+  /**
+   * Image repository including any registry host. Empty =
+   * "ghcr.io/mlflow/mlflow".
+   */
+  optional string repository = 1 [(dev.planton.shared.options.default) = "ghcr.io/mlflow/mlflow"];
+
+  /**
+   * Image tag. Empty = "v3.15.0-full" (the MLflow release this kind
+   * is built against, in the `-full` variant that ships the database
+   * drivers, object-store clients and auth dependency — the bare
+   * variant boots none of those arms; verified live at the pin).
+   */
+  optional string tag = 2 [(dev.planton.shared.options.default) = "v3.15.0-full"];
+}
+
+/**
+ * The backend store. Exactly one arm when set; absent = sqlite on a
+ * PVC.
+ */
+message KubernetesMlflowBackendStore {
+  /**
+   * Exactly one backend.
+   */
+  oneof backend {
+    option (buf.validate.oneof).required = true;
+
+    /**
+     * sqlite on a dedicated PVC — zero external dependencies,
+     * single replica only.
+     */
+    KubernetesMlflowSqlitePvc sqlite_pvc = 1;
+
+    /**
+     * PostgreSQL — the production path. A KubernetesPostgres
+     * composes naturally; any reachable PostgreSQL (RDS, Cloud SQL)
+     * works with literal values.
+     */
+    KubernetesMlflowPostgres postgres = 2;
+
+    /**
+     * MySQL 8+ — a KubernetesMysql composes naturally.
+     */
+    KubernetesMlflowMysql mysql = 3;
+  }
+}
+
+/**
+ * The sqlite-on-PVC backend store.
+ */
+message KubernetesMlflowSqlitePvc {
+  /**
+   * PVC size. Empty = "5Gi". Metric time-series for large
+   * experiment fleets grow — move to postgres before this fills.
+   */
+  optional string storage_size = 1 [
+    (dev.planton.shared.options.default) = "5Gi",
+    (buf.validate.field).string.pattern = "^[0-9]+(\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$"
+  ];
+
+  /**
+   * Storage class. Empty = the cluster default.
+   */
+  string storage_class = 2;
+}
+
+/**
+ * PostgreSQL backend store. The module composes the SQLAlchemy URI
+ * (`postgresql://user:pass@host:port/db`) into a module-owned Secret
+ * at apply time, reading the password from the referenced credential
+ * Secret — the URI never appears in any rendered manifest.
+ */
+message KubernetesMlflowPostgres {
+  /**
+   * Database server host. Defaults compose a KubernetesPostgres
+   * resource's read-write Service.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.rw_service"
+  ];
+
+  /**
+   * Database server port. Empty = 5432.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "5432",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  /**
+   * Database name holding MLflow's tracking state (and, with auth
+   * on, its user/permission tables). Must EXIST before install —
+   * on a KubernetesPostgres, declare it at bootstrap
+   * (`initdb.database`). Empty = "mlflow".
+   */
+  optional string database_name = 3 [
+    (dev.planton.shared.options.default) = "mlflow",
+    (buf.validate.field).string.pattern = "^[a-zA-Z_][a-zA-Z0-9_$]*$"
+  ];
+
+  /**
+   * Database user with full rights inside `database_name` (the
+   * server creates and migrates its tables at startup; ownership is
+   * simplest). Empty = "mlflow".
+   */
+  optional string username = 4 [(dev.planton.shared.options.default) = "mlflow"];
+
+  /**
+   * The Secret holding the user's password (composed into the URI
+   * Secret at apply time — never rendered). Defaults compose a
+   * KubernetesPostgres resource's application-user Secret.
+   * Same-namespace constraint applies.
+   */
+  KubernetesMlflowPasswordSecret password_secret = 5 [(buf.validate.field).required = true];
+}
+
+/**
+ * MySQL 8+ backend store (URI form
+ * `mysql+pymysql://user:pass@host:port/db`), composed the same
+ * secret-native way as the postgres arm.
+ */
+message KubernetesMlflowMysql {
+  /**
+   * Database server host. Defaults compose a KubernetesMysql
+   * resource's client Service.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesMysql,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_service"
+  ];
+
+  /**
+   * Database server port. Empty = 3306.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "3306",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  /**
+   * Database name holding MLflow's tracking state. Must EXIST before
+   * install. Empty = "mlflow".
+   */
+  optional string database_name = 3 [
+    (dev.planton.shared.options.default) = "mlflow",
+    (buf.validate.field).string.pattern = "^[a-zA-Z_][a-zA-Z0-9_$]*$"
+  ];
+
+  /**
+   * Database user with full rights inside `database_name`. Empty =
+   * "mlflow".
+   */
+  optional string username = 4 [(dev.planton.shared.options.default) = "mlflow"];
+
+  /**
+   * The Secret holding the user's password. Defaults compose a
+   * KubernetesMysql resource's root credential Secret; for a
+   * dedicated MLflow user (recommended), point at that user's
+   * Secret. Same-namespace constraint applies.
+   */
+  KubernetesMlflowMysqlPasswordSecret password_secret = 5 [(buf.validate.field).required = true];
+}
+
+/**
+ * A reference to an existing Secret holding the PostgreSQL user's
+ * password.
+ */
+message KubernetesMlflowPasswordSecret {
+  /**
+   * Name of the Secret. Defaults compose a KubernetesPostgres
+   * resource's application-user Secret (`<cluster>-app`).
+   * Same-namespace constraint applies.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.password_secret.name"
+  ];
+
+  /**
+   * Key inside the Secret holding the password. Empty = "password"
+   * (the KubernetesPostgres application-Secret convention).
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * A reference to an existing Secret holding the MySQL user's
+ * password.
+ */
+message KubernetesMlflowMysqlPasswordSecret {
+  /**
+   * Name of the Secret. Defaults compose a KubernetesMysql
+   * resource's root credential Secret. Same-namespace constraint
+   * applies.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesMysql,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.root_password_secret.name"
+  ];
+
+  /**
+   * Key inside the Secret holding the password. Empty = "password".
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * The artifact store. Exactly one arm when set; absent = a local
+ * PVC. Every arm's credentials reach the server as environment
+ * variables from Secrets — never rendered into manifests.
+ */
+message KubernetesMlflowArtifactStore {
+  /**
+   * Exactly one artifact backend.
+   */
+  oneof backend {
+    option (buf.validate.oneof).required = true;
+
+    /**
+     * Artifacts on a local PVC, served through the tracking server —
+     * zero external dependencies, single replica only.
+     */
+    KubernetesMlflowPvcArtifacts pvc = 1;
+
+    /**
+     * Any S3-compatible object store — a KubernetesSeaweedFs
+     * composes naturally (endpoint and credentials FK onto its
+     * outputs); MinIO-compatible endpoints work with literal
+     * values.
+     */
+    KubernetesMlflowS3CompatibleArtifacts s3_compatible = 2;
+
+    /**
+     * AWS S3. Keyless (IRSA/pod identity — annotate the
+     * ServiceAccount via `helm-less` extra config) or declared keys.
+     */
+    KubernetesMlflowAwsS3Artifacts aws_s3 = 3;
+
+    /**
+     * Google Cloud Storage — keyless via Workload Identity, or a
+     * service-account key Secret.
+     */
+    KubernetesMlflowGcsArtifacts gcs = 4;
+
+    /**
+     * Azure Blob Storage with a storage-account access key.
+     */
+    KubernetesMlflowAzureBlobArtifacts azure_blob = 5;
+  }
+}
+
+/**
+ * Artifacts on a local PVC.
+ */
+message KubernetesMlflowPvcArtifacts {
+  /**
+   * PVC size. Empty = "10Gi". Models are big — size for your
+   * artifact volume or use an object store.
+   */
+  optional string storage_size = 1 [
+    (dev.planton.shared.options.default) = "10Gi",
+    (buf.validate.field).string.pattern = "^[0-9]+(\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$"
+  ];
+
+  /**
+   * Storage class. Empty = the cluster default.
+   */
+  string storage_class = 2;
+}
+
+/**
+ * An S3-compatible artifact store.
+ */
+message KubernetesMlflowS3CompatibleArtifacts {
+  /**
+   * The S3 API endpoint (e.g.
+   * `http://seaweedfs-s3.<ns>.svc.cluster.local:8333`). Defaults
+   * compose a KubernetesSeaweedFs resource's S3 endpoint.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef endpoint = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSeaweedFs,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.s3_endpoint"
+  ];
+
+  /**
+   * Bucket holding the artifacts (must exist — on a
+   * KubernetesSeaweedFs, declare it under `s3.buckets`). Rendered as
+   * `s3://<bucket>[/<prefix>]`.
+   */
+  string bucket = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Key prefix within the bucket. Empty = the bucket root.
+   */
+  string prefix = 3;
+
+  /**
+   * The Secret holding the access credentials. Defaults compose a
+   * KubernetesSeaweedFs resource's S3 credentials Secret
+   * (`<name>-s3-secret`). Same-namespace constraint applies.
+   * Addressing style is automatic: MLflow's S3 client (boto3) uses
+   * path-style for custom endpoints — SeaweedFS and MinIO-compatible
+   * stores work without configuration.
+   */
+  KubernetesMlflowS3CredentialsSecret credentials_secret = 4 [(buf.validate.field).required = true];
+}
+
+/**
+ * A reference to an existing Secret carrying S3 credentials in two
+ * keys.
+ */
+message KubernetesMlflowS3CredentialsSecret {
+  /**
+   * Name of the Secret. Defaults compose a KubernetesSeaweedFs
+   * resource's S3 credentials Secret. Same-namespace constraint
+   * applies.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSeaweedFs,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.s3_credentials_secret_name"
+  ];
+
+  /**
+   * Key NAME within the Secret (a reference, not secret material)
+   * holding the access key ID. Empty = "admin_access_key_id"
+   * (the KubernetesSeaweedFs convention).
+   */
+  optional string access_key_id_key = 2 [(dev.planton.shared.options.default) = "admin_access_key_id"];
+
+  /**
+   * Key holding the secret access key. Empty =
+   * "admin_secret_access_key".
+   */
+  optional string secret_access_key_key = 3 [
+    (dev.planton.shared.options.default) = "admin_secret_access_key",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * AWS S3 artifact store.
+ */
+message KubernetesMlflowAwsS3Artifacts {
+  /**
+   * Bucket name.
+   */
+  string bucket = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key prefix within the bucket. Empty = the bucket root.
+   */
+  string prefix = 2;
+
+  /**
+   * AWS region of the bucket (e.g. "us-west-2").
+   */
+  string region = 3 [(buf.validate.field).required = true];
+
+  /**
+   * The Secret holding AWS access keys (keys
+   * `access_key_id`/`secret_access_key` by default). Empty = KEYLESS
+   * — the pod's ambient identity (IRSA / EKS Pod Identity) must
+   * grant bucket access.
+   */
+  KubernetesMlflowAwsCredentialsSecret credentials_secret = 4;
+}
+
+/**
+ * A reference to an existing Secret carrying AWS access keys.
+ */
+message KubernetesMlflowAwsCredentialsSecret {
+  /**
+   * Name of the Secret. Same-namespace constraint applies.
+   */
+  string secret_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key NAME within the Secret (a reference, not secret material)
+   * holding the access key ID. Empty = "access_key_id".
+   */
+  optional string access_key_id_key = 2 [(dev.planton.shared.options.default) = "access_key_id"];
+
+  /**
+   * Key holding the secret access key. Empty = "secret_access_key".
+   */
+  optional string secret_access_key_key = 3 [
+    (dev.planton.shared.options.default) = "secret_access_key",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * GCS artifact store.
+ */
+message KubernetesMlflowGcsArtifacts {
+  /**
+   * Bucket name (rendered as `gs://<bucket>[/<prefix>]`).
+   */
+  string bucket = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key prefix within the bucket. Empty = the bucket root.
+   */
+  string prefix = 2;
+
+  /**
+   * The Secret holding a service-account JSON key (key
+   * `credentials.json` by default; mounted and wired via
+   * GOOGLE_APPLICATION_CREDENTIALS). Empty = KEYLESS — the pod's
+   * ambient identity (GKE Workload Identity) must grant bucket
+   * access.
+   */
+  KubernetesMlflowGcpCredentialsSecret credentials_secret = 3;
+}
+
+/**
+ * A reference to an existing Secret carrying a GCP service-account
+ * key.
+ */
+message KubernetesMlflowGcpCredentialsSecret {
+  /**
+   * Name of the Secret. Same-namespace constraint applies.
+   */
+  string secret_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key holding the service-account JSON. Empty =
+   * "credentials.json".
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "credentials.json",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * Azure Blob artifact store (rendered as
+ * `wasbs://<container>@<account>.blob.core.windows.net[/<prefix>]`).
+ */
+message KubernetesMlflowAzureBlobArtifacts {
+  /**
+   * Storage account name.
+   */
+  string storage_account = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Blob container name.
+   */
+  string container = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Key prefix within the container. Empty = the container root.
+   */
+  string prefix = 3;
+
+  /**
+   * The Secret holding the storage-account access key (key
+   * `access_key` by default; wired via AZURE_STORAGE_ACCESS_KEY).
+   */
+  KubernetesMlflowAzureCredentialsSecret credentials_secret = 4 [(buf.validate.field).required = true];
+}
+
+/**
+ * A reference to an existing Secret carrying an Azure storage access
+ * key.
+ */
+message KubernetesMlflowAzureCredentialsSecret {
+  /**
+   * Name of the Secret. Same-namespace constraint applies.
+   */
+  string secret_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key holding the access key. Empty = "access_key".
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "access_key",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * Basic authentication (upstream's basic-auth app). Auth state
+ * (users, permissions) follows the backend store — the same
+ * PostgreSQL database, or a sqlite file on the backend PVC.
+ */
+message KubernetesMlflowAuth {
+  /**
+   * Require authentication. Empty = true — the open server never
+   * ships by default. Disabling leaves EVERY experiment and model
+   * writable by anyone who can reach the Service.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * The bootstrap admin username. Empty = "admin".
+   */
+  optional string admin_username = 2 [(dev.planton.shared.options.default) = "admin"];
+
+  /**
+   * Existing Secret holding the admin password. Empty = the module
+   * GENERATES it into `<name>-admin-auth` (key `password`) —
+   * upstream's admin/password1234 default never ships. Either way
+   * the password reaches the server through its auth configuration
+   * Secret, never a rendered manifest.
+   */
+  KubernetesMlflowSecretKeyRef admin_password_secret = 3;
+
+  /**
+   * Permission newly-created users get on resources they did not
+   * create. Empty = "READ" (upstream default). NO_PERMISSIONS makes
+   * every experiment private to its creator until shared.
+   */
+  optional string default_permission = 4 [
+    (dev.planton.shared.options.default) = "READ",
+    (buf.validate.field).string.in = "READ",
+    (buf.validate.field).string.in = "EDIT",
+    (buf.validate.field).string.in = "MANAGE",
+    (buf.validate.field).string.in = "NO_PERMISSIONS"
+  ];
+}
+
+/**
+ * A plain reference to an existing Secret and key.
+ */
+message KubernetesMlflowSecretKeyRef {
+  /**
+   * Name of the Secret. Same-namespace constraint applies.
+   */
+  string secret_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key inside the Secret. Empty = "password".
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * Garbage collection of soft-deleted runs/experiments.
+ */
+message KubernetesMlflowGc {
+  /**
+   * Run `mlflow gc` on a schedule (a CronJob). Deleted runs become
+   * UNRECOVERABLE once collected.
+   */
+  bool enabled = 1;
+
+  /**
+   * Cron schedule. Empty = "0 3 * * *" (daily at 03:00).
+   */
+  optional string schedule = 2 [
+    (dev.planton.shared.options.default) = "0 3 * * *",
+    (buf.validate.field).string.pattern = "^(@(annually|yearly|monthly|weekly|daily|hourly))|((((\\d+,)+\\d+|(\\d+([/\\-])\\d+)|\\d+|\\*(/\\d+)?) ?){5})$"
+  ];
+
+  /**
+   * Only collect runs deleted longer ago than this (e.g. "30d",
+   * "72h") — the undo window. Empty = "30d".
+   */
+  optional string older_than = 3 [
+    (dev.planton.shared.options.default) = "30d",
+    (buf.validate.field).string.pattern = "^[0-9]+(d|h|m|s)$"
+  ];
+}
+
+/**
+ * The MLflow Service.
+ */
+message KubernetesMlflowService {
+  /**
+   * Service type. Empty = "ClusterIP" — compose exposure kinds over
+   * the exported handle instead of exposing directly.
+   */
+  optional string type = 1 [
+    (dev.planton.shared.options.default) = "ClusterIP",
+    (buf.validate.field).string.in = "ClusterIP",
+    (buf.validate.field).string.in = "LoadBalancer",
+    (buf.validate.field).string.in = "NodePort"
+  ];
+
+  /**
+   * Service annotations — the cloud load-balancer configuration
+   * surface when `type` is LoadBalancer.
+   */
+  map<string, string> annotations = 2;
+}
+
+/**
+ * Prometheus metrics.
+ */
+message KubernetesMlflowMetrics {
+  /**
+   * Expose Prometheus metrics on the server (`/metrics`).
+   */
+  bool enabled = 1;
+
+  /**
+   * Render a ServiceMonitor for operator-based scraping. Requires
+   * the Prometheus operator CRDs on the cluster (a
+   * KubernetesKubePrometheusStack composes naturally) — enabling it
+   * without them fails the deploy.
+   */
+  bool service_monitor_enabled = 2;
+
+  option (buf.validate.message).cel = {
+    id: "metrics.service_monitor_needs_metrics"
+    message: "A ServiceMonitor scrapes the metrics endpoint — enable metrics.enabled too, or remove service_monitor_enabled."
+    expression: "!this.service_monitor_enabled || this.enabled"
+  };
+}
+
+/**
+ * Pod scheduling.
+ */
+message KubernetesMlflowScheduling {
+  /**
+   * Node selector for the server (and GC) pods.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for the server (and GC) pods.
+   */
+  repeated dev.planton.kubernetes.WorkloadToleration tolerations = 2;
+}

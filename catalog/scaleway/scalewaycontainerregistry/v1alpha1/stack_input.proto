@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.scaleway.scalewaycontainerregistry.v1alpha1;
+
+import "catalog/scaleway/provider.proto";
+import "catalog/scaleway/scalewaycontainerregistry/v1alpha1/api.proto";
+
+//scaleway-container-registry stack-input
+message ScalewayContainerRegistryStackInput {
+  //target cloud-resource
+  ScalewayContainerRegistry target = 1;
+  //provider-config
+  dev.planton.scaleway.ScalewayProviderConfig provider_config = 2;
+}

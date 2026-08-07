@@ -15,7 +15,7 @@ import (
 // upgrades disagree with the catalog. Regenerate with
 // `make generate-conversion-registry`.
 func TestEmbeddedSpecsMirrorTheAuthoredSpecs(t *testing.T) {
-	base := providerBaseDir(t)
+	base := catalogDir(t)
 	authored, err := SpecFiles(os.DirFS(base))
 	if err != nil {
 		t.Fatal(err)

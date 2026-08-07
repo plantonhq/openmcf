@@ -3,7 +3,7 @@ package awswebidentity
 import (
 	"testing"
 
-	awsprovider "github.com/plantonhq/planton/apis/dev/planton/provider/aws"
+	awsprovider "github.com/plantonhq/planton/catalog/aws"
 )
 
 func TestValidate(t *testing.T) {

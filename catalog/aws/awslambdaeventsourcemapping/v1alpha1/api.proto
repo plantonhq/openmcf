@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.aws.awslambdaeventsourcemapping.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awslambdaeventsourcemapping/v1alpha1/spec.proto";
+import "catalog/aws/awslambdaeventsourcemapping/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AwsLambdaEventSourceMapping is the API envelope for a Lambda event
+// source mapping -- the managed poller that reads an SQS queue, a
+// Kinesis or DynamoDB stream, a Kafka topic (MSK or self-managed), an
+// Amazon MQ queue, or a DocumentDB change stream and invokes a Lambda
+// function with batched records.
+message AwsLambdaEventSourceMapping {
+  // api-version must be set to "aws.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
+
+  // resource-kind for this resource, must be "AwsLambdaEventSourceMapping".
+  string kind = 2 [(buf.validate.field).string.const = "AwsLambdaEventSourceMapping"];
+
+  // metadata captures identifying information (name, org, environment,
+  // labels) and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the desired configuration of the mapping.
+  AwsLambdaEventSourceMappingSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds post-deployment information.
+  AwsLambdaEventSourceMappingStatus status = 5;
+}
+
+// AwsLambdaEventSourceMappingStatus describes the status of an event
+// source mapping resource.
+message AwsLambdaEventSourceMappingStatus {
+  // outputs captures the observable values returned by Pulumi/Terraform
+  // after provisioning.
+  AwsLambdaEventSourceMappingStackOutputs outputs = 1;
+}

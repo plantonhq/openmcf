@@ -17,7 +17,7 @@ go_test(
     ],
     embed = [":certification"],
     deps = [
-        "//apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1",
+        "//catalog/_test/testcloudresourcegeneric/v1alpha1",
         "//internal/manifest",
         "//pkg/catalogbundle",
         "//pkg/conversion",

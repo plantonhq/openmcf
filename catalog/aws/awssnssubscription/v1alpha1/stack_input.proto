@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssnssubscription.v1alpha1;
+
+import "catalog/aws/awssnssubscription/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsSnsSubscriptionStackInput is the input for the aws-sns-subscription
+// IaC modules.
+message AwsSnsSubscriptionStackInput {
+  // target cloud-resource
+  AwsSnsSubscription target = 1;
+
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

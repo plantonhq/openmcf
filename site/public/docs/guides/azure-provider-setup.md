@@ -81,7 +81,7 @@ The CLI validates the config file against the proto schema, then converts the fi
 | `tenant_id` | Yes | Azure AD tenant ID |
 | `subscription_id` | Yes | Azure subscription ID |
 
-All field names use `snake_case`, matching the protobuf definition at `apis/dev/planton/provider/azure/provider.proto`.
+All field names use `snake_case`, matching the protobuf definition at `catalog/azure/provider.proto`.
 
 ## Creating a Service Principal
 

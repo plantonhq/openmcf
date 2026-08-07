@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	componentv1 "github.com/plantonhq/planton/apis/dev/planton/qa/componente2eprofile/v1"
 	"github.com/plantonhq/planton/e2e/framework/discovery"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/e2e/framework/runner"
 	profilepkg "github.com/plantonhq/planton/pkg/e2e/profile"
+	componentv1 "github.com/plantonhq/planton/qa/componente2eprofile/v1"
 )
 
 // Kubernetes Tier 1 components: native K8s resources, zero dependencies.
@@ -539,6 +539,7 @@ func TestKubernetesPerconaMysqlOperator_Pulumi(t *testing.T) {
 func TestKubernetesTemporal_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestemporal", "pulumi")
 }
+
 // ─── Tier 2 Terraform (Helm-based) ──────────────────────────────────────────
 
 func TestKubernetesValkey_Terraform(t *testing.T) {
@@ -574,6 +575,7 @@ func TestKubernetesPerconaMysqlOperator_Terraform(t *testing.T) {
 func TestKubernetesTemporal_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestemporal", "terraform")
 }
+
 // ─── Tier 1 Pulumi/Terraform (Postgres flagship) ────────────────────────────
 // KubernetesPostgres declares KubernetesCloudNativePgOperator as a registry
 // prerequisite; the harness installs the operator (with the Barman Cloud

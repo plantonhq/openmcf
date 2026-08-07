@@ -117,7 +117,7 @@ Use update when you need to:
 
 **What it does:**
 1. Regenerates proto stubs: `make protos` (rule 017)
-2. Validates component tests: `go test ./apis/dev/planton/provider/<provider>/<component>/v1/`
+2. Validates component tests: `go test ./catalog/<provider>/<component>/v1/`
 3. Updates Terraform variables.tf to match spec.proto
 4. **Validates existing presets against new schema** (if `v1/presets/` exists):
    - Checks the LAYOUT first: presets must be flat `{NN}-{name}.yaml` + `{NN}-{name}.md`
@@ -145,8 +145,8 @@ Use update when you need to:
    annotated `(dev.planton.shared.options.sensitive) = true` (a look-alike non-secret gets
    `(sensitive_exempt_reason)` instead); then `planton secret-coverage --check` MUST pass. See rule
    `002-spec-validate` ("SENSITIVE FIELD OPTIONS"). (For a dedicated annotation-only pass, see Scenario 8.)
-7. Runs build validation: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` (rule 018)
-8. Runs test validation: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` (rule 019)
+7. Runs build validation: `go build ./catalog/<provider>/<component>/v1/...` (rule 018)
+8. Runs test validation: `go test -v ./catalog/<provider>/<component>/v1/` (rule 019)
 
 **Use when:**
 - Added new fields to spec.proto
@@ -280,9 +280,9 @@ misconfigurations fail at validation rather than at deploy.
 2. Updates Pulumi module based on your explanation, keeping comments at the module-comment bar (`architecture/deployment-component.md` §4.1)
 3. Updates Terraform module to maintain feature parity AND comment-quality parity (never strip module comments)
 4. Updates tests if needed
-5. Runs build validation: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` (rule 018)
+5. Runs build validation: `go build ./catalog/<provider>/<component>/v1/...` (rule 018)
 6. Runs E2E tests (rules 011, 014)
-7. Runs test validation: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` (rule 019)
+7. Runs test validation: `go test -v ./catalog/<provider>/<component>/v1/` (rule 019)
 
 **Use when:**
 - Adding new resources to deployment
@@ -361,8 +361,8 @@ Based on scenario:
 - **Check existing presets**: Read `v1/presets/*.yaml` and compare field names against new spec.proto to detect stale references
 - Plan regeneration sequence
 - **Must execute**: `make protos` to regenerate Go stubs
-- **Must execute**: `go test ./apis/dev/planton/provider/<provider>/<component>/v1/` to validate spec tests
-- **Must execute**: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` for build validation
+- **Must execute**: `go test ./catalog/<provider>/<component>/v1/` to validate spec tests
+- **Must execute**: `go build ./catalog/<provider>/<component>/v1/...` for build validation
 - **Must validate**: Existing presets are consistent with new spec.proto (no stale field names, correct StringValueOrRef usage)
 
 **Refresh Docs:**
@@ -859,11 +859,11 @@ For each identified update:
 After all updates, **execute validation commands in sequence**:
 
 1. **If proto files changed**: Run `make protos` to regenerate Go stubs
-2. **Always run component tests**: `go test ./apis/dev/planton/provider/<provider>/<component>/v1/`
+2. **Always run component tests**: `go test ./catalog/<provider>/<component>/v1/`
    - This validates buf.validate rules in spec.proto
    - Ensures spec_test.go passes with current validation logic
-3. **If Pulumi/Go code changed**: Run `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` to validate build (rule 018)
-4. **Always run component tests**: Run `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` to validate tests (rule 019)
+3. **If Pulumi/Go code changed**: Run `go build ./catalog/<provider>/<component>/v1/...` to validate build (rule 018)
+4. **Always run component tests**: Run `go test -v ./catalog/<provider>/<component>/v1/` to validate tests (rule 019)
 5. **If proto files changed and presets exist**: Verify all preset YAML field names exist in current spec.proto, all StringValueOrRef fields use `value:` wrapper, and apiVersion/kind still match api.proto
 6. **If the Terraform module's resource set changed and the component ships import
    recipes** (`v1/iac/import-map.yaml`): update the provider catalog
@@ -925,11 +925,11 @@ Show:
 
 # Update executes:
 # - make protos (regenerate proto stubs)
-# - go test ./apis/dev/planton/provider/gcp/gcpcloudsql/v1alpha1/ (validate spec tests)
+# - go test ./catalog/gcp/gcpcloudsql/v1alpha1/ (validate spec tests)
 # - Update Terraform variables.tf (add enable_ssl variable)
 # - Validate presets against new schema (check for stale fields, add enable_ssl if appropriate)
-# - go build ./apis/dev/planton/provider/<provider>/<component>/v1/... (validate build)
-# - go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/ (validate tests)
+# - go build ./catalog/<provider>/<component>/v1/... (validate build)
+# - go test -v ./catalog/<provider>/<component>/v1/ (validate tests)
 
 # Result: All files consistent with new schema, including presets
 ```
@@ -1028,7 +1028,7 @@ If update would overwrite custom changes:
 ### Backup Before Update
 Use `--backup` flag to create backup:
 ```
-apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/.backup-2025-11-13-143022/
+catalog/atlas/mongodbatlas/v1alpha1/.backup-2025-11-13-143022/
 ```
 
 ### Dry-Run Mode
@@ -1057,10 +1057,10 @@ Update validates after each major change:
 
 **After Proto Changes:**
 1. Run `make protos` from project root to regenerate Go stubs
-2. Run component tests: `go test ./apis/dev/planton/provider/<provider>/<component>/v1/`
+2. Run component tests: `go test ./catalog/<provider>/<component>/v1/`
    - Validates buf.validate rules in spec.proto are correct
    - Ensures spec_test.go passes with current validation logic
-3. Run `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` to validate build
+3. Run `go build ./catalog/<provider>/<component>/v1/...` to validate build
 4. Run `planton secret-coverage --check` -- any newly added/renamed secret-bearing field must be
    annotated `sensitive` (or exempted with `sensitive_exempt_reason`); the gate must be green.
    Do NOT pre-emptively exempt: the guard flags fields by NAME pattern, and an exemption on a
@@ -1070,11 +1070,11 @@ Update validates after each major change:
 5. If `v1/presets/` exists: validate all preset field names exist in the updated spec.proto, check StringValueOrRef compliance, and verify apiVersion/kind still match api.proto
 
 **After Pulumi/Go Code Changes:**
-1. Run `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` to validate build
-2. Run component tests: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`
+1. Run `go build ./catalog/<provider>/<component>/v1/...` to validate build
+2. Run component tests: `go test -v ./catalog/<provider>/<component>/v1/`
 
 **Always (Final Validation):**
-1. Run component tests: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` to validate tests pass
+1. Run component tests: `go test -v ./catalog/<provider>/<component>/v1/` to validate tests pass
 2. Verify examples work with current schema
 3. Verify presets are consistent with current spec.proto (if presets exist)
 
@@ -1252,15 +1252,15 @@ After update completes:
 7. **Updates existing presets** (if `v1/presets/` exists):
    - For each field that gained a `default` or `recommended_default` annotation, update the preset value and comment to cite the annotation
    - For each field that changed from required to optional-with-default, the preset may now omit it or include it with a comment
-8. Runs build validation: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`
-9. Runs test validation: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`
+8. Runs build validation: `go build ./catalog/<provider>/<component>/v1/...`
+9. Runs test validation: `go test -v ./catalog/<provider>/<component>/v1/`
 
 **Use when:**
 - Audit or review reveals defaults are only in comments
 - Fields need proper presence tracking for zero-value handling
 - Custom linter `DEFAULT_REQUIRES_OPTIONAL` would fail on new defaults
 
-**Reference:** See `apis/_rules/apply-planton-default-option-semantics.mdc` for detailed process
+**Reference:** See `_rules/protos/apply-planton-default-option-semantics.mdc` for detailed process
 
 #### Scenario 8: Annotate Sensitive Fields (Secret-by-default)
 
@@ -1293,7 +1293,7 @@ pre-existing component, or `planton secret-coverage --check` reports a gap)
 - Backfilling secure-by-default coverage on an older component
 
 **Reference:** rule `002-spec-validate` ("SENSITIVE FIELD OPTIONS") and the `sensitive` /
-`sensitive_exempt_reason` comments in `dev/planton/shared/options/options.proto`.
+`sensitive_exempt_reason` comments in `shared/options/options.proto`.
 
 #### Scenario 9: Rename a Kind
 
@@ -1311,7 +1311,7 @@ conventions). A rename keeps the enum **number** — only the name changes every
    The CLI resolves a manifest's module directory from the kind name via `crkreflect`,
    so the kind and its directory MUST move in lockstep.
 3. **Protos** (all four): the proto `package`, the `go_package` option, the
-   intra-component `import "dev/planton/provider/..."` paths, and every message name
+   intra-component `import "catalog/..."` paths, and every message name
    (`<Kind>`, `<Kind>Spec`, `<Kind>Status`, `<Kind>StackInput`, `<Kind>StackOutputs`,
    and all nested spec messages — follow the sibling convention `<Kind><Noun>`).
 4. **Manifests**: `kind:` in `iac/hack/manifest.yaml` and every `presets/*.yaml`.
@@ -1334,7 +1334,7 @@ conventions). A rename keeps the enum **number** — only the name changes every
    yarn generate-structure` in `site/` (the copy script clears provider dirs first, so
    the old slug's built output disappears on its own).
 9. **Validate**: component spec tests, targeted package builds
-   (`go build ./apis/dev/planton/provider/<provider>/<kind>/v1/...` — NEVER a repo-root
+   (`go build ./catalog/<provider>/<kind>/v1/...` — NEVER a repo-root
    `go build ./...`, which compiles 70+ component modules at once and halts the machine;
    use `make build-go` for the repo-wide gate), the Pulumi entrypoint build,
    `planton validate-refs --check`, `planton secret-coverage --check`,

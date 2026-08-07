@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsfsxlustrefilesystem.v1alpha1;
+
+import "catalog/aws/awsfsxlustrefilesystem/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// aws-fsx-lustre-file-system stack-input
+message AwsFsxLustreFileSystemStackInput {
+  // target cloud-resource
+  AwsFsxLustreFileSystem target = 1;
+  // provider-credential
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

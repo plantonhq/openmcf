@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	proposalv1 "github.com/plantonhq/planton/apis/dev/planton/iac/importmappingproposal/v1"
+	proposalv1 "github.com/plantonhq/planton/iac/importmappingproposal/v1"
 	"github.com/plantonhq/planton/pkg/iac/mappingeval"
 	"github.com/plantonhq/planton/pkg/iac/mappingeval/baseline"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -234,7 +234,7 @@ func TestScorerComparesRepeatedRefLiterals(t *testing.T) {
 
 func loadIdentityEgressSuite(t *testing.T, root string) *mappingeval.LoadedSuite {
 	t.Helper()
-	suite, err := mappingeval.LoadSuite(root, filepath.Join(root, "apis/dev/planton/provider/aws/aa_eval/suites/identity-and-egress.yaml"))
+	suite, err := mappingeval.LoadSuite(root, filepath.Join(root, "catalog/aws/aa_eval/suites/identity-and-egress.yaml"))
 	if err != nil {
 		t.Fatalf("loading identity-and-egress suite: %v", err)
 	}

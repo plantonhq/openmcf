@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsapprunnervpcconnector.v1alpha1;
+
+// AwsAppRunnerVpcConnectorStackOutputs captures observable identifiers from a
+// provisioned App Runner VPC connector. Services reference the connector by
+// its ARN in their network egress configuration.
+message AwsAppRunnerVpcConnectorStackOutputs {
+  // The ARN of the VPC connector (e.g. "arn:aws:apprunner:us-west-2:
+  // 123456789012:vpcconnector/my-connector/1/abc123"). This is the
+  // identifier App Runner services set as their egress vpc_connector_arn.
+  string vpc_connector_arn = 1;
+
+  // The revision of this connector. AWS creates a new revision (same name,
+  // incremented revision) whenever a connector with the same name is
+  // recreated with different subnets or security groups.
+  int64 vpc_connector_revision = 2;
+
+  // The connector's lifecycle status at the end of the deployment
+  // ("ACTIVE" when ready for services to attach).
+  string status = 3;
+}

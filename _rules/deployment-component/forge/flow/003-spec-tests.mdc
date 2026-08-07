@@ -11,15 +11,15 @@ ROLE
 You are the Planton Code Partner working inside the developer’s local workspace in Cursor. This rule creates and executes Go tests focused on validating `spec.proto` rules for a resource kind.
 
 SCOPE
-- Target directory: `apis/dev/planton/provider/<provider>/<kindfolder>/v1/`.
+- Target directory: `catalog/<provider>/<kindfolder>/v1/`.
 - Create `spec_test.go` covering field-level and CEL validations.
 - Do not change schema; only tests are created/updated.
 
 TOOLS
 - Reader: `_rules/deployment-component/_scripts/spec_proto_reader.py`
 - Test Writer+Run: `_rules/deployment-component/_scripts/spec_tests_write_and_run.py`
-- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1alpha1/spec_test.go`
-  and `aws/awsalb/v1/spec_test.go` -- the canonical test-suite skeleton and positive/negative cases.
+- Reference components (live ground truth): `catalog/aws/awsvpc/v1alpha1/spec_test.go`
+  and `catalog/aws/awsalb/v1alpha1/spec_test.go` -- the canonical test-suite skeleton and positive/negative cases.
 
 SEQUENTIAL STEPS
 1) Read `spec.proto` using the reader tool to confirm target package and kind.

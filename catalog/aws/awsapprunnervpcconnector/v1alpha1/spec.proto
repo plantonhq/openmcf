@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsapprunnervpcconnector.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsAppRunnerVpcConnectorSpec defines the desired configuration for an AWS
+// App Runner VPC connector -- the managed network attachment that lets App
+// Runner services reach private resources inside a VPC (databases, caches,
+// internal APIs) for their OUTBOUND traffic.
+//
+// A VPC connector is deliberately its own resource rather than a field on the
+// service: one connector is shared by any number of App Runner services (each
+// service references the connector by ARN in its egress configuration), and
+// the connector owns its own network-attachment lifecycle -- AWS provisions
+// managed ENIs into the chosen subnets that persist across service
+// create/destroy cycles.
+//
+// Design notes:
+// - The connector governs EGRESS only. Inbound traffic to a private App
+//   Runner service travels through a separate VPC Ingress Connection
+//   resource, a different surface.
+// - Every attribute is immutable after creation (AWS has no update API for
+//   connectors): changing subnets or security groups replaces the connector,
+//   which AWS models as a new connector revision under the same name.
+// - The security groups govern what the connector's ENIs can reach -- they
+//   must allow egress to the target resources' ports, and the targets'
+//   security groups must admit ingress from these groups.
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsAppRunnerVpcConnectorSpec {
+  // The AWS region where the VPC connector will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Subnets in which AWS provisions the connector's network interfaces.
+  // Immutable after creation (changing the set replaces the connector).
+  // Provide subnets in at least two availability zones for high
+  // availability -- App Runner routes egress only through AZs the connector
+  // has an ENI in. All subnets must belong to the same VPC. Accepts direct
+  // subnet IDs or references to AwsSubnet resources.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups applied to the connector's network interfaces.
+  // Immutable after creation (changing the set replaces the connector).
+  // These groups control what VPC resources the connected services can
+  // reach: allow egress to your databases' and caches' ports, and make the
+  // targets' security groups admit ingress from these groups. AWS requires
+  // at least one group on a connector. Accepts direct security group IDs or
+  // references to AwsSecurityGroup resources.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 3 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}

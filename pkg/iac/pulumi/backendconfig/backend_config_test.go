@@ -3,9 +3,9 @@ package backendconfig
 import (
 	"testing"
 
-	awsvpcv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpc/v1alpha1"
-	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	awsvpcv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsvpc/v1alpha1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumiannotationkeys"
+	"github.com/plantonhq/planton/shared"
 	"github.com/stretchr/testify/assert"
 )
 

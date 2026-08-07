@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesvelero.v1alpha1;
+
+// KubernetesVeleroStackOutputs captures observable outputs after Velero is
+// installed on the target cluster.
+message KubernetesVeleroStackOutputs {
+  // Namespace Velero was installed into (the resolved spec.namespace).
+  string namespace = 1;
+
+  // Helm release name — fixed "velero" (one installation per cluster; the
+  // server owns the cluster's backup records).
+  string release_name = 2;
+
+  // Name of the Velero server's Kubernetes service account — the subject
+  // cloud-side keyless bindings (IRSA trust policies, GCP WI bindings,
+  // Azure federated credentials) are written against.
+  string service_account_name = 3;
+
+  // Name of the default BackupStorageLocation ("default") — what Backup
+  // and Schedule resources reference through storageLocation.
+  string backup_storage_location_name = 4;
+}

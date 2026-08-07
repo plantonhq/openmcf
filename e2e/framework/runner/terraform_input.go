@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/iac/terraform"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/iac/stackinput"
 	"github.com/plantonhq/planton/pkg/iac/stackinput/providerenvvars"
 	"github.com/plantonhq/planton/pkg/iac/tofu/generators"
 	"github.com/plantonhq/planton/pkg/iac/tofu/tfbackend"
+	"github.com/plantonhq/planton/shared/iac/terraform"
 )
 
 // TerraformInput holds the prepared inputs for a Terraform E2E test run.

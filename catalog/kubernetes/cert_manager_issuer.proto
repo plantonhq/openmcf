@@ -1,0 +1,696 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// Shared cert-manager issuer configuration used by both KubernetesClusterIssuer
+// (cluster-scoped) and KubernetesIssuer (namespace-scoped). Upstream cert-manager
+// deliberately gives ClusterIssuer and Issuer an IDENTICAL spec — the only
+// difference is scope: a ClusterIssuer signs Certificates in every namespace,
+// an Issuer signs only in its own. Sharing one message set here keeps that
+// guarantee structural: the two kinds can never drift apart field-by-field.
+//
+// An issuer answers exactly one question: WHO signs certificates, and HOW.
+// Four signing backends are modeled (matching upstream cert-manager.io/v1):
+//
+//   | Backend     | Signs with                                   | Typical use |
+//   |-------------|----------------------------------------------|-------------|
+//   | acme        | A public CA speaking the ACME protocol       | Public TLS (Let's Encrypt, ZeroSSL, Google CA) |
+//   | ca          | A CA keypair stored in a Kubernetes Secret   | Internal PKI, mTLS between services |
+//   | self_signed | The certificate's own key (self-signed)      | Bootstrapping a root CA; dev/test |
+//   | vault       | HashiCorp Vault / OpenBao PKI secrets engine | Centralized enterprise PKI |
+//
+// The upstream Venafi backend is deliberately not modeled: it drives a
+// proprietary commercial platform (Venafi TPP / Venafi-as-a-Service) and is
+// better served by that platform's own tooling.
+//
+// CREDENTIAL MODEL: wherever upstream expects a `secretRef` to a Kubernetes
+// Secret holding a credential (a Cloudflare token, an AWS secret key, a TSIG
+// key), the Planton spec accepts the credential VALUE directly, marked
+// sensitive. The IaC modules materialize each credential as a Kubernetes
+// Secret (named "<resource-name>-<purpose>") in the namespace cert-manager
+// reads issuer secrets from, and wire the CR's secretRef to it — identical on
+// both engines. Declaring the credential in one place beats pre-creating
+// Secrets by hand; platform-side secret handling keeps the value out of
+// rendered manifests.
+message CertManagerIssuerConfig {
+  option (buf.validate.message).cel = {
+    id: "issuer.backend_required"
+    message: "An issuer backend must be selected — choose 'acme' for public TLS certificates (e.g. Let's Encrypt), 'ca' to sign with a CA keypair from a Kubernetes Secret, 'self_signed' to bootstrap a CA chain or for development, or 'vault' for a Vault/OpenBao PKI engine"
+    expression: "has(this.acme) || has(this.ca) || has(this.self_signed) || has(this.vault)"
+  };
+
+  // Exactly one signing backend.
+  oneof backend {
+    // ACME (RFC 8555): obtain certificates from a public CA such as
+    // Let's Encrypt by proving control of the requested names.
+    CertManagerAcmeConfig acme = 1;
+
+    // CA: sign certificates with a CA certificate + private key stored in a
+    // Kubernetes Secret (typically created by a KubernetesCertificate with
+    // is_ca=true and a self_signed issuer — the standard internal-PKI bootstrap).
+    CertManagerCaConfig ca = 2;
+
+    // SelfSigned: certificates are signed by their own private key. No
+    // external authority involved — browsers will not trust these. Used to
+    // create root CAs and for development.
+    CertManagerSelfSignedConfig self_signed = 3;
+
+    // Vault: certificates are signed by a HashiCorp Vault (or OpenBao) PKI
+    // secrets engine.
+    CertManagerVaultConfig vault = 4;
+  }
+}
+
+// ACME issuer configuration. cert-manager registers an ACME account with the
+// CA, then satisfies domain-ownership challenges through the configured
+// solvers whenever a Certificate is requested.
+message CertManagerAcmeConfig {
+  // Email registered with the ACME account — the CA sends certificate expiry
+  // notices and account notifications here.
+  string email = 1 [(buf.validate.field).required = true];
+
+  // ACME directory URL. Defaults to Let's Encrypt production. Use the
+  // Let's Encrypt staging endpoint
+  // (https://acme-staging-v02.api.letsencrypt.org/directory) while testing —
+  // production enforces strict rate limits that a misconfigured setup can
+  // exhaust for a whole domain.
+  optional string server = 2 [(dev.planton.shared.options.default) = "https://acme-v02.api.letsencrypt.org/directory"];
+
+  // ACME certificate profile, for CAs that offer them (e.g. Let's Encrypt
+  // "classic", "tlsserver", "shortlived"). Leave empty for the CA default.
+  string profile = 3;
+
+  // Preferred certificate chain to request from the CA, matched against the
+  // Common Name of the chain's root certificate (e.g. "ISRG Root X1").
+  // Relevant when a CA offers multiple chains; the CA falls back to its
+  // default chain when no match exists.
+  string preferred_chain = 4;
+
+  // PEM bundle used to validate the ACME server's TLS certificate — for
+  // private ACME CAs (e.g. an internal Smallstep/step-ca) whose certificate
+  // is not in the system trust store. Mutually exclusive with skip_tls_verify.
+  string ca_bundle = 5;
+
+  // Disable TLS verification when talking to the ACME server. INSECURE —
+  // only for lab environments; prefer ca_bundle for private CAs.
+  bool skip_tls_verify = 6;
+
+  // External Account Binding — required by CAs that tie ACME accounts to an
+  // existing customer account (ZeroSSL, Google Trust Services, Sectigo).
+  CertManagerAcmeExternalAccountBinding external_account_binding = 7;
+
+  // When true, cert-manager will NOT generate a new ACME account key and
+  // instead requires the account key Secret to already exist. Used when
+  // migrating an existing ACME account between clusters.
+  bool disable_account_key_generation = 8;
+
+  // When true, request the certificate validity period from the CA via the
+  // ACME "notAfter" field (only where Certificate resources set a duration;
+  // support varies by CA).
+  bool enable_duration_feature = 9;
+
+  // Challenge solvers, tried in order of selector specificity. At least one
+  // is required: an ACME issuer without solvers can never satisfy a
+  // challenge, so every issuance would hang — cert-manager accepts such an
+  // issuer but it is always a misconfiguration, rejected here instead.
+  // A single catch-all solver (no selector) is the common case; add
+  // selector-scoped solvers when different DNS zones need different
+  // providers or when specific certificates must use HTTP-01.
+  repeated CertManagerAcmeSolver solvers = 10 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// External Account Binding credentials issued by the CA (outside ACME) that
+// bind the ACME account to the CA-side customer account.
+message CertManagerAcmeExternalAccountBinding {
+  // Key identifier issued by the CA.
+  string key_id = 1 [(buf.validate.field).required = true];
+
+  // Symmetric MAC key issued by the CA (base64url-encoded, as handed out by
+  // the CA's dashboard). Materialized as a Kubernetes Secret by the module.
+  string hmac_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// One ACME challenge solver: HOW to prove control of requested names.
+// Exactly one of http01 / dns01 per solver. cert-manager picks the solver
+// whose selector most specifically matches the certificate's names; a solver
+// with no selector is the catch-all.
+message CertManagerAcmeSolver {
+  option (buf.validate.message).cel = {
+    id: "solver.challenge_required"
+    message: "Each solver must configure exactly one challenge type — 'http01' (proves control of a domain by serving a token over HTTP; requires public reachability on port 80) or 'dns01' (proves control by publishing a DNS TXT record; required for wildcard certificates)"
+    expression: "has(this.http01) != has(this.dns01)"
+  };
+
+  // Restricts which certificates this solver applies to. Empty selector =
+  // catch-all. When multiple solvers match, the most specific selector wins
+  // (dns_names beats dns_zones beats match_labels beats catch-all).
+  CertManagerAcmeSolverSelector selector = 1;
+
+  oneof challenge {
+    // HTTP-01: cert-manager provisions an ephemeral challenge endpoint that
+    // the CA fetches over HTTP on port 80. Cannot issue wildcards.
+    CertManagerAcmeHttp01Solver http01 = 2;
+
+    // DNS-01: cert-manager publishes a TXT record through the configured DNS
+    // provider. The only challenge type that can issue wildcard certificates,
+    // and the one that works for cluster-internal or non-public services.
+    CertManagerAcmeDns01Solver dns01 = 3;
+  }
+}
+
+// Selector scoping a solver to a subset of certificate names.
+message CertManagerAcmeSolverSelector {
+  // Match certificates whose names fall under any of these zones
+  // (e.g. "example.com" matches "www.example.com").
+  repeated string dns_zones = 1;
+
+  // Match exact DNS names (e.g. "api.example.com").
+  repeated string dns_names = 2;
+
+  // Match Certificate resources carrying all of these labels.
+  map<string, string> match_labels = 3;
+}
+
+// HTTP-01 solver: serve the challenge token over HTTP. Choose how the
+// ephemeral challenge pods are exposed — through an Ingress or through a
+// Gateway API HTTPRoute.
+message CertManagerAcmeHttp01Solver {
+  option (buf.validate.message).cel = {
+    id: "http01.exposure_required"
+    message: "http01 must configure exactly one exposure — 'ingress' (challenge routed through an Ingress controller) or 'gateway_http_route' (challenge routed through a Gateway API gateway)"
+    expression: "has(this.ingress) != has(this.gateway_http_route)"
+  };
+
+  oneof exposure {
+    // Route challenge traffic through an Ingress controller.
+    CertManagerAcmeHttp01IngressSolver ingress = 1;
+
+    // Route challenge traffic through a Gateway API HTTPRoute.
+    CertManagerAcmeHttp01GatewaySolver gateway_http_route = 2;
+  }
+}
+
+// HTTP-01 challenge exposure via Ingress.
+message CertManagerAcmeHttp01IngressSolver {
+  // IngressClass used for the ephemeral challenge Ingress (e.g. "nginx").
+  // cert-manager creates new challenge Ingresses with this class. Set either
+  // this or name — not both.
+  string ingress_class_name = 1;
+
+  // Name of an EXISTING Ingress to temporarily modify with challenge routes
+  // instead of creating new ones — for controllers (or DNS setups) that
+  // misbehave with ephemeral Ingresses. Set either this or ingress_class_name.
+  string name = 2;
+
+  // Service type for the challenge Service. Defaults to NodePort upstream;
+  // ClusterIP suffices when the Ingress controller routes in-cluster.
+  optional string service_type = 3 [(buf.validate.field).cel = {
+    id: "http01.ingress.service_type"
+    message: "service_type must be NodePort or ClusterIP"
+    expression: "this == '' || this in ['NodePort', 'ClusterIP']"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "http01.ingress.class_xor_name"
+    message: "Set at most one of ingress_class_name (create ephemeral challenge Ingresses with that class) or name (modify an existing Ingress) — they select mutually exclusive strategies"
+    expression: "!(this.ingress_class_name != '' && this.name != '')"
+  };
+}
+
+// HTTP-01 challenge exposure via Gateway API. cert-manager creates ephemeral
+// HTTPRoutes attached to the given parent Gateways.
+message CertManagerAcmeHttp01GatewaySolver {
+  // Gateways the challenge HTTPRoute attaches to. At least one required.
+  repeated CertManagerGatewayParentRef parent_refs = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Labels stamped on the ephemeral challenge HTTPRoute.
+  map<string, string> labels = 2;
+
+  // Service type for the challenge Service (NodePort default upstream).
+  optional string service_type = 3 [(buf.validate.field).cel = {
+    id: "http01.gateway.service_type"
+    message: "service_type must be NodePort or ClusterIP"
+    expression: "this == '' || this in ['NodePort', 'ClusterIP']"
+  }];
+}
+
+// Reference to a parent Gateway for challenge HTTPRoutes — the Gateway API
+// ParentReference shape, curated to the fields that select a Gateway.
+message CertManagerGatewayParentRef {
+  // Gateway name.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // Gateway namespace. Empty = same namespace as the challenge route.
+  string namespace = 2;
+
+  // Specific listener section name on the Gateway (empty = all listeners).
+  string section_name = 3;
+}
+
+// DNS-01 solver: publish the challenge as a DNS TXT record. Exactly one DNS
+// provider per solver; use multiple solvers with selectors when different
+// zones live in different providers. Providers that authenticate ambiently
+// (Route53 via EKS IRSA, Cloud DNS via GKE Workload Identity, Azure DNS via
+// AKS Workload Identity) inherit the identity configured on the
+// KubernetesCertManager controller's ServiceAccount — leave their static
+// credential fields empty for keyless operation.
+message CertManagerAcmeDns01Solver {
+  option (buf.validate.message).cel = {
+    id: "dns01.provider_required"
+    message: "dns01 must configure exactly one DNS provider (cloudflare, route53, azure_dns, gcp_cloud_dns, digitalocean, rfc2136, acme_dns, akamai, or webhook for third-party solvers)"
+    expression: "[has(this.cloudflare), has(this.route53), has(this.azure_dns), has(this.gcp_cloud_dns), has(this.digitalocean), has(this.rfc2136), has(this.acme_dns), has(this.akamai), has(this.webhook)].filter(x, x).size() == 1"
+  };
+
+  // How cert-manager follows CNAME records when locating the TXT record
+  // zone: "none" (default — set the record where the name lives) or "follow"
+  // (chase CNAMEs to the canonical zone; the pattern for delegated
+  // _acme-challenge subdomains).
+  optional string cname_strategy = 1 [(buf.validate.field).cel = {
+    id: "dns01.cname_strategy"
+    message: "cname_strategy must be 'none' or 'follow'"
+    expression: "this == '' || this in ['none', 'follow']"
+  }];
+
+  oneof provider {
+    CertManagerDns01Cloudflare cloudflare = 2;
+    CertManagerDns01Route53 route53 = 3;
+    CertManagerDns01AzureDns azure_dns = 4;
+    CertManagerDns01GcpCloudDns gcp_cloud_dns = 5;
+    CertManagerDns01DigitalOcean digitalocean = 6;
+    CertManagerDns01Rfc2136 rfc2136 = 7;
+    CertManagerDns01AcmeDns acme_dns = 8;
+    CertManagerDns01Akamai akamai = 9;
+    CertManagerDns01Webhook webhook = 10;
+  }
+}
+
+// Cloudflare DNS-01. Prefer a scoped API TOKEN (Zone:Read + DNS:Edit on the
+// target zones) over the legacy account-wide API key.
+message CertManagerDns01Cloudflare {
+  option (buf.validate.message).cel = {
+    id: "cloudflare.credential_required"
+    message: "Cloudflare needs exactly one credential — api_token (recommended: scoped to the zone) or the legacy api_key + email pair"
+    expression: "has(this.api_token) != has(this.api_key)"
+  };
+
+  oneof credential {
+    // Scoped API token (recommended). Created in the Cloudflare dashboard
+    // with Zone:Zone:Read and Zone:DNS:Edit on the zones this issuer manages.
+    CertManagerCloudflareApiToken api_token = 1;
+
+    // Legacy global API key — account-wide power; use only where tokens are
+    // unavailable. Requires the account email alongside.
+    CertManagerCloudflareApiKey api_key = 2;
+  }
+}
+
+// Cloudflare scoped API token credential.
+message CertManagerCloudflareApiToken {
+  // The API token value. Materialized as a Kubernetes Secret by the module.
+  string token = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// Cloudflare legacy global API key credential.
+message CertManagerCloudflareApiKey {
+  // Cloudflare account email the key belongs to.
+  string email = 1 [(buf.validate.field).required = true];
+
+  // The global API key value. Materialized as a Kubernetes Secret by the module.
+  string key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// AWS Route53 DNS-01. Three authentication paths, in order of preference:
+// ambient (leave static_credentials and service_account empty — uses the
+// cert-manager controller's identity, i.e. EKS IRSA configured on
+// KubernetesCertManager.workload_identity), a dedicated per-issuer
+// ServiceAccount token (fine-grained IRSA without changing the controller
+// identity), or static access keys.
+message CertManagerDns01Route53 {
+  // AWS region hosting Route53 API calls (e.g. "us-east-1").
+  string region = 1 [(buf.validate.field).required = true];
+
+  // Route53 hosted zone ID (e.g. "Z2E9THH2A..."). Optional: when empty,
+  // cert-manager discovers the zone by name — set it to disambiguate when
+  // multiple zones share a domain name (public + private split-horizon).
+  string hosted_zone_id = 2;
+
+  // IAM role ARN to assume (via STS) before touching Route53 — the
+  // cross-account pattern: the base identity (ambient or static) must be
+  // allowed to sts:AssumeRole this role.
+  string assume_role_arn = 3;
+
+  // Static AWS access keys. Leave unset for keyless (IRSA / ambient) auth.
+  CertManagerRoute53StaticCredentials static_credentials = 4;
+
+  // Dedicated ServiceAccount whose projected token authenticates to AWS —
+  // per-issuer IRSA. The ServiceAccount must exist in the cert-manager
+  // namespace and carry the eks.amazonaws.com/role-arn annotation
+  // (compose it with a KubernetesServiceAccount resource).
+  CertManagerRoute53ServiceAccountAuth service_account = 5;
+
+  option (buf.validate.message).cel = {
+    id: "route53.single_auth"
+    message: "Configure at most one Route53 authentication path — static_credentials or service_account; leave both empty for ambient (IRSA on the cert-manager controller) authentication"
+    expression: "!(has(this.static_credentials) && has(this.service_account))"
+  };
+}
+
+// Static AWS credentials for Route53.
+message CertManagerRoute53StaticCredentials {
+  // AWS access key ID.
+  string access_key_id = 1 [(buf.validate.field).required = true];
+
+  // AWS secret access key. Materialized as a Kubernetes Secret by the module.
+  string secret_access_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// Per-issuer ServiceAccount (IRSA) authentication for Route53.
+message CertManagerRoute53ServiceAccountAuth {
+  // Name of the ServiceAccount (in the cert-manager namespace) whose token
+  // is exchanged for AWS credentials. Accepts a literal name or a reference
+  // to a KubernetesServiceAccount resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  // TokenRequest audiences for the projected token. Empty = cert-manager's
+  // default audience set.
+  repeated string audiences = 2;
+}
+
+// Azure DNS DNS-01. Keyless paths: leave client_secret empty and either set
+// managed_identity (per-issuer identity) or configure AKS Workload Identity
+// on the KubernetesCertManager controller. Static path: service principal
+// client_id + client_secret + tenant_id.
+message CertManagerDns01AzureDns {
+  // Azure subscription ID containing the DNS zone.
+  string subscription_id = 1 [(buf.validate.field).required = true];
+
+  // Resource group containing the DNS zone.
+  string resource_group_name = 2 [(buf.validate.field).required = true];
+
+  // DNS zone name (e.g. "example.com"). Optional: when empty, cert-manager
+  // discovers the zone from the record name.
+  string hosted_zone_name = 3;
+
+  // "public" (default) or "private" — which zone type to manage.
+  optional string zone_type = 4 [(buf.validate.field).cel = {
+    id: "azure_dns.zone_type"
+    message: "zone_type must be 'public' or 'private'"
+    expression: "this == '' || this in ['public', 'private']"
+  }];
+
+  // Azure cloud environment. Default: the public cloud.
+  optional string environment = 5 [(buf.validate.field).cel = {
+    id: "azure_dns.environment"
+    message: "environment must be one of AzurePublicCloud, AzureChinaCloud, AzureGermanCloud, AzureUSGovernmentCloud"
+    expression: "this == '' || this in ['AzurePublicCloud', 'AzureChinaCloud', 'AzureGermanCloud', 'AzureUSGovernmentCloud']"
+  }];
+
+  // Service principal (static) auth: the app registration's client ID.
+  // Requires client_secret and tenant_id.
+  string client_id = 6;
+
+  // Service principal client secret. Materialized as a Kubernetes Secret by
+  // the module. Leave empty for keyless (workload identity) auth.
+  string client_secret = 7 [(dev.planton.shared.options.sensitive) = true];
+
+  // Entra tenant ID for service principal auth.
+  string tenant_id = 8;
+
+  // Per-issuer managed identity (keyless): use this user-assigned managed
+  // identity instead of the controller's ambient identity. Set client_id OR
+  // resource_id of the identity.
+  CertManagerAzureManagedIdentity managed_identity = 9;
+
+  option (buf.validate.message).cel = {
+    id: "azure_dns.sp_triplet"
+    message: "Service-principal authentication needs client_id, client_secret, and tenant_id together; leave all three empty for keyless (workload identity / managed identity) authentication"
+    expression: "(this.client_id == '' && this.client_secret == '' && this.tenant_id == '') || (this.client_id != '' && this.client_secret != '' && this.tenant_id != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "azure_dns.sp_xor_mi"
+    message: "Configure either service-principal credentials or managed_identity, not both"
+    expression: "!(this.client_secret != '' && has(this.managed_identity))"
+  };
+}
+
+// User-assigned managed identity selector for Azure DNS.
+message CertManagerAzureManagedIdentity {
+  option (buf.validate.message).cel = {
+    id: "azure_mi.one_selector"
+    message: "Select the managed identity by exactly one of client_id or resource_id"
+    expression: "(this.client_id != '') != (this.resource_id != '')"
+  };
+
+  // Client ID (GUID) of the user-assigned managed identity.
+  string client_id = 1;
+
+  // Full Azure resource ID of the user-assigned managed identity.
+  string resource_id = 2;
+}
+
+// Google Cloud DNS DNS-01. Keyless path: leave service_account_key empty and
+// configure GKE Workload Identity on the KubernetesCertManager controller.
+message CertManagerDns01GcpCloudDns {
+  // GCP project ID containing the Cloud DNS zone.
+  string project_id = 1 [(buf.validate.field).required = true];
+
+  // Cloud DNS zone name. Optional: when empty, cert-manager discovers the
+  // zone from the record name.
+  string hosted_zone_name = 2;
+
+  // GCP service account key JSON (static auth). Materialized as a Kubernetes
+  // Secret by the module. Leave empty for keyless (Workload Identity) auth —
+  // the strongly preferred path.
+  string service_account_key_json = 3 [(dev.planton.shared.options.sensitive) = true];
+}
+
+// DigitalOcean DNS-01.
+message CertManagerDns01DigitalOcean {
+  // DigitalOcean personal access token with write scope. Materialized as a
+  // Kubernetes Secret by the module.
+  string token = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// RFC 2136 (dynamic DNS update) DNS-01 — for BIND and other standards-
+// compliant authoritative servers, the self-hosted/datacenter path.
+message CertManagerDns01Rfc2136 {
+  // Authoritative DNS server address ("host" or "host:port"; IP required by
+  // upstream for the host part).
+  string nameserver = 1 [(buf.validate.field).required = true];
+
+  // TSIG key name, as configured on the DNS server. Required together with
+  // tsig_secret for authenticated updates.
+  string tsig_key_name = 2;
+
+  // TSIG algorithm (e.g. "HMACSHA256", "HMACSHA512"). Defaults upstream to
+  // HMACMD5; set explicitly to match the server key.
+  string tsig_algorithm = 3;
+
+  // TSIG shared secret. Materialized as a Kubernetes Secret by the module.
+  string tsig_secret = 4 [(dev.planton.shared.options.sensitive) = true];
+
+  option (buf.validate.message).cel = {
+    id: "rfc2136.tsig_pair"
+    message: "tsig_key_name and tsig_secret must be set together (both or neither) — a TSIG key name without its secret (or vice versa) cannot authenticate updates"
+    expression: "(this.tsig_key_name == '') == (this.tsig_secret == '')"
+  };
+}
+
+// ACME-DNS (https://github.com/joohoi/acme-dns) DNS-01 — a minimal
+// self-hosted DNS server purpose-built for ACME challenges, the pattern for
+// environments whose primary DNS cannot be automated safely.
+message CertManagerDns01AcmeDns {
+  // URL of the acme-dns server.
+  string host = 1 [(buf.validate.field).required = true];
+
+  // acme-dns account registration JSON (the response from the /register
+  // endpoint, keyed by domain). Materialized as a Kubernetes Secret by the
+  // module.
+  string account_json = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// Akamai Edge DNS DNS-01.
+message CertManagerDns01Akamai {
+  // Akamai API service consumer domain (from the API client credentials).
+  string service_consumer_domain = 1 [(buf.validate.field).required = true];
+
+  // Akamai API client token. Materialized as a Kubernetes Secret by the module.
+  string client_token = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Akamai API client secret. Materialized as a Kubernetes Secret by the module.
+  string client_secret = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Akamai API access token. Materialized as a Kubernetes Secret by the module.
+  string access_token = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// Webhook DNS-01 — the extension point for every DNS provider without a
+// built-in solver. A third-party webhook solver (deployed separately, e.g.
+// cert-manager-webhook-hetzner) receives the challenge and updates DNS.
+message CertManagerDns01Webhook {
+  // API group of the webhook solver (e.g. "acme.hetzner.cloud"), as
+  // documented by the webhook project.
+  string group_name = 1 [(buf.validate.field).required = true];
+
+  // Solver name within the group (e.g. "hetzner").
+  string solver_name = 2 [(buf.validate.field).required = true];
+
+  // Webhook-specific configuration as a YAML document — the schema belongs
+  // to the webhook project (typically credentials secret references and
+  // zone settings). Parsed and passed through as the solver's config.
+  string config_yaml = 3;
+}
+
+// CA issuer configuration: sign with a CA keypair stored in a Kubernetes
+// Secret (keys tls.crt + tls.key). The Secret must live in the namespace
+// cert-manager reads issuer secrets from (the cert-manager
+// cluster-resource namespace for a ClusterIssuer; the Issuer's own
+// namespace for an Issuer).
+message CertManagerCaConfig {
+  // Name of the Secret holding the CA certificate and key. Typically the
+  // output of a KubernetesCertificate with is_ca=true — reference its
+  // status.outputs.secret_name to compose the standard CA-chain bootstrap.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef ca_secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_name"
+  ];
+
+  // CRL distribution point URLs stamped into issued certificates.
+  repeated string crl_distribution_points = 2;
+
+  // OCSP responder URLs stamped into issued certificates.
+  repeated string ocsp_servers = 3;
+
+  // CA-issuers URLs (Authority Information Access) stamped into issued
+  // certificates, pointing at the CA certificate for chain building.
+  repeated string issuing_certificate_urls = 4;
+}
+
+// SelfSigned issuer configuration.
+message CertManagerSelfSignedConfig {
+  // CRL distribution point URLs stamped into issued certificates. Rarely
+  // needed for self-signed use.
+  repeated string crl_distribution_points = 1;
+}
+
+// Vault issuer configuration: certificates signed by a Vault (or OpenBao)
+// PKI secrets engine.
+message CertManagerVaultConfig {
+  option (buf.validate.message).cel = {
+    id: "vault.auth_required"
+    message: "Vault authentication is required — choose token (static Vault token), app_role (AppRole role_id + secret_id), or kubernetes (the cluster's ServiceAccount token via Vault's Kubernetes auth method, the keyless path)"
+    expression: "[has(this.token_auth), has(this.app_role_auth), has(this.kubernetes_auth)].filter(x, x).size() == 1"
+  };
+
+  // Vault server URL (e.g. "https://vault.example.com:8200").
+  string server = 1 [(buf.validate.field).required = true];
+
+  // PKI signing path (e.g. "pki_int/sign/example-dot-com").
+  string path = 2 [(buf.validate.field).required = true];
+
+  // Vault Enterprise namespace (empty for OSS Vault / OpenBao root).
+  string vault_namespace = 3;
+
+  // PEM bundle to validate the Vault server's TLS certificate, for private
+  // CAs. Empty = system trust store.
+  string ca_bundle = 4;
+
+  // SNI host name used when validating the Vault server certificate, when it
+  // differs from the server URL host.
+  string server_name = 5;
+
+  oneof auth {
+    // Static Vault token auth.
+    CertManagerVaultTokenAuth token_auth = 6;
+
+    // AppRole auth.
+    CertManagerVaultAppRoleAuth app_role_auth = 7;
+
+    // Kubernetes auth method — Vault validates the cluster ServiceAccount
+    // token; no static secret involved (the keyless path).
+    CertManagerVaultKubernetesAuth kubernetes_auth = 8;
+  }
+}
+
+// Static Vault token authentication.
+message CertManagerVaultTokenAuth {
+  // The Vault token. Materialized as a Kubernetes Secret by the module.
+  string token = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// Vault AppRole authentication.
+message CertManagerVaultAppRoleAuth {
+  // Mount path of the AppRole auth method (e.g. "approle").
+  string path = 1 [(buf.validate.field).required = true];
+
+  // AppRole role ID.
+  string role_id = 2 [(buf.validate.field).required = true];
+
+  // AppRole secret ID. Materialized as a Kubernetes Secret by the module.
+  string secret_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// Vault Kubernetes auth method: cert-manager presents a ServiceAccount token
+// that Vault validates against the cluster.
+message CertManagerVaultKubernetesAuth {
+  // Vault role bound to the ServiceAccount (configured on the Vault side).
+  string role = 1 [(buf.validate.field).required = true];
+
+  // Mount path of the Kubernetes auth method. Defaults to "kubernetes".
+  optional string mount_path = 2 [(dev.planton.shared.options.default) = "kubernetes"];
+
+  // ServiceAccount (in the cert-manager namespace for a ClusterIssuer; the
+  // Issuer's namespace for an Issuer) whose token authenticates to Vault.
+  // Accepts a literal name or a reference to a KubernetesServiceAccount.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account_name = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  // TokenRequest audiences for the ServiceAccount token. Empty = Vault default.
+  repeated string audiences = 4;
+}

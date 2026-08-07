@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremssqlelasticpool.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuremssqlelasticpool/v1alpha1/spec.proto";
+import "catalog/azure/azuremssqlelasticpool/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AzureMssqlElasticPool is the top-level API resource for an Azure SQL
+// elastic pool -- a shared-compute container on an AzureMssqlServer that
+// databases join (via AzureMssqlDatabase.elastic_pool_id) to draw from
+// pooled eDTUs or vCores instead of carrying their own SKU. The right
+// economics for many small databases with non-overlapping peaks.
+message AzureMssqlElasticPool {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureMssqlElasticPool'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureMssqlElasticPoolSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureMssqlElasticPoolStatus status = 5;
+}
+
+// AzureMssqlElasticPoolStatus holds the deployment status and outputs.
+message AzureMssqlElasticPoolStatus {
+  // stack-outputs
+  AzureMssqlElasticPoolStackOutputs outputs = 1;
+}

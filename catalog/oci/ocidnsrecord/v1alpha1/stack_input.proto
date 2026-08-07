@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.oci.ocidnsrecord.v1alpha1;
+
+import "catalog/oci/ocidnsrecord/v1alpha1/api.proto";
+import "catalog/oci/provider.proto";
+
+// OciDnsRecordStackInput is the input to the IaC modules
+// (Pulumi / Terraform) that deploy an OciDnsRecord resource.
+message OciDnsRecordStackInput {
+  // target cloud-resource
+  OciDnsRecord target = 1;
+  // provider-config
+  dev.planton.oci.OciProviderConfig provider_config = 2;
+}

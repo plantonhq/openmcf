@@ -30,10 +30,10 @@ You are the Planton Preset Auditor. Your job is to systematically evaluate prese
 
 1. **Determine scope**:
    - If `--provider` is specified, scan only that provider's directory
-   - Otherwise, scan all providers under `apis/dev/planton/provider/`
+   - Otherwise, scan all providers under `catalog/`
 
 2. **List component directories**:
-   - For each provider, list subdirectories under `apis/dev/planton/provider/<provider>/`
+   - For each provider, list subdirectories under `catalog/<provider>/`
    - Each subdirectory containing a `v1/spec.proto` is a component
 
 ### Step 2: Check Preset Coverage

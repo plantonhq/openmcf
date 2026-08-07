@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureservicebustopic.v1alpha1;
+
+import "catalog/azure/azureservicebustopic/v1alpha1/api.proto";
+import "catalog/azure/provider.proto";
+
+//azure-service-bus-topic stack-input
+message AzureServiceBusTopicStackInput {
+  //target cloud-resource
+  AzureServiceBusTopic target = 1;
+  //provider-config
+  dev.planton.azure.AzureProviderConfig provider_config = 2;
+}

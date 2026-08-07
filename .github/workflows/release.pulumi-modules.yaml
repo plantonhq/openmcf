@@ -15,7 +15,7 @@
 #              (windows artifacts carry the executable suffix: {version}_{platform}.exe.gz)
 # Public URL:  https://downloads.planton.dev/releases/{tag}/modules/pulumi/{component}/{version}_{platform}.gz
 #
-# Path pattern: apis/dev/planton/provider/{provider}/{component}/{version}/iac/pulumi
+# Path pattern: catalog/{provider}/{component}/{version}/iac/pulumi
 #
 # Called by: .github/workflows/release.yaml (after CLI release creates the release)
 # =============================================================================
@@ -37,7 +37,7 @@ permissions:
 
 env:
   GO_VERSION: '1.25'
-  PROVIDER_BASE_PATH: apis/dev/planton/provider
+  CATALOG_ROOT: catalog
   R2_BUCKET: downloads-dot-planton-dot-dev-bucket
 
 jobs:
@@ -116,7 +116,7 @@ jobs:
           GOARCH: ${{ matrix.platform.goarch }}
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          PROVIDER_PATH="${PROVIDER_BASE_PATH}/${PROVIDER}"
+          PROVIDER_PATH="${CATALOG_ROOT}/${PROVIDER}"
           PLATFORM_LABEL="${GOOS}_${GOARCH}"
           
           # Discover all components by listing directories

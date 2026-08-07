@@ -1,0 +1,984 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kuberneteskafka.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "catalog/kubernetes/workload_pod.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesKafkaSpec** declares an Apache Kafka cluster on the
+ * Strimzi `Kafka` + `KafkaNodePool` custom resources (KRaft mode —
+ * Kafka's built-in Raft metadata quorum; ZooKeeper does not exist in
+ * this architecture). The Strimzi cluster operator
+ * (KubernetesStrimziKafkaOperator) reconciles the rendered resources
+ * into brokers, controllers, listeners, certificates, and the
+ * per-cluster entity operators.
+ *
+ * SHAPE: `node_pools` declares the machines (roles, count, storage,
+ * sizing) — the cluster cannot exist without at least one pool
+ * carrying the `controller` role and one carrying the `broker` role
+ * (one dual-role pool satisfies both; the production norm is separate
+ * controller and broker pools). `listeners` declares how clients
+ * reach the brokers; `config` carries broker configuration the
+ * operator does not own.
+ *
+ * TOPICS AND USERS are first-class resources — declare them with
+ * KubernetesKafkaTopic / KubernetesKafkaUser (reconciled by this
+ * cluster's entity operators, which `entity_operator` keeps enabled
+ * by default). Exposure beyond listeners (Ingress controllers,
+ * Gateways) composes from the exported service handles — never
+ * embedded here.
+ *
+ * DURABILITY defaults worth knowing: topic durability is governed by
+ * per-topic `replicas` and the cluster's `min.insync.replicas` /
+ * `default.replication.factor` entries in `config` — a 3-broker
+ * cluster with the recommended entries survives a broker loss without
+ * losing acknowledged writes (producers using acks=all).
+ */
+message KubernetesKafkaSpec {
+  /**
+   * Namespace for the Kafka cluster. Accepts a literal namespace name
+   * or a reference to a KubernetesNamespace resource. The namespace
+   * must be watched by a Strimzi operator installation, and
+   * KafkaTopic/KafkaUser declarations for this cluster must live in
+   * THIS namespace (their entity operators watch only here).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Kafka version to run (e.g. "4.3.0"). Empty = the operator's
+   * default version (the newest the pinned Strimzi release supports).
+   * Upgrades are sequential per Kafka's own rules — set
+   * `metadata_version` deliberately when upgrading (the KRaft metadata
+   * format must never be newer than the oldest running broker
+   * version).
+   */
+  string kafka_version = 3;
+
+  /**
+   * KRaft metadata version (e.g. "4.3-IV0"). Empty = the operator
+   * pins it to the Kafka version's format. During a Kafka version
+   * upgrade, leave this at the OLD version's format until every node
+   * runs the new binaries — the metadata format is a one-way door
+   * (downgrade becomes impossible once bumped).
+   */
+  string metadata_version = 4;
+
+  /**
+   * The node pools that make up the cluster. At least one pool must
+   * carry the `controller` role and at least one the `broker` role —
+   * a single dual-role pool (dev shape) satisfies both. Pools are
+   * independently scalable groups of nodes sharing storage shape,
+   * sizing and scheduling; production clusters typically run one
+   * 3-node controller pool and one or more broker pools.
+   */
+  repeated KubernetesKafkaNodePool node_pools = 5 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "spec.node_pools.controller_role_present"
+      message: "no node pool carries the controller role — a KRaft cluster cannot form its metadata quorum; add 'controller' to a pool's roles (a single pool may carry both roles)"
+      expression: "this.exists(p, p.roles.exists(r, r == 'controller'))"
+    },
+    (buf.validate.field).cel = {
+      id: "spec.node_pools.broker_role_present"
+      message: "no node pool carries the broker role — the cluster would have no nodes to store or serve data; add 'broker' to a pool's roles (a single pool may carry both roles)"
+      expression: "this.exists(p, p.roles.exists(r, r == 'broker'))"
+    },
+    (buf.validate.field).cel = {
+      id: "spec.node_pools.unique_names"
+      message: "node pool names must be unique within the cluster"
+      expression: "this.map(p, p.name).unique()"
+    }
+  ];
+
+  /**
+   * Listeners — how clients reach the brokers. At least one is
+   * required. Names must be unique and ports must be unique across
+   * the list.
+   */
+  repeated KubernetesKafkaListener listeners = 6 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "spec.listeners.unique_names"
+      message: "listener names must be unique within the cluster"
+      expression: "this.map(l, l.name).unique()"
+    },
+    (buf.validate.field).cel = {
+      id: "spec.listeners.unique_ports"
+      message: "listener ports must be unique within the cluster"
+      expression: "this.map(l, l.port).unique()"
+    }
+  ];
+
+  /**
+   * Kafka broker configuration (server.properties entries), e.g.
+   * "default.replication.factor", "min.insync.replicas",
+   * "auto.create.topics.enable". Values are Kafka configuration
+   * strings — write numbers and booleans as strings ("3", "false");
+   * the operator serializes every value into Java properties form.
+   *
+   * The operator OWNS listener, node identity, security and quorum
+   * configuration: entries with the prefixes listeners, advertised.,
+   * broker., listener., host.name, port, inter.broker.listener.name,
+   * sasl., ssl., security., password., log.dir, authorizer.,
+   * super.user, node.id, process.roles, controller. (and the
+   * cruise-control metrics reporter keys) are IGNORED with an
+   * operator log warning, not applied — configure those concerns
+   * through their typed fields instead.
+   */
+  map<string, string> config = 7 [
+    (dev.planton.shared.options.recommended_default_map) = {
+      key: "default.replication.factor"
+      value: "3"
+    },
+    (dev.planton.shared.options.recommended_default_map) = {
+      key: "min.insync.replicas"
+      value: "2"
+    },
+    (dev.planton.shared.options.recommended_default_map) = {
+      key: "offsets.topic.replication.factor"
+      value: "3"
+    },
+    (dev.planton.shared.options.recommended_default_map) = {
+      key: "transaction.state.log.replication.factor"
+      value: "3"
+    },
+    (dev.planton.shared.options.recommended_default_map) = {
+      key: "transaction.state.log.min.isr"
+      value: "2"
+    }
+  ];
+
+  /**
+   * Authorization for the whole cluster. Omitted = no authorizer:
+   * every authenticated (or anonymous, on a no-auth listener) client
+   * can do everything. Enable `simple` to enforce the ACLs declared
+   * on KubernetesKafkaUser resources — from that moment, clients
+   * WITHOUT matching ACLs are denied.
+   */
+  KubernetesKafkaAuthorization authorization = 8;
+
+  /**
+   * The per-cluster entity operators that reconcile KafkaTopic and
+   * KafkaUser resources. Both enabled by default — required for
+   * KubernetesKafkaTopic / KubernetesKafkaUser declarations against
+   * this cluster to have any effect.
+   */
+  KubernetesKafkaEntityOperator entity_operator = 9;
+
+  /**
+   * Cruise Control — Kafka's partition-rebalancing autopilot. When
+   * enabled, the operator deploys Cruise Control beside the cluster
+   * and `KafkaRebalance` operations (an operational verb, applied
+   * with kubectl or automation — deliberately not a declared
+   * resource) can optimize partition placement. `auto_rebalance`
+   * additionally rebalances automatically when pools scale.
+   */
+  KubernetesKafkaCruiseControl cruise_control = 10;
+
+  /**
+   * Kafka Exporter — consumer-lag and topic/partition Prometheus
+   * metrics derived from the cluster's own protocol (the metrics the
+   * JMX exporter cannot see). Deploys a separate exporter pod.
+   */
+  KubernetesKafkaExporter kafka_exporter = 11;
+
+  /**
+   * JMX Prometheus metrics for brokers (and controllers). When
+   * enabled, the module renders the canonical Strimzi
+   * kafka-metrics ConfigMap (the upstream example rules: broker,
+   * network, log and controller metric families) and wires it as the
+   * cluster's metricsConfig — pair with KubernetesKafkaExporter for
+   * consumer-lag visibility.
+   */
+  KubernetesKafkaMetrics metrics = 12;
+
+  /**
+   * Cluster CA (signs broker certificates). Omitted = the operator
+   * generates and renews the CA (the recommended posture). Configure
+   * validity/renewal windows here; bringing your OWN CA is a
+   * helm-values-class edge deliberately not modeled — the operator
+   * renews self-generated CAs automatically.
+   */
+  KubernetesKafkaCa cluster_ca = 13;
+
+  /**
+   * Clients CA (signs KafkaUser TLS client certificates). Same
+   * posture as cluster_ca.
+   */
+  KubernetesKafkaCa clients_ca = 14;
+
+  /**
+   * Rack awareness: spreads partition replicas across the topology
+   * domains named by this key (e.g. "topology.kubernetes.io/zone")
+   * and enables follower-fetching from the closest replica. Requires
+   * nodes labeled with the key; the operator injects each broker's
+   * rack from its node's label value.
+   */
+  KubernetesKafkaRack rack = 15;
+
+  /**
+   * JVM heap for broker/controller nodes (rendered as -Xms/-Xmx).
+   * Empty = Strimzi's dynamic default (a fraction of the container
+   * memory limit). Set both to the SAME value for production —
+   * heap growth causes long GC pauses that look like broker
+   * failures to the controller quorum.
+   */
+  KubernetesKafkaJvm jvm = 16;
+
+  /**
+   * Maintenance time windows (cron expressions, e.g.
+   * "* * 0-3 ? * SUN") during which the operator performs rolling
+   * updates triggered by certificate renewals. Empty = renewals roll
+   * pods whenever they come due.
+   */
+  repeated string maintenance_time_windows = 17;
+}
+
+/**
+ * A Kafka node pool — an independently scalable group of nodes
+ * sharing roles, storage shape, sizing and scheduling. Rendered as a
+ * Strimzi `KafkaNodePool` resource bound to the cluster via the
+ * strimzi.io/cluster label.
+ */
+message KubernetesKafkaNodePool {
+  /**
+   * Pool name (e.g. "controller", "broker", "dual-role"). Becomes
+   * part of pod and PVC names — and the pool resource's OWN name, so
+   * two Kafka clusters sharing a namespace must use DISTINCT pool
+   * names (a same-named pool collides with the other cluster's,
+   * verified live; prefer one namespace per cluster).
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.node_pools.name.format"
+      message: "pool name must be a lowercase DNS-1123 label (lowercase alphanumerics and '-', starting and ending with an alphanumeric)"
+      expression: "this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')"
+    },
+    (buf.validate.field).string.max_len = 63
+  ];
+
+  /**
+   * KRaft roles this pool's nodes carry: "controller" (metadata
+   * quorum member), "broker" (stores and serves data), or both
+   * (dual-role — the dev/small-cluster shape; separate pools are the
+   * production norm so brokers can scale without disturbing the
+   * quorum).
+   */
+  repeated string roles = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "spec.node_pools.roles.enum"
+      message: "each role must be 'controller' or 'broker'"
+      expression: "this.all(r, r in ['controller', 'broker'])"
+    },
+    (buf.validate.field).cel = {
+      id: "spec.node_pools.roles.unique"
+      message: "roles must not repeat within a pool"
+      expression: "this.unique()"
+    }
+  ];
+
+  /**
+   * Number of nodes in the pool. Controller pools should be an ODD
+   * count (3 for production — the quorum tolerates one controller
+   * loss; 1 only for dev). Broker counts follow capacity; 3 is the
+   * floor for a cluster that survives a broker loss with the
+   * recommended replication settings.
+   */
+  int32 replicas = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Node storage. Kafka is a storage-bound system — persistent
+   * storage is the default and the only production-sane choice.
+   */
+  KubernetesKafkaStorage storage = 4 [(buf.validate.field).required = true];
+
+  /**
+   * CPU/memory for each node in the pool. Empty = no requests/limits
+   * (fine for kind/dev; always set for production — the JVM heap
+   * default derives from the memory limit).
+   */
+  dev.planton.kubernetes.ContainerResources resources = 5;
+
+  /**
+   * Node selector for this pool's pods.
+   */
+  map<string, string> node_selector = 6;
+
+  /**
+   * Tolerations for this pool's pods.
+   */
+  repeated dev.planton.kubernetes.WorkloadToleration tolerations = 7;
+}
+
+/**
+ * Node-pool storage. Three shapes: a single persistent volume (the
+ * default), ephemeral (emptyDir — data dies with the pod; dev only),
+ * or JBOD (multiple persistent volumes per node — the
+ * high-throughput shape).
+ */
+message KubernetesKafkaStorage {
+  /**
+   * Storage type: "persistent-claim" (default), "ephemeral", or
+   * "jbod".
+   */
+  optional string type = 1 [
+    (dev.planton.shared.options.default) = "persistent-claim",
+    (buf.validate.field).cel = {
+      id: "spec.storage.type_enum"
+      message: "storage type must be persistent-claim, ephemeral, or jbod"
+      expression: "this == '' || this in ['persistent-claim', 'ephemeral', 'jbod']"
+    }
+  ];
+
+  /**
+   * Volume size for persistent-claim storage (e.g. "100Gi").
+   * Required for persistent-claim; ignored for ephemeral and jbod
+   * (jbod sizes live on each volume).
+   */
+  string size = 2;
+
+  /**
+   * StorageClass for persistent-claim storage. Accepts a literal
+   * class name or a reference to a KubernetesStorageClass resource.
+   * Empty = the cluster default class.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  /**
+   * Delete the PersistentVolumeClaims when the cluster (or pool) is
+   * deleted. Default false — volumes outlive the cluster so data
+   * survives accidental deletion; true hands the data's lifetime to
+   * the resource's.
+   */
+  bool delete_claim = 4;
+
+  /**
+   * JBOD volumes (jbod type only): multiple persistent volumes per
+   * node, each a separate disk Kafka stripes log segments across.
+   */
+  repeated KubernetesKafkaStorageVolume volumes = 5;
+
+  option (buf.validate.message).cel = {
+    id: "spec.storage.persistent_requires_size"
+    message: "persistent-claim storage requires a size (e.g. \"100Gi\")"
+    expression: "!(!has(this.type) || this.type == '' || this.type == 'persistent-claim') || this.size != ''"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.storage.jbod_requires_volumes"
+    message: "jbod storage requires at least one entry in volumes"
+    expression: "!(has(this.type) && this.type == 'jbod') || this.volumes.size() > 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.storage.volumes_only_for_jbod"
+    message: "volumes are only used with the jbod storage type — for a single volume, set size/storage_class directly"
+    expression: "this.volumes.size() == 0 || (has(this.type) && this.type == 'jbod')"
+  };
+}
+
+/**
+ * One JBOD volume.
+ */
+message KubernetesKafkaStorageVolume {
+  /**
+   * Volume ID, unique within the pool's volume list (0, 1, 2, ...).
+   * IDs are part of the on-disk layout — never renumber existing
+   * volumes.
+   */
+  int32 id = 1 [(buf.validate.field).int32.gte = 0];
+
+  /**
+   * Volume size (e.g. "500Gi").
+   */
+  string size = 2 [(buf.validate.field).required = true];
+
+  /**
+   * StorageClass for this volume. Empty = the cluster default class.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  /**
+   * Delete this volume's PVCs with the cluster. Same semantics as
+   * KubernetesKafkaStorage.delete_claim.
+   */
+  bool delete_claim = 4;
+
+  /**
+   * Store the KRaft metadata log on this volume (exactly one volume
+   * per pool may carry it; default: the volume with the lowest ID).
+   */
+  bool kraft_metadata = 5;
+}
+
+/**
+ * A Kafka listener.
+ */
+message KubernetesKafkaListener {
+  /**
+   * Listener name — lowercase alphanumerics, at most 11 characters
+   * (it becomes part of service names and certificate SANs).
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.listeners.name.format"
+      message: "listener name must be 1-11 lowercase alphanumeric characters"
+      expression: "this.matches('^[a-z0-9]{1,11}$')"
+    }
+  ];
+
+  /**
+   * Listener port, 9092 or above (ports below 9092 are reserved for
+   * Kafka's internal listeners). Must be unique across listeners.
+   */
+  int32 port = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 9092,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  /**
+   * Listener type — how the listener is exposed:
+   * "internal" (in-cluster ClusterIP services, the default),
+   * "cluster-ip" (per-broker ClusterIP services — for custom proxies),
+   * "nodeport" (NodePort services — reachable on node IPs),
+   * "loadbalancer" (one cloud LoadBalancer per broker + bootstrap —
+   * cloud annotations ride configuration.bootstrap/brokers),
+   * "ingress" (nginx-Ingress-based TLS passthrough — REQUIRES
+   * per-broker hosts and an ingress controller with SSL passthrough
+   * enabled; DEPRECATED upstream in this Strimzi line after the
+   * Ingress NGINX Controller's archiving — prefer loadbalancer or
+   * nodeport for new clusters), or
+   * "route"/"tlsroute" (OpenShift Routes / Gateway API TLSRoutes).
+   */
+  optional string type = 3 [
+    (dev.planton.shared.options.default) = "internal",
+    (buf.validate.field).cel = {
+      id: "spec.listeners.type_enum"
+      message: "listener type must be one of internal, cluster-ip, nodeport, loadbalancer, ingress, route, tlsroute"
+      expression: "this == '' || this in ['internal', 'cluster-ip', 'nodeport', 'loadbalancer', 'ingress', 'route', 'tlsroute']"
+    }
+  ];
+
+  /**
+   * Enable TLS on this listener. ingress, route and tlsroute
+   * listeners are TLS-passthrough by construction and require true.
+   * Client traffic on tls=false listeners is PLAINTEXT — keep those
+   * internal.
+   */
+  bool tls = 4;
+
+  /**
+   * Client authentication on this listener. Omitted = unauthenticated
+   * (acceptable only for fenced internal listeners).
+   */
+  KubernetesKafkaListenerAuthentication authentication = 5;
+
+  /**
+   * Type-specific exposure configuration (hosts, cloud annotations,
+   * traffic policy, connection limits).
+   */
+  KubernetesKafkaListenerConfiguration configuration = 6;
+
+  option (buf.validate.message).cel = {
+    id: "spec.listeners.tls_required_types"
+    message: "ingress, route and tlsroute listeners are TLS-passthrough and require tls: true (verified: the operator rejects them without TLS)"
+    expression: "!(has(this.type) && this.type in ['ingress', 'route', 'tlsroute']) || this.tls"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.listeners.tls_auth_requires_tls"
+    message: "mutual-TLS client authentication requires tls: true on the listener"
+    expression: "!(has(this.authentication) && this.authentication.type == 'tls') || this.tls"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.listeners.ingress_requires_hosts"
+    message: "ingress listeners require configuration.bootstrap.host and a broker host per broker ID (verified: the operator rejects ingress listeners without them)"
+    expression: "!(has(this.type) && this.type == 'ingress') || (has(this.configuration) && has(this.configuration.bootstrap) && this.configuration.bootstrap.host != '' && this.configuration.brokers.size() > 0)"
+  };
+}
+
+/**
+ * Listener client authentication.
+ */
+message KubernetesKafkaListenerAuthentication {
+  /**
+   * Authentication type:
+   * "tls" (mutual TLS — clients present certificates issued via
+   * KubernetesKafkaUser tls authentication),
+   * "scram-sha-512" (username/password — credentials generated by
+   * KubernetesKafkaUser scram-sha-512 authentication), or
+   * "custom" (bring-your-own SASL mechanism/OAuth — configured
+   * through listener_config; OAuth lost its first-class type in
+   * Strimzi 1.x and routes through custom).
+   */
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.listeners.authentication.type_enum"
+      message: "authentication type must be tls, scram-sha-512, or custom"
+      expression: "this in ['tls', 'scram-sha-512', 'custom']"
+    }
+  ];
+
+  /**
+   * custom type only: enable SASL on the listener.
+   */
+  bool sasl = 2;
+
+  /**
+   * custom type only: the listener's Kafka configuration entries
+   * (rendered under the custom authentication's listenerConfig).
+   * Values are Kafka configuration strings — write numbers and
+   * booleans as strings; the operator serializes them into listener
+   * properties.
+   */
+  map<string, string> listener_config = 3;
+}
+
+/**
+ * Type-specific listener exposure configuration.
+ */
+message KubernetesKafkaListenerConfiguration {
+  /**
+   * Controller class for exposure: the IngressClass name for ingress
+   * listeners, the LoadBalancerClass for loadbalancer listeners.
+   */
+  string class = 1;
+
+  /**
+   * externalTrafficPolicy for loadbalancer/nodeport listeners:
+   * "Local" (preserves client IPs, no extra hop) or "Cluster" (the
+   * Kubernetes default).
+   */
+  optional string external_traffic_policy = 2 [(buf.validate.field).cel = {
+    id: "spec.listeners.configuration.etp_enum"
+    message: "external_traffic_policy must be Local or Cluster"
+    expression: "this == '' || this in ['Local', 'Cluster']"
+  }];
+
+  /**
+   * CIDR ranges allowed to reach loadbalancer listeners (rendered as
+   * loadBalancerSourceRanges).
+   */
+  repeated string load_balancer_source_ranges = 3;
+
+  /**
+   * Allocate node ports for loadbalancer listeners. Unset = the
+   * Kubernetes default (true). Set false on clouds routing LB
+   * traffic directly to pods (the ingress-nginx annotation recipes'
+   * companion knob).
+   */
+  optional bool allocate_load_balancer_node_ports = 4;
+
+  /**
+   * Create the bootstrap service. Unset = true. Disabling is an
+   * advanced shape where clients bootstrap through per-broker
+   * addresses only.
+   */
+  optional bool create_bootstrap_service = 5;
+
+  /**
+   * Use the fully-qualified *.svc.<cluster-domain> DNS names in
+   * advertised addresses of internal listeners.
+   */
+  bool use_service_dns_domain = 6;
+
+  /**
+   * Per-listener client connection cap per broker (Kafka's
+   * max.connections).
+   */
+  optional int32 max_connections = 7 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Per-listener new-connection rate cap per broker (Kafka's
+   * max.connection.creation.rate).
+   */
+  optional int32 max_connection_creation_rate = 8 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Preferred address type advertised by nodeport listeners:
+   * ExternalDNS, ExternalIP, InternalDNS, InternalIP, or Hostname.
+   */
+  optional string preferred_node_port_address_type = 9 [(buf.validate.field).cel = {
+    id: "spec.listeners.configuration.npat_enum"
+    message: "preferred_node_port_address_type must be one of ExternalDNS, ExternalIP, InternalDNS, InternalIP, Hostname"
+    expression: "this == '' || this in ['ExternalDNS', 'ExternalIP', 'InternalDNS', 'InternalIP', 'Hostname']"
+  }];
+
+  /**
+   * Publish broker addresses before readiness (nodeport/loadbalancer
+   * listeners on slow-provisioning clouds).
+   */
+  bool publish_not_ready_addresses = 10;
+
+  /**
+   * Serve this listener with a custom server certificate instead of
+   * the operator-generated one (the cert-manager seam: reference a
+   * KubernetesCertificate's secret). The certificate's SANs must
+   * cover the listener's advertised names — the operator does NOT
+   * validate this; clients fail TLS verification at connect time if
+   * they don't.
+   */
+  KubernetesKafkaListenerCertificate broker_cert_chain_and_key = 11;
+
+  /**
+   * Bootstrap service/host configuration (ingress/route/tlsroute
+   * hosts, loadbalancer annotations and static IPs, nodeport
+   * overrides).
+   */
+  KubernetesKafkaListenerBootstrap bootstrap = 12;
+
+  /**
+   * Per-broker configuration entries — REQUIRED for ingress and
+   * tlsroute listeners (each broker needs its own host).
+   */
+  repeated KubernetesKafkaListenerBroker brokers = 13 [(buf.validate.field).cel = {
+    id: "spec.listeners.configuration.brokers.unique_ids"
+    message: "each broker ID may appear at most once in the brokers list"
+    expression: "this.map(b, b.broker).unique()"
+  }];
+}
+
+/**
+ * Custom listener server certificate (from an existing Secret — the
+ * cert-manager composition seam).
+ */
+message KubernetesKafkaListenerCertificate {
+  /**
+   * Name of the Secret holding the certificate. Accepts a literal
+   * name or a reference to a KubernetesCertificate resource's output
+   * secret.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_name"
+  ];
+
+  /**
+   * Key of the certificate chain within the Secret. cert-manager
+   * writes "tls.crt".
+   */
+  optional string certificate = 2 [(dev.planton.shared.options.default) = "tls.crt"];
+
+  /**
+   * Key of the private key within the Secret. cert-manager writes
+   * "tls.key".
+   */
+  optional string key = 3 [(dev.planton.shared.options.default) = "tls.key"];
+}
+
+/**
+ * Bootstrap exposure configuration.
+ */
+message KubernetesKafkaListenerBootstrap {
+  /**
+   * Bootstrap host (REQUIRED for ingress and tlsroute listeners;
+   * used for route listeners' host override). This is the DNS name
+   * clients put in bootstrap.servers — point it (and the per-broker
+   * hosts) at the ingress controller's address, e.g. via
+   * KubernetesExternalDns.
+   */
+  string host = 1;
+
+  /**
+   * Additional annotations on the bootstrap service — the cloud
+   * LoadBalancer configuration surface (e.g.
+   * service.beta.kubernetes.io/aws-load-balancer-type: external for
+   * an AWS NLB via the AWS Load Balancer Controller, or
+   * external-dns.alpha.kubernetes.io/hostname for DNS automation).
+   */
+  map<string, string> annotations = 2;
+
+  /**
+   * Additional labels on the bootstrap service.
+   */
+  map<string, string> labels = 3;
+
+  /**
+   * Static loadBalancerIP for the bootstrap LoadBalancer (clouds that
+   * support IP reservation; most modern controllers prefer
+   * annotations).
+   */
+  string load_balancer_ip = 4;
+
+  /**
+   * Static node port for the bootstrap NodePort service (30000-32767
+   * on default clusters). Unset = allocated by Kubernetes.
+   */
+  optional int32 node_port = 5 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Additional SANs to put on the bootstrap certificate (extra DNS
+   * names clients may use).
+   */
+  repeated string alternative_names = 6;
+}
+
+/**
+ * Per-broker exposure configuration.
+ */
+message KubernetesKafkaListenerBroker {
+  /**
+   * Broker (node) ID this entry configures.
+   */
+  int32 broker = 1 [(buf.validate.field).int32.gte = 0];
+
+  /**
+   * Broker host (REQUIRED per broker for ingress and tlsroute
+   * listeners — each broker must be individually addressable).
+   */
+  string host = 2;
+
+  /**
+   * Override the advertised hostname clients are told to reach THIS
+   * broker on (NAT/proxy topologies).
+   */
+  string advertised_host = 3;
+
+  /**
+   * Override the advertised port.
+   */
+  optional int32 advertised_port = 4 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Additional annotations on this broker's service (same cloud
+   * surface as bootstrap.annotations).
+   */
+  map<string, string> annotations = 5;
+
+  /**
+   * Additional labels on this broker's service.
+   */
+  map<string, string> labels = 6;
+
+  /**
+   * Static loadBalancerIP for this broker's LoadBalancer.
+   */
+  string load_balancer_ip = 7;
+
+  /**
+   * Static node port for this broker's NodePort service.
+   */
+  optional int32 node_port = 8 [(buf.validate.field).int32.gte = 1];
+}
+
+/**
+ * Cluster authorization.
+ */
+message KubernetesKafkaAuthorization {
+  /**
+   * Authorizer type: "simple" (Kafka's built-in ACL authorizer —
+   * ACLs come from KubernetesKafkaUser authorization blocks) or
+   * "custom" (bring-your-own authorizer class; Keycloak/OPA lost
+   * their first-class types in Strimzi 1.x and route through
+   * custom).
+   */
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.authorization.type_enum"
+      message: "authorization type must be simple or custom"
+      expression: "this in ['simple', 'custom']"
+    }
+  ];
+
+  /**
+   * Principals with unrestricted access regardless of ACLs, in
+   * Kafka principal form (e.g. "User:CN=my-user" for TLS users,
+   * "User:my-user" for SCRAM users). Include your operational
+   * tooling's principals BEFORE enabling authorization — turning on
+   * an authorizer without super users can lock every client out at
+   * once.
+   */
+  repeated string super_users = 2;
+
+  /**
+   * custom type only: fully-qualified authorizer class name (must be
+   * on the broker classpath via a custom image).
+   */
+  string authorizer_class = 3;
+
+  /**
+   * custom type only: whether the custom authorizer supports the
+   * Kafka Admin API for ACL management — required for the user
+   * operator to manage ACLs through it.
+   */
+  bool supports_admin_api = 4;
+
+  option (buf.validate.message).cel = {
+    id: "spec.authorization.custom_requires_class"
+    message: "custom authorization requires authorizer_class (the fully-qualified class name of the authorizer)"
+    expression: "this.type != 'custom' || this.authorizer_class != ''"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.authorization.class_only_for_custom"
+    message: "authorizer_class is only used with custom authorization — simple uses Kafka's built-in ACL authorizer"
+    expression: "this.type == 'custom' || this.authorizer_class == ''"
+  };
+}
+
+/**
+ * The per-cluster entity operators.
+ */
+message KubernetesKafkaEntityOperator {
+  /**
+   * Topic operator — reconciles KafkaTopic resources in THIS
+   * cluster's namespace into real topics. Enabled by default;
+   * disabling it makes KubernetesKafkaTopic declarations against
+   * this cluster silently inert.
+   */
+  optional bool topic_operator_enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * User operator — reconciles KafkaUser resources in THIS cluster's
+   * namespace into authenticated principals + credential Secrets.
+   * Enabled by default; disabling it makes KubernetesKafkaUser
+   * declarations against this cluster silently inert.
+   */
+  optional bool user_operator_enabled = 2 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * Cruise Control.
+ */
+message KubernetesKafkaCruiseControl {
+  /**
+   * Deploy Cruise Control beside the cluster.
+   */
+  bool enabled = 1;
+
+  /**
+   * Cruise Control configuration entries (goals, thresholds). Values
+   * are configuration strings — write numbers and booleans as
+   * strings; the operator serializes them. The metrics topic and
+   * bootstrap-server entries are operator-owned and ignored here.
+   */
+  map<string, string> config = 2;
+
+  /**
+   * Cruise Control container resources.
+   */
+  dev.planton.kubernetes.ContainerResources resources = 3;
+
+  /**
+   * Automatic rebalancing on pool scale events: "add-brokers"
+   * rebalances onto newly added brokers, "remove-brokers" drains
+   * brokers before removal. Empty = rebalances only when a
+   * KafkaRebalance is applied manually.
+   */
+  repeated string auto_rebalance_modes = 4 [(buf.validate.field).cel = {
+    id: "spec.cruise_control.auto_rebalance_modes_enum"
+    message: "each auto-rebalance mode must be add-brokers or remove-brokers"
+    expression: "this.all(m, m in ['add-brokers', 'remove-brokers'])"
+  }];
+}
+
+/**
+ * Kafka Exporter (consumer-lag metrics).
+ */
+message KubernetesKafkaExporter {
+  /**
+   * Deploy the exporter.
+   */
+  bool enabled = 1;
+
+  /**
+   * Regex of consumer groups to export. Empty = the operator default
+   * (".*").
+   */
+  string group_regex = 2;
+
+  /**
+   * Regex of topics to export. Empty = the operator default (".*").
+   */
+  string topic_regex = 3;
+
+  /**
+   * Exporter container resources.
+   */
+  dev.planton.kubernetes.ContainerResources resources = 4;
+}
+
+/**
+ * JMX Prometheus metrics.
+ */
+message KubernetesKafkaMetrics {
+  /**
+   * Render the canonical Strimzi JMX exporter rules ConfigMap and
+   * enable the metrics endpoint on every broker/controller (port
+   * 9404 inside the pods; scrape with a PodMonitor or annotations
+   * per your Prometheus setup).
+   */
+  bool enabled = 1;
+}
+
+/**
+ * A Strimzi-managed certificate authority's knobs.
+ */
+message KubernetesKafkaCa {
+  /**
+   * CA certificate validity in days. Operator default: 365.
+   */
+  optional int32 validity_days = 1 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Days before expiry at which the operator renews the CA (and
+   * rolls certificates during maintenance windows when configured).
+   * Operator default: 30.
+   */
+  optional int32 renewal_days = 2 [(buf.validate.field).int32.gte = 1];
+}
+
+/**
+ * Rack awareness.
+ */
+message KubernetesKafkaRack {
+  /**
+   * Node label whose value identifies a node's failure domain,
+   * e.g. "topology.kubernetes.io/zone".
+   */
+  string topology_key = 1 [(buf.validate.field).required = true];
+}
+
+/**
+ * JVM heap.
+ */
+message KubernetesKafkaJvm {
+  /**
+   * Initial heap (-Xms), e.g. "4g". Set equal to xmx in production.
+   */
+  string xms = 1;
+
+  /**
+   * Maximum heap (-Xmx), e.g. "4g". Kafka relies on the OS page
+   * cache — heap beyond ~6g rarely helps; give the rest of the
+   * container memory to the page cache instead.
+   */
+  string xmx = 2;
+}

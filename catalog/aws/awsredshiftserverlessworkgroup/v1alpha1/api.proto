@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awsredshiftserverlessworkgroup/v1alpha1/spec.proto";
+import "catalog/aws/awsredshiftserverlessworkgroup/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// aws-redshift-serverless-workgroup
+message AwsRedshiftServerlessWorkgroup {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'aws.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AwsRedshiftServerlessWorkgroup'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AwsRedshiftServerlessWorkgroupSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AwsRedshiftServerlessWorkgroupStatus status = 5;
+}
+
+// aws-redshift-serverless-workgroup status
+message AwsRedshiftServerlessWorkgroupStatus {
+  //stack-outputs
+  AwsRedshiftServerlessWorkgroupStackOutputs outputs = 1;
+}

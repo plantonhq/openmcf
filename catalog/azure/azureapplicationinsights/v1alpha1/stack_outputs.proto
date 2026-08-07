@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureapplicationinsights.v1alpha1;
+
+// **AzureApplicationInsightsStackOutputs** captures the outputs of provisioning
+// an Azure Application Insights resource.
+//
+// The `connection_string` output is the composition seam: AzureFunctionApp,
+// AzureLinuxWebApp, and AzureContainerAppEnvironment (Dapr instrumentation)
+// reference it to wire applications to this APM resource.
+message AzureApplicationInsightsStackOutputs {
+  // The Azure Resource Manager ID of the Application Insights resource.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/components/{name}
+  // Referenced by metric alerts (web-test availability criteria) and
+  // diagnostic settings targeting this resource.
+  string application_insights_id = 1;
+
+  // The name of the Application Insights resource.
+  string application_insights_name = 2;
+
+  // The instrumentation key for classic SDK configuration. Secret-bearing:
+  // it authorizes telemetry ingestion while local authentication is enabled.
+  // Microsoft recommends the connection_string for new applications; the key
+  // remains for SDKs that have not migrated.
+  string instrumentation_key = 3;
+
+  // The connection string for SDK configuration. Secret-bearing: contains the
+  // instrumentation key plus the ingestion endpoint in a single string -- the
+  // recommended way to configure Application Insights and OpenTelemetry SDKs.
+  // Referenced by: AzureFunctionApp, AzureLinuxWebApp, and
+  // AzureContainerAppEnvironment (Dapr telemetry).
+  string connection_string = 4;
+
+  // The Application ID for API access -- used when programmatically querying
+  // telemetry via the Application Insights REST API. Not a secret (queries
+  // additionally require an API key or Entra token).
+  string app_id = 5;
+}

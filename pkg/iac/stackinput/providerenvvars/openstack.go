@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-	openstackprovider "github.com/plantonhq/planton/apis/dev/planton/provider/openstack"
+	openstackprovider "github.com/plantonhq/planton/catalog/openstack"
 )
 
 // loadOpenStackEnvVars loads OpenStack provider config and returns environment variables.

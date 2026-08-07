@@ -1,0 +1,571 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetescilium.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesCiliumSpec** installs Cilium — the eBPF-based networking,
+ * network-security, and observability engine — from the official Helm chart
+ * (`cilium` at https://helm.cilium.io). Cilium is the cluster's CNI: it wires
+ * pod networking, enforces NetworkPolicy (standard Kubernetes policies plus
+ * Cilium's own L7-aware policies), can replace kube-proxy entirely with eBPF
+ * service load-balancing, and streams flow-level observability through
+ * Hubble.
+ *
+ * ONE INSTALLATION PER CLUSTER: Cilium is the node dataplane — the agent
+ * DaemonSet, operator, and generated CNI configuration are cluster
+ * singletons, so the Helm release name is fixed to "cilium". Install it into
+ * "kube-system" (the upstream convention; the agent is cluster
+ * infrastructure).
+ *
+ * TWO WAYS TO RUN IT (the load-bearing choice):
+ *
+ * 1. PRIMARY CNI (default): Cilium owns pod networking. The cluster must be
+ *    created WITHOUT another CNI (kind: `disableDefaultCNI: true`; AKS:
+ *    BYOCNI via `aks_byocni`; self-managed kubeadm: no CNI addon). Nodes stay
+ *    NotReady until Cilium installs — that is by design.
+ *
+ * 2. CNI CHAINING (`cni.chaining_mode`): Cilium runs ON TOP of an existing
+ *    CNI — the incumbent keeps doing IPAM and basic routing while Cilium
+ *    attaches eBPF programs for policy enforcement, load-balancing, and
+ *    observability. This is the no-rip-and-replace path for clusters whose
+ *    networking must stay (e.g. EKS with the AWS VPC CNI via `aws-cni`).
+ *
+ * The typed fields below cover the chart's meaningful configuration surface;
+ * `helm_values` remains as the escape hatch for the chart's long tail
+ * (merged last, Helm `-f` semantics, identical on both engines) — a safety
+ * valve, never the primary interface.
+ */
+message KubernetesCiliumSpec {
+  /**
+   * Namespace to install Cilium into ("kube-system" is the upstream
+   * convention — the agent is cluster infrastructure and several chart
+   * defaults assume it). Accepts a literal namespace name or a reference to
+   * a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist (kube-system always does).
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "1.19.6" — Cilium chart and app
+   * versions move together). Pin deliberately; upgrades re-run the release
+   * with the new chart. Pick versions from the chart repository's index
+   * (`helm search repo`): the served chart is the contract — the upstream
+   * source tree's Chart.yaml can claim a version at a tag that was never
+   * served.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "1.19.6"];
+
+  /**
+   * Cluster identity for Cilium: the name distinguishes this cluster in
+   * multi-cluster (Cluster Mesh) setups and appears in Hubble flow data.
+   * Chart default: "default". Keep it unique across clusters you may ever
+   * mesh together.
+   */
+  optional string cluster_name = 4 [
+    (dev.planton.shared.options.default) = "default",
+    (buf.validate.field).string = {
+      max_len: 32
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    }
+  ];
+
+  /**
+   * IP Address Management: who hands out pod IPs.
+   */
+  KubernetesCiliumIpam ipam = 5;
+
+  /**
+   * Datapath routing between nodes: tunnel (encapsulation, works
+   * everywhere) or native (routes pod CIDRs on the underlying network —
+   * faster, needs a routable fabric).
+   */
+  KubernetesCiliumRouting routing = 6;
+
+  /**
+   * Replace kube-proxy with Cilium's eBPF service load-balancing
+   * (kubeProxyReplacement). The cluster should then be created WITHOUT
+   * kube-proxy (kind: `kubeProxyMode: none`; kubeadm:
+   * `--skip-phases=addon/kube-proxy`). When replacing kube-proxy, also set
+   * k8s_service_host/k8s_service_port so the agent can reach the API server
+   * before any service load-balancing exists.
+   */
+  bool kube_proxy_replacement = 7;
+
+  /**
+   * API server address the agent uses BEFORE service load-balancing is up —
+   * required with kube_proxy_replacement (there is no kube-proxy to resolve
+   * the in-cluster kubernetes.default Service). On kind this is the
+   * control-plane node's container name; on managed clouds the API endpoint
+   * hostname.
+   */
+  string k8s_service_host = 8;
+
+  /**
+   * API server port paired with k8s_service_host. Chart treats empty as
+   * unset; 6443 is the common value.
+   */
+  optional int32 k8s_service_port = 9 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 65535
+  }];
+
+  /**
+   * CNI installation behavior — including CHAINING MODE, the arm that runs
+   * Cilium on top of an existing CNI instead of replacing it.
+   */
+  KubernetesCiliumCni cni = 10;
+
+  /**
+   * Cloud-provider datapath integrations (AWS ENI, Azure BYOCNI, GKE).
+   * Exactly the environment-injection surface: the same spec deploys to any
+   * cluster, these arms adapt the datapath to the host cloud.
+   */
+  KubernetesCiliumCloudIntegration cloud = 11;
+
+  /**
+   * Hubble — Cilium's flow-level observability layer (relay, UI, metrics).
+   * Enabled by default upstream.
+   */
+  KubernetesCiliumHubble hubble = 12;
+
+  /**
+   * Transparent encryption of pod-to-pod traffic (WireGuard or IPsec).
+   */
+  KubernetesCiliumEncryption encryption = 13;
+
+  /**
+   * NetworkPolicy enforcement posture (policyEnforcementMode). "default"
+   * enforces only where policies select pods; "always" denies everything
+   * not explicitly allowed; "never" disables enforcement (observability
+   * only). Closed upstream enum.
+   */
+  optional string policy_enforcement_mode = 14 [
+    (dev.planton.shared.options.default) = "default",
+    (buf.validate.field).cel = {
+      id: "spec.policy_enforcement_mode_enum"
+      message: "policy_enforcement_mode must be one of 'default', 'always', or 'never'"
+      expression: "this == '' || this in ['default', 'always', 'never']"
+    }
+  ];
+
+  /**
+   * Cilium's Gateway API implementation: istiod-style north-south routing
+   * with Envoy embedded in the agent. Creates the "cilium" GatewayClass.
+   * REQUIRES kube_proxy_replacement — the operator disables Gateway API
+   * support (with only a log warning) when kube-proxy replacement is off,
+   * so this spec makes the dependency loud instead of silent. Requires the
+   * Gateway API CRDs on the cluster (KubernetesGatewayApiCrds).
+   */
+  bool gateway_api = 15;
+
+  /**
+   * eBPF bandwidth manager: enforces pod egress bandwidth annotations and
+   * enables BBR congestion control for pods.
+   */
+  KubernetesCiliumBandwidthManager bandwidth_manager = 16;
+
+  /**
+   * cilium-operator sizing. The operator handles IPAM allocation and CRD
+   * lifecycle; chart default is 2 replicas for HA (they lead-elect). On
+   * single-node clusters run 1 — two replicas cannot both schedule with
+   * pod anti-affinity.
+   */
+  KubernetesCiliumOperator operator = 17;
+
+  /**
+   * Agent (cilium DaemonSet) container resources. Empty = chart defaults
+   * (no requests/limits — size deliberately for production).
+   */
+  dev.planton.kubernetes.ContainerResources agent_resources = 18;
+
+  /**
+   * Cilium's own Prometheus telemetry (agent + operator metrics and
+   * optional ServiceMonitors). Hubble METRICS are separate — see
+   * hubble.metrics.
+   */
+  KubernetesCiliumPrometheus prometheus = 19;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged LAST
+   * over everything the typed fields render (Helm `-f` semantics, identical
+   * on both engines). For the chart surface beyond the typed fields (BGP
+   * control plane, L2 announcements, Cluster Mesh, ingress controller,
+   * per-image overrides, ...) — never the substitute for them. Do not put
+   * secrets here.
+   */
+  string helm_values = 20;
+
+  option (buf.validate.message).cel = {
+    id: "spec.gateway_api_requires_kpr"
+    message: "gateway_api requires kube_proxy_replacement — Cilium's operator disables Gateway API support when kube-proxy replacement is off (it only logs a warning, so the gateway would silently never program)"
+    expression: "!this.gateway_api || this.kube_proxy_replacement"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.kpr_requires_api_server_address"
+    message: "kube_proxy_replacement requires k8s_service_host — without kube-proxy the agent has no service load-balancer yet and cannot resolve the in-cluster API server address"
+    expression: "!this.kube_proxy_replacement || this.k8s_service_host != ''"
+  };
+}
+
+/**
+ * IP Address Management mode vocabulary — mirrors the agent's own accepted
+ * values (pkg/ipam/option in the Cilium source).
+ */
+message KubernetesCiliumIpam {
+  /**
+   * IPAM mode. "cluster-pool" (chart default): Cilium's operator carves
+   * per-node pod CIDRs from cluster_pool_ipv4_pod_cidrs. "kubernetes":
+   * use the node's Kubernetes-assigned PodCIDR (the right mode on kind and
+   * kubeadm clusters, whose CIDRs the control plane already allocates).
+   * "eni": AWS ENI mode (pods get VPC IPs; pairs with cloud.aws_eni).
+   * "azure": Azure IPAM. "alibabacloud": Alibaba ENI. "multi-pool":
+   * multiple user-defined pools. "delegated-plugin": IPAM delegated to the
+   * chained CNI (chaining setups).
+   */
+  optional string mode = 1 [
+    (dev.planton.shared.options.default) = "cluster-pool",
+    (buf.validate.field).cel = {
+      id: "spec.ipam.mode_enum"
+      message: "ipam mode must be one of 'cluster-pool', 'kubernetes', 'eni', 'azure', 'alibabacloud', 'multi-pool', or 'delegated-plugin'"
+      expression: "this == '' || this in ['cluster-pool', 'kubernetes', 'eni', 'azure', 'alibabacloud', 'multi-pool', 'delegated-plugin']"
+    }
+  ];
+
+  /**
+   * IPv4 CIDRs the operator carves per-node pod ranges from (cluster-pool
+   * mode only). Chart default: ["10.0.0.0/8"]. Must not overlap the node
+   * network or Service CIDR.
+   */
+  repeated string cluster_pool_ipv4_pod_cidrs = 2 [(buf.validate.field).repeated.items.string.pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$"];
+
+  /**
+   * Per-node mask size carved out of the cluster pool (cluster-pool mode
+   * only). Chart default: 24 (254 pod IPs per node).
+   */
+  optional int32 cluster_pool_ipv4_mask_size = 3 [(buf.validate.field).int32 = {
+    gte: 8
+    lte: 30
+  }];
+}
+
+/**
+ * Inter-node datapath routing.
+ */
+message KubernetesCiliumRouting {
+  /**
+   * Routing mode. "tunnel" (chart default): encapsulate pod traffic between
+   * nodes — works on any network. "native": route pod CIDRs directly on the
+   * underlying fabric — lower overhead, requires the network to carry pod
+   * CIDRs (set ipv4_native_routing_cidr, and auto_direct_node_routes on a
+   * shared L2 segment).
+   */
+  optional string mode = 1 [
+    (dev.planton.shared.options.default) = "tunnel",
+    (buf.validate.field).cel = {
+      id: "spec.routing.mode_enum"
+      message: "routing mode must be either 'tunnel' or 'native'"
+      expression: "this == '' || this in ['tunnel', 'native']"
+    }
+  ];
+
+  /**
+   * Encapsulation protocol in tunnel mode. Chart default: "vxlan";
+   * "geneve" is the alternative (required by some datapath features).
+   */
+  optional string tunnel_protocol = 2 [(buf.validate.field).cel = {
+    id: "spec.routing.tunnel_protocol_enum"
+    message: "tunnel_protocol must be either 'vxlan' or 'geneve'"
+    expression: "this == '' || this in ['vxlan', 'geneve']"
+  }];
+
+  /**
+   * CIDR within which traffic is NOT masqueraded in native-routing mode —
+   * the pod CIDR range the fabric can route back.
+   */
+  string ipv4_native_routing_cidr = 3 [(buf.validate.field).cel = {
+    id: "spec.routing.native_cidr_format"
+    message: "ipv4_native_routing_cidr must be an IPv4 CIDR (e.g. 10.0.0.0/8)"
+    expression: "this == '' || this.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/[0-9]{1,2}$')"
+  }];
+
+  /**
+   * In native mode, have each agent install direct routes to the pod CIDRs
+   * of other nodes on the same L2 segment (autoDirectNodeRoutes).
+   */
+  bool auto_direct_node_routes = 4;
+
+  option (buf.validate.message).cel = {
+    id: "spec.routing.native_knobs_require_native_mode"
+    message: "ipv4_native_routing_cidr and auto_direct_node_routes only apply when routing mode is 'native' — remove them or switch the mode"
+    expression: "(has(this.mode) && this.mode == 'native') || (this.ipv4_native_routing_cidr == '' && !this.auto_direct_node_routes)"
+  };
+}
+
+/**
+ * CNI installation behavior, including chaining on top of another CNI.
+ */
+message KubernetesCiliumCni {
+  /**
+   * Chain Cilium onto an existing CNI instead of replacing it. The
+   * incumbent CNI keeps IPAM and interface wiring; Cilium attaches eBPF for
+   * policy, load-balancing, and observability. Values (upstream closed
+   * set): "none" (no chaining — primary CNI), "aws-cni" (EKS with the AWS
+   * VPC CNI), "flannel", "generic-veth" (any veth-based CNI),
+   * "portmap" (add hostPort support via the portmap plugin).
+   */
+  optional string chaining_mode = 1 [(buf.validate.field).cel = {
+    id: "spec.cni.chaining_mode_enum"
+    message: "cni chaining_mode must be one of 'none', 'aws-cni', 'flannel', 'generic-veth', or 'portmap'"
+    expression: "this == '' || this in ['none', 'aws-cni', 'flannel', 'generic-veth', 'portmap']"
+  }];
+
+  /**
+   * CNI network name to chain into (implies generic-veth chaining): the
+   * agent watches for a CNI network with this name and layers Cilium onto
+   * its configuration. aws-cni chaining implies target "aws-cni" — no need
+   * to set it.
+   */
+  string chaining_target = 2;
+
+  /**
+   * Make Cilium take ownership of /etc/cni/net.d, renaming non-Cilium CNI
+   * configurations so no pod can schedule through another CNI during agent
+   * downtime. Chart default: true. MUST be false in chaining mode — the
+   * chained CNI's configuration has to survive.
+   */
+  optional bool exclusive = 3 [(dev.planton.shared.options.default) = "true"];
+
+  option (buf.validate.message).cel = {
+    id: "spec.cni.chaining_disables_exclusive"
+    message: "cni.exclusive must be false when chaining_mode is set — exclusive mode renames the very CNI configuration the chain depends on"
+    expression: "(!has(this.chaining_mode) || this.chaining_mode == '' || this.chaining_mode == 'none') || (has(this.exclusive) && this.exclusive == false)"
+  };
+}
+
+/**
+ * Cloud-provider datapath integrations. Empty = no cloud integration (kind,
+ * self-managed, or chaining setups where the incumbent CNI is the cloud
+ * integration).
+ */
+message KubernetesCiliumCloudIntegration {
+  /**
+   * AWS ENI datapath (EKS/self-managed on EC2 as PRIMARY CNI): pods receive
+   * VPC-routable IPs from ENIs Cilium manages. Pair with ipam mode "eni".
+   * The agent uses the node instance role (or IRSA) for EC2 ENI calls. To
+   * instead keep the AWS VPC CNI and chain Cilium on top, use
+   * cni.chaining_mode "aws-cni" and leave this off.
+   */
+  bool aws_eni = 1;
+
+  /**
+   * Azure AKS BYOCNI (aksbyocni): the supported way to run Cilium as the
+   * primary CNI on AKS clusters created with `--network-plugin none`.
+   * Enables the Azure-compatible encapsulation defaults. (The legacy
+   * azure-IPAM integration with service-principal credentials is
+   * deliberately not typed — reach it via helm_values if you must.)
+   */
+  bool aks_byocni = 2;
+
+  /**
+   * GKE datapath integration (gke.enabled): configures the agent for GKE
+   * node images and routing (pairs with ipam mode "kubernetes" and native
+   * routing per upstream's GKE guide).
+   */
+  bool gke = 3;
+
+  option (buf.validate.message).cel = {
+    id: "spec.cloud.single_integration"
+    message: "at most one cloud integration (aws_eni, aks_byocni, gke) can be enabled — they configure mutually exclusive datapaths"
+    expression: "(this.aws_eni ? 1 : 0) + (this.aks_byocni ? 1 : 0) + (this.gke ? 1 : 0) <= 1"
+  };
+}
+
+/**
+ * Hubble observability: flow visibility for every packet decision Cilium
+ * makes.
+ */
+message KubernetesCiliumHubble {
+  /**
+   * Enable Hubble in the agent (chart default: true). Disabling removes
+   * flow observability entirely.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Deploy hubble-relay: the cluster-wide flow aggregation service the UI
+   * and hubble CLI talk to.
+   */
+  bool relay = 2;
+
+  /**
+   * Deploy the Hubble UI (service-map web console). Requires relay.
+   */
+  bool ui = 3;
+
+  /**
+   * Hubble metric families to export (e.g. "dns", "drop", "tcp", "flow",
+   * "icmp", "http" — entries accept upstream's option syntax like
+   * "dns:query;ignoreAAAA"). Empty = Hubble metrics disabled (the chart
+   * default).
+   */
+  repeated string metrics = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  /**
+   * Create a ServiceMonitor for the Hubble metrics endpoint. Requires the
+   * Prometheus operator CRDs on the cluster — the release FAILS to install
+   * without them. Only meaningful when metrics is non-empty.
+   */
+  bool metrics_service_monitor = 5;
+
+  option (buf.validate.message).cel = {
+    id: "spec.hubble.ui_requires_relay"
+    message: "hubble.ui requires hubble.relay — the UI reads flows exclusively through the relay service"
+    expression: "!this.ui || this.relay"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.hubble.components_require_enabled"
+    message: "hubble.relay/ui/metrics require hubble.enabled — with Hubble off in the agent there are no flows to serve"
+    expression: "(!has(this.enabled) || this.enabled) || (!this.relay && !this.ui && size(this.metrics) == 0)"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.hubble.monitor_requires_metrics"
+    message: "hubble.metrics_service_monitor requires at least one entry in hubble.metrics — the ServiceMonitor would have no endpoint to scrape"
+    expression: "!this.metrics_service_monitor || size(this.metrics) > 0"
+  };
+}
+
+/**
+ * Transparent pod-to-pod encryption.
+ */
+message KubernetesCiliumEncryption {
+  /**
+   * Enable transparent network encryption.
+   */
+  bool enabled = 1;
+
+  /**
+   * Encryption method: "wireguard" (kernel WireGuard, key management
+   * automatic — the low-friction choice) or "ipsec" (requires a
+   * pre-created key Secret, supports key rotation policies). Upstream also
+   * accepts "ztunnel" for Istio ambient interop — deliberately not typed;
+   * reach it via helm_values with an ambient mesh.
+   *
+   * WireGuard rides the NODE kernel's module: verify the node OS ships it
+   * (mainstream cloud images do; container-VM and older distro kernels may
+   * not) — on a node without the module the agent fails to start rather
+   * than silently sending plaintext.
+   */
+  optional string type = 2 [
+    (dev.planton.shared.options.default) = "wireguard",
+    (buf.validate.field).cel = {
+      id: "spec.encryption.type_enum"
+      message: "encryption type must be either 'wireguard' or 'ipsec'"
+      expression: "this == '' || this in ['wireguard', 'ipsec']"
+    }
+  ];
+
+  /**
+   * Also encrypt pure node-to-node traffic (not just pod traffic).
+   * WireGuard only.
+   */
+  bool node_encryption = 3;
+
+  option (buf.validate.message).cel = {
+    id: "spec.encryption.node_encryption_wireguard_only"
+    message: "node_encryption is only effective with encryption type 'wireguard' (the upstream constraint) — remove it or switch the type"
+    expression: "!this.node_encryption || (!has(this.type) || this.type == '' || this.type == 'wireguard')"
+  };
+  // Only node_encryption is gated on enabled. An explicit `type` with
+  // enabled=false is deliberately tolerated: `type` carries a default
+  // annotation, so the platform's defaulting middleware can materialize it
+  // in a block a user wrote as {enabled: false} — rejecting that shape
+  // would fail valid manifests post-defaulting (the metrics-server tls
+  // precedent). The modules render the encryption block only when enabled,
+  // so a defaulted type with enabled=false renders nothing.
+  option (buf.validate.message).cel = {
+    id: "spec.encryption.node_encryption_requires_enabled"
+    message: "node_encryption requires encryption.enabled — there is no node-to-node encryption without the encryption datapath on"
+    expression: "this.enabled || !this.node_encryption"
+  };
+}
+
+/**
+ * eBPF bandwidth manager.
+ */
+message KubernetesCiliumBandwidthManager {
+  /**
+   * Enforce pod egress bandwidth (kubernetes.io/egress-bandwidth
+   * annotations) in eBPF instead of noisy token-bucket qdiscs.
+   */
+  bool enabled = 1;
+
+  /**
+   * Use BBR congestion control for pods (requires a 5.18+ kernel per
+   * upstream guidance).
+   */
+  bool bbr = 2;
+
+  option (buf.validate.message).cel = {
+    id: "spec.bandwidth_manager.bbr_requires_enabled"
+    message: "bbr requires the bandwidth manager to be enabled"
+    expression: "!this.bbr || this.enabled"
+  };
+}
+
+/**
+ * cilium-operator sizing.
+ */
+message KubernetesCiliumOperator {
+  /**
+   * Operator replicas. Chart default: 2 (HA via leader election, spread by
+   * pod anti-affinity). Run 1 on single-node clusters — the second replica
+   * cannot schedule and the rollout never settles.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "2",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Operator container resources. Empty = chart defaults.
+   */
+  dev.planton.kubernetes.ContainerResources resources = 2;
+}
+
+/**
+ * Cilium's own telemetry (agent + operator Prometheus endpoints).
+ */
+message KubernetesCiliumPrometheus {
+  /**
+   * Expose agent and operator /metrics endpoints.
+   */
+  bool enabled = 1;
+
+  /**
+   * Create ServiceMonitors for scrape discovery. Requires the Prometheus
+   * operator CRDs on the cluster — the release FAILS to install without
+   * them.
+   */
+  bool service_monitor = 2;
+
+  option (buf.validate.message).cel = {
+    id: "spec.prometheus.monitor_requires_enabled"
+    message: "service_monitor requires prometheus metrics to be enabled — the ServiceMonitor would have no metrics endpoint to scrape"
+    expression: "!this.service_monitor || this.enabled"
+  };
+}

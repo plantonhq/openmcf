@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetesopensearchoperator/v1alpha1/spec.proto";
+import "catalog/kubernetes/kubernetesopensearchoperator/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//kubernetes-open-search-operator
+message KubernetesOpenSearchOperator {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesOpenSearchOperator'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  KubernetesOpenSearchOperatorSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  KubernetesOpenSearchOperatorStatus status = 5;
+}
+
+//kubernetes-open-search-operator status.
+message KubernetesOpenSearchOperatorStatus {
+  //stack-outputs
+  KubernetesOpenSearchOperatorStackOutputs outputs = 1;
+}

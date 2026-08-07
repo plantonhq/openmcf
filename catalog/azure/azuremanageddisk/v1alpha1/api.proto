@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremanageddisk.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuremanageddisk/v1alpha1/spec.proto";
+import "catalog/azure/azuremanageddisk/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// azure-managed-disk
+message AzureManagedDisk {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureManagedDisk'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureManagedDiskSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureManagedDiskStatus status = 5;
+}
+
+// azure-managed-disk status
+message AzureManagedDiskStatus {
+  //stack-outputs
+  //  azure-managed-disk stack-outputs
+  AzureManagedDiskStackOutputs outputs = 1;
+}

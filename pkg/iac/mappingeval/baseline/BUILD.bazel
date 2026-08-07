@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/pkg/iac/mappingeval/baseline",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/dev/planton/iac/importmappingproposal/v1:importmappingproposal",
+        "//iac/importmappingproposal/v1:importmappingproposal",
         "//pkg/crkreflect",
         "//pkg/iac/envpartition",
         "//pkg/iac/envpartition/awsscan",

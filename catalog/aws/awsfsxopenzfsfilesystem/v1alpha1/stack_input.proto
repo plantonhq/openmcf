@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsfsxopenzfsfilesystem.v1alpha1;
+
+import "catalog/aws/awsfsxopenzfsfilesystem/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// aws-fsx-openzfs-file-system stack-input
+message AwsFsxOpenzfsFileSystemStackInput {
+  // target cloud-resource
+  AwsFsxOpenzfsFileSystem target = 1;
+  // provider-credential
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

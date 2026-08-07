@@ -1,7 +1,7 @@
 //go:build codegen
 
 // Regenerates pkg/conversion/embedded/specs -- the byte-for-byte mirror of
-// every co-located conversion spec (apis/.../<kind>/conversions/*.yaml) that
+// every co-located conversion spec (catalog/.../<kind>/conversions/*.yaml) that
 // ships inside standalone binaries. Run via:
 //
 //	make generate-conversion-registry
@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	providerBase = "apis/dev/planton/provider"
-	mirrorRoot   = "pkg/conversion/embedded/specs"
+	catalogRoot = "catalog"
+	mirrorRoot  = "pkg/conversion/embedded/specs"
 )
 
 func main() {
@@ -28,19 +28,19 @@ func main() {
 }
 
 func run() error {
-	specs, err := filepath.Glob(filepath.Join(providerBase, "*", "*", "conversions", "*.yaml"))
+	specs, err := filepath.Glob(filepath.Join(catalogRoot, "*", "*", "conversions", "*.yaml"))
 	if err != nil {
 		return err
 	}
 	if len(specs) == 0 {
-		return fmt.Errorf("no conversion specs found under %s -- refusing to write an empty mirror", providerBase)
+		return fmt.Errorf("no conversion specs found under %s -- refusing to write an empty mirror", catalogRoot)
 	}
 
 	if err := os.RemoveAll(mirrorRoot); err != nil {
 		return err
 	}
 	for _, spec := range specs {
-		rel, err := filepath.Rel(providerBase, spec)
+		rel, err := filepath.Rel(catalogRoot, spec)
 		if err != nil {
 			return err
 		}

@@ -1,6 +1,6 @@
 ---
 title: "Headless CI gate"
-description: "The automated Locust: no web UI at all — the test starts the moment the pods are up, runs 200 simulated users for ten minutes against `target_host`, and the master's logs carry the summary..."
+description: "The automated Locust: no web UI at all — the test starts the moment the pods are up, runs 200 simulated users for ten minutes against `target_host`, and the master's logs carry the summary. The run..."
 type: "preset"
 rank: "02"
 presetSlug: "02-headless-ci"

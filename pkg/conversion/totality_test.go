@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // The no-new-version-without-a-bridge gate.
@@ -23,7 +23,7 @@ import (
 var versionDirRe = regexp.MustCompile(`^v\d+((alpha|beta)\d+)?$`)
 
 func TestEveryVersionPairHasATotalBridge(t *testing.T) {
-	base := providerBaseDir(t)
+	base := catalogDir(t)
 	fsys := os.DirFS(base)
 
 	providers, err := os.ReadDir(base)
@@ -99,5 +99,5 @@ func TestEveryVersionPairHasATotalBridge(t *testing.T) {
 }
 
 func specMessageName(provider, kindDir, version, kindName string) string {
-	return fmt.Sprintf("dev.planton.provider.%s.%s.%s.%sSpec", provider, kindDir, version, kindName)
+	return fmt.Sprintf("dev.planton.%s.%s.%s.%sSpec", provider, kindDir, version, kindName)
 }

@@ -98,9 +98,9 @@ rename_deployment_component.py (Python Script)
       ↓
    [Run: make protos]
       ↓
-   [Run: go build ./apis/.../v1/...]
+   [Run: go build ./catalog/.../v1/...]
       ↓
-   [Run: go test -v ./apis/.../v1/]
+   [Run: go test -v ./catalog/.../v1/]
       ↓
 JSON Output (success + metrics)
       ↓
@@ -245,9 +245,9 @@ This ordering prevents incorrect replacements (e.g., lowercase pattern wouldn't 
 ### What Gets Copied
 
 ```
-apis/dev/planton/provider/{provider}/{old_folder}/
+catalog/{provider}/{old_folder}/
                                                     ↓
-apis/dev/planton/provider/{provider}/{new_folder}/
+catalog/{provider}/{new_folder}/
 ```
 
 **Everything in the component directory**:
@@ -363,7 +363,7 @@ The rename isn't complete until all three build phases pass:
 - Import path issues
 - Message name conflicts
 
-### Phase 2: go build ./apis/.../v1/...
+### Phase 2: go build ./catalog/.../v1/...
 
 **Purpose**: Compile entire codebase
 
@@ -377,7 +377,7 @@ The rename isn't complete until all three build phases pass:
 - Import path errors
 - Type mismatches
 
-### Phase 3: go test -v ./apis/.../v1/
+### Phase 3: go test -v ./catalog/.../v1/
 
 **Purpose**: Run test suite
 
@@ -397,8 +397,8 @@ The pipeline stops immediately on first failure:
 
 ```
 make protos → ✅ Success → Continue
-go build ./apis/.../v1/...  → ❌ Failed  → STOP (show error)
-go test -v ./apis/.../v1/   → (not reached)
+go build ./catalog/.../v1/...  → ❌ Failed  → STOP (show error)
+go test -v ./catalog/.../v1/   → (not reached)
 ```
 
 This provides fast feedback and prevents cascading errors.
@@ -479,7 +479,7 @@ git status
 
 # Ensure tests pass
 cd /path/to/planton
-go test -v ./apis/.../v1/
+go test -v ./catalog/.../v1/
 ```
 
 #### Step 2: Invoke Rule
@@ -555,8 +555,8 @@ Deleting old directory...
 
 Running build pipeline...
   ✓ make protos (23s)
-  ✓ go build ./apis/.../v1/... (34s)
-  ✓ go test -v ./apis/.../v1/ (18s)
+  ✓ go build ./catalog/.../v1/... (34s)
+  ✓ go test -v ./catalog/.../v1/ (18s)
 
 ✅ Rename completed successfully!
 ```
@@ -723,7 +723,7 @@ Error: Component KubernetesMicroservice not found in cloud_resource_kind.proto
 **Solution**:
 ```bash
 # List all Kubernetes components
-grep "kubernetes" apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto | grep "= [0-9]"
+grep "kubernetes" shared/cloudresourcekind/cloud_resource_kind.proto | grep "= [0-9]"
 
 # Check exact spelling
 ```
@@ -739,7 +739,7 @@ Error: Component KubernetesDeployment already exists in cloud_resource_kind.prot
 **Solution**:
 ```bash
 # Check if it's from a previous failed rename
-ls apis/dev/planton/provider/kubernetes/workload/
+ls catalog/kubernetes/workload/
 
 # If it's a leftover, delete it
 @delete-planton-component KubernetesDeployment --force
@@ -750,7 +750,7 @@ ls apis/dev/planton/provider/kubernetes/workload/
 ### Error: Build Failed
 
 ```
-Error: go build ./apis/.../v1/... failed
+Error: go build ./catalog/.../v1/... failed
 Exit code: 1
 Output: undefined: kubernetesMicroservice.SomeType
 ```
@@ -773,7 +773,7 @@ grep -r "kubernetesMicroservice" .
 ### Error: Tests Failed
 
 ```
-Error: go test -v ./apis/.../v1/ failed
+Error: go test -v ./catalog/.../v1/ failed
 Exit code: 1
 Output: Test "TestKubernetesMicroservice" expects old name
 ```
@@ -892,8 +892,8 @@ A rename is successful when:
 - ✅ Icon folder renamed (if exists)
 - ✅ Old directory deleted
 - ✅ `make protos` passes
-- ✅ `go build ./apis/.../v1/...` passes
-- ✅ `go test -v ./apis/.../v1/` passes
+- ✅ `go build ./catalog/.../v1/...` passes
+- ✅ `go test -v ./catalog/.../v1/` passes
 - ✅ Changelog created
 - ✅ Changes committed
 

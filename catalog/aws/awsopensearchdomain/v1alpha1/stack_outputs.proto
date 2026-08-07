@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsopensearchdomain.v1alpha1;
+
+// AwsOpenSearchDomainStackOutputs captures observable identifiers and endpoints
+// from a provisioned OpenSearch Service domain. These outputs are used by
+// downstream resources to wire dependencies via StringValueOrRef.
+message AwsOpenSearchDomainStackOutputs {
+  // The unique identifier assigned to the domain by AWS.
+  string domain_id = 1;
+
+  // The name of the domain. Matches the name derived from metadata.
+  string domain_name = 2;
+
+  // The Amazon Resource Name of the domain. Used in IAM policies, cross-service
+  // permissions, and as a reference in other AWS resources.
+  string domain_arn = 3;
+
+  // The domain-specific endpoint for submitting index, search, and data upload
+  // requests. For VPC domains, this is a VPC endpoint. For public domains, this
+  // is an internet-accessible endpoint.
+  // Format: "search-{domain-name}-{id}.{region}.es.amazonaws.com" (no https://).
+  string endpoint = 4;
+
+  // The endpoint for OpenSearch Dashboards (the visualization and management UI).
+  // Format: endpoint + "/_dashboards".
+  string dashboard_endpoint = 5;
+
+  // The dual-stack (IPv4 + IPv6) V2 domain endpoint that works with both
+  // ip_address_type settings. Populated for domains created or migrated onto
+  // the V2 endpoint format.
+  string endpoint_v2 = 6;
+
+  // The OpenSearch Dashboards endpoint on the dual-stack V2 domain endpoint.
+  string dashboard_endpoint_v2 = 7;
+
+  // The Route 53 hosted zone ID to alias when pointing DNS records at the V2
+  // domain endpoint.
+  string domain_endpoint_v2_hosted_zone_id = 8;
+}

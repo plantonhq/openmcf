@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/digitalocean/pulumidigitaloceanprovider",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/dev/planton/provider/digitalocean",
+        "//catalog/digitalocean",
         "//pkg/iac/pulumi/pulumimodule/pulumi/pulumioutput",
         "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_digitalocean_sdk_v4//go/digitalocean",

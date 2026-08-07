@@ -71,8 +71,8 @@ The system monitors specific paths to determine which components need releases:
 | CLI       | `cmd/`, `internal/`, `pkg/`, `main.go`, `go.mod`, `go.sum` |
 | App       | `app/`                                                     |
 | Website   | `site/`                                                    |
-| Pulumi    | `apis/**/iac/pulumi/`                                      |
-| Terraform | `apis/**/iac/tf/`                                          |
+| Pulumi    | `catalog/**/iac/pulumi/`                                      |
+| Terraform | `catalog/**/iac/tf/`                                          |
 
 A single commit can trigger multiple releases if it touches multiple components.
 
@@ -202,7 +202,7 @@ gh workflow run auto-release.pulumi-modules.yaml \
   -f tag=v0.3.5-pulumi.awsecsservice.20260108.0 \
   -f component=awsecsservice \
   -f provider=aws \
-  -f path=apis/dev/planton/provider/aws/awsecsservice/v1alpha1/iac/pulumi
+  -f path=catalog/aws/awsecsservice/v1alpha1/iac/pulumi
 ```
 
 ## Release artifacts by component

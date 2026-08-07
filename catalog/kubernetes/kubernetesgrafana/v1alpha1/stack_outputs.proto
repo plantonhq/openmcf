@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesgrafana.v1alpha1;
+
+//grafana-kubernetes stack outputs
+message KubernetesGrafanaStackOutputs {
+  //namespace Grafana runs in.
+  string namespace = 1;
+
+  //Helm release name (= metadata.name). The modules pin the chart's
+  //fullname to it, so the Service and Secret names derive from it.
+  string release_name = 2;
+
+  //name of the Grafana Service (port 80 → container 3000).
+  string service = 3;
+
+  //in-cluster endpoint for browsers behind composed exposure and for
+  //in-cluster API clients,
+  //e.g. http://dashboards.observability.svc.cluster.local
+  string endpoint = 4;
+
+  //name of the Secret holding the admin credentials — `<name>`, keys
+  //`admin-user` / `admin-password` (the chart generates it once and
+  //keeps it stable across upgrades; when spec.admin_secret points at an
+  //existing Secret, that name is echoed here instead).
+  string admin_secret_name = 5;
+
+  //command to port-forward the Grafana UI to a developer laptop,
+  //e.g. kubectl port-forward svc/dashboards -n observability 3000:80
+  string port_forward_command = 6;
+}

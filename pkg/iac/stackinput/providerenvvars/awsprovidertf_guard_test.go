@@ -29,15 +29,15 @@ const canonicalAwsProviderBlock = `provider "aws" {
 // against (a) a new module reintroducing static-key / region wiring, and (b) drift in the
 // shared block. The count assertion catches a new AWS kind that forgets the canonical shape.
 func TestAwsProviderTfConvergence(t *testing.T) {
-	// This guard reads the apis/ source tree, which is not present in the Bazel test sandbox
+	// This guard reads the catalog/ source tree, which is not present in the Bazel test sandbox
 	// (Bazel sets TEST_SRCDIR). It runs under `go test` / `make test` and CI go-test instead.
 	if os.Getenv("TEST_SRCDIR") != "" {
-		t.Skip("convergence guard reads the apis source tree; skipped in the bazel sandbox")
+		t.Skip("convergence guard reads the catalog source tree; skipped in the bazel sandbox")
 	}
 
 	root := repoRoot(t)
 	matches, err := filepath.Glob(filepath.Join(root,
-		"apis", "dev", "planton", "provider", "aws", "*", "v1alpha1", "iac", "tf", "provider.tf"))
+		"catalog", "aws", "*", "v1alpha1", "iac", "tf", "provider.tf"))
 	require.NoError(t, err)
 
 	// Sized assertion: a new AWS tofu kind must adopt the canonical block (bump this with intent).

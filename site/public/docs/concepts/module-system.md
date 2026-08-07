@@ -67,14 +67,14 @@ Each deployment operates on its own copy of the module, which means concurrent d
 Within the staging workspace, the CLI locates modules using a deterministic path:
 
 ```
-{workspace}/apis/dev/planton/provider/{provider}/{kind}/{version}/iac/{engine}/
+{workspace}/catalog/{provider}/{kind}/{version}/iac/{engine}/
 ```
 
 For example, the Pulumi module for `KubernetesPostgres`:
 
 ```
 ~/.planton/pulumi/staging-workspaces/my-org-my-project-prod/
-  apis/dev/planton/provider/kubernetes/kubernetespostgres/v1alpha1/iac/pulumi/
+  catalog/kubernetes/kubernetespostgres/v1alpha1/iac/pulumi/
 ```
 
 The provider name is derived from the `CloudResourceKind` enum metadata. The kind name is the lowercase version of the enum entry. The version segment is the kind's current API version, also read from the enum metadata (for example `v1alpha1`). The engine is either `pulumi` or `tf`.
@@ -139,7 +139,7 @@ When developing or customizing a module, use `--module-dir` to point at your loc
 
 ```bash
 # Edit the module locally
-cd ~/my-planton-fork/apis/dev/planton/provider/kubernetes/kubernetespostgres/v1alpha1/iac/pulumi/
+cd ~/my-planton-fork/catalog/kubernetes/kubernetespostgres/v1alpha1/iac/pulumi/
 
 # Test with the local module
 planton pulumi up -f postgres.yaml \

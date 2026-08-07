@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpserviceaccount.v1alpha1;
+
+// GcpServiceAccountStackOutputs surfaces the identity handles of the created
+// service account — everything a downstream resource could need to reference it.
+message GcpServiceAccountStackOutputs {
+  // The service account email: <service_account_id>@<project>.iam.gserviceaccount.com.
+  // The most common reference handle — workload configs (GKE, Cloud Run, Cloud
+  // Functions, Compute) attach the identity by email.
+  string email = 1;
+
+  // The IAM member string for this service account: "serviceAccount:<email>".
+  // Feed this directly into IAM grants (GcpProjectIamMember's member field) —
+  // it is the exact format GCP IAM policies expect, so no string assembly is needed.
+  string member = 2;
+
+  // The stable, unique numeric ID GCP assigns to the service account.
+  // Unlike the email, it is never reused if the account is deleted and recreated —
+  // use it where a tamper-proof identity reference matters (e.g. audit tooling).
+  string unique_id = 3;
+
+  // The fully-qualified resource name: projects/<project>/serviceAccounts/<email>.
+  // Used by APIs that address the service account as a resource (key management,
+  // IAM policy on the service account itself, Workload Identity bindings).
+  string name = 4;
+
+  // Base64-encoded JSON private key, populated only when spec.create_key is true.
+  // This is a live, long-lived credential — the engines mark it secret in state;
+  // handle it like a password and prefer keyless patterns entirely.
+  string key_base64 = 5;
+}

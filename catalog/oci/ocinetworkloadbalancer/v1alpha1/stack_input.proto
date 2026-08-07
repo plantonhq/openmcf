@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package dev.planton.oci.ocinetworkloadbalancer.v1alpha1;
+
+import "catalog/oci/ocinetworkloadbalancer/v1alpha1/api.proto";
+import "catalog/oci/provider.proto";
+
+message OciNetworkLoadBalancerStackInput {
+  OciNetworkLoadBalancer target = 1;
+  dev.planton.oci.OciProviderConfig provider_config = 2;
+}

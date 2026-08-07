@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpprojectiammember.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// GcpProjectIamMemberSpec defines a single ADDITIVE project-level IAM grant:
+// one role, to one member, on one project — the safe, composable unit of GCP
+// access control.
+//
+// Additive semantics: this grant merges into the project's IAM policy without
+// touching any other member's bindings on the same role, and removal subtracts
+// only this exact (role, member) pair. Multiple grants — from different charts,
+// teams, or tools — never fight over the policy. (Authoritative binding/policy
+// management, which clobbers everything not listed, is deliberately not modeled.)
+//
+// Every field is immutable, mirroring the underlying API: an IAM grant has no
+// update — changing role, member, or condition replaces the grant atomically.
+message GcpProjectIamMemberSpec {
+  // The GCP project whose IAM policy receives this grant.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The role to grant. Either a predefined role ("roles/storage.objectViewer")
+  // or a custom role's fully-qualified name ("projects/<project>/roles/<role_id>").
+  // Reference a GcpIamCustomRole resource to grant a custom role — its `name`
+  // output is exactly this value.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpIamCustomRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
+  ];
+
+  // The identity receiving the grant, in GCP IAM member format:
+  //   serviceAccount:<email>       — a service account (the most common in IaC;
+  //                                  reference a GcpServiceAccount resource —
+  //                                  its `member` output is exactly this value)
+  //   user:<email>                 — a Google account
+  //   group:<email>                — a Google group
+  //   domain:<domain>              — everyone in a Workspace/Cloud Identity domain
+  //   principal:// / principalSet:// — workload identity federation principals
+  //   allUsers / allAuthenticatedUsers — public access (grant with extreme care)
+  // Grants to deleted principals ("deleted:...") are not supported.
+  // Format validation happens at deploy time in the modules rather than here,
+  // because the value usually arrives through a reference that is only
+  // resolved at deploy time.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef member = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.member"
+  ];
+
+  // Optional IAM Condition restricting when this grant applies (e.g. only on
+  // resources with a given prefix, or before an expiry date). The condition is
+  // part of the grant's identity: the same role with and without a condition
+  // are two independent grants that do not interfere.
+  GcpProjectIamMemberCondition condition = 4;
+}
+
+// An IAM Condition — a CEL expression that must evaluate true for the grant
+// to apply. See https://cloud.google.com/iam/docs/conditions-overview for the
+// attribute reference and expression language.
+message GcpProjectIamMemberCondition {
+  // Short human-readable title identifying the condition's intent,
+  // e.g. "expires-2026-12-31" or "prod-buckets-only".
+  string title = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 100
+  ];
+
+  // The CEL condition expression, e.g.
+  // request.time < timestamp("2027-01-01T00:00:00Z") or
+  // resource.name.startsWith("projects/_/buckets/prod-").
+  string expression = 2 [(buf.validate.field).required = true];
+
+  // Optional longer explanation of what the condition does and why it exists.
+  string description = 3 [(buf.validate.field).string.max_len = 256];
+}

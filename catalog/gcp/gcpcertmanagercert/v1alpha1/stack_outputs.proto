@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpcertmanagercert.v1alpha1;
+
+// Outputs produced after provisioning a Certificate Manager certificate.
+message GcpCertManagerCertStackOutputs {
+  // Fully-qualified resource ID of the certificate
+  // (projects/{project}/locations/{location}/certificates/{name}).
+  string certificate_id = 1;
+
+  // Name of the certificate as it exists in GCP. This is the value a
+  // GcpTargetHttpsProxy's certificate_manager_certificates list consumes.
+  string certificate_name = 2;
+
+  // The Subject Alternative Names (dnsName type) present in the issued
+  // certificate.
+  repeated string san_dnsnames = 3;
+
+  // The Certificate Manager location the certificate lives in
+  // ("global" unless a regional location was configured).
+  string location = 4;
+
+  // State of a managed certificate (PROVISIONING, FAILED, ACTIVE); empty
+  // for self-managed certificates. A managed certificate stays
+  // PROVISIONING until domain validation completes.
+  string managed_state = 5;
+}

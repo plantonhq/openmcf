@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsautoscalinggroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awsautoscalinggroup/v1alpha1/spec.proto";
+import "catalog/aws/awsautoscalinggroup/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//aws-auto-scaling-group
+message AwsAutoScalingGroup {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'aws.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AwsAutoScalingGroup'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AwsAutoScalingGroupSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AwsAutoScalingGroupStatus status = 5;
+}
+
+//aws-auto-scaling-group status
+message AwsAutoScalingGroupStatus {
+  //stack-outputs
+  AwsAutoScalingGroupStackOutputs outputs = 1;
+}

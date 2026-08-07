@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesqdrant.v1alpha1;
+
+//qdrant-kubernetes stack outputs
+message KubernetesQdrantStackOutputs {
+  //namespace the cluster runs in.
+  string namespace = 1;
+
+  //Helm release name (= metadata.name).
+  string release_name = 2;
+
+  //name of the main Qdrant Service (http 6333, grpc 6334).
+  string service_name = 3;
+
+  //in-cluster REST endpoint,
+  //e.g. http://main.vector.svc.cluster.local:6333
+  string http_endpoint = 4;
+
+  //in-cluster gRPC endpoint SDKs default to,
+  //e.g. main.vector.svc.cluster.local:6334
+  string grpc_endpoint = 5;
+
+  //name of the chart-owned Secret holding the API key material —
+  //`<name>-apikey`, key `api-key` for the read-write key (populated
+  //for the generate arm and the existing-secret arm alike). Empty
+  //when unauthenticated.
+  string api_key_secret_name = 6;
+
+  //name of the Secret holding the read-only API key — the same
+  //chart-owned `<name>-apikey`, key `read-only-api-key`. Empty when
+  //not declared.
+  string read_only_api_key_secret_name = 7;
+
+  //command to port-forward the REST port to a developer laptop,
+  //e.g. kubectl port-forward svc/main -n vector 6333:6333
+  string port_forward_command = 8;
+}

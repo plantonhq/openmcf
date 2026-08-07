@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awslblistener.v1alpha1;
+
+import "catalog/aws/awslblistener/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+//aws-lb-listener stack-input
+message AwsLbListenerStackInput {
+  //target cloud-resource
+  AwsLbListener target = 1;
+  //provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

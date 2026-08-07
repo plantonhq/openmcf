@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/flag"
 	"github.com/plantonhq/planton/internal/cli/iacflags"
@@ -22,6 +21,7 @@ import (
 	"github.com/plantonhq/planton/pkg/iac/tofu/tfbackend"
 	"github.com/plantonhq/planton/pkg/iac/tofu/tofumodule"
 	"github.com/plantonhq/planton/pkg/kubernetes/kubecontext"
+	"github.com/plantonhq/planton/shared"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 )

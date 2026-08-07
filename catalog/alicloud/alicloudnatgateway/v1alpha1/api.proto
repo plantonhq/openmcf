@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.alicloud.alicloudnatgateway.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/alicloud/alicloudnatgateway/v1alpha1/spec.proto";
+import "catalog/alicloud/alicloudnatgateway/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// alicloud-nat-gateway
+message AliCloudNatGateway {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'alicloud.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AliCloudNatGateway'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AliCloudNatGatewaySpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AliCloudNatGatewayStatus status = 5;
+}
+
+// alicloud-nat-gateway status
+message AliCloudNatGatewayStatus {
+  // stack-outputs
+  AliCloudNatGatewayStackOutputs outputs = 1;
+}

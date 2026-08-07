@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetessolr.v1alpha1;
+
+//kubernetes-solr stack outputs
+message KubernetesSolrStackOutputs {
+  //namespace the cluster runs in.
+  string namespace = 1;
+
+  //name of the SolrCloud resource (= metadata.name).
+  string cluster_name = 2;
+
+  //name of the common Service fronting all Solr nodes
+  //(the operator names it `<name>-solrcloud-common`).
+  string common_service_name = 3;
+
+  //in-cluster base URL of the cluster,
+  //e.g. http://main-solrcloud-common.search.svc.cluster.local
+  //(the common service listens on port 80, or 443 with TLS).
+  string internal_endpoint = 4;
+
+  //name of the operator-generated basic-auth Secret
+  //(`<name>-solrcloud-basic-auth`, kubernetes.io/basic-auth with
+  //username/password fields — the operator's READ-ONLY k8s-oper user).
+  //The admin and solr users' passwords live in the sibling
+  //`<name>-solrcloud-security-bootstrap` Secret (one key per user);
+  //use its `admin` key for administrative API calls. Empty when
+  //security is disabled or a user-provided basic_auth_secret is in
+  //play.
+  string basic_auth_secret_name = 5;
+
+  //ZooKeeper connection string the cluster uses (host:port/chroot).
+  string zookeeper_connection_string = 6;
+
+  //command to port-forward the common service to a developer
+  //laptop, e.g.
+  //kubectl port-forward svc/main-solrcloud-common -n search 8983:80
+  string port_forward_command = 7;
+}

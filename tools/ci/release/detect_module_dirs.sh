@@ -5,8 +5,8 @@
 # Reads changed file paths on stdin and emits the unique IaC module
 # directories they belong to, one per line:
 #
-#   --pulumi     apis/dev/planton/provider/{p}/{k}/{version}/iac/pulumi
-#   --terraform  apis/dev/planton/provider/{p}/{k}/{version}/iac/tf
+#   --pulumi     catalog/{p}/{k}/{version}/iac/pulumi
+#   --terraform  catalog/{p}/{k}/{version}/iac/tf
 #
 # The version segment matches the full maturity grammar
 # (v<N>[alpha<N>|beta<N>]), never a bare v<N> assumption: a pattern that
@@ -29,8 +29,8 @@ detect() {
   local flavor="$1"
   # NOTE: the sed delimiter must not be '|' -- the grammar's alternation
   # pipes inside (alpha|beta) would split the expression.
-  grep -E "^apis/dev/planton/provider/[^/]+/[^/]+/${VERSION_ERE}/iac/${flavor}/" \
-    | sed -E "s#(apis/dev/planton/provider/[^/]+/[^/]+/${VERSION_ERE}/iac/${flavor})/.*#\1#" \
+  grep -E "^catalog/[^/]+/[^/]+/${VERSION_ERE}/iac/${flavor}/" \
+    | sed -E "s#(catalog/[^/]+/[^/]+/${VERSION_ERE}/iac/${flavor})/.*#\1#" \
     | sort -u \
     || true
 }
@@ -47,23 +47,23 @@ self_test() {
     fi
   }
   # Every maturity channel must fire.
-  check tf "apis/dev/planton/provider/aws/awsvpc/v1alpha1/iac/tf/main.tf" \
-           "apis/dev/planton/provider/aws/awsvpc/v1alpha1/iac/tf"
-  check tf "apis/dev/planton/provider/aws/awsvpc/v1beta1/iac/tf/main.tf" \
-           "apis/dev/planton/provider/aws/awsvpc/v1beta1/iac/tf"
-  check tf "apis/dev/planton/provider/aws/awsvpc/v1/iac/tf/main.tf" \
-           "apis/dev/planton/provider/aws/awsvpc/v1/iac/tf"
-  check pulumi "apis/dev/planton/provider/gcp/gcpgkecluster/v1alpha1/iac/pulumi/main.go" \
-               "apis/dev/planton/provider/gcp/gcpgkecluster/v1alpha1/iac/pulumi"
+  check tf "catalog/aws/awsvpc/v1alpha1/iac/tf/main.tf" \
+           "catalog/aws/awsvpc/v1alpha1/iac/tf"
+  check tf "catalog/aws/awsvpc/v1beta1/iac/tf/main.tf" \
+           "catalog/aws/awsvpc/v1beta1/iac/tf"
+  check tf "catalog/aws/awsvpc/v1/iac/tf/main.tf" \
+           "catalog/aws/awsvpc/v1/iac/tf"
+  check pulumi "catalog/gcp/gcpgkecluster/v1alpha1/iac/pulumi/main.go" \
+               "catalog/gcp/gcpgkecluster/v1alpha1/iac/pulumi"
   # Non-module changes must NOT fire.
-  check tf "apis/dev/planton/provider/aws/awsvpc/v1alpha1/spec.proto" ""
-  check tf "apis/dev/planton/provider/aws/awsvpc/v1alpha1/iac/pulumi/main.go" ""
+  check tf "catalog/aws/awsvpc/v1alpha1/spec.proto" ""
+  check tf "catalog/aws/awsvpc/v1alpha1/iac/pulumi/main.go" ""
   check pulumi "pkg/iac/pulumi/pulumimodule/module_directory.go" ""
   # Two files in one module collapse to one dir.
   local got
   got=$(printf '%s\n%s\n' \
-    "apis/dev/planton/provider/aws/awsvpc/v1alpha1/iac/tf/main.tf" \
-    "apis/dev/planton/provider/aws/awsvpc/v1alpha1/iac/tf/outputs.tf" | detect tf | wc -l | tr -d ' ')
+    "catalog/aws/awsvpc/v1alpha1/iac/tf/main.tf" \
+    "catalog/aws/awsvpc/v1alpha1/iac/tf/outputs.tf" | detect tf | wc -l | tr -d ' ')
   if [ "$got" != "1" ]; then
     echo "SELF-TEST FAIL: two files in one module produced ${got} dirs, want 1"
     fail=1

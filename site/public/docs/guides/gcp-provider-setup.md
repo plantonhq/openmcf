@@ -84,7 +84,7 @@ The CLI decodes the base64 string and sets the `GOOGLE_CREDENTIALS` environment 
 |-------|----------|-------------|
 | `service_account_key_base64` | Yes | Base64-encoded JSON service account key |
 
-The field name uses `snake_case`, matching the protobuf definition at `apis/dev/planton/provider/gcp/provider.proto`.
+The field name uses `snake_case`, matching the protobuf definition at `catalog/gcp/provider.proto`.
 
 ### Method 4: Workload Identity (GKE)
 

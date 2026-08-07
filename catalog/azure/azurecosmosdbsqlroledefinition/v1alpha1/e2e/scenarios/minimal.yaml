@@ -1,0 +1,32 @@
+# Minimal AzureCosmosdbSqlRoleDefinition scenario: a custom read-only
+# role on a scenario-local SQL API account, assignable account-wide
+# through the account reference, with a provider-generated GUID
+# (nothing pinned -- the recommended posture).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCosmosdbSqlRoleDefinition
+metadata:
+  name: planton-oss-e2e-azurecosmosdbsqlroledefinition-smoke
+  id: planton-oss-e2e-azurecosmosdbsqlroledefinition-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecosmosdbsqlroledefinition
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/azure/azurecosmosdbsqlroledefinition/v1alpha1/e2e/sql-account.yaml"
+  tags:
+    - planton-e2e
+spec:
+  cosmosdbAccountId:
+    valueFrom:
+      name: planton-oss-e2e-cosrdef-fixture-account
+  roleName: planton-e2e-read-only
+  assignableScopes:
+    - valueFrom:
+        name: planton-oss-e2e-cosrdef-fixture-account
+  permissions:
+    - dataActions:
+        - Microsoft.DocumentDB/databaseAccounts/readMetadata
+        - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/read
+        - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/executeQuery

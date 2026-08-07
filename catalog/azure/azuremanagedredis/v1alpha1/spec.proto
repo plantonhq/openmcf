@@ -1,0 +1,471 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremanagedredis.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureManagedRedisSpec** defines the configuration for creating an
+// Azure Managed Redis instance -- Azure's current-generation Redis
+// service, built on Redis Enterprise (the Microsoft.Cache/redisEnterprise
+// ARM family). Azure is retiring classic Azure Cache for Redis; Managed
+// Redis is the target for NEW Redis deployments, and it is where the
+// capabilities the classic service never had live: customer-managed-key
+// encryption, active (multi-primary) geo-replication, Redis modules
+// (search, JSON, time series, bloom filters), and a keyless-by-default
+// authentication posture.
+//
+// **Anatomy.** A Managed Redis instance is a CLUSTER (compute, load
+// balancer, network, TLS endpoint) plus its DEFAULT DATABASE (the Redis
+// process itself -- eviction, clustering, modules, persistence,
+// authentication). Azure maps them 1-to-1 today, so both live in this one
+// spec: the cluster fields at the top level and the Redis-process fields
+// under `default_database`.
+//
+// **Sizing.** `sku_name` picks a tier family and size in one value:
+// BALANCED (B0-B1000) general-purpose, COMPUTE_OPTIMIZED (X3-X700) for
+// high ops/sec on smaller datasets, MEMORY_OPTIMIZED (M10-M2000) for
+// large datasets with moderate throughput, FLASH_OPTIMIZED (A250-A4500)
+// for very large datasets tiered onto NVMe flash. Azure permits some SKU
+// changes in place (it validates the target against the live instance);
+// when a change is not allowed the instance is replaced.
+//
+// **Authentication.** Access keys are DISABLED by default -- the reverse
+// of classic Redis. The default posture is keyless: clients authenticate
+// with Microsoft Entra tokens under AzureManagedRedisAccessPolicyAssignment
+// grants. Set default_database.access_keys_authentication_enabled to true
+// only when a client genuinely cannot use Entra tokens.
+//
+// **ForceNew fields** (changing these replaces the instance):
+// `cluster_name`, `high_availability_enabled`, and any `sku_name` change
+// Azure's scaling validator rejects. Inside `default_database`, changing
+// `clustering_policy`, `geo_replication_group_name`, or `modules`
+// recreates the DATABASE in place (data is lost and the endpoint is
+// briefly unavailable) without replacing the cluster.
+message AzureManagedRedisSpec {
+  // The Azure region where the Managed Redis instance will be created.
+  // Managed Redis is newer than classic Redis and not yet in every
+  // region -- consult Azure's product-availability table for the current
+  // footprint. Examples: "eastus", "westus2", "westeurope".
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure Resource Group where the Managed Redis instance will be
+  // created. Can be a literal string or a reference to an
+  // AzureResourceGroup output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The instance's name -- it becomes the DNS endpoint
+  // `{cluster_name}.{region}.redis.azure.net`. 3-63 letters, digits, and
+  // hyphens; must start and end with a letter or digit; no consecutive
+  // hyphens. Changing the name replaces the instance.
+  string cluster_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 63,
+    (buf.validate.field).cel = {
+      id: "managed_redis_name_format"
+      message: "cluster_name must be 3-63 letters, digits, and hyphens, start and end with a letter or digit, and never repeat a hyphen"
+      expression: "this.matches('^[a-zA-Z0-9]([a-zA-Z0-9]|-[a-zA-Z0-9])*$')"
+    }
+  ];
+
+  // The tier family and size in one value. BALANCED is the
+  // general-purpose default choice; COMPUTE_OPTIMIZED trades memory for
+  // throughput; MEMORY_OPTIMIZED trades throughput for memory;
+  // FLASH_OPTIMIZED tiers very large datasets onto NVMe flash. The
+  // number is the instance's memory in GB (B0 = 0.5 GB, B1 = 1 GB, and
+  // so on). Geo-replication requires BALANCED_B3 or larger (enforced
+  // here, exactly as Azure enforces it). Azure allows some SKU changes
+  // in place -- it validates the target size against the live instance
+  // at apply time and replaces the instance when the change is not
+  // scalable (a cross-resource check that cannot be evaluated
+  // statically).
+  AzureManagedRedisSku sku_name = 4 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // Whether the instance runs with a replica for high availability and
+  // the 99.999% zone-redundant SLA. Default true -- disabling it halves
+  // the cost but removes the replica AND the SLA, which is only
+  // appropriate for dev/test. Fixed at creation.
+  optional bool high_availability_enabled = 5 [(dev.planton.shared.options.default) = "true"];
+
+  // Customer-managed-key (CMK) encryption for data at rest. Omit the
+  // block for Microsoft-managed keys (the default). Bringing your own
+  // key requires a user-assigned identity that can wrap/unwrap the key
+  // -- that same identity must also be attached to the instance through
+  // the identity block below (an ARM pairing enforced at apply time).
+  AzureManagedRedisCustomerManagedKey customer_managed_key = 6;
+
+  // The instance's managed identity. Required (with a USER_ASSIGNED
+  // entry carrying the CMK identity) when customer_managed_key is set;
+  // also useful on its own for future identity-based integrations.
+  AzureManagedRedisIdentity identity = 7;
+
+  // Whether the instance answers on its public endpoint. Default true.
+  // Set false to force all traffic through an AzurePrivateEndpoint --
+  // Managed Redis has no VNet injection or IP firewall; Private Link is
+  // its only network-isolation mechanism.
+  optional bool public_network_access_enabled = 8 [(dev.planton.shared.options.default) = "true"];
+
+  // The Redis process itself: authentication, clustering, eviction,
+  // modules, geo-replication membership, and persistence. Required --
+  // an instance without its database is an administrative transient,
+  // not a deployable target (Azure rejects creating one).
+  AzureManagedRedisDatabase default_database = 9 [(buf.validate.field).required = true];
+
+  // Free-form tags applied to the instance, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins. Tags are Azure's governance
+  // surface -- Azure Policy enforces them and Microsoft Cost Management
+  // groups by them. Updatable in place.
+  map<string, string> tags = 10;
+
+  option (buf.validate.message).cel = {
+    id: "managed_redis_geo_replication_sku_floor"
+    message: "geo_replication_group_name requires BALANCED_B3 or a larger sku (Azure does not support geo-replication on BALANCED_B0/BALANCED_B1)"
+    expression: "!has(this.default_database) || this.default_database.geo_replication_group_name == '' || !(this.sku_name in [1, 2])"
+  };
+}
+
+// The tier family and size of the instance, mirroring Azure's own SKU
+// vocabulary. The number in each name is the instance's memory in GB
+// (B0 = 0.5 GB). Azure validates in-place SKU changes against the live
+// instance; disallowed changes replace it.
+enum AzureManagedRedisSku {
+  // Not specified -- invalid; pick an explicit tier and size.
+  azure_managed_redis_sku_unspecified = 0;
+
+  // BALANCED (B-family): general-purpose memory-to-throughput ratio --
+  // the right starting family for most workloads.
+  BALANCED_B0 = 1;
+  BALANCED_B1 = 2;
+  BALANCED_B3 = 3;
+  BALANCED_B5 = 4;
+  BALANCED_B10 = 5;
+  BALANCED_B20 = 6;
+  BALANCED_B50 = 7;
+  BALANCED_B100 = 8;
+  BALANCED_B150 = 9;
+  BALANCED_B250 = 10;
+  BALANCED_B350 = 11;
+  BALANCED_B500 = 12;
+  BALANCED_B700 = 13;
+  BALANCED_B1000 = 14;
+
+  // COMPUTE_OPTIMIZED (X-family): maximum ops/sec on smaller datasets.
+  COMPUTE_OPTIMIZED_X3 = 15;
+  COMPUTE_OPTIMIZED_X5 = 16;
+  COMPUTE_OPTIMIZED_X10 = 17;
+  COMPUTE_OPTIMIZED_X20 = 18;
+  COMPUTE_OPTIMIZED_X50 = 19;
+  COMPUTE_OPTIMIZED_X100 = 20;
+  COMPUTE_OPTIMIZED_X150 = 21;
+  COMPUTE_OPTIMIZED_X250 = 22;
+  COMPUTE_OPTIMIZED_X350 = 23;
+  COMPUTE_OPTIMIZED_X500 = 24;
+  COMPUTE_OPTIMIZED_X700 = 25;
+
+  // MEMORY_OPTIMIZED (M-family): large in-memory datasets with moderate
+  // throughput needs.
+  MEMORY_OPTIMIZED_M10 = 26;
+  MEMORY_OPTIMIZED_M20 = 27;
+  MEMORY_OPTIMIZED_M50 = 28;
+  MEMORY_OPTIMIZED_M100 = 29;
+  MEMORY_OPTIMIZED_M150 = 30;
+  MEMORY_OPTIMIZED_M250 = 31;
+  MEMORY_OPTIMIZED_M350 = 32;
+  MEMORY_OPTIMIZED_M500 = 33;
+  MEMORY_OPTIMIZED_M700 = 34;
+  MEMORY_OPTIMIZED_M1000 = 35;
+  MEMORY_OPTIMIZED_M1500 = 36;
+  MEMORY_OPTIMIZED_M2000 = 37;
+
+  // FLASH_OPTIMIZED (A-family): very large datasets tiered between RAM
+  // and NVMe flash -- the largest capacities at the lowest cost per GB.
+  FLASH_OPTIMIZED_A250 = 38;
+  FLASH_OPTIMIZED_A500 = 39;
+  FLASH_OPTIMIZED_A700 = 40;
+  FLASH_OPTIMIZED_A1000 = 41;
+  FLASH_OPTIMIZED_A1500 = 42;
+  FLASH_OPTIMIZED_A2000 = 43;
+  FLASH_OPTIMIZED_A4500 = 44;
+}
+
+// AzureManagedRedisDatabase configures the Redis process running on the
+// cluster -- Azure's default database, mapped 1-to-1 with the instance.
+message AzureManagedRedisDatabase {
+  // Whether the shared access keys authenticate clients. Default FALSE
+  // -- Managed Redis is keyless-first: clients present Microsoft Entra
+  // tokens under AzureManagedRedisAccessPolicyAssignment grants, and no
+  // secret exists to leak or rotate. Enable keys only for clients that
+  // genuinely cannot use Entra tokens; the key outputs are populated
+  // only while this is true. Updatable in place.
+  bool access_keys_authentication_enabled = 1;
+
+  // Whether clients must connect over TLS. ENCRYPTED (the default) is
+  // right for everything except legacy clients that cannot speak TLS --
+  // PLAINTEXT sends commands and credentials unencrypted. Updatable in
+  // place.
+  AzureManagedRedisClientProtocol client_protocol = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // How keys are distributed across the cluster's shards. OSS_CLUSTER
+  // (the default) exposes the standard Redis Cluster protocol -- best
+  // throughput, requires cluster-aware clients. ENTERPRISE_CLUSTER
+  // proxies all shards behind a single endpoint so any client works
+  // (required by the RediSearch module). NO_CLUSTER disables sharding
+  // entirely (memory <= 25 GB). CHANGING THIS RECREATES THE DATABASE:
+  // data is lost and the endpoint is briefly unavailable.
+  AzureManagedRedisClusteringPolicy clustering_policy = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // Eviction policy when the database reaches its memory limit, in
+  // Azure's vocabulary. Default VOLATILE_LRU (evict TTL-bearing keys,
+  // least-recently-used first). Guidance: ALL_KEYS_LRU for pure caches
+  // where every key is expendable; NO_EVICTION when data must never
+  // silently disappear (writes fail when full -- required by the
+  // RediSearch module). Updatable in place.
+  AzureManagedRedisEvictionPolicy eviction_policy = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Joining a named ACTIVE geo-replication group: every Managed Redis
+  // database created with the same group name (across regions and
+  // subscriptions) becomes a multi-primary replica set -- all members
+  // accept writes, with conflict-free merge semantics. Setting the name
+  // here creates the group with this database as its first member; link
+  // further members with AzureManagedRedisGeoReplication. Requires
+  // BALANCED_B3 or larger, only the RediSearch/RedisJSON modules, and no
+  // persistence (all enforced here, exactly as Azure enforces them).
+  // 1-63 letters, digits, and hyphens; must start and end with a letter
+  // or digit; no consecutive hyphens. CHANGING THIS RECREATES THE
+  // DATABASE.
+  string geo_replication_group_name = 5 [(buf.validate.field).cel = {
+    id: "managed_redis_geo_group_name_format"
+    message: "geo_replication_group_name must be 1-63 letters, digits, and hyphens, start and end with a letter or digit, and never repeat a hyphen"
+    expression: "this == '' || (this.size() <= 63 && this.matches('^[a-zA-Z0-9]([a-zA-Z0-9]|-[a-zA-Z0-9])*$'))"
+  }];
+
+  // Redis modules to enable, up to 4: RediSearch (secondary indexing +
+  // full-text search), RedisJSON (native JSON documents), RedisBloom
+  // (probabilistic filters), RedisTimeSeries (time-series data).
+  // Modules exist only on Managed Redis -- classic Redis never had
+  // them. CHANGING THE MODULE SET RECREATES THE DATABASE.
+  repeated AzureManagedRedisModule modules = 6 [(buf.validate.field).repeated.max_items = 4];
+
+  // The frequency of append-only-file (AOF) persistence backups --
+  // every write is logged near-synchronously, giving the tightest
+  // recovery point. Setting a value ENABLES AOF persistence; "1s" is
+  // the only frequency Azure currently offers. Mutually exclusive with
+  // RDB persistence and with geo-replication (enforced here, exactly as
+  // Azure enforces it).
+  optional string persistence_append_only_file_backup_frequency = 7 [(buf.validate.field).cel = {
+    id: "managed_redis_aof_frequency_valid"
+    message: "persistence_append_only_file_backup_frequency must be: 1s"
+    expression: "this in ['1s']"
+  }];
+
+  // The frequency of Redis-database (RDB) snapshot persistence --
+  // periodic full snapshots, used to rebuild the database after a full
+  // outage. Setting a value ENABLES RDB persistence. Mutually exclusive
+  // with AOF persistence and with geo-replication (enforced here,
+  // exactly as Azure enforces it).
+  optional string persistence_redis_database_backup_frequency = 8 [(buf.validate.field).cel = {
+    id: "managed_redis_rdb_frequency_valid"
+    message: "persistence_redis_database_backup_frequency must be one of: 1h, 6h, 12h"
+    expression: "this in ['1h', '6h', '12h']"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "managed_redis_persistence_exclusive"
+    message: "AOF and RDB persistence are mutually exclusive -- set at most one backup frequency"
+    expression: "!(has(this.persistence_append_only_file_backup_frequency) && has(this.persistence_redis_database_backup_frequency))"
+  };
+  option (buf.validate.message).cel = {
+    id: "managed_redis_persistence_conflicts_geo"
+    message: "persistence cannot be enabled on a geo-replicated database (geo_replication_group_name)"
+    expression: "this.geo_replication_group_name == '' || (!has(this.persistence_append_only_file_backup_frequency) && !has(this.persistence_redis_database_backup_frequency))"
+  };
+  option (buf.validate.message).cel = {
+    id: "managed_redis_geo_module_allowlist"
+    message: "a geo-replicated database supports only the RediSearch and RedisJSON modules"
+    expression: "this.geo_replication_group_name == '' || this.modules.all(m, m.name in ['RediSearch', 'RedisJSON'])"
+  };
+  option (buf.validate.message).cel = {
+    id: "managed_redis_redisearch_requires_no_eviction"
+    message: "the RediSearch module requires eviction_policy NO_EVICTION"
+    expression: "!this.modules.exists(m, m.name == 'RediSearch') || this.eviction_policy == 8"
+  };
+  option (buf.validate.message).cel = {
+    id: "managed_redis_redisearch_requires_enterprise_clustering"
+    message: "the RediSearch module requires clustering_policy ENTERPRISE_CLUSTER"
+    expression: "!this.modules.exists(m, m.name == 'RediSearch') || this.clustering_policy == 1"
+  };
+  option (buf.validate.message).cel = {
+    id: "managed_redis_module_names_unique"
+    message: "each module can be enabled at most once"
+    expression: "!this.modules.exists(m, this.modules.filter(x, x.name == m.name).size() > 1)"
+  };
+}
+
+// Whether clients must connect over TLS.
+enum AzureManagedRedisClientProtocol {
+  // Not specified -- deploys ENCRYPTED, the TLS-only default.
+  azure_managed_redis_client_protocol_unspecified = 0;
+
+  // TLS-only connections -- the right answer for everything except
+  // legacy clients that cannot speak TLS.
+  ENCRYPTED = 1;
+
+  // Unencrypted connections: commands AND credentials travel in the
+  // clear. Legacy clients only.
+  PLAINTEXT = 2;
+}
+
+// How keys are distributed across the cluster's shards.
+enum AzureManagedRedisClusteringPolicy {
+  // Not specified -- deploys OSS_CLUSTER, Azure's default.
+  azure_managed_redis_clustering_policy_unspecified = 0;
+
+  // All shards proxied behind a single endpoint: any Redis client
+  // works, at some throughput cost. Required by the RediSearch module.
+  ENTERPRISE_CLUSTER = 1;
+
+  // The standard Redis Cluster protocol: best throughput; clients must
+  // be cluster-aware. Azure's default.
+  OSS_CLUSTER = 2;
+
+  // No sharding at all -- a single Redis process. Only for databases
+  // up to 25 GB of memory.
+  NO_CLUSTER = 3;
+}
+
+// Eviction policy when the database reaches its memory limit, in Azure's
+// own vocabulary (each value maps to the matching Redis maxmemory
+// policy).
+enum AzureManagedRedisEvictionPolicy {
+  // Not specified -- deploys VOLATILE_LRU, Azure's default.
+  azure_managed_redis_eviction_policy_unspecified = 0;
+
+  // Evict any key, least-frequently-used first.
+  ALL_KEYS_LFU = 1;
+
+  // Evict any key, least-recently-used first -- the usual choice for
+  // pure caches where every key is expendable.
+  ALL_KEYS_LRU = 2;
+
+  // Evict any key, at random.
+  ALL_KEYS_RANDOM = 3;
+
+  // Evict only TTL-bearing keys, least-recently-used first -- Azure's
+  // default.
+  VOLATILE_LRU = 4;
+
+  // Evict only TTL-bearing keys, least-frequently-used first.
+  VOLATILE_LFU = 5;
+
+  // Evict only TTL-bearing keys, shortest time-to-live first.
+  VOLATILE_TTL = 6;
+
+  // Evict only TTL-bearing keys, at random.
+  VOLATILE_RANDOM = 7;
+
+  // Never evict: writes fail when memory is full. Required by the
+  // RediSearch module; the right answer when data must never silently
+  // disappear.
+  NO_EVICTION = 8;
+}
+
+// AzureManagedRedisModule enables one Redis module on the database.
+message AzureManagedRedisModule {
+  // The module's name, in Azure's exact catalog spelling.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "managed_redis_module_name_valid"
+      message: "module name must be one of: RediSearch, RedisJSON, RedisBloom, RedisTimeSeries"
+      expression: "this in ['RediSearch', 'RedisJSON', 'RedisBloom', 'RedisTimeSeries']"
+    }
+  ];
+
+  // Optional module configuration arguments, passed through verbatim
+  // (e.g. "ERROR_RATE 0.01 INITIAL_SIZE 400" for RedisBloom). Most
+  // deployments leave this empty.
+  string args = 2;
+}
+
+// AzureManagedRedisCustomerManagedKey brings your own encryption key for
+// data at rest instead of Microsoft-managed keys.
+message AzureManagedRedisCustomerManagedKey {
+  // The Key Vault key that wraps the data-encryption key, by its
+  // VERSIONED data-plane ID (Managed Redis pins the key version;
+  // rotate by updating this reference). References an
+  // AzureKeyVaultKey's key_id output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // The user-assigned identity that authenticates to Key Vault to
+  // wrap/unwrap the key -- grant it wrap/unwrap permissions on the key
+  // before deploying. The SAME identity must also be attached to the
+  // instance through the identity block (an ARM pairing enforced at
+  // apply time). References an AzureUserAssignedIdentity's ARM id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+}
+
+// AzureManagedRedisIdentity assigns a managed identity to the instance,
+// used for customer-managed-key encryption.
+message AzureManagedRedisIdentity {
+  // The identity model: SYSTEM_ASSIGNED (Azure creates and rotates a
+  // service principal bound to the instance's lifecycle), USER_ASSIGNED
+  // (bring identities from user_assigned_identity_ids, shareable across
+  // resources -- what CMK requires), or SYSTEM_AND_USER_ASSIGNED (both).
+  AzureManagedRedisIdentityType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The user-assigned identities to attach -- required when (and only
+  // meaningful when) type includes USER_ASSIGNED. Each entry references
+  // an AzureUserAssignedIdentity's ARM id.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "managed_redis_identity_ids_match_type"
+    message: "user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED"
+    expression: "(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)"
+  };
+}
+
+// The managed-identity model for the instance.
+enum AzureManagedRedisIdentityType {
+  // Not specified -- invalid; choose an explicit identity model.
+  azure_managed_redis_identity_type_unspecified = 0;
+
+  // Azure creates a service principal bound to the instance's
+  // lifecycle.
+  SYSTEM_ASSIGNED = 1;
+
+  // Bring your own AzureUserAssignedIdentity entries -- shareable
+  // across resources and grantable before the instance exists. What
+  // customer-managed-key encryption requires.
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned principal and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}

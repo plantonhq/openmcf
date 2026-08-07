@@ -1,0 +1,259 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureloganalyticsworkspace.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureLogAnalyticsWorkspaceSpec** defines the configuration for creating an
+// Azure Log Analytics Workspace.
+//
+// Log Analytics Workspaces are the central data platform for Azure Monitor. They
+// collect, store, and analyze log and performance data from Azure resources,
+// on-premises servers, and third-party services. Workspaces are the foundation
+// for monitoring in Azure -- they power Container Insights (AKS), Application
+// Insights, Microsoft Sentinel (SIEM), diagnostic settings, and log-query alert
+// rules. Most Azure estates run a small number of workspaces (often one per
+// environment or per region) that many resources feed into, so the workspace is
+// a long-lived governance boundary: retention, ingestion quotas, network access
+// posture, and authentication mode are all set here.
+message AzureLogAnalyticsWorkspaceSpec {
+  // The Azure region where the Log Analytics Workspace will be deployed.
+  // Examples: "eastus", "westus2", "westeurope", "southeastasia".
+  // Choose a region close to the resources that will send logs to this workspace
+  // to minimize data egress costs and latency. Cross-region ingestion works but
+  // bills inter-region bandwidth and adds latency.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure Resource Group where the workspace will be created.
+  // Can be a literal string or a reference to an AzureResourceGroup output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The name of the Log Analytics Workspace. Unique within the resource group.
+  // 4-63 characters: letters, digits, and hyphens; must start and end with a
+  // letter or digit.
+  //
+  // **ForceNew**: Changing this destroys and recreates the workspace -- and with
+  // it all ingested data. Treat the name as permanent.
+  string workspace_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 4,
+    (buf.validate.field).string.max_len = 63,
+    (buf.validate.field).cel = {
+      id: "log_analytics_workspace_name_format"
+      message: "workspace name must be 4-63 characters of letters, digits, or hyphens, and must start and end with a letter or digit"
+      expression: "this.matches('^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$')"
+    }
+  ];
+
+  // The pricing tier (SKU) of the workspace. Unspecified deploys PER_GB_2018 --
+  // Azure's pay-as-you-go model and the right choice for nearly every workspace.
+  // Choose CAPACITY_RESERVATION only at sustained high ingestion (100+ GB/day),
+  // where commitment tiers discount ingestion; it requires
+  // reservation_capacity_in_gb_per_day and carries Azure's 31-day commitment
+  // period on the chosen tier. PER_NODE and STANDALONE are legacy pre-2018
+  // pricing models kept for existing estates -- do not choose them for new
+  // workspaces.
+  //
+  // Switching between PER_GB_2018 and CAPACITY_RESERVATION updates in place;
+  // any other SKU change forces the workspace to be destroyed and recreated
+  // (Azure's own transition rule).
+  AzureLogAnalyticsWorkspaceSku sku = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // The commitment-tier capacity in GB of ingestion per day. Required with --
+  // and only meaningful with -- the CAPACITY_RESERVATION sku. Azure only sells
+  // fixed tiers: 100, 200, 300, 400, 500, 1000, 2000, 5000, 10000, 25000, or
+  // 50000 GB/day. Ingestion beyond the reserved capacity bills at the
+  // pay-as-you-go rate, so pick the tier just below the observed daily volume.
+  // Raising the tier restarts Azure's 31-day commitment period.
+  optional int32 reservation_capacity_in_gb_per_day = 5 [(buf.validate.field).int32 = {
+    in: [
+      100,
+      200,
+      300,
+      400,
+      500,
+      1000,
+      2000,
+      5000,
+      10000,
+      25000,
+      50000
+    ]
+  }];
+
+  // The number of days to retain data in the workspace at the workspace level.
+  // Range: 30 to 730 days. PER_GB_2018 includes 31 days free (90 when Microsoft
+  // Sentinel is enabled); beyond that, retention bills per GB per month. For
+  // compliance workloads 90-365 days is typical. Per-table retention overrides
+  // are managed in Azure directly and are not part of this workspace-level dial.
+  // Default: 30
+  optional int32 retention_in_days = 6 [
+    (buf.validate.field).int32 = {
+      gte: 30
+      lte: 730
+    },
+    (dev.planton.shared.options.default) = "30"
+  ];
+
+  // The daily ingestion quota in GB.
+  // Set to -1 for unlimited ingestion (no cap).
+  // Set to a positive value to cap daily ingestion and prevent cost overruns --
+  // when the cap is reached, ingestion stops until the next UTC day, so a cap on
+  // a production workspace is also a data-loss dial. Use it deliberately.
+  // Default: -1 (unlimited)
+  optional double daily_quota_gb = 7 [
+    (buf.validate.field).double.gte = -1,
+    (dev.planton.shared.options.default) = "-1"
+  ];
+
+  // The workspace's managed identity, used when the workspace itself needs to
+  // access other Azure resources -- most notably reading a customer-managed key
+  // when the workspace is attached to a dedicated Log Analytics cluster, or
+  // running queries against linked storage.
+  AzureLogAnalyticsWorkspaceIdentity identity = 8;
+
+  // Whether local authentication methods (workspace shared keys) are allowed in
+  // addition to Microsoft Entra ID. Azure's default is true. Set false for a
+  // keyless posture: agents and ingestion APIs must then authenticate with Entra
+  // identities, and the shared-key outputs stop being usable credentials.
+  // Default: true (Azure's own default; flip deliberately -- legacy agents and
+  // some ingestion paths still require shared keys)
+  optional bool local_authentication_enabled = 9 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether the workspace accepts log ingestion over the public internet.
+  // Set false to force ingestion through Azure Monitor Private Link Scope
+  // (AMPLS) private endpoints only.
+  // Default: true (Azure's default)
+  optional bool internet_ingestion_enabled = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether the workspace serves log queries over the public internet.
+  // Set false to force queries through Azure Monitor Private Link Scope (AMPLS)
+  // private endpoints only -- the portal's Logs blade then also requires private
+  // connectivity.
+  // Default: true (Azure's default)
+  optional bool internet_query_enabled = 11 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether users can query only the data of resources they have Azure RBAC
+  // permission to view (resource-context access), without needing permission on
+  // the workspace itself. This is Azure's modern access model and its default.
+  // Set false to require explicit workspace-level permissions for every query
+  // (workspace-context access) -- the stricter, centralized model some security
+  // teams mandate.
+  // Default: true (Azure's default)
+  optional bool allow_resource_only_permissions = 12 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether customer-managed storage is mandatory for query artifacts (saved
+  // queries and query results). Only relevant for regulated estates that pair
+  // the workspace with linked storage accounts so query artifacts never rest on
+  // Microsoft-managed storage. Leave false otherwise.
+  bool cmk_for_query_forced = 13;
+
+  // Whether data is purged immediately after 30 days instead of being retained
+  // in Azure's grace store. Relevant for strict data-residency/right-to-erasure
+  // compliance: normally Azure keeps data recoverable for a short period beyond
+  // the retention window; this switch removes that grace period.
+  bool immediate_data_purge_on_30_days_enabled = 14;
+
+  // The ARM ID of an Azure Monitor Data Collection Rule to set as the
+  // workspace's default DCR (applied to data flowing in without an explicit
+  // rule). Format:
+  // /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/dataCollectionRules/{name}
+  // Provide the literal ARM ID of a rule managed outside this catalog; leave
+  // empty for Azure's default handling.
+  string data_collection_rule_id = 15;
+
+  // Tags to apply to the workspace, merged over the Planton-derived
+  // metadata tags (user values win on key conflicts). ARM tags are Azure's
+  // first-class governance surface -- Azure Policy enforces them and
+  // Microsoft Cost Management groups by them.
+  map<string, string> tags = 16;
+
+  option (buf.validate.message).cel = {
+    id: "log_analytics_workspace_capacity_requires_reservation_sku"
+    message: "reservation_capacity_in_gb_per_day can only be set with the CAPACITY_RESERVATION sku -- on pay-as-you-go and legacy skus Azure rejects a commitment-tier capacity"
+    expression: "!has(this.reservation_capacity_in_gb_per_day) || this.sku == 2"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "log_analytics_workspace_reservation_sku_requires_capacity"
+    message: "the CAPACITY_RESERVATION sku requires reservation_capacity_in_gb_per_day -- pick the commitment tier just below the workspace's observed daily ingestion"
+    expression: "this.sku != 2 || has(this.reservation_capacity_in_gb_per_day)"
+  };
+}
+
+// The pricing tier of the workspace.
+// Not modeled: Standard and Premium (Azure no longer permits creating
+// workspaces on them), LACluster (a server-side state Azure sets when the
+// workspace is linked to a dedicated Log Analytics cluster, not a tier a user
+// chooses at creation), and Unlimited (a retired legacy tier).
+enum AzureLogAnalyticsWorkspaceSku {
+  // Not specified -- deploys Azure's recommended PER_GB_2018 pay-as-you-go tier.
+  azure_log_analytics_workspace_sku_unspecified = 0;
+
+  // Pay-as-you-go per GB ingested -- Azure's recommended tier and the right
+  // choice for nearly every workspace.
+  PER_GB_2018 = 1;
+
+  // Commitment tier with discounted ingestion. Requires
+  // reservation_capacity_in_gb_per_day; worthwhile at sustained 100+ GB/day.
+  CAPACITY_RESERVATION = 2;
+
+  // Legacy pre-2018 per-node (OMS) pricing -- kept for existing estates only.
+  PER_NODE = 3;
+
+  // Legacy pre-2018 standalone per-GB pricing -- kept for existing estates only.
+  STANDALONE = 4;
+}
+
+// AzureLogAnalyticsWorkspaceIdentity assigns a managed identity to the
+// workspace, used when the workspace itself accesses other Azure resources
+// (customer-managed keys on a dedicated cluster, linked storage).
+// Workspaces support exactly one identity model at a time -- SYSTEM_ASSIGNED
+// or USER_ASSIGNED, never both (unlike many other Azure resources).
+message AzureLogAnalyticsWorkspaceIdentity {
+  // The identity model: SYSTEM_ASSIGNED (Azure creates and rotates a service
+  // principal bound to the workspace's lifecycle) or USER_ASSIGNED (bring
+  // identities from user_assigned_identity_ids, shareable across resources
+  // and grantable before the workspace exists).
+  AzureLogAnalyticsWorkspaceIdentityType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The user-assigned identities to attach -- required when (and only
+  // meaningful when) type is USER_ASSIGNED. Each entry references an
+  // AzureUserAssignedIdentity's ARM id.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "log_analytics_workspace_identity_ids_match_type"
+    message: "user_assigned_identity_ids is required with USER_ASSIGNED and must be empty with SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)"
+  };
+}
+
+// The managed-identity model for the workspace. Azure does not support the
+// combined system-and-user model on Log Analytics workspaces.
+enum AzureLogAnalyticsWorkspaceIdentityType {
+  // Not specified -- invalid; choose an explicit identity model.
+  azure_log_analytics_workspace_identity_type_unspecified = 0;
+
+  // Azure creates a service principal bound to the workspace's lifecycle.
+  SYSTEM_ASSIGNED = 1;
+
+  // Bring your own AzureUserAssignedIdentity entries -- shareable across
+  // resources and grantable before the workspace exists.
+  USER_ASSIGNED = 2;
+}

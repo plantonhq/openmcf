@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetessecretstore.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetessecretstore/v1alpha1/spec.proto";
+import "catalog/kubernetes/kubernetessecretstore/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//kubernetes-secret-store
+message KubernetesSecretStore {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesSecretStore'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  KubernetesSecretStoreSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  KubernetesSecretStoreStatus status = 5;
+}
+
+//kubernetes-secret-store status.
+message KubernetesSecretStoreStatus {
+  //stack-outputs
+  KubernetesSecretStoreStackOutputs outputs = 1;
+}

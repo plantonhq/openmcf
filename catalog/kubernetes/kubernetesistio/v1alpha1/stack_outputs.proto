@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesistio.v1alpha1;
+
+/**
+ * KubernetesIstioStackOutputs captures the handles downstream resources compose
+ * against once the Istio control plane is installed:
+ *  * Gateway API Gateways select the mesh through `gateway_class_name`,
+ *  * mesh policy kinds (PeerAuthentication, AuthorizationPolicy, ...) target
+ *    workloads whose proxies this control plane programs,
+ *  * multi-revision setups discover the control-plane identity through
+ *    `revision` and `istiod_service_name`.
+ */
+message KubernetesIstioStackOutputs {
+  // Namespace the control plane is installed in (e.g. "istio-system").
+  string namespace = 1;
+
+  // Name of the istiod Service in that namespace ("istiod" for the default
+  // revision, "istiod-<revision>" for a named revision) — the discovery address
+  // data-plane proxies and remote clusters connect to.
+  string istiod_service_name = 2;
+
+  // The control-plane revision installed ("default" when no revision is named).
+  // Workloads pin to a revisioned control plane with the `istio.io/rev` label.
+  string revision = 3;
+
+  // Name of the GatewayClass istiod serves ("istio"). Create a KubernetesGateway
+  // with this gateway_class_name and istiod provisions and programs the gateway
+  // deployment automatically — the composition seam for north-south exposure.
+  string gateway_class_name = 4;
+
+  // The mesh's trust domain (the identity root of every workload certificate,
+  // e.g. "cluster.local") — the prefix of principal strings in
+  // KubernetesAuthorizationPolicy rules.
+  string trust_domain = 5;
+
+  // The data plane mode the mesh was installed with ("sidecar" or "ambient") —
+  // tells composed resources whether workloads enroll via sidecar injection
+  // labels or the ambient dataplane-mode label.
+  string dataplane_mode = 6;
+}

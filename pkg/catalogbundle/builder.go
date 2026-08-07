@@ -20,9 +20,9 @@ import (
 type BuildInput struct {
 	// DescriptorSetPath is the buf-built FileDescriptorSet (descriptors.binpb).
 	DescriptorSetPath string
-	// ProviderBaseDir is the apis provider tree holding conversions/ and
-	// presets/ per kind.
-	ProviderBaseDir string
+	// CatalogDir is the catalog tree holding conversions/ and presets/
+	// per kind.
+	CatalogDir string
 	// ReleaseTag stamps the manifest (empty for local builds).
 	ReleaseTag string
 	// OutputPath is the bundle zip to write.
@@ -31,7 +31,7 @@ type BuildInput struct {
 
 // Build assembles a catalog bundle zip from the inputs and returns the
 // manifest it wrote. Every entry is checksummed; an empty descriptor set or
-// a provider tree with no presets fails the build -- a bundle missing its
+// a catalog tree with no presets fails the build -- a bundle missing its
 // cargo must never ship.
 func Build(input BuildInput) (*Manifest, error) {
 	descriptors, err := os.ReadFile(input.DescriptorSetPath)
@@ -48,13 +48,13 @@ func Build(input BuildInput) (*Manifest, error) {
 
 	// Conversions live beside the kind (<provider>/<kind>/conversions/*);
 	// presets live inside each served version (<provider>/<kind>/<version>/presets/*).
-	if err := collectFiles(entries, input.ProviderBaseDir, "*/*/conversions/*", 4,
+	if err := collectFiles(entries, input.CatalogDir, "*/*/conversions/*", 4,
 		func(parts []string) string {
 			return "conversions/" + parts[0] + "/" + parts[1] + "/" + parts[3]
 		}); err != nil {
 		return nil, err
 	}
-	if err := collectFiles(entries, input.ProviderBaseDir, "*/*/*/presets/*", 5,
+	if err := collectFiles(entries, input.CatalogDir, "*/*/*/presets/*", 5,
 		func(parts []string) string {
 			return "presets/" + parts[0] + "/" + parts[1] + "/" + parts[2] + "/" + parts[4]
 		}); err != nil {
@@ -67,7 +67,7 @@ func Build(input BuildInput) (*Manifest, error) {
 		}
 	}
 	if presetCount == 0 {
-		return nil, fmt.Errorf("no presets found under %s -- refusing to build a bundle without its preset cargo", input.ProviderBaseDir)
+		return nil, fmt.Errorf("no presets found under %s -- refusing to build a bundle without its preset cargo", input.CatalogDir)
 	}
 
 	manifest := &Manifest{
@@ -111,12 +111,12 @@ func Build(input BuildInput) (*Manifest, error) {
 	return manifest, nil
 }
 
-// collectFiles gathers files matching the glob (relative to providerBase)
+// collectFiles gathers files matching the glob (relative to catalogDir)
 // into bundle entries, naming each through entryName over the rel-path
 // segments. Directories (e.g. conversions/testdata) never match the
 // fixed-depth globs -- fixtures gate engines, they are not runtime cargo.
-func collectFiles(entries map[string][]byte, providerBase, glob string, depth int, entryName func(parts []string) string) error {
-	matches, err := filepath.Glob(filepath.Join(providerBase, glob))
+func collectFiles(entries map[string][]byte, catalogDir, glob string, depth int, entryName func(parts []string) string) error {
+	matches, err := filepath.Glob(filepath.Join(catalogDir, glob))
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func collectFiles(entries map[string][]byte, providerBase, glob string, depth in
 		if info.IsDir() {
 			continue
 		}
-		rel, err := filepath.Rel(providerBase, match)
+		rel, err := filepath.Rel(catalogDir, match)
 		if err != nil {
 			return err
 		}

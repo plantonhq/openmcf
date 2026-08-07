@@ -39,16 +39,16 @@ The catalog system transforms hand-written `catalog-page.md` files co-located wi
 
 | Path | Role |
 |------|------|
-| `apis/dev/planton/provider/{provider}/{component}/v1/catalog-page.md` | The source catalog page for a component. Hand-written, follows the catalog page standard. Contains an H1 heading with the component's display name (including provider prefix). |
-| `apis/dev/planton/provider/{provider}/{component}/v1/docs/README.md` | Legacy research document. Used as fallback when no `catalog-page.md` exists. Being gradually replaced. |
-| `apis/dev/planton/provider/{provider}/{component}/v1/presets/*.yaml` | Preset manifest files. Each is a complete, deployable YAML manifest. |
-| `apis/dev/planton/provider/{provider}/{component}/v1/presets/*.md` | Preset description files. Each pairs with a YAML file of the same base name. |
+| `catalog/{provider}/{component}/v1/catalog-page.md` | The source catalog page for a component. Hand-written, follows the catalog page standard. Contains an H1 heading with the component's display name (including provider prefix). |
+| `catalog/{provider}/{component}/v1/docs/README.md` | Legacy research document. Used as fallback when no `catalog-page.md` exists. Being gradually replaced. |
+| `catalog/{provider}/{component}/v1/presets/*.yaml` | Preset manifest files. Each is a complete, deployable YAML manifest. |
+| `catalog/{provider}/{component}/v1/presets/*.md` | Preset description files. Each pairs with a YAML file of the same base name. |
 
 ### Canonical Provider Definitions
 
 | Path | Role |
 |------|------|
-| `apis/dev/planton/shared/cloudresourcekind/cloud_resource_provider.proto` | The single source of truth for all provider enum values. Each enum carries a `provider_meta` annotation with `group` (API group domain) and `display_name` (human-readable name). Every provider configuration in the catalog system must trace back to this file. |
+| `shared/cloudresourcekind/cloud_resource_provider.proto` | The single source of truth for all provider enum values. Each enum carries a `provider_meta` annotation with `group` (API group domain) and `display_name` (human-readable name). Every provider configuration in the catalog system must trace back to this file. |
 
 ### Build Scripts
 
@@ -124,7 +124,7 @@ docs-structure.json
 
 ### Co-located Source
 
-Catalog pages live alongside the component's API definitions at `apis/dev/planton/provider/{provider}/{component}/v1/catalog-page.md`. This keeps documentation close to the code it describes and makes it natural for component forge workflows to create the catalog page as part of the component creation process.
+Catalog pages live alongside the component's API definitions at `catalog/{provider}/{component}/v1/catalog-page.md`. This keeps documentation close to the code it describes and makes it natural for component forge workflows to create the catalog page as part of the component creation process.
 
 ### Gradual Migration
 
@@ -159,7 +159,7 @@ These are the places that must be updated when providers or components change:
 ### When Adding a New Provider
 
 1. `cloud_resource_provider.proto` -- add enum value with `provider_meta`
-2. `apis/dev/planton/provider/{newprovider}/` -- create component directories
+2. `catalog/{newprovider}/` -- create component directories
 3. `PROVIDER_DISPLAY_NAMES` in `copy-component-docs.ts` -- add display name entry
 4. `PROVIDER_PREFIXES` in `copy-component-docs.ts` -- add prefix stripping entry
 5. `PROVIDER_ICON_OVERRIDES` in `providerIcons.ts` -- only if SVG filename is non-standard
@@ -171,7 +171,7 @@ No system changes needed. The build script auto-discovers components by scanning
 
 ### When Renaming a Provider
 
-Update all four maps in the build script and icon utility, plus rename the directory under `apis/dev/planton/provider/`.
+Update all four maps in the build script and icon utility, plus rename the directory under `catalog/`.
 
 ### When Changing a Provider Display Name
 

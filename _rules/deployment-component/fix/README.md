@@ -333,15 +333,15 @@ All consistency checks passed!
 🧪 Running Validation
 
 Component Tests:
-  go test ./apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/
+  go test ./catalog/gcp/gcpcertmanagercert/v1alpha1/
   ✅ PASS (18/18 tests, +2 new tests)
 
 Build Validation:
-  go build ./apis/.../v1/...
+  go build ./catalog/.../v1/...
   ✅ Success (all packages compiled)
 
 Full Test Suite:
-  go test -v ./apis/.../v1/
+  go test -v ./catalog/.../v1/
   ✅ PASS (156/156 tests)
 
 All validation passed!
@@ -777,7 +777,7 @@ After fix:
 
 ```bash
 # After fix completes
-cd apis/dev/planton/provider/<provider>/<component>/v1/iac/hack/
+cd catalog/<provider>/<component>/v1/iac/hack/
 
 # Test with Pulumi
 cd pulumi && make local && pulumi up

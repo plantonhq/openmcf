@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureredislinkedserver.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureRedisLinkedServerSpec** links two PREMIUM Azure Cache for Redis
+// instances into a geo-replication pair: the primary serves reads and
+// writes while continuously replicating to the secondary in another
+// region, which serves as the warm disaster-recovery target.
+//
+// The link is a first-class resource because DELETING it IS the failover
+// operation: to promote the secondary during a regional outage, the link
+// is removed (unlinking makes the secondary writable), traffic moves to
+// the promoted cache, and a new link is created in the opposite direction
+// once the region recovers. Applications that want a stable DNS name
+// across failovers point at the geo_replicated_primary_host_name output
+// instead of either cache's own hostname.
+//
+// Requirements Azure enforces at link time: both caches must be PREMIUM
+// tier, in different regions, and the secondary must be the same size or
+// larger than the primary. The secondary rejects writes while linked.
+//
+// Note: ARM has begun rejecting NEW Premium cache creations region by
+// region as classic Azure Cache for Redis retires in favor of Azure
+// Managed Redis (live-verified) -- for NEW geo-replicated deployments,
+// prefer AzureManagedRedis with its native geo-replication
+// (AzureManagedRedisGeoReplication); this kind links caches that already
+// exist.
+//
+// Every field is fixed at creation -- changing anything replaces the link
+// (which is safe: replacing a link re-establishes replication; it does not
+// touch cached data on the primary).
+message AzureRedisLinkedServerSpec {
+  // The PRIMARY cache -- the one serving writes -- by ARM ID. References
+  // an AzureRedisCache's redis_cache_id output. The link is created as a
+  // child of this cache; its resource group and name are derived from
+  // this ID, never spelled twice.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_redis_cache_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureRedisCache,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.redis_cache_id"
+  ];
+
+  // The SECONDARY cache -- the disaster-recovery replica in another
+  // region -- by ARM ID. References an AzureRedisCache's redis_cache_id
+  // output. Azure names the link after this cache.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef linked_redis_cache_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureRedisCache,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.redis_cache_id"
+  ];
+
+  // The SECONDARY cache's region. References the same AzureRedisCache as
+  // linked_redis_cache_id -- its region output -- so the location is
+  // derived from the one referenced cache rather than hand-repeated
+  // (a literal value is accepted when the linked cache is not managed
+  // in the same manifest set).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef linked_redis_cache_location = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureRedisCache,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.region"
+  ];
+
+  // The role the LINKED cache plays in the pair. SECONDARY is the normal
+  // choice: the target cache stays primary and the linked cache becomes
+  // its read-only replica. (PRIMARY inverts the pair -- rarely used
+  // outside re-linking after a failover.)
+  AzureRedisLinkedServerRole server_role = 4 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+}
+
+// The replication role of the linked cache.
+enum AzureRedisLinkedServerRole {
+  // Not specified -- invalid; choose an explicit role.
+  azure_redis_linked_server_role_unspecified = 0;
+
+  // The linked cache serves writes and replicates to the target cache.
+  // Rarely used outside re-linking after a failover.
+  PRIMARY = 1;
+
+  // The linked cache is the read-only disaster-recovery replica of the
+  // target cache -- the normal geo-replication shape.
+  SECONDARY = 2;
+}

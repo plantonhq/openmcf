@@ -14,7 +14,7 @@
 //	go run ./pkg/protodocs/distiller \
 //	    --image build/proto-docs-image.binpb \
 //	    --out pkg/protodocs/index.json.gz \
-//	    --include dev/planton
+//	    --include catalog --include shared --include qa --include iac
 //
 // Output is deterministic (sorted file list, JSON object keys sorted by
 // encoding/json, gzip with an empty header), so regenerating without proto
@@ -56,7 +56,7 @@ func main() {
 	var includes prefixList
 	flag.StringVar(&imagePath, "image", "", "path to a FileDescriptorSet built WITH source info (buf build -o ...)")
 	flag.StringVar(&outPath, "out", "", "path to write the gzipped JSON index")
-	flag.Var(&includes, "include", "proto file path prefix to include (repeatable; default dev/planton)")
+	flag.Var(&includes, "include", "proto file path prefix to include (repeatable; default catalog+shared+qa+iac)")
 	flag.Parse()
 
 	if imagePath == "" || outPath == "" {
@@ -64,7 +64,7 @@ func main() {
 		os.Exit(2)
 	}
 	if len(includes) == 0 {
-		includes = prefixList{"dev/planton"}
+		includes = prefixList{"catalog", "shared", "qa", "iac"}
 	}
 
 	if err := run(imagePath, outPath, includes); err != nil {

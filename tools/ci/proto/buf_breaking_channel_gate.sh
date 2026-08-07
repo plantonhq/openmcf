@@ -11,10 +11,10 @@
 #   beta     (v<N>beta<M>)   -- BLOCKING. Beta owes conversions; breaking
 #                               shape requires a NEW version, never in-place.
 #   stable   (v<N>)          -- BLOCKING. Stable is frozen.
-#   internal (dev/planton/qa/, dev/planton/iac/) -- ADVISORY. Internal
+#   internal (qa/, iac/) -- ADVISORY. Internal
 #                               tooling formats, not API resources on the
 #                               maturity ladder.
-#   shared   (everything else, e.g. dev/planton/shared/) -- BLOCKING.
+#   shared   (everything else, e.g. shared/) -- BLOCKING.
 #                               Shared types are embedded in every kind's
 #                               contract; breaking them breaks everything at
 #                               once, so it must be a deliberate, reviewed
@@ -23,7 +23,7 @@
 #
 # Usage:
 #   tools/ci/proto/buf_breaking_channel_gate.sh [<against-ref>]
-#       against-ref defaults to '../.git#branch=main,subdir=apis' (run from apis/)
+#       against-ref defaults to '.git#branch=main' (run from the repo root)
 #   tools/ci/proto/buf_breaking_channel_gate.sh --self-test
 #       verifies the classifier against fixture paths; used by CI lint.
 # =============================================================================
@@ -33,7 +33,7 @@ classify() {
   # classify <path> -> prints alpha|beta|stable|internal|shared
   local path="$1" vdir
   case "$path" in
-    dev/planton/qa/*|dev/planton/iac/*)
+    qa/*|iac/*)
       echo internal
       return
       ;;
@@ -60,22 +60,22 @@ if [ "${1:-}" = "--self-test" ]; then
       fail=1
     fi
   }
-  check "dev/planton/provider/aws/awsvpc/v1alpha1/spec.proto" alpha
-  check "dev/planton/provider/aws/awsvpc/v1beta1/spec.proto" beta
-  check "dev/planton/provider/aws/awsvpc/v1/spec.proto" stable
-  check "dev/planton/provider/aws/awsvpc/v2/spec.proto" stable
-  check "dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1/api.proto" alpha
-  check "dev/planton/shared/foreignkey/v1/options.proto" stable
-  check "dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto" shared
-  check "dev/planton/qa/componente2eprofile/v1/api.proto" internal
-  check "dev/planton/iac/componentimportmap/v1/api.proto" internal
+  check "catalog/aws/awsvpc/v1alpha1/spec.proto" alpha
+  check "catalog/aws/awsvpc/v1beta1/spec.proto" beta
+  check "catalog/aws/awsvpc/v1/spec.proto" stable
+  check "catalog/aws/awsvpc/v2/spec.proto" stable
+  check "catalog/_test/testcloudresourcegeneric/v1alpha1/api.proto" alpha
+  check "shared/foreignkey/v1/options.proto" stable
+  check "shared/cloudresourcekind/cloud_resource_kind.proto" shared
+  check "qa/componente2eprofile/v1/api.proto" internal
+  check "iac/componentimportmap/v1/api.proto" internal
   if [ $fail -eq 0 ]; then
     echo "self-test: all classifications correct"
   fi
   exit $fail
 fi
 
-AGAINST="${1:-../.git#branch=main,subdir=apis}"
+AGAINST="${1:-.git#branch=main}"
 
 BUF_STDERR=$(mktemp)
 FINDINGS_JSON=$(buf breaking --against "$AGAINST" --error-format=json 2>"$BUF_STDERR")

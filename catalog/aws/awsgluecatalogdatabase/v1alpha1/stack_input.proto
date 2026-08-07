@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsgluecatalogdatabase.v1alpha1;
+
+import "catalog/aws/awsgluecatalogdatabase/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsGlueCatalogDatabaseStackInput is the input envelope passed to IaC modules for provisioning.
+message AwsGlueCatalogDatabaseStackInput {
+  // target is the fully-specified AwsGlueCatalogDatabase resource to provision.
+  AwsGlueCatalogDatabase target = 1;
+
+  // provider_config supplies AWS credentials and region for the deployment.
+  // When nil the module falls back to ambient credentials (environment variables
+  // or instance profile).
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

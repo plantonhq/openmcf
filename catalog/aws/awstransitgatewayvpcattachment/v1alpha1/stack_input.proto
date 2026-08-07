@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awstransitgatewayvpcattachment.v1alpha1;
+
+import "catalog/aws/awstransitgatewayvpcattachment/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsTransitGatewayVpcAttachmentStackInput is the input for the
+// aws-transit-gateway-vpc-attachment IaC modules.
+message AwsTransitGatewayVpcAttachmentStackInput {
+  // target cloud-resource
+  AwsTransitGatewayVpcAttachment target = 1;
+
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

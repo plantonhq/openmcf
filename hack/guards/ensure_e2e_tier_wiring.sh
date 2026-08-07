@@ -18,7 +18,7 @@ set -euo pipefail
 repo_root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root_dir"
 
-provider_base="apis/dev/planton/provider/kubernetes"
+provider_dir="catalog/kubernetes"
 entrypoints_file="e2e/kubernetes_test.go"
 failures=0
 
@@ -57,7 +57,7 @@ if [[ -z "$makefile_terraform_regexes" ]]; then
   exit 1
 fi
 
-for profile in "$provider_base"/*/v*/e2e/profile.yaml; do
+for profile in "$provider_dir"/*/v*/e2e/profile.yaml; do
   component="$(basename "$(dirname "$(dirname "$(dirname "$profile")")")")"
 
   # Profiles that can never RUN need no tier wiring: deferred/skip/stub

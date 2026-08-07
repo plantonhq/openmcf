@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureprivateendpoint.v1alpha1;
+
+// **AzurePrivateEndpointStackOutputs** captures the outputs of provisioning
+// an Azure Private Endpoint.
+message AzurePrivateEndpointStackOutputs {
+  // The Azure Resource Manager ID of the private endpoint.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/privateEndpoints/{name}
+  string private_endpoint_id = 1;
+
+  // The name of the private endpoint resource.
+  string private_endpoint_name = 2;
+
+  // The private IP address allocated to the endpoint from the subnet. This
+  // is the IP the target service's FQDN resolves to inside the VNet; when a
+  // DNS zone group is configured, it is registered as an A record in each
+  // referenced private DNS zone automatically.
+  string private_ip_address = 3;
+
+  // The Azure Resource Manager ID of the network interface Azure created for
+  // this endpoint and attached to the subnet. Useful for diagnostics.
+  string network_interface_id = 4;
+}

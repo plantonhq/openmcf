@@ -1,0 +1,91 @@
+package module
+
+import (
+	"strings"
+
+	azurefrontdoorprofilev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefrontdoorprofile/v1alpha1"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+type Locals struct {
+	AzureFrontDoorProfile *azurefrontdoorprofilev1alpha1.AzureFrontDoorProfile
+	ResourceGroupName     string
+	AzureTags             map[string]string
+	// SkuName is ARM's tier value, materialized from the spec enum with
+	// the documented STANDARD default (stack inputs never carry proto
+	// defaults).
+	SkuName string
+}
+
+// skuStrings maps the spec's sku enum to ARM's tier values.
+var skuStrings = map[azurefrontdoorprofilev1alpha1.AzureFrontDoorProfileSku]string{
+	azurefrontdoorprofilev1alpha1.AzureFrontDoorProfileSku_STANDARD: "Standard_AzureFrontDoor",
+	azurefrontdoorprofilev1alpha1.AzureFrontDoorProfileSku_PREMIUM:  "Premium_AzureFrontDoor",
+}
+
+// identityTypeStrings maps the identity-type enum to ARM's values.
+var identityTypeStrings = map[azurefrontdoorprofilev1alpha1.AzureFrontDoorProfileIdentityType]string{
+	azurefrontdoorprofilev1alpha1.AzureFrontDoorProfileIdentityType_SYSTEM_ASSIGNED:          "SystemAssigned",
+	azurefrontdoorprofilev1alpha1.AzureFrontDoorProfileIdentityType_USER_ASSIGNED:            "UserAssigned",
+	azurefrontdoorprofilev1alpha1.AzureFrontDoorProfileIdentityType_SYSTEM_AND_USER_ASSIGNED: "SystemAssigned, UserAssigned",
+}
+
+// logScrubbingVariableStrings maps the log-scrubbing enum to ARM's
+// match-variable values.
+var logScrubbingVariableStrings = map[azurefrontdoorprofilev1alpha1.AzureFrontDoorProfileLogScrubbingVariable]string{
+	azurefrontdoorprofilev1alpha1.AzureFrontDoorProfileLogScrubbingVariable_QUERY_STRING_ARG_NAMES: "QueryStringArgNames",
+	azurefrontdoorprofilev1alpha1.AzureFrontDoorProfileLogScrubbingVariable_REQUEST_IP_ADDRESS:     "RequestIPAddress",
+	azurefrontdoorprofilev1alpha1.AzureFrontDoorProfileLogScrubbingVariable_REQUEST_URI:            "RequestUri",
+}
+
+func initializeLocals(ctx *pulumi.Context, stackInput *azurefrontdoorprofilev1alpha1.AzureFrontDoorProfileStackInput) *Locals {
+	locals := &Locals{}
+
+	locals.AzureFrontDoorProfile = stackInput.Target
+	target := stackInput.Target
+
+	locals.ResourceGroupName = target.Spec.ResourceGroup.GetValue()
+
+	// Materialize the tier default: unspecified deploys STANDARD (the
+	// spec's documented default -- stack inputs never carry proto
+	// defaults).
+	locals.SkuName = skuStrings[target.Spec.Sku]
+	if locals.SkuName == "" {
+		locals.SkuName = "Standard_AzureFrontDoor"
+	}
+
+	// Metadata-derived tags first, then the user's spec tags merged over
+	// them: user tags deliberately win so an org's governance conventions
+	// (cost center, owner) can override the derived values where they
+	// collide.
+	locals.AzureTags = map[string]string{
+		// PARITY-EXCEPTION: resource_kind here is the lowered
+		// CloudResourceKind enum string and resource_id is omitted when
+		// metadata.id is empty, while the Terraform module emits the
+		// family-wide snake-case literal and falls back to metadata.name.
+		// Output-neutral (tags never feed stack outputs); aligning the two
+		// shapes is a family-wide convention change, not a per-kind fix.
+		"resource":      "true",
+		"resource_name": target.Metadata.Name,
+		"resource_kind": strings.ToLower(cloudresourcekind.CloudResourceKind_AzureFrontDoorProfile.String()),
+	}
+
+	if target.Metadata.Id != "" {
+		locals.AzureTags["resource_id"] = target.Metadata.Id
+	}
+
+	if target.Metadata.Org != "" {
+		locals.AzureTags["organization"] = target.Metadata.Org
+	}
+
+	if target.Metadata.Env != "" {
+		locals.AzureTags["environment"] = target.Metadata.Env
+	}
+
+	for key, value := range target.Spec.Tags {
+		locals.AzureTags[key] = value
+	}
+
+	return locals
+}

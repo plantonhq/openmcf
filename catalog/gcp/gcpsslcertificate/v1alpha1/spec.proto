@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpsslcertificate.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpSslCertificateSpec defines a self-managed Compute Engine SSL certificate
+// — you bring the PEM certificate chain and private key (issued by your own
+// CA, purchased commercially, or automated via ACME outside GCP), and the
+// load balancer presents it to clients. Attach it to a target HTTPS (or SSL)
+// proxy the same way as a Google-managed certificate; the two kinds share
+// one name namespace and one API collection in GCP.
+//
+// Choose self-managed when you need what Google-managed certificates cannot
+// do: wildcard domains, your own CA or EV/OV issuance, certificates for
+// internal load balancers, or serving TLS before public DNS cutover. Prefer
+// GcpManagedSslCertificate when hands-off issuance and renewal fits — a
+// self-managed certificate does NOT renew itself.
+//
+// One kind covers both scopes. Leave `region` empty for a GLOBAL certificate
+// (global external load balancer proxies); set it for a REGIONAL one
+// (regional external and internal ALB proxies). The two scopes expose an
+// identical surface in GCP.
+//
+// Every field is immutable in GCP: rotation is create-replacement, repoint
+// the proxy's certificate list, then destroy the old certificate
+// (create-before-destroy) — a certificate attached to a proxy cannot be
+// deleted, so the destroy fails rather than dropping TLS.
+message GcpSslCertificateSpec {
+  // The GCP project that owns the certificate.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable: changing it destroys and recreates the certificate.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Name of the certificate in GCP. Must be 1-63 characters: lowercase
+  // letters, digits, and hyphens; must start with a letter and end with a
+  // letter or digit. If not specified, defaults to metadata.name.
+  // Self-managed and Google-managed certificates share one namespace per
+  // scope — a name used by either kind is taken. Immutable: changing it
+  // destroys and recreates the certificate, briefly breaking every proxy
+  // that references the old self_link (rotate create-before-destroy
+  // instead).
+  string certificate_name = 2 [(buf.validate.field).cel = {
+    id: "valid_certificate_name"
+    message: "certificate_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')"
+  }];
+
+  // Region for a REGIONAL certificate (e.g. "us-central1"), used by regional
+  // external and internal Application Load Balancer proxies. Leave empty for
+  // a GLOBAL certificate — the right scope for global external load
+  // balancers. Immutable: a certificate cannot move between scopes or
+  // regions.
+  string region = 3 [(buf.validate.field).cel = {
+    id: "valid_region"
+    message: "region must be a valid GCP region name such as us-central1, or empty for a global SSL certificate"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')"
+  }];
+
+  // What this certificate secures and where it came from (issuing CA,
+  // rotation cadence) — write it for the operator planning the next
+  // rotation. Immutable.
+  string description = 4 [(buf.validate.field).string.max_len = 2048];
+
+  // The certificate chain in PEM format: the leaf certificate first,
+  // followed by intermediates (at least one intermediate; at most 5
+  // certificates total — GCP rejects longer chains). This is PUBLIC
+  // handshake material presented to every client, so it is deliberately not
+  // marked sensitive; only the private key is secret. Immutable.
+  string certificate = 5 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).cel = {
+      id: "certificate_pem"
+      message: "certificate must be a PEM-encoded certificate chain (-----BEGIN CERTIFICATE-----)"
+      expression: "this.startsWith('-----BEGIN CERTIFICATE-----')"
+    }
+  ];
+
+  // The private key matching the certificate, in PEM format. GCP accepts
+  // RSA-2048 (and larger) and ECDSA P-256 keys; the key must be unencrypted
+  // (no passphrase). Write-only in GCP — the API never returns it, and it
+  // never appears in stack outputs. Immutable.
+  string private_key = 6 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).cel = {
+      id: "private_key_pem"
+      message: "private_key must be a PEM-encoded unencrypted private key (-----BEGIN PRIVATE KEY----- / -----BEGIN RSA PRIVATE KEY----- / -----BEGIN EC PRIVATE KEY-----)"
+      expression: "this.startsWith('-----BEGIN PRIVATE KEY-----') || this.startsWith('-----BEGIN RSA PRIVATE KEY-----') || this.startsWith('-----BEGIN EC PRIVATE KEY-----')"
+    },
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}

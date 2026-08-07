@@ -13,12 +13,12 @@ import (
 	"github.com/plantonhq/planton/pkg/explain"
 )
 
-// providerPathPrefix roots every cloud-component proto file; the provider is
+// catalogPathPrefix roots every cloud-component proto file; the provider is
 // the path segment right after it. Deriving both the provider and the output
 // directory from the descriptor's source path keeps this generator agnostic
-// to the version segment (v1 today, later channels tomorrow) -- never
+// to the version segment (v1alpha1 today, later channels tomorrow) -- never
 // reconstruct these paths from kind metadata.
-const providerPathPrefix = "dev/planton/provider/"
+const catalogPathPrefix = "catalog/"
 
 // commonsContent is the catalog-commons page (the manifest grammar shared by
 // every kind, stated once). It ships through the generator so the freshness
@@ -32,7 +32,7 @@ var commonsContent string
 // every degradation, so a caller can render an honest report and CI can fail
 // on real catalog bugs instead of silently shipping thinner pages.
 type Summary struct {
-	// Files maps repo-relative output paths (apis/.../reference.md and the
+	// Files maps repo-relative output paths (catalog/.../reference.md and the
 	// catalog-level index/graph/commons files) to rendered content.
 	Files map[string]string
 	// MissingManifests lists kinds with no iac/hack/manifest.yaml; their
@@ -54,7 +54,7 @@ type InvalidManifest struct {
 type kindEntry struct {
 	name string
 	// protoDir is the descriptor-derived source directory
-	// (dev/planton/provider/<provider>/<kind>/<version>).
+	// (catalog/<provider>/<kind>/<version>).
 	protoDir string
 	provider string
 	report   *explain.Report
@@ -96,10 +96,10 @@ func Generate(repoRoot string) (*Summary, error) {
 			return nil, errors.Wrapf(err, "resolve kind %s", name)
 		}
 		protoDir := filepath.Dir(res.Message.ParentFile().Path())
-		if !strings.HasPrefix(protoDir, providerPathPrefix) {
+		if !strings.HasPrefix(protoDir, catalogPathPrefix) {
 			continue
 		}
-		provider, _, _ := strings.Cut(strings.TrimPrefix(protoDir, providerPathPrefix), "/")
+		provider, _, _ := strings.Cut(strings.TrimPrefix(protoDir, catalogPathPrefix), "/")
 		if strings.HasPrefix(provider, "_") {
 			// Underscore providers (_test) hold registered test-scaffolding
 			// kinds, not catalog knowledge.
@@ -112,7 +112,7 @@ func Generate(repoRoot string) (*Summary, error) {
 		}
 
 		entry := kindEntry{name: name, protoDir: protoDir, provider: provider, report: report}
-		kindDir := filepath.Join(repoRoot, "apis", protoDir)
+		kindDir := filepath.Join(repoRoot, protoDir)
 		entry.hasGuide = hasGuide(kindDir)
 		switch example, err := loadValidatedExample(res, kindDir); {
 		case err != nil:
@@ -147,14 +147,14 @@ func Generate(repoRoot string) (*Summary, error) {
 
 	// Pass 3: render every page and the catalog-level files.
 	for _, entry := range entries {
-		kindDir := filepath.Join(repoRoot, "apis", entry.protoDir)
+		kindDir := filepath.Join(repoRoot, entry.protoDir)
 		opts := explain.MarkdownOptions{
 			ExampleYAML:  entry.example,
 			ReferencedBy: inbound[entry.name],
 			SeeAlso:      seeAlso(kindDir),
 			HasGuide:     entry.hasGuide,
 		}
-		summary.Files[filepath.Join("apis", entry.protoDir, "reference.md")] = explain.RenderMarkdown(entry.report, opts)
+		summary.Files[filepath.Join(entry.protoDir, "reference.md")] = explain.RenderMarkdown(entry.report, opts)
 	}
 	renderProviderIndexes(summary, entries)
 	renderRootIndex(summary, entries, repoRoot)
@@ -164,10 +164,11 @@ func Generate(repoRoot string) (*Summary, error) {
 	return summary, nil
 }
 
-// catalogPath places a catalog-level file at the provider root, above every
-// provider directory.
+// catalogPath places a catalog-level file in the catalog's _docs/ home,
+// beside the provider directories (which, by the catalog invariant, are the
+// only non-underscore entries at the catalog root).
 func catalogPath(name string) string {
-	return filepath.Join("apis", providerPathPrefix, name)
+	return filepath.Join(catalogPathPrefix, "_docs", name)
 }
 
 // generatedBanner is the do-not-edit header every generated markdown file
@@ -190,14 +191,14 @@ func renderProviderIndexes(summary *Summary, entries []kindEntry) {
 		var b strings.Builder
 		fmt.Fprintf(&b, "# %s Components -- Reference Index\n\n", provider)
 		generatedBanner(&b, "Kind facts come from the protobuf schemas.")
-		fmt.Fprintf(&b, "%d kinds. Shared manifest grammar and the search grammar of every page:\n[reference-commons.md](../reference-commons.md). Cross-kind wiring:\n[reference-graph.yaml](../reference-graph.yaml).\n\n", len(kinds))
+		fmt.Fprintf(&b, "%d kinds. Shared manifest grammar and the search grammar of every page:\n[reference-commons.md](../_docs/reference-commons.md). Cross-kind wiring:\n[reference-graph.yaml](../_docs/reference-graph.yaml).\n\n", len(kinds))
 		// The Example and Guide columns double as coverage x-rays: a blank
 		// Example is a kind missing its hack manifest, a blank Guide is a
 		// kind nobody has written wisdom for yet.
 		b.WriteString("| Kind | Purpose | Example | Guide |\n")
 		b.WriteString("|---|---|---|---|\n")
 		for _, entry := range kinds {
-			relPage := strings.TrimPrefix(entry.protoDir, providerPathPrefix+provider+"/") + "/reference.md"
+			relPage := strings.TrimPrefix(entry.protoDir, catalogPathPrefix+provider+"/") + "/reference.md"
 			example := ""
 			if entry.example != "" {
 				example = "yes"
@@ -209,7 +210,7 @@ func renderProviderIndexes(summary *Summary, entries []kindEntry) {
 			fmt.Fprintf(&b, "| [%s](%s) | %s | %s | %s |\n",
 				entry.name, relPage, indexCell(firstSentence(entry.report.Doc)), example, guide)
 		}
-		summary.Files[filepath.Join("apis", providerPathPrefix, provider, "reference-index.md")] = b.String()
+		summary.Files[filepath.Join(catalogPathPrefix, provider, "reference-index.md")] = b.String()
 	}
 }
 
@@ -240,20 +241,20 @@ func renderRootIndex(summary *Summary, entries []kindEntry, repoRoot string) {
 	b.WriteString("# Cloud Component Catalog -- Reference Index\n\n")
 	generatedBanner(&b, "Kind facts come from the protobuf schemas.")
 	fmt.Fprintf(&b, "%d kinds across %d providers. Every kind has a `reference.md` co-located\nwith its protos: the complete spec field reference, validation rules,\noutputs, cross-kind references (both directions), and a validated example.\n\nStart with:\n\n", len(entries), len(names))
-	catalogRoot := filepath.Join(repoRoot, "apis", providerPathPrefix)
-	if _, err := os.Stat(filepath.Join(catalogRoot, "GUIDE.md")); err == nil {
+	docsRoot := filepath.Join(repoRoot, catalogPathPrefix, "_docs")
+	if _, err := os.Stat(filepath.Join(docsRoot, "GUIDE.md")); err == nil {
 		b.WriteString("- [GUIDE.md](GUIDE.md) -- how to use this catalog: finding compatible\n  alternatives when the asked-for software has no kind of its own, and the\n  conventions that span providers.\n")
 	}
 	b.WriteString("- [reference-commons.md](reference-commons.md) -- the manifest grammar shared\n  by every kind (envelope, metadata, value/valueFrom, fieldPath spelling)\n  and the search grammar for reading these pages.\n")
 	b.WriteString("- [reference-graph.yaml](reference-graph.yaml) -- every foreign-key edge in\n  the catalog, for wiring resources and planning architectures.\n")
-	if _, err := os.Stat(filepath.Join(catalogRoot, "patterns", "README.md")); err == nil {
-		b.WriteString("- [patterns/](patterns/) -- authored architecture patterns: named\n  compositions of multiple kinds with validated wiring, and the trade-offs\n  behind them.\n")
+	if _, err := os.Stat(filepath.Join(repoRoot, catalogPathPrefix, "_patterns", "README.md")); err == nil {
+		b.WriteString("- [_patterns/](../_patterns/) -- authored architecture patterns: named\n  compositions of multiple kinds with validated wiring, and the trade-offs\n  behind them.\n")
 	}
 	b.WriteString("- The per-provider indexes below, which link every kind's page.\n\n")
 	b.WriteString("| Provider | Kinds | With Example | With Guide |\n")
 	b.WriteString("|---|---|---|---|\n")
 	for _, provider := range names {
-		fmt.Fprintf(&b, "| [%s](%s/reference-index.md) | %d | %d | %d |\n",
+		fmt.Fprintf(&b, "| [%s](../%s/reference-index.md) | %d | %d | %d |\n",
 			provider, provider, providers[provider], withExample[provider], withGuide[provider])
 	}
 	summary.Files[catalogPath("reference-index.md")] = b.String()

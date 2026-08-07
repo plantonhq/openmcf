@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpcloudcomposeruserworkloadssecret.v1alpha1;
+
+// Outputs produced after provisioning a Cloud Composer user workloads
+// Secret. The Secret's data is deliberately never exported.
+message GcpCloudComposerUserWorkloadsSecretStackOutputs {
+  // Fully qualified resource name.
+  // Format: projects/{project}/locations/{region}/environments/{environment}/userWorkloadsSecrets/{name}
+  string name = 1;
+
+  // The Kubernetes Secret name (same as the spec's secret_name input) —
+  // what KubernetesPodOperator tasks and Airflow connections reference.
+  string secret_name = 2;
+}

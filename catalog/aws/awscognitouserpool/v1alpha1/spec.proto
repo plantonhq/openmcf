@@ -1,0 +1,976 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscognitouserpool.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsCognitoUserPoolSpec defines the desired configuration for an AWS Cognito
+// User Pool -- the user directory and authentication service for web and
+// mobile applications.
+//
+// The user pool owns everything that is pool-scoped configuration: the
+// identity model, password and sign-in policies, MFA, email/SMS delivery,
+// verification and invitation messaging, custom schema attributes, Lambda
+// triggers, threat protection, log delivery, and the hosted-UI domain.
+//
+// Resources with their own AWS lifecycle compose onto the pool as separate
+// kinds rather than being buried inside it:
+// - **App clients** (`AwsCognitoUserPoolClient`): many per pool, each with its
+//   own OAuth contract and its own client ID that downstream systems (JWT
+//   authorizers, ALB authentication actions) reference.
+// - **Identity providers** (`AwsCognitoIdentityProvider`): many per pool,
+//   federating social/OIDC/SAML sign-in.
+// - **Resource servers** (`AwsCognitoResourceServer`): many per pool, defining
+//   custom OAuth scopes for machine-to-machine clients.
+//
+// The hosted-UI **domain** stays folded here: AWS allows one domain per pool
+// and the domain string is its identity, so it shares the pool's lifecycle.
+//
+// Key design notes:
+// - Identity model fields (`username_attributes`, `alias_attributes`,
+//   `username_case_sensitive`) are **ForceNew** in AWS -- changing them
+//   destroys and recreates the pool along with every user in it.
+// - Custom schema attributes are **append-only**: new attributes can be added
+//   in place, but an existing attribute can never be modified or removed
+//   (AWS has no API for it).
+// - Threat protection (`user_pool_add_ons`) beyond audit-only requires the
+//   PLUS feature tier (`user_pool_tier`).
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsCognitoUserPoolSpec {
+  // The AWS region where the resource will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // ---------------------------------------------------------------------------
+  // Identity model (ForceNew -- choose carefully, cannot change after creation)
+  // ---------------------------------------------------------------------------
+
+  // Attributes that users can use as their username when signing in. When set,
+  // the chosen attribute(s) become the sign-in identifier. Common choice: ["email"]
+  // to let users sign in with their email address.
+  //
+  // Valid values: "email", "phone_number".
+  // Mutually exclusive with `alias_attributes`. ForceNew.
+  repeated string username_attributes = 2;
+
+  // Attributes that can be used as aliases for the username. Unlike `username_attributes`,
+  // users always have a separate username and the alias attributes are alternative sign-in
+  // identifiers. Common choice: ["email", "preferred_username"].
+  //
+  // Valid values: "email", "phone_number", "preferred_username".
+  // Mutually exclusive with `username_attributes`. ForceNew.
+  repeated string alias_attributes = 3;
+
+  // Whether usernames are case-sensitive. When false (default in AWS), "User" and "user"
+  // are treated as the same username. ForceNew -- cannot be changed after pool creation.
+  bool username_case_sensitive = 4;
+
+  // ---------------------------------------------------------------------------
+  // Pool-level posture
+  // ---------------------------------------------------------------------------
+
+  // Enable deletion protection. When true, the user pool cannot be deleted
+  // without first disabling this setting. Recommended for production pools --
+  // a deleted pool takes every user account with it, unrecoverably.
+  bool deletion_protection = 5;
+
+  // The feature tier of the user pool. Governs which capabilities AWS makes
+  // available (and how the pool is billed):
+  // - "LITE": lowest-cost tier; core sign-in only.
+  // - "ESSENTIALS": the AWS default for new pools; adds passwordless
+  //   sign-in (email/SMS OTP, passkeys) and managed login branding.
+  // - "PLUS": adds threat protection (advanced security features).
+  // When omitted, AWS creates the pool on the ESSENTIALS tier. Downgrading a
+  // tier is allowed but AWS rejects it while a feature exclusive to the
+  // higher tier is still configured (e.g. PLUS -> ESSENTIALS with threat
+  // protection enforced).
+  string user_pool_tier = 6;
+
+  // ---------------------------------------------------------------------------
+  // Password and sign-in policy
+  // ---------------------------------------------------------------------------
+
+  // Password policy configuration. Controls password strength requirements for
+  // user self-registration and admin-created passwords.
+  AwsCognitoUserPoolPasswordPolicy password_policy = 7;
+
+  // The authentication factors users may present as their FIRST factor when
+  // signing in. This is the passwordless dial: leaving it empty keeps the
+  // classic password-first behavior, while setting it enables the choice-based
+  // sign-in flow (USER_AUTH) with the listed factors.
+  //
+  // Valid values:
+  // - "PASSWORD": classic password sign-in.
+  // - "EMAIL_OTP": one-time code delivered by email (ESSENTIALS tier or higher).
+  // - "SMS_OTP": one-time code delivered by SMS (requires `sms_configuration`).
+  // - "WEB_AUTHN": passkeys/security keys (configure `web_authn_configuration`
+  //   to pin the relying-party ID your apps expect).
+  repeated string allowed_first_auth_factors = 8;
+
+  // ---------------------------------------------------------------------------
+  // MFA
+  // ---------------------------------------------------------------------------
+
+  // Multi-factor authentication enforcement level.
+  // - "OFF": MFA is not used (default).
+  // - "OPTIONAL": Users can opt in to MFA.
+  // - "ON": MFA is required for all users.
+  string mfa_configuration = 9;
+
+  // Enable TOTP-based (time-based one-time password) software token MFA. When
+  // true, users can configure authenticator apps like Google Authenticator or
+  // Authy. Requires `mfa_configuration` to be "OPTIONAL" or "ON".
+  bool software_token_mfa_enabled = 10;
+
+  // Email-based MFA: Cognito emails a one-time code as the second factor.
+  // Requires `mfa_configuration` to be "OPTIONAL" or "ON", and AWS requires
+  // the pool to send email through SES (`email_configuration` in "DEVELOPER"
+  // mode) because MFA codes exceed the built-in sender's delivery guarantees.
+  AwsCognitoUserPoolEmailMfaConfig email_mfa = 11;
+
+  // WebAuthn (passkey / security key) relying-party configuration. Configure
+  // this when "WEB_AUTHN" is an allowed first factor so registered passkeys
+  // are bound to the domain your applications serve.
+  AwsCognitoUserPoolWebAuthnConfig web_authn = 12;
+
+  // ---------------------------------------------------------------------------
+  // SMS delivery
+  // ---------------------------------------------------------------------------
+
+  // SMS delivery configuration. Cognito publishes SMS messages (verification
+  // codes, MFA codes, invitations) through Amazon SNS by assuming the IAM role
+  // referenced here. Required whenever any SMS-dependent feature is enabled:
+  // phone_number in `auto_verified_attributes`, "SMS_OTP" as a first factor,
+  // or SMS MFA.
+  AwsCognitoUserPoolSmsConfig sms_configuration = 13;
+
+  // The SMS message sent for sign-in authentication codes. Must contain the
+  // "{####}" placeholder where Cognito injects the code. 6-140 characters.
+  // When omitted, AWS uses its default message.
+  string sms_authentication_message = 14;
+
+  // ---------------------------------------------------------------------------
+  // Verification and recovery
+  // ---------------------------------------------------------------------------
+
+  // Attributes to auto-verify when users sign up. Cognito sends a verification
+  // code to these attributes. Common values: ["email"].
+  // Valid values: "email", "phone_number".
+  repeated string auto_verified_attributes = 15;
+
+  // Attributes that must be verified before an update to them takes effect.
+  // While the new value is pending verification, Cognito keeps the previous
+  // value active -- without this, an unverified typo in an email update can
+  // lock a user out of account recovery. Valid values: "email", "phone_number".
+  repeated string attributes_require_verification_before_update = 16;
+
+  // Account recovery mechanisms in priority order. Each mechanism defines a
+  // fallback method for users who forget their password.
+  repeated AwsCognitoUserPoolRecoveryMechanism account_recovery_mechanisms = 17;
+
+  // ---------------------------------------------------------------------------
+  // Email configuration
+  // ---------------------------------------------------------------------------
+
+  // Email sending configuration. Controls whether Cognito sends emails using
+  // its built-in service (limited to 50/day in sandbox) or your verified SES
+  // identity (production sending).
+  AwsCognitoUserPoolEmailConfig email_configuration = 18;
+
+  // Templates for the verification message Cognito sends when users sign up
+  // or change a verified attribute. Also selects between code-based and
+  // link-based email verification.
+  AwsCognitoUserPoolVerificationMessageTemplate verification_message_template = 19;
+
+  // ---------------------------------------------------------------------------
+  // Admin and user management
+  // ---------------------------------------------------------------------------
+
+  // When true, only administrators can create users -- self-registration is
+  // disabled. Users must be created via the admin API or AWS console.
+  bool allow_admin_create_user_only = 20;
+
+  // Templates for the invitation message sent to admin-created users with
+  // their temporary credentials.
+  AwsCognitoUserPoolInviteMessageTemplate invite_message_template = 21;
+
+  // Remembered-device configuration. When devices are remembered, users can
+  // skip MFA on trusted devices, and sign-in events carry a device key.
+  AwsCognitoUserPoolDeviceConfig device_configuration = 22;
+
+  // ---------------------------------------------------------------------------
+  // Custom attributes (append-only)
+  // ---------------------------------------------------------------------------
+
+  // Custom user attributes beyond the standard set (email, phone, name, etc.).
+  // Each attribute is added to the pool's schema. The schema is APPEND-ONLY:
+  // new attributes can be added at any time, but an existing attribute can
+  // never be modified or removed (AWS has no API for it -- removing one from
+  // this list errors instead of recreating the pool). The `mutable` and
+  // `required` flags are likewise fixed at the moment the attribute is added.
+  // Maximum 50 custom attributes per pool.
+  repeated AwsCognitoUserPoolSchemaAttribute custom_attributes = 23;
+
+  // ---------------------------------------------------------------------------
+  // Lambda triggers
+  // ---------------------------------------------------------------------------
+
+  // Lambda trigger configuration for custom authentication and user lifecycle
+  // hooks. Each trigger is an optional Lambda function ARN that Cognito invokes
+  // at the corresponding lifecycle point.
+  AwsCognitoUserPoolLambdaConfig lambda_config = 24;
+
+  // ---------------------------------------------------------------------------
+  // Threat protection (advanced security)
+  // ---------------------------------------------------------------------------
+
+  // Threat protection posture (AWS "advanced security features"). Beyond
+  // audit-only logging this requires the PLUS feature tier.
+  AwsCognitoUserPoolAddOns user_pool_add_ons = 25;
+
+  // ---------------------------------------------------------------------------
+  // Log delivery
+  // ---------------------------------------------------------------------------
+
+  // Where Cognito delivers detailed event logs. Each entry routes one event
+  // source (user notifications, or auth events from threat protection) to
+  // exactly one destination: a CloudWatch log group, a Firehose stream, or an
+  // S3 bucket. "userAuthEvents" logging requires threat protection (PLUS tier).
+  repeated AwsCognitoUserPoolLogConfiguration log_configurations = 26;
+
+  // ---------------------------------------------------------------------------
+  // Hosted-UI domain (optional; one per pool)
+  // ---------------------------------------------------------------------------
+
+  // Domain configuration for the hosted sign-in UI and OAuth2 endpoints. When
+  // set, Cognito provides a hosted login page at:
+  //   https://{domain}.auth.{region}.amazoncognito.com
+  // (for Cognito prefix domains) or at the custom domain you specify.
+  //
+  // Required for OAuth flows that use the Authorization Code grant with a
+  // hosted UI redirect.
+  AwsCognitoUserPoolDomainConfig domain = 27;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  // username_attributes and alias_attributes are mutually exclusive.
+  option (buf.validate.message).cel = {
+    id: "username_or_alias_attributes"
+    message: "username_attributes and alias_attributes are mutually exclusive; set one or neither, not both"
+    expression: "this.username_attributes.size() == 0 || this.alias_attributes.size() == 0"
+  };
+
+  // username_attributes valid values.
+  option (buf.validate.message).cel = {
+    id: "username_attributes_valid"
+    message: "username_attributes must contain only 'email' and/or 'phone_number'"
+    expression: "this.username_attributes.all(a, a in ['email', 'phone_number'])"
+  };
+
+  // alias_attributes valid values.
+  option (buf.validate.message).cel = {
+    id: "alias_attributes_valid"
+    message: "alias_attributes must contain only 'email', 'phone_number', and/or 'preferred_username'"
+    expression: "this.alias_attributes.all(a, a in ['email', 'phone_number', 'preferred_username'])"
+  };
+
+  // user_pool_tier valid values.
+  option (buf.validate.message).cel = {
+    id: "user_pool_tier_valid"
+    message: "user_pool_tier must be 'LITE', 'ESSENTIALS', or 'PLUS' when set"
+    expression: "this.user_pool_tier == '' || this.user_pool_tier in ['LITE', 'ESSENTIALS', 'PLUS']"
+  };
+
+  // allowed_first_auth_factors valid values.
+  option (buf.validate.message).cel = {
+    id: "allowed_first_auth_factors_valid"
+    message: "allowed_first_auth_factors must contain only 'PASSWORD', 'EMAIL_OTP', 'SMS_OTP', and/or 'WEB_AUTHN'"
+    expression: "this.allowed_first_auth_factors.all(f, f in ['PASSWORD', 'EMAIL_OTP', 'SMS_OTP', 'WEB_AUTHN'])"
+  };
+
+  // auto_verified_attributes valid values.
+  option (buf.validate.message).cel = {
+    id: "auto_verified_attributes_valid"
+    message: "auto_verified_attributes must contain only 'email' and/or 'phone_number'"
+    expression: "this.auto_verified_attributes.all(a, a in ['email', 'phone_number'])"
+  };
+
+  // attributes_require_verification_before_update valid values.
+  option (buf.validate.message).cel = {
+    id: "attributes_require_verification_valid"
+    message: "attributes_require_verification_before_update must contain only 'email' and/or 'phone_number'"
+    expression: "this.attributes_require_verification_before_update.all(a, a in ['email', 'phone_number'])"
+  };
+
+  // mfa_configuration valid values.
+  option (buf.validate.message).cel = {
+    id: "mfa_configuration_valid"
+    message: "mfa_configuration must be 'OFF', 'OPTIONAL', or 'ON' when set"
+    expression: "this.mfa_configuration == '' || this.mfa_configuration in ['OFF', 'OPTIONAL', 'ON']"
+  };
+
+  // software_token_mfa_enabled requires MFA not OFF.
+  option (buf.validate.message).cel = {
+    id: "software_token_mfa_requires_mfa"
+    message: "software_token_mfa_enabled requires mfa_configuration to be 'OPTIONAL' or 'ON'"
+    expression: "!this.software_token_mfa_enabled || this.mfa_configuration in ['OPTIONAL', 'ON']"
+  };
+
+  // email_mfa requires MFA not OFF.
+  option (buf.validate.message).cel = {
+    id: "email_mfa_requires_mfa"
+    message: "email_mfa requires mfa_configuration to be 'OPTIONAL' or 'ON'"
+    expression: "!has(this.email_mfa) || this.mfa_configuration in ['OPTIONAL', 'ON']"
+  };
+
+  // SMS_OTP first factor requires SMS delivery configuration.
+  option (buf.validate.message).cel = {
+    id: "sms_otp_requires_sms_configuration"
+    message: "allowing 'SMS_OTP' as a first auth factor requires sms_configuration so Cognito can deliver the codes"
+    expression: "!this.allowed_first_auth_factors.exists(f, f == 'SMS_OTP') || has(this.sms_configuration)"
+  };
+
+  // sms_authentication_message must carry the code placeholder.
+  option (buf.validate.message).cel = {
+    id: "sms_authentication_message_placeholder"
+    message: "sms_authentication_message must contain the '{####}' placeholder where Cognito injects the code"
+    expression: "this.sms_authentication_message == '' || this.sms_authentication_message.contains('{####}')"
+  };
+
+  // Account recovery mechanism names must be valid.
+  option (buf.validate.message).cel = {
+    id: "account_recovery_name_valid"
+    message: "account_recovery_mechanisms name must be 'verified_email', 'verified_phone_number', or 'admin_only'"
+    expression: "this.account_recovery_mechanisms.all(m, m.name in ['verified_email', 'verified_phone_number', 'admin_only'])"
+  };
+
+  // Account recovery mechanism priorities must be 1 or 2.
+  option (buf.validate.message).cel = {
+    id: "account_recovery_priority_range"
+    message: "account_recovery_mechanisms priority must be 1 or 2"
+    expression: "this.account_recovery_mechanisms.all(m, m.priority >= 1 && m.priority <= 2)"
+  };
+
+  // AWS rejects admin_only combined with any other recovery mechanism --
+  // admin-managed recovery is all-or-nothing.
+  option (buf.validate.message).cel = {
+    id: "account_recovery_admin_only_exclusive"
+    message: "'admin_only' cannot be combined with other account recovery mechanisms"
+    expression: "!this.account_recovery_mechanisms.exists(m, m.name == 'admin_only') || this.account_recovery_mechanisms.size() == 1"
+  };
+
+  // Custom domain requires certificate_arn.
+  option (buf.validate.message).cel = {
+    id: "custom_domain_requires_certificate"
+    message: "a custom domain (containing '.') requires certificate_arn to be set"
+    expression: "!has(this.domain) || this.domain.domain == '' || !this.domain.domain.contains('.') || has(this.domain.certificate_arn)"
+  };
+
+  // AWS rejects Cognito-hosted prefix domains containing its reserved words
+  // (custom domains -- FQDNs with dots -- are exempt).
+  option (buf.validate.message).cel = {
+    id: "prefix_domain_no_reserved_words"
+    message: "a Cognito-hosted prefix domain cannot contain the reserved words 'aws', 'amazon', or 'cognito'"
+    expression: "!has(this.domain) || this.domain.domain.contains('.') || !['aws', 'amazon', 'cognito'].exists(w, this.domain.domain.contains(w))"
+  };
+}
+
+// AwsCognitoUserPoolPasswordPolicy controls password strength requirements.
+message AwsCognitoUserPoolPasswordPolicy {
+  // Minimum password length. Range: 6-99. AWS default: 8.
+  int32 minimum_length = 1 [(buf.validate.field).int32 = {
+    gte: 6
+    lte: 99
+  }];
+
+  // Require at least one lowercase letter.
+  bool require_lowercase = 2;
+
+  // Require at least one uppercase letter.
+  bool require_uppercase = 3;
+
+  // Require at least one digit.
+  bool require_numbers = 4;
+
+  // Require at least one special character.
+  bool require_symbols = 5;
+
+  // Number of previous passwords a new password must differ from. Range: 0-24
+  // (0 disables history checking). Password history requires the pool to be on
+  // the ESSENTIALS tier or higher.
+  int32 password_history_size = 6 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 24
+  }];
+
+  // Number of days temporary passwords (admin-created) are valid.
+  // Range: 0-365 (0 means no expiration). AWS default: 7.
+  int32 temporary_password_validity_days = 7 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 365
+  }];
+}
+
+// AwsCognitoUserPoolEmailMfaConfig customizes the email message Cognito sends
+// when email is used as the second authentication factor.
+message AwsCognitoUserPoolEmailMfaConfig {
+  // The email body for MFA codes. Must contain the "{####}" placeholder where
+  // Cognito injects the code. 6-20000 characters. When omitted, AWS uses its
+  // default message.
+  string message = 1;
+
+  // The email subject for MFA codes. 1-140 characters. When omitted, AWS uses
+  // its default subject.
+  string subject = 2 [(buf.validate.field).string.max_len = 140];
+
+  // The MFA message must carry the code placeholder.
+  option (buf.validate.message).cel = {
+    id: "email_mfa_message_placeholder"
+    message: "email_mfa message must contain the '{####}' placeholder where Cognito injects the code"
+    expression: "this.message == '' || this.message.contains('{####}')"
+  };
+}
+
+// AwsCognitoUserPoolWebAuthnConfig pins the WebAuthn relying party for
+// passkey (FIDO2) sign-in.
+message AwsCognitoUserPoolWebAuthnConfig {
+  // The relying-party ID passkeys are registered against -- the domain your
+  // applications serve (e.g. "auth.example.com"). A passkey registered for one
+  // relying-party ID does not work for another, so set this BEFORE users start
+  // registering passkeys; changing it later invalidates existing registrations.
+  // When omitted, Cognito uses the pool's own domain.
+  string relying_party_id = 1;
+
+  // Whether the authenticator must verify the user (PIN, biometric):
+  // - "required": authenticators must perform user verification.
+  // - "preferred": verification is requested but not required (AWS default).
+  string user_verification = 2;
+
+  // user_verification valid values.
+  option (buf.validate.message).cel = {
+    id: "web_authn_user_verification_valid"
+    message: "web_authn user_verification must be 'required' or 'preferred' when set"
+    expression: "this.user_verification == '' || this.user_verification in ['required', 'preferred']"
+  };
+}
+
+// AwsCognitoUserPoolSmsConfig wires Cognito to Amazon SNS for SMS delivery.
+// Cognito assumes the referenced IAM role to publish messages, so the role's
+// trust policy must allow "cognito-idp.amazonaws.com" (with the external ID
+// below as the sts:ExternalId condition) and grant "sns:Publish".
+message AwsCognitoUserPoolSmsConfig {
+  // The IAM role Cognito assumes to send SMS via SNS. Accepts a direct role
+  // ARN or a reference to an AwsIamRole resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef sns_caller_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The external ID Cognito presents when assuming the role -- the standard
+  // confused-deputy guard. Must match the sts:ExternalId condition in the
+  // role's trust policy.
+  string external_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The AWS region of the SNS topic-less publish (where SMS messages
+  // originate). When omitted, AWS uses the pool's region. Set this when the
+  // pool's region does not support SMS sending.
+  string sns_region = 3;
+}
+
+// AwsCognitoUserPoolRecoveryMechanism defines a single account recovery option.
+// Up to 2 mechanisms can be configured in priority order.
+message AwsCognitoUserPoolRecoveryMechanism {
+  // Recovery method name. Valid values:
+  // - "verified_email": send a recovery code to the verified email
+  // - "verified_phone_number": send a recovery code via SMS
+  // - "admin_only": only administrators can reset passwords
+  string name = 1 [(buf.validate.field).required = true];
+
+  // Priority of this recovery method. 1 = primary, 2 = fallback.
+  int32 priority = 2 [(buf.validate.field).required = true];
+}
+
+// AwsCognitoUserPoolEmailConfig controls how Cognito sends verification and
+// invitation emails.
+message AwsCognitoUserPoolEmailConfig {
+  // Email sending mode. Valid values:
+  // - "COGNITO_DEFAULT": Cognito sends emails using its built-in service.
+  //   Limited to 50 emails/day in sandbox mode. No SES setup required.
+  // - "DEVELOPER": Cognito sends emails through your verified SES identity.
+  //   Requires `source_arn`. Supports production-level sending volumes.
+  string email_sending_account = 1;
+
+  // SES verified identity ARN for sending emails. Required when
+  // `email_sending_account` is "DEVELOPER". Example:
+  // "arn:aws:ses:us-east-1:123456789012:identity/noreply@example.com"
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_arn = 2;
+
+  // "From" email address shown to recipients. Only applicable when using
+  // DEVELOPER mode with SES. Example: "No Reply <noreply@example.com>"
+  string from_email_address = 3;
+
+  // Reply-to email address. When set, user replies go to this address
+  // instead of the "from" address.
+  string reply_to_email_address = 4;
+
+  // SES configuration set name for tracking email delivery metrics.
+  string configuration_set = 5;
+
+  // email_sending_account valid values.
+  option (buf.validate.message).cel = {
+    id: "email_sending_account_valid"
+    message: "email_sending_account must be 'COGNITO_DEFAULT' or 'DEVELOPER' when set"
+    expression: "this.email_sending_account == '' || this.email_sending_account in ['COGNITO_DEFAULT', 'DEVELOPER']"
+  };
+
+  // DEVELOPER mode requires source_arn.
+  option (buf.validate.message).cel = {
+    id: "developer_email_requires_source_arn"
+    message: "source_arn is required when email_sending_account is 'DEVELOPER'"
+    expression: "this.email_sending_account != 'DEVELOPER' || has(this.source_arn)"
+  };
+}
+
+// AwsCognitoUserPoolVerificationMessageTemplate customizes the message users
+// receive to verify their email or phone number, and selects between
+// code-based and link-based email verification.
+message AwsCognitoUserPoolVerificationMessageTemplate {
+  // How email verification is performed:
+  // - "CONFIRM_WITH_CODE": the email carries a code the user types back
+  //   (AWS default; uses `email_message`/`email_subject`).
+  // - "CONFIRM_WITH_LINK": the email carries a click-through confirmation
+  //   link (uses `email_message_by_link`/`email_subject_by_link`).
+  string default_email_option = 1;
+
+  // Email body for code-based verification. Must contain the "{####}"
+  // placeholder where Cognito injects the code. 6-20000 characters.
+  string email_message = 2;
+
+  // Email subject for code-based verification. 1-140 characters.
+  string email_subject = 3 [(buf.validate.field).string.max_len = 140];
+
+  // Email body for link-based verification. Must contain the "{##...##}"
+  // placeholder pair wrapping the link text, e.g.
+  // "Click {##here##} to verify your address." 6-20000 characters.
+  string email_message_by_link = 4;
+
+  // Email subject for link-based verification. 1-140 characters.
+  string email_subject_by_link = 5 [(buf.validate.field).string.max_len = 140];
+
+  // SMS body for phone verification. Must contain the "{####}" placeholder.
+  // 6-140 characters.
+  string sms_message = 6 [(buf.validate.field).string.max_len = 140];
+
+  // default_email_option valid values.
+  option (buf.validate.message).cel = {
+    id: "default_email_option_valid"
+    message: "default_email_option must be 'CONFIRM_WITH_CODE' or 'CONFIRM_WITH_LINK' when set"
+    expression: "this.default_email_option == '' || this.default_email_option in ['CONFIRM_WITH_CODE', 'CONFIRM_WITH_LINK']"
+  };
+
+  // Code-based email body must carry the code placeholder.
+  option (buf.validate.message).cel = {
+    id: "verification_email_message_placeholder"
+    message: "email_message must contain the '{####}' placeholder where Cognito injects the verification code"
+    expression: "this.email_message == '' || this.email_message.contains('{####}')"
+  };
+
+  // Link-based email body must carry the link placeholder pair.
+  option (buf.validate.message).cel = {
+    id: "verification_email_link_placeholder"
+    message: "email_message_by_link must contain a '{##...##}' placeholder pair wrapping the link text (e.g. 'Click {##here##} to verify')"
+    expression: "this.email_message_by_link == '' || (this.email_message_by_link.contains('{##') && this.email_message_by_link.contains('##}'))"
+  };
+
+  // SMS body must carry the code placeholder.
+  option (buf.validate.message).cel = {
+    id: "verification_sms_message_placeholder"
+    message: "sms_message must contain the '{####}' placeholder where Cognito injects the verification code"
+    expression: "this.sms_message == '' || this.sms_message.contains('{####}')"
+  };
+}
+
+// AwsCognitoUserPoolInviteMessageTemplate customizes the invitation sent to
+// admin-created users with their username and temporary password.
+message AwsCognitoUserPoolInviteMessageTemplate {
+  // Email body for invitations. Must contain BOTH the "{username}" and
+  // "{####}" placeholders (Cognito injects the username and the temporary
+  // password). 6-20000 characters.
+  string email_message = 1;
+
+  // Email subject for invitations. 1-140 characters.
+  string email_subject = 2 [(buf.validate.field).string.max_len = 140];
+
+  // SMS body for invitations. Must contain BOTH the "{username}" and "{####}"
+  // placeholders. 6-140 characters.
+  string sms_message = 3 [(buf.validate.field).string.max_len = 140];
+
+  // Invite email must carry both placeholders.
+  option (buf.validate.message).cel = {
+    id: "invite_email_placeholders"
+    message: "invite email_message must contain both '{username}' and '{####}' placeholders"
+    expression: "this.email_message == '' || (this.email_message.contains('{username}') && this.email_message.contains('{####}'))"
+  };
+
+  // Invite SMS must carry both placeholders.
+  option (buf.validate.message).cel = {
+    id: "invite_sms_placeholders"
+    message: "invite sms_message must contain both '{username}' and '{####}' placeholders"
+    expression: "this.sms_message == '' || (this.sms_message.contains('{username}') && this.sms_message.contains('{####}'))"
+  };
+}
+
+// AwsCognitoUserPoolDeviceConfig controls remembered-device behavior.
+message AwsCognitoUserPoolDeviceConfig {
+  // When true, a remembered device still requires a challenge (MFA) the first
+  // time it is seen -- remembering only suppresses challenges afterwards.
+  bool challenge_required_on_new_device = 1;
+
+  // When true, devices are remembered only after the user opts in when
+  // prompted. When false, every device is remembered automatically.
+  bool device_only_remembered_on_user_prompt = 2;
+}
+
+// AwsCognitoUserPoolSchemaAttribute defines a custom user attribute added to the
+// pool's schema. Custom attributes are prefixed with "custom:" in Cognito (e.g.,
+// a name of "tenant_id" becomes "custom:tenant_id").
+message AwsCognitoUserPoolSchemaAttribute {
+  // Attribute name (1-20 characters). Cognito auto-prefixes with "custom:".
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 20
+  }];
+
+  // Data type. Valid values: "String", "Number", "DateTime", "Boolean".
+  string attribute_data_type = 2 [(buf.validate.field).required = true];
+
+  // Whether the attribute value can be changed after creation. Fixed at the
+  // moment the attribute is added to the pool (the schema is append-only).
+  bool mutable = 3;
+
+  // Whether the attribute is required during user registration. Fixed at the
+  // moment the attribute is added to the pool.
+  bool required = 4;
+
+  // When true, only administrators (not the user themselves) can read and
+  // write this attribute -- for backend bookkeeping like an external system's
+  // record ID. Fixed at the moment the attribute is added.
+  bool developer_only_attribute = 5;
+
+  // Minimum string length (for String attributes). Leave at 0 for no minimum.
+  string string_min_length = 6;
+
+  // Maximum string length (for String attributes). Leave empty for no maximum.
+  string string_max_length = 7;
+
+  // Minimum numeric value (for Number attributes). Leave empty for no minimum.
+  string number_min_value = 8;
+
+  // Maximum numeric value (for Number attributes). Leave empty for no maximum.
+  string number_max_value = 9;
+
+  // attribute_data_type valid values.
+  option (buf.validate.message).cel = {
+    id: "attribute_data_type_valid"
+    message: "attribute_data_type must be 'String', 'Number', 'DateTime', or 'Boolean'"
+    expression: "this.attribute_data_type in ['String', 'Number', 'DateTime', 'Boolean']"
+  };
+}
+
+// AwsCognitoUserPoolLambdaConfig defines Lambda function triggers for custom
+// authentication and user lifecycle hooks. Each field is an optional Lambda
+// function ARN that Cognito invokes at the corresponding lifecycle point.
+//
+// All fields accept a direct ARN or a reference to an AwsLambda resource.
+// Note: Lambda functions must grant Cognito permission to invoke them
+// (aws_lambda_permission with principal "cognito-idp.amazonaws.com").
+message AwsCognitoUserPoolLambdaConfig {
+  // Invoked before user sign-up to perform custom validation or auto-confirm.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef pre_sign_up = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Invoked before authentication to perform custom validation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef pre_authentication = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Invoked after successful authentication for logging or custom logic.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef post_authentication = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Invoked after user confirmation to trigger welcome emails or provisioning.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef post_confirmation = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Invoked before token generation to add, remove, or modify claims. This is
+  // the V1_0 trigger event; use `pre_token_generation_config` instead when the
+  // function needs the V2_0/V3_0 event shape (access-token customization).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef pre_token_generation = 5 [
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Foreign-key reference to an AwsLambda trigger function (heuristic matched the word token), not a token value.",
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Versioned pre-token-generation trigger. Unlike the plain
+  // `pre_token_generation` field (which pins the V1_0 event), this selects the
+  // trigger event version -- V2_0/V3_0 deliver the richer event that can also
+  // customize ACCESS tokens, not just identity tokens. Set one or the other,
+  // never both.
+  AwsCognitoUserPoolPreTokenGenerationConfig pre_token_generation_config = 6;
+
+  // Invoked to customize verification and invitation messages.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef custom_message = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Invoked during user migration from an external identity provider.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_migration = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Invoked to define a custom authentication challenge (custom auth flow).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef define_auth_challenge = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Invoked to create a custom authentication challenge (custom auth flow).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef create_auth_challenge = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Invoked to verify the response to a custom authentication challenge.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef verify_auth_challenge_response = 11 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Custom email sender: Cognito calls this function to deliver email itself
+  // (instead of SES). The event carries the message encrypted with
+  // `kms_key_id`, so that key is required.
+  AwsCognitoUserPoolCustomSenderConfig custom_email_sender = 12;
+
+  // Custom SMS sender: Cognito calls this function to deliver SMS itself
+  // (instead of SNS). The event carries the message encrypted with
+  // `kms_key_id`, so that key is required.
+  AwsCognitoUserPoolCustomSenderConfig custom_sms_sender = 13;
+
+  // The KMS key Cognito uses to encrypt the code/message payload delivered to
+  // custom sender functions. Required when either custom sender is set.
+  // Accepts a direct key ARN or a reference to an AwsKmsKey resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 14 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // pre_token_generation and pre_token_generation_config are two spellings of
+  // the same trigger slot -- setting both is ambiguous.
+  option (buf.validate.message).cel = {
+    id: "pre_token_generation_exclusive"
+    message: "set either pre_token_generation (V1_0 event) or pre_token_generation_config (versioned event), not both"
+    expression: "!has(this.pre_token_generation) || !has(this.pre_token_generation_config)"
+  };
+
+  // Custom senders require the KMS encryption key.
+  option (buf.validate.message).cel = {
+    id: "custom_sender_requires_kms_key"
+    message: "kms_key_id is required when custom_email_sender or custom_sms_sender is set -- Cognito encrypts the delivered code with it"
+    expression: "(!has(this.custom_email_sender) && !has(this.custom_sms_sender)) || has(this.kms_key_id)"
+  };
+}
+
+// AwsCognitoUserPoolPreTokenGenerationConfig selects the pre-token-generation
+// trigger with an explicit event version.
+message AwsCognitoUserPoolPreTokenGenerationConfig {
+  // The Lambda function to invoke. Accepts a direct ARN or a reference to an
+  // AwsLambda resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef lambda_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // The trigger event version:
+  // - "V1_0": identity-token customization only.
+  // - "V2_0": adds access-token customization.
+  // - "V3_0": V2_0 plus group/role overrides for machine-to-machine flows.
+  // V2_0/V3_0 require the ESSENTIALS tier or higher.
+  string lambda_version = 2 [(buf.validate.field).required = true];
+
+  // lambda_version valid values.
+  option (buf.validate.message).cel = {
+    id: "pre_token_generation_version_valid"
+    message: "lambda_version must be 'V1_0', 'V2_0', or 'V3_0'"
+    expression: "this.lambda_version in ['V1_0', 'V2_0', 'V3_0']"
+  };
+}
+
+// AwsCognitoUserPoolCustomSenderConfig points a custom email/SMS sender slot
+// at a Lambda function.
+message AwsCognitoUserPoolCustomSenderConfig {
+  // The Lambda function Cognito invokes to deliver the message. Accepts a
+  // direct ARN or a reference to an AwsLambda resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef lambda_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // The sender event version. "V1_0" is the only version AWS currently
+  // defines; modeled as a field so new versions are additive, not breaking.
+  string lambda_version = 2 [(buf.validate.field).required = true];
+
+  // lambda_version valid values.
+  option (buf.validate.message).cel = {
+    id: "custom_sender_version_valid"
+    message: "lambda_version must be 'V1_0'"
+    expression: "this.lambda_version in ['V1_0']"
+  };
+}
+
+// AwsCognitoUserPoolAddOns configures threat protection (AWS "advanced
+// security features").
+message AwsCognitoUserPoolAddOns {
+  // Threat protection mode for standard authentication flows:
+  // - "OFF": no threat protection.
+  // - "AUDIT": Cognito gathers risk signals and metrics without acting.
+  // - "ENFORCED": Cognito acts on risk (blocks, requires MFA) per the pool's
+  //   risk configuration.
+  // AUDIT and ENFORCED require the PLUS feature tier.
+  string advanced_security_mode = 1 [(buf.validate.field).required = true];
+
+  // Extends threat protection to CUSTOM authentication flows (Lambda-driven
+  // challenges), which standard mode does not cover. Valid values: "AUDIT",
+  // "ENFORCED". When omitted, custom auth flows are not covered.
+  string custom_auth_mode = 2;
+
+  // advanced_security_mode valid values.
+  option (buf.validate.message).cel = {
+    id: "advanced_security_mode_valid"
+    message: "advanced_security_mode must be 'OFF', 'AUDIT', or 'ENFORCED'"
+    expression: "this.advanced_security_mode in ['OFF', 'AUDIT', 'ENFORCED']"
+  };
+
+  // custom_auth_mode valid values.
+  option (buf.validate.message).cel = {
+    id: "custom_auth_mode_valid"
+    message: "custom_auth_mode must be 'AUDIT' or 'ENFORCED' when set"
+    expression: "this.custom_auth_mode == '' || this.custom_auth_mode in ['AUDIT', 'ENFORCED']"
+  };
+
+  // Covering custom auth flows is meaningless with threat protection off.
+  option (buf.validate.message).cel = {
+    id: "custom_auth_mode_requires_advanced_security"
+    message: "custom_auth_mode requires advanced_security_mode to be 'AUDIT' or 'ENFORCED'"
+    expression: "this.custom_auth_mode == '' || this.advanced_security_mode in ['AUDIT', 'ENFORCED']"
+  };
+}
+
+// AwsCognitoUserPoolLogConfiguration routes one Cognito event source to one
+// log destination.
+message AwsCognitoUserPoolLogConfiguration {
+  // The event source to deliver:
+  // - "userNotification": message-delivery errors (email/SMS send failures).
+  //   Supports the ERROR log level.
+  // - "userAuthEvents": detailed auth events from threat protection. Requires
+  //   the PLUS tier with advanced security enabled; supports the INFO level.
+  string event_source = 1 [(buf.validate.field).required = true];
+
+  // The log level to deliver: "ERROR" (userNotification) or "INFO"
+  // (userAuthEvents).
+  string log_level = 2 [(buf.validate.field).required = true];
+
+  // CloudWatch Logs destination. Accepts a direct log group ARN or a
+  // reference to an AwsCloudwatchLogGroup resource. Exactly one destination
+  // must be set per entry.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cloudwatch_log_group_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"
+  ];
+
+  // Kinesis Data Firehose destination. Accepts a direct delivery-stream ARN
+  // or a reference to an AwsKinesisFirehose resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef firehose_stream_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKinesisFirehose,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.delivery_stream_arn"
+  ];
+
+  // S3 destination. Accepts a direct bucket ARN or a reference to an
+  // AwsS3Bucket resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef s3_bucket_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_arn"
+  ];
+
+  // event_source valid values.
+  option (buf.validate.message).cel = {
+    id: "log_event_source_valid"
+    message: "event_source must be 'userNotification' or 'userAuthEvents'"
+    expression: "this.event_source in ['userNotification', 'userAuthEvents']"
+  };
+
+  // log_level valid values.
+  option (buf.validate.message).cel = {
+    id: "log_level_valid"
+    message: "log_level must be 'ERROR' or 'INFO'"
+    expression: "this.log_level in ['ERROR', 'INFO']"
+  };
+
+  // Exactly one destination per entry.
+  option (buf.validate.message).cel = {
+    id: "log_destination_exactly_one"
+    message: "set exactly one destination per log configuration: cloudwatch_log_group_arn, firehose_stream_arn, or s3_bucket_arn"
+    expression: "(has(this.cloudwatch_log_group_arn) ? 1 : 0) + (has(this.firehose_stream_arn) ? 1 : 0) + (has(this.s3_bucket_arn) ? 1 : 0) == 1"
+  };
+}
+
+// AwsCognitoUserPoolDomainConfig configures the hosted UI domain for the user pool.
+// This enables the Cognito-hosted sign-in/sign-up pages and OAuth2 endpoints.
+// AWS allows one domain per pool; the domain string is the resource's identity.
+message AwsCognitoUserPoolDomainConfig {
+  // Domain prefix (for Cognito-hosted domains) or fully-qualified domain name
+  // (for custom domains). For Cognito-hosted: provide a unique prefix like
+  // "myapp-auth" which creates "myapp-auth.auth.{region}.amazoncognito.com" --
+  // AWS rejects prefixes containing the reserved words "aws", "amazon", or
+  // "cognito". For custom domains: provide the FQDN like "auth.example.com".
+  // ForceNew -- the domain cannot be changed after creation.
+  string domain = 1 [(buf.validate.field).string.min_len = 1];
+
+  // ACM certificate ARN for custom domains. Required when `domain` contains
+  // a dot (custom domain). The certificate must be in us-east-1 regardless
+  // of the user pool's region (Cognito uses CloudFront for custom domains).
+  // Not applicable for Cognito-hosted prefix domains. Adding or removing the
+  // certificate replaces the domain (switching custom <-> prefix); rotating
+  // one certificate ARN to another updates in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef certificate_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCertManagerCert,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cert_arn"
+  ];
+
+  // The sign-in page generation served on this domain:
+  // - 1: classic hosted UI.
+  // - 2: managed login (the newer, branding-designer experience; requires a
+  //      branding style to be assigned before sign-in pages render).
+  // When omitted, AWS defaults new domains to managed login (2).
+  optional int32 managed_login_version = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 2
+  }];
+}

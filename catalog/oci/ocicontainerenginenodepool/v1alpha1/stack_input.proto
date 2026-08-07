@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.oci.ocicontainerenginenodepool.v1alpha1;
+
+import "catalog/oci/ocicontainerenginenodepool/v1alpha1/api.proto";
+import "catalog/oci/provider.proto";
+
+// OciContainerEngineNodePoolStackInput is the input to the IaC modules
+// (Pulumi / Terraform) that deploy an OciContainerEngineNodePool resource.
+message OciContainerEngineNodePoolStackInput {
+  // target cloud-resource
+  OciContainerEngineNodePool target = 1;
+  // provider-config
+  dev.planton.oci.OciProviderConfig provider_config = 2;
+}

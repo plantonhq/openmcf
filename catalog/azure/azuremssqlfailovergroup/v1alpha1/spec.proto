@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremssqlfailovergroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureMssqlFailoverGroupSpec** defines an Azure SQL Failover Group: a
+// declarative disaster-recovery grouping that replicates a set of databases
+// from a primary logical server to one or more partner servers in other
+// regions and provides a single read-write (and optional read-only)
+// listener endpoint that follows the primary through a failover.
+//
+// Applications connect to the failover group's listener
+// (`{group}.database.windows.net`) instead of a specific server, so a
+// planned or automatic failover redirects traffic to the new primary
+// without a connection-string change. The group is a first-class node: the
+// primary server, the partner servers, and the databases each have their
+// own lifecycle and are referenced here.
+message AzureMssqlFailoverGroupSpec {
+  // The name of the failover group. It becomes the listener DNS label
+  // (`{name}.database.windows.net`), so it must be globally unique across
+  // Azure SQL. 1-63 characters, lowercase letters, numbers, and hyphens;
+  // cannot start or end with a hyphen. Fixed at creation.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 63,
+    (buf.validate.field).cel = {
+      id: "failover_group_name_format"
+      message: "Failover group names are 1-63 lowercase letters, numbers, and hyphens, and cannot start or end with a hyphen"
+      expression: "this == '' || this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')"
+    }
+  ];
+
+  // The primary logical server whose databases this group replicates.
+  // Defaults to referencing an AzureMssqlServer's server_id output. Fixed
+  // at creation -- the group is anchored to its primary.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef server_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMssqlServer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.server_id"
+  ];
+
+  // The partner (secondary) servers that receive the replicated databases,
+  // each in a DIFFERENT region than the primary and each other. At least
+  // one is required. In practice a group has a single partner; Azure allows
+  // more for multi-region topologies.
+  repeated AzureMssqlFailoverGroupPartnerServer partner_servers = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // The databases on the primary server to include in the group. Each is
+  // replicated to every partner server. Databases must live on the primary
+  // server. Empty is allowed (an empty group whose databases are added
+  // later), but a DR group with no databases protects nothing. Each entry
+  // defaults to referencing an AzureMssqlDatabase's database_id output.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef database_ids = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMssqlDatabase,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.database_id"
+  ];
+
+  // The read-write listener's failover policy -- how the primary role moves
+  // to a partner when the primary is unavailable. Required: the group's
+  // whole purpose is this policy.
+  AzureMssqlFailoverGroupReadWritePolicy read_write_endpoint_failover_policy = 5 [(buf.validate.field).required = true];
+
+  // Whether the read-only listener (`{name}.secondary.database.windows.net`)
+  // also fails over with the primary. Unspecified leaves it DISABLED (the
+  // provider sends Disabled when unset): after a failover the read-only
+  // listener keeps pointing at the old primary until it recovers. Set true
+  // for the read-only endpoint to follow the failover.
+  optional bool readonly_endpoint_failover_policy_enabled = 6;
+
+  // Free-form tags applied to the group, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag with
+  // the same key wins. Updatable in place.
+  map<string, string> tags = 7;
+}
+
+// A partner (secondary) server in a failover group.
+message AzureMssqlFailoverGroupPartnerServer {
+  // The partner logical server, in a different region than the primary.
+  // Defaults to referencing an AzureMssqlServer's server_id output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef server_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMssqlServer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.server_id"
+  ];
+}
+
+// The read-write listener's failover policy.
+message AzureMssqlFailoverGroupReadWritePolicy {
+  // How failover is triggered. AUTOMATIC fails the group over on its own
+  // after the grace period when Azure detects an outage; MANUAL requires an
+  // operator to initiate every failover.
+  AzureMssqlFailoverGroupFailoverMode mode = 1 [(buf.validate.field).required = true];
+
+  // For AUTOMATIC mode: how many minutes Azure waits, after detecting an
+  // outage, before failing over -- the window in which the outage might
+  // recover on its own without data loss. Must be at least 60. Must be
+  // omitted (0) for MANUAL mode.
+  int32 grace_minutes = 2 [(buf.validate.field).int32.gte = 0];
+
+  option (buf.validate.message).cel = {
+    id: "failover_grace_minutes_pairing"
+    message: "grace_minutes must be at least 60 for AUTOMATIC failover, and must be omitted for MANUAL failover"
+    expression: "this.mode == 1 ? this.grace_minutes >= 60 : this.grace_minutes == 0"
+  };
+}
+
+// How a failover group's read-write listener fails over.
+enum AzureMssqlFailoverGroupFailoverMode {
+  // Not specified -- invalid; a mode must be chosen.
+  azure_mssql_failover_group_failover_mode_unspecified = 0;
+
+  // Azure fails the group over automatically after the grace period.
+  AUTOMATIC = 1;
+
+  // An operator initiates every failover.
+  MANUAL = 2;
+}

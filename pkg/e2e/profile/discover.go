@@ -9,11 +9,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	componentv1 "github.com/plantonhq/planton/apis/dev/planton/qa/componente2eprofile/v1"
-	providerv1 "github.com/plantonhq/planton/apis/dev/planton/qa/providere2eprofile/v1"
-	sharedpb "github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	componentv1 "github.com/plantonhq/planton/qa/componente2eprofile/v1"
+	providerv1 "github.com/plantonhq/planton/qa/providere2eprofile/v1"
+	sharedpb "github.com/plantonhq/planton/shared"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // ComponentEntry pairs a component name with its loaded profile.

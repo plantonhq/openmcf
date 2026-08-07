@@ -1,0 +1,220 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurefrontdoororigin.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureFrontDoorOriginSpec** defines the configuration for creating an
+// origin (one backend) inside an Azure Front Door origin group: where the
+// backend is (host name and ports), how Front Door authenticates its TLS
+// certificate, how traffic is weighted against sibling origins, and --
+// on PREMIUM profiles -- whether Front Door reaches it over Private Link
+// instead of the public internet.
+//
+// Origins are many-per-group with independent lifecycles: a regional
+// stamp adds its backend to a shared group without touching other
+// regions' origins, a blue/green cutover swaps origins one at a time, and
+// each Private Link origin carries its own connection-approval workflow.
+// That is why the origin is a first-class kind referencing the group
+// rather than a list folded into the group's spec.
+//
+// **ForceNew fields**: `origin_group_id`, `origin_name` -- both fix the
+// origin's ARM identity at creation.
+message AzureFrontDoorOriginSpec {
+  // The origin group the origin belongs to, by ARM ID. References an
+  // AzureFrontDoorOriginGroup's origin_group_id output so the group and
+  // its origins compose in one manifest set. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef origin_group_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorOriginGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.origin_group_id"
+  ];
+
+  // The origin's name -- unique within the origin group.
+  //
+  // 2-90 characters; letters, digits, and hyphens; must start and end
+  // with a letter or digit.
+  //
+  // **ForceNew**: changing the name replaces the origin.
+  string origin_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 2,
+    (buf.validate.field).string.max_len = 90,
+    (buf.validate.field).cel = {
+      id: "front_door_origin_name_format"
+      message: "origin_name must be 2-90 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens"
+      expression: "this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,88}[a-zA-Z0-9]$')"
+    }
+  ];
+
+  // The address Front Door connects to for content: a DNS hostname, an
+  // IPv4, or an IPv6 address. A reference or a literal: reference the
+  // backend's hostname output when the backend is part of the same
+  // deployment (an AzureLinuxWebApp's default_hostname, an
+  // AzureStorageAccount's primary_web_host), pass a literal for anything
+  // reachable outside it ("api.example.com"). No kind dominates origin
+  // backends, so references declare their kind explicitly.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host_name = 3 [(buf.validate.field).required = true];
+
+  // Whether Front Door validates that the origin's TLS certificate
+  // matches the host name it connects with. Default true -- keep it on;
+  // disabling it accepts ANY valid certificate from the origin, opening
+  // the door to man-in-the-middle. Azure requires it to be enabled when
+  // private_link is configured.
+  optional bool certificate_name_check_enabled = 4 [(dev.planton.shared.options.default) = "true"];
+
+  // The Host header Front Door sends to the origin. When unset, Azure
+  // uses the origin's own host_name -- correct for most backends.
+  // Multi-tenant Azure services (App Service, Container Apps, Functions,
+  // Storage static sites) route BY Host header, so for them the default
+  // is exactly right; override only when the backend expects the
+  // client-facing domain instead (and then make sure it can serve it).
+  // A hostname, IPv4, or IPv6 address -- as a reference to another
+  // resource's hostname output or a literal.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef origin_host_header = 5;
+
+  // The port Front Door uses when connecting to the origin over HTTP,
+  // 1-65535. Default 80.
+  optional int32 http_port = 6 [
+    (dev.planton.shared.options.default) = "80",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  // The port Front Door uses when connecting to the origin over HTTPS,
+  // 1-65535. Default 443.
+  optional int32 https_port = 7 [
+    (dev.planton.shared.options.default) = "443",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  // The origin's failover tier within its group, 1-5 (lower serves
+  // first). Traffic only reaches priority-2 origins when every
+  // priority-1 origin is unhealthy -- so equal priorities load-balance,
+  // distinct priorities express active/passive failover. Default 1.
+  optional int32 priority = 8 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 5
+    }
+  ];
+
+  // The origin's traffic share relative to siblings at the SAME
+  // priority, 1-1000. Equal weights split evenly; a 950/50 split is the
+  // classic canary. Default 500.
+  optional int32 weight = 9 [
+    (dev.planton.shared.options.default) = "500",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 1000
+    }
+  ];
+
+  // Whether the origin receives traffic. Disabling drains it (health
+  // probes stop, load balancing skips it) without deleting it -- the
+  // maintenance/cutover switch. Default true.
+  optional bool enabled = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // Reach the origin over Azure Private Link instead of the public
+  // internet, so the backend can disable public access entirely.
+  // PREMIUM-profile only (Azure rejects it at apply on STANDARD), and
+  // requires certificate_name_check_enabled. After deploy, the target
+  // resource's owner must approve the pending private-endpoint
+  // connection (portal: the resource's Networking > Private endpoint
+  // connections blade) before traffic flows.
+  AzureFrontDoorOriginPrivateLink private_link = 11;
+
+  option (buf.validate.message).cel = {
+    id: "front_door_origin_private_link_requires_cert_check"
+    message: "private_link requires certificate_name_check_enabled to be true (Azure rejects the combination at apply)"
+    expression: "!has(this.private_link) || !has(this.certificate_name_check_enabled) || this.certificate_name_check_enabled"
+  };
+}
+
+// AzureFrontDoorOriginPrivateLink connects Front Door to the origin
+// through a private endpoint on the target resource, keeping origin
+// traffic off the public internet.
+message AzureFrontDoorOriginPrivateLink {
+  // The Azure region of the private-link target -- must match the
+  // target resource's own region (private-link connections are
+  // regional even though Front Door is global). Examples: "eastus",
+  // "westeurope".
+  string location = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The ARM ID of the resource Front Door connects to privately -- an
+  // App Service site, a storage account, a Container Apps environment,
+  // or a Private Link Service fronting an internal load balancer. Kept
+  // as a plain ARM ID (not a typed reference) because the target spans
+  // many kinds; paste the ID or reference the target's id output with an
+  // explicit valueFrom kind.
+  string private_link_target_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "front_door_origin_private_link_target_arm_id"
+      message: "private_link_target_id must be an ARM resource ID (starting with /subscriptions/)"
+      expression: "this.startsWith('/subscriptions/')"
+    }
+  ];
+
+  // Which sub-resource of the target the private endpoint attaches to.
+  // Required for every target EXCEPT a Private Link Service (whose ARM
+  // ID is itself the attachment point). Azure rejects the apply when
+  // this is unset for a non-PLS target.
+  AzureFrontDoorOriginPrivateLinkTargetType target_type = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // The message shown to the target resource's owner on the pending
+  // connection they approve, at most 140 characters. Default "Access
+  // request for CDN FrontDoor Private Link Origin".
+  optional string request_message = 4 [
+    (dev.planton.shared.options.default) = "Access request for CDN FrontDoor Private Link Origin",
+    (buf.validate.field).string.max_len = 140
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "front_door_origin_private_link_target_type_or_pls"
+    message: "target_type is required unless private_link_target_id is a Private Link Service (Azure needs the sub-resource to attach to)"
+    expression: "this.target_type != 0 || this.private_link_target_id.contains('/privateLinkServices/')"
+  };
+}
+
+// The target sub-resource a Front Door private-link origin attaches to.
+// Wire values are Azure's exact group IDs (mixed casing is Azure's own).
+enum AzureFrontDoorOriginPrivateLinkTargetType {
+  // Not specified -- valid ONLY when the target is a Private Link
+  // Service (its ARM ID is the attachment point).
+  azure_front_door_origin_private_link_target_type_unspecified = 0;
+
+  // App Service / Function App (wire value "sites").
+  SITES = 1;
+
+  // Storage account blob endpoint (wire value "blob").
+  BLOB = 2;
+
+  // Storage account secondary blob endpoint (wire value
+  // "blob_secondary").
+  BLOB_SECONDARY = 3;
+
+  // Storage static website endpoint (wire value "web").
+  WEB = 4;
+
+  // Storage static website secondary endpoint (wire value
+  // "web_secondary").
+  WEB_SECONDARY = 5;
+
+  // Container Apps environment (wire value "managedEnvironments").
+  MANAGED_ENVIRONMENTS = 6;
+
+  // Application Gateway (wire value "Gateway").
+  GATEWAY = 7;
+}

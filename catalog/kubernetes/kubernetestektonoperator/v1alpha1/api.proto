@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetestektonoperator.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetestektonoperator/v1alpha1/spec.proto";
+import "catalog/kubernetes/kubernetestektonoperator/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// KubernetesTektonOperator installs the Tekton Operator — the lifecycle
+// manager that reconciles a TektonConfig declaration (a KubernetesTekton
+// resource) into running Tekton components. One install per cluster;
+// installing the operator alone deploys no Tekton components.
+message KubernetesTektonOperator {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesTektonOperator'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  KubernetesTektonOperatorSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  KubernetesTektonOperatorStatus status = 5;
+}
+
+// KubernetesTektonOperatorStatus describes the observed state of KubernetesTektonOperator.
+message KubernetesTektonOperatorStatus {
+  // stack-outputs
+  KubernetesTektonOperatorStackOutputs outputs = 1;
+}

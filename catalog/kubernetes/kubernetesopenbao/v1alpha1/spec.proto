@@ -1,0 +1,673 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesopenbao.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "catalog/kubernetes/options.proto";
+import "catalog/kubernetes/workload_pod.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesOpenBaoSpec** installs OpenBao — the open-source,
+ * Linux Foundation-governed secrets manager (MPL-2.0 fork of Vault) —
+ * from the official `openbao` chart
+ * (https://openbao.github.io/openbao-helm, chart 0.28.x = OpenBao 2.6.x).
+ *
+ * THE SEAL LIFECYCLE — the fact everything else follows from: a fresh
+ * OpenBao server starts UNINITIALIZED and SEALED. Initialization
+ * (`bao operator init` — generates the unseal key shares and the
+ * initial root token) and unsealing are RUNTIME operations performed
+ * against the API after deploy; no Kubernetes deployment tool can do
+ * them declaratively, and this component deliberately does not try.
+ * Until a server is initialized and unsealed, its pod reports
+ * NotReady BY DESIGN (the readiness probe is `bao status`, which
+ * exits non-zero for sealed servers) — the chart keeps sealed pods
+ * addressable through its Services (publishNotReadyAddresses), so
+ * `kubectl port-forward` and the DNS names work for the init/unseal
+ * calls. A deployment that never becomes "ready" until you initialize
+ * it is the designed behavior, not a failure. Auto-unseal (below)
+ * removes the UNSEAL step from restarts, but the one-time
+ * initialization is always yours.
+ *
+ * ONE SERVER MODE at a time: dev XOR standalone XOR ha (Raft). When
+ * no mode is declared, standalone is used — the chart's own default.
+ * The server always runs as a StatefulSet with an OnDelete update
+ * strategy (config changes never roll pods automatically; delete pods
+ * to pick up config).
+ */
+message KubernetesOpenBaoSpec {
+  /**
+   * Namespace to install into (conventionally "openbao"). Accepts a
+   * literal namespace name or a reference to a KubernetesNamespace
+   * resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "0.28.6" = OpenBao v2.6.1 —
+   * the chart's appVersion pins the server image). Versions must
+   * exist in the SERVED index at https://openbao.github.io/openbao-helm.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "0.28.6"];
+
+  /**
+   * The OpenBao server: mode, sizing, storage, and logging.
+   */
+  KubernetesOpenBaoServer server = 4;
+
+  /**
+   * End-to-end TLS for the OpenBao listener. When unset, the server
+   * listens on plain HTTP inside the cluster (the chart default).
+   * Enabling TLS is a COMPOSITE change this module owns end to end:
+   * the listener gets tls_cert_file/tls_key_file, the certificate
+   * Secret is mounted, and every derived URL and probe switches to
+   * https. (The chart's own `global.tlsDisable` value alone does NOT
+   * configure the listener — flipping it without listener changes
+   * produces a plaintext server addressed as https, an instant
+   * outage. This module renders all the pieces together.)
+   */
+  KubernetesOpenBaoTls tls = 5;
+
+  /**
+   * Auto-unseal: delegate master-key protection to an external KMS so
+   * servers unseal themselves on startup (initialization is still a
+   * one-time manual step; it produces RECOVERY keys instead of unseal
+   * keys). Exactly one seal backend may be declared.
+   *
+   * VERSION HORIZON (verified at OpenBao v2.6.1): the cloud KMS seal
+   * mechanisms (awskms, gcpckms, azurekeyvault) are built in but
+   * DEPRECATED — upstream moves them to external KMS plugins in
+   * v2.7.0. This module renders the seal stanza for the pinned 2.6.x
+   * line; expect the rendering to gain a plugin declaration when the
+   * chart pin crosses 2.7.
+   */
+  KubernetesOpenBaoAutoUnseal auto_unseal = 6;
+
+  /**
+   * The OpenBao Agent Injector: a MutatingWebhookConfiguration that
+   * intercepts pod creation CLUSTER-WIDE and injects secret-fetching
+   * agent sidecars into annotated pods.
+   *
+   * OFF by default here — a deliberate divergence from the chart
+   * (whose default installs the webhook for every pod create/update
+   * in the cluster). Enable it only when workloads will actually use
+   * agent injection annotations. The webhook fails OPEN by default
+   * (failure_policy Ignore), so injector downtime never blocks pod
+   * creation — it silently skips injection instead.
+   */
+  KubernetesOpenBaoInjector injector = 7;
+
+  /**
+   * Serve the built-in web UI and create the `<name>-ui` Service for
+   * it. Defaults to true — the UI is part of the product experience.
+   * (Exposure beyond the cluster composes from Gateway API kinds
+   * referencing the exported service handles; this component never
+   * creates ingress resources.)
+   */
+  optional bool ui_enabled = 8 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Render the chart's NetworkPolicy for the server pods (ingress on
+   * 8200/8201 from all namespaces by default). Off by default; most
+   * clusters manage network policy through first-class
+   * KubernetesNetworkPolicy resources instead.
+   */
+  bool network_policy_enabled = 9;
+
+  /**
+   * Prometheus metrics. Enabling this renders the telemetry stanza
+   * into the server config (prometheus_retention_time plus
+   * unauthenticated_metrics_access on the listener — the metrics
+   * endpoint is UNAUTHENTICATED when enabled, scoped to
+   * /v1/sys/metrics) and optionally a ServiceMonitor.
+   */
+  KubernetesOpenBaoMetrics metrics = 10;
+
+  /**
+   * Scheduled Raft snapshots shipped to an S3-compatible object store
+   * (a CronJob running the openbao-snapshot-agent). This is the
+   * disaster-recovery story for Raft-mode servers: snapshot files in
+   * the bucket outlive the cluster and restore with
+   * `bao operator raft snapshot restore`.
+   *
+   * PREREQUISITE the module cannot create: the agent authenticates to
+   * OpenBao through the Kubernetes auth method using `bao_role` —
+   * that auth method and role are RUNTIME configuration you create
+   * inside OpenBao after initialization (the docs carry the exact
+   * recipe). Until the role exists the CronJob pods fail their login.
+   */
+  KubernetesOpenBaoSnapshotAgent snapshot_agent = 11;
+
+  /**
+   * Server ServiceAccount identity: cloud workload-identity
+   * annotations and the Kubernetes-auth delegation binding.
+   */
+  KubernetesOpenBaoServiceAccount service_account = 12;
+
+  /**
+   * Advanced escape hatch: raw Helm values merged LAST (Helm `-f`
+   * semantics) over everything this spec renders — later keys win.
+   * Use it for the chart surfaces deliberately not modeled (CSI
+   * provider, injector webhook selectors, extra volumes, affinity
+   * overrides). The module re-pins `fullnameOverride` after the
+   * merge, so resource naming cannot be overridden. YAML document as
+   * a string.
+   */
+  string helm_values = 13;
+}
+
+/**
+ * The OpenBao server: mode, sizing, storage, and logging.
+ */
+message KubernetesOpenBaoServer {
+  /**
+   * Server mode. UNSET = standalone (the chart default): a single
+   * instance with file storage on a PersistentVolumeClaim.
+   */
+  oneof mode {
+    /**
+     * Dev mode: in-memory, auto-initialized, auto-unsealed, root
+     * token literally "root". NEVER for real secrets — all data is
+     * lost on every restart, and the root token is plaintext in the
+     * pod spec (readable by anyone who can get pods). Exists so the
+     * component can be evaluated and composed against without the
+     * init/unseal ceremony. No PVC is created in dev mode, and
+     * workload-identity ServiceAccount annotations are NOT applied
+     * (a chart behavior — dev mode drops them).
+     */
+    KubernetesOpenBaoDevMode dev = 1;
+
+    /**
+     * Standalone: one instance, `storage "file"` on the data PVC.
+     * The production shape for single-instance installs.
+     */
+    KubernetesOpenBaoStandaloneMode standalone = 2;
+
+    /**
+     * High availability with integrated Raft storage: every replica
+     * persists to its own data PVC and the cluster elects a leader.
+     * This module renders `retry_join` stanzas for every peer (the
+     * chart alone ships NONE — without them a multi-replica Raft
+     * install never forms a cluster and each pod sits uninitialized
+     * and independent). Bootstrap: initialize pod-0 and unseal every
+     * pod; joins then happen automatically through retry_join.
+     */
+    KubernetesOpenBaoHaMode ha = 3;
+  }
+
+  /**
+   * CPU and memory for the server container. The chart ships no
+   * defaults; these are modest laboratory defaults — size real
+   * installs to the workload.
+   */
+  dev.planton.kubernetes.ContainerResources resources = 4 [(dev.planton.kubernetes.default_container_resources) = {
+    limits: {
+      cpu: "1000m"
+      memory: "512Mi"
+    }
+    requests: {
+      cpu: "100m"
+      memory: "256Mi"
+    }
+  }];
+
+  /**
+   * The data volume (file storage in standalone, Raft storage in HA).
+   * Ignored in dev mode (in-memory). One PVC per replica, mounted at
+   * /openbao/data.
+   */
+  KubernetesOpenBaoStorage data_storage = 5;
+
+  /**
+   * Optional dedicated volume for file audit logs, mounted at
+   * /openbao/audit. Creating the volume does NOT enable auditing —
+   * after initialization run
+   * `bao audit enable file file_path=/openbao/audit/audit.log`.
+   */
+  KubernetesOpenBaoStorage audit_storage = 6;
+
+  /**
+   * Server log verbosity: trace, debug, info (default), warn, error.
+   */
+  optional string log_level = 7 [
+    (dev.planton.shared.options.default) = "info",
+    (buf.validate.field).cel = {
+      id: "spec.server.log_level"
+      message: "Log level must be one of: trace, debug, info, warn, error."
+      expression: "this in [\"trace\", \"debug\", \"info\", \"warn\", \"error\"]"
+    }
+  ];
+
+  /**
+   * Server log format: standard (default) or json.
+   */
+  optional string log_format = 8 [
+    (dev.planton.shared.options.default) = "standard",
+    (buf.validate.field).cel = {
+      id: "spec.server.log_format"
+      message: "Log format must be either \"standard\" or \"json\"."
+      expression: "this in [\"standard\", \"json\"]"
+    }
+  ];
+
+  /**
+   * Pod scheduling constraints for the server pods. NOTE the chart
+   * ships a REQUIRED pod anti-affinity on hostname by default, so an
+   * HA cluster needs as many schedulable nodes as replicas; relax it
+   * through `helm_values` (`server.affinity: ""`) when running
+   * multiple replicas on fewer nodes (labs only — co-located Raft
+   * replicas share their node's fate).
+   */
+  KubernetesOpenBaoScheduling scheduling = 9;
+}
+
+/** Dev-mode marker (see the mode comment for the warnings). */
+message KubernetesOpenBaoDevMode {}
+
+/** Standalone-mode marker (single instance, file storage). */
+message KubernetesOpenBaoStandaloneMode {}
+
+/** High-availability (integrated Raft) configuration. */
+message KubernetesOpenBaoHaMode {
+  /**
+   * Number of server replicas (Raft peers). Odd counts (3, 5)
+   * tolerate minority loss; 3 is the standard production shape. A
+   * single replica is a legal Raft cluster of one (useful in labs).
+   * Remember the chart's default required anti-affinity: replicas
+   * beyond the node count stay Pending (see scheduling).
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 11
+    }
+  ];
+}
+
+/** A persistent volume request. */
+message KubernetesOpenBaoStorage {
+  /**
+   * Volume size (e.g. "10Gi").
+   */
+  optional string size = 1 [
+    (dev.planton.shared.options.default) = "10Gi",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$"
+  ];
+
+  /**
+   * StorageClass name. Empty uses the cluster's default class.
+   * Accepts a literal name or a reference to a
+   * KubernetesStorageClass resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_class_name"
+  ];
+}
+
+/** Pod scheduling constraints. */
+message KubernetesOpenBaoScheduling {
+  /**
+   * Schedule onto nodes carrying these labels.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for tainted nodes.
+   */
+  repeated dev.planton.kubernetes.WorkloadToleration tolerations = 2;
+}
+
+/** End-to-end TLS for the OpenBao listener. */
+message KubernetesOpenBaoTls {
+  /**
+   * Enable TLS on the listener (port 8200) and the cluster port
+   * (8201 always uses OpenBao's own cluster TLS regardless).
+   */
+  bool enabled = 1;
+
+  /**
+   * Name of a kubernetes.io/tls Secret in the install namespace
+   * carrying tls.crt / tls.key (and optionally ca.crt) for the
+   * server. Accepts a literal name or a reference to a
+   * KubernetesCertificate resource (cert-manager) — the natural
+   * issuer: point the certificate's dnsNames at
+   * `<name>.<namespace>.svc` and this component's derived DNS names.
+   * Required when enabled.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cert_secret_name = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_name"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "spec.tls.cert_secret_name.required"
+    expression: "!this.enabled || (has(this.cert_secret_name) && ((has(this.cert_secret_name.value) && size(this.cert_secret_name.value) > 0) || has(this.cert_secret_name.value_from)))"
+    message: "TLS needs certificate material: set cert_secret_name to a kubernetes.io/tls Secret (or reference a KubernetesCertificate) when TLS is enabled."
+  };
+}
+
+/**
+ * Auto-unseal seal backends. Exactly one may be set. Credentials
+ * follow the keyless-first doctrine: on EKS/GKE/AKS prefer the
+ * ambient workload identity (annotate the ServiceAccount via
+ * service_account.annotations) and leave the credential fields empty.
+ */
+message KubernetesOpenBaoAutoUnseal {
+  oneof seal {
+    /** AWS KMS. Natural on EKS (IRSA for keyless auth). */
+    KubernetesOpenBaoAwsKmsSeal aws_kms = 1;
+
+    /** GCP Cloud KMS. Natural on GKE (Workload Identity). */
+    KubernetesOpenBaoGcpKmsSeal gcp_kms = 2;
+
+    /** Azure Key Vault. Natural on AKS (Workload Identity / MSI). */
+    KubernetesOpenBaoAzureKeyVaultSeal azure_key_vault = 3;
+
+    /** Transit engine of another OpenBao/Vault instance. */
+    KubernetesOpenBaoTransitSeal transit = 4;
+  }
+}
+
+/** AWS KMS auto-unseal. */
+message KubernetesOpenBaoAwsKmsSeal {
+  /**
+   * AWS region of the KMS key (e.g. "us-west-2").
+   */
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * KMS key ID or full ARN of a SYMMETRIC encrypt/decrypt key.
+   */
+  string kms_key_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Static credentials — only when keyless (IRSA / instance profile)
+   * is unavailable. The module materializes them into a Secret
+   * (`<name>-seal-credentials`) delivered as environment variables;
+   * nothing credential-bearing lands in the config ConfigMap.
+   */
+  string access_key_id = 3;
+
+  /**
+   * The secret access key paired with access_key_id.
+   */
+  string secret_access_key = 4 [(dev.planton.shared.options.sensitive) = true];
+}
+
+/** GCP Cloud KMS auto-unseal. */
+message KubernetesOpenBaoGcpKmsSeal {
+  /**
+   * GCP project containing the KMS key ring.
+   *
+   * containment_exempt: names where the unseal key lives — the server
+   * runs in the cluster, not the project.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true
+  ];
+
+  /**
+   * KMS key ring region (e.g. "global", "us-central1").
+   */
+  string region = 2 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Key ring name.
+   *
+   * containment_exempt: an unseal-key source the server calls out to —
+   * access, never placement.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_ring = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKeyRing,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_ring_name",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "unseal key ring"
+  ];
+
+  /**
+   * Crypto key (symmetric encrypt/decrypt) used to wrap the master
+   * key. The identity running OpenBao needs
+   * roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef crypto_key = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_name",
+    (dev.planton.shared.options.diagram_label) = "unseal key"
+  ];
+
+  /**
+   * GKE Workload Identity: the GCP service account email to annotate
+   * the server ServiceAccount with (iam.gke.io/gcp-service-account).
+   * Leave empty to rely on node/ambient credentials. NOTE dev mode
+   * drops ServiceAccount annotations (chart behavior) — auto-unseal
+   * with workload identity requires standalone or ha mode.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workload_identity_service_account = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+}
+
+/** Azure Key Vault auto-unseal. */
+message KubernetesOpenBaoAzureKeyVaultSeal {
+  /**
+   * Key Vault name (the vault, not the key).
+   */
+  string vault_name = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Name of the key inside the vault.
+   */
+  string key_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Entra (Azure AD) tenant ID.
+   */
+  string tenant_id = 3 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Service-principal client ID — only when keyless (AKS Workload
+   * Identity / Managed Identity) is unavailable.
+   */
+  string client_id = 4;
+
+  /**
+   * Service-principal client secret paired with client_id. Delivered
+   * as environment variables from a module-owned Secret; never lands
+   * in the config ConfigMap.
+   */
+  string client_secret = 5 [(dev.planton.shared.options.sensitive) = true];
+}
+
+/** Transit auto-unseal via a central OpenBao/Vault. */
+message KubernetesOpenBaoTransitSeal {
+  /**
+   * Address of the central instance (e.g. "https://bao.example.com:8200").
+   * The satellite depends on the central instance being reachable
+   * and unsealed at every startup.
+   */
+  string address = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Transit key name used to wrap the master key.
+   */
+  string key_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Transit engine mount path.
+   */
+  optional string mount_path = 3 [(dev.planton.shared.options.default) = "transit/"];
+
+  /**
+   * Token authorized for encrypt/decrypt on the transit key.
+   * Delivered as environment variables from a module-owned Secret;
+   * never lands in the config ConfigMap.
+   */
+  string token = 4 [(dev.planton.shared.options.sensitive) = true];
+}
+
+/** The OpenBao Agent Injector (mutating webhook + injector pods). */
+message KubernetesOpenBaoInjector {
+  /**
+   * Deploy the injector. See the spec-level comment for the
+   * cluster-wide webhook blast radius.
+   */
+  bool enabled = 1;
+
+  /**
+   * Injector replicas. Above 1, leader election activates and the
+   * chart creates a HARD-CODED Secret `openbao-injector-certs` —
+   * only one multi-replica injector can exist per namespace.
+   * The injector pods also carry a required anti-affinity, so
+   * replicas need distinct nodes.
+   */
+  optional int32 replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 5
+    }
+  ];
+
+  /**
+   * Webhook failure policy: "Ignore" (default — injector downtime
+   * skips injection, pods still schedule) or "Fail" (pod creation
+   * BLOCKS while the injector is down; only for clusters that treat
+   * missing secrets as worse than blocked deploys).
+   */
+  optional string failure_policy = 3 [
+    (dev.planton.shared.options.default) = "Ignore",
+    (buf.validate.field).cel = {
+      id: "spec.injector.failure_policy"
+      message: "Webhook failure policy must be either \"Ignore\" (fail open) or \"Fail\" (fail closed)."
+      expression: "this in [\"Ignore\", \"Fail\"]"
+    }
+  ];
+
+  /**
+   * CPU and memory for the injector container.
+   */
+  dev.planton.kubernetes.ContainerResources resources = 4;
+}
+
+/** Prometheus metrics wiring. */
+message KubernetesOpenBaoMetrics {
+  /**
+   * Render the telemetry stanza (prometheus_retention_time = "30s",
+   * disable_hostname) and allow UNAUTHENTICATED access to
+   * /v1/sys/metrics on the listener. Without this, the metrics
+   * endpoint requires an OpenBao token and Prometheus cannot scrape.
+   */
+  bool enabled = 1;
+
+  /**
+   * Also create a ServiceMonitor (requires the Prometheus Operator
+   * CRDs — a KubernetesKubePrometheusStack — on the cluster; the
+   * install FAILS without them). In HA mode the chart scrapes only
+   * the active node.
+   */
+  bool service_monitor_enabled = 2;
+
+  option (buf.validate.message).cel = {
+    id: "spec.metrics.service_monitor.requires_metrics"
+    expression: "!this.service_monitor_enabled || this.enabled"
+    message: "A ServiceMonitor without the telemetry stanza scrapes an endpoint that rejects every request — enable metrics too."
+  };
+}
+
+/** Scheduled Raft snapshots to an S3-compatible object store. */
+message KubernetesOpenBaoSnapshotAgent {
+  /**
+   * Enable the snapshot CronJob. Meaningful only for Raft (HA) mode —
+   * the agent calls `bao operator raft snapshot`.
+   */
+  bool enabled = 1;
+
+  /**
+   * Cron schedule.
+   */
+  optional string schedule = 2 [(dev.planton.shared.options.default) = "*/15 * * * *"];
+
+  /**
+   * S3(-compatible) endpoint HOST (e.g. "s3.us-east-1.amazonaws.com",
+   * or an in-cluster KubernetesSeaweedFs S3 endpoint host).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef s3_host = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSeaweedFs,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.s3_endpoint"
+  ];
+
+  /**
+   * Bucket name to write snapshots into.
+   */
+  string s3_bucket = 4 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Days after which snapshots in the bucket expire (agent-side
+   * cleanup).
+   */
+  optional int32 s3_expire_days = 5 [
+    (dev.planton.shared.options.default) = "14",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Name of an existing Secret with the s3cmd-style credentials the
+   * agent image expects (keys access_key / secret_key). Required —
+   * snapshot pods crash-loop without it.
+   */
+  string s3_credentials_secret_name = 6 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * The OpenBao Kubernetes-auth ROLE the agent logs in with
+   * (runtime configuration — create it inside OpenBao; see the
+   * component docs for the recipe).
+   */
+  optional string bao_role = 7 [(dev.planton.shared.options.default) = "snapshot"];
+
+  /**
+   * Kubernetes auth method mount path inside OpenBao.
+   */
+  optional string bao_auth_path = 8 [(dev.planton.shared.options.default) = "kubernetes"];
+}
+
+/** Server ServiceAccount identity. */
+message KubernetesOpenBaoServiceAccount {
+  /**
+   * Annotations for the server ServiceAccount — the cloud
+   * workload-identity seam (eks.amazonaws.com/role-arn,
+   * iam.gke.io/gcp-service-account, azure.workload.identity/client-id).
+   * NOTE: dev mode drops these (chart behavior).
+   */
+  map<string, string> annotations = 1;
+
+  /**
+   * Bind the ServiceAccount to the cluster's system:auth-delegator
+   * role (a ClusterRoleBinding). Required for OpenBao's Kubernetes
+   * AUTH METHOD to validate workload tokens via TokenReview — leave
+   * on unless the cluster forbids the binding and you will not use
+   * Kubernetes auth.
+   */
+  optional bool auth_delegator_enabled = 2 [(dev.planton.shared.options.default) = "true"];
+}

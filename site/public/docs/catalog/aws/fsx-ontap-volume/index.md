@@ -270,8 +270,8 @@ spec:
 
 ## Related Components
 
-- [AwsFsxOntapStorageVirtualMachine](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awsfsxontapstoragevirtualmachine/v1alpha1) — Parent SVM providing protocol endpoints and namespace
-- [AwsFsxOntapFileSystem](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awsfsxontapfilesystem/v1alpha1) — Grandparent file system providing physical infrastructure
-- [AwsFsxLustreFileSystem](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awsfsxlustrefilesystem/v1alpha1) — Alternative: HPC-optimized file system with S3 integration
-- [AwsFsxOpenzfsFileSystem](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awsfsxopenzfsfilesystem/v1alpha1) — Alternative: General-purpose NFS with OpenZFS snapshots
-- [AwsElasticFileSystem](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awselasticfilesystem/v1alpha1) — Alternative: Serverless NFS with automatic scaling
+- [AwsFsxOntapStorageVirtualMachine](https://github.com/plantonhq/planton/tree/main/catalog/aws/awsfsxontapstoragevirtualmachine/v1alpha1) — Parent SVM providing protocol endpoints and namespace
+- [AwsFsxOntapFileSystem](https://github.com/plantonhq/planton/tree/main/catalog/aws/awsfsxontapfilesystem/v1alpha1) — Grandparent file system providing physical infrastructure
+- [AwsFsxLustreFileSystem](https://github.com/plantonhq/planton/tree/main/catalog/aws/awsfsxlustrefilesystem/v1alpha1) — Alternative: HPC-optimized file system with S3 integration
+- [AwsFsxOpenzfsFileSystem](https://github.com/plantonhq/planton/tree/main/catalog/aws/awsfsxopenzfsfilesystem/v1alpha1) — Alternative: General-purpose NFS with OpenZFS snapshots
+- [AwsElasticFileSystem](https://github.com/plantonhq/planton/tree/main/catalog/aws/awselasticfilesystem/v1alpha1) — Alternative: Serverless NFS with automatic scaling

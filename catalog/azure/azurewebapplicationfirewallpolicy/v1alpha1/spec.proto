@@ -1,0 +1,717 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurewebapplicationfirewallpolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureWebApplicationFirewallPolicySpec** defines a regional Web
+// Application Firewall (WAF) policy
+// (Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies) --
+// the rule set an Azure Application Gateway enforces on HTTP traffic.
+//
+// A policy has three layers, evaluated in order:
+//
+// 1. **Custom rules** (`custom_rules`) -- your own match and rate-limit
+//    rules, evaluated first by ascending priority. Use them for IP/geo
+//    allowlists, header-based exceptions, and per-client rate limiting.
+// 2. **Managed rules** (`managed_rules`) -- Microsoft's curated rule sets
+//    (OWASP core rule set, bot manager), tuned with per-rule overrides and
+//    scoped exclusions.
+// 3. **Policy settings** (`policy_settings`) -- the enforcement mode
+//    (Prevention vs Detection), body-inspection limits, and log scrubbing.
+//
+// One policy attaches to Application Gateways at three levels, all by
+// reference to its `policy_id` output: gateway-wide
+// (`firewall_policy_id`), per HTTP listener, and per URL path rule -- so a
+// single org-standard policy governs many gateways while specific routes
+// carry stricter or looser variants.
+//
+// This is the APPLICATION GATEWAY policy type. Azure Front Door's WAF
+// policy is a different ARM resource with a different rule vocabulary.
+message AzureWebApplicationFirewallPolicySpec {
+  // The Azure region the policy lives in. A policy can only attach to
+  // Application Gateways in the same region. Changing it replaces the
+  // policy.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the policy will be created in. Can be a
+  // literal resource-group name or a reference to an AzureResourceGroup's
+  // name output. Changing it replaces the policy.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The policy's name, unique within the resource group. Changing it
+  // replaces the policy.
+  string policy_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Custom rules, evaluated before the managed rule sets in ascending
+  // priority order. The first matching rule's action wins (except LOG,
+  // which records and continues).
+  repeated AzureWebApplicationFirewallPolicyCustomRule custom_rules = 4;
+
+  // The managed (Microsoft-curated) rule configuration. Required -- a WAF
+  // policy without a managed rule set is rejected by Azure; the OWASP 3.2
+  // core rule set is the baseline virtually every policy carries.
+  AzureWebApplicationFirewallPolicyManagedRules managed_rules = 5 [(buf.validate.field).required = true];
+
+  // Enforcement mode and body-inspection dials. Omit for Azure's
+  // defaults: enabled, Prevention mode, request-body inspection on with a
+  // 128 KB limit, 100 MB file-upload limit.
+  AzureWebApplicationFirewallPolicySettings policy_settings = 6;
+
+  // Free-form tags applied to the policy, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag
+  // with the same key wins.
+  map<string, string> tags = 7;
+}
+
+// One custom rule: match conditions plus an action, optionally
+// rate-limited.
+message AzureWebApplicationFirewallPolicyCustomRule {
+  // The rule's name, shown in WAF logs. Letters and digits, starting with
+  // a letter.
+  string name = 1 [(buf.validate.field).cel = {
+    id: "waf_custom_rule_name_format"
+    message: "custom rule names start with a letter and contain only letters and digits"
+    expression: "this == '' || this.matches('^[a-zA-Z][a-zA-Z0-9]*$')"
+  }];
+
+  // Evaluation order among custom rules: LOWER runs first, and each rule
+  // must have a unique priority. 1-100.
+  int32 priority = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 100
+    }
+  ];
+
+  // Whether the rule is evaluated. Azure's default is true; disable to
+  // stage a rule without deleting it.
+  optional bool enabled = 3 [(dev.planton.shared.options.default) = "true"];
+
+  // MATCH_RULE acts on every matching request; RATE_LIMIT_RULE acts only
+  // when matching requests exceed rate_limit_threshold within
+  // rate_limit_duration.
+  AzureWebApplicationFirewallPolicyCustomRuleType rule_type = 4 [(buf.validate.field).required = true];
+
+  // What happens when the rule matches. LOG records the match and
+  // continues evaluation; the others stop it. Rate-limit rules cannot
+  // ALLOW (Azure rejects it) -- exceeding a rate limit is only ever
+  // blocked, logged, or challenged.
+  AzureWebApplicationFirewallPolicyCustomRuleAction action = 5 [(buf.validate.field).required = true];
+
+  // For RATE_LIMIT_RULE: the sliding window the threshold counts over.
+  AzureWebApplicationFirewallPolicyRateLimitDuration rate_limit_duration = 6;
+
+  // For RATE_LIMIT_RULE: the number of matching requests allowed per
+  // group (see group_rate_limit_by) within the window before the action
+  // fires.
+  optional int32 rate_limit_threshold = 7 [(buf.validate.field).int32.gte = 1];
+
+  // For RATE_LIMIT_RULE: how requests are grouped for counting --
+  // per-client address (the norm), per-XFF-header address (behind another
+  // proxy), per-geo, or NONE (one global counter for all matching
+  // traffic).
+  AzureWebApplicationFirewallPolicyGroupRateLimitBy group_rate_limit_by = 8;
+
+  // The conditions that select requests. Multiple conditions AND
+  // together; values within one condition OR together.
+  repeated AzureWebApplicationFirewallPolicyMatchCondition match_conditions = 9 [(buf.validate.field).repeated.min_items = 1];
+
+  option (buf.validate.message).cel = {
+    id: "waf_custom_rule_rate_limit_pairing"
+    message: "rate_limit_duration and rate_limit_threshold are required for RATE_LIMIT_RULE and must be omitted for MATCH_RULE (group_rate_limit_by likewise)"
+    expression: "this.rule_type == 2 ? (this.rate_limit_duration != 0 && has(this.rate_limit_threshold)) : (this.rate_limit_duration == 0 && !has(this.rate_limit_threshold) && this.group_rate_limit_by == 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "waf_custom_rule_rate_limit_no_allow"
+    message: "a RATE_LIMIT_RULE cannot use the ALLOW action -- exceeding a rate limit is blocked, logged, or challenged"
+    expression: "this.rule_type != 2 || this.action != 1"
+  };
+}
+
+// One match condition inside a custom rule.
+message AzureWebApplicationFirewallPolicyMatchCondition {
+  // The request parts the condition inspects. Multiple variables OR
+  // together.
+  repeated AzureWebApplicationFirewallPolicyMatchVariable match_variables = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // How the variable is compared against match_values.
+  AzureWebApplicationFirewallPolicyMatchOperator operator = 2 [(buf.validate.field).required = true];
+
+  // The values compared against (OR semantics). Required for every
+  // operator except ANY, which matches all requests carrying the
+  // variable.
+  repeated string match_values = 3;
+
+  // Inverts the result: the condition matches when the comparison does
+  // NOT hold. Azure's default is false.
+  bool negation_condition = 4;
+
+  // Normalizations applied to the variable before comparison (e.g.
+  // LOWERCASE + URL_DECODE to catch encoding evasions).
+  repeated AzureWebApplicationFirewallPolicyTransform transforms = 5;
+
+  option (buf.validate.message).cel = {
+    id: "waf_match_condition_values_required"
+    message: "match_values is required for every operator except ANY (and must be omitted for ANY)"
+    expression: "(this.operator == 1) == (this.match_values.size() == 0)"
+  };
+}
+
+// One request part a match condition inspects.
+message AzureWebApplicationFirewallPolicyMatchVariable {
+  // Which part of the request to inspect.
+  AzureWebApplicationFirewallPolicyMatchVariableName variable_name = 1 [(buf.validate.field).required = true];
+
+  // For the keyed variables (headers, cookies, args): the specific key to
+  // inspect (e.g. "User-Agent" with REQUEST_HEADERS). Omit to inspect the
+  // whole collection.
+  string selector = 2;
+}
+
+// The managed (Microsoft-curated) rule configuration.
+message AzureWebApplicationFirewallPolicyManagedRules {
+  // Scoped exclusions: request parts (by key) that the managed rules skip
+  // -- the tool for false positives on specific cookies, headers, or form
+  // fields, without disabling whole rules for all traffic.
+  repeated AzureWebApplicationFirewallPolicyManagedRulesExclusion exclusions = 1;
+
+  // The rule sets to run. Typically one OWASP set, optionally alongside
+  // the Microsoft bot-manager set.
+  repeated AzureWebApplicationFirewallPolicyManagedRuleSet managed_rule_sets = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// One managed rule set (OWASP core rule set or a Microsoft set) with
+// optional per-group tuning.
+message AzureWebApplicationFirewallPolicyManagedRuleSet {
+  // The rule-set family. Unspecified applies OWASP (azurerm's default).
+  AzureWebApplicationFirewallPolicyManagedRuleSetType type = 1;
+
+  // The rule-set version. OWASP: "3.2", "3.1", "3.0", "2.2.9";
+  // Microsoft_DefaultRuleSet: "2.1", "2.2"; Microsoft_BotManagerRuleSet:
+  // "0.1", "1.0", "1.1". OWASP 3.2 is the current production standard --
+  // several policy dials (file-upload enforcement) only work with it.
+  string version = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "waf_managed_rule_set_version"
+      message: "version must be one of: 0.1, 1.0, 1.1, 2.1, 2.2, 2.2.9, 3.0, 3.1, 3.2"
+      expression: "this in ['0.1', '1.0', '1.1', '2.1', '2.2', '2.2.9', '3.0', '3.1', '3.2']"
+    }
+  ];
+
+  // Per-rule-group tuning: disable individual rules or change their
+  // action without turning off the whole set.
+  repeated AzureWebApplicationFirewallPolicyRuleGroupOverride rule_group_overrides = 3;
+}
+
+// Tuning for one rule group inside a managed rule set.
+message AzureWebApplicationFirewallPolicyRuleGroupOverride {
+  // The rule group, using Azure's exact group names (e.g.
+  // "REQUEST-942-APPLICATION-ATTACK-SQLI" for OWASP 3.x,
+  // "crs_41_sql_injection_attacks" for 2.2.9, "SQLI" for
+  // Microsoft_DefaultRuleSet, "BadBots" for the bot manager).
+  string rule_group_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The individual rules to tune within the group.
+  repeated AzureWebApplicationFirewallPolicyRuleOverride rules = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// Tuning for one rule.
+message AzureWebApplicationFirewallPolicyRuleOverride {
+  // The rule ID, from the rule set's documentation (e.g. "942100" for the
+  // OWASP SQL-injection libinjection rule).
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Whether the rule runs. azurerm's default is false -- listing a rule
+  // here without enabled=true DISABLES it, which is the common tuning
+  // gesture.
+  optional bool enabled = 2 [(dev.planton.shared.options.default) = "false"];
+
+  // Replace the rule's action (e.g. downgrade BLOCK to OVERRIDE_LOG while
+  // investigating false positives). Omit to keep the rule set's action.
+  AzureWebApplicationFirewallPolicyRuleOverrideAction action = 3;
+}
+
+// One exclusion: a request part (by key) the managed rules skip.
+message AzureWebApplicationFirewallPolicyManagedRulesExclusion {
+  // The keyed request collection the exclusion applies to (header names,
+  // cookie values, query-arg names, ...).
+  AzureWebApplicationFirewallPolicyExclusionMatchVariable match_variable = 1 [(buf.validate.field).required = true];
+
+  // How selector picks keys out of the collection.
+  AzureWebApplicationFirewallPolicySelectorMatchOperator selector_match_operator = 2 [(buf.validate.field).required = true];
+
+  // The key (or key fragment, per the operator) to exclude -- e.g. a
+  // session cookie name that trips SQL-injection rules.
+  string selector = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Narrow the exclusion to specific rule sets, groups, or rules instead
+  // of all managed rules -- the surgical form.
+  AzureWebApplicationFirewallPolicyExcludedRuleSet excluded_rule_set = 4;
+}
+
+// Narrows an exclusion to specific rules.
+message AzureWebApplicationFirewallPolicyExcludedRuleSet {
+  // The rule-set family the exclusion narrows to. Unspecified applies
+  // OWASP (azurerm's default).
+  AzureWebApplicationFirewallPolicyManagedRuleSetType type = 1;
+
+  // The rule-set version. Unspecified applies "3.2" (azurerm's default).
+  // Note the narrower allowed set than managed_rule_sets[].version --
+  // exclusions cannot target OWASP 3.0/3.1/2.2.9.
+  optional string version = 2 [
+    (dev.planton.shared.options.default) = "3.2",
+    (buf.validate.field).cel = {
+      id: "waf_excluded_rule_set_version"
+      message: "version must be one of: 1.0, 1.1, 2.1, 2.2, 3.2"
+      expression: "this in ['1.0', '1.1', '2.1', '2.2', '3.2']"
+    }
+  ];
+
+  // The rule groups (and optionally individual rules) the exclusion
+  // narrows to.
+  repeated AzureWebApplicationFirewallPolicyExcludedRuleGroup rule_groups = 3;
+}
+
+// One rule group an exclusion narrows to.
+message AzureWebApplicationFirewallPolicyExcludedRuleGroup {
+  // The rule group, using Azure's exact group names.
+  string rule_group_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Specific rule IDs within the group. Omit to exclude the whole group.
+  repeated string excluded_rules = 2;
+}
+
+// Enforcement mode and body-inspection dials.
+message AzureWebApplicationFirewallPolicySettings {
+  // Whether the policy is enforced at all. Azure's default is true;
+  // false parks the policy without detaching it.
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  // PREVENTION blocks matching requests (Azure's default and the
+  // production posture); DETECTION only logs them -- the tuning mode for
+  // new policies watching real traffic.
+  AzureWebApplicationFirewallPolicyMode mode = 2;
+
+  // Whether request bodies are inspected at all. Azure's default is
+  // true; turning it off blinds the WAF to body-borne attacks.
+  optional bool request_body_check = 3 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether requests with bodies LARGER than max_request_body_size_in_kb
+  // are blocked (true, Azure's default) or passed through with only the
+  // first bytes inspected (false).
+  optional bool request_body_enforcement = 4 [(dev.planton.shared.options.default) = "true"];
+
+  // How many KB of each request body the WAF inspects. Azure's default
+  // is 128. 0 means unlimited inspection.
+  optional int32 request_body_inspect_limit_in_kb = 5 [
+    (dev.planton.shared.options.default) = "128",
+    (buf.validate.field).int32.gte = 0
+  ];
+
+  // The maximum request body size in KB before request_body_enforcement
+  // applies. 8-2000; Azure's default is 128.
+  optional int32 max_request_body_size_in_kb = 6 [
+    (dev.planton.shared.options.default) = "128",
+    (buf.validate.field).int32 = {
+      gte: 8
+      lte: 2000
+    }
+  ];
+
+  // Whether uploads larger than file_upload_limit_in_mb are blocked.
+  // Only honored with OWASP 3.2. Azure's default is true.
+  optional bool file_upload_enforcement = 7 [(dev.planton.shared.options.default) = "true"];
+
+  // The maximum file upload size in MB. 1-4000; Azure's default is 100.
+  optional int32 file_upload_limit_in_mb = 8 [
+    (dev.planton.shared.options.default) = "100",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 4000
+    }
+  ];
+
+  // How long a solved JavaScript challenge stays valid before the client
+  // is re-challenged, in minutes. 5-1440; Azure's default is 30. Only
+  // meaningful when some rule uses the JS_CHALLENGE action.
+  optional int32 js_challenge_cookie_expiration_in_minutes = 9 [
+    (dev.planton.shared.options.default) = "30",
+    (buf.validate.field).int32 = {
+      gte: 5
+      lte: 1440
+    }
+  ];
+
+  // Log scrubbing: redact sensitive request parts (auth headers, PII
+  // arguments) from WAF logs before they land in Log Analytics.
+  AzureWebApplicationFirewallPolicyLogScrubbing log_scrubbing = 10;
+}
+
+// Log-scrubbing configuration.
+message AzureWebApplicationFirewallPolicyLogScrubbing {
+  // Whether scrubbing is active. Azure's default is true (when the block
+  // is present).
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  // The request parts to redact from logs.
+  repeated AzureWebApplicationFirewallPolicyLogScrubbingRule rules = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// One log-scrubbing rule.
+message AzureWebApplicationFirewallPolicyLogScrubbingRule {
+  // Whether this rule is active. Azure's default is true.
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  // The request part to redact.
+  AzureWebApplicationFirewallPolicyScrubbingMatchVariable match_variable = 2 [(buf.validate.field).required = true];
+
+  // How selector picks keys: SELECTOR_EQUALS redacts one named key (the
+  // default), SELECTOR_EQUALS_ANY redacts every key in the collection.
+  AzureWebApplicationFirewallPolicySelectorMatchOperator selector_match_operator = 3 [(buf.validate.field).cel = {
+    id: "waf_scrubbing_operator"
+    message: "log-scrubbing rules support only SELECTOR_EQUALS and SELECTOR_EQUALS_ANY"
+    expression: "this == 0 || this == 1 || this == 5"
+  }];
+
+  // The key to redact (e.g. "Authorization" with
+  // SCRUB_REQUEST_HEADER_NAMES). Required with SELECTOR_EQUALS; must be
+  // omitted with SELECTOR_EQUALS_ANY. REQUEST_IP_ADDRESS takes no
+  // selector.
+  string selector = 4;
+
+  option (buf.validate.message).cel = {
+    id: "waf_scrubbing_selector_pairing"
+    message: "selector is required with SELECTOR_EQUALS (except for SCRUB_REQUEST_IP_ADDRESS) and must be omitted with SELECTOR_EQUALS_ANY"
+    expression: "this.selector_match_operator == 5 ? this.selector == '' : (this.match_variable == 4 || this.selector != '')"
+  };
+}
+
+// Custom-rule types.
+enum AzureWebApplicationFirewallPolicyCustomRuleType {
+  // Not specified -- invalid; declare the rule type.
+  azure_web_application_firewall_policy_custom_rule_type_unspecified = 0;
+
+  // Acts on every request matching the conditions.
+  MATCH_RULE = 1;
+
+  // Acts only when matching requests exceed the rate-limit threshold
+  // within the window.
+  RATE_LIMIT_RULE = 2;
+}
+
+// Custom-rule actions.
+enum AzureWebApplicationFirewallPolicyCustomRuleAction {
+  // Not specified -- invalid; declare the action.
+  azure_web_application_firewall_policy_custom_rule_action_unspecified = 0;
+
+  // Let the request through, skipping the remaining custom AND managed
+  // rules -- the allowlist gesture.
+  ALLOW = 1;
+
+  // Reject the request.
+  BLOCK = 2;
+
+  // Record the match and continue evaluating.
+  LOG = 3;
+
+  // Serve a JavaScript challenge; only real browsers that solve it
+  // proceed (bot mitigation without CAPTCHAs).
+  JS_CHALLENGE = 4;
+}
+
+// Rate-limit windows.
+enum AzureWebApplicationFirewallPolicyRateLimitDuration {
+  // Not specified: only valid on MATCH_RULE rules.
+  azure_web_application_firewall_policy_rate_limit_duration_unspecified = 0;
+
+  // A one-minute sliding window.
+  ONE_MIN = 1;
+
+  // A five-minute sliding window.
+  FIVE_MINS = 2;
+}
+
+// Rate-limit grouping variables.
+enum AzureWebApplicationFirewallPolicyGroupRateLimitBy {
+  // Not specified: Azure groups by client address.
+  azure_web_application_firewall_policy_group_rate_limit_by_unspecified = 0;
+
+  // Count per client IP (the norm).
+  CLIENT_ADDR = 1;
+
+  // Count per address in the X-Forwarded-For header -- for gateways
+  // behind another proxy.
+  CLIENT_ADDR_XFF_HEADER = 2;
+
+  // Count per client geography.
+  GEO_LOCATION = 3;
+
+  // Count per geography resolved from the X-Forwarded-For header.
+  GEO_LOCATION_XFF_HEADER = 4;
+
+  // One global counter for all matching traffic.
+  NONE = 5;
+}
+
+// Request parts a custom-rule match condition can inspect.
+enum AzureWebApplicationFirewallPolicyMatchVariableName {
+  // Not specified -- invalid; declare the variable.
+  azure_web_application_firewall_policy_match_variable_name_unspecified = 0;
+
+  // The client's IP address.
+  REMOTE_ADDR = 1;
+
+  // The HTTP method.
+  REQUEST_METHOD = 2;
+
+  // The raw query string.
+  QUERY_STRING = 3;
+
+  // POST form arguments (selector picks one).
+  POST_ARGS = 4;
+
+  // The request URI (path + query).
+  REQUEST_URI = 5;
+
+  // Request headers (selector picks one).
+  REQUEST_HEADERS = 6;
+
+  // The request body.
+  REQUEST_BODY = 7;
+
+  // Request cookies (selector picks one).
+  REQUEST_COOKIES = 8;
+}
+
+// Comparison operators for match conditions.
+enum AzureWebApplicationFirewallPolicyMatchOperator {
+  // Not specified -- invalid; declare the operator.
+  azure_web_application_firewall_policy_match_operator_unspecified = 0;
+
+  // Matches every request carrying the variable (no match_values).
+  ANY = 1;
+
+  // The variable is an IP inside one of the match_values CIDRs/addresses
+  // (REMOTE_ADDR / XFF).
+  IP_MATCH = 2;
+
+  // The client's country code matches (two-letter ISO codes in
+  // match_values).
+  GEO_MATCH = 3;
+
+  // Exact string equality.
+  EQUAL = 4;
+
+  // Substring containment.
+  CONTAINS = 5;
+
+  // Numeric less-than.
+  LESS_THAN = 6;
+
+  // Numeric greater-than.
+  GREATER_THAN = 7;
+
+  // Numeric less-than-or-equal.
+  LESS_THAN_OR_EQUAL = 8;
+
+  // Numeric greater-than-or-equal.
+  GREATER_THAN_OR_EQUAL = 9;
+
+  // String prefix match.
+  BEGINS_WITH = 10;
+
+  // String suffix match.
+  ENDS_WITH = 11;
+
+  // Regular-expression match.
+  REGEX = 12;
+}
+
+// Normalizations applied before comparison.
+enum AzureWebApplicationFirewallPolicyTransform {
+  // Not specified -- invalid; list only real transforms.
+  azure_web_application_firewall_policy_transform_unspecified = 0;
+
+  // Decode HTML entities (&lt; -> <).
+  HTML_ENTITY_DECODE = 1;
+
+  // Lowercase the value.
+  LOWERCASE = 2;
+
+  // Strip NULL bytes.
+  REMOVE_NULLS = 3;
+
+  // Trim leading/trailing whitespace.
+  TRIM = 4;
+
+  // URL-decode the value (%27 -> ').
+  URL_DECODE = 5;
+
+  // URL-encode the value.
+  URL_ENCODE = 6;
+
+  // Uppercase the value.
+  UPPERCASE = 7;
+}
+
+// Managed rule-set families (shared by managed_rule_sets[].type and
+// exclusions' excluded_rule_set.type).
+enum AzureWebApplicationFirewallPolicyManagedRuleSetType {
+  // Not specified: OWASP (azurerm's default).
+  azure_web_application_firewall_policy_managed_rule_set_type_unspecified = 0;
+
+  // The OWASP core rule set (versions 2.2.9-3.2) -- the standard
+  // SQLI/XSS/RCE/LFI protection baseline.
+  OWASP = 1;
+
+  // Microsoft's bot manager rule set (versions 0.1-1.1): good/bad/unknown
+  // bot classification.
+  MICROSOFT_BOT_MANAGER_RULE_SET = 2;
+
+  // Microsoft's default rule set (versions 2.1-2.2): the OWASP successor
+  // with Microsoft threat-intelligence rules.
+  MICROSOFT_DEFAULT_RULE_SET = 3;
+}
+
+// Actions a rule-group override can substitute.
+enum AzureWebApplicationFirewallPolicyRuleOverrideAction {
+  // Not specified: keep the rule set's own action.
+  azure_web_application_firewall_policy_rule_override_action_unspecified = 0;
+
+  // Let matching requests through.
+  OVERRIDE_ALLOW = 1;
+
+  // Contribute to the anomaly score instead of acting directly (the
+  // OWASP 3.x scoring model).
+  OVERRIDE_ANOMALY_SCORING = 2;
+
+  // Reject matching requests.
+  OVERRIDE_BLOCK = 3;
+
+  // Serve a JavaScript challenge.
+  OVERRIDE_JS_CHALLENGE = 4;
+
+  // Record matches without acting.
+  OVERRIDE_LOG = 5;
+}
+
+// Keyed request collections an exclusion can target.
+enum AzureWebApplicationFirewallPolicyExclusionMatchVariable {
+  // Not specified -- invalid; declare the collection.
+  azure_web_application_firewall_policy_exclusion_match_variable_unspecified = 0;
+
+  // Query/POST argument keys.
+  REQUEST_ARG_KEYS = 1;
+
+  // Query/POST argument names.
+  REQUEST_ARG_NAMES = 2;
+
+  // Query/POST argument values.
+  REQUEST_ARG_VALUES = 3;
+
+  // Cookie keys.
+  REQUEST_COOKIE_KEYS = 4;
+
+  // Cookie names.
+  REQUEST_COOKIE_NAMES = 5;
+
+  // Cookie values.
+  REQUEST_COOKIE_VALUES = 6;
+
+  // Header keys.
+  REQUEST_HEADER_KEYS = 7;
+
+  // Header names.
+  REQUEST_HEADER_NAMES = 8;
+
+  // Header values.
+  REQUEST_HEADER_VALUES = 9;
+}
+
+// How a selector picks keys (shared by exclusions and log scrubbing;
+// scrubbing rules use only SELECTOR_EQUALS / SELECTOR_EQUALS_ANY).
+enum AzureWebApplicationFirewallPolicySelectorMatchOperator {
+  // Not specified: SELECTOR_EQUALS behavior for log scrubbing; invalid
+  // for exclusions, which declare an operator explicitly.
+  azure_web_application_firewall_policy_selector_match_operator_unspecified = 0;
+
+  // The key equals the selector exactly.
+  SELECTOR_EQUALS = 1;
+
+  // The key contains the selector.
+  SELECTOR_CONTAINS = 2;
+
+  // The key starts with the selector.
+  SELECTOR_STARTS_WITH = 3;
+
+  // The key ends with the selector.
+  SELECTOR_ENDS_WITH = 4;
+
+  // Every key in the collection matches (no selector).
+  SELECTOR_EQUALS_ANY = 5;
+}
+
+// Request parts log scrubbing can redact.
+enum AzureWebApplicationFirewallPolicyScrubbingMatchVariable {
+  // Not specified -- invalid; declare the part to redact.
+  azure_web_application_firewall_policy_scrubbing_match_variable_unspecified = 0;
+
+  // Query/POST argument names.
+  SCRUB_REQUEST_ARG_NAMES = 1;
+
+  // Cookie names.
+  SCRUB_REQUEST_COOKIE_NAMES = 2;
+
+  // Header names.
+  SCRUB_REQUEST_HEADER_NAMES = 3;
+
+  // The client IP address (no selector).
+  SCRUB_REQUEST_IP_ADDRESS = 4;
+
+  // JSON body argument names.
+  SCRUB_REQUEST_JSON_ARG_NAMES = 5;
+
+  // POST argument names.
+  SCRUB_REQUEST_POST_ARG_NAMES = 6;
+}
+
+// Enforcement modes.
+enum AzureWebApplicationFirewallPolicyMode {
+  // Not specified: PREVENTION (Azure's default).
+  azure_web_application_firewall_policy_mode_unspecified = 0;
+
+  // Block requests that trip the rules -- the production posture.
+  PREVENTION = 1;
+
+  // Log matches without blocking -- the tuning mode.
+  DETECTION = 2;
+}

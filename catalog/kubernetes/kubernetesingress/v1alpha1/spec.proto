@@ -1,0 +1,296 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesingress.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+/**
+ * **KubernetesIngressSpec** declares HTTP(S) exposure for in-cluster services as a
+ * first-class networking/v1 Ingress object: host rules and path matches routing to
+ * Service backends, with optional TLS termination from certificate Secrets.
+ *
+ * Exposure in Planton is composed, never embedded: a workload kind exports its
+ * Service name (`service` output), this kind routes a hostname to that Service,
+ * and a certificate kind materializes the TLS Secret the `tls` block names. Every
+ * piece of the exposure path is a visible, independently-managed node in the
+ * resource graph.
+ *
+ * An Ingress object is inert until an ingress controller (e.g. ingress-nginx,
+ * cloud L7 controllers) runs in the cluster and claims it via `ingress_class_name`
+ * or a default IngressClass. Creating the Ingress before the controller exists is
+ * valid — its load-balancer status stays empty until a controller reconciles it.
+ * IngressClass objects themselves ship with their controllers, which is why the
+ * class is a plain name here rather than a reference to a Planton kind.
+ *
+ * The spec covers the complete networking/v1 IngressSpec surface. The single
+ * deliberate omission is the `resource` backend variant (an ObjectRef to an
+ * arbitrary same-namespace object, e.g. a static-asset bucket CRD) — it is
+ * controller-specific and rarely implemented; Service backends cover the real
+ * exposure paths. Controller-specific behavior (rewrites, timeouts, body sizes,
+ * auth) is configured through `annotations`, which is the upstream contract.
+ */
+message KubernetesIngressSpec {
+  /**
+   * The namespace to create the Ingress in — it must be the namespace of the
+   * backend Services, because Ingress backends can only reference Services in
+   * their own namespace (a Kubernetes API constraint). Accepts a literal
+   * namespace name or a reference to a KubernetesNamespace resource. When
+   * omitted, the Ingress lands in the cluster's `default` namespace.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * The name of the Ingress (its `metadata.name` in the cluster).
+   * Must be a valid DNS subdomain: lowercase alphanumeric characters, hyphens,
+   * and dots, at most 253 characters.
+   */
+  string name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "name.dns_subdomain"
+      message: "Name must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)"
+      expression: "this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * Additional labels to apply to the Ingress object.
+   * Merged with the standard Planton governance labels.
+   */
+  map<string, string> labels = 3;
+
+  /**
+   * Annotations on the Ingress object — the upstream contract for
+   * controller-specific behavior. Common ingress-nginx examples:
+   * - `nginx.ingress.kubernetes.io/rewrite-target: /$2` — path rewriting
+   * - `nginx.ingress.kubernetes.io/proxy-body-size: 50m` — upload size limit
+   * - `nginx.ingress.kubernetes.io/ssl-redirect: "false"` — disable HTTPS redirect
+   * - `cert-manager.io/cluster-issuer: letsencrypt-prod` — cert-manager issues the
+   *   TLS certificate into the Secret named by the `tls` block
+   * - `external-dns.alpha.kubernetes.io/hostname: app.example.com` — DNS record
+   */
+  map<string, string> annotations = 4;
+
+  /**
+   * The IngressClass that selects which controller serves this Ingress (e.g.
+   * "nginx", "alb", "gce"). Classes are cluster-scoped objects installed with
+   * their controllers — `kubectl get ingressclass` lists what the cluster
+   * offers. Omit to use the cluster's default class (the IngressClass annotated
+   * `ingressclass.kubernetes.io/is-default-class: "true"`); on clusters without
+   * a default, an Ingress with no class is not served by any controller.
+   */
+  string ingress_class_name = 5 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "ingress_class_name.dns_subdomain"
+      message: "ingress_class_name must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots)"
+      expression: "this == '' || this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * The backend that handles requests no rule matches. Also the way to expose a
+   * single Service on ALL traffic the controller routes here: set only
+   * default_backend and omit rules. When rules are present, most controllers
+   * also fall back to their own global default backend if this is unset.
+   */
+  KubernetesIngressBackend default_backend = 6;
+
+  /**
+   * TLS termination configuration. Each entry names the hosts served under one
+   * certificate Secret; the controller multiplexes them on port 443 via SNI.
+   */
+  repeated KubernetesIngressTls tls = 7;
+
+  /**
+   * Host rules routing requests to backends: a request is first matched on its
+   * Host header, then on the rule's HTTP paths. Either `rules` or
+   * `default_backend` must be present (an Ingress with neither routes nothing —
+   * the API accepts it but it is always a mistake, so validation rejects it).
+   */
+  repeated KubernetesIngressRule rules = 8;
+
+  // An Ingress with no rules and no default backend cannot route anything.
+  option (buf.validate.message).cel = {
+    id: "rules_or_default_backend_required"
+    message: "at least one rule or a default_backend must be specified — an Ingress with neither routes no traffic"
+    expression: "this.rules.size() > 0 || has(this.default_backend)"
+  };
+}
+
+/**
+ * **KubernetesIngressRule** maps one hostname (or all hostnames) to a set of
+ * HTTP path routes.
+ */
+message KubernetesIngressRule {
+  /**
+   * The fully qualified domain name this rule serves, matched against the
+   * request's Host header. Either a precise host ("app.example.com") or a
+   * wildcard whose FIRST label is "*" ("*.example.com" — matches exactly one
+   * label, so it matches "a.example.com" but not "b.a.example.com" or
+   * "example.com"). Omit to match every host reaching the controller. Ports and
+   * IPs are not allowed.
+   */
+  string host = 1 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "host.precise_or_wildcard"
+      message: "host must be a lowercase DNS name, optionally with a single leading wildcard label (e.g. \"app.example.com\" or \"*.example.com\"); IPs and ports are not allowed"
+      expression: "this == '' || this.matches('^(\\\\*\\\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$')"
+    }
+  ];
+
+  /**
+   * The HTTP paths served for this host. At least one path is required — a rule
+   * with a host but no paths routes nothing (upstream treats a missing
+   * IngressRuleValue as "controller-defined", which in practice means ignored).
+   */
+  repeated KubernetesIngressHttpPath paths = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+/**
+ * **KubernetesIngressHttpPath** routes requests matching one URL path to one
+ * Service backend.
+ */
+message KubernetesIngressHttpPath {
+  /**
+   * The URL path to match, beginning with "/". Required for Exact and Prefix
+   * path types. With `prefix`, matching is per path element: "/api" matches
+   * "/api" and "/api/users" but not "/apiary". With `exact`, the path must match
+   * exactly and case-sensitively. May be omitted only for
+   * implementation_specific paths (the controller decides).
+   */
+  string path = 1 [
+    (buf.validate.field).string.max_len = 1024,
+    (buf.validate.field).cel = {
+      id: "path.starts_with_slash"
+      message: "path must begin with '/' (e.g. \"/\", \"/api\")"
+      expression: "this == '' || this.startsWith('/')"
+    }
+  ];
+
+  /**
+   * **KubernetesIngressPathType** determines how `path` is interpreted.
+   */
+  enum KubernetesIngressPathType {
+    // Unspecified. Defaults to prefix — the match semantics users almost always
+    // want, and the one every controller must implement identically.
+    kubernetes_ingress_path_type_unspecified = 0;
+
+    // Prefix: match on URL path prefix, split by "/" per path element. The
+    // longest matching path wins when multiple paths match.
+    prefix = 1;
+
+    // Exact: match the URL path exactly, case-sensitively.
+    exact = 2;
+
+    // ImplementationSpecific: matching semantics are delegated to the
+    // IngressClass — e.g. ingress-nginx treats these paths as regex candidates.
+    // Non-portable across controllers by definition.
+    implementation_specific = 3;
+  }
+
+  /**
+   * How the path is matched.
+   * Default: prefix
+   */
+  optional KubernetesIngressPathType path_type = 2 [(buf.validate.field).enum.defined_only = true];
+
+  /**
+   * The Service backend receiving the matched traffic.
+   */
+  KubernetesIngressBackend backend = 3 [(buf.validate.field).required = true];
+
+  // Exact and Prefix paths must carry a path; only implementation_specific may
+  // leave it to the controller.
+  option (buf.validate.message).cel = {
+    id: "path.required_for_exact_and_prefix"
+    message: "path is required when path_type is prefix or exact"
+    expression: "this.path != '' || (has(this.path_type) && this.path_type == 3)"
+  };
+}
+
+/**
+ * **KubernetesIngressBackend** references the Service (and port) that receives
+ * routed traffic. The Service must live in the Ingress's own namespace — a
+ * Kubernetes API constraint, not a Planton one.
+ */
+message KubernetesIngressBackend {
+  /**
+   * The name of the backend Service. Accepts a literal Service name or a
+   * reference to a KubernetesService resource — and in an infra chart this is
+   * where a workload's exported `service` output is wired in (via valueFrom), so
+   * "deploy the app, then expose it" composes without copying names by hand.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.service_name"
+  ];
+
+  /**
+   * The Service port to route to, by number. Exactly one of `port_number` or
+   * `port_name` is required.
+   */
+  int32 port_number = 2 [(buf.validate.field).cel = {
+    id: "port_number.range"
+    message: "port_number must be in the range 1-65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  /**
+   * The Service port to route to, by name (the `name` of a port on the Service,
+   * e.g. "http"). Prefer names when the Service defines them — the reference
+   * survives port-number changes. Exactly one of `port_number` or `port_name`
+   * is required.
+   */
+  string port_name = 3 [(buf.validate.field).cel = {
+    id: "port_name.iana_svc_name"
+    message: "port_name must be a valid IANA service name: lowercase alphanumeric and hyphens, at most 15 characters, containing at least one letter (e.g. \"http\")"
+    expression: "this == '' || (this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$') && this.size() <= 15 && this.matches('.*[a-z].*'))"
+  }];
+
+  // The Kubernetes API requires exactly one of name/number on a Service backend port.
+  option (buf.validate.message).cel = {
+    id: "backend_port.exactly_one"
+    message: "exactly one of port_number or port_name must be set on a backend"
+    expression: "(this.port_number != 0 && this.port_name == '') || (this.port_number == 0 && this.port_name != '')"
+  };
+}
+
+/**
+ * **KubernetesIngressTls** terminates TLS for a set of hosts using one
+ * certificate Secret.
+ */
+message KubernetesIngressTls {
+  /**
+   * The hosts served under this certificate — they must appear in the
+   * certificate's SANs and should match hosts used in `rules`. The controller
+   * multiplexes multiple TLS entries on port 443 via SNI. Wildcard entries
+   * ("*.example.com") follow the same single-label semantics as rule hosts.
+   */
+  repeated string hosts = 1 [(buf.validate.field).repeated.items.cel = {
+    id: "tls_host.precise_or_wildcard"
+    message: "each TLS host must be a lowercase DNS name, optionally with a single leading wildcard label (e.g. \"app.example.com\" or \"*.example.com\")"
+    expression: "this.matches('^(\\\\*\\\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$')"
+  }];
+
+  /**
+   * The name of the `kubernetes.io/tls` Secret (in the Ingress's namespace)
+   * holding the certificate and key. Accepts a literal Secret name or a
+   * reference to a KubernetesSecret resource. With cert-manager, leave the
+   * Secret non-existent and add the issuer annotation — cert-manager creates
+   * this Secret for you, named exactly as written here. Optional: omitting it
+   * asks the controller to serve these hosts by SNI with its default (or
+   * separately-provisioned) certificate.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_name"
+  ];
+}

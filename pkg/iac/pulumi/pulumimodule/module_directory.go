@@ -7,13 +7,13 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/staging"
 	"github.com/plantonhq/planton/internal/cli/version"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/fileutil"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumibinary"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // GetPathResult contains the module path and a cleanup function
@@ -264,7 +264,7 @@ func getPulumiModulePath(moduleRepoDir, kindName string) (string, error) {
 
 	kindDirPath := filepath.Join(
 		moduleRepoDir,
-		"apis/dev/planton/provider",
+		"catalog",
 		strings.ReplaceAll(kindProvider.String(), "_", ""))
 
 	pulumiModulePath := filepath.Join(

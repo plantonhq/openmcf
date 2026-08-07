@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurenatgateway.v1alpha1;
+
+// **AzureNatGatewayStackOutputs** captures the outputs of provisioning an
+// Azure NAT Gateway.
+message AzureNatGatewayStackOutputs {
+  // The Azure Resource Manager ID of the NAT gateway. This is the primary
+  // output: AzureSubnet's nat_gateway_id references it to attach the
+  // gateway to a subnet.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/natGateways/{name}
+  string nat_gateway_id = 1;
+
+  // The name of the NAT gateway.
+  string nat_gateway_name = 2;
+
+  // The immutable GUID ARM assigns the gateway -- useful when correlating
+  // with Azure billing, monitoring, or support data that keys on the GUID
+  // rather than the ARM ID.
+  string resource_guid = 3;
+}

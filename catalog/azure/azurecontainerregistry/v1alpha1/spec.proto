@@ -1,0 +1,409 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecontainerregistry.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureContainerRegistrySpec** defines the configuration for creating an
+// Azure Container Registry (ACR): the managed, private OCI registry that
+// stores the container images and artifacts a platform's workloads run.
+//
+// The SKU is the registry's feature gate, and the spec mirrors Azure's own
+// tiering rather than hiding it:
+// - BASIC/STANDARD carry the core push/pull surface (Standard additionally
+//   allows anonymous pull).
+// - PREMIUM unlocks the enterprise surface: geo-replication, zone
+//   redundancy, network isolation (network_rule_set, disabling public
+//   access, dedicated data endpoints), content-trust/quarantine/retention
+//   policies, and customer-managed-key encryption.
+// Spec-level validation enforces the same SKU gates ARM does, so a
+// misconfigured manifest fails at validation, not at apply.
+//
+// What the registry composes with is referenced, never created here: the
+// user-assigned identity that unwraps the CMK encryption key is a
+// first-class AzureUserAssignedIdentity, and an AKS cluster pulls from the
+// registry by referencing its container_registry_id output.
+message AzureContainerRegistrySpec {
+  // The Azure region the registry's home replica lives in, e.g. "eastus",
+  // "westeurope". Additional regions are geo-replications, not a region
+  // change. Changing the region replaces the registry.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the registry will be created in. Can be a
+  // literal resource-group name or a reference to an AzureResourceGroup's
+  // name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The name of the registry: 5-50 lowercase alphanumerics, GLOBALLY
+  // unique across all of Azure because it becomes the registry's DNS name
+  // ({name}.azurecr.io -- the login_server output). Changing the name
+  // replaces the registry and its contents do not migrate; every image
+  // would need to be re-pushed.
+  string registry_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z0-9]{5,50}$"
+  ];
+
+  // The pricing tier -- the registry's feature gate. Unspecified applies
+  // STANDARD: the production baseline (100 GiB included storage, webhooks,
+  // anonymous pull available). BASIC is a cost-optimized dev/test tier
+  // with the same API surface but low storage and throughput limits.
+  // PREMIUM adds the enterprise surface gated throughout this spec
+  // (geo-replication, zone redundancy, network isolation, policies, CMK)
+  // plus the highest throughput and 500 GiB included storage. The SKU can
+  // be changed in place -- but downgrading requires the Premium-only
+  // features below to be unset first.
+  AzureContainerRegistrySku sku = 4;
+
+  // Enables the registry's built-in admin account: a single username (the
+  // registry name) with two rotatable passwords, surfaced in the
+  // admin_username/admin_password outputs. Azure's default is false --
+  // production authentication should be Microsoft Entra ID (managed
+  // identities, service principals, or repo-scoped tokens). Enable it only
+  // for services that can consume nothing but a static username/password
+  // (e.g. some app-hosting image pulls). Updatable in place.
+  bool admin_user_enabled = 5;
+
+  // Whether the registry accepts connections from the public internet.
+  // Azure's default is true. Setting false takes the registry fully
+  // private -- reachable only through private endpoints -- and requires
+  // the PREMIUM SKU. For a public registry restricted to known addresses,
+  // keep this true and use network_rule_set instead. Updatable in place.
+  optional bool public_network_access_enabled = 6 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether the home replica's data is zone-redundant: spread across
+  // availability zones so a zone outage does not take the registry down.
+  // PREMIUM only, and fixed at creation -- enabling it later means
+  // replacing the registry. Each geo-replication declares its own zone
+  // redundancy separately.
+  bool zone_redundancy_enabled = 7;
+
+  // Whether unauthenticated (anonymous) image pulls are allowed. STANDARD
+  // or PREMIUM only. This makes every repository in the registry publicly
+  // readable -- the right shape for a public artifact distribution
+  // registry, and only that. Updatable in place.
+  bool anonymous_pull_enabled = 8;
+
+  // Whether the registry gets dedicated regional data endpoints
+  // ({name}.{region}.data.azurecr.io, surfaced in the
+  // data_endpoint_host_names output) instead of serving blobs from shared
+  // storage endpoints. PREMIUM only. Enable it when egress firewalls must
+  // allowlist registry traffic by hostname -- dedicated endpoints make the
+  // allowlist exact. Updatable in place.
+  bool data_endpoint_enabled = 9;
+
+  // Whether newly pushed images are quarantined until a scanner (or other
+  // automation) marks them passed; unquarantined clients cannot pull them.
+  // PREMIUM only. The quarantine workflow itself is driven through the
+  // registry's data-plane API by the scanning tooling. Updatable in place.
+  bool quarantine_policy_enabled = 10;
+
+  // Retention window, in days, after which UNTAGGED manifests are
+  // automatically purged (0 means delete untagged manifests immediately).
+  // PREMIUM only; leave unset to keep untagged manifests forever (Azure's
+  // default). This is the built-in hygiene lever that stops CI push churn
+  // from growing storage without bound. Updatable in place.
+  optional int32 retention_policy_in_days = 11 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 365
+  }];
+
+  // Whether Docker Content Trust (image signing) is enabled: clients with
+  // content trust enabled can push signed images and verify signatures at
+  // pull. PREMIUM only; Azure's default is false. Updatable in place.
+  bool trust_policy_enabled = 12;
+
+  // Whether registry artifacts can be exported (e.g. imported into another
+  // registry or transferred out). Azure's default is true. Disabling
+  // export is a data-exfiltration control for locked-down registries; it
+  // requires the PREMIUM SKU and public_network_access_enabled explicitly
+  // false (ARM enforces the pairing; so does spec validation). Updatable
+  // in place.
+  optional bool export_policy_enabled = 13 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether trusted Azure services (e.g. ACR Tasks, Microsoft Defender)
+  // may reach a network-restricted registry despite network_rule_set /
+  // private-only access. Unspecified applies Azure's default
+  // (AZURE_SERVICES) -- the pragmatic choice that keeps first-party
+  // integrations working. NONE closes even that door. Updatable in place.
+  AzureContainerRegistryNetworkRuleBypassOption network_rule_bypass_option = 14;
+
+  // Network access rules for a PUBLIC registry: a default action plus an
+  // IP allowlist. PREMIUM only. This is the middle ground between "open
+  // to the internet" and "private endpoints only" -- keep
+  // public_network_access_enabled true, set default_action DENY, and
+  // allowlist the CIDR ranges (office egress, CI runners) that may reach
+  // the registry. Updatable in place.
+  AzureContainerRegistryNetworkRuleSet network_rule_set = 15;
+
+  // Additional Azure regions the registry is replicated to. PREMIUM only,
+  // and the list must not contain the registry's own region (the home
+  // replica is implicit). Each replica serves pulls locally (lower
+  // latency, no cross-region egress fees) and the registry stays
+  // available for pulls if a replicated region goes down; pushes
+  // propagate to all replicas automatically. Replicas can be added and
+  // removed in place.
+  repeated AzureContainerRegistryGeoreplication georeplications = 16;
+
+  // The registry's managed identity. Required for customer-managed-key
+  // encryption (which needs a user-assigned identity to unwrap the key at
+  // boot); also usable by first-party integrations that authenticate as
+  // the registry. Leave unset for registries that need no identity.
+  AzureContainerRegistryIdentity identity = 17;
+
+  // Customer-managed-key (CMK) encryption: the registry's data is
+  // encrypted with a Key Vault key you own and can rotate or revoke,
+  // instead of Microsoft-managed keys. PREMIUM only, and fixed at
+  // creation. Requires a USER_ASSIGNED identity (declared in `identity`)
+  // that holds get/wrapKey/unwrapKey permission on the key's vault.
+  AzureContainerRegistryEncryption encryption = 18;
+
+  // Free-form tags applied to the registry, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins. Tags are Azure's governance
+  // surface -- Azure Policy enforces them and Microsoft Cost Management
+  // groups by them. Updatable in place.
+  map<string, string> tags = 19;
+
+  option (buf.validate.message).cel = {
+    id: "acr_georeplications_premium_only"
+    message: "georeplications requires the PREMIUM SKU"
+    expression: "this.georeplications.size() == 0 || this.sku == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "acr_georeplications_exclude_home_region"
+    message: "georeplications must not contain the registry's own region -- the home replica is implicit"
+    expression: "!this.georeplications.exists(g, g.location == this.region)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "acr_zone_redundancy_premium_only"
+    message: "zone_redundancy_enabled requires the PREMIUM SKU"
+    expression: "!this.zone_redundancy_enabled || this.sku == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "acr_anonymous_pull_standard_or_premium"
+    message: "anonymous_pull_enabled requires the STANDARD or PREMIUM SKU"
+    expression: "!this.anonymous_pull_enabled || this.sku != 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "acr_data_endpoint_premium_only"
+    message: "data_endpoint_enabled requires the PREMIUM SKU"
+    expression: "!this.data_endpoint_enabled || this.sku == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "acr_quarantine_premium_only"
+    message: "quarantine_policy_enabled requires the PREMIUM SKU"
+    expression: "!this.quarantine_policy_enabled || this.sku == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "acr_retention_premium_only"
+    message: "retention_policy_in_days requires the PREMIUM SKU"
+    expression: "!has(this.retention_policy_in_days) || this.sku == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "acr_trust_policy_premium_only"
+    message: "trust_policy_enabled requires the PREMIUM SKU"
+    expression: "!this.trust_policy_enabled || this.sku == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "acr_export_disable_premium_and_private"
+    message: "disabling export_policy_enabled requires the PREMIUM SKU and public_network_access_enabled explicitly false"
+    expression: "!has(this.export_policy_enabled) || this.export_policy_enabled || (this.sku == 3 && has(this.public_network_access_enabled) && this.public_network_access_enabled == false)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "acr_network_rule_set_premium_only"
+    message: "network_rule_set requires the PREMIUM SKU"
+    expression: "!has(this.network_rule_set) || this.sku == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "acr_encryption_premium_only"
+    message: "encryption (customer-managed keys) requires the PREMIUM SKU"
+    expression: "!has(this.encryption) || this.sku == 3"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "acr_encryption_requires_user_assigned_identity"
+    message: "encryption requires a USER_ASSIGNED (or SYSTEM_AND_USER_ASSIGNED) identity -- the user-assigned identity unwraps the key"
+    expression: "!has(this.encryption) || (has(this.identity) && (this.identity.type == 2 || this.identity.type == 3))"
+  };
+}
+
+// A geo-replication of the registry into an additional Azure region.
+message AzureContainerRegistryGeoreplication {
+  // The Azure region to replicate into, e.g. "westus2". Must differ from
+  // the registry's own region and from every other replication.
+  string location = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Whether this replica's data is spread across the region's availability
+  // zones. Changing it replaces the underlying replication (a re-sync, not
+  // a registry replacement).
+  bool zone_redundancy_enabled = 2;
+
+  // Whether the replica gets its own regional endpoint clients can address
+  // directly ({name}.{region}.data.azurecr.io). Off, clients always use
+  // the registry's global endpoint and Azure routes to the nearest
+  // replica.
+  bool regional_endpoint_enabled = 3;
+
+  // Tags applied to this replication (each replication is its own tracked
+  // ARM resource); independent of the registry's tags.
+  map<string, string> tags = 4;
+}
+
+// Network access rules for a public registry: a default action plus an IP
+// allowlist.
+message AzureContainerRegistryNetworkRuleSet {
+  // What happens to requests matching no ip_rules. Unspecified applies
+  // Azure's default (ALLOW) -- which makes the rule set a no-op; a real
+  // allowlist sets DENY and enumerates ip_rules.
+  AzureContainerRegistryNetworkRuleDefaultAction default_action = 1;
+
+  // The public CIDR ranges allowed to reach the registry (ARM only
+  // supports allow rules, so the entries carry no per-rule action).
+  // IPv4 only, e.g. "203.0.113.0/24".
+  repeated AzureContainerRegistryIpRule ip_rules = 2;
+}
+
+// One allowed CIDR range in the registry's network rule set.
+message AzureContainerRegistryIpRule {
+  // The public IPv4 range being allowed, in CIDR form (a single address is
+  // /32).
+  string ip_range = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// The registry's managed identity.
+message AzureContainerRegistryIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure with
+  // the registry; USER_ASSIGNED brings identities you manage (required for
+  // CMK encryption, whose key must be unwrappable before the registry's
+  // own identity exists); SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureContainerRegistryIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the registry, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so grants (Key Vault crypto
+  // access for CMK) can be composed before the registry is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "acr_identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// Customer-managed-key encryption configuration.
+message AzureContainerRegistryEncryption {
+  // The client ID of the user-assigned identity that unwraps the key --
+  // the same identity declared in identity.identity_ids. Can be a literal
+  // UUID or a reference to an AzureUserAssignedIdentity's client_id
+  // output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef identity_client_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.client_id"
+  ];
+
+  // The Key Vault key encrypting the registry, as the key's full Key
+  // Vault ID, e.g. "https://{vault}.vault.azure.net/keys/{name}" (pin a
+  // version suffix to freeze rotation). Defaults to referencing an
+  // AzureKeyVaultKey's versionless_id output in composed environments,
+  // so key rotation propagates to the registry automatically.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+}
+
+// The pricing tier of a container registry. Unspecified means Azure's
+// production baseline (Standard).
+enum AzureContainerRegistrySku {
+  // Not specified: STANDARD.
+  azure_container_registry_sku_unspecified = 0;
+
+  // Cost-optimized dev/test tier: full API surface, low storage and
+  // throughput limits, no premium features.
+  BASIC = 1;
+
+  // The production baseline: 100 GiB included storage, webhooks,
+  // anonymous pull available.
+  STANDARD = 2;
+
+  // The enterprise tier: geo-replication, zone redundancy, network
+  // isolation, content-trust/quarantine/retention policies, CMK
+  // encryption, highest throughput.
+  PREMIUM = 3;
+}
+
+// Whether trusted Azure services may bypass the registry's network
+// restrictions. Unspecified means Azure's default (AzureServices).
+enum AzureContainerRegistryNetworkRuleBypassOption {
+  // Not specified: Azure's default (AzureServices).
+  azure_container_registry_network_rule_bypass_option_unspecified = 0;
+
+  // Trusted Azure services (ACR Tasks, Microsoft Defender) may reach the
+  // registry despite network restrictions.
+  AZURE_SERVICES = 1;
+
+  // No bypass: network rules apply to everything, first-party services
+  // included.
+  NONE = 2;
+}
+
+// The default action for requests matching no network rules. Unspecified
+// means Azure's default (Allow).
+enum AzureContainerRegistryNetworkRuleDefaultAction {
+  // Not specified: Azure's default (Allow).
+  azure_container_registry_network_rule_default_action_unspecified = 0;
+
+  // Requests matching no rules are allowed (the rule set is effectively
+  // off).
+  ALLOW = 1;
+
+  // Requests matching no rules are denied -- the allowlist posture.
+  DENY = 2;
+}
+
+// The registry's managed-identity flavor.
+enum AzureContainerRegistryIdentityType {
+  // Not specified: the registry has no managed identity.
+  azure_container_registry_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the registry.
+  SYSTEM_ASSIGNED = 1;
+
+  // Bring-your-own user-assigned identities (set identity_ids).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned identity and the listed user-assigned ones.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}

@@ -33,15 +33,15 @@ metadata:
   name: my-fip-associate
   annotations:
     planton.dev/stack.jobId: prod.OpenstackFloatingIpAssociate.region2-fip-associate
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackfloatingipassociate/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackFloatingIpAssociate.multi-ip-fip-associate
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackfloatingipassociate/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: staging.OpenstackFloatingIpAssociate.app-fip-associate
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackfloatingipassociate/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackFloatingIpAssociate.web-fip-associate
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackfloatingipassociate/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackFloatingIpAssociate.my-fip-associate
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackfloatingipassociate/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   floatingIp:

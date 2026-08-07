@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.alicloud.alicloudeipaddress.v1alpha1;
+
+import "catalog/alicloud/alicloudeipaddress/v1alpha1/api.proto";
+import "catalog/alicloud/provider.proto";
+
+// alicloud-eip-address stack-input
+message AliCloudEipAddressStackInput {
+  // target cloud-resource
+  AliCloudEipAddress target = 1;
+  // provider-config
+  dev.planton.alicloud.AliCloudProviderConfig provider_config = 2;
+}

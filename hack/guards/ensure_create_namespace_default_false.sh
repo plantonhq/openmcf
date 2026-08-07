@@ -24,7 +24,7 @@ set -euo pipefail
 repo_root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root_dir"
 
-provider_base="apis/dev/planton/provider"
+catalog_root="catalog"
 
 violations=()
 
@@ -34,7 +34,7 @@ while IFS= read -r varsfile; do
   if grep -Eq 'create_namespace[[:space:]]*=[[:space:]]*optional\(bool,[[:space:]]*true\)' "$varsfile"; then
     violations+=("$varsfile")
   fi
-done < <(find "$provider_base" -type f -path "*/iac/tf/variables.tf" 2>/dev/null | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf/variables\.tf$' | sort)
+done < <(find "$catalog_root" -type f -path "*/iac/tf/variables.tf" 2>/dev/null | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf/variables\.tf$' | sort)
 
 if [[ ${#violations[@]} -gt 0 ]]; then
   echo "ERROR: ${#violations[@]} iac/tf module(s) default create_namespace to true." >&2

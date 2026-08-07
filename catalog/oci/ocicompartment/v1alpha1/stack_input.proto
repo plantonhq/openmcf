@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.oci.ocicompartment.v1alpha1;
+
+import "catalog/oci/ocicompartment/v1alpha1/api.proto";
+import "catalog/oci/provider.proto";
+
+// OciCompartmentStackInput is the input to the IaC modules (Pulumi / Terraform)
+// that deploy an OciCompartment resource.
+message OciCompartmentStackInput {
+  // target cloud-resource
+  OciCompartment target = 1;
+  // provider-config
+  dev.planton.oci.OciProviderConfig provider_config = 2;
+}

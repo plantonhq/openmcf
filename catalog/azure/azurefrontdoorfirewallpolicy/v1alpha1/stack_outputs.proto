@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurefrontdoorfirewallpolicy.v1alpha1;
+
+// **AzureFrontDoorFirewallPolicyStackOutputs** captures the outputs of
+// provisioning an Azure Front Door WAF policy.
+message AzureFrontDoorFirewallPolicyStackOutputs {
+  // The Azure Resource Manager ID of the WAF policy -- what
+  // AzureFrontDoorSecurityPolicy's firewall_policy_id references to
+  // attach this policy to a profile's domains (the policy enforces
+  // nothing until a security policy associates it).
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/frontDoorWebApplicationFirewallPolicies/{name}
+  string firewall_policy_id = 1;
+
+  // The policy's name -- unique within its resource group.
+  string firewall_policy_name = 2;
+}

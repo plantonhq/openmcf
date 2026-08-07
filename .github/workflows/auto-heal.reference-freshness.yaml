@@ -53,7 +53,7 @@ on:
     branches:
       - main
     paths:
-      - 'apis/**'
+      - 'catalog/**'
       - 'pkg/**'
       - 'internal/**'
       - 'go.mod'
@@ -85,7 +85,7 @@ jobs:
           go-version-file: 'go.mod'
 
       # generate-proto-docs builds a descriptor image with `buf build`; the
-      # module's single BSR dependency is commit-pinned in apis/buf.lock.
+      # module's single BSR dependency is commit-pinned in buf.lock.
       - uses: bufbuild/buf-action@v1
         with:
           setup_only: true

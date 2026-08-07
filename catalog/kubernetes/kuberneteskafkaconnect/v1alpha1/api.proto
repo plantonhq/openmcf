@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kuberneteskafkaconnect.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kuberneteskafkaconnect/v1alpha1/spec.proto";
+import "catalog/kubernetes/kuberneteskafkaconnect/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//kubernetes-kafka-connect
+message KubernetesKafkaConnect {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesKafkaConnect'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  KubernetesKafkaConnectSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  KubernetesKafkaConnectStatus status = 5;
+}
+
+//kubernetes-kafka-connect status
+message KubernetesKafkaConnectStatus {
+  //stack-outputs
+  KubernetesKafkaConnectStackOutputs outputs = 1;
+}

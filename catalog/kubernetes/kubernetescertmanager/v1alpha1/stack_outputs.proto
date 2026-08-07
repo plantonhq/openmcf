@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetescertmanager.v1alpha1;
+
+// KubernetesCertManagerStackOutputs captures observable outputs after
+// cert-manager installation.
+message KubernetesCertManagerStackOutputs {
+  // Kubernetes namespace cert-manager was installed into.
+  string namespace = 1;
+
+  // Helm release name.
+  string release_name = 2;
+
+  // Name of the cert-manager controller ServiceAccount — the identity to
+  // bind on the cloud side for keyless DNS-01 (IRSA trust policy subject,
+  // GKE Workload Identity member, Azure federated credential subject).
+  string service_account_name = 3;
+
+  // Namespace cert-manager reads Secrets from for cluster-scoped resources
+  // (the resolved cluster-resource namespace: spec.cluster_resource_namespace
+  // when set, otherwise the installation namespace). KubernetesClusterIssuer
+  // resources materialize their credential Secrets here.
+  string cluster_resource_namespace = 4;
+}

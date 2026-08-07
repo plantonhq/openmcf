@@ -5,8 +5,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	componentv1 "github.com/plantonhq/planton/apis/dev/planton/iac/componentimportmap/v1"
-	providerv1 "github.com/plantonhq/planton/apis/dev/planton/iac/providerimportcatalog/v1"
+	componentv1 "github.com/plantonhq/planton/iac/componentimportmap/v1"
+	providerv1 "github.com/plantonhq/planton/iac/providerimportcatalog/v1"
 	"github.com/plantonhq/planton/pkg/protobufyaml"
 )
 

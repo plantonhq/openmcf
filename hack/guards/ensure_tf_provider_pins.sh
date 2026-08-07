@@ -10,7 +10,7 @@ set -euo pipefail
 # _changelog/2026-06/2026-06-04-191500-helm-provider-v3-migration-and-externaldns-parity.md.
 #
 # WHAT IT CHECKS
-# For each `apis/**/<api-version>/iac/tf` module (a dir containing *.tf files):
+# For each `catalog/**/<api-version>/iac/tf` module (a dir containing *.tf files):
 #   - collect the provider local names referenced by `resource "<name>_..."` /
 #     `data "<name>_..."` (the prefix before the first underscore; e.g. helm_release ->
 #     helm, kubernetes_manifest -> kubernetes, random_password -> random),
@@ -24,7 +24,7 @@ set -euo pipefail
 repo_root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root_dir"
 
-provider_base="apis/dev/planton/provider"
+catalog_root="catalog"
 
 violations=()
 
@@ -74,7 +74,7 @@ while IFS= read -r tfdir; do
   if [[ ${#missing[@]} -gt 0 ]]; then
     violations+=("${tfdir} -> unpinned: ${missing[*]}")
   fi
-done < <(find "$provider_base" -type d -path "*/iac/tf" 2>/dev/null | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf$' | sort)
+done < <(find "$catalog_root" -type d -path "*/iac/tf" 2>/dev/null | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf$' | sort)
 
 if [[ ${#violations[@]} -gt 0 ]]; then
   echo "ERROR: ${#violations[@]} Terraform module(s) reference a provider without pinning it in required_providers." >&2

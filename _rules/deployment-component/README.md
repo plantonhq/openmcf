@@ -370,9 +370,9 @@ Make targeted fixes to components and automatically propagate changes to all rel
 - IaC READMEs (if usage changed)
 
 **Validation:**
-- Component tests: `go test ./apis/.../v1/`
-- Build: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`
-- Full suite: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`
+- Component tests: `go test ./catalog/.../v1/`
+- Build: `go build ./catalog/<provider>/<component>/v1/...`
+- Full suite: `go test -v ./catalog/<provider>/<component>/v1/`
 - Example validation
 - Consistency checks
 
@@ -459,8 +459,8 @@ New ID prefix (current: k8sms): k8sdpl
 
 Rename isn't complete until all phases pass:
 1. `make protos` - Regenerate proto stubs
-2. `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` - Verify compilation
-3. `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` - Validate behavior unchanged
+2. `go build ./catalog/<provider>/<component>/v1/...` - Verify compilation
+3. `go test -v ./catalog/<provider>/<component>/v1/` - Validate behavior unchanged
 
 **Stops on first failure** for fast feedback.
 
@@ -540,7 +540,7 @@ Completely remove deployment components with safety features to prevent accident
 # Step 3: Confirm (type: DELETE ObsoleteComponent)
 
 # Step 4: Verify
-go build ./apis/.../v1/... && go test -v ./apis/.../v1/
+go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
 ```
 
 **Quick Delete (with caution):**
@@ -625,7 +625,7 @@ go build ./apis/.../v1/... && go test -v ./apis/.../v1/
 
 ```bash
 # 1. Edit spec.proto (add new fields)
-vim apis/dev/planton/provider/gcp/gcpcloudsl/v1alpha1/spec.proto
+vim catalog/gcp/gcpcloudsl/v1alpha1/spec.proto
 
 # 2. Propagate changes
 @update-planton-component GcpCloudSql --scenario proto-changed
@@ -717,7 +717,7 @@ jobs:
 # Makefile
 .PHONY: audit-all
 audit-all:
-	@for component in $(shell find apis/dev/planton/provider -name "v1" -type d); do \
+	@for component in $(shell find catalog -name "v1" -type d); do \
 		@audit-planton-component $$(basename $$(dirname $$component)); \
 	done
 ```
@@ -804,7 +804,7 @@ audit-all:
 **Solution:**
 ```bash
 # List all components
-grep "^\s*[A-Z]" apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto
+grep "^\s*[A-Z]" shared/cloudresourcekind/cloud_resource_kind.proto
 ```
 
 ### "Audit shows 0% but component exists"
@@ -817,7 +817,7 @@ grep "^\s*[A-Z]" apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.p
 **Solution:**
 ```bash
 # Check file sizes
-find apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1 -type f -exec ls -lh {} \;
+find catalog/atlas/mongodbatlas/v1alpha1 -type f -exec ls -lh {} \;
 ```
 
 ### "Update fails with build errors"
@@ -833,10 +833,10 @@ find apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1 -type f -exec ls -lh 
 make protos
 
 # Check build
-go build ./apis/dev/planton/provider/<provider>/<component>/v1/...
+go build ./catalog/<provider>/<component>/v1/...
 
 # Check tests
-go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/
+go test -v ./catalog/<provider>/<component>/v1/
 ```
 
 ### "Delete warns about references"
@@ -849,7 +849,7 @@ go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/
 **Solution:**
 ```bash
 # Find all references
-grep -r "ComponentName" apis/
+grep -r "ComponentName" catalog/
 grep -r "ComponentName" docs/
 
 # Update references

@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/oci/pulumiociprovider",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/dev/planton/provider/oci",
+        "//catalog/oci",
         "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_oci_sdk_v4//go/oci",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",

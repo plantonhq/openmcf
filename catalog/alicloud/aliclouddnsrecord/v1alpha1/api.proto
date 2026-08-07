@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.alicloud.aliclouddnsrecord.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/alicloud/aliclouddnsrecord/v1alpha1/spec.proto";
+import "catalog/alicloud/aliclouddnsrecord/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// alicloud-dns-record
+message AliCloudDnsRecord {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'alicloud.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AliCloudDnsRecord'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AliCloudDnsRecordSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AliCloudDnsRecordStatus status = 5;
+}
+
+// alicloud-dns-record status
+message AliCloudDnsRecordStatus {
+  // stack-outputs
+  AliCloudDnsRecordStackOutputs outputs = 1;
+}

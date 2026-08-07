@@ -1,0 +1,198 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureprivateendpoint.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzurePrivateEndpointSpec** defines an Azure Private Endpoint: a network
+// interface that gives a service powered by Azure Private Link a private IP
+// address inside your virtual network. The service -- an Azure PaaS resource
+// (SQL, PostgreSQL, Storage, Key Vault, Cosmos DB, ...) or a custom Private
+// Link Service -- becomes reachable over a private IP on the Microsoft
+// backbone, never the public internet.
+//
+// Private endpoints deliver three things: private connectivity (traffic
+// stays on the backbone), data-exfiltration protection (each endpoint maps
+// to one sub-resource -- "blob", "vault", "sqlServer" -- not the whole
+// service), and a simpler network (no service endpoints, NAT, or public IPs
+// to reach Azure services).
+//
+// The private DNS zone group is part of this resource, not a separate node:
+// a private endpoint without DNS registration resolves to the service's
+// PUBLIC IP, silently defeating the private link. Folding the zone group in
+// keeps that guarantee atomic. DNS zones themselves are first-class
+// (AzurePrivateDnsZone) and referenced here by id.
+message AzurePrivateEndpointSpec {
+  // The Azure region the private endpoint is created in. Must match the
+  // region of the subnet it draws its IP from. Fixed at creation.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the private endpoint is created in. Can be a
+  // literal resource-group name or a reference to an AzureResourceGroup's
+  // name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The name of the private endpoint, unique within the resource group.
+  // 1-80 characters (alphanumerics, underscores, periods, and hyphens;
+  // must start with a letter or number and end with a letter, number, or
+  // underscore). Fixed at creation.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 80,
+    (buf.validate.field).cel = {
+      id: "private_endpoint_name_format"
+      message: "Private endpoint names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens"
+      expression: "this == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')"
+    }
+  ];
+
+  // The subnet the private endpoint draws its private IP from. The subnet
+  // must permit private endpoints (its private-endpoint network policies
+  // configured accordingly). Can be a literal subnet ARM ID or a reference
+  // to an AzureSubnet's output. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // The private link connection this endpoint establishes -- which service
+  // it tunnels to and which sub-resource of that service. Required: an
+  // endpoint with no connection has nothing to reach.
+  AzurePrivateEndpointServiceConnection private_service_connection = 5 [(buf.validate.field).required = true];
+
+  // The private DNS zones this endpoint registers its IP into, as an A
+  // record, so the service FQDN resolves to the private IP inside the VNet.
+  // Each entry is a private DNS zone by ARM ID, or a reference to an
+  // AzurePrivateDnsZone's output (typically the service's privatelink zone,
+  // e.g. privatelink.postgres.database.azure.com). When empty, no DNS zone
+  // group is created -- use that only when DNS is managed externally, since
+  // without registration the FQDN resolves to the PUBLIC IP.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef private_dns_zone_ids = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePrivateDnsZone,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // Static private IP assignments for the endpoint's network interface.
+  // Leave empty for dynamic allocation from the subnet (the common case);
+  // set one entry per sub-resource when a service must land on a fixed IP
+  // (firewall allowlists, hard-coded DNS). Fixed at creation.
+  repeated AzurePrivateEndpointIpConfiguration ip_configurations = 7;
+
+  // Application security groups this endpoint's network interface joins, so
+  // NSG rules can govern traffic to the endpoint by workload group. Each
+  // entry is an application security group by ARM ID, or a reference to an
+  // AzureApplicationSecurityGroup's output. Realized as association
+  // resources (Azure models ASG membership from the member side).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef application_security_group_ids = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.application_security_group_id"
+  ];
+
+  // A custom name for the network interface Azure creates for this
+  // endpoint. Leave empty to let Azure name it. Fixed at creation.
+  string custom_network_interface_name = 9;
+
+  // Free-form tags applied to the endpoint, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag with
+  // the same key wins. Updatable in place.
+  map<string, string> tags = 10;
+}
+
+// The private link connection a private endpoint establishes. Azure models
+// this as a single connection block per endpoint.
+message AzurePrivateEndpointServiceConnection {
+  // The Private Link-enabled resource to connect to, by ARM ID. Polymorphic
+  // -- any Azure resource type supporting Private Link (PostgreSQL, MySQL,
+  // Key Vault, Storage, Cosmos DB, SQL Server, ...) -- so it carries no
+  // default_kind; reference the service's own output id in composed
+  // environments. Set this OR connection_alias, never both. Fixed at
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef private_connection_resource_id = 1;
+
+  // The Private Link Service ALIAS to connect to, when the target is
+  // exposed through an alias rather than a resource ID (typically a
+  // partner's cross-tenant Private Link Service). Aliases always end in
+  // ".azure.privatelinkservice". Set this OR
+  // private_connection_resource_id, never both. Fixed at creation.
+  string connection_alias = 2 [(buf.validate.field).cel = {
+    id: "connection_alias_suffix"
+    message: "connection_alias must end with .azure.privatelinkservice"
+    expression: "this == '' || this.endsWith('.azure.privatelinkservice')"
+  }];
+
+  // The sub-resource (group ID) of the target service this endpoint reaches
+  // -- the data-exfiltration boundary. Most endpoints name exactly one.
+  // Examples: PostgreSQL "postgresqlServer"; SQL "sqlServer"; Key Vault
+  // "vault"; Storage "blob"/"table"/"queue"/"file"; Cosmos DB "Sql"/
+  // "MongoDB"; Redis "redisCache"; Container Registry "registry". Omit when
+  // connecting through a Private Link Service alias (the alias already pins
+  // the target). Fixed at creation.
+  repeated string subresource_names = 3;
+
+  // Whether the connection requires manual approval by the target service's
+  // owner. False (auto-approved) is the norm and works whenever you own or
+  // are granted access to the target. Set true for cross-tenant or
+  // cross-subscription connections where the owner must approve; then
+  // request_message is required. Fixed at creation.
+  optional bool is_manual_connection = 4;
+
+  // The message shown to the target owner on a manual approval request
+  // (1-140 characters). Required when is_manual_connection is true; must be
+  // empty otherwise.
+  string request_message = 5 [(buf.validate.field).cel = {
+    id: "request_message_length"
+    message: "request_message must be 1-140 characters"
+    expression: "this == '' || size(this) <= 140"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "connection_target_exactly_one"
+    message: "Set exactly one connection target: private_connection_resource_id (an Azure resource) or connection_alias (a Private Link Service alias)"
+    expression: "has(this.private_connection_resource_id) != (this.connection_alias != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "manual_connection_request_message_pairing"
+    message: "request_message is required when is_manual_connection is true, and must be empty when it is false (Azure rejects a message on an auto-approved connection)"
+    expression: "(this.is_manual_connection == true) == (this.request_message != '')"
+  };
+}
+
+// A static private IP assignment for a private endpoint's network
+// interface. Pins one sub-resource of the target to a fixed IP inside the
+// subnet instead of dynamic allocation.
+message AzurePrivateEndpointIpConfiguration {
+  // A name for this IP configuration, unique within the endpoint. Fixed at
+  // creation.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The static private IP to assign, which must fall within the endpoint's
+  // subnet range. Fixed at creation.
+  string private_ip_address = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The sub-resource (group ID) this IP applies to -- must match one of the
+  // connection's subresource_names (e.g. "blob"). Fixed at creation.
+  string subresource_name = 3;
+
+  // The member name this IP applies to. When omitted, Azure uses the
+  // subresource_name. Some services require it explicitly. Fixed at
+  // creation.
+  string member_name = 4;
+}

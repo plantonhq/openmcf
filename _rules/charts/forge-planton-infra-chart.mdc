@@ -176,26 +176,24 @@ placeholder. Therefore:
 - Cloud Resource kind logos live at
   `https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/<provider>/<kind-dir>/v1/logo.svg`
   (the `<kind-dir>` is the kind lowercased with no separators, matching its
-  directory under `apis/dev/planton/provider/`).
+  directory under `catalog/`).
 - **Verify before committing**: `curl -s -o /dev/null -w "%{http_code}" <iconUrl>`
   must print `200`. Never copy an iconUrl from another chart without verifying it
   — stale asset conventions 404, and recently added or renamed kinds may not
   have an uploaded asset yet.
 - **When the right kind's logo 404s, publish it — never settle for a
-  wrong-identity icon.** The asset source of truth is the platform repo
-  (`product/apis/ai/planton/infrahub/cloudresource/v1/assets/provider/<provider>/<kind-dir>/v1/logo.svg`),
-  served from the `planton-assets` Cloudflare R2 bucket under the `apis/` prefix
-  (`make -C product/apis upload-api-resource-icons` syncs the whole tree; a
-  single object can also be PUT via the Cloudflare R2 API with a
-  `CLOUDFLARE_API_TOKEN`). Source the official provider architecture icon,
-  stage it in the platform repo AND publish it, then verify. Two traps: a kind
-  directory existing in the platform tree does not mean its logo is live (the
-  sync runs manually — sweep with curl, not by listing the tree), and the CDN
+  wrong-identity icon.** The asset source of truth is this repo
+  (`catalog/<provider>/<kind-dir>/logo.svg`), served from the
+  `planton-assets` Cloudflare R2 bucket under the `apis/` prefix (a single
+  object can be PUT via the Cloudflare R2 API with a `CLOUDFLARE_API_TOKEN`).
+  Source the official provider architecture icon, commit it at the catalog
+  location AND publish it, then verify. Two traps: a logo existing in the
+  catalog tree does not mean it is live on the CDN (publishing runs
+  separately — sweep with curl, not by listing the tree), and the CDN
   negative-caches 404s — after uploading, purge the zone cache for the asset
-  prefix (the purge target/API in `product/apis/Makefile`) before re-verifying.
-  Only when publishing is genuinely blocked (no platform-repo access in the
-  session) may a closely related kind's resolving logo stand in — record the
-  substitution so it gets fixed.
+  prefix before re-verifying. Only when publishing is genuinely blocked (no
+  CDN credentials in the session) may a closely related kind's resolving logo
+  stand in — record the substitution so it gets fixed.
 
 ### values.yaml
 

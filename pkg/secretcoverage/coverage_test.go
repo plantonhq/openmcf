@@ -6,8 +6,8 @@ package secretcoverage
 import (
 	"testing"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // TestSecretCoverageGate is the CI guardrail. The live scan over all production kinds

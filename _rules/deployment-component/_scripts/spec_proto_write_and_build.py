@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Deterministic tool: Write spec.proto content and run the API build.
+Deterministic tool: Write spec.proto content and run the proto build.
 
 Usage examples:
   # Read content from stdin
@@ -47,10 +47,7 @@ def find_repo_root(start_dir: str) -> str:
 
 def build_spec_proto_path(repo_root: str, provider: str, kind_folder: str) -> Tuple[str, str]:
     relative_path = os.path.join(
-        "apis",
-        "dev",
-        "planton",
-        "provider",
+        "catalog",
         provider,
         kind_folder,
         "v1alpha1",
@@ -76,14 +73,13 @@ def normalize_segment(segment: str) -> str:
     return normalized
 
 
-def run_apis_build(repo_root: str) -> Tuple[int, str, str]:
-    """Run the API build using make under apis/. Returns (exit_code, stdout, stderr)."""
-    apis_dir = os.path.join(repo_root, "apis")
+def run_protos_build(repo_root: str) -> Tuple[int, str, str]:
+    """Run the proto build (`make protos` at the repo root). Returns (exit_code, stdout, stderr)."""
     env = os.environ.copy()
     env["REPO_ROOT"] = repo_root
     try:
         completed = subprocess.run(
-            ["make", "-C", apis_dir, "build"],
+            ["make", "-C", repo_root, "protos"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=env,
@@ -92,11 +88,11 @@ def run_apis_build(repo_root: str) -> Tuple[int, str, str]:
         )
         return completed.returncode, completed.stdout, completed.stderr
     except Exception as exc:
-        return 127, "", f"failed to execute make build: {exc}"
+        return 127, "", f"failed to execute make protos: {exc}"
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Write spec.proto and run apis build")
+    parser = argparse.ArgumentParser(description="Write spec.proto and run the proto build")
     parser.add_argument("--provider", required=True, help="Provider key (e.g., aws, gcp, azure)")
     parser.add_argument(
         "--kindfolder",
@@ -152,7 +148,7 @@ def main() -> int:
         result["sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
 
         # Run the build non-interactively
-        exit_code, stdout, stderr = run_apis_build(repo_root)
+        exit_code, stdout, stderr = run_protos_build(repo_root)
         result["build_exit_code"] = exit_code
         result["build_stdout"] = stdout
         result["build_stderr"] = stderr

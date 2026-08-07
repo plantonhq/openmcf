@@ -1,0 +1,154 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurednszone.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureDnsZoneSpec** defines the configuration for creating an Azure
+// public DNS zone: an internet-facing, authoritative DNS zone hosted on
+// Azure's global anycast name-server fleet.
+//
+// The zone is deliberately just the zone -- an empty record container plus
+// its Start of Authority settings. Records are declared through standalone
+// AzureDnsRecord resources referencing this zone's zone_name output, one
+// resource per record set, added and removed without touching the zone.
+//
+// Creating a zone does NOT make it authoritative on the internet: Azure
+// assigns four name servers (the name_servers output), and the domain only
+// resolves through this zone once those name servers are configured at the
+// domain's registrar (or as NS records in the parent zone, for subdomain
+// delegation). The same zone name can exist in many subscriptions at once --
+// each copy gets a different name-server set, and only the delegated one
+// answers the internet.
+//
+// **Note:** Public DNS zones are global Azure resources -- they have no
+// region. This is why this spec omits the `region` field that other Azure
+// resources include. For name resolution inside virtual networks, use
+// AzurePrivateDnsZone instead.
+message AzureDnsZoneSpec {
+  // The DNS zone name, e.g. "example.com" or "team.example.com" for a
+  // delegated subdomain zone. Do not include a trailing dot. Changing the
+  // name replaces the zone -- and with it every record it contains and the
+  // assigned name-server set, so a rename breaks the registrar delegation
+  // until it is updated.
+  string zone_name = 1 [
+    (buf.validate.field).required = true,
+    // Regex: dot-separated lowercase labels, each 1-63 chars of
+    // letters/digits/hyphens not starting or ending with a hyphen, with at
+    // least two labels (a registrable domain, not a bare TLD).
+    (buf.validate.field).cel = {
+      id: "azure_dns_zone_name_format"
+      message: "Zone name must be a DNS domain name of at least two dot-separated labels, e.g. example.com -- lowercase letters, digits, and hyphens, with no trailing dot"
+      expression: "this.matches('^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$')"
+    }
+  ];
+
+  // The Azure resource group the DNS zone will be created in. Can be a
+  // literal resource-group name or a reference to an AzureResourceGroup's
+  // name output. The resource group only governs the zone's ARM lifecycle
+  // (who can manage it); it has no effect on DNS resolution.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // Customize the zone's Start of Authority record. Nearly every
+  // deployment leaves this unset and takes Azure's defaults; set it only
+  // when operational tooling requires a specific contact email or
+  // negative-caching behavior. Azure creates the SOA record with the zone
+  // either way; this block edits the fields Azure allows to change (the
+  // SOA host name is always Azure's own and is not configurable).
+  AzureDnsZoneSoaRecord soa_record = 3;
+
+  // Free-form tags applied to the zone, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag
+  // with the same key wins. Tags are Azure's governance surface -- Azure
+  // Policy enforces them and Microsoft Cost Management groups by them --
+  // so carry your org's ownership/cost-center conventions here. Updatable
+  // in place.
+  map<string, string> tags = 4;
+
+  // Azure concatenates the zone name and the SOA email into the SOA
+  // record's rname field, which DNS caps at 253 characters. Mirrors the
+  // check Azure enforces at create/update so the failure is caught at
+  // validation time instead of mid-deploy.
+  option (buf.validate.message).cel = {
+    id: "azure_dns_zone_name_plus_soa_email_length"
+    message: "The zone name and the SOA email together cannot exceed 253 characters (Azure combines them into the SOA record) -- shorten the soa_record.email"
+    expression: "!has(this.soa_record) || (size(this.zone_name) + size(this.soa_record.email)) <= 253"
+  };
+}
+
+// Customization of the zone's Start of Authority (SOA) record. Field
+// defaults mirror what Azure creates when the block is omitted entirely,
+// so a partially-specified block and Azure's own values deploy
+// identically. All fields update in place.
+message AzureDnsZoneSoaRecord {
+  // The email contact for the zone, in SOA host format: dots instead of
+  // "@" (e.g. "dnsadmin.example.com" for dnsadmin@example.com). Azure's
+  // default is "azuredns-hostmaster.microsoft.com".
+  string email = 1 [
+    (buf.validate.field).required = true,
+    // Regex mirror of Azure's own SOA-email validator: only letters,
+    // digits, dots, underscores, and hyphens; 2-34 dot-separated
+    // segments; no empty segment; each segment at most 63 characters.
+    (buf.validate.field).cel = {
+      id: "azure_dns_zone_soa_email_format"
+      message: "SOA email must use dots instead of @ (e.g. dnsadmin.example.com for dnsadmin@example.com), contain only letters, digits, dots, underscores, and hyphens, and have 2-34 dot-separated segments of at most 63 characters each"
+      expression: "this.matches('^[a-zA-Z0-9._-]+$') && !this.contains('..') && size(this.split('.')) >= 2 && size(this.split('.')) <= 34 && this.split('.').all(s, size(s) <= 63)"
+    }
+  ];
+
+  // Seconds a secondary name server considers the zone valid without a
+  // successful refresh. Azure's default is 2419200 (28 days).
+  optional int64 expire_time = 2 [
+    (buf.validate.field).int64.gte = 0,
+    (dev.planton.shared.options.default) = "2419200"
+  ];
+
+  // Negative-caching TTL: how long resolvers cache a "name does not
+  // exist" answer, in seconds. Azure's default is 300. The one field with
+  // real operational impact -- raising it slows how quickly newly-created
+  // records become visible to clients that asked before the record
+  // existed.
+  optional int64 minimum_ttl = 3 [
+    (buf.validate.field).int64.gte = 0,
+    (dev.planton.shared.options.default) = "300"
+  ];
+
+  // Seconds between secondary refresh attempts. Azure's default is 3600.
+  optional int64 refresh_time = 4 [
+    (buf.validate.field).int64.gte = 0,
+    (dev.planton.shared.options.default) = "3600"
+  ];
+
+  // Seconds a secondary waits before retrying a failed refresh. Azure's
+  // default is 300.
+  optional int64 retry_time = 5 [
+    (buf.validate.field).int64.gte = 0,
+    (dev.planton.shared.options.default) = "300"
+  ];
+
+  // The zone's serial number. Azure does not auto-increment serials on
+  // record changes (its name servers replicate internally), so this is
+  // cosmetic metadata for tooling that inspects the SOA. Azure's default
+  // is 1.
+  optional int64 serial_number = 6 [
+    (buf.validate.field).int64.gte = 0,
+    (dev.planton.shared.options.default) = "1"
+  ];
+
+  // TTL of the SOA record itself, in seconds. Azure's default is 3600.
+  optional int64 ttl = 7 [
+    (buf.validate.field).int64.gte = 0,
+    (buf.validate.field).int64.lte = 2147483647,
+    (dev.planton.shared.options.default) = "3600"
+  ];
+
+  // Tags applied to the SOA record set (distinct from the zone's own
+  // tags). Rarely used; exists because ARM models record-set metadata.
+  map<string, string> tags = 8;
+}

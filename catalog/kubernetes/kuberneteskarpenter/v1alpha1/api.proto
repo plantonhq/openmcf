@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kuberneteskarpenter.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kuberneteskarpenter/v1alpha1/spec.proto";
+import "catalog/kubernetes/kuberneteskarpenter/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// KubernetesKarpenter installs the Karpenter node-provisioning controller
+// on a cluster from the official OCI-served Helm charts: the CRDs (via the
+// companion karpenter-crd chart) and the controller that launches
+// right-sized machines for pending pods, consolidates under-used nodes, and
+// handles interruptions. Fleet shape is declared separately through
+// KubernetesKarpenterNodePool and KubernetesKarpenterEc2NodeClass.
+message KubernetesKarpenter {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesKarpenter'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  KubernetesKarpenterSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  KubernetesKarpenterStatus status = 5;
+}
+
+// KubernetesKarpenterStatus holds the deployment status and outputs.
+message KubernetesKarpenterStatus {
+  // stack-outputs
+  KubernetesKarpenterStackOutputs outputs = 1;
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscognitoresourceserver.v1alpha1;
+
+import "catalog/aws/awscognitoresourceserver/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsCognitoResourceServerStackInput is the input for the
+// aws-cognito-resource-server IaC modules.
+message AwsCognitoResourceServerStackInput {
+  // target cloud-resource
+  AwsCognitoResourceServer target = 1;
+
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

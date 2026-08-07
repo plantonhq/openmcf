@@ -2,7 +2,7 @@ package providerenvvars
 
 import (
 	"github.com/pkg/errors"
-	snowflakeprovider "github.com/plantonhq/planton/apis/dev/planton/provider/snowflake"
+	snowflakeprovider "github.com/plantonhq/planton/catalog/snowflake"
 )
 
 // loadSnowflakeEnvVars loads Snowflake provider config and returns environment variables.

@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesclusterautoscaler.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetesclusterautoscaler/v1alpha1/spec.proto";
+import "catalog/kubernetes/kubernetesclusterautoscaler/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// KubernetesClusterAutoscaler installs the Kubernetes Cluster Autoscaler on
+// a cluster from the official Helm chart: it grows pre-defined node groups
+// (EC2 ASGs, Azure VMSS, GCE MIGs, Cluster API machine sets, Civo pools)
+// when pods are unschedulable and shrinks them when nodes sit
+// underutilized.
+message KubernetesClusterAutoscaler {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesClusterAutoscaler'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  KubernetesClusterAutoscalerSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  KubernetesClusterAutoscalerStatus status = 5;
+}
+
+// KubernetesClusterAutoscalerStatus holds the deployment status and outputs.
+message KubernetesClusterAutoscalerStatus {
+  // stack-outputs
+  KubernetesClusterAutoscalerStackOutputs outputs = 1;
+}

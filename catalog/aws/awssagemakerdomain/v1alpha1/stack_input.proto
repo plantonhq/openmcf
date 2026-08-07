@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakerdomain.v1alpha1;
+
+import "catalog/aws/awssagemakerdomain/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// aws-sagemaker-domain stack-input
+message AwsSagemakerDomainStackInput {
+  // target cloud-resource
+  AwsSagemakerDomain target = 1;
+  // provider-credential
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesclusterissuer.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/cert_manager_issuer.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+/**
+ * **KubernetesClusterIssuerSpec** creates one cert-manager ClusterIssuer — a
+ * cluster-scoped certificate authority front-end that Certificate resources in
+ * ANY namespace can request signed certificates from. The ClusterIssuer is
+ * named after this resource (`metadata.name`); Certificates select it by that
+ * name, and ingress-shim annotations (`cert-manager.io/cluster-issuer`) use
+ * the same name.
+ *
+ * ClusterIssuer vs Issuer: identical signing capabilities (the config message
+ * is shared), different scope. Use a ClusterIssuer for the platform-wide CA
+ * (one "letsencrypt-production" serving every team); use a namespace-scoped
+ * KubernetesIssuer when a namespace needs its own CA or its own credentials
+ * blast radius.
+ *
+ * Requires cert-manager (KubernetesCertManager) on the cluster — the
+ * ClusterIssuer is a cert-manager custom resource, and credential Secrets
+ * created for it must live in cert-manager's cluster-resource namespace,
+ * which is where the controller reads secrets for cluster-scoped resources.
+ */
+message KubernetesClusterIssuerSpec {
+  /**
+   * Namespace where cert-manager reads Secrets for cluster-scoped resources
+   * (its "cluster resource namespace" — by default the namespace cert-manager
+   * is installed in). Credential Secrets this resource materializes (API
+   * tokens, static keys) are created here, and cert-manager stores ACME
+   * account keys here. Accepts a literal namespace name or a reference to a
+   * KubernetesCertManager resource's output.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cert_manager_namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesCertManager,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_resource_namespace"
+  ];
+
+  /**
+   * The signing backend and its configuration — ACME (public CAs like
+   * Let's Encrypt), CA (sign with a Secret-held keypair), SelfSigned
+   * (bootstrap/dev), or Vault (Vault/OpenBao PKI).
+   */
+  dev.planton.kubernetes.CertManagerIssuerConfig config = 2 [(buf.validate.field).required = true];
+}

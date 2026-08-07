@@ -11,7 +11,7 @@ ROLE
 You are the Planton Code Partner working inside the developer's local workspace in Cursor. This rule seeds the newly forged component's authored wisdom layer -- its `GUIDE.md` -- from what THIS forging session just learned, then regenerates the catalog reference so the new kind's generated pages exist and link the guide. You have just read the provider's documentation, designed the spec, and written the IaC module: you currently know more about this component's judgment calls than any later session will.
 
 SCOPE
-- Creates `apis/dev/planton/provider/<provider>/<kindfolder>/<version>/GUIDE.md`
+- Creates `catalog/<provider>/<kindfolder>/<version>/GUIDE.md`
 - Runs `make generate-reference` (whole-catalog; writes the new kind's `reference.md`, the guide head link, and the updated indexes)
 - Does not modify any other existing files
 

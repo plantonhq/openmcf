@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/iac/terraform"
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/flag"
 	climanifest "github.com/plantonhq/planton/internal/cli/manifest"
@@ -16,6 +14,8 @@ import (
 	"github.com/plantonhq/planton/pkg/iac/stackinput/stackinputproviderconfig"
 	"github.com/plantonhq/planton/pkg/iac/tofu/tofumodule"
 	"github.com/plantonhq/planton/pkg/kubernetes/kubecontext"
+	"github.com/plantonhq/planton/shared"
+	"github.com/plantonhq/planton/shared/iac/terraform"
 	"github.com/spf13/cobra"
 )
 

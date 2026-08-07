@@ -31,7 +31,7 @@ Test scenarios, profiles, and fixtures live **next to their components** at the
 `v1/e2e/` level:
 
 ```
-apis/dev/planton/provider/{provider}/{component}/v1/
+catalog/{provider}/{component}/v1/
   e2e/
     profile.yaml           <-- E2E profile (tier, status, provisioners, timeout)
     scenarios/             <-- test scenario manifests
@@ -53,7 +53,7 @@ Each cloud provider has a harness that manages test infrastructure and
 verification, plus a provider-level E2E profile:
 
 ```
-apis/dev/planton/provider/{provider}/aa_e2e/
+catalog/{provider}/aa_e2e/
   profile.yaml             <-- Provider E2E profile (credentials, substrate, tools)
   harness.go               <-- Provider lifecycle (setup/teardown)
   verify/                  <-- Resource verification logic
@@ -860,7 +860,7 @@ scenario is as simple as dropping a YAML file into the component's
 
 ## Adding a New Provider
 
-1. Create `apis/dev/planton/provider/{provider}/aa_e2e/` with harness, verify
+1. Create `catalog/{provider}/aa_e2e/` with harness, verify
    files, and `profile.yaml`
 2. Implement the `provider.Harness` interface (Setup, Teardown, VerifyDeployed,
    VerifyDestroyed)
@@ -1031,7 +1031,7 @@ pkg/e2e/profile/          -- E2E profile loader and discovery
   discover.go             -- Profile scanning, filtering, GitHub matrix generation
   paths.go                -- Well-known filesystem paths
 
-apis/dev/planton/qa/      -- Proto schema for E2E profiles (KRM-style)
+qa/      -- Proto schema for E2E profiles (KRM-style)
   shared/                 -- Shared enums (CostClass)
   providere2eprofile/v1/  -- ProviderE2EProfile KRM API
   componente2eprofile/v1/ -- ComponentE2EProfile KRM API

@@ -2,7 +2,7 @@ package providerenvvars
 
 import (
 	"github.com/pkg/errors"
-	ociprovider "github.com/plantonhq/planton/apis/dev/planton/provider/oci"
+	ociprovider "github.com/plantonhq/planton/catalog/oci"
 )
 
 // loadOciEnvVars loads OCI provider config and returns environment variables.

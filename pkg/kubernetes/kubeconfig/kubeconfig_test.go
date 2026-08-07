@@ -3,7 +3,7 @@ package kubeconfig
 import (
 	"testing"
 
-	kubernetesprovider "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
+	kubernetesprovider "github.com/plantonhq/planton/catalog/kubernetes"
 	"github.com/plantonhq/planton/pkg/kubernetes/execcredential"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsroute53healthcheck.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awsroute53healthcheck/v1alpha1/spec.proto";
+import "catalog/aws/awsroute53healthcheck/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AwsRoute53HealthCheck is the API envelope for a Route 53 health check —
+// the availability probe that DNS records reference to keep unhealthy
+// endpoints out of DNS answers (failover routing, health-aware weighted
+// routing, multivalue answers).
+message AwsRoute53HealthCheck {
+  // api-version must be set to "aws.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
+
+  // resource-kind for this resource, must be "AwsRoute53HealthCheck".
+  string kind = 2 [(buf.validate.field).string.const = "AwsRoute53HealthCheck"];
+
+  // metadata captures identifying information (name, org, environment,
+  // labels) and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the desired configuration of the health check.
+  AwsRoute53HealthCheckSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds post-deployment information.
+  AwsRoute53HealthCheckStatus status = 5;
+}
+
+// AwsRoute53HealthCheckStatus describes the status of a Route 53 health
+// check resource.
+message AwsRoute53HealthCheckStatus {
+  // outputs captures the observable values returned by Pulumi/Terraform
+  // after provisioning.
+  AwsRoute53HealthCheckStackOutputs outputs = 1;
+}

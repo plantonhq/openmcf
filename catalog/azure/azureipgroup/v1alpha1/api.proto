@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureipgroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureipgroup/v1alpha1/spec.proto";
+import "catalog/azure/azureipgroup/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AzureIpGroup is the top-level API resource for an Azure IP Group: a
+// named, reusable set of IP addresses and CIDR ranges that Azure Firewall
+// and Firewall Policy rules reference by ARM id. It is a first-class
+// composable resource because the address set has its own lifecycle
+// (curated once, updated in place) and is referenced by many rules across
+// many policies.
+message AzureIpGroup {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureIpGroup".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureIpGroup'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // IP Group specification.
+  AzureIpGroupSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureIpGroupStatus status = 5;
+}
+
+// AzureIpGroupStatus holds the deployment outputs.
+message AzureIpGroupStatus {
+  // Stack outputs from the IaC deployment.
+  AzureIpGroupStackOutputs outputs = 1;
+}

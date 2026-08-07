@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.aws.awskmskey.v1alpha1;
+
+// AwsKmsKeyStackOutputs captures the observable identifiers of a
+// deployed KMS key -- the join keys everything that encrypts with it
+// references.
+message AwsKmsKeyStackOutputs {
+  // The generated key ID (UUID; "mrk-..." for multi-Region keys).
+  string key_id = 1;
+
+  // The key ARN -- the join key encryption-at-rest fields across the
+  // catalog reference (databases, queues, buckets, functions, ...).
+  string key_arn = 2;
+
+  // The alias names attached to the key (each "alias/..."), in spec
+  // order -- the human-friendly addresses SDK callers may use instead
+  // of the key ID.
+  repeated string alias_names = 3;
+}

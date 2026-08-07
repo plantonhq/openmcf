@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsalb.v1alpha1;
+
+// AwsAlbStackOutputs describes the outputs returned by Pulumi/Terraform after creating an ALB.
+message AwsAlbStackOutputs {
+  // load_balancer_arn is the ARN of the created Application Load Balancer.
+  string load_balancer_arn = 1;
+
+  // load_balancer_name is the final name assigned to the ALB (may differ from metadata.name).
+  string load_balancer_name = 2;
+
+  // load_balancer_dns_name is the DNS name automatically assigned to the ALB.
+  string load_balancer_dns_name = 3;
+
+  // load_balancer_hosted_zone_id is the Route53 hosted zone ID for the ALB's DNS entry.
+  string load_balancer_hosted_zone_id = 4;
+
+  // arn_suffix is the ARN suffix (e.g. "app/my-alb/50dc6c495c0c9188") used
+  // as the LoadBalancer dimension in CloudWatch metrics -- the handle
+  // alarms, dashboards, and request-count autoscaling policies need.
+  string arn_suffix = 5;
+}

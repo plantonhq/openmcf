@@ -29,7 +29,7 @@ import (
 	"github.com/plantonhq/planton/pkg/crkreflect"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // -----------------------------------------------------------------------------
@@ -133,7 +133,7 @@ func run() error {
 
 		// all providers use flat structure
 		importPath := fmt.Sprintf(
-			"github.com/plantonhq/planton/apis/dev/planton/provider/%s/%s/%s",
+			"github.com/plantonhq/planton/catalog/%s/%s/%s",
 			provSlug, lowerKind, versionDir)
 
 		// Skip kinds whose API packages have not been implemented yet.
@@ -141,7 +141,7 @@ func run() error {
 		// buf generate produces the corresponding .pb.go files. Until then,
 		// including the import would break both Gazelle resolution and Go
 		// compilation.
-		pkgDir := filepath.Join("apis", "dev", "planton", "provider", provSlug, lowerKind, versionDir)
+		pkgDir := filepath.Join("catalog", provSlug, lowerKind, versionDir)
 		if _, err := os.Stat(pkgDir); os.IsNotExist(err) {
 			fmt.Fprintf(os.Stderr, "skipping %s: package dir %s not found\n", kindName, pkgDir)
 			continue
@@ -236,7 +236,7 @@ var tpl = template.Must(template.New("").Funcs(template.FuncMap{
 package crkreflect
 
 import (
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"google.golang.org/protobuf/proto"
 {{- range .Imports }}
 	{{ .Alias }} "{{ .Path }}"

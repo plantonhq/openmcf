@@ -6,7 +6,7 @@ package refcheck
 import (
 	"testing"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // Manifest-authored valueFrom fieldPaths must resolve the way the platform's

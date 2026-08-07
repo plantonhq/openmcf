@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesissuer.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/cert_manager_issuer.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+/**
+ * **KubernetesIssuerSpec** creates one cert-manager Issuer — a
+ * NAMESPACE-SCOPED certificate authority front-end. Only Certificate
+ * resources in the same namespace can request certificates from it, and every
+ * Secret it needs (credentials, CA keypairs) must live in that same
+ * namespace. The Issuer is named after this resource (`metadata.name`).
+ *
+ * Issuer vs ClusterIssuer: identical signing capabilities (the config message
+ * is shared), different scope. The namespace scope is the point: a team's CA
+ * keypair and DNS credentials stay readable only inside the team's namespace,
+ * instead of being trusted cluster-wide. Common namespace-scoped patterns:
+ *
+ *   - Internal PKI per namespace: a self_signed root + a ca issuer signing
+ *     service certificates (the standard mTLS bootstrap).
+ *   - A team-owned ACME issuer whose DNS credentials must not be shared
+ *     cluster-wide.
+ *
+ * Requires cert-manager (KubernetesCertManager) on the cluster.
+ */
+message KubernetesIssuerSpec {
+  /**
+   * Namespace the Issuer is created in — the same namespace its Certificates
+   * and credential Secrets must live in. Accepts a literal namespace name or
+   * a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * The signing backend and its configuration — ACME (public CAs like
+   * Let's Encrypt), CA (sign with a Secret-held keypair), SelfSigned
+   * (bootstrap/dev), or Vault (Vault/OpenBao PKI). Credential Secrets are
+   * materialized in the Issuer's own namespace.
+   */
+  dev.planton.kubernetes.CertManagerIssuerConfig config = 2 [(buf.validate.field).required = true];
+}

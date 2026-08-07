@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetessparkoperator.v1alpha1;
+
+//spark-operator-kubernetes stack outputs
+message KubernetesSparkOperatorStackOutputs {
+  //namespace the operator runs in.
+  string namespace = 1;
+
+  //Helm release name (= metadata.name). The modules pin the chart's
+  //fullname to it, so child names derive from it.
+  string release_name = 2;
+
+  //service account name Spark driver/executor pods run as in every
+  //workload namespace — SparkApplication declarations reference it.
+  string workload_service_account = 3;
+
+  //namespaces the operator watches for Spark workloads. Empty means
+  //cluster-wide — SparkApplications reconcile anywhere.
+  repeated string watched_namespaces = 4;
+}

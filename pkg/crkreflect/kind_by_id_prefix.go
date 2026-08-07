@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // kindIdPrefixIndex maps each kind's id prefix to its kind. Built once;

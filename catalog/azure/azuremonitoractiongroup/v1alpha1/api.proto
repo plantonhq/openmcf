@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremonitoractiongroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuremonitoractiongroup/v1alpha1/spec.proto";
+import "catalog/azure/azuremonitoractiongroup/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AzureMonitorActionGroup is the top-level API resource for an Azure Monitor
+// action group -- the notification and automation hub that alert rules fire
+// into, spanning email/SMS/voice/push, webhooks, Functions, Logic Apps,
+// Automation runbooks, Event Hubs, ITSM systems, and ARM-role fan-out.
+message AzureMonitorActionGroup {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureMonitorActionGroup'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureMonitorActionGroupSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureMonitorActionGroupStatus status = 5;
+}
+
+// AzureMonitorActionGroupStatus holds the deployment status and outputs.
+message AzureMonitorActionGroupStatus {
+  // stack-outputs
+  AzureMonitorActionGroupStackOutputs outputs = 1;
+}

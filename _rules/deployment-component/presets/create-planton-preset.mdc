@@ -35,7 +35,7 @@ If `--name` or `--rank` are omitted, determine them based on analysis of the com
 ### Step 1: Locate Component and Read Context
 
 1. **Determine component path**:
-   - Path: `apis/dev/planton/provider/<provider>/<component_lowercase>/v1/`
+   - Path: `catalog/<provider>/<component_lowercase>/v1/`
    - Verify the path exists
 
 2. **Read essential files** (all within the component's `v1/` directory):

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsroute53healthcheck.v1alpha1;
+
+import "catalog/aws/awsroute53healthcheck/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsRoute53HealthCheckStackInput is the input for the
+// aws-route53-health-check IaC modules.
+message AwsRoute53HealthCheckStackInput {
+  // target cloud-resource
+  AwsRoute53HealthCheck target = 1;
+
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awseksnodegroup.v1alpha1;
+
+import "catalog/aws/awseksnodegroup/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+//aws-eks-node-group stack-input
+message AwsEksNodeGroupStackInput {
+  //target cloud-resource
+  AwsEksNodeGroup target = 1;
+  //provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

@@ -10,7 +10,7 @@
 - [ ] Fact fixes went into proto comments / validation rules (never into
       generated `reference.md` files), and `make generate-reference` was run
 - [ ] Component judgment went into the kind's `GUIDE.md`; composition wisdom
-      went into `apis/dev/planton/provider/patterns/`
+      went into `catalog/patterns/`
 - [ ] `go test ./pkg/explain/refgen/` passes (reference freshness + authored
       knowledge checks)
 

@@ -1,0 +1,27 @@
+# Minimal AzureEventHubConsumerGroup scenario: a named group with user
+# metadata on a scenario-local namespace -> hub chain -- proving the
+# parent-by-ARM-id reference and the legacy name-addressing parse on
+# both engines.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventHubConsumerGroup
+metadata:
+  name: planton-oss-e2e-azureeventhubconsumergroup-smoke
+  id: planton-oss-e2e-azureeventhubconsumergroup-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventhubconsumergroup
+  annotations:
+    planton.dev/e2e: "true"
+    # Scenario-local parents instead of registry prerequisites (the
+    # globally-unique-name discipline). Deploy order: namespace, hub.
+    planton.dev/e2e-prerequisites: "catalog/azure/azureeventhubconsumergroup/v1alpha1/e2e/fixture-namespace.yaml,catalog/azure/azureeventhubconsumergroup/v1alpha1/e2e/fixture-hub.yaml"
+  tags:
+    - planton-e2e
+spec:
+  eventHubId:
+    valueFrom:
+      name: planton-oss-e2e-ehcg-fixture-hub
+  consumerGroupName: e2e-analytics
+  userMetadata: "owner=data-platform; purpose=e2e-smoke"

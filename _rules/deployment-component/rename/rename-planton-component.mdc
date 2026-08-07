@@ -174,8 +174,8 @@ Files will be modified in:
 
 Build pipeline will run:
   1. make protos
-  2. go build ./apis/dev/planton/provider/<provider>/<component>/v1/...
-  3. go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/
+  2. go build ./catalog/<provider>/<component>/v1/...
+  3. go test -v ./catalog/<provider>/<component>/v1/
 
 Proceed with rename? (yes/no):
 ```
@@ -192,8 +192,8 @@ If you confirm, the rule will:
 6. **Rename Icon Folder** - Rename `site/public/images/providers/{provider}/{component}/` if exists
 7. **Delete Source** - Remove old component directory
 8. **Build** - Run `make protos`
-9. **Verify** - Run `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`
-10. **Test** - Run `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`
+9. **Verify** - Run `go build ./catalog/<provider>/<component>/v1/...`
+10. **Test** - Run `go test -v ./catalog/<provider>/<component>/v1/`
 
 ### Step 4: Results
 
@@ -361,8 +361,8 @@ Proceeding with rename...
 **Rename stops on first failure:**
 
 1. `make protos` fails → Stop, show error
-2. `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` fails → Stop, show error
-3. `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` fails → Stop, show error
+2. `go build ./catalog/<provider>/<component>/v1/...` fails → Stop, show error
+3. `go test -v ./catalog/<provider>/<component>/v1/` fails → Stop, show error
 
 **Only if all three pass** does the rename complete successfully.
 
@@ -455,7 +455,7 @@ Before renaming:
 
 3. **Tests Pass**
    ```bash
-   go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/
+   go test -v ./catalog/<provider>/<component>/v1/
    # Should pass before rename
    ```
 
@@ -473,7 +473,7 @@ Before renaming:
 ### Phase 2: File Operations
 
 1. **Copy directory**
-   - `apis/dev/planton/provider/{provider}/{old}` → `{new}`
+   - `catalog/{provider}/{old}` → `{new}`
    - Preserves all files and structure
 
 2. **Apply replacements in new directory**
@@ -524,7 +524,7 @@ If tests pass:
 
 ### Build Fails After Rename
 
-**Symptom**: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` or `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/` fails
+**Symptom**: `go build ./catalog/<provider>/<component>/v1/...` or `go test -v ./catalog/<provider>/<component>/v1/` fails
 
 **Common Causes**:
 1. Missed references in external packages
@@ -550,7 +550,7 @@ grep -r "OldComponentName" .
 **Solution**:
 ```bash
 # Check registry
-grep "KubernetesDeployment" apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto
+grep "KubernetesDeployment" shared/cloudresourcekind/cloud_resource_kind.proto
 
 # If it's the target of a previous rename, delete it first
 @delete-planton-component KubernetesDeployment --force

@@ -7,12 +7,12 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 
-	awsecrrepov1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecrrepo/v1alpha1"
-	awsiamrolev1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiamrole/v1alpha1"
-	awsroute53zonev1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53zone/v1alpha1"
-	awssubnetv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssubnet/v1alpha1"
-	kubernetescronjobv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescronjob/v1alpha1"
-	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	awsecrrepov1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecrrepo/v1alpha1"
+	awsiamrolev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamrole/v1alpha1"
+	awsroute53zonev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53zone/v1alpha1"
+	awssubnetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssubnet/v1alpha1"
+	kubernetescronjobv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetescronjob/v1alpha1"
+	"github.com/plantonhq/planton/shared"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 )

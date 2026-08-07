@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurepostgresqlflexibleserver.v1alpha1;
+
+// **AzurePostgresqlFlexibleServerStackOutputs** captures the outputs of
+// provisioning an Azure Database for PostgreSQL Flexible Server.
+//
+// `fqdn` + `administrator_login` are what applications need to construct
+// connection strings. `server_id` is the join key for everything that
+// attaches to or derives from the server: AzurePrivateEndpoint's
+// private_connection_resource_id, and another
+// AzurePostgresqlFlexibleServer's source_server_id when composing read
+// replicas or restores. `identity_principal_id` is the grant seam for the
+// server's system-assigned identity.
+message AzurePostgresqlFlexibleServerStackOutputs {
+  // The Azure Resource Manager ID of the server.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DBforPostgreSQL/flexibleServers/{name}
+  // Referenced by AzurePrivateEndpoint (private_connection_resource_id)
+  // and by replica/restore servers (source_server_id).
+  string server_id = 1;
+
+  // The name of the server.
+  string server_name = 2;
+
+  // The server's fully qualified domain name
+  // ({name}.postgres.database.azure.com). For a VNet-injected server it
+  // resolves to the private address through the private DNS zone.
+  // Connection strings take the shape:
+  //   postgresql://{login}:{password}@{fqdn}:5432/{database}?sslmode=require
+  string fqdn = 3;
+
+  // The administrator login, echoed so applications can construct
+  // connection strings without duplicating the value. Empty on an
+  // Entra-only server (password auth disabled).
+  string administrator_login = 4;
+
+  // The ARM ID of each database declared in the spec, keyed by database
+  // name.
+  // Example valueFrom fieldPath: status.outputs.database_ids.myapp
+  map<string, string> database_ids = 5;
+
+  // The principal (directory object) ID of the server's system-assigned
+  // managed identity -- the subject for AzureRoleAssignment grants. Empty
+  // unless the identity type includes SYSTEM_ASSIGNED.
+  string identity_principal_id = 6;
+}

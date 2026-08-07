@@ -72,7 +72,7 @@ func DeploySuite(t testing.TB, repoRoot, provider string, suite *mappingeval.Loa
 		if err != nil {
 			return deployed, nil, err
 		}
-		moduleDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", provider, member.Component, versionDir, "iac", "tf")
+		moduleDir := filepath.Join(repoRoot, "catalog", provider, member.Component, versionDir, "iac", "tf")
 		workDir, cleanup, err := runner.PrepareWorkDir(moduleDir)
 		if err != nil {
 			return deployed, nil, errors.Wrapf(err, "preparing workdir for %s", member.Component)
@@ -232,7 +232,7 @@ func ScanTypeNames(repoRoot, provider string, suite *mappingeval.LoadedSuite) ([
 		if err != nil {
 			return nil, err
 		}
-		moduleDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", provider, member.Component, versionDir, "iac", "tf")
+		moduleDir := filepath.Join(repoRoot, "catalog", provider, member.Component, versionDir, "iac", "tf")
 		moduleTypes, err := moduleResourceTypes(moduleDir)
 		if err != nil {
 			return nil, errors.Wrapf(err, "module resource types of %s", member.Component)

@@ -1,6 +1,6 @@
 ---
 title: "Web load test"
-description: "The interactive Locust: a master with the web UI (login ON — the credential lives in the `load-test-auth` Secret; upstream's open, anyone-can-start-tests UI never ships) and two fixed workers..."
+description: "The interactive Locust: a master with the web UI (login ON — the credential lives in the `load-test-auth` Secret; upstream's open, anyone-can-start-tests UI never ships) and two fixed workers running..."
 type: "preset"
 rank: "01"
 presetSlug: "01-web-load-test"

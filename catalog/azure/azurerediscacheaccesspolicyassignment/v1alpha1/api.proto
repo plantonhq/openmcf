@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurerediscacheaccesspolicyassignment.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurerediscacheaccesspolicyassignment/v1alpha1/spec.proto";
+import "catalog/azure/azurerediscacheaccesspolicyassignment/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AzureRedisCacheAccessPolicyAssignment is the top-level API resource for
+// a Redis data-plane grant: it assigns an access policy -- built-in or an
+// AzureRedisCacheAccessPolicy -- to a Microsoft Entra identity on an
+// AzureRedisCache (referenced via redis_cache_id). The Redis analog of a
+// role assignment, and the grant half of the keyless (token-only) cache
+// story.
+message AzureRedisCacheAccessPolicyAssignment {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureRedisCacheAccessPolicyAssignment'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureRedisCacheAccessPolicyAssignmentSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureRedisCacheAccessPolicyAssignmentStatus status = 5;
+}
+
+// AzureRedisCacheAccessPolicyAssignmentStatus holds the deployment status
+// and outputs.
+message AzureRedisCacheAccessPolicyAssignmentStatus {
+  // stack-outputs
+  AzureRedisCacheAccessPolicyAssignmentStackOutputs outputs = 1;
+}

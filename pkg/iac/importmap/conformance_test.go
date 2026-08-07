@@ -16,7 +16,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 
-	componentv1 "github.com/plantonhq/planton/apis/dev/planton/iac/componentimportmap/v1"
+	componentv1 "github.com/plantonhq/planton/iac/componentimportmap/v1"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 )
 
@@ -154,7 +154,7 @@ func TestImportMapConformance(t *testing.T) {
 				}
 
 				// Every module-declared resource type must be importable.
-				moduleTypes, moduleNames := terraformResourceTypes(t, filepath.Join(root, "apis/dev/planton/provider", provider, component, versionDir, "iac/tf"))
+				moduleTypes, moduleNames := terraformResourceTypes(t, filepath.Join(root, "catalog", provider, component, versionDir, "iac/tf"))
 				if len(moduleTypes) == 0 {
 					t.Fatal("module declares no resources -- wrong path?")
 				}

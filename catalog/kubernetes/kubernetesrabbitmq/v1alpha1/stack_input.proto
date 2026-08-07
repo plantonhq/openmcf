@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesrabbitmq.v1alpha1;
+
+import "catalog/kubernetes/kubernetesrabbitmq/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+// kubernetes-rabbit-mq stack-input
+message KubernetesRabbitMqStackInput {
+  // target cloud-resource
+  KubernetesRabbitMq target = 1;
+  // provider-credential
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+  // kubernetes namespace
+  string kubernetes_namespace = 3;
+}

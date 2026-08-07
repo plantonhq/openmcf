@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.alicloud.alicloudstoragebucket.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/alicloud/alicloudstoragebucket/v1alpha1/spec.proto";
+import "catalog/alicloud/alicloudstoragebucket/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// alicloud-storage-bucket
+message AliCloudStorageBucket {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'alicloud.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AliCloudStorageBucket'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AliCloudStorageBucketSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AliCloudStorageBucketStatus status = 5;
+}
+
+// alicloud-storage-bucket status
+message AliCloudStorageBucketStatus {
+  // stack-outputs
+  AliCloudStorageBucketStackOutputs outputs = 1;
+}

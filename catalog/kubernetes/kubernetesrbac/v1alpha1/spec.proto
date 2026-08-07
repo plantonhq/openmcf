@@ -1,0 +1,401 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesrbac.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesRbacSpec** defines a complete RBAC grant: "give these subjects these permissions
+ * in this scope". One resource bundles the role definition and its binding — the unit in which
+ * RBAC is actually reasoned about — instead of splitting Role, RoleBinding, ClusterRole, and
+ * ClusterRoleBinding into four coordinating resources.
+ *
+ * Three orthogonal choices shape a grant:
+ *
+ *   1. **Scope** — `namespace_scope` produces Role/RoleBinding objects (permissions inside one
+ *      namespace); `cluster_scope` produces ClusterRole/ClusterRoleBinding objects
+ *      (cluster-wide permissions, or rules over cluster-scoped resources and non-resource URLs).
+ *   2. **Role** — `create_role` defines new PolicyRules (optionally with ClusterRole
+ *      aggregation); `existing_role` binds to a role that already exists, most commonly the
+ *      built-in "view" / "edit" / "admin" / "cluster-admin" ClusterRoles.
+ *   3. **Subjects** — who receives the permissions: ServiceAccounts (referenced, so charts can
+ *      create the identity and its grant in one run), users, or groups. Omitting subjects
+ *      creates the role definition with no binding — useful for publishing a reusable role
+ *      that other grants bind to later.
+ *
+ * Kubernetes authorizes by evaluating ClusterRoleBindings first, then RoleBindings in the
+ * request's namespace, denying by default — every grant is purely additive; there are no
+ * "deny" rules in Kubernetes RBAC.
+ */
+message KubernetesRbacSpec {
+  /**
+   * The scope of the grant. Namespace scope creates Role/RoleBinding objects; cluster scope
+   * creates ClusterRole/ClusterRoleBinding objects. Exactly one must be set.
+   */
+  oneof scope {
+    // Grant applies within a single namespace (Role + RoleBinding).
+    KubernetesRbacNamespaceScope namespace_scope = 2;
+
+    // Grant applies cluster-wide (ClusterRole + ClusterRoleBinding).
+    KubernetesRbacClusterScope cluster_scope = 3;
+  }
+
+  /**
+   * The role side of the grant: define new rules or bind to an existing role.
+   * Exactly one must be set.
+   */
+  oneof role {
+    // Create a new Role (namespace scope) or ClusterRole (cluster scope) with the given rules.
+    KubernetesRbacRoleDefinition create_role = 4;
+
+    // Bind to a role that already exists in the cluster instead of creating one.
+    KubernetesRbacExistingRole existing_role = 5;
+  }
+
+  /**
+   * Who receives the permissions. Each subject is a ServiceAccount, user, or group. When at
+   * least one subject is present, a RoleBinding (namespace scope) or ClusterRoleBinding
+   * (cluster scope) is created pointing every subject at the role. When empty, only the role
+   * definition is created (requires `create_role` — binding to an existing role with no
+   * subjects would deploy nothing).
+   */
+  repeated KubernetesRbacSubject subjects = 6;
+
+  /**
+   * Additional labels to apply to every created RBAC object.
+   * These are merged with standard Planton labels for resource tracking and governance.
+   */
+  map<string, string> labels = 7;
+
+  /**
+   * Additional annotations to apply to every created RBAC object.
+   */
+  map<string, string> annotations = 8;
+
+  // Exactly one scope must be chosen — a grant is either namespaced or cluster-wide.
+  option (buf.validate.message).cel = {
+    id: "scope_required"
+    message: "Exactly one scope must be set (namespace_scope or cluster_scope)"
+    expression: "has(this.namespace_scope) || has(this.cluster_scope)"
+  };
+
+  // Exactly one role source must be chosen — define rules or bind to an existing role.
+  option (buf.validate.message).cel = {
+    id: "role_required"
+    message: "Exactly one role source must be set (create_role or existing_role)"
+    expression: "has(this.create_role) || has(this.existing_role)"
+  };
+
+  // Binding to an existing role with no subjects would deploy nothing at all.
+  option (buf.validate.message).cel = {
+    id: "existing_role_requires_subjects"
+    message: "subjects must not be empty when binding to an existing role"
+    expression: "!has(this.existing_role) || this.subjects.size() > 0"
+  };
+
+  // ClusterRole aggregation does not exist on namespaced Roles — the Kubernetes API has no
+  // aggregationRule field on Role, so it is only expressible in cluster scope.
+  option (buf.validate.message).cel = {
+    id: "aggregation_requires_cluster_scope"
+    message: "aggregation_rule is only valid with cluster_scope (namespaced Roles cannot aggregate)"
+    expression: "!has(this.create_role) || !has(this.create_role.aggregation_rule) || has(this.cluster_scope)"
+  };
+
+  // Non-resource URLs (like /healthz or /metrics) are not namespaced, so the Kubernetes API
+  // only honors them on ClusterRoles.
+  option (buf.validate.message).cel = {
+    id: "non_resource_urls_require_cluster_scope"
+    message: "non_resource_urls are only valid with cluster_scope (they cannot be namespaced)"
+    expression: "!has(this.create_role) || has(this.cluster_scope) || this.create_role.rules.all(r, r.non_resource_urls.size() == 0)"
+  };
+
+  // A ServiceAccount always lives in some namespace. Namespace-scoped grants default the
+  // subject's namespace to the grant's own; cluster scope has no namespace to default from.
+  option (buf.validate.message).cel = {
+    id: "cluster_scope_sa_subjects_need_namespace"
+    message: "service_account subjects must set namespace explicitly in cluster_scope grants"
+    expression: "!has(this.cluster_scope) || this.subjects.all(s, !has(s.service_account) || has(s.service_account.namespace))"
+  };
+}
+
+/**
+ * **KubernetesRbacNamespaceScope** confines the grant to a single namespace.
+ * The role becomes a Role and the binding a RoleBinding, both living in this namespace.
+ */
+message KubernetesRbacNamespaceScope {
+  /**
+   * The namespace the grant applies to. Accepts a literal namespace name or a reference to a
+   * KubernetesNamespace resource, so a chart can create the namespace and its access grants
+   * in one run. When omitted, the grant lands in the cluster's `default` namespace.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+}
+
+/**
+ * **KubernetesRbacClusterScope** applies the grant cluster-wide.
+ * The role becomes a ClusterRole and the binding a ClusterRoleBinding. Cluster scope is also
+ * required for rules over cluster-scoped resources (nodes, namespaces, persistentvolumes)
+ * and non-resource URLs.
+ */
+message KubernetesRbacClusterScope {
+  // Intentionally empty: cluster scope carries no parameters. Modeled as a message (not a
+  // bare bool) so the scope choice is a oneof and future cluster-scope options have a home.
+}
+
+/**
+ * **KubernetesRbacRoleDefinition** defines a new Role or ClusterRole.
+ */
+message KubernetesRbacRoleDefinition {
+  /**
+   * The name of the created Role/ClusterRole (its `metadata.name`). When omitted, the
+   * component's own metadata.name is used. Must be a valid Kubernetes object name.
+   */
+  optional string name = 1 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "name.dns_subdomain"
+      message: "Role name must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)"
+      expression: "this == '' || this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * The permission rules. Each rule independently grants a set of verbs over a set of
+   * resources (or non-resource URLs); there is no rule ordering and no deny semantics.
+   * May be empty only when `aggregation_rule` is set (the aggregation controller then owns
+   * the rules).
+   */
+  repeated KubernetesRbacPolicyRule rules = 2;
+
+  /**
+   * ClusterRole aggregation (cluster scope only). Instead of listing rules directly, the
+   * ClusterRole's rules are continuously composed by the controller from every ClusterRole
+   * matching these label selectors — the mechanism behind the built-in "view"/"edit"/"admin"
+   * roles absorbing CRD permissions. When set, directly listed `rules` are controller-managed
+   * and will be overwritten.
+   */
+  KubernetesRbacAggregationRule aggregation_rule = 3;
+
+  // A role must get its rules from somewhere: listed directly, or composed via aggregation.
+  option (buf.validate.message).cel = {
+    id: "rules_or_aggregation"
+    message: "at least one rule is required unless aggregation_rule is set"
+    expression: "this.rules.size() > 0 || has(this.aggregation_rule)"
+  };
+}
+
+/**
+ * **KubernetesRbacPolicyRule** grants a set of verbs over a set of API resources or
+ * non-resource URLs. Mirrors the Kubernetes rbac/v1 PolicyRule exactly.
+ */
+message KubernetesRbacPolicyRule {
+  /**
+   * The actions granted, e.g. "get", "list", "watch", "create", "update", "patch", "delete",
+   * "deletecollection" — or special verbs like "impersonate", "bind", "escalate", "use".
+   * "*" grants all verbs. At least one is required.
+   */
+  repeated string verbs = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+
+  /**
+   * The API groups containing the resources, e.g. "" (core group, for pods/services/
+   * configmaps), "apps", "batch", "networking.k8s.io", or a CRD's group. "*" matches all
+   * groups. Required for resource rules; leave empty for non-resource URL rules.
+   */
+  repeated string api_groups = 2;
+
+  /**
+   * The resources the verbs apply to, as lowercase plurals: "pods", "deployments",
+   * "secrets". Subresources use a slash: "pods/log", "deployments/scale". "*" matches all
+   * resources in the listed groups. Required for resource rules; leave empty for
+   * non-resource URL rules.
+   */
+  repeated string resources = 3;
+
+  /**
+   * Optional whitelist of object names the rule is limited to, e.g. a single ConfigMap's
+   * name. Empty means all objects of the listed resources. Name restrictions cannot apply
+   * to "create" or "deletecollection" (Kubernetes evaluates those before a name exists).
+   */
+  repeated string resource_names = 4;
+
+  /**
+   * Non-resource URL paths this rule grants access to, e.g. "/healthz", "/metrics",
+   * "/api/*". A trailing "*" wildcard is allowed only as the full final path segment.
+   * Cluster scope only — these paths exist outside any namespace. A rule grants either
+   * resources or non-resource URLs, never both.
+   */
+  repeated string non_resource_urls = 5;
+
+  // The Kubernetes API rejects rules mixing resource and non-resource grants; surface that
+  // at validation time instead of apply time.
+  option (buf.validate.message).cel = {
+    id: "resources_xor_non_resource_urls"
+    message: "a rule grants either resources or non_resource_urls, not both"
+    expression: "this.resources.size() == 0 || this.non_resource_urls.size() == 0"
+  };
+
+  // A rule that names neither resources nor non-resource URLs grants nothing.
+  option (buf.validate.message).cel = {
+    id: "rule_grants_something"
+    message: "a rule must list resources (with api_groups) or non_resource_urls"
+    expression: "this.resources.size() > 0 || this.non_resource_urls.size() > 0"
+  };
+}
+
+/**
+ * **KubernetesRbacAggregationRule** composes a ClusterRole's rules from other ClusterRoles
+ * selected by label. Mirrors the Kubernetes rbac/v1 AggregationRule.
+ */
+message KubernetesRbacAggregationRule {
+  /**
+   * Label selectors locating the ClusterRoles to aggregate. A ClusterRole matching ANY
+   * selector contributes its rules. At least one selector is required.
+   */
+  repeated KubernetesRbacLabelSelector cluster_role_selectors = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+/**
+ * **KubernetesRbacLabelSelector** is a standard Kubernetes label selector: exact-match labels
+ * and/or set-based expressions. Both parts must match (they AND together); an empty selector
+ * matches everything.
+ */
+message KubernetesRbacLabelSelector {
+  /**
+   * Exact-match label requirements: every key/value pair listed must be present on the
+   * ClusterRole, e.g. {"rbac.example.com/aggregate-to-monitoring": "true"}.
+   */
+  map<string, string> match_labels = 1;
+
+  /**
+   * Set-based label requirements, for selections exact-match cannot express
+   * (key existence, value-in-set).
+   */
+  repeated KubernetesRbacLabelSelectorRequirement match_expressions = 2;
+}
+
+/**
+ * **KubernetesRbacLabelSelectorRequirement** is one set-based label requirement.
+ */
+message KubernetesRbacLabelSelectorRequirement {
+  /**
+   * The label key the requirement applies to.
+   */
+  string key = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * The relationship between the key and the values: "In" (value must be one of `values`),
+   * "NotIn" (must not be), "Exists" (key present, `values` must be empty), or
+   * "DoesNotExist" (key absent, `values` must be empty).
+   */
+  string operator = 2 [(buf.validate.field).string = {
+    in: [
+      "In",
+      "NotIn",
+      "Exists",
+      "DoesNotExist"
+    ]
+  }];
+
+  /**
+   * The values compared against the label's value. Required (non-empty) for In/NotIn;
+   * must be empty for Exists/DoesNotExist.
+   */
+  repeated string values = 3;
+
+  // Enforce the values-vs-operator contract the Kubernetes API applies at admission.
+  option (buf.validate.message).cel = {
+    id: "operator_values_contract"
+    message: "values must be non-empty for In/NotIn and empty for Exists/DoesNotExist"
+    expression: "((this.operator == 'In' || this.operator == 'NotIn') && this.values.size() > 0) || ((this.operator == 'Exists' || this.operator == 'DoesNotExist') && this.values.size() == 0)"
+  };
+}
+
+/**
+ * **KubernetesRbacExistingRole** binds to a role that already exists in the cluster instead
+ * of defining a new one. The dominant use case is granting the Kubernetes built-in roles:
+ * "view", "edit", "admin" (bound in a namespace), or "cluster-admin" (bound cluster-wide).
+ */
+message KubernetesRbacExistingRole {
+  /**
+   * The name of the existing role, e.g. "view", "edit", "admin", "cluster-admin", or any
+   * custom role already in the cluster.
+   */
+  string name = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253
+  ];
+
+  /**
+   * Whether the referenced role is a ClusterRole. Only meaningful in namespace scope, where
+   * a RoleBinding may point at either a namespaced Role (false) or a ClusterRole (true —
+   * how built-in roles like "view" are granted per-namespace). In cluster scope the
+   * reference is always a ClusterRole and this flag is ignored.
+   */
+  bool is_cluster_role = 2;
+}
+
+/**
+ * **KubernetesRbacSubject** identifies one recipient of the grant: a ServiceAccount, a user,
+ * or a group. Exactly one variant must be set.
+ */
+message KubernetesRbacSubject {
+  oneof subject {
+    // A Kubernetes ServiceAccount — the subject kind for workloads.
+    KubernetesRbacServiceAccountSubject service_account = 1;
+
+    // A user name as asserted by the cluster's authenticator (OIDC claim, certificate CN,
+    // cloud IAM principal mapping). Kubernetes has no User objects — this is a plain string
+    // matched at authentication time.
+    string user = 2;
+
+    // A group name as asserted by the cluster's authenticator, e.g. an OIDC groups claim or
+    // a built-in group like "system:authenticated".
+    string group = 3;
+  }
+
+  // A subject with no variant set would silently grant nothing.
+  option (buf.validate.message).cel = {
+    id: "subject_required"
+    message: "Exactly one subject must be set (service_account, user, or group)"
+    expression: "has(this.service_account) || (has(this.user) && this.user != '') || (has(this.group) && this.group != '')"
+  };
+}
+
+/**
+ * **KubernetesRbacServiceAccountSubject** references a ServiceAccount receiving the grant.
+ */
+message KubernetesRbacServiceAccountSubject {
+  /**
+   * The ServiceAccount's name. Accepts a literal name or a reference to a
+   * KubernetesServiceAccount resource, so a chart can create the identity and its
+   * permissions in one run.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name",
+    (dev.planton.shared.options.diagram_label) = "grants to"
+  ];
+
+  /**
+   * The ServiceAccount's namespace. When omitted, defaults to the grant's own namespace
+   * (namespace scope). Cluster-scoped grants must set it explicitly — a ServiceAccount
+   * always lives in some namespace, and cluster scope provides no default.
+   *
+   * containment_exempt: locates the SUBJECT being granted access, not the
+   * grant itself — the grant's own home is the scope's namespace field.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true
+  ];
+}

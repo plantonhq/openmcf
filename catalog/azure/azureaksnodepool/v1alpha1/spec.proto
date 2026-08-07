@@ -1,0 +1,1002 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureaksnodepool.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureAksNodePoolSpec** defines the configuration for creating an AKS
+// node pool: a scale set of worker nodes attached to an existing AKS
+// cluster.
+//
+// Node pools are the unit of compute shape in AKS. The cluster itself
+// carries only the mandatory default (system) pool; every workload-shaped
+// pool -- general compute, memory-optimized, GPU, spot, Windows -- is one
+// of these resources, referencing its cluster by ARM ID. Pools have fully
+// independent lifecycles: scale, upgrade, rotate, or delete a pool without
+// touching the cluster or its siblings.
+//
+// The pool is an ARM child of the cluster: the cluster's ID carries the
+// resource group and cluster name, and the modules derive both from it
+// rather than modeling redundant fields that could contradict the
+// referenced cluster.
+message AzureAksNodePoolSpec {
+  // The parent AKS cluster, by ARM ID.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.ContainerService/managedClusters/{name}
+  // Changing the cluster replaces the pool.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kubernetes_cluster_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureAksCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // Agent-pool name: 1-12 lowercase letters and numbers, starting with a
+  // letter (Windows pools: at most 6 characters). Changing the name
+  // normally replaces the pool -- set temporary_name_for_rotation to
+  // rotate through a stand-in instead.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "aks_node_pool_name_format"
+      message: "Node pool names are 1-12 lowercase letters and numbers and start with a letter"
+      expression: "this == '' || this.matches('^[a-z][a-z0-9]{0,11}$')"
+    }
+  ];
+
+  // Azure VM size for the pool's nodes, e.g. "Standard_D4s_v5" (general),
+  // "Standard_E8s_v5" (memory-optimized), "Standard_NC24ads_A100_v4"
+  // (GPU). Changing the size rotates the pool (see
+  // temporary_name_for_rotation).
+  string vm_size = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.recommended_default) = "Standard_D4s_v5"
+  ];
+
+  // The pool's purpose. Unspecified applies Azure's default (USER): runs
+  // application workloads, may scale to zero, may be Windows or spot.
+  // SYSTEM pools host cluster-critical pods -- they must be Linux,
+  // on-demand (never spot), and keep at least one node.
+  AzureAksNodePoolMode mode = 4;
+
+  // Node OS. Unspecified applies Azure's default (LINUX). WINDOWS
+  // requires the cluster to carry a windows_profile, and the pool must
+  // be USER mode.
+  AzureAksNodePoolOsType os_type = 5;
+
+  // Node OS image. Unspecified applies Azure's default for the OS type
+  // (Ubuntu for Linux, Windows Server 2022 for Windows). AZURE_LINUX is
+  // Microsoft's minimal container-host distro; version-pinned values pin
+  // the OS major independent of Kubernetes version.
+  AzureAksNodePoolOsSku os_sku = 6;
+
+  // Fixed node count (0-1000) when autoscaling is off, or the initial
+  // count when it is on. USER pools may sit at 0 (parked); SYSTEM pools
+  // need at least 1. With autoscaling enabled, leave unset to let the
+  // autoscaler own the count from the start.
+  int32 node_count = 7 [(buf.validate.field).cel = {
+    id: "aks_node_pool_node_count_range"
+    message: "node_count must be between 0 and 1000"
+    expression: "this >= 0 && this <= 1000"
+  }];
+
+  // Whether the cluster autoscaler manages this pool's node count
+  // between min_count and max_count. Tune cluster-wide autoscaler
+  // behavior through the cluster's auto_scaler_profile.
+  bool auto_scaling_enabled = 8;
+
+  // Minimum node count for autoscaling (0-1000; USER pools may scale to
+  // zero). Requires auto_scaling_enabled.
+  int32 min_count = 9 [(buf.validate.field).cel = {
+    id: "aks_node_pool_min_count_range"
+    message: "min_count must be between 0 and 1000"
+    expression: "this >= 0 && this <= 1000"
+  }];
+
+  // Maximum node count for autoscaling (0-1000). Requires
+  // auto_scaling_enabled.
+  int32 max_count = 10 [(buf.validate.field).cel = {
+    id: "aks_node_pool_max_count_range"
+    message: "max_count must be between 0 and 1000"
+    expression: "this >= 0 && this <= 1000"
+  }];
+
+  // Maximum pods per node. Unset applies Azure's plugin-dependent
+  // default (250 for Azure CNI overlay, 30 for traditional Azure CNI).
+  // Set at pool creation; raising it later rotates the pool.
+  int32 max_pods = 11;
+
+  // VM priority. Unspecified applies Azure's default (REGULAR:
+  // on-demand). SPOT draws from Azure's spare capacity at 30-90%
+  // discount but can be evicted at any time -- fault-tolerant,
+  // stateless, or batch workloads only. Spot pools must be USER mode and
+  // cannot change priority in place.
+  AzureAksNodePoolPriority priority = 12;
+
+  // What eviction does to a SPOT node. Unspecified applies Azure's
+  // default (EVICTION_DELETE): the VM is deleted and billing stops.
+  // EVICTION_DEALLOCATE stops the VM but keeps its disks -- faster
+  // return when capacity comes back, but disks bill while stopped.
+  // Only valid for SPOT pools; fixed at creation.
+  AzureAksNodePoolEvictionPolicy eviction_policy = 13;
+
+  // Ceiling price per node-hour in US dollars (up to 5 decimals), e.g.
+  // 0.27113. Leave unset for -1: pay up to the on-demand price and never
+  // be evicted on price (the setting nearly everyone wants -- capacity
+  // eviction still applies). Only valid for SPOT pools; fixed at
+  // creation.
+  double spot_max_price = 14;
+
+  // Kubernetes labels applied to this pool's nodes, for scheduling
+  // (nodeSelector/affinity), e.g. {"workload": "gpu"}.
+  map<string, string> node_labels = 15;
+
+  // Kubernetes taints applied to this pool's nodes, each
+  // "key=value:Effect", e.g. "sku=gpu:NoSchedule" -- the standard way to
+  // reserve special-hardware pools for the workloads that need them.
+  // Spot pools automatically carry
+  // "kubernetes.azure.com/scalesetpriority=spot:NoSchedule" in addition.
+  repeated string node_taints = 16 [(buf.validate.field).repeated.items.string.pattern = "^[^=]+=[^:]*:(NoSchedule|PreferNoSchedule|NoExecute)$"];
+
+  // Availability zones to spread nodes across, e.g. ["1", "2", "3"].
+  // Leave empty for regional (non-zonal) placement. Changing zones
+  // rotates the pool.
+  repeated string zones = 17 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "1",
+        "2",
+        "3"
+      ]
+    }
+  }];
+
+  // The subnet this pool's nodes deploy into. Leave unset to inherit the
+  // cluster's node subnet -- correct for nearly every pool. Reference a
+  // different AzureSubnet to segment pools across subnets (e.g. a
+  // dedicated subnet for an internet-exposed pool). Changing it replaces
+  // the pool.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vnet_subnet_id = 18 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // A separate subnet for POD IPs (traditional Azure CNI with dynamic
+  // pod IP allocation). Only meaningful alongside vnet_subnet_id on
+  // clusters using non-overlay Azure CNI.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef pod_subnet_id = 19 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Kubernetes version for this pool's nodes. Unset follows the control
+  // plane. Pools may lag the control plane by up to two minor versions
+  // -- useful for canarying node upgrades pool by pool.
+  string orchestrator_version = 20;
+
+  // OS disk size in GiB. Unset applies Azure's VM-size-dependent
+  // default.
+  int32 os_disk_size_gb = 21;
+
+  // OS disk placement. Unspecified applies Azure's default (MANAGED): a
+  // persistent managed disk. EPHEMERAL places the OS disk on node-local
+  // storage -- faster and free whenever the VM size's cache disk fits
+  // the image; nodes are cattle, their OS disks need no durability.
+  AzureAksNodePoolOsDiskType os_disk_type = 22;
+
+  // Where kubelet state (image layers, emptyDir volumes) lives.
+  // Unspecified applies Azure's default (the OS disk). TEMPORARY uses
+  // the VM's temp disk for higher IOPS on image-churn-heavy nodes.
+  AzureAksNodePoolKubeletDiskType kubelet_disk_type = 23;
+
+  // Whether nodes get FIPS 140-2 validated OS images (compliance
+  // environments). Changing it rotates the pool.
+  bool fips_enabled = 24;
+
+  // Whether host-based encryption is enabled: data on the node's temp
+  // disks and disk caches is encrypted at rest. Requires the
+  // EncryptionAtHost feature on the subscription. Changing it rotates
+  // the pool.
+  bool host_encryption_enabled = 25;
+
+  // Whether each node gets its own public IP -- niche direct-node-
+  // ingress patterns (game servers, agent fleets). Egress normally flows
+  // through the cluster's outbound path instead.
+  bool node_public_ip_enabled = 26;
+
+  // Public IP prefix to allocate node public IPs from, so node IPs come
+  // from one known, allowlistable CIDR. Requires node_public_ip_enabled.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef node_public_ip_prefix_id = 27 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePublicIpPrefix,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.public_ip_prefix_id"
+  ];
+
+  // GPU Multi-Instance GPU (MIG) profile for A100 sizes, partitioning
+  // each physical GPU into isolated slices (e.g. MIG1G = 7 slices).
+  // Only for MIG-capable VM sizes. Changing it rotates the pool.
+  AzureAksNodePoolGpuInstance gpu_instance = 28;
+
+  // Whether AKS installs the NVIDIA GPU driver on GPU nodes. Unspecified
+  // applies Azure's default (install when the VM size has a GPU). NONE
+  // skips installation for teams running the GPU operator themselves.
+  AzureAksNodePoolGpuDriver gpu_driver = 29;
+
+  // ARM id of a Proximity Placement Group to co-locate nodes for minimal
+  // inter-node latency (HPC). Plain ARM id (no Planton kind). Changing
+  // it rotates the pool.
+  string proximity_placement_group_id = 30;
+
+  // ARM id of a Dedicated Host Group to place nodes on your isolated
+  // physical hosts (compliance isolation). Plain ARM id. Changing it
+  // rotates the pool.
+  string host_group_id = 31;
+
+  // ARM id of a Capacity Reservation Group to draw guaranteed compute
+  // capacity from. Plain ARM id. Changing it rotates the pool.
+  string capacity_reservation_group_id = 32;
+
+  // What scale-down does with removed nodes. Unspecified applies Azure's
+  // default (DELETE): nodes are deleted and stop billing. DEALLOCATE
+  // stops them but keeps disks for faster scale-up at storage cost.
+  AzureAksNodePoolScaleDownMode scale_down_mode = 33;
+
+  // ARM id of a node-pool snapshot to source this pool's configuration
+  // from (replicating a known-good pool config across clusters). Plain
+  // ARM id.
+  string snapshot_id = 34;
+
+  // Container runtime class. Unspecified runs standard containers
+  // (OCIContainer, Azure's default). KATA_MSHV_VM_ISOLATION runs each
+  // pod in a lightweight utility VM for kernel isolation; WASM_WASI runs
+  // WebAssembly workloads (deprecated upstream -- prefer the Spin
+  // operator).
+  AzureAksNodePoolWorkloadRuntime workload_runtime = 35;
+
+  // Whether nodes may use Ultra SSD (zone-pinned, highest-IOPS) data
+  // disks. Requires zones. Changing it rotates the pool.
+  bool ultra_ssd_enabled = 36;
+
+  // Stand-in pool name AKS uses to rotate this pool through otherwise
+  // replace-forcing changes (vm_size, os_disk_type, fips_enabled...):
+  // a temporary pool with this name carries the workloads while the real
+  // pool is rebuilt. Same format as name. Set it proactively on
+  // production pools.
+  string temporary_name_for_rotation = 37 [(buf.validate.field).cel = {
+    id: "aks_node_pool_temp_name_format"
+    message: "Node pool names are 1-12 lowercase letters and numbers and start with a letter"
+    expression: "this == '' || this.matches('^[a-z][a-z0-9]{0,11}$')"
+  }];
+
+  // How node upgrades roll through the pool: surge or unavailability
+  // sizing, drain behavior, and soak time between nodes.
+  AzureAksNodePoolUpgradeSettings upgrade_settings = 38;
+
+  // Kubelet tuning for this pool's nodes -- CPU manager policy, image GC
+  // thresholds, container log rotation, pid limits. Unset fields keep
+  // AKS defaults. Changing kubelet config rotates the pool.
+  AzureAksNodePoolKubeletConfig kubelet_config = 39;
+
+  // Linux kernel and OS tuning -- sysctl values, transparent huge pages,
+  // swap file. Linux pools only. Unset fields keep AKS defaults.
+  // Changing OS config rotates the pool.
+  AzureAksNodePoolLinuxOsConfig linux_os_config = 40;
+
+  // Node-level network hardening: allowed host ports, application
+  // security groups for nodes, and tags on node public IPs.
+  AzureAksNodePoolNodeNetworkProfile node_network_profile = 41;
+
+  // Windows-pool networking: outbound NAT control. Windows pools only;
+  // fixed at creation.
+  AzureAksNodePoolWindowsProfile windows_profile = 42;
+
+  // Free-form tags applied to the pool's VM scale set, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins. Updatable in place.
+  map<string, string> tags = 43;
+
+  option (buf.validate.message).cel = {
+    id: "aks_node_pool_autoscaling_bounds"
+    message: "With auto_scaling_enabled, set max_count (min <= max); without it, leave min_count and max_count unset"
+    expression: "this.auto_scaling_enabled ? (this.max_count >= this.min_count && this.max_count >= 1) : (this.min_count == 0 && this.max_count == 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_node_pool_system_is_linux_ondemand"
+    message: "SYSTEM pools must be Linux and on-demand: leave os_type unset (or LINUX) and priority unset (or REGULAR)"
+    expression: "this.mode != 1 || (this.os_type != 2 && this.priority != 2)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_node_pool_eviction_requires_spot"
+    message: "eviction_policy is only valid for SPOT pools (priority SPOT)"
+    expression: "this.eviction_policy == 0 || this.priority == 2"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_node_pool_spot_price_requires_spot"
+    message: "spot_max_price is only valid for SPOT pools (priority SPOT)"
+    expression: "this.spot_max_price == 0.0 || this.priority == 2"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_node_pool_spot_price_valid"
+    message: "spot_max_price is either -1 (pay up to the on-demand price) or a positive US-dollar amount, e.g. 0.27113"
+    expression: "this.spot_max_price == 0.0 || this.spot_max_price == -1.0 || this.spot_max_price > 0.0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_node_pool_spot_no_surge"
+    message: "Spot pools do not support upgrade_settings max_surge or max_unavailable (azurerm's contract)"
+    expression: "this.priority != 2 || !has(this.upgrade_settings) || (this.upgrade_settings.max_surge == '' && this.upgrade_settings.max_unavailable == '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_node_pool_ip_prefix_requires_public_ip"
+    message: "node_public_ip_prefix_id requires node_public_ip_enabled to be true"
+    expression: "!has(this.node_public_ip_prefix_id) || this.node_public_ip_enabled"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_node_pool_os_sku_matches_os_type"
+    message: "os_sku must match os_type: Ubuntu/Azure Linux SKUs for Linux pools, Windows SKUs for Windows pools"
+    expression: "this.os_sku == 0 || (this.os_type == 2 ? this.os_sku >= 6 : this.os_sku < 6)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_node_pool_windows_name_length"
+    message: "Windows node pool names are at most 6 characters"
+    expression: "this.os_type != 2 || this.name.size() <= 6"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_node_pool_windows_profile_requires_windows"
+    message: "windows_profile is only valid for Windows pools (os_type WINDOWS)"
+    expression: "!has(this.windows_profile) || this.os_type == 2"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aks_node_pool_linux_os_config_requires_linux"
+    message: "linux_os_config is only valid for Linux pools"
+    expression: "!has(this.linux_os_config) || this.os_type != 2"
+  };
+}
+
+// The pool's purpose.
+enum AzureAksNodePoolMode {
+  // Not specified: Azure's default (User).
+  azure_aks_node_pool_mode_unspecified = 0;
+
+  // Hosts cluster-critical system pods. Linux and on-demand only; keeps
+  // at least one node.
+  SYSTEM = 1;
+
+  // Runs application workloads. May scale to zero, run Windows, or use
+  // spot capacity.
+  USER = 2;
+}
+
+// Node operating system.
+enum AzureAksNodePoolOsType {
+  // Not specified: Azure's default (Linux).
+  azure_aks_node_pool_os_type_unspecified = 0;
+
+  // Linux nodes.
+  LINUX = 1;
+
+  // Windows Server nodes -- requires the cluster's windows_profile and
+  // USER mode.
+  WINDOWS = 2;
+}
+
+// Node OS image. Values 1-5 are Linux; 6-7 are Windows.
+enum AzureAksNodePoolOsSku {
+  // Not specified: Azure's default image for the pool's OS type
+  // (currently Ubuntu for Linux, Windows Server 2022 for Windows).
+  azure_aks_node_pool_os_sku_unspecified = 0;
+
+  // Ubuntu, version following AKS's default for the Kubernetes version.
+  UBUNTU = 1;
+
+  // Ubuntu 22.04 LTS, pinned.
+  UBUNTU_2204 = 2;
+
+  // Ubuntu 24.04 LTS, pinned.
+  UBUNTU_2404 = 3;
+
+  // Azure Linux (Microsoft's minimal container-host distro), version
+  // following AKS's default.
+  AZURE_LINUX = 4;
+
+  // Azure Linux 3, pinned.
+  AZURE_LINUX_3 = 5;
+
+  // Windows Server 2019 (retired for new pools on Kubernetes >= 1.33).
+  WINDOWS_2019 = 6;
+
+  // Windows Server 2022.
+  WINDOWS_2022 = 7;
+}
+
+// VM priority for the pool.
+enum AzureAksNodePoolPriority {
+  // Not specified: Azure's default (Regular).
+  azure_aks_node_pool_priority_unspecified = 0;
+
+  // On-demand VMs -- guaranteed capacity.
+  REGULAR = 1;
+
+  // Spot VMs -- 30-90% cheaper, evictable at any time. USER pools only.
+  SPOT = 2;
+}
+
+// What eviction does to a spot node.
+enum AzureAksNodePoolEvictionPolicy {
+  // Not specified: Azure's default (Delete).
+  azure_aks_node_pool_eviction_policy_unspecified = 0;
+
+  // Evicted VMs are deleted -- billing stops entirely.
+  EVICTION_DELETE = 1;
+
+  // Evicted VMs are stopped with disks kept -- faster return, disks
+  // keep billing.
+  EVICTION_DEALLOCATE = 2;
+}
+
+// OS disk placement for pool nodes.
+enum AzureAksNodePoolOsDiskType {
+  // Not specified: Azure's default (Managed).
+  azure_aks_node_pool_os_disk_type_unspecified = 0;
+
+  // Persistent managed disk -- survives node restarts, billed
+  // separately.
+  MANAGED = 1;
+
+  // Node-local ephemeral disk -- faster, free, right for stateless nodes
+  // whenever the VM size's cache disk fits the OS image.
+  EPHEMERAL = 2;
+}
+
+// Kubelet state placement for pool nodes.
+enum AzureAksNodePoolKubeletDiskType {
+  // Not specified: Azure's default (the OS disk).
+  azure_aks_node_pool_kubelet_disk_type_unspecified = 0;
+
+  // Kubelet state on the OS disk.
+  OS = 1;
+
+  // Kubelet state on the VM's temporary disk (higher IOPS for image
+  // churn; contents lost on deallocation, which kubelet state
+  // tolerates).
+  TEMPORARY = 2;
+}
+
+// Multi-Instance GPU (MIG) partitioning profile for A100 GPU nodes.
+enum AzureAksNodePoolGpuInstance {
+  // Not specified: no MIG partitioning.
+  azure_aks_node_pool_gpu_instance_unspecified = 0;
+
+  // Seven 1g.5gb slices per GPU.
+  MIG1G = 1;
+
+  // Three 2g.10gb slices per GPU.
+  MIG2G = 2;
+
+  // Two 3g.20gb slices per GPU.
+  MIG3G = 3;
+
+  // One 4g.20gb slice per GPU.
+  MIG4G = 4;
+
+  // One 7g.40gb slice (the whole GPU as a single MIG device).
+  MIG7G = 5;
+}
+
+// NVIDIA GPU driver installation policy.
+enum AzureAksNodePoolGpuDriver {
+  // Not specified: Azure's default (install the driver on GPU sizes).
+  azure_aks_node_pool_gpu_driver_unspecified = 0;
+
+  // AKS installs the NVIDIA driver.
+  INSTALL = 1;
+
+  // AKS skips driver installation -- for self-managed GPU operators.
+  NONE = 2;
+}
+
+// What scale-down does with removed nodes.
+enum AzureAksNodePoolScaleDownMode {
+  // Not specified: Azure's default (Delete).
+  azure_aks_node_pool_scale_down_mode_unspecified = 0;
+
+  // Removed nodes are deleted -- billing stops entirely.
+  DELETE = 1;
+
+  // Removed nodes are stopped (deallocated) -- compute billing stops but
+  // disks persist for faster scale-up.
+  DEALLOCATE = 2;
+}
+
+// Container runtime class.
+enum AzureAksNodePoolWorkloadRuntime {
+  // Not specified: Azure's default (OCIContainer).
+  azure_aks_node_pool_workload_runtime_unspecified = 0;
+
+  // Standard OCI containers.
+  OCI_CONTAINER = 1;
+
+  // Kata Containers on Microsoft Hyper-V: each pod in a lightweight
+  // utility VM for kernel-level isolation.
+  KATA_MSHV_VM_ISOLATION = 2;
+
+  // WebAssembly (WASI) workloads. Deprecated upstream -- prefer the Spin
+  // operator for new WASM workloads.
+  WASM_WASI = 3;
+}
+
+// Upgrade rollout behavior for the pool. Non-spot pools size the rollout
+// with EITHER max_surge (extra nodes during upgrade -- faster) OR
+// max_unavailable (nodes taken down in place -- no extra cost); spot
+// pools set neither (spot nodes are simply replaced).
+message AzureAksNodePoolUpgradeSettings {
+  // Extra nodes added during an upgrade, as a count ("2") or percentage
+  // ("10%" -- AKS's recommended default). Mutually exclusive with
+  // max_unavailable.
+  string max_surge = 1;
+
+  // Nodes that may be unavailable during an upgrade, as a count or
+  // percentage -- upgrades in place without surge cost, at reduced
+  // capacity. Mutually exclusive with max_surge.
+  string max_unavailable = 2;
+
+  // Minutes to wait for a node to drain before giving up (honoring pod
+  // disruption budgets). Unset keeps Azure's default (30).
+  int32 drain_timeout_in_minutes = 3;
+
+  // Minutes to soak (wait) after each upgraded node before the next
+  // (0-30). Unset upgrades continuously.
+  int32 node_soak_duration_in_minutes = 4 [(buf.validate.field).cel = {
+    id: "aks_node_pool_soak_range"
+    message: "node_soak_duration_in_minutes must be between 0 and 30"
+    expression: "this >= 0 && this <= 30"
+  }];
+
+  // What happens to a node that will not drain (PDB-blocked).
+  // Unspecified keeps Azure's default (the upgrade fails). CORDON
+  // quarantines the node and proceeds; SCHEDULE lets pods return to it.
+  AzureAksNodePoolUndrainableNodeBehavior undrainable_node_behavior = 5;
+
+  option (buf.validate.message).cel = {
+    id: "aks_node_pool_surge_xor_unavailable"
+    message: "Set at most one of max_surge or max_unavailable -- they are mutually exclusive rollout strategies"
+    expression: "this.max_surge == '' || this.max_unavailable == ''"
+  };
+}
+
+// Behavior for nodes that cannot be drained during an upgrade.
+enum AzureAksNodePoolUndrainableNodeBehavior {
+  // Not specified: Azure's default -- the upgrade errors on an
+  // undrainable node.
+  azure_aks_node_pool_undrainable_node_behavior_unspecified = 0;
+
+  // Cordon the undrainable node into quarantine and continue.
+  CORDON = 1;
+
+  // Leave the node schedulable and continue.
+  SCHEDULE = 2;
+}
+
+// Kubelet tuning for the pool's nodes. Unset fields keep AKS defaults.
+message AzureAksNodePoolKubeletConfig {
+  // CPU manager policy. Unspecified keeps AKS's default ("none").
+  // STATIC gives Guaranteed-QoS pods exclusive cores -- latency-
+  // sensitive workloads (trading, real-time media).
+  AzureAksNodePoolCpuManagerPolicy cpu_manager_policy = 1;
+
+  // Whether CPU CFS quota enforcement applies to containers with CPU
+  // limits. Azure's default is true; disabling trades limit enforcement
+  // for throttling-sensitive latency.
+  optional bool cpu_cfs_quota_enabled = 2 [(dev.planton.shared.options.default) = "true"];
+
+  // CPU CFS quota period, e.g. "100ms" (the kubelet default). Shorter
+  // periods smooth throttling for latency-sensitive workloads.
+  string cpu_cfs_quota_period = 3;
+
+  // Disk usage percentage that triggers image garbage collection
+  // (0-100). Unset keeps the kubelet default (85).
+  int32 image_gc_high_threshold = 4 [(buf.validate.field).cel = {
+    id: "aks_np_kubelet_gc_high_range"
+    message: "image_gc_high_threshold is a percentage between 0 and 100"
+    expression: "this >= 0 && this <= 100"
+  }];
+
+  // Disk usage percentage image GC frees down to (0-100). Unset keeps
+  // the kubelet default (80).
+  int32 image_gc_low_threshold = 5 [(buf.validate.field).cel = {
+    id: "aks_np_kubelet_gc_low_range"
+    message: "image_gc_low_threshold is a percentage between 0 and 100"
+    expression: "this >= 0 && this <= 100"
+  }];
+
+  // NUMA topology alignment policy for pod resources. Unspecified keeps
+  // the kubelet default ("none").
+  AzureAksNodePoolTopologyManagerPolicy topology_manager_policy = 6;
+
+  // Unsafe sysctls (or patterns like "net.*") pods may set via their
+  // security context. Empty means none -- the safe default.
+  repeated string allowed_unsafe_sysctls = 7;
+
+  // Maximum container log file size in MB before rotation.
+  int32 container_log_max_size_mb = 8;
+
+  // Maximum rotated container log files kept per container (>= 2).
+  int32 container_log_max_files = 9 [(buf.validate.field).cel = {
+    id: "aks_np_kubelet_log_files_min"
+    message: "container_log_max_files must be at least 2 (the active file plus one rotation)"
+    expression: "this == 0 || this >= 2"
+  }];
+
+  // Maximum processes per pod. Unset keeps the kubelet default
+  // (unlimited, -1).
+  int32 pod_max_pid = 10;
+}
+
+// Kubelet CPU manager policy.
+enum AzureAksNodePoolCpuManagerPolicy {
+  // Not specified: kubelet default ("none") -- shared CPU pool.
+  azure_aks_node_pool_cpu_manager_policy_unspecified = 0;
+
+  // Shared CPU pool for all pods.
+  CPU_MANAGER_NONE = 1;
+
+  // Exclusive core pinning for Guaranteed-QoS pods with integer CPU
+  // requests.
+  CPU_MANAGER_STATIC = 2;
+}
+
+// Kubelet topology manager policy for NUMA alignment.
+enum AzureAksNodePoolTopologyManagerPolicy {
+  // Not specified: kubelet default ("none") -- no NUMA alignment.
+  azure_aks_node_pool_topology_manager_policy_unspecified = 0;
+
+  // No alignment.
+  TOPOLOGY_NONE = 1;
+
+  // Prefer aligned placement, admit regardless.
+  BEST_EFFORT = 2;
+
+  // Admit only pods whose preferred alignment is achievable.
+  RESTRICTED = 3;
+
+  // Admit only pods placeable on a single NUMA node.
+  SINGLE_NUMA_NODE = 4;
+}
+
+// Linux kernel and OS tuning for the pool. Unset fields keep AKS
+// defaults.
+message AzureAksNodePoolLinuxOsConfig {
+  // Kernel sysctl overrides. Only the sysctls AKS allows are modeled;
+  // each carries the ARM-enforced range in its validation.
+  AzureAksNodePoolSysctlConfig sysctl_config = 1;
+
+  // Transparent Huge Pages mode. Unspecified keeps the OS default
+  // ("always"). Databases with sparse access patterns often want MADVISE
+  // or NEVER.
+  AzureAksNodePoolTransparentHugePage transparent_huge_page = 2;
+
+  // Transparent Huge Pages defrag behavior. Unspecified keeps the OS
+  // default ("madvise").
+  AzureAksNodePoolTransparentHugePageDefrag transparent_huge_page_defrag = 3;
+
+  // Swap file size in MB on each node. Unset means no swap -- the
+  // Kubernetes-recommended default.
+  int32 swap_file_size_mb = 4;
+}
+
+// Transparent Huge Pages mode.
+enum AzureAksNodePoolTransparentHugePage {
+  // Not specified: the OS default ("always").
+  azure_aks_node_pool_transparent_huge_page_unspecified = 0;
+
+  // THP for all memory regions.
+  THP_ALWAYS = 1;
+
+  // THP only for madvise(MADV_HUGEPAGE) regions.
+  THP_MADVISE = 2;
+
+  // THP disabled.
+  THP_NEVER = 3;
+}
+
+// Transparent Huge Pages defrag behavior.
+enum AzureAksNodePoolTransparentHugePageDefrag {
+  // Not specified: the OS default ("madvise").
+  azure_aks_node_pool_transparent_huge_page_defrag_unspecified = 0;
+
+  // Synchronous defrag on every THP allocation.
+  DEFRAG_ALWAYS = 1;
+
+  // Defer defrag to kswapd.
+  DEFRAG_DEFER = 2;
+
+  // Defer generally, defrag synchronously for madvise regions.
+  DEFRAG_DEFER_MADVISE = 3;
+
+  // Defrag synchronously only for madvise regions.
+  DEFRAG_MADVISE = 4;
+
+  // Never defrag.
+  DEFRAG_NEVER = 5;
+}
+
+// Kernel sysctl overrides AKS supports on Linux nodes. Every field is
+// optional; zero means "keep the AKS default". Ranges mirror ARM's
+// accepted bounds.
+message AzureAksNodePoolSysctlConfig {
+  // fs.aio-max-nr (65536-6553500): max concurrent async I/O requests.
+  int32 fs_aio_max_nr = 1 [(buf.validate.field).cel = {
+    id: "np_sysctl_fs_aio_max_nr"
+    message: "fs_aio_max_nr must be between 65536 and 6553500"
+    expression: "this == 0 || (this >= 65536 && this <= 6553500)"
+  }];
+
+  // fs.file-max (8192-12000500): system-wide open file handle limit.
+  int32 fs_file_max = 2 [(buf.validate.field).cel = {
+    id: "np_sysctl_fs_file_max"
+    message: "fs_file_max must be between 8192 and 12000500"
+    expression: "this == 0 || (this >= 8192 && this <= 12000500)"
+  }];
+
+  // fs.inotify.max_user_watches (781250-2097152): inotify watch limit --
+  // raise for file-watching-heavy workloads (IDEs, log shippers).
+  int32 fs_inotify_max_user_watches = 3 [(buf.validate.field).cel = {
+    id: "np_sysctl_fs_inotify_watches"
+    message: "fs_inotify_max_user_watches must be between 781250 and 2097152"
+    expression: "this == 0 || (this >= 781250 && this <= 2097152)"
+  }];
+
+  // fs.nr_open (8192-20000500): per-process open file limit.
+  int32 fs_nr_open = 4 [(buf.validate.field).cel = {
+    id: "np_sysctl_fs_nr_open"
+    message: "fs_nr_open must be between 8192 and 20000500"
+    expression: "this == 0 || (this >= 8192 && this <= 20000500)"
+  }];
+
+  // kernel.threads-max (20-513785): system-wide thread limit.
+  int32 kernel_threads_max = 5 [(buf.validate.field).cel = {
+    id: "np_sysctl_kernel_threads_max"
+    message: "kernel_threads_max must be between 20 and 513785"
+    expression: "this == 0 || (this >= 20 && this <= 513785)"
+  }];
+
+  // net.core.netdev_max_backlog (1000-3240000): NIC ingress queue
+  // length.
+  int32 net_core_netdev_max_backlog = 6 [(buf.validate.field).cel = {
+    id: "np_sysctl_netdev_backlog"
+    message: "net_core_netdev_max_backlog must be between 1000 and 3240000"
+    expression: "this == 0 || (this >= 1000 && this <= 3240000)"
+  }];
+
+  // net.core.optmem_max (20480-4194304): per-socket ancillary buffer
+  // max.
+  int32 net_core_optmem_max = 7 [(buf.validate.field).cel = {
+    id: "np_sysctl_optmem_max"
+    message: "net_core_optmem_max must be between 20480 and 4194304"
+    expression: "this == 0 || (this >= 20480 && this <= 4194304)"
+  }];
+
+  // net.core.rmem_default (212992-134217728): default socket receive
+  // buffer.
+  int32 net_core_rmem_default = 8 [(buf.validate.field).cel = {
+    id: "np_sysctl_rmem_default"
+    message: "net_core_rmem_default must be between 212992 and 134217728"
+    expression: "this == 0 || (this >= 212992 && this <= 134217728)"
+  }];
+
+  // net.core.rmem_max (212992-134217728): max socket receive buffer.
+  int32 net_core_rmem_max = 9 [(buf.validate.field).cel = {
+    id: "np_sysctl_rmem_max"
+    message: "net_core_rmem_max must be between 212992 and 134217728"
+    expression: "this == 0 || (this >= 212992 && this <= 134217728)"
+  }];
+
+  // net.core.somaxconn (4096-3240000): listen backlog limit.
+  int32 net_core_somaxconn = 10 [(buf.validate.field).cel = {
+    id: "np_sysctl_somaxconn"
+    message: "net_core_somaxconn must be between 4096 and 3240000"
+    expression: "this == 0 || (this >= 4096 && this <= 3240000)"
+  }];
+
+  // net.core.wmem_default (212992-134217728): default socket send
+  // buffer.
+  int32 net_core_wmem_default = 11 [(buf.validate.field).cel = {
+    id: "np_sysctl_wmem_default"
+    message: "net_core_wmem_default must be between 212992 and 134217728"
+    expression: "this == 0 || (this >= 212992 && this <= 134217728)"
+  }];
+
+  // net.core.wmem_max (212992-134217728): max socket send buffer.
+  int32 net_core_wmem_max = 12 [(buf.validate.field).cel = {
+    id: "np_sysctl_wmem_max"
+    message: "net_core_wmem_max must be between 212992 and 134217728"
+    expression: "this == 0 || (this >= 212992 && this <= 134217728)"
+  }];
+
+  // net.ipv4.ip_local_port_range minimum (1024-60999).
+  int32 net_ipv4_ip_local_port_range_min = 13 [(buf.validate.field).cel = {
+    id: "np_sysctl_port_range_min"
+    message: "net_ipv4_ip_local_port_range_min must be between 1024 and 60999"
+    expression: "this == 0 || (this >= 1024 && this <= 60999)"
+  }];
+
+  // net.ipv4.ip_local_port_range maximum (32768-65535).
+  int32 net_ipv4_ip_local_port_range_max = 14 [(buf.validate.field).cel = {
+    id: "np_sysctl_port_range_max"
+    message: "net_ipv4_ip_local_port_range_max must be between 32768 and 65535"
+    expression: "this == 0 || (this >= 32768 && this <= 65535)"
+  }];
+
+  // net.ipv4.neigh.default.gc_thresh1 (128-80000): ARP cache soft floor.
+  int32 net_ipv4_neigh_default_gc_thresh1 = 15 [(buf.validate.field).cel = {
+    id: "np_sysctl_gc_thresh1"
+    message: "net_ipv4_neigh_default_gc_thresh1 must be between 128 and 80000"
+    expression: "this == 0 || (this >= 128 && this <= 80000)"
+  }];
+
+  // net.ipv4.neigh.default.gc_thresh2 (512-90000): ARP cache soft
+  // ceiling.
+  int32 net_ipv4_neigh_default_gc_thresh2 = 16 [(buf.validate.field).cel = {
+    id: "np_sysctl_gc_thresh2"
+    message: "net_ipv4_neigh_default_gc_thresh2 must be between 512 and 90000"
+    expression: "this == 0 || (this >= 512 && this <= 90000)"
+  }];
+
+  // net.ipv4.neigh.default.gc_thresh3 (1024-100000): ARP cache hard
+  // limit.
+  int32 net_ipv4_neigh_default_gc_thresh3 = 17 [(buf.validate.field).cel = {
+    id: "np_sysctl_gc_thresh3"
+    message: "net_ipv4_neigh_default_gc_thresh3 must be between 1024 and 100000"
+    expression: "this == 0 || (this >= 1024 && this <= 100000)"
+  }];
+
+  // net.ipv4.tcp_fin_timeout (5-120): FIN-WAIT-2 hold seconds.
+  int32 net_ipv4_tcp_fin_timeout = 18 [(buf.validate.field).cel = {
+    id: "np_sysctl_tcp_fin_timeout"
+    message: "net_ipv4_tcp_fin_timeout must be between 5 and 120"
+    expression: "this == 0 || (this >= 5 && this <= 120)"
+  }];
+
+  // net.ipv4.tcp_keepalive_intvl (10-90): keepalive probe interval.
+  int32 net_ipv4_tcp_keepalive_intvl = 19 [(buf.validate.field).cel = {
+    id: "np_sysctl_tcp_keepalive_intvl"
+    message: "net_ipv4_tcp_keepalive_intvl must be between 10 and 90"
+    expression: "this == 0 || (this >= 10 && this <= 90)"
+  }];
+
+  // net.ipv4.tcp_keepalive_probes (1-15): unanswered probes before drop.
+  int32 net_ipv4_tcp_keepalive_probes = 20 [(buf.validate.field).cel = {
+    id: "np_sysctl_tcp_keepalive_probes"
+    message: "net_ipv4_tcp_keepalive_probes must be between 1 and 15"
+    expression: "this == 0 || (this >= 1 && this <= 15)"
+  }];
+
+  // net.ipv4.tcp_keepalive_time (30-432000): idle seconds before
+  // keepalives start.
+  int32 net_ipv4_tcp_keepalive_time = 21 [(buf.validate.field).cel = {
+    id: "np_sysctl_tcp_keepalive_time"
+    message: "net_ipv4_tcp_keepalive_time must be between 30 and 432000"
+    expression: "this == 0 || (this >= 30 && this <= 432000)"
+  }];
+
+  // net.ipv4.tcp_max_syn_backlog (128-3240000): half-open connection
+  // queue.
+  int32 net_ipv4_tcp_max_syn_backlog = 22 [(buf.validate.field).cel = {
+    id: "np_sysctl_tcp_syn_backlog"
+    message: "net_ipv4_tcp_max_syn_backlog must be between 128 and 3240000"
+    expression: "this == 0 || (this >= 128 && this <= 3240000)"
+  }];
+
+  // net.ipv4.tcp_max_tw_buckets (8000-1440000): TIME-WAIT socket cap.
+  int32 net_ipv4_tcp_max_tw_buckets = 23 [(buf.validate.field).cel = {
+    id: "np_sysctl_tcp_tw_buckets"
+    message: "net_ipv4_tcp_max_tw_buckets must be between 8000 and 1440000"
+    expression: "this == 0 || (this >= 8000 && this <= 1440000)"
+  }];
+
+  // net.ipv4.tcp_tw_reuse: allow reusing TIME-WAIT sockets for new
+  // outbound connections.
+  bool net_ipv4_tcp_tw_reuse = 24;
+
+  // net.netfilter.nf_conntrack_buckets (65536-524288): conntrack hash
+  // size.
+  int32 net_netfilter_nf_conntrack_buckets = 25 [(buf.validate.field).cel = {
+    id: "np_sysctl_conntrack_buckets"
+    message: "net_netfilter_nf_conntrack_buckets must be between 65536 and 524288"
+    expression: "this == 0 || (this >= 65536 && this <= 524288)"
+  }];
+
+  // net.netfilter.nf_conntrack_max (131072-2097152): tracked connection
+  // cap -- raise for high-connection-count proxies.
+  int32 net_netfilter_nf_conntrack_max = 26 [(buf.validate.field).cel = {
+    id: "np_sysctl_conntrack_max"
+    message: "net_netfilter_nf_conntrack_max must be between 131072 and 2097152"
+    expression: "this == 0 || (this >= 131072 && this <= 2097152)"
+  }];
+
+  // vm.max_map_count (65530-262144): memory-map areas per process --
+  // Elasticsearch famously needs 262144.
+  int32 vm_max_map_count = 27 [(buf.validate.field).cel = {
+    id: "np_sysctl_vm_max_map_count"
+    message: "vm_max_map_count must be between 65530 and 262144"
+    expression: "this == 0 || (this >= 65530 && this <= 262144)"
+  }];
+
+  // vm.swappiness (0-100): kernel swap eagerness.
+  int32 vm_swappiness = 28 [(buf.validate.field).cel = {
+    id: "np_sysctl_vm_swappiness"
+    message: "vm_swappiness must be between 0 and 100"
+    expression: "this >= 0 && this <= 100"
+  }];
+
+  // vm.vfs_cache_pressure (0-100): dentry/inode cache reclaim pressure.
+  int32 vm_vfs_cache_pressure = 29 [(buf.validate.field).cel = {
+    id: "np_sysctl_vfs_cache_pressure"
+    message: "vm_vfs_cache_pressure must be between 0 and 100"
+    expression: "this >= 0 && this <= 100"
+  }];
+}
+
+// Node-level network hardening for the pool.
+message AzureAksNodePoolNodeNetworkProfile {
+  // Host port ranges pods may bind on the node -- each entry opens a
+  // port range/protocol in the node's network security rules.
+  repeated AzureAksNodePoolAllowedHostPorts allowed_host_ports = 1;
+
+  // ARM ids of Application Security Groups the pool's nodes join, so NSG
+  // rules can target "this pool's nodes" as a group. Plain ARM ids.
+  repeated string application_security_group_ids = 2;
+
+  // Azure tags applied to the node PUBLIC IPs (with
+  // node_public_ip_enabled), e.g. routing preference tags. Set at pool
+  // creation.
+  map<string, string> node_public_ip_tags = 3;
+}
+
+// A host port range pods may use on nodes.
+message AzureAksNodePoolAllowedHostPorts {
+  // Start of the port range (1-65535).
+  int32 port_start = 1 [(buf.validate.field).cel = {
+    id: "aks_np_host_port_start_range"
+    message: "port_start must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // End of the port range (1-65535, >= port_start).
+  int32 port_end = 2 [(buf.validate.field).cel = {
+    id: "aks_np_host_port_end_range"
+    message: "port_end must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // Protocol for the range.
+  AzureAksNodePoolHostPortProtocol protocol = 3;
+}
+
+// Protocol for an allowed host-port range.
+enum AzureAksNodePoolHostPortProtocol {
+  // Not specified.
+  azure_aks_node_pool_host_port_protocol_unspecified = 0;
+
+  // TCP.
+  TCP = 1;
+
+  // UDP.
+  UDP = 2;
+}
+
+// Windows-pool networking.
+message AzureAksNodePoolWindowsProfile {
+  // Whether Windows nodes get outbound NAT provided by the cluster.
+  // Azure's default is true; disable only when routing Windows egress
+  // through your own NAT arrangement. Fixed at creation.
+  optional bool outbound_nat_enabled = 1 [(dev.planton.shared.options.default) = "true"];
+}

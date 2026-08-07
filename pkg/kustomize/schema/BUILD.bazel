@@ -17,8 +17,8 @@ go_test(
     srcs = ["generator_test.go"],
     embed = [":schema"],
     deps = [
-        "//apis/dev/planton/shared/cloudresourcekind",
         "//pkg/crkreflect",
+        "//shared/cloudresourcekind",
         "@org_golang_google_protobuf//reflect/protoreflect",
     ],
 )

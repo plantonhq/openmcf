@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesnetworkpolicy.v1alpha1;
+
+/**
+ * **KubernetesNetworkPolicyStackOutputs** captures the observable handles of a
+ * deployed NetworkPolicy. A policy has no runtime status of its own (enforcement
+ * lives in the CNI); the handles identify the object for composition and
+ * debugging.
+ */
+message KubernetesNetworkPolicyStackOutputs {
+  // The name of the NetworkPolicy object as created in the cluster.
+  string network_policy_name = 1;
+
+  // The namespace the NetworkPolicy was created in.
+  string namespace = 2;
+
+  /**
+   * The directions this policy governs, as deployed — "Ingress", "Egress", or
+   * "Ingress,Egress". Includes inferred types when the spec omitted
+   * policy_types.
+   */
+  string policy_types = 3;
+}

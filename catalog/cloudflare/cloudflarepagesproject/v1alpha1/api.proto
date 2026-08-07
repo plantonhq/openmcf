@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarepagesproject.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarepagesproject/v1alpha1/spec.proto";
+import "catalog/cloudflare/cloudflarepagesproject/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// cloudflare-pages-project
+message CloudflarePagesProject {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflarePagesProject'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  CloudflarePagesProjectSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  CloudflarePagesProjectStatus status = 5;
+}
+
+// cloudflare-pages-project status
+message CloudflarePagesProjectStatus {
+  //stack-outputs
+  //  cloudflare-pages-project stack-outputs
+  CloudflarePagesProjectStackOutputs outputs = 1;
+}

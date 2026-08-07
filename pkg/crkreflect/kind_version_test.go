@@ -3,7 +3,7 @@ package crkreflect
 import (
 	"testing"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // TestKindVersionsMatchMaturityGrammar walks every registered kind and

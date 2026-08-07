@@ -1,0 +1,1204 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetespostgres.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "catalog/kubernetes/workload_identity.proto";
+import "catalog/kubernetes/workload_pod.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesPostgresSpec** declares a production-grade PostgreSQL cluster
+ * reconciled by CloudNativePG (KubernetesCloudNativePgOperator must be on
+ * the cluster). The spec renders a `postgresql.cnpg.io/v1` Cluster custom
+ * resource — and, when backups are declared, the companion Barman Cloud
+ * `ObjectStore` and `ScheduledBackup` resources — so one Planton resource
+ * carries the whole database story: instances and streaming replication
+ * with automated failover, storage (with a separate WAL volume when I/O
+ * isolation matters), PostgreSQL configuration, bootstrap (fresh initdb,
+ * restore from a backup, physical replication from an existing server, or
+ * logical import), declarative roles, continuous WAL archiving plus
+ * scheduled base backups to S3/GCS/Azure-Blob/S3-compatible stores, TLS,
+ * and monitoring.
+ *
+ * NAMING CONTRACT: every object CloudNativePG creates derives from
+ * `metadata.name` — instance pods (`<name>-1`, `<name>-2`, ...), the
+ * traffic Services (`<name>-rw` primary read-write, `<name>-ro` replicas
+ * only, `<name>-r` any instance), and the credential Secrets
+ * (`<name>-app`, `<name>-superuser`). Applications connect through the
+ * SERVICES, never a pod: after a failover the -rw Service re-points to the
+ * new primary automatically.
+ *
+ * EXPOSURE IS COMPOSED, never embedded: the cluster is in-cluster plumbing
+ * reachable at the exported `kube_endpoint`. To reach it from outside,
+ * compose a first-class exposure kind (KubernetesService of type
+ * LoadBalancer selecting the -rw Service's pods via a managed Service, or
+ * a TCP route on a Gateway) — this component never creates one.
+ *
+ * BACKUPS ARE PLUGIN-BASED: the backup block renders a Barman Cloud
+ * `ObjectStore` resource plus the Cluster's plugin wiring (WAL archiving
+ * starts immediately) and one `ScheduledBackup` per declared schedule.
+ * The operator must be installed with `barman_cloud_plugin.enabled` —
+ * CloudNativePG's built-in object-store support is deprecated upstream
+ * and deliberately not modeled here.
+ */
+message KubernetesPostgresSpec {
+  /**
+   * Namespace to create the PostgreSQL cluster in. Accepts a literal
+   * namespace name or a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before the cluster and deleted with the resource.
+   * When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Number of PostgreSQL instances: one primary plus (instances - 1)
+   * streaming replicas. 1 is a single point of failure suitable for
+   * development; 2 gives automated failover; 3 is the production
+   * convention (failover capacity even during maintenance).
+   */
+  optional int32 instances = 3 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * PostgreSQL container image, tag or digest form (e.g.
+   * "ghcr.io/cloudnative-pg/postgresql:17.5"). Empty = the operator's
+   * default image for its release — the recommended posture unless you
+   * need a specific PostgreSQL major/minor or a private mirror. Changing
+   * the image on a live cluster performs a rolling update (minor bumps)
+   * or a major upgrade (major bumps).
+   */
+  string image_name = 4;
+
+  /**
+   * Storage for PGDATA — the database files. Required: CloudNativePG
+   * provisions one PVC per instance from this and never lets you shrink
+   * it later (sizes can only grow).
+   */
+  KubernetesPostgresStorage storage = 5 [(buf.validate.field).required = true];
+
+  /**
+   * Optional dedicated volume for the Write-Ahead Log. Separating WAL
+   * from data puts the sequential WAL writes on their own disk — the
+   * standard I/O-isolation move for write-heavy workloads. Set at
+   * creation; adding it later requires re-creating the instances.
+   */
+  KubernetesPostgresStorage wal_storage = 6;
+
+  /**
+   * CPU/memory for every PostgreSQL instance pod. Empty = no
+   * requests/limits (fine for evaluation, not production — the operator
+   * derives PostgreSQL memory tuning hints from the limits).
+   */
+  dev.planton.kubernetes.ContainerResources resources = 7;
+
+  /**
+   * The PostgreSQL server configuration: postgresql.conf parameters,
+   * pg_hba/pg_ident rules, preloaded libraries, and synchronous
+   * replication.
+   */
+  KubernetesPostgresServerConfig postgresql = 8;
+
+  /**
+   * How the cluster gets its initial state: a fresh empty database
+   * (initdb — the default when omitted), a restore from an object-store
+   * backup (recovery — the disaster-recovery and clone path), physical
+   * streaming from an existing server (pg_basebackup), or initdb plus a
+   * logical import of an existing database (migration from RDS/other
+   * PostgreSQL). Immutable after creation — bootstrap describes how the
+   * cluster was born.
+   */
+  KubernetesPostgresBootstrap bootstrap = 9;
+
+  /**
+   * Connection descriptors for EXTERNAL PostgreSQL servers referenced by
+   * bootstrap methods (pg_basebackup source, initdb import source). Each
+   * entry's declared password materializes as a Kubernetes Secret; the
+   * operator builds the connection string from the parameters.
+   */
+  repeated KubernetesPostgresExternalCluster external_clusters = 10 [(buf.validate.field).cel = {
+    id: "spec.external_clusters.unique_names"
+    message: "each external cluster needs a distinct name"
+    expression: "this.all(c1, this.exists_one(c2, c1.name == c2.name))"
+  }];
+
+  /**
+   * The `postgres` superuser posture. Disabled by default (the upstream
+   * default): the superuser password is blanked and everything runs
+   * through the application owner role. Enable only when something
+   * genuinely needs superuser SQL access.
+   */
+  KubernetesPostgresSuperuser superuser = 11;
+
+  /**
+   * Declarative database roles beyond the application owner: the
+   * operator creates them, keeps their attributes reconciled, and (when
+   * a password is declared) manages their credential Secrets.
+   */
+  repeated KubernetesPostgresRole roles = 12 [(buf.validate.field).cel = {
+    id: "spec.roles.unique_names"
+    message: "each role needs a distinct name"
+    expression: "this.all(r1, this.exists_one(r2, r1.name == r2.name))"
+  }];
+
+  /**
+   * Continuous backup: WAL archiving plus scheduled base backups to an
+   * object store, via the Barman Cloud plugin. Omitted = no backups (a
+   * deliberate choice to make, not a default to forget). Requires the
+   * operator installed with barman_cloud_plugin.enabled.
+   */
+  KubernetesPostgresBackup backup = 13;
+
+  /**
+   * Keyless cloud identity for the instance pods' ServiceAccount —
+   * annotates it so backups reach S3 (EKS IRSA), GCS (GKE Workload
+   * Identity), or Azure Blob (AKS Workload Identity) without stored
+   * keys. Pair with the backup block's keyless arm.
+   */
+  dev.planton.kubernetes.KubernetesWorkloadIdentity workload_identity = 14;
+
+  /**
+   * TLS certificates for client connections. By default the operator
+   * self-signs a CA and server certificate per cluster; point
+   * server_tls at a cert-manager-issued Certificate to serve a
+   * organization-trusted chain.
+   */
+  KubernetesPostgresCertificates certificates = 15;
+
+  /**
+   * The metrics exporter each instance ships (native Prometheus
+   * format on port 9187).
+   */
+  KubernetesPostgresMonitoring monitoring = 16;
+
+  /**
+   * Where instance pods run: spreading across nodes/zones, node
+   * selection, tolerations, and scheduling priority.
+   */
+  KubernetesPostgresScheduling scheduling = 17;
+
+  /**
+   * How rolling updates treat the PRIMARY instance (replicas always
+   * update first).
+   */
+  KubernetesPostgresUpdateStrategy update_strategy = 18;
+
+  /**
+   * Create a PodDisruptionBudget protecting the primary from voluntary
+   * eviction. Chart of the upstream default: true. Disable only for
+   * development clusters where node drains should never block.
+   */
+  optional bool enable_pdb = 19 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Names of image-pull secrets (in the cluster's namespace) for pulling
+   * the PostgreSQL image from a private registry.
+   */
+  repeated string image_pull_secrets = 20 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing Kubernetes Secrets (references), not secret material"];
+}
+
+/**
+ * One PVC specification (PGDATA or WAL).
+ */
+message KubernetesPostgresStorage {
+  /**
+   * Volume size as a Kubernetes quantity (e.g. "10Gi"). Grows are
+   * applied to live PVCs (when the storage class supports expansion);
+   * shrinks are rejected by the operator.
+   */
+  string size = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.storage.size_quantity"
+      message: "size must be a Kubernetes quantity like '10Gi' or '500Mi'"
+      expression: "this.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$')"
+    }
+  ];
+
+  /**
+   * StorageClass for the PVCs. Empty = the cluster's default class.
+   * Accepts a literal class name or a reference to a
+   * KubernetesStorageClass resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_class_name"
+  ];
+
+  /**
+   * Resize mounted PVCs in place when size grows. Upstream default:
+   * true. Disable for storage classes that cannot expand in-use volumes
+   * (the operator then resizes by recreating instances one at a time).
+   */
+  optional bool resize_in_use_volumes = 3 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * PostgreSQL server configuration.
+ */
+message KubernetesPostgresServerConfig {
+  /**
+   * postgresql.conf parameters (e.g. max_connections: "200",
+   * shared_buffers: "256MB"). The operator merges them over its
+   * defaults, validates them, and rolls them out — parameters that
+   * require a restart trigger a rolling restart automatically.
+   * Replication and archiving parameters are operator-managed and
+   * rejected here.
+   */
+  map<string, string> parameters = 1;
+
+  /**
+   * Lines appended to pg_hba.conf (client authentication rules),
+   * evaluated before the operator's defaults. The operator always keeps
+   * its own rules for replication and local access.
+   */
+  repeated string pg_hba = 2;
+
+  /**
+   * Lines appended to pg_ident.conf (user name maps).
+   */
+  repeated string pg_ident = 3;
+
+  /**
+   * Libraries added to shared_preload_libraries (e.g. "pg_stat_statements",
+   * "timescaledb"). The library must exist in the image — check the
+   * image's bundled extensions before adding.
+   */
+  repeated string shared_preload_libraries = 4;
+
+  /**
+   * Synchronous replication: transactions wait for replicas before
+   * committing — the zero-data-loss posture. Omitted = asynchronous
+   * replication (a failover may lose the last instants of writes).
+   */
+  KubernetesPostgresSynchronousReplication synchronous = 5;
+
+  /**
+   * Allow ALTER SYSTEM inside the database. Upstream default: false —
+   * configuration belongs in `parameters` where it is declarative and
+   * survives instance recreation; enable only for debugging.
+   */
+  bool enable_alter_system = 6;
+}
+
+/**
+ * Synchronous replication configuration (maps to the modern
+ * `postgresql.synchronous` stanza).
+ */
+message KubernetesPostgresSynchronousReplication {
+  /**
+   * How synchronous standbys are selected: "any" (quorum — any `number`
+   * of the standbys acknowledge; the recommended posture) or "first"
+   * (priority order).
+   */
+  optional string method = 1 [
+    (dev.planton.shared.options.default) = "any",
+    (buf.validate.field).cel = {
+      id: "spec.postgresql.synchronous.method_enum"
+      message: "synchronous method must be 'any' (quorum) or 'first' (priority)"
+      expression: "this == '' || this in ['any', 'first']"
+    }
+  ];
+
+  /**
+   * Number of synchronous standbys transactions wait for. Must be lower
+   * than the instance count (a cluster of 3 supports at most 2 — the
+   * primary cannot acknowledge itself).
+   */
+  int32 number = 2 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * What happens when standbys are unavailable: "required" (writes
+   * BLOCK until quorum returns — strict durability, the upstream
+   * default) or "preferred" (the requirement relaxes dynamically —
+   * availability over durability).
+   */
+  optional string data_durability = 3 [
+    (dev.planton.shared.options.default) = "required",
+    (buf.validate.field).cel = {
+      id: "spec.postgresql.synchronous.durability_enum"
+      message: "data_durability must be 'required' (writes block without quorum) or 'preferred' (requirement relaxes when replicas are unavailable)"
+      expression: "this == '' || this in ['required', 'preferred']"
+    }
+  ];
+}
+
+/**
+ * Bootstrap: how the cluster gets its initial state. Exactly one method.
+ */
+message KubernetesPostgresBootstrap {
+  oneof method {
+    option (buf.validate.oneof).required = true;
+
+    /**
+     * A fresh, empty database initialized with initdb — the standard
+     * path for new applications.
+     */
+    KubernetesPostgresBootstrapInitDb initdb = 1;
+
+    /**
+     * Restore from an object-store backup — disaster recovery, cloning,
+     * and point-in-time recovery. The new cluster starts from the backup
+     * and replays WAL to the requested target.
+     */
+    KubernetesPostgresBootstrapRecovery recovery = 2;
+
+    /**
+     * Physical streaming replication from an existing PostgreSQL server
+     * (a declared external cluster) — the binary-identical migration
+     * path (same major version, same architecture).
+     */
+    KubernetesPostgresBootstrapPgBaseBackup pg_basebackup = 3;
+  }
+}
+
+/**
+ * initdb bootstrap.
+ */
+message KubernetesPostgresBootstrapInitDb {
+  /**
+   * Name of the application database to create. Upstream default: "app".
+   */
+  optional string database = 1 [(dev.planton.shared.options.default) = "app"];
+
+  /**
+   * Name of the role owning the application database. Empty = same as
+   * the database name (the upstream default).
+   */
+  string owner = 2;
+
+  /**
+   * Initial password for the owner role. Empty = the operator generates
+   * one. Either way the credential lands in the `<name>-app` Secret the
+   * outputs point at.
+   */
+  string owner_password = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  /**
+   * Enable data-page checksums (initdb -k): detects silent storage
+   * corruption at a small CPU cost. Upstream default: false; set true
+   * for new production clusters — it cannot be turned on later.
+   */
+  bool data_checksums = 4;
+
+  /**
+   * Database encoding. Upstream default: UTF8.
+   */
+  optional string encoding = 5 [(dev.planton.shared.options.default) = "UTF8"];
+
+  /**
+   * LC_COLLATE for the new database cluster (initdb --lc-collate).
+   * Upstream default: C.
+   */
+  string locale_collate = 6;
+
+  /**
+   * LC_CTYPE for the new database cluster (initdb --lc-ctype).
+   * Upstream default: C.
+   */
+  string locale_ctype = 7;
+
+  /**
+   * SQL run once as superuser against the `postgres` database right
+   * after creation — extensions, event triggers. Use with care: these
+   * statements run unvalidated.
+   */
+  repeated string post_init_sql = 8;
+
+  /**
+   * SQL run once as superuser against the APPLICATION database right
+   * after creation (e.g. CREATE EXTENSION postgis).
+   */
+  repeated string post_init_application_sql = 9;
+
+  /**
+   * Migrate an existing database in during bootstrap: a logical
+   * pg_dump/pg_restore from a declared external cluster — the
+   * cross-version, cross-architecture migration path (works from RDS,
+   * Cloud SQL, self-managed — anything reachable).
+   */
+  KubernetesPostgresImport import = 10;
+}
+
+/**
+ * Logical import (initdb.import).
+ */
+message KubernetesPostgresImport {
+  /**
+   * Import shape: "microservice" (the listed database is imported INTO
+   * the new application database — the common case) or "monolith"
+   * (databases and roles are recreated one-to-one).
+   */
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.bootstrap.initdb.import.type_enum"
+      message: "import type must be 'microservice' (one database into the app database) or 'monolith' (databases and roles recreated one-to-one)"
+      expression: "this in ['microservice', 'monolith']"
+    }
+  ];
+
+  /**
+   * Name of the declared external cluster to import from.
+   */
+  string source_external_cluster = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Databases to import. The microservice shape takes exactly one; the
+   * monolith shape takes one or more (or "*" for all).
+   */
+  repeated string databases = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  /**
+   * Roles to import (monolith shape only).
+   */
+  repeated string roles = 4;
+
+  /**
+   * Import schema only — skip table data (a structural clone).
+   */
+  bool schema_only = 5;
+
+  option (buf.validate.message).cel = {
+    id: "spec.bootstrap.initdb.import.microservice_single_db"
+    message: "the microservice import shape takes exactly one database — use the monolith shape for several"
+    expression: "this.type != 'microservice' || this.databases.size() == 1"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.bootstrap.initdb.import.roles_monolith_only"
+    message: "importing roles is only available with the monolith shape"
+    expression: "this.type == 'monolith' || this.roles.size() == 0"
+  };
+}
+
+/**
+ * Recovery bootstrap: restore from an object-store backup.
+ */
+message KubernetesPostgresBootstrapRecovery {
+  /**
+   * The object store holding the source cluster's backups. Rendered as a
+   * SECOND Barman Cloud ObjectStore resource (`<name>-recovery-source`)
+   * — recovery reads from here while the backup block (if any) writes
+   * the new cluster's own backups elsewhere. Never point both at the
+   * same destination path: the new cluster would overwrite the archive
+   * it restored from.
+   */
+  KubernetesPostgresObjectStore object_store = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Name the SOURCE cluster's data is stored under in the object store
+   * (its Cluster name, unless its backups declared a server_name
+   * override).
+   */
+  string source_server_name = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Stop replaying WAL at a point in time instead of recovering
+   * everything (PITR). Omitted = full recovery to the archive's end.
+   */
+  KubernetesPostgresRecoveryTarget recovery_target = 3;
+}
+
+/**
+ * Point-in-time recovery target. At most one selector.
+ */
+message KubernetesPostgresRecoveryTarget {
+  /**
+   * Recover to this timestamp (RFC3339, e.g. "2026-07-20T06:00:00Z").
+   */
+  string target_time = 1;
+
+  /**
+   * Recover to this Log Sequence Number.
+   */
+  string target_lsn = 2;
+
+  /**
+   * Recover to a named restore point (pg_create_restore_point).
+   */
+  string target_name = 3;
+
+  /**
+   * Recover to the first consistent state — the shortest possible
+   * recovery.
+   */
+  bool target_immediate = 4;
+
+  /**
+   * Restore from this specific backup ID instead of auto-selecting the
+   * closest one before the target.
+   */
+  string backup_id = 5;
+
+  option (buf.validate.message).cel = {
+    id: "spec.bootstrap.recovery.target.single_selector"
+    message: "set at most one recovery target selector (target_time, target_lsn, target_name, or target_immediate)"
+    expression: "[this.target_time != '', this.target_lsn != '', this.target_name != '', this.target_immediate].filter(x, x).size() <= 1"
+  };
+}
+
+/**
+ * pg_basebackup bootstrap: physical streaming from a live server.
+ */
+message KubernetesPostgresBootstrapPgBaseBackup {
+  /**
+   * Name of the declared external cluster to stream from. The source
+   * must be the SAME PostgreSQL major version and accept a replication
+   * connection from the new cluster's pods.
+   */
+  string source = 1 [(buf.validate.field).required = true];
+}
+
+/**
+ * Connection descriptor for an external PostgreSQL server.
+ */
+message KubernetesPostgresExternalCluster {
+  /**
+   * Name bootstrap methods reference this server by.
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * libpq connection parameters: host, port, user, dbname, sslmode, ...
+   * (never put a password here — declare it below so it lands in a
+   * Secret).
+   */
+  map<string, string> connection_parameters = 2;
+
+  /**
+   * Password for the connection user, materialized as a Kubernetes
+   * Secret and referenced by the operator — never plaintext in the
+   * rendered Cluster resource.
+   */
+  string password = 3 [(dev.planton.shared.options.sensitive) = true];
+}
+
+/**
+ * The `postgres` superuser posture.
+ */
+message KubernetesPostgresSuperuser {
+  /**
+   * Enable superuser access: the operator maintains the `postgres`
+   * password in the `<name>-superuser` Secret. Upstream default: false
+   * (password blanked; the Secret is removed).
+   */
+  bool enabled = 1;
+
+  /**
+   * Explicit superuser password. Empty = the operator generates one.
+   * Only meaningful with enabled true.
+   */
+  string password = 2 [(dev.planton.shared.options.sensitive) = true];
+
+  option (buf.validate.message).cel = {
+    id: "spec.superuser.password_requires_enabled"
+    message: "a superuser password only applies when superuser access is enabled — the operator blanks the password otherwise"
+    expression: "!(this.password != '') || this.enabled"
+  };
+}
+
+/**
+ * A declaratively managed database role.
+ */
+message KubernetesPostgresRole {
+  /**
+   * Role name.
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * COMMENT ON ROLE text.
+   */
+  string comment = 2;
+
+  /**
+   * Ensure the role is "present" (created and kept reconciled — the
+   * default) or "absent" (dropped).
+   */
+  optional string ensure = 3 [
+    (dev.planton.shared.options.default) = "present",
+    (buf.validate.field).cel = {
+      id: "spec.roles.ensure_enum"
+      message: "ensure must be 'present' or 'absent'"
+      expression: "this == '' || this in ['present', 'absent']"
+    }
+  ];
+
+  /**
+   * Password for the role, materialized as a `kubernetes.io/basic-auth`
+   * Secret the operator watches — rotating the value rotates the
+   * database password. Empty with disable_password false = the role has
+   * no managed password.
+   */
+  string password = 4 [(dev.planton.shared.options.sensitive) = true];
+
+  /**
+   * Force the role's password to NULL in PostgreSQL (locks out password
+   * logins — for roles authenticated by certificate or used only via
+   * SET ROLE). Mutually exclusive with password.
+   */
+  bool disable_password = 5;
+
+  /**
+   * LOGIN attribute: the role can open connections (a "user"). Roles
+   * without it are privilege groups.
+   */
+  bool login = 6;
+
+  /**
+   * SUPERUSER attribute — bypasses every permission check. Rarely the
+   * answer; prefer targeted grants.
+   */
+  bool superuser = 7;
+
+  /**
+   * CREATEDB attribute.
+   */
+  bool createdb = 8;
+
+  /**
+   * CREATEROLE attribute.
+   */
+  bool createrole = 9;
+
+  /**
+   * REPLICATION attribute — needed for physical/logical replication
+   * connections. Highly privileged.
+   */
+  bool replication = 10;
+
+  /**
+   * BYPASSRLS attribute — bypasses row-level security policies.
+   */
+  bool bypassrls = 11;
+
+  /**
+   * Existing roles this role is granted membership in.
+   */
+  repeated string in_roles = 12;
+
+  /**
+   * Maximum concurrent connections for the role. Upstream default: -1
+   * (unlimited).
+   */
+  optional int64 connection_limit = 13 [
+    (dev.planton.shared.options.default) = "-1",
+    (buf.validate.field).int64.gte = -1
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "spec.roles.password_xor_disable"
+    message: "password and disable_password are mutually exclusive — a role cannot both have a managed password and a NULL password"
+    expression: "!(this.password != '' && this.disable_password)"
+  };
+}
+
+/**
+ * Continuous backup via the Barman Cloud plugin.
+ */
+message KubernetesPostgresBackup {
+  /**
+   * The object store backups land in (rendered as a Barman Cloud
+   * ObjectStore resource named after this cluster). WAL archiving into
+   * it starts as soon as the cluster is healthy — the backup schedules
+   * below add the periodic base backups PITR needs.
+   */
+  KubernetesPostgresObjectStore object_store = 1 [(buf.validate.field).required = true];
+
+  /**
+   * How long backups and WAL are kept, as `<n>d|w|m` (e.g. "30d").
+   * Empty = keep forever. Enforced by the plugin after each backup.
+   */
+  string retention_policy = 2 [(buf.validate.field).cel = {
+    id: "spec.backup.retention_format"
+    message: "retention_policy must be a positive number of days, weeks, or months — e.g. '30d', '8w', or '6m'"
+    expression: "this == '' || this.matches('^[1-9][0-9]*[dwm]$')"
+  }];
+
+  /**
+   * Scheduled base backups (each rendered as a ScheduledBackup
+   * resource). At least one schedule is what makes point-in-time
+   * recovery real — WAL alone cannot be replayed without a base backup
+   * to start from.
+   */
+  repeated KubernetesPostgresBackupSchedule schedules = 3 [(buf.validate.field).cel = {
+    id: "spec.backup.schedules.unique_names"
+    message: "each backup schedule needs a distinct name"
+    expression: "this.all(s1, this.exists_one(s2, s1.name == s2.name))"
+  }];
+}
+
+/**
+ * A scheduled base backup.
+ */
+message KubernetesPostgresBackupSchedule {
+  /**
+   * Schedule name (also the ScheduledBackup resource's name suffix:
+   * `<cluster>-<name>`).
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.backup.schedules.name_format"
+      message: "schedule name must be a lowercase DNS label (letters, numbers, hyphens)"
+      expression: "this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * Cron expression WITH SECONDS — six fields, not the five Kubernetes
+   * CronJobs use (e.g. "0 0 2 * * *" = daily at 02:00). The leading
+   * field is seconds.
+   */
+  string schedule = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.backup.schedules.cron_six_fields"
+      message: "schedule is a SIX-field cron expression (seconds first) — e.g. '0 0 2 * * *' for daily at 02:00; the five-field Kubernetes form is missing the seconds field"
+      expression: "this.split(' ').filter(f, f != '').size() == 6"
+    }
+  ];
+
+  /**
+   * Take the first backup immediately on creation instead of waiting
+   * for the first cron tick — recommended: the cluster is unprotected
+   * until its first base backup exists.
+   */
+  bool immediate = 3;
+
+  /**
+   * Suspend the schedule (keeps the resource, stops the backups).
+   */
+  bool suspend = 4;
+
+  /**
+   * Which instance runs the backup: "prefer-standby" (the upstream
+   * default — keeps load off the primary) or "primary" (required for
+   * single-instance clusters to still take backups... a standby is
+   * preferred, not required, so prefer-standby also works with one
+   * instance).
+   */
+  optional string target = 5 [
+    (dev.planton.shared.options.default) = "prefer-standby",
+    (buf.validate.field).cel = {
+      id: "spec.backup.schedules.target_enum"
+      message: "target must be 'prefer-standby' or 'primary'"
+      expression: "this == '' || this in ['prefer-standby', 'primary']"
+    }
+  ];
+}
+
+/**
+ * A Barman Cloud object store (rendered as a
+ * `barmancloud.cnpg.io/v1` ObjectStore resource).
+ */
+message KubernetesPostgresObjectStore {
+  /**
+   * Where in the store the data lives — the backend's native URI form:
+   * `s3://bucket/path` for S3 and every S3-compatible store,
+   * `gs://bucket/path` for GCS, and
+   * `https://<account>.blob.core.windows.net/<container>/<path>` for
+   * Azure Blob. WAL and base backups are stored under separate folders
+   * beneath it. One path per PostgreSQL cluster — two clusters writing
+   * the same path corrupt each other's archives.
+   */
+  string destination_path = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Object-store backend. Exactly one arm; the arm's credential posture
+   * is keyless (workload identity / ambient) or declared keys —
+   * declared keys materialize as a Kubernetes Secret referenced by the
+   * plugin, never plaintext in the rendered resource.
+   */
+  oneof backend {
+    option (buf.validate.oneof).required = true;
+
+    /**
+     * AWS S3 — or ANY S3-compatible store (MinIO, Ceph RGW, Cloudflare
+     * R2, DigitalOcean Spaces, ...) via the endpoint_url override.
+     */
+    KubernetesPostgresS3ObjectStore s3 = 2;
+
+    /**
+     * Google Cloud Storage.
+     */
+    KubernetesPostgresGcsObjectStore gcs = 3;
+
+    /**
+     * Azure Blob Storage.
+     */
+    KubernetesPostgresAzureBlobObjectStore azure_blob = 4;
+  }
+
+  /**
+   * WAL archiving tuning: compression and parallelism of the continuous
+   * WAL stream.
+   */
+  KubernetesPostgresWalTuning wal = 5;
+
+  /**
+   * Base-backup tuning: compression and upload parallelism of the
+   * periodic full copies.
+   */
+  KubernetesPostgresDataTuning data = 6;
+
+  option (buf.validate.message).cel = {
+    id: "spec.backup.object_store.s3_path_scheme"
+    message: "the s3 backend stores at an s3:// destination path (also for S3-compatible stores like MinIO and R2)"
+    expression: "!has(this.s3) || this.destination_path.startsWith('s3://')"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.backup.object_store.gcs_path_scheme"
+    message: "the gcs backend stores at a gs:// destination path"
+    expression: "!has(this.gcs) || this.destination_path.startsWith('gs://')"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.backup.object_store.azure_path_scheme"
+    message: "the azure_blob backend stores at an https:// destination path (https://<account>.blob.core.windows.net/<container>/<path>)"
+    expression: "!has(this.azure_blob) || this.destination_path.startsWith('https://')"
+  };
+}
+
+/**
+ * S3 / S3-compatible object-store backend.
+ */
+message KubernetesPostgresS3ObjectStore {
+  /**
+   * AWS region of the bucket. Required for real S3; for S3-compatible
+   * stores use the store's expected value (MinIO accepts any, "auto"
+   * for Cloudflare R2).
+   */
+  string region = 1;
+
+  /**
+   * S3-COMPATIBLE ARM: endpoint URL of the store (e.g.
+   * http://minio.minio-system.svc:9000 for in-cluster MinIO,
+   * https://<account>.r2.cloudflarestorage.com for R2). Empty = real
+   * AWS S3.
+   */
+  string endpoint_url = 2 [(buf.validate.field).cel = {
+    id: "spec.backup.s3.endpoint_format"
+    message: "endpoint_url must be an http(s) URL (e.g. http://minio.minio-system.svc:9000)"
+    expression: "this == '' || this.startsWith('http://') || this.startsWith('https://')"
+  }];
+
+  /**
+   * PEM CA bundle for verifying a self-signed endpoint_url TLS
+   * certificate (materialized as a Secret the plugin reads).
+   */
+  string endpoint_ca_pem = 3;
+
+  /**
+   * Keyless posture: the instance pods' AWS identity (IRSA via the
+   * cluster's workload_identity field, or node instance-profile
+   * credentials) authenticates to S3 — no stored keys. Mutually
+   * exclusive with access_keys.
+   */
+  bool keyless = 4;
+
+  /**
+   * Static access keys, materialized as a Kubernetes Secret the plugin
+   * reads. The declared-credential arm — for S3-compatible stores and
+   * clusters without IRSA.
+   */
+  KubernetesPostgresS3AccessKeys access_keys = 5;
+
+  option (buf.validate.message).cel = {
+    id: "spec.backup.s3.keyless_xor_keys"
+    message: "keyless and access_keys are alternative credential postures — set exactly one"
+    expression: "(this.keyless && !has(this.access_keys)) || (!this.keyless && has(this.access_keys))"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.backup.s3.compatible_needs_keys"
+    message: "an S3-compatible endpoint (endpoint_url) authenticates with access_keys — the keyless posture only mints AWS credentials"
+    expression: "this.endpoint_url == '' || !this.keyless"
+  };
+}
+
+/**
+ * Static S3 access keys.
+ */
+message KubernetesPostgresS3AccessKeys {
+  /**
+   * Access key ID — the public identifier of the key pair, not a
+   * secret; only the paired secret access key is a credential. For
+   * MinIO this is the access key / username.
+   */
+  string access_key_id = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Secret access key (for MinIO: the secret key / password).
+   */
+  string secret_access_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+/**
+ * Google Cloud Storage backend.
+ */
+message KubernetesPostgresGcsObjectStore {
+  /**
+   * Keyless posture: the instance pods' GCP identity (GKE Workload
+   * Identity via the cluster's workload_identity field) authenticates
+   * to GCS — no stored key. Mutually exclusive with
+   * service_account_key_json.
+   */
+  bool keyless = 1;
+
+  /**
+   * GCP service-account key (the JSON key file's content), materialized
+   * as a Kubernetes Secret the plugin reads. The declared-credential
+   * arm for non-GKE clusters backing up to GCS.
+   */
+  string service_account_key_json = 2 [(dev.planton.shared.options.sensitive) = true];
+
+  option (buf.validate.message).cel = {
+    id: "spec.backup.gcs.keyless_xor_key"
+    message: "keyless and service_account_key_json are alternative credential postures — set exactly one"
+    expression: "(this.keyless && this.service_account_key_json == '') || (!this.keyless && this.service_account_key_json != '')"
+  };
+}
+
+/**
+ * Azure Blob Storage backend.
+ */
+message KubernetesPostgresAzureBlobObjectStore {
+  /**
+   * Keyless posture: the instance pods' Azure identity (AKS Workload
+   * Identity via the cluster's workload_identity field, or a managed
+   * identity) authenticates to Blob Storage — no stored secret.
+   * Mutually exclusive with the declared-credential fields.
+   */
+  bool keyless = 1;
+
+  /**
+   * Storage-account connection string — the all-in-one declared
+   * credential. Mutually exclusive with storage_key.
+   */
+  string connection_string = 2 [(dev.planton.shared.options.sensitive) = true];
+
+  /**
+   * Storage-account name, paired with storage_key. Also required with
+   * keyless (the account identifies the storage endpoint).
+   */
+  string storage_account = 3;
+
+  /**
+   * Storage-account access key, paired with storage_account.
+   */
+  string storage_key = 4 [(dev.planton.shared.options.sensitive) = true];
+
+  option (buf.validate.message).cel = {
+    id: "spec.backup.azure.single_posture"
+    message: "set exactly one Azure credential posture: keyless, connection_string, or storage_account + storage_key"
+    expression: "[this.keyless, this.connection_string != '', this.storage_key != ''].filter(x, x).size() == 1"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.backup.azure.key_needs_account"
+    message: "storage_key authenticates a specific account — set storage_account with it"
+    expression: "this.storage_key == '' || this.storage_account != ''"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.backup.azure.keyless_needs_account"
+    message: "the keyless posture still needs storage_account — it identifies the storage endpoint"
+    expression: "!this.keyless || this.storage_account != ''"
+  };
+}
+
+/**
+ * WAL archiving tuning.
+ */
+message KubernetesPostgresWalTuning {
+  /**
+   * Compress WAL segments before upload: gzip, bzip2, lz4, snappy, xz,
+   * or zstd. Empty = uncompressed. zstd is the modern
+   * speed/ratio sweet spot.
+   */
+  string compression = 1 [(buf.validate.field).cel = {
+    id: "spec.backup.wal.compression_enum"
+    message: "WAL compression must be one of gzip, bzip2, lz4, snappy, xz, zstd (or empty for none)"
+    expression: "this == '' || this in ['gzip', 'bzip2', 'lz4', 'snappy', 'xz', 'zstd']"
+  }];
+
+  /**
+   * WAL segments archived (or restored, on a standby) in parallel.
+   * Empty/1 = one at a time; raise when archiving lags write volume.
+   */
+  optional int32 max_parallel = 2 [(buf.validate.field).int32.gte = 1];
+}
+
+/**
+ * Base-backup tuning.
+ */
+message KubernetesPostgresDataTuning {
+  /**
+   * Compress base-backup tarballs: gzip, bzip2, lz4, or snappy. Empty =
+   * uncompressed.
+   */
+  string compression = 1 [(buf.validate.field).cel = {
+    id: "spec.backup.data.compression_enum"
+    message: "data compression must be one of gzip, bzip2, lz4, snappy (or empty for none)"
+    expression: "this == '' || this in ['gzip', 'bzip2', 'lz4', 'snappy']"
+  }];
+
+  /**
+   * Parallel upload jobs for base backups. Upstream default: 2.
+   */
+  optional int32 jobs = 2 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Start the backup with an immediate checkpoint instead of spreading
+   * the checkpoint I/O (faster backup start, heavier I/O spike).
+   */
+  bool immediate_checkpoint = 3;
+}
+
+/**
+ * TLS certificate configuration.
+ */
+message KubernetesPostgresCertificates {
+  /**
+   * Name of a kubernetes.io/tls Secret with the SERVER certificate and
+   * key. Accepts a literal Secret name or a reference to a
+   * KubernetesCertificate resource (the cert-manager seam — issue the
+   * certificate declaratively and wire it here). Empty = the operator
+   * self-signs per cluster.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef server_tls_secret = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_name",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Name of an existing kubernetes.io/tls Secret (a reference), not secret material"
+  ];
+
+  /**
+   * Name of the Secret with the CA that signed the server certificate
+   * (`ca.crt` key) — clients verify against it. Required with
+   * server_tls_secret.
+   */
+  string server_ca_secret = 2 [(dev.planton.shared.options.sensitive_exempt_reason) = "Name of an existing Secret holding a PUBLIC CA certificate (a reference), not secret material"];
+
+  /**
+   * Additional DNS names for the operator-generated server certificate
+   * (external hostnames the database is reached at through composed
+   * exposure).
+   */
+  repeated string server_alt_dns_names = 3;
+
+  option (buf.validate.message).cel = {
+    id: "spec.certificates.tls_needs_ca"
+    message: "server_tls_secret requires server_ca_secret — clients need the CA that signed the server certificate"
+    expression: "!has(this.server_tls_secret) || this.server_ca_secret != ''"
+  };
+}
+
+/**
+ * Metrics exporter configuration.
+ */
+message KubernetesPostgresMonitoring {
+  /**
+   * Serve the per-instance metrics endpoint over TLS (uses the
+   * cluster's server certificate). Forces a rollout when toggled.
+   */
+  bool tls_enabled = 1;
+
+  /**
+   * Drop the operator's default metric queries (connections,
+   * replication lag, WAL, storage) and expose only custom ones added
+   * via upstream mechanisms. Leave false — the defaults are the
+   * dashboard-grade signal set.
+   */
+  bool disable_default_queries = 2;
+}
+
+/**
+ * Instance pod scheduling.
+ */
+message KubernetesPostgresScheduling {
+  /**
+   * How strongly instances avoid sharing a node: "preferred" (the
+   * upstream default — best effort, still schedules on a small
+   * cluster) or "required" (hard rule — instances stay Pending unless
+   * separate nodes exist; the production posture).
+   */
+  optional string anti_affinity_type = 1 [
+    (dev.planton.shared.options.default) = "preferred",
+    (buf.validate.field).cel = {
+      id: "spec.scheduling.anti_affinity_enum"
+      message: "anti_affinity_type must be 'preferred' (best effort) or 'required' (hard rule)"
+      expression: "this == '' || this in ['preferred', 'required']"
+    }
+  ];
+
+  /**
+   * Topology key the anti-affinity spreads across. Upstream default:
+   * kubernetes.io/hostname (nodes); use topology.kubernetes.io/zone to
+   * spread across zones.
+   */
+  string topology_key = 2;
+
+  /**
+   * Node selector for the instance pods.
+   */
+  map<string, string> node_selector = 3;
+
+  /**
+   * Tolerations for the instance pods.
+   */
+  repeated dev.planton.kubernetes.WorkloadToleration tolerations = 4;
+
+  /**
+   * PriorityClass for the instance pods — databases should outlive
+   * stateless workloads under node pressure.
+   */
+  string priority_class_name = 5;
+}
+
+/**
+ * Rolling-update behavior for the primary instance.
+ */
+message KubernetesPostgresUpdateStrategy {
+  /**
+   * When the primary's turn comes: "unsupervised" (the operator
+   * proceeds automatically — the upstream default) or "supervised"
+   * (the operator waits for a manual promotion — change-window
+   * control).
+   */
+  optional string primary_update_strategy = 1 [
+    (dev.planton.shared.options.default) = "unsupervised",
+    (buf.validate.field).cel = {
+      id: "spec.update_strategy.strategy_enum"
+      message: "primary_update_strategy must be 'unsupervised' (automatic) or 'supervised' (waits for manual promotion)"
+      expression: "this == '' || this in ['unsupervised', 'supervised']"
+    }
+  ];
+
+  /**
+   * How the primary is updated: "restart" in place (the upstream
+   * default — brief write outage, no role change) or "switchover" (a
+   * replica is promoted first — shorter write outage, the primary
+   * moves).
+   */
+  optional string primary_update_method = 2 [
+    (dev.planton.shared.options.default) = "restart",
+    (buf.validate.field).cel = {
+      id: "spec.update_strategy.method_enum"
+      message: "primary_update_method must be 'restart' (in place) or 'switchover' (promote a replica first)"
+      expression: "this == '' || this in ['restart', 'switchover']"
+    }
+  ];
+}

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	rulev1 "github.com/plantonhq/planton/apis/dev/planton/iac/environmentpartitionrule/v1"
+	rulev1 "github.com/plantonhq/planton/iac/environmentpartitionrule/v1"
 	"github.com/plantonhq/planton/pkg/protobufyaml"
 )
 

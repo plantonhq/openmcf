@@ -4,7 +4,7 @@ This directory contains the build scripts that power Planton's documentation sit
 
 ## The Problem We're Solving
 
-Imagine you're maintaining a cookbook with hundreds of recipes. The actual recipes live in your kitchen (the `apis/` directory), organized by cuisine (provider) and dish type (component). But you also want to publish a beautiful website where people can browse and search these recipes.
+Imagine you're maintaining a cookbook with hundreds of recipes. The actual recipes live in your kitchen (the `catalog/` directory), organized by cuisine (provider) and dish type (component). But you also want to publish a beautiful website where people can browse and search these recipes.
 
 You could manually copy each recipe to your website folder every time you update one. But that's tedious, error-prone, and creates two versions of the truth. What if you could just write the recipe once in your kitchen, and have it automatically appear in the published cookbook whenever you go to print?
 
@@ -14,7 +14,7 @@ That's exactly what `copy-component-docs.ts` does.
 
 Think of this script as a **build-time librarian** with a simple job:
 
-1. **Scan** the `apis/` directory for deployment component documentation
+1. **Scan** the `catalog/` directory for deployment component documentation
 2. **Transform** each README into a web-ready page with metadata
 3. **Organize** components into a browsable catalog by provider
 4. **Generate** index pages that list all available components
@@ -27,7 +27,7 @@ All of this happens automatically before every build, ensuring your documentatio
 ### The Single Source of Truth
 
 ```
-apis/dev/planton/provider/
+catalog/
 ├── aws/
 │   ├── awsalb/v1/docs/README.md           ← Source of truth
 │   └── awsroute53zone/v1/docs/README.md   ← Source of truth
@@ -200,8 +200,8 @@ The beauty of this system is how little you need to do:
 
 ```bash
 # 1. Create your component docs
-mkdir -p apis/dev/planton/provider/aws/awsnewservice/v1alpha1/docs/
-cat > apis/dev/planton/provider/aws/awsnewservice/v1alpha1/docs/README.md << 'EOF'
+mkdir -p catalog/aws/awsnewservice/v1alpha1/docs/
+cat > catalog/aws/awsnewservice/v1alpha1/docs/README.md << 'EOF'
 # AWS New Service
 
 Comprehensive deployment guide for AWS New Service...
@@ -222,7 +222,7 @@ The documentation is now available at `/docs/catalog/aws/awsnewservice`.
 Just edit the source README:
 
 ```bash
-vim apis/dev/planton/provider/gcp/gcpcloudrun/v1alpha1/docs/README.md
+vim catalog/gcp/gcpcloudrun/v1alpha1/docs/README.md
 cd site && yarn build
 ```
 
@@ -266,7 +266,7 @@ yarn copy-docs
 ### Why This Architecture?
 
 **Single Source of Truth**  
-Documentation lives with the code it describes. The protobuf definitions and deployment docs are versioned together in `apis/{provider}/{component}/v1/`.
+Documentation lives with the code it describes. The protobuf definitions and deployment docs are versioned together in `catalog/{provider}/{component}/v1/`.
 
 **Build-Time Generation**  
 Next.js requires files in `public/` at build time for static export. GitHub Pages serves static HTML with no server-side processing. This means we **must** copy docs during the build, not at runtime.
@@ -353,7 +353,7 @@ When you add a new provider with components, update this list so the script clea
 ```typescript
 const scriptDir = __dirname;
 const projectRoot = path.join(scriptDir, '../..');
-const apisRoot = path.join(projectRoot, 'apis/dev/planton/provider');
+const catalogRoot = path.join(projectRoot, 'catalog');
 const siteDocsRoot = path.join(scriptDir, '../public/docs/catalog');
 ```
 
@@ -379,7 +379,7 @@ The `prebuild` hook ensures docs are copied before Next.js builds. You can also 
 ### .gitignore
 
 ```gitignore
-# generated docs (copied from apis/ during build)
+# generated docs (copied from catalog/ during build)
 public/docs/catalog/
 ```
 
@@ -405,7 +405,7 @@ When you add documentation for a new cloud provider:
 
 1. Create the provider directory structure:
    ```bash
-   mkdir -p apis/dev/planton/provider/newprovider/newcomponent/v1alpha1/docs/
+   mkdir -p catalog/newprovider/newcomponent/v1alpha1/docs/
    ```
 
 2. Add the provider to the clearing list in `copy-component-docs.ts`:
@@ -457,7 +457,7 @@ Run `yarn copy-docs` to verify the output.
 **Symptom**: Component README exists but doesn't show up in catalog.
 
 **Checklist**:
-1. Verify path structure: `apis/dev/planton/provider/{provider}/{component}/v1/docs/README.md`
+1. Verify path structure: `catalog/{provider}/{component}/v1/docs/README.md`
 2. Check file isn't empty
 3. Run `yarn copy-docs` and look for errors
 4. Verify provider is in `providerDirs` list if it's a new provider
@@ -483,7 +483,7 @@ Run `yarn copy-docs` to verify the output.
 **Checklist**:
 1. Did you rebuild? Changes only appear after `yarn build` or `yarn copy-docs`.
 2. Check browser cache—hard refresh (Cmd+Shift+R / Ctrl+Shift+R).
-3. Verify you edited the source in `apis/`, not the generated file in `site/public/docs/catalog/`.
+3. Verify you edited the source in `catalog/`, not the generated file in `site/public/docs/catalog/`.
 
 ## Future Enhancements
 
@@ -515,7 +515,7 @@ For developers, this means:
 - ✅ **No git conflicts** on generated files
 - ✅ **No drift** between source and site
 
-Just write great documentation in `apis/`, and the build system handles the rest.
+Just write great documentation in `catalog/`, and the build system handles the rest.
 
 ---
 

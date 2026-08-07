@@ -876,7 +876,7 @@ planton pulumi up \
 ```bash
 # Testing changes to Pulumi module code without publishing
 
-cd ~/projects/planton/apis/.../.../iac/pulumi
+cd ~/projects/planton/catalog/.../.../iac/pulumi
 
 # Point to local module directory
 planton pulumi preview \
@@ -1278,7 +1278,7 @@ pulumi stack import --stack <stack-fqdn> < stack-backup-20250105.json
 - [Pulumi Concepts](https://www.pulumi.com/docs/intro/concepts/) - Official Pulumi documentation
 - [Planton Architecture](../../README.md) - Understanding the CLI architecture
 - [Provider Configuration Guide](../../pkg/iac/pulumi/pulumimodule/provider/README.md) - Setting up cloud provider credentials
-- [Manifest Schema Reference](../../apis/README.md) - Available resource types and their schemas
+- [Manifest Schema Reference](../../../../catalog) - Available resource types and their schemas
 
 ---
 

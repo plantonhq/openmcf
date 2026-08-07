@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.confluent.confluentkafka.v1alpha1;
+
+import "catalog/confluent/confluentkafka/v1alpha1/api.proto";
+import "catalog/confluent/provider.proto";
+
+//confluent-kafka stack-input
+message ConfluentKafkaStackInput {
+  //target cloud-resource
+  ConfluentKafka target = 1;
+  //provider-config
+  dev.planton.confluent.ConfluentProviderConfig provider_config = 2;
+}

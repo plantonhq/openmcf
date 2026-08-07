@@ -75,7 +75,7 @@ For local development and testing, you can still use the native binary:
 make build
 
 # This places the binary in $GOPATH/bin/optional-linter
-# Update apis/buf.yaml to use: plugin: optional-linter
+# Update the repo root buf.yaml to use: plugin: optional-linter
 ```
 
 ## Verification
@@ -87,7 +87,6 @@ To verify the published plugin:
 buf registry plugin info buf.build/planton/optional-linter
 
 # Test linting with the plugin
-cd apis
 buf lint
 ```
 
@@ -97,8 +96,8 @@ buf lint
 - Created: `buf.plugin.yaml` (plugin metadata)
 - Created: `Makefile` (build and publish automation)
 - Updated: `go.mod` (module path)
-- Updated: `apis/buf.yaml` (plugin reference)
-- Updated: `apis/Makefile` (build integration)
+- Updated: `buf.yaml` (plugin reference)
+- Updated: `Makefile` (build integration)
 - Updated: `README.md` (documentation)
 
 ## Benefits of BSR Publishing

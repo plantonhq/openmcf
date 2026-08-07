@@ -12,7 +12,7 @@ import (
 	// The corpus converts between BOTH torture-kind versions; the old
 	// version's package is linked explicitly so its descriptors resolve (only
 	// the served version reaches the binary through the kind registry).
-	_ "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1"
+	_ "github.com/plantonhq/planton/catalog/_test/testcloudresourcegeneric/v1alpha1"
 )
 
 // The golden corpus: every conversion spec in the catalog must carry fixture
@@ -26,13 +26,13 @@ import (
 // Both the Go engine here and the platform's Java engine gate on this same
 // corpus; an engine disagreement is a CI failure, not a runtime surprise.
 
-func providerBaseDir(t *testing.T) string {
+func catalogDir(t *testing.T) string {
 	t.Helper()
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot resolve caller location")
 	}
-	return filepath.Join(filepath.Dir(thisFile), "..", "..", "apis", "dev", "planton", "provider")
+	return filepath.Join(filepath.Dir(thisFile), "..", "..", "catalog")
 }
 
 func loadDoc(t *testing.T, path string) map[string]any {
@@ -49,7 +49,7 @@ func loadDoc(t *testing.T, path string) map[string]any {
 }
 
 func TestGoldenCorpus(t *testing.T) {
-	base := providerBaseDir(t)
+	base := catalogDir(t)
 	fsys := os.DirFS(base)
 	specFiles, err := SpecFiles(fsys)
 	if err != nil {

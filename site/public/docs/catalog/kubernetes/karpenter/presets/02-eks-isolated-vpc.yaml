@@ -14,7 +14,8 @@ spec:
     name: '<eks-cluster-name>'
     eksControlPlane: true # discovery via DescribeCluster (through the EKS VPC endpoint)
   aws:
-    irsaRoleArn: arn:aws:iam::123456789012:role/karpenter-controller # replace account id and role name
+    irsaRoleArn:
+      value: arn:aws:iam::123456789012:role/karpenter-controller # replace account id and role name
     interruptionQueue: karpenter-interruptions
     # No internet-reachable AWS endpoints beyond the provisioned VPC
     # endpoints: Karpenter avoids services without one — including the

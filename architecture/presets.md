@@ -138,15 +138,15 @@ Each deployment component has several YAML-related artifacts. They serve differe
 Presets live in a `presets/` directory within the component's `v1/` folder:
 
 ```
-apis/dev/planton/provider/{provider}/{component}/v1/presets/
+catalog/{provider}/{component}/v1/presets/
 ```
 
 **Examples:**
 
 ```
-apis/dev/planton/provider/aws/awsalb/v1alpha1/presets/
-apis/dev/planton/provider/gcp/gcpgkecluster/v1alpha1/presets/
-apis/dev/planton/provider/kubernetes/kubernetesdeployment/v1alpha1/presets/
+catalog/aws/awsalb/v1alpha1/presets/
+catalog/gcp/gcpgkecluster/v1alpha1/presets/
+catalog/kubernetes/kubernetesdeployment/v1alpha1/presets/
 ```
 
 ### Naming

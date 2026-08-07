@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kuberneteskeycloakoperator.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "catalog/kubernetes/options.proto";
+import "catalog/kubernetes/workload_pod.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+/**
+ * **KubernetesKeycloakOperatorSpec** installs the official Keycloak
+ * Operator from the keycloak-k8s-resources release manifests
+ * (https://github.com/keycloak/keycloak-k8s-resources — Keycloak
+ * ships NO official Helm chart; the operator IS the first-party
+ * Kubernetes distribution). The operator reconciles Keycloak
+ * declarations (KubernetesKeycloak resources) into running Keycloak
+ * StatefulSets.
+ *
+ * THE BUNDLE: 16 plain-YAML documents (ServiceAccount, RBAC, Service,
+ * the operator Deployment) plus 4 CRDs — no admission webhooks, no
+ * cert-manager dependency, no install hooks. The module fetches the
+ * release manifests tag-pinned, stamps the target namespace onto
+ * every namespaced document (upstream expects kustomize to do this),
+ * and applies them as ordered groups so creation and teardown order
+ * correctly by construction.
+ *
+ * EVERY RESOURCE IS FIXED-NAME (`keycloak-operator` etc. — upstream's
+ * own names, not derived from this resource's name), so exactly ONE
+ * operator install fits per namespace. Installing the operator alone
+ * deploys no Keycloak server.
+ *
+ * NO VERSION FIELD by design: the KubernetesKeycloak declaration
+ * kind's CR rendering is built against the CRD schema this bundle
+ * installs — a selectable operator version would drift the schema
+ * away from what the declaration kind renders. The module pins the
+ * release; upgrades arrive as module updates.
+ */
+message KubernetesKeycloakOperatorSpec {
+  /**
+   * Namespace to install the operator into (conventionally
+   * "keycloak"). Accepts a literal namespace name or a reference to
+   * a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Watch scope. False (default): the operator watches ONLY its own
+   * namespace — KubernetesKeycloak resources must live beside it,
+   * and several teams can run isolated operator+Keycloak stacks in
+   * separate namespaces. True: the operator watches ALL namespaces
+   * (upstream's cluster-wide variant — per-controller
+   * ClusterRoleBindings and JOSDK_ALL_NAMESPACES); run at most one
+   * cluster-wide operator per cluster. KNOW THIS (an upstream
+   * constraint): in cluster-wide mode the operator refuses custom
+   * ServiceAccounts on Keycloak pod templates.
+   */
+  bool cluster_wide = 3;
+
+  /**
+   * Override the operator image
+   * (default: quay.io/keycloak/keycloak-operator at the pinned
+   * release). Air-gapped clusters point this at their mirror; the
+   * tag must stay at the pinned release or the CRD schema drifts.
+   */
+  string operator_image = 4;
+
+  /**
+   * Override the DEFAULT Keycloak server image the operator stamps
+   * into Keycloak StatefulSets whose declaration sets no image
+   * (the bundle's RELATED_IMAGE_KEYCLOAK, default:
+   * quay.io/keycloak/keycloak at the pinned release).
+   */
+  string default_keycloak_image = 5;
+
+  /**
+   * CPU and memory for the operator container. Defaults are
+   * upstream's own (requests 300m/450Mi, limits 700m/450Mi).
+   */
+  dev.planton.kubernetes.ContainerResources resources = 6 [(dev.planton.kubernetes.default_container_resources) = {
+    limits: {
+      cpu: "700m"
+      memory: "450Mi"
+    }
+    requests: {
+      cpu: "300m"
+      memory: "450Mi"
+    }
+  }];
+
+  /**
+   * Pod scheduling constraints for the operator pod (upstream ships
+   * none; the module patches them onto the Deployment).
+   */
+  KubernetesKeycloakOperatorScheduling scheduling = 7;
+}
+
+/** Pod scheduling constraints. */
+message KubernetesKeycloakOperatorScheduling {
+  /**
+   * Schedule onto nodes carrying these labels.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for tainted nodes.
+   */
+  repeated dev.planton.kubernetes.WorkloadToleration tolerations = 2;
+}

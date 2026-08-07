@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsopensearchdomain.v1alpha1;
+
+import "catalog/aws/awsopensearchdomain/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// aws-opensearch-domain stack-input
+message AwsOpenSearchDomainStackInput {
+  // target cloud-resource
+  AwsOpenSearchDomain target = 1;
+  // provider-credential
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

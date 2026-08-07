@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsecscluster.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awsecscluster/v1alpha1/spec.proto";
+import "catalog/aws/awsecscluster/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AwsEcsCluster represents an ECS cluster on AWS -- the scheduling boundary
+// that groups services and tasks and decides where their containers run
+// (Fargate, EC2 capacity providers, or a blend).
+message AwsEcsCluster {
+  // api-version must be set to "aws.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
+
+  // resource-kind for this resource, always "AwsEcsCluster".
+  string kind = 2 [(buf.validate.field).string.const = 'AwsEcsCluster'];
+
+  // metadata captures identifying information (name, org, version, etc.)
+  // and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the core configuration data defining how the ECS cluster is deployed.
+  AwsEcsClusterSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds runtime or post-deployment information.
+  AwsEcsClusterStatus status = 5;
+}
+
+// AwsEcsClusterStatus describes the status fields for an ECS cluster resource.
+message AwsEcsClusterStatus {
+  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  AwsEcsClusterStackOutputs outputs = 1;
+}

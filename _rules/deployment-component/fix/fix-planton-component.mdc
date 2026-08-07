@@ -114,19 +114,19 @@ Use fix when you need to:
    - Add/modify buf.validate rules
    - **Validation message quality**: Every CEL `message` must be a clear, actionable sentence a non-expert can act on. See rule `002-spec-validate` ("VALIDATION MESSAGE QUALITY"). No terse messages, no raw regex in user-facing text.
    - **Must execute**: `make protos` from project root to regenerate Go stubs
-   - **Must execute**: `go test ./apis/dev/planton/provider/<provider>/<component>/v1/` to validate spec tests
+   - **Must execute**: `go test ./catalog/<provider>/<component>/v1/` to validate spec tests
 
 2. **Fix IaC Modules** (if deployment logic change needed)
    - Update Pulumi module (main.go, locals.go, resource files)
    - Update Terraform module to maintain feature parity
    - Ensure both implement the same behavior
    - **Module comment quality**: keep the module code commented to the module-comment bar (explain *why*/trade-offs/provider quirks/non-obvious ordering, not narration -- `architecture/deployment-component.md` §4.1). A fix must never strip a module's comments.
-   - **Must execute**: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...` from project root to validate complete build
+   - **Must execute**: `go build ./catalog/<provider>/<component>/v1/...` from project root to validate complete build
 
 3. **Fix Tests** (if test logic change needed)
    - Update spec_test.go to validate new behavior
    - Add tests for the fix
-   - Run component tests: `go test ./apis/dev/planton/provider/<provider>/<component>/v1/`
+   - Run component tests: `go test ./catalog/<provider>/<component>/v1/`
 
 **Validation After Source Code Fix (Execute in Sequence):**
 ```bash
@@ -134,13 +134,13 @@ Use fix when you need to:
 make protos
 
 # 2. Always: Validate component tests (validates buf.validate rules)
-go test ./apis/dev/planton/provider/<provider>/<component>/v1/
+go test ./catalog/<provider>/<component>/v1/
 
 # 3. If Go/Pulumi code changed: Verify complete build
-go build ./apis/dev/planton/provider/<provider>/<component>/v1/...
+go build ./catalog/<provider>/<component>/v1/...
 
 # 4. Always: Verify all tests pass
-go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/
+go test -v ./catalog/<provider>/<component>/v1/
 ```
 
 ### Step 3: Propagate to Documentation (Match Source)
@@ -219,15 +219,15 @@ make protos
 # Must succeed - ensures .pb.go files are up to date
 
 # 2. Component-specific tests (validates buf.validate rules)
-go test ./apis/dev/planton/provider/<provider>/<component>/v1/
+go test ./catalog/<provider>/<component>/v1/
 # Must pass - validates validation logic is correct in spec.proto
 
 # 3. If Pulumi/Go code changed: Build validation
-go build ./apis/dev/planton/provider/<provider>/<component>/v1/...
+go build ./catalog/<provider>/<component>/v1/...
 # Must pass - validates no syntax/import/compilation errors
 
 # 4. Full test suite (validates all tests)
-go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/
+go test -v ./catalog/<provider>/<component>/v1/
 # Must pass - validates no regressions anywhere in the codebase
 ```
 
@@ -286,9 +286,9 @@ Consistency Verified:
   ✅ Docs ↔ Implementation (docs describe actual behavior)
 
 Validation Results:
-  ✅ Component tests passed (go test ./apis/.../v1/)
-  ✅ Build passed (go build ./apis/.../v1/...)
-  ✅ Component tests passed (go test -v ./apis/.../v1/)
+  ✅ Component tests passed (go test ./catalog/.../v1/)
+  ✅ Build passed (go build ./catalog/.../v1/...)
+  ✅ Component tests passed (go test -v ./catalog/.../v1/)
 
 Files Modified: 5
 Documentation Updated: 3
@@ -317,12 +317,12 @@ Next Steps:
 **Actions:**
 1. Update spec.proto (int32 → int64)
 2. Regenerate stubs: `make protos`
-3. Run component tests: `go test ./apis/dev/planton/provider/gcp/gcpcloudsql/v1alpha1/`
+3. Run component tests: `go test ./catalog/gcp/gcpcloudsql/v1alpha1/`
 4. Update spec_test.go (test with large values)
 5. Update Terraform variables.tf (int → number)
 6. Update README.md (mention TB-scale support)
-8. Run build: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`
-9. Run all tests: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`
+8. Run build: `go build ./catalog/<provider>/<component>/v1/...`
+9. Run all tests: `go test -v ./catalog/<provider>/<component>/v1/`
 10. Validate consistency
 
 ### Scenario 2: IaC Implementation Fix
@@ -337,11 +337,11 @@ Next Steps:
 **Actions:**
 1. Update Pulumi module/main.go (use spec.BackupRetentionPeriod)
 2. Update Terraform main.tf (ensure same logic)
-3. Run build: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`
+3. Run build: `go build ./catalog/<provider>/<component>/v1/...`
 4. Update spec_test.go (test backup retention values)
-5. Run component tests: `go test ./apis/dev/planton/provider/aws/awsrdsinstance/v1alpha1/`
+5. Run component tests: `go test ./catalog/aws/awsrdsinstance/v1alpha1/`
 6. Run E2E tests to verify fix works
-7. Run all tests: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`
+7. Run all tests: `go test -v ./catalog/<provider>/<component>/v1/`
 8. Validate consistency
 
 ### Scenario 3: Documentation Out of Sync
@@ -379,11 +379,11 @@ Next Steps:
    - If validation SHOULD exist: Add to spec.proto, fix test
    - If validation SHOULDN'T exist: Fix test to not expect error
 3. If proto changed: Run `make protos` to regenerate stubs
-4. Run component tests: `go test ./apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/`
-5. Run build: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`
+4. Run component tests: `go test ./catalog/atlas/mongodbatlas/v1alpha1/`
+5. Run build: `go build ./catalog/<provider>/<component>/v1/...`
 6. Update examples if validation behavior changed
 7. Update README if validation rules mentioned
-8. Run all tests: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`
+8. Run all tests: `go test -v ./catalog/<provider>/<component>/v1/`
 
 ### Scenario 5: Feature Parity Fix
 
@@ -415,11 +415,11 @@ Next Steps:
 **Actions:**
 1. Update spec.proto (fix regex pattern)
 2. Regenerate stubs: `make protos`
-3. Run component tests: `go test ./apis/dev/planton/provider/aws/awsvpc/v1alpha1/`
+3. Run component tests: `go test ./catalog/aws/awsvpc/v1alpha1/`
 4. Update spec_test.go (test 10.0.0.0/8 is now valid)
 5. Update docs/README.md (document valid CIDR ranges)
-7. Run build: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`
-8. Run all tests: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`
+7. Run build: `go build ./catalog/<provider>/<component>/v1/...`
+8. Run all tests: `go test -v ./catalog/<provider>/<component>/v1/`
 9. Validate consistency
 
 ## Consistency Enforcement
@@ -672,19 +672,19 @@ All consistency checks passed!
 🧪 Running validation...
 
 Component Tests:
-  Command: go test ./apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/
+  Command: go test ./catalog/gcp/gcpcertmanagercert/v1alpha1/
   Result: ✅ PASS
   Tests run: 18
   Tests passed: 18
   Duration: 1.2s
 
 Build Validation:
-  Command: go build ./apis/dev/planton/provider/<provider>/<component>/v1/...
+  Command: go build ./catalog/<provider>/<component>/v1/...
   Result: ✅ Success
   Duration: 2m 15s
 
 Component Tests:
-  Command: go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/
+  Command: go test -v ./catalog/<provider>/<component>/v1/
   Result: ✅ All tests passed
   Tests run: 156
   Tests passed: 156
@@ -766,7 +766,7 @@ Git command:
 **Right:**
 1. Update validation rule in spec.proto
 2. Update spec_test.go to test the new rule
-3. Run tests to verify rule works: `go test ./apis/.../v1/`
+3. Run tests to verify rule works: `go test ./catalog/.../v1/`
 
 **Wrong:**
 1. Update test to expect desired behavior
@@ -1080,9 +1080,9 @@ After fix completes:
 ✅ Any changed module code stays at the module-comment bar (why/trade-offs/quirks/ordering, not narration)
 ✅ All related artifacts updated (examples, docs)
 ✅ Consistency verified (proto ↔ TF, Pulumi ↔ TF, etc.)
-✅ Component tests pass (`go test ./apis/.../v1/`)
-✅ Build passes (`go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`)
-✅ Full test suite passes (`go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`)
+✅ Component tests pass (`go test ./catalog/.../v1/`)
+✅ Build passes (`go build ./catalog/<provider>/<component>/v1/...`)
+✅ Full test suite passes (`go test -v ./catalog/<provider>/<component>/v1/`)
 ✅ Examples validate against schema
 ✅ Documentation describes actual behavior
 ✅ No regressions introduced
@@ -1117,13 +1117,13 @@ After fix completes:
 4. Update spec_test.go to use pointers for optional fields
 5. Update IaC module to use getter methods: `GetFieldName()`
 6. Remove defensive default checks (framework applies defaults)
-7. Run component tests: `go test ./apis/.../v1/`
-8. Run build: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`
-9. Run all tests: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`
+7. Run component tests: `go test ./catalog/.../v1/`
+8. Run build: `go build ./catalog/<provider>/<component>/v1/...`
+9. Run all tests: `go test -v ./catalog/<provider>/<component>/v1/`
 
 **Key Principle:** Don't just document defaults in comments - enforce them via:
 - `optional` keyword for presence tracking
 - `(dev.planton.shared.options.default)` for middleware application
 - `DEFAULT_REQUIRES_OPTIONAL` linter for build-time enforcement
 
-**Reference:** `apis/_rules/apply-planton-default-option-semantics.mdc`
+**Reference:** `_rules/protos/apply-planton-default-option-semantics.mdc`

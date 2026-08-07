@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetestempo.v1alpha1;
+
+//tempo-kubernetes stack outputs
+message KubernetesTempoStackOutputs {
+  //namespace Tempo runs in.
+  string namespace = 1;
+
+  //Helm release name (= metadata.name). The modules pin the chart's
+  //fullname to it, so the Service name derives from it.
+  string release_name = 2;
+
+  //name of the Tempo Service (`<name>`, all ports).
+  string service = 3;
+
+  //in-cluster HTTP endpoint (port 3200) — the URL Grafana `tempo`
+  //datasources and TraceQL clients use,
+  //e.g. http://traces.observability.svc.cluster.local:3200
+  string http_endpoint = 4;
+
+  //in-cluster OTLP gRPC trace-ingest endpoint (port 4317) — where
+  //applications and KubernetesOtelCollector otlp exporters send spans,
+  //e.g. traces.observability.svc.cluster.local:4317
+  string otlp_grpc_endpoint = 5;
+
+  //in-cluster OTLP HTTP trace-ingest endpoint (port 4318),
+  //e.g. http://traces.observability.svc.cluster.local:4318
+  string otlp_http_endpoint = 6;
+
+  //command to port-forward the Tempo API to a developer laptop,
+  //e.g. kubectl port-forward svc/traces -n observability 3200:3200
+  string port_forward_command = 7;
+}

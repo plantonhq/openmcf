@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	componentv1 "github.com/plantonhq/planton/apis/dev/planton/iac/componentimportmap/v1"
-	awsecrrepov1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecrrepo/v1alpha1"
+	awsecrrepov1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecrrepo/v1alpha1"
+	componentv1 "github.com/plantonhq/planton/iac/componentimportmap/v1"
 )
 
 func TestPlaceholders(t *testing.T) {

@@ -195,7 +195,7 @@ func runMappingEvalChain(t *testing.T, suiteName string) *mappingeval.Report {
 	}
 	ctx := context.Background()
 
-	suitePath := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "aws", "aa_eval", "suites", suiteName+".yaml")
+	suitePath := filepath.Join(repoRoot, "catalog", "aws", "aa_eval", "suites", suiteName+".yaml")
 	suite, err := mappingeval.LoadSuite(repoRoot, suitePath)
 	if err != nil {
 		t.Fatalf("loading suite: %v", err)

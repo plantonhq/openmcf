@@ -13,7 +13,7 @@ You are the Planton Code Partner working inside the developer’s local workspac
 This rule separates deterministic steps (Python tools) from LLM drafting.
 
 SCOPE
-- Target: `apis/dev/planton/provider/<provider>/<kindfolder>/v1/spec.proto`
+- Target: `catalog/<provider>/<kindfolder>/v1/spec.proto`
 - Only add validations and brief comments. No field/message renames/additions/deletions.
 - Do not manually create folders; writer tool handles directories.
 - Do not edit other files.
@@ -24,7 +24,7 @@ TOOLS
 - Validation standard: the "VALIDATION MESSAGE QUALITY" section in this rule (below) is the
   authoritative standard. This rule is the canonical home for the Validation Message Philosophy.
 - Reference components (live ground truth): study the validated `spec.proto` of
-  `apis/dev/planton/provider/aws/awsvpc/v1alpha1/spec.proto` and `aws/awsalb/v1/spec.proto` for
+  `catalog/aws/awsvpc/v1alpha1/spec.proto` and `catalog/aws/awsalb/v1alpha1/spec.proto` for
   buf.validate field options, message-level CEL, and message wording.
 
 SEQUENTIAL STEPS
@@ -133,7 +133,7 @@ OUTPUT
 - On success: confirm file path. On error: brief fix and rerun (≤3).
 DEFAULT FIELD OPTIONS (SEPARATE FROM VALIDATION)
 - Default values use `(dev.planton.shared.options.default)` NOT buf.validate
-- Import: `import "dev/planton/shared/options/options.proto";`
+- Import: `import "shared/options/options.proto";`
 - Fields with defaults MUST be marked as `optional`
 - Example combining both: `optional string tag = 1 [(dev.planton.shared.options.default) = "2.331.0", (buf.validate.field).string.min_len = 1];`
 - The `DEFAULT_REQUIRES_OPTIONAL` linter enforces this pattern at build time
@@ -153,7 +153,7 @@ SENSITIVE FIELD OPTIONS (SEPARATE FROM VALIDATION)
 - Secret-by-default is a field OPTION, not a buf.validate rule. Annotate every
   secret-bearing field identified in rule 001 so the platform forces it to be a
   managed-secret reference (never plaintext).
-- Import: `import "dev/planton/shared/options/options.proto";` (same import as defaults).
+- Import: `import "shared/options/options.proto";` (same import as defaults).
 - Annotate a secret: `[(dev.planton.shared.options.sensitive) = true]`. Per the option's
   doc comment, this "applies to string fields and to the literal value of
   `StringValueOrRef` fields."
@@ -170,7 +170,7 @@ SENSITIVE FIELD OPTIONS (SEPARATE FROM VALIDATION)
 - `sensitive` and `default`/validations are complementary: a field may carry a default,
   a buf.validate rule, AND `sensitive` together.
 - Authority for the option semantics: the `sensitive` / `sensitive_exempt_reason` field
-  comments in `dev/planton/shared/options/options.proto`.
+  comments in `shared/options/options.proto`.
 
 VERIFY SENSITIVE COVERAGE (RUN THE GATE)
 - After annotating, run the developer gate: `planton secret-coverage --check`. It fails on:

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.civo.civocertificate.v1alpha1;
+
+import "catalog/civo/civocertificate/v1alpha1/api.proto";
+import "catalog/civo/provider.proto";
+
+//civo-certificate stack-input
+message CivoCertificateStackInput {
+  //target cloud-resource
+  CivoCertificate target = 1;
+  //provider-config
+  dev.planton.civo.CivoProviderConfig provider_config = 2;
+}

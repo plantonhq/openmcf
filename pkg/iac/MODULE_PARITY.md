@@ -1,6 +1,6 @@
 # IaC Module Parity (Tofu <-> Pulumi)
 
-Every cloud-resource kind ships two IaC implementations under `apis/.../<kind>/v1/iac/`:
+Every cloud-resource kind ships two IaC implementations under `catalog/.../<kind>/v1/iac/`:
 a Pulumi module (`pulumi/module/*.go`) and an OpenTofu module (`tf/*.tf`). For a given
 `stack-input` they MUST produce the same cloud objects, names, labels, selectors,
 environment, and stack outputs. A divergence here is not cosmetic: it silently changes

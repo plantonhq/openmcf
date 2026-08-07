@@ -1,0 +1,33 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "kubernetes",
+    srcs = [
+        "cert_manager_issuer.pb.go",
+        "cli_help.go",
+        "container_env.pb.go",
+        "external_secrets_store.pb.go",
+        "gateway_api.pb.go",
+        "istio_api.pb.go",
+        "kubernetes.pb.go",
+        "kubernetes_secret.pb.go",
+        "options.pb.go",
+        "probe.pb.go",
+        "provider.pb.go",
+        "strimzi_kafka_client.pb.go",
+        "volume_mount.pb.go",
+        "workload_container.pb.go",
+        "workload_identity.pb.go",
+        "workload_pod.pb.go",
+    ],
+    importpath = "github.com/plantonhq/planton/catalog/kubernetes",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//shared/foreignkey/v1:foreignkey",
+        "//shared/options",
+        "@build_buf_gen_go_bufbuild_protovalidate_protocolbuffers_go//buf/validate",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+        "@org_golang_google_protobuf//types/descriptorpb",
+    ],
+)

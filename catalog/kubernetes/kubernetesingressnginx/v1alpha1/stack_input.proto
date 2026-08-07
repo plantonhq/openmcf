@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesingressnginx.v1alpha1;
+
+import "catalog/kubernetes/kubernetesingressnginx/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+//input for kubernetes-ingress-nginx stack
+message KubernetesIngressNginxStackInput {
+  //target cloud-resource
+  KubernetesIngressNginx target = 1;
+  //provider-config
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

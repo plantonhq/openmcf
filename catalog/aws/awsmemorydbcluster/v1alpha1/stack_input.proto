@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsmemorydbcluster.v1alpha1;
+
+import "catalog/aws/awsmemorydbcluster/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsMemorydbClusterStackInput is the input for the IaC modules that deploy the MemoryDB cluster.
+message AwsMemorydbClusterStackInput {
+  // target is the AwsMemorydbCluster resource to deploy.
+  AwsMemorydbCluster target = 1;
+  // provider_config contains the AWS provider credentials and configuration.
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

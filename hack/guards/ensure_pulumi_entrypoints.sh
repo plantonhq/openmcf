@@ -7,7 +7,7 @@ set -euo pipefail
 #
 # WHY THIS EXISTS
 # The release pipeline (.github/workflows/release.pulumi-modules.yaml) builds each component
-# NON-RECURSIVELY: `go build -o <bin> ./apis/dev/planton/provider/<p>/<c>/v1/iac/pulumi`.
+# NON-RECURSIVELY: `go build -o <bin> ./catalog/<p>/<c>/v1/iac/pulumi`.
 # That command REQUIRES a `package main` at the directory root and fails with
 # `no Go files in .../iac/pulumi` when the entrypoint is missing or misplaced. A recursive
 # `go build ./.../v1/...` would mask this by compiling only the `module/` library. This guard
@@ -16,12 +16,12 @@ set -euo pipefail
 repo_root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root_dir"
 
-provider_base="apis/dev/planton/provider"
+catalog_root="catalog"
 
 missing_root_main=()
 misplaced_subdir=()
 
-if [[ -d "$provider_base" ]]; then
+if [[ -d "$catalog_root" ]]; then
   while IFS= read -r pulumi_dir; do
     [[ -z "$pulumi_dir" ]] && continue
 
@@ -46,7 +46,7 @@ if [[ -d "$provider_base" ]]; then
         misplaced_subdir+=("$subdir")
       fi
     done
-  done < <(find "$provider_base" -type d -path "*/iac/pulumi" 2>/dev/null | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/iac/pulumi$' | sort)
+  done < <(find "$catalog_root" -type d -path "*/iac/pulumi" 2>/dev/null | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/iac/pulumi$' | sort)
 fi
 
 status=0

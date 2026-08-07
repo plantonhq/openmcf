@@ -1,0 +1,83 @@
+package module
+
+import (
+	"github.com/pkg/errors"
+	kubernetestempov1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetestempo/v1alpha1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
+	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+// Resources installs Grafana Tempo from the official monolithic Helm chart
+// as a real Helm release. The typed spec renders into chart values
+// (values.go); declared object-store credentials ride environment variables
+// sourced from Secrets so no credential ever lands in the chart's rendered
+// configuration; the helm_values escape hatch merges last with Helm -f
+// semantics — the exact semantic twin of the Terraform module.
+func Resources(ctx *pulumi.Context, stackInput *kubernetestempov1alpha1.KubernetesTempoStackInput) error {
+	locals := initializeLocals(ctx, stackInput)
+
+	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
+		stackInput.ProviderConfig, "kubernetes")
+	if err != nil {
+		return errors.Wrap(err, "failed to create kubernetes provider")
+	}
+
+	// ------------------------------ namespace ----------------------------
+	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
+	if err != nil {
+		return errors.Wrap(err, "failed to create namespace")
+	}
+
+	var releaseDeps []pulumi.ResourceOption
+	if createdNamespace != nil {
+		releaseDeps = append(releaseDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
+	}
+
+	// ------------------------------ helm release --------------------------
+	mergedValues, err := buildHelmValues(locals)
+	if err != nil {
+		return errors.Wrap(err, "failed to build helm values")
+	}
+
+	releaseArgs := &helmv3.ReleaseArgs{
+		Name:      pulumi.String(locals.ReleaseName),
+		Namespace: pulumi.String(locals.Namespace),
+		Chart:     pulumi.String(vars.HelmChartName),
+		Version:   pulumi.String(locals.ChartVersion),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(vars.HelmChartRepo),
+		},
+		Values:          pulumi.ToMap(mergedValues),
+		CreateNamespace: pulumi.Bool(false),
+		// Wait for Tempo to become Ready — a trace store whose StatefulSet
+		// never binds its volume should fail THIS deploy, not the first
+		// span. Mirrors the Terraform twin's `wait = true`.
+		SkipAwait:     pulumi.Bool(false),
+		Atomic:        pulumi.Bool(true),
+		CleanupOnFail: pulumi.Bool(true),
+		Timeout:       pulumi.Int(600),
+	}
+
+	opts := append([]pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}, releaseDeps...)
+
+	_, err = helmv3.NewRelease(ctx, locals.ReleaseName, releaseArgs, opts...)
+	if err != nil {
+		return errors.Wrap(err, "failed to install tempo helm release")
+	}
+
+	exportOutputs(ctx, locals)
+	return nil
+}
+
+// exportOutputs publishes the composition handles. Every child name derives
+// from the fullname pinned to the resource name via fullnameOverride.
+func exportOutputs(ctx *pulumi.Context, locals *Locals) {
+	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
+	ctx.Export(OpReleaseName, pulumi.String(locals.ReleaseName))
+	ctx.Export(OpService, pulumi.String(locals.ServiceName))
+	ctx.Export(OpHttpEndpoint, pulumi.String(locals.HttpEndpoint))
+	ctx.Export(OpOtlpGrpcEndpoint, pulumi.String(locals.OtlpGrpcEndpoint))
+	ctx.Export(OpOtlpHttpEndpoint, pulumi.String(locals.OtlpHttpEndpoint))
+	ctx.Export(OpPortForwardCommand, pulumi.String(locals.PortForwardCommand))
+}

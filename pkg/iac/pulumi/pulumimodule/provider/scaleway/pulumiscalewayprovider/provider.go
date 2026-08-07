@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	scalewayprovider "github.com/plantonhq/planton/apis/dev/planton/provider/scaleway"
+	scalewayprovider "github.com/plantonhq/planton/catalog/scaleway"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/pulumi/pulumioutput"
 
 	"github.com/pkg/errors"

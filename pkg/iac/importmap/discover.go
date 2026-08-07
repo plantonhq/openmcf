@@ -21,7 +21,7 @@ import (
 // map that would not be checked, or a checked map that would not ship, is a
 // divergence this single signal makes impossible.
 func DiscoverComponentImportMaps(repoRoot string) (map[string][]string, error) {
-	providersDir := filepath.Join(repoRoot, providerBase)
+	providersDir := filepath.Join(repoRoot, catalogRoot)
 	providerEntries, err := os.ReadDir(providersDir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading providers directory %s", providersDir)

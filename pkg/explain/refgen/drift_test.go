@@ -57,18 +57,18 @@ func TestReferenceDrift(t *testing.T) {
 
 // committedReferenceFiles lists every committed generator-owned file, so the
 // gate catches orphans in both directions. Patterns mirror the generator's
-// output layout (kind pages at <provider>/<kind>/<version>/, catalog files
-// at the provider root and per provider).
+// output layout (kind pages at <provider>/<kind>/<version>/, per-provider
+// indexes at the provider root, catalog-level files in _docs/ — the "*"
+// index glob covers both the provider indexes and _docs/reference-index.md).
 func committedReferenceFiles(t *testing.T, root string) []string {
 	t.Helper()
-	providerRoot := filepath.Join(root, "apis", providerPathPrefix)
+	catalogRoot := filepath.Join(root, catalogPathPrefix)
 	var files []string
 	for _, pattern := range []string{
-		filepath.Join(providerRoot, "*", "*", "*", "reference.md"),
-		filepath.Join(providerRoot, "*", "reference-index.md"),
-		filepath.Join(providerRoot, "reference-index.md"),
-		filepath.Join(providerRoot, "reference-graph.yaml"),
-		filepath.Join(providerRoot, "reference-commons.md"),
+		filepath.Join(catalogRoot, "*", "*", "*", "reference.md"),
+		filepath.Join(catalogRoot, "*", "reference-index.md"),
+		filepath.Join(catalogRoot, "_docs", "reference-graph.yaml"),
+		filepath.Join(catalogRoot, "_docs", "reference-commons.md"),
 	} {
 		matches, err := filepath.Glob(pattern)
 		if err != nil {

@@ -39,7 +39,7 @@ func TortureKindRoot(t *testing.T) string {
 		t.Fatal("cannot resolve caller location")
 	}
 	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
-	dir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "_test", "testcloudresourcegeneric")
+	dir := filepath.Join(repoRoot, "catalog", "_test", "testcloudresourcegeneric")
 	if _, err := os.Stat(dir); err != nil {
 		t.Fatalf("torture kind directory missing: %v", err)
 	}

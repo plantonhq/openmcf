@@ -1,0 +1,674 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// ──────────────────────────────────────────────────────────────
+// Shared sub-messages (used by multiple rule-level features)
+// ──────────────────────────────────────────────────────────────
+
+// GcpCloudArmorRateThreshold defines a request-count threshold over a time
+// interval. Used by both rate_limit_threshold (when to start throttling)
+// and ban_threshold (when to escalate to a ban).
+message GcpCloudArmorRateThreshold {
+  // Number of requests that triggers the threshold.
+  int32 count = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gt = 0
+  ];
+
+  // Window of time in seconds over which the count is measured.
+  // The API accepts a fixed set of windows.
+  int32 interval_sec = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "interval_sec_valid"
+      expression: "this in [60, 120, 180, 240, 300, 600, 900, 1200]"
+      message: "interval_sec must be one of: 60, 120, 180, 240, 300, 600, 900, 1200"
+    }
+  ];
+}
+
+// GcpCloudArmorRedirectConfig defines a redirect target for rule actions
+// or rate-limit exceed actions. Shared between rule-level redirect_options
+// and rate_limit_options.exceed_redirect_options.
+message GcpCloudArmorRedirectConfig {
+  option (buf.validate.message).cel = {
+    id: "redirect_target_coherent"
+    expression: "(this.type == 'EXTERNAL_302' && this.target != '') || (this.type == 'GOOGLE_RECAPTCHA' && this.target == '')"
+    message: "target is required for EXTERNAL_302 and must not be set for GOOGLE_RECAPTCHA"
+  };
+
+  // Redirect type. EXTERNAL_302 sends a 302 redirect to the target URL.
+  // GOOGLE_RECAPTCHA redirects to a Google reCAPTCHA challenge page
+  // (customize the site key with the policy-level recaptcha_options_config).
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "redirect_type_valid"
+      message: "type must be EXTERNAL_302 or GOOGLE_RECAPTCHA"
+      expression: "this in ['EXTERNAL_302', 'GOOGLE_RECAPTCHA']"
+    }
+  ];
+
+  // Target URL for EXTERNAL_302 redirects. Required when type is
+  // EXTERNAL_302; must not be set when type is GOOGLE_RECAPTCHA.
+  string target = 2;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Rule sub-messages
+// ──────────────────────────────────────────────────────────────
+
+// GcpCloudArmorRecaptchaOptions supplies reCAPTCHA site keys evaluated by
+// CEL expressions that use reCAPTCHA tokens (token.recaptcha_action.*,
+// token.recaptcha_session.*). The site keys must be created from the
+// reCAPTCHA API in the same project as the policy. Has no effect on rules
+// whose expression does not evaluate reCAPTCHA tokens.
+message GcpCloudArmorRecaptchaOptions {
+  option (buf.validate.message).cel = {
+    id: "recaptcha_options_not_empty"
+    expression: "this.action_token_site_keys.size() > 0 || this.session_token_site_keys.size() > 0"
+    message: "at least one of action_token_site_keys or session_token_site_keys must be set"
+  };
+
+  // Site keys used to validate reCAPTCHA action-tokens.
+  repeated string action_token_site_keys = 1 [(dev.planton.shared.options.sensitive_exempt_reason) = "reCAPTCHA site keys are public client identifiers, not secret material"];
+
+  // Site keys used to validate reCAPTCHA session-tokens.
+  repeated string session_token_site_keys = 2 [(dev.planton.shared.options.sensitive_exempt_reason) = "reCAPTCHA site keys are public client identifiers, not secret material"];
+}
+
+// GcpCloudArmorRuleMatch defines the traffic-matching condition for a rule.
+//
+// Two matching modes are available (mutually exclusive):
+//
+//   - **IP-based**: Set versioned_expr to "SRC_IPS_V1" and provide
+//     src_ip_ranges. Matches traffic from the listed CIDR ranges.
+//
+//   - **CEL expression**: Set expression with a Common Expression
+//     Language (CEL) rule. Supports request attributes like
+//     origin.region_code, request.headers, request.path, etc.
+//
+// Use "*" in src_ip_ranges to match all traffic.
+message GcpCloudArmorRuleMatch {
+  option (buf.validate.message).cel = {
+    id: "match_mode_exclusive"
+    expression: "(this.versioned_expr == '' && this.expression != '') || (this.versioned_expr != '' && this.expression == '')"
+    message: "exactly one of versioned_expr (with src_ip_ranges) or expression must be set"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "versioned_expr_requires_ranges"
+    expression: "this.versioned_expr == '' || this.src_ip_ranges.size() > 0"
+    message: "src_ip_ranges is required when versioned_expr is set"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "expr_options_require_expression"
+    expression: "!has(this.expr_options) || this.expression != ''"
+    message: "expr_options applies only to CEL-expression matches (set expression)"
+  };
+
+  // Predefined match expression. The only supported value is "SRC_IPS_V1",
+  // which matches traffic based on source IP address ranges.
+  // When set, src_ip_ranges must also be provided.
+  string versioned_expr = 1 [(buf.validate.field).cel = {
+    id: "versioned_expr_valid"
+    expression: "this == '' || this == 'SRC_IPS_V1'"
+    message: "versioned_expr must be SRC_IPS_V1 if set"
+  }];
+
+  // Source IP CIDR ranges to match against.
+  // Required when versioned_expr is "SRC_IPS_V1". Max 10 ranges per rule.
+  // Use "*" to match all IP addresses.
+  // Examples: ["192.168.1.0/24", "10.0.0.0/8"] or ["*"]
+  repeated string src_ip_ranges = 2 [(buf.validate.field).repeated.max_items = 10];
+
+  // CEL expression for advanced matching. Supports request attributes
+  // such as origin.region_code, request.headers['X-Custom'], request.path,
+  // inIpRange(origin.ip, '1.2.3.0/24'), and more.
+  // Mutually exclusive with versioned_expr.
+  // Example: "origin.region_code == 'US'" or "request.path.matches('/api/.*')"
+  string expression = 3;
+
+  // reCAPTCHA site-key options for expressions that evaluate reCAPTCHA
+  // tokens. Only meaningful together with expression.
+  GcpCloudArmorRecaptchaOptions expr_options = 4;
+}
+
+// GcpCloudArmorEnforceOnKeyConfig identifies one component of a composite
+// rate-limit key. When multiple configs are listed, the individual values
+// are concatenated to form the key the rate limit counts against — e.g.
+// (IP, HTTP_PATH) limits each client per path instead of globally.
+message GcpCloudArmorEnforceOnKeyConfig {
+  option (buf.validate.message).cel = {
+    id: "key_config_name_coherent"
+    expression: "(this.enforce_on_key_type in ['HTTP_HEADER', 'HTTP_COOKIE']) == (this.enforce_on_key_name != '')"
+    message: "enforce_on_key_name is required for HTTP_HEADER/HTTP_COOKIE key types and must not be set otherwise"
+  };
+
+  // The key type this component contributes.
+  string enforce_on_key_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "key_config_type_valid"
+      expression: "this in ['ALL', 'IP', 'HTTP_HEADER', 'XFF_IP', 'HTTP_COOKIE', 'HTTP_PATH', 'SNI', 'REGION_CODE', 'TLS_JA3_FINGERPRINT', 'TLS_JA4_FINGERPRINT', 'USER_IP']"
+      message: "enforce_on_key_type must be one of: ALL, IP, HTTP_HEADER, XFF_IP, HTTP_COOKIE, HTTP_PATH, SNI, REGION_CODE, TLS_JA3_FINGERPRINT, TLS_JA4_FINGERPRINT, USER_IP"
+    }
+  ];
+
+  // Name of the HTTP header or cookie when enforce_on_key_type is
+  // HTTP_HEADER or HTTP_COOKIE.
+  string enforce_on_key_name = 2;
+}
+
+// GcpCloudArmorRateLimitOptions configures rate limiting for throttle
+// and rate_based_ban actions.
+message GcpCloudArmorRateLimitOptions {
+  option (buf.validate.message).cel = {
+    id: "enforce_on_key_exclusive"
+    expression: "this.enforce_on_key == '' || this.enforce_on_key_configs.size() == 0"
+    message: "enforce_on_key and enforce_on_key_configs are mutually exclusive"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "enforce_on_key_name_coherent"
+    expression: "(this.enforce_on_key in ['HTTP_HEADER', 'HTTP_COOKIE']) == (this.enforce_on_key_name != '')"
+    message: "enforce_on_key_name is required for HTTP_HEADER/HTTP_COOKIE and must not be set otherwise"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "exceed_redirect_coherent"
+    expression: "(this.exceed_action == 'redirect') == has(this.exceed_redirect_options)"
+    message: "exceed_redirect_options is required when exceed_action is redirect and must not be set otherwise"
+  };
+
+  // Action to take when traffic is below the threshold. Must be "allow".
+  string conform_action = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "conform_action_valid"
+      expression: "this == 'allow'"
+      message: "conform_action must be 'allow'"
+    }
+  ];
+
+  // Action to take when traffic exceeds the threshold.
+  // Valid values: "redirect", "deny(403)", "deny(404)", "deny(429)", "deny(502)".
+  string exceed_action = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "exceed_action_valid"
+      expression: "this in ['redirect', 'deny(403)', 'deny(404)', 'deny(429)', 'deny(502)']"
+      message: "exceed_action must be one of: redirect, deny(403), deny(404), deny(429), deny(502)"
+    }
+  ];
+
+  // Single key on which to enforce the rate limit. Determines how requests
+  // are grouped for counting. If empty (and no enforce_on_key_configs),
+  // defaults to "ALL" (single counter for all matched traffic).
+  //
+  // Common values:
+  //   - "ALL": Single counter for all traffic
+  //   - "IP": Per source IP
+  //   - "HTTP_HEADER": Per value of a specific header (set enforce_on_key_name)
+  //   - "XFF_IP": Per IP from X-Forwarded-For header
+  //   - "HTTP_COOKIE": Per cookie value (set enforce_on_key_name)
+  //   - "HTTP_PATH": Per URL path
+  //   - "SNI": Per TLS Server Name Indication
+  //   - "REGION_CODE": Per client country/region
+  // Mutually exclusive with enforce_on_key_configs.
+  string enforce_on_key = 3 [(buf.validate.field).cel = {
+    id: "enforce_on_key_valid"
+    expression: "this == '' || this in ['ALL', 'IP', 'HTTP_HEADER', 'XFF_IP', 'HTTP_COOKIE', 'HTTP_PATH', 'SNI', 'REGION_CODE', 'TLS_JA3_FINGERPRINT', 'TLS_JA4_FINGERPRINT', 'USER_IP']"
+    message: "enforce_on_key must be one of: ALL, IP, HTTP_HEADER, XFF_IP, HTTP_COOKIE, HTTP_PATH, SNI, REGION_CODE, TLS_JA3_FINGERPRINT, TLS_JA4_FINGERPRINT, USER_IP"
+  }];
+
+  // Name of the HTTP header or cookie when enforce_on_key is
+  // HTTP_HEADER or HTTP_COOKIE.
+  string enforce_on_key_name = 4;
+
+  // Composite rate-limit key: the listed components' values are
+  // concatenated to form the key requests are counted against
+  // (e.g. IP + HTTP_PATH limits each client per path).
+  // Mutually exclusive with enforce_on_key.
+  repeated GcpCloudArmorEnforceOnKeyConfig enforce_on_key_configs = 5;
+
+  // Rate limit threshold: when the request count exceeds this value
+  // within the interval, the exceed_action is applied.
+  GcpCloudArmorRateThreshold rate_limit_threshold = 6 [(buf.validate.field).required = true];
+
+  // Ban threshold for rate_based_ban actions. When traffic exceeds
+  // this threshold after already exceeding the rate_limit_threshold,
+  // the source is banned entirely.
+  GcpCloudArmorRateThreshold ban_threshold = 7;
+
+  // Duration of the ban in seconds when using rate_based_ban.
+  // Range: 60 to 86400 (1 minute to 24 hours).
+  int32 ban_duration_sec = 8 [(buf.validate.field).cel = {
+    id: "ban_duration_valid"
+    expression: "this == 0 || (this >= 60 && this <= 86400)"
+    message: "ban_duration_sec must be between 60 and 86400 seconds"
+  }];
+
+  // Redirect configuration when exceed_action is "redirect".
+  GcpCloudArmorRedirectConfig exceed_redirect_options = 9;
+}
+
+// GcpCloudArmorRequestHeader defines a header to add to requests
+// that match the rule.
+message GcpCloudArmorRequestHeader {
+  // HTTP header name.
+  string header_name = 1 [(buf.validate.field).required = true];
+
+  // HTTP header value. If the header already exists, it is overwritten.
+  string header_value = 2;
+}
+
+// GcpCloudArmorHeaderAction injects custom headers into requests
+// that match the rule. Headers are added before the request is
+// forwarded to the backend. Useful for passing security context
+// or routing hints to backend services.
+message GcpCloudArmorHeaderAction {
+  // Headers to add to matching requests.
+  repeated GcpCloudArmorRequestHeader request_headers_to_adds = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// GcpCloudArmorWafExclusionFieldParams identifies a specific request
+// component to exclude from WAF rule evaluation.
+message GcpCloudArmorWafExclusionFieldParams {
+  option (buf.validate.message).cel = {
+    id: "exclusion_value_coherent"
+    expression: "(this.operator == 'EQUALS_ANY') == (this.value == '')"
+    message: "value is required for all operators except EQUALS_ANY, which takes no value"
+  };
+
+  // Comparison operator for matching the field.
+  string operator = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "exclusion_operator_valid"
+      expression: "this in ['EQUALS', 'STARTS_WITH', 'ENDS_WITH', 'CONTAINS', 'EQUALS_ANY']"
+      message: "operator must be one of: EQUALS, STARTS_WITH, ENDS_WITH, CONTAINS, EQUALS_ANY"
+    }
+  ];
+
+  // Value to match against. Required unless operator is EQUALS_ANY
+  // (which matches any value for the given field).
+  string value = 2;
+}
+
+// GcpCloudArmorWafExclusion defines an exclusion from a preconfigured
+// WAF rule set. WAF exclusions are critical for production deployments
+// where false positives from OWASP rules may block legitimate traffic
+// (e.g., form submissions with SQL-like content, rich text editors,
+// GraphQL queries).
+message GcpCloudArmorWafExclusion {
+  // Target WAF rule set to exclude from. Uses the ModSecurity rule set
+  // identifiers such as "sqli-v33-stable", "xss-v33-stable",
+  // "rce-v33-stable", "lfi-v33-stable", etc.
+  string target_rule_set = 1 [(buf.validate.field).required = true];
+
+  // Specific rule IDs within the rule set to exclude. If empty,
+  // the exclusion applies to all rules in the set.
+  repeated string target_rule_ids = 2;
+
+  // Request headers to exclude from WAF evaluation.
+  repeated GcpCloudArmorWafExclusionFieldParams request_headers = 3;
+
+  // Request cookies to exclude from WAF evaluation.
+  repeated GcpCloudArmorWafExclusionFieldParams request_cookies = 4;
+
+  // Request URIs to exclude from WAF evaluation.
+  repeated GcpCloudArmorWafExclusionFieldParams request_uris = 5;
+
+  // Request query parameters to exclude from WAF evaluation.
+  repeated GcpCloudArmorWafExclusionFieldParams request_query_params = 6;
+}
+
+// GcpCloudArmorPreconfiguredWafConfig defines exclusions for preconfigured
+// WAF rules attached to this security rule. Without exclusions, legitimate
+// traffic that resembles attack patterns (SQL in search queries, HTML in
+// rich text fields) is blocked by WAF rules.
+message GcpCloudArmorPreconfiguredWafConfig {
+  // Exclusions from preconfigured WAF rules.
+  repeated GcpCloudArmorWafExclusion exclusions = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// ──────────────────────────────────────────────────────────────
+// Rule definition
+// ──────────────────────────────────────────────────────────────
+
+// GcpCloudArmorRule defines a single security rule within the policy.
+// Rules are evaluated in priority order (lowest number = highest priority).
+//
+// Every Cloud Armor policy carries a default rule at priority 2147483647:
+// when a policy is created with NO rules, the API adds a default "allow
+// all" rule automatically; when rules ARE provided, the set must include
+// the priority-2147483647 default explicitly (enforced pre-deploy).
+message GcpCloudArmorRule {
+  option (buf.validate.message).cel = {
+    id: "rate_limit_options_coherent"
+    expression: "(this.action in ['throttle', 'rate_based_ban']) == has(this.rate_limit_options)"
+    message: "rate_limit_options is required for throttle/rate_based_ban actions and must not be set otherwise"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "redirect_options_coherent"
+    expression: "(this.action == 'redirect') == has(this.redirect_options)"
+    message: "redirect_options is required for the redirect action and must not be set otherwise"
+  };
+
+  // Action to take when the rule matches.
+  // - "allow": Permit the request
+  // - "deny(403)": Block with 403 Forbidden
+  // - "deny(404)": Block with 404 Not Found
+  // - "deny(502)": Block with 502 Bad Gateway
+  // - "redirect": Redirect to a configured target (requires redirect_options)
+  // - "throttle": Rate-limit the traffic (requires rate_limit_options)
+  // - "rate_based_ban": Rate-limit then ban (requires rate_limit_options)
+  string action = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "rule_action_valid"
+      expression: "this in ['allow', 'deny(403)', 'deny(404)', 'deny(502)', 'redirect', 'throttle', 'rate_based_ban']"
+      message: "action must be one of: allow, deny(403), deny(404), deny(502), redirect, throttle, rate_based_ban"
+    }
+  ];
+
+  // Rule priority. Lower values are evaluated first.
+  // Range: 0 to 2147483647. Each rule must have a unique priority.
+  // Priority 2147483647 is the default rule (match "*").
+  int32 priority = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 0
+  ];
+
+  // Traffic-matching condition. Defines which requests this rule applies to.
+  GcpCloudArmorRuleMatch match = 3 [(buf.validate.field).required = true];
+
+  // Human-readable description of the rule (max 64 characters).
+  string description = 4 [(buf.validate.field).string.max_len = 64];
+
+  // If true, the rule is in preview mode: matched traffic is logged but
+  // the action is not enforced. Use preview to test rules before enabling.
+  bool preview = 5;
+
+  // Rate limit configuration. Required when action is "throttle" or
+  // "rate_based_ban".
+  GcpCloudArmorRateLimitOptions rate_limit_options = 6;
+
+  // Redirect configuration. Required when action is "redirect".
+  GcpCloudArmorRedirectConfig redirect_options = 7;
+
+  // Custom headers to inject into matching requests before forwarding
+  // to the backend. Only supported for CLOUD_ARMOR type policies.
+  GcpCloudArmorHeaderAction header_action = 8;
+
+  // Preconfigured WAF rule exclusions. Use this to carve out exceptions
+  // for specific request fields that trigger false positives in WAF rules.
+  // Only supported for CLOUD_ARMOR type policies.
+  GcpCloudArmorPreconfiguredWafConfig preconfigured_waf_config = 9;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Policy-level configuration sub-messages
+// ──────────────────────────────────────────────────────────────
+
+// GcpCloudArmorTrafficGranularityConfig defines one granular traffic unit
+// for adaptive protection auto-deploy: traffic matching each unique value
+// of the configured type is treated as a separate unit for detection and
+// mitigation (e.g. per Host header, per URL path).
+message GcpCloudArmorTrafficGranularityConfig {
+  option (buf.validate.message).cel = {
+    id: "granularity_value_exclusive"
+    expression: "!(this.enable_each_unique_value && this.value != '')"
+    message: "enable_each_unique_value can only be true when value is empty"
+  };
+
+  // Type of granularity: "HTTP_HEADER_HOST" or "HTTP_PATH".
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "granularity_type_valid"
+      expression: "this in ['HTTP_HEADER_HOST', 'HTTP_PATH']"
+      message: "type must be HTTP_HEADER_HOST or HTTP_PATH"
+    }
+  ];
+
+  // A specific value of the configured type that constitutes a traffic
+  // unit (e.g. one Host name). Leave empty with enable_each_unique_value
+  // to treat every unique value as its own unit.
+  string value = 2;
+
+  // When true, traffic matching EACH unique value of the type is a
+  // separate traffic unit. Only valid when value is empty.
+  bool enable_each_unique_value = 3;
+}
+
+// GcpCloudArmorThresholdConfig customizes adaptive protection detection
+// and auto-deploy thresholds for a named traffic granularity.
+message GcpCloudArmorThresholdConfig {
+  // Name of the config. Must be 1-63 characters, RFC1035-compliant, and
+  // unique within the policy.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$"
+  ];
+
+  // Confidence threshold (0.0-1.0) an attack signature must reach before
+  // auto-deploying a mitigation rule.
+  optional double auto_deploy_confidence_threshold = 2 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+
+  // Maximum share (0.0-1.0) of baseline (good) traffic the auto-deployed
+  // mitigation may impact.
+  optional double auto_deploy_impacted_baseline_threshold = 3 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+
+  // Load threshold above which auto-deploy considers the backend under
+  // attack.
+  optional double auto_deploy_load_threshold = 4;
+
+  // Lifetime in seconds of an auto-deployed mitigation rule.
+  optional int32 auto_deploy_expiration_sec = 5 [(buf.validate.field).int32.gte = 0];
+
+  // Detection: absolute queries-per-second considered anomalous.
+  optional double detection_absolute_qps = 6;
+
+  // Detection: load threshold relative to backend capacity.
+  optional double detection_load_threshold = 7;
+
+  // Detection: QPS relative to the learned baseline considered anomalous.
+  optional double detection_relative_to_baseline_qps = 8;
+
+  // Granular traffic units this threshold config applies to.
+  repeated GcpCloudArmorTrafficGranularityConfig traffic_granularity_configs = 9;
+}
+
+// GcpCloudArmorAdaptiveProtectionConfig configures Google Cloud Armor
+// Adaptive Protection (CAAP) for automatic Layer 7 DDoS detection.
+// When enabled, Adaptive Protection analyzes traffic patterns and
+// alerts on or auto-mitigates anomalous traffic spikes.
+message GcpCloudArmorAdaptiveProtectionConfig {
+  option (buf.validate.message).cel = {
+    id: "thresholds_require_defense"
+    expression: "this.threshold_configs.size() == 0 || this.enable_layer_7_ddos_defense"
+    message: "threshold_configs require enable_layer_7_ddos_defense to be true"
+  };
+
+  // Enable Cloud Armor Adaptive Protection for Layer 7 DDoS defense.
+  // When true, traffic anomalies are detected and alerts are generated.
+  bool enable_layer_7_ddos_defense = 1;
+
+  // Rule visibility mode for auto-generated adaptive protection rules.
+  // "STANDARD" (default) creates rules visible to all policy viewers.
+  // "PREMIUM" requires Cloud Armor Managed Protection Plus.
+  string rule_visibility = 2 [(buf.validate.field).cel = {
+    id: "rule_visibility_valid"
+    expression: "this == '' || this in ['STANDARD', 'PREMIUM']"
+    message: "rule_visibility must be STANDARD or PREMIUM"
+  }];
+
+  // Per-granularity detection and auto-deploy threshold overrides.
+  // Requires enable_layer_7_ddos_defense.
+  repeated GcpCloudArmorThresholdConfig threshold_configs = 3;
+}
+
+// GcpCloudArmorJsonCustomConfig applies JSON parsing to additional
+// Content-Type header values beyond the standard application/json.
+message GcpCloudArmorJsonCustomConfig {
+  // Custom Content-Type header values to parse as JSON
+  // (e.g. "application/vnd.api+json").
+  repeated string content_types = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// GcpCloudArmorAdvancedOptionsConfig configures advanced security
+// features at the policy level, including JSON request body parsing,
+// logging verbosity, and client IP resolution.
+message GcpCloudArmorAdvancedOptionsConfig {
+  option (buf.validate.message).cel = {
+    id: "json_custom_requires_parsing"
+    expression: "!has(this.json_custom_config) || this.json_parsing in ['STANDARD', 'STANDARD_WITH_GRAPHQL']"
+    message: "json_custom_config applies only when json_parsing is STANDARD or STANDARD_WITH_GRAPHQL"
+  };
+
+  // JSON parsing mode for request body inspection.
+  // "DISABLED" (default): No JSON parsing.
+  // "STANDARD": Parse JSON bodies for WAF rule evaluation.
+  // "STANDARD_WITH_GRAPHQL": Parse JSON and GraphQL bodies.
+  string json_parsing = 1 [(buf.validate.field).cel = {
+    id: "json_parsing_valid"
+    expression: "this == '' || this in ['DISABLED', 'STANDARD', 'STANDARD_WITH_GRAPHQL']"
+    message: "json_parsing must be DISABLED, STANDARD, or STANDARD_WITH_GRAPHQL"
+  }];
+
+  // Logging verbosity.
+  // "NORMAL" (default): Standard logging.
+  // "VERBOSE": Detailed logging including matched rule and request details.
+  string log_level = 2 [(buf.validate.field).cel = {
+    id: "log_level_valid"
+    expression: "this == '' || this in ['NORMAL', 'VERBOSE']"
+    message: "log_level must be NORMAL or VERBOSE"
+  }];
+
+  // Custom headers to check for the true client IP address.
+  // Used when traffic passes through a CDN or reverse proxy that
+  // sets the client IP in a custom header. If empty, GCP uses the
+  // connection source IP.
+  repeated string user_ip_request_headers = 3;
+
+  // Additional Content-Type values to parse as JSON. Only meaningful
+  // when json_parsing is STANDARD or STANDARD_WITH_GRAPHQL.
+  GcpCloudArmorJsonCustomConfig json_custom_config = 4;
+}
+
+// GcpCloudArmorRecaptchaOptionsConfig customizes the reCAPTCHA site key
+// used by all rules in this policy whose redirect action has type
+// GOOGLE_RECAPTCHA. If not configured, a Google-managed site key is used.
+message GcpCloudArmorRecaptchaOptionsConfig {
+  // The reCAPTCHA site key, created from the reCAPTCHA API. The user is
+  // responsible for the key's validity.
+  string redirect_site_key = 1 [(buf.validate.field).required = true];
+}
+
+// ──────────────────────────────────────────────────────────────
+// Top-level spec
+// ──────────────────────────────────────────────────────────────
+
+// GcpCloudArmorPolicySpec defines the configuration for a Google Cloud
+// Armor security policy -- a WAF and DDoS protection layer that sits
+// in front of backend services, load balancers, and CDN-enabled backends.
+//
+// Cloud Armor policies contain a set of prioritized rules that evaluate
+// incoming traffic and take actions (allow, deny, rate-limit, redirect).
+// Rules are evaluated from highest priority (lowest number) to lowest
+// priority (highest number). The first matching rule's action is applied.
+//
+// Three policy types are available:
+//
+//   - **CLOUD_ARMOR** (default): Backend security policies for HTTP(S)
+//     load balancers. Full WAF, rate limiting, redirect, and header
+//     injection capabilities.
+//
+//   - **CLOUD_ARMOR_EDGE**: Edge security policies for Cloud CDN and
+//     backend buckets. Limited to IP-based and geo-based rules.
+//
+//   - **CLOUD_ARMOR_INTERNAL_SERVICE**: Policies for internal Traffic
+//     Director services. Limited feature set.
+//
+// The policy type is immutable after creation (ForceNew).
+//
+// The default rule contract: every Cloud Armor policy carries a default
+// rule at priority 2147483647. Creating a policy with NO rules lets the
+// API add a default "allow all" rule automatically; providing ANY rules
+// requires the set to include the priority-2147483647 default explicitly
+// (the API rejects rule sets without it, so this is enforced pre-deploy).
+message GcpCloudArmorPolicySpec {
+  option (buf.validate.message).cel = {
+    id: "rules_include_default"
+    expression: "this.rules.size() == 0 || this.rules.exists(r, r.priority == 2147483647)"
+    message: "a non-empty rule set must include the default rule at priority 2147483647 (match '*')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "rule_priorities_unique"
+    expression: "this.rules.size() == 0 || this.rules.all(r, this.rules.filter(x, x.priority == r.priority).size() == 1)"
+    message: "each rule must have a unique priority"
+  };
+
+  // GCP project where the security policy will be created.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Name of the security policy in GCP.
+  // Must be 1-63 characters, lowercase letters, numbers, or hyphens.
+  // Must start with a lowercase letter and end with a letter or number.
+  // If not specified, defaults to metadata.name.
+  string policy_name = 2 [(buf.validate.field).cel = {
+    id: "valid_policy_name"
+    expression: "this == '' || this.matches('^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$')"
+    message: "policy_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit"
+  }];
+
+  // Description of the security policy. Max 2048 characters.
+  string description = 3 [(buf.validate.field).string.max_len = 2048];
+
+  // Policy type. Determines which features are available and where
+  // the policy can be attached.
+  //
+  // Immutable after creation (ForceNew).
+  string type = 4 [(buf.validate.field).cel = {
+    id: "type_valid"
+    expression: "this == '' || this in ['CLOUD_ARMOR', 'CLOUD_ARMOR_EDGE', 'CLOUD_ARMOR_INTERNAL_SERVICE']"
+    message: "type must be CLOUD_ARMOR, CLOUD_ARMOR_EDGE, or CLOUD_ARMOR_INTERNAL_SERVICE"
+  }];
+
+  // Adaptive Protection configuration for automatic Layer 7 DDoS detection.
+  GcpCloudArmorAdaptiveProtectionConfig adaptive_protection_config = 5;
+
+  // Advanced policy-level options: JSON parsing, logging, IP resolution.
+  GcpCloudArmorAdvancedOptionsConfig advanced_options_config = 6;
+
+  // Policy-level reCAPTCHA site key for GOOGLE_RECAPTCHA redirects.
+  GcpCloudArmorRecaptchaOptionsConfig recaptcha_options_config = 7;
+
+  // Security rules. Rules are evaluated in priority order (lowest number
+  // first). Each rule matches traffic and applies an action.
+  //
+  // Leave empty to get the API's automatic default "allow all" rule; a
+  // non-empty set must include the priority-2147483647 default rule.
+  repeated GcpCloudArmorRule rules = 8;
+}

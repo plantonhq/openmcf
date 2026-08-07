@@ -16,7 +16,7 @@ import (
 	"runtime"
 	"testing"
 
-	proposalv1 "github.com/plantonhq/planton/apis/dev/planton/iac/importmappingproposal/v1"
+	proposalv1 "github.com/plantonhq/planton/iac/importmappingproposal/v1"
 	"github.com/plantonhq/planton/pkg/iac/mappingeval"
 	"github.com/plantonhq/planton/pkg/iac/mappingeval/baseline"
 	"google.golang.org/protobuf/proto"
@@ -252,9 +252,9 @@ metadata:
 spec:
   members:
     - component: awssubnet
-      manifest_path: apis/dev/planton/provider/aws/awssubnet/v1alpha1/e2e/scenarios/routed.yaml
+      manifest_path: catalog/aws/awssubnet/v1alpha1/e2e/scenarios/routed.yaml
     - component: awsvpc
-      manifest_path: apis/dev/planton/provider/aws/awsvpc/v1alpha1/e2e/prerequisite.yaml
+      manifest_path: catalog/aws/awsvpc/v1alpha1/e2e/prerequisite.yaml
   scan_scope:
     region: us-west-2
 `
@@ -287,7 +287,7 @@ func loadFixtureScan(t *testing.T) *mappingeval.Scan {
 
 func loadSuite(t *testing.T, root string) *mappingeval.LoadedSuite {
 	t.Helper()
-	suite, err := mappingeval.LoadSuite(root, filepath.Join(root, "apis/dev/planton/provider/aws/aa_eval/suites/network-staples.yaml"))
+	suite, err := mappingeval.LoadSuite(root, filepath.Join(root, "catalog/aws/aa_eval/suites/network-staples.yaml"))
 	if err != nil {
 		t.Fatalf("loading network-staples suite: %v", err)
 	}

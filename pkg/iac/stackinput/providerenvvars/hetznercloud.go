@@ -2,7 +2,7 @@ package providerenvvars
 
 import (
 	"github.com/pkg/errors"
-	hetznercloudprovider "github.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud"
+	hetznercloudprovider "github.com/plantonhq/planton/catalog/hetznercloud"
 )
 
 // loadHetznerCloudEnvVars loads Hetzner Cloud provider config and returns environment variables.

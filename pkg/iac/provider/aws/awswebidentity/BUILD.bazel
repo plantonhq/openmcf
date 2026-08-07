@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/pkg/iac/provider/aws/awswebidentity",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/dev/planton/provider/aws",
+        "//catalog/aws",
         "@com_github_aws_aws_sdk_go_v2//aws",
         "@com_github_aws_aws_sdk_go_v2_config//:config",
         "@com_github_aws_aws_sdk_go_v2_credentials//stscreds",
@@ -19,5 +19,5 @@ go_test(
     name = "awswebidentity_test",
     srcs = ["exchange_test.go"],
     embed = [":awswebidentity"],
-    deps = ["//apis/dev/planton/provider/aws"],
+    deps = ["//catalog/aws"],
 )

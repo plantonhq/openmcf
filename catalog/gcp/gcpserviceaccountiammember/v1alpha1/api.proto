@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpserviceaccountiammember.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/gcp/gcpserviceaccountiammember/v1alpha1/spec.proto";
+import "catalog/gcp/gcpserviceaccountiammember/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//gcp-service-account-iam-member
+message GcpServiceAccountIamMember {
+  string api_version = 1 [(buf.validate.field).string.const = 'gcp.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'GcpServiceAccountIamMember'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  GcpServiceAccountIamMemberSpec spec = 4 [(buf.validate.field).required = true];
+  GcpServiceAccountIamMemberStatus status = 5;
+}
+
+message GcpServiceAccountIamMemberStatus {
+  GcpServiceAccountIamMemberStackOutputs outputs = 1;
+}

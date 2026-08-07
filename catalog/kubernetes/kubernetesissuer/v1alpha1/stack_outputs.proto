@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesissuer.v1alpha1;
+
+// KubernetesIssuerStackOutputs captures observable outputs after
+// the Issuer is created.
+message KubernetesIssuerStackOutputs {
+  // Namespace where the Issuer was created.
+  string namespace = 1;
+  // Issuer resource name (equals metadata.name).
+  // Use in Certificate issuerRef.name when issuerRef.kind=Issuer.
+  string issuer_name = 2;
+  // Name of the ACME account private key Secret cert-manager creates in the
+  // Issuer's namespace. Empty for non-ACME backends.
+  string acme_account_key_secret_name = 3;
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesclusterautoscaler.v1alpha1;
+
+import "catalog/kubernetes/kubernetesclusterautoscaler/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+// Input for the KubernetesClusterAutoscaler IaC stack. The platform
+// resolves all StringValueOrRef references (namespace) to literal strings
+// before passing this to the IaC engine.
+message KubernetesClusterAutoscalerStackInput {
+  // Target cloud-resource.
+  KubernetesClusterAutoscaler target = 1;
+  // Kubernetes provider configuration (cluster credentials).
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

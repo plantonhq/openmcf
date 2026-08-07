@@ -10,7 +10,7 @@ alwaysApply: false
 
 **Trigger**: User references this rule or asks to write/create a guide for a component.
 
-**Output**: A single file at `apis/dev/planton/provider/{provider}/{component}/{version}/GUIDE.md`, followed by `make generate-reference` (the kind's reference page head gains its Guide link and the indexes gain a Guide entry -- committed together with the guide).
+**Output**: A single file at `catalog/{provider}/{component}/{version}/GUIDE.md`, followed by `make generate-reference` (the kind's reference page head gains its Guide link and the indexes gain a Guide entry -- committed together with the guide).
 
 ---
 

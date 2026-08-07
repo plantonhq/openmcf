@@ -12,8 +12,6 @@ go_library(
     importpath = "github.com/plantonhq/planton/cmd/planton/root/terraform",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/dev/planton/shared",
-        "//apis/dev/planton/shared/iac/terraform",
         "//internal/cli/cliprint",
         "//internal/cli/flag",
         "//internal/cli/manifest",
@@ -28,6 +26,8 @@ go_library(
         "//pkg/iac/tofu/tfbackend",
         "//pkg/iac/tofu/tofumodule",
         "//pkg/kubernetes/kubecontext",
+        "//shared",
+        "//shared/iac/terraform",
         "@com_github_spf13_cobra//:cobra",
     ],
 )

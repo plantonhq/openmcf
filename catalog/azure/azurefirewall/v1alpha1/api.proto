@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurefirewall.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurefirewall/v1alpha1/spec.proto";
+import "catalog/azure/azurefirewall/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AzureFirewall is the top-level API resource for an Azure Firewall
+// instance: the managed, stateful firewall data plane that enforces an
+// AzureFirewallPolicy from a dedicated subnet (or Virtual WAN hub). It is
+// a first-class composable resource: route tables steer traffic to its
+// private IP, and the policy it enforces is authored and versioned
+// independently.
+message AzureFirewall {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureFirewall".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureFirewall'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Firewall specification.
+  AzureFirewallSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureFirewallStatus status = 5;
+}
+
+// AzureFirewallStatus holds the deployment outputs.
+message AzureFirewallStatus {
+  // Stack outputs from the IaC deployment.
+  AzureFirewallStackOutputs outputs = 1;
+}

@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // Conversion specs live beside the kind's protos:
@@ -16,7 +16,7 @@ import (
 //	<provider>/<kind>/conversions/<from>_to_<to>.yaml
 //
 // Discovery operates on an fs.FS rooted at the provider base
-// (apis/dev/planton/provider), so the same code serves a repo checkout
+// (catalog), so the same code serves a repo checkout
 // (os.DirFS) and the specs embedded into the CLI binary.
 
 // SpecFiles returns every conversion spec path under the provider base.

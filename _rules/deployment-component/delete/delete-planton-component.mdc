@@ -86,7 +86,7 @@ Delete is **irreversible** without backups. Safety features:
 Identify everything related to the component:
 
 **Core Files:**
-- Component folder: `apis/dev/planton/provider/<provider>/<component>/v1/`
+- Component folder: `catalog/<provider>/<component>/v1/`
 - All contents: proto files, Go files, IaC modules, docs, tests
 
 **Registry Entry:**
@@ -113,13 +113,13 @@ Search codebase for references to the component:
 **Inbound-link sweep (mandatory — links INTO the component, not just its own
 files):** deleting the component's folder and site-catalog directory removes
 its pages, but every OTHER page that links to those pages becomes a dead
-link. Grep for the kind name AND its catalog slugs (both the apis-side
+link. Grep for the kind name AND its catalog slugs (both the
 `/docs/catalog/<provider>/<kind>` form and the site-side directory-name
 form) across:
 - `site/public/docs/catalog/**` — sibling kinds' index pages, provider
   index lists, and preset pages routinely cross-link retired kinds
 - sibling kinds' `presets/*.md`, `catalog-page.md`, `README.md`, and
-  `docs/README.md` under `apis/` — prose like "pair this with X" outlives X
+  `docs/README.md` under `catalog/` — prose like "pair this with X" outlives X
 - `charts/**` templates and READMEs
 
 Fix each hit: remove the dead link, or repoint the prose to the replacing
@@ -132,8 +132,8 @@ are defects.
 ⚠️  Warning: MongodbAtlas is referenced in other files
 
 Found 3 references:
-  1. apis/dev/planton/provider/atlas/backup/v1alpha1/spec.proto
-     Line 15: import "dev/planton/provider/atlas/mongodbatlas/v1alpha1/api.proto"
+  1. catalog/atlas/backup/v1alpha1/spec.proto
+     Line 15: import "catalog/atlas/mongodbatlas/v1alpha1/api.proto"
      
   2. docs/deployment-landscape.md
      Line 234: See MongodbAtlas for SaaS database example
@@ -155,10 +155,10 @@ If `--backup` flag is used:
 ```bash
 # Create timestamped backup
 TIMESTAMP=$(date +"%Y-%m-%d-%H%M%S")
-BACKUP_DIR="apis/dev/planton/provider/<provider>/<component>-backup-$TIMESTAMP"
+BACKUP_DIR="catalog/<provider>/<component>-backup-$TIMESTAMP"
 
 # Copy entire component folder
-cp -r apis/dev/planton/provider/<provider>/<component> $BACKUP_DIR
+cp -r catalog/<provider>/<component> $BACKUP_DIR
 
 # Save enum entry
 grep -A 5 "^  <ComponentName> = " cloud_resource_kind.proto > $BACKUP_DIR/enum_entry.txt
@@ -167,7 +167,7 @@ grep -A 5 "^  <ComponentName> = " cloud_resource_kind.proto > $BACKUP_DIR/enum_e
 **Backup location shown:**
 ```
 💾 Backup created at:
-  apis/dev/planton/provider/atlas/mongodbatlas-backup-2025-11-13-143022/
+  catalog/atlas/mongodbatlas-backup-2025-11-13-143022/
 
 To restore:
   cp -r mongodbatlas-backup-2025-11-13-143022 mongodbatlas
@@ -189,7 +189,7 @@ Enum Entry:
   }]
 
 Component Path:
-  apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
+  catalog/atlas/mongodbatlas/v1alpha1/
 
 Files to Delete (23 files):
   📄 api.proto
@@ -219,7 +219,7 @@ If confirmed:
 
 1. **Remove component folder**
    ```bash
-   rm -rf apis/dev/planton/provider/<provider>/<component>/
+   rm -rf catalog/<provider>/<component>/
    ```
 
 2. **Remove enum entry from cloud_resource_kind.proto**
@@ -247,7 +247,7 @@ Show what was deleted:
 
 Removed:
   ✅ Component folder (23 files deleted)
-     apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
+     catalog/atlas/mongodbatlas/v1alpha1/
      
   ✅ Enum entry removed
      cloud_resource_kind.proto: MongodbAtlas = 51
@@ -287,7 +287,7 @@ Preview deletion without making changes:
 🔍 Dry-Run: MongodbAtlas Deletion
 
 Would Delete:
-  📁 apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
+  📁 catalog/atlas/mongodbatlas/v1alpha1/
      (23 files, 450 KB)
      
   📝 Enum entry: MongodbAtlas = 51
@@ -357,12 +357,12 @@ Skip reference checking (faster but riskier):
 # Type: DELETE ObsoleteComponent
 
 # Step 4: Verify
-ls apis/dev/planton/provider/aws/obsoletecomponent/
+ls catalog/aws/obsoletecomponent/
 # ls: cannot access ... : No such file or directory ✅
 
 # Step 5: Check for broken references
-go build ./apis/dev/planton/provider/<provider>/<component>/v1/...
-go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/
+go build ./catalog/<provider>/<component>/v1/...
+go test -v ./catalog/<provider>/<component>/v1/
 ```
 
 ### Example 2: Quick Deletion (Known Safe)
@@ -372,7 +372,7 @@ go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/
 @delete-planton-component TestCloudResourceGeneric --force --backup
 
 # Verify and commit
-go build ./apis/dev/planton/provider/<provider>/<component>/v1/... && go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/ && git add -A && git commit -m "Remove test component"
+go build ./catalog/<provider>/<component>/v1/... && go test -v ./catalog/<provider>/<component>/v1/ && git add -A && git commit -m "Remove test component"
 ```
 
 ### Example 3: Delete After Moving
@@ -405,7 +405,7 @@ for component in TestCloudResourceGeneric TestCloudResourceKubernetes TestCloudR
 done
 
 # Verify
-go build ./apis/dev/planton/provider/<provider>/<component>/v1/... && go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/
+go build ./catalog/<provider>/<component>/v1/... && go test -v ./catalog/<provider>/<component>/v1/
 ```
 
 ## Reference Checking
@@ -465,7 +465,7 @@ Available components:
 ❌ Cannot delete: MongodbAtlas is referenced in 3 files
 
 Critical References:
-  1. apis/dev/planton/provider/atlas/backup/v1alpha1/spec.proto
+  1. catalog/atlas/backup/v1alpha1/spec.proto
      - Uses MongodbAtlas as field type
      - Must update before deletion
      
@@ -482,11 +482,11 @@ Recommendation: Fix references first for safety
 ```
 ❌ Deletion failed: Permission denied
 
-Error: cannot remove 'apis/dev/planton/provider/atlas/mongodbatlas/'
+Error: cannot remove 'catalog/atlas/mongodbatlas/'
 Reason: Directory not writable
 
 Fix:
-  chmod -R u+w apis/dev/planton/provider/atlas/mongodbatlas/
+  chmod -R u+w catalog/atlas/mongodbatlas/
   
 Then retry deletion.
 ```
@@ -510,7 +510,7 @@ If you need to restore:
 
 ```bash
 # Find backup
-ls apis/dev/planton/provider/<provider>/*-backup-*/
+ls catalog/<provider>/*-backup-*/
 
 # Restore component folder
 cp -r mongodbatlas-backup-2025-11-13-143022/v1 mongodbatlas/
@@ -523,24 +523,24 @@ cat mongodbatlas-backup-2025-11-13-143022/enum_entry.txt
 make protos
 
 # Verify
-go build ./apis/dev/planton/provider/<provider>/<component>/v1/... && go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/
+go build ./catalog/<provider>/<component>/v1/... && go test -v ./catalog/<provider>/<component>/v1/
 ```
 
 ### From Git History
 
 ```bash
 # Find deletion commit
-git log --all --full-history -- "apis/dev/planton/provider/<provider>/<component>/"
+git log --all --full-history -- "catalog/<provider>/<component>/"
 
 # Restore from before deletion
-git checkout <commit-before-deletion> -- apis/dev/planton/provider/<provider>/<component>/
+git checkout <commit-before-deletion> -- catalog/<provider>/<component>/
 
 # Restore enum entry from cloud_resource_kind.proto
-git show <commit-before-deletion>:apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto | grep -A 5 "<ComponentName>"
+git show <commit-before-deletion>:shared/cloudresourcekind/cloud_resource_kind.proto | grep -A 5 "<ComponentName>"
 # Manually add back to current cloud_resource_kind.proto
 
 # Regenerate and verify
-make protos && go build ./apis/dev/planton/provider/<provider>/<component>/v1/... && go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/
+make protos && go build ./catalog/<provider>/<component>/v1/... && go test -v ./catalog/<provider>/<component>/v1/
 ```
 
 ## Integration with Other Rules
@@ -597,7 +597,7 @@ make protos && go build ./apis/dev/planton/provider/<provider>/<component>/v1/..
 
 ```bash
 # Fix permissions
-chmod -R u+w apis/dev/planton/provider/<provider>/<component>/
+chmod -R u+w catalog/<provider>/<component>/
 
 # Retry deletion
 @delete-planton-component <ComponentName> --backup
@@ -608,7 +608,7 @@ chmod -R u+w apis/dev/planton/provider/<provider>/<component>/
 **Option 1: Fix references first (recommended)**
 ```bash
 # Find all references
-grep -r "MongodbAtlas" apis/
+grep -r "MongodbAtlas" catalog/
 grep -r "MongodbAtlas" docs/
 
 # Update each reference
@@ -620,7 +620,7 @@ grep -r "MongodbAtlas" docs/
 @delete-planton-component MongodbAtlas --force --backup
 
 # Fix build errors after
-go build ./apis/dev/planton/provider/<provider>/<component>/v1/...  # Shows what broke
+go build ./catalog/<provider>/<component>/v1/...  # Shows what broke
 # Fix broken imports/references
 ```
 
@@ -631,10 +631,10 @@ go build ./apis/dev/planton/provider/<provider>/<component>/v1/...  # Shows what
 cp -r mongodbatlas-backup-2025-11-13-143022/v1 mongodbatlas/
 
 # Or restore from git
-git checkout HEAD~1 -- apis/dev/planton/provider/atlas/mongodbatlas/
+git checkout HEAD~1 -- catalog/atlas/mongodbatlas/
 
 # Restore enum entry
-git show HEAD~1:apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto | grep -A 5 "MongodbAtlas"
+git show HEAD~1:shared/cloudresourcekind/cloud_resource_kind.proto | grep -A 5 "MongodbAtlas"
 # Add back to cloud_resource_kind.proto
 
 # Regenerate
@@ -648,8 +648,8 @@ After deletion:
 ✅ Component folder removed
 ✅ Enum entry removed from registry
 ✅ No broken references (or documented)
-✅ Build succeeds (go build ./apis/.../v1/...)
-✅ Tests pass (go test -v ./apis/.../v1/)
+✅ Build succeeds (go build ./catalog/.../v1/...)
+✅ Tests pass (go test -v ./catalog/.../v1/)
 ✅ Backup created (if --backup used)
 ✅ Deletion report generated
 ✅ Changes committed

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	testkubernetesv1 "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcekubernetes/v1alpha1"
-	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	testkubernetesv1 "github.com/plantonhq/planton/catalog/_test/testcloudresourcekubernetes/v1alpha1"
+	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -95,7 +95,7 @@ func TestFlatten_SkipRule_RemovesField(t *testing.T) {
 	}
 
 	rules := DefaultRules()
-	rules["dev.planton.provider.kubernetes.ContainerEnv"] = TypeRule{Skip: true}
+	rules["dev.planton.kubernetes.ContainerEnv"] = TypeRule{Skip: true}
 
 	Flatten(data, md, rules)
 

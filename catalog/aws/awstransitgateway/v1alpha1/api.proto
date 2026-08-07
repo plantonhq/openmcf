@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package dev.planton.aws.awstransitgateway.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awstransitgateway/v1alpha1/spec.proto";
+import "catalog/aws/awstransitgateway/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AwsTransitGateway represents a managed AWS Transit Gateway deployed via
+// Planton. This resource provisions the regional networking hub that VPC
+// attachments, route tables, VPN connections, and Direct Connect gateways
+// compose onto, enabling hub-and-spoke or full-mesh connectivity between
+// VPCs.
+message AwsTransitGateway {
+  // api-version must be set to "aws.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
+
+  // resource-kind for this Transit Gateway resource.
+  string kind = 2 [(buf.validate.field).string.const = "AwsTransitGateway"];
+
+  // metadata captures identifying information (name, org, version, etc.)
+  // and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the core configuration defining how the Transit Gateway is
+  // provisioned.
+  AwsTransitGatewaySpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds runtime or post-deployment information.
+  AwsTransitGatewayStatus status = 5;
+}
+
+// AwsTransitGatewayStatus describes the status fields for a Transit Gateway
+// resource.
+message AwsTransitGatewayStatus {
+  // stack_outputs captures the outputs returned by Pulumi/Terraform after
+  // provisioning.
+  AwsTransitGatewayStackOutputs outputs = 1;
+}

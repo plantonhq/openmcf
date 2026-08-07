@@ -36,7 +36,7 @@ on:
         type: string
   pull_request:
     paths:
-      - 'apis/dev/planton/provider/kubernetes/**'
+      - 'catalog/kubernetes/**'
       - 'e2e/**'
       - 'pkg/iac/**'
       - 'pkg/e2e/**'

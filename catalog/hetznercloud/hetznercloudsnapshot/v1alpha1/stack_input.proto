@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.hetznercloud.hetznercloudsnapshot.v1alpha1;
+
+import "catalog/hetznercloud/hetznercloudsnapshot/v1alpha1/api.proto";
+import "catalog/hetznercloud/provider.proto";
+
+//hetznercloud-snapshot stack-input
+message HetznerCloudSnapshotStackInput {
+  //target cloud-resource
+  HetznerCloudSnapshot target = 1;
+  //provider-config
+  dev.planton.hetznercloud.HetznerCloudProviderConfig provider_config = 2;
+}

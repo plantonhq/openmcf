@@ -31,10 +31,10 @@ All proto files must exist before running this rule.
 SEQUENTIAL STEPS
 1) Verify Prerequisites:
    - Check that the following proto files exist for the resource:
-     * `apis/dev/planton/provider/<provider>/<kindfolder>/v1/api.proto`
-     * `apis/dev/planton/provider/<provider>/<kindfolder>/v1/spec.proto`
-     * `apis/dev/planton/provider/<provider>/<kindfolder>/v1/stack_input.proto`
-     * `apis/dev/planton/provider/<provider>/<kindfolder>/v1/stack_outputs.proto`
+     * `catalog/<provider>/<kindfolder>/v1/api.proto`
+     * `catalog/<provider>/<kindfolder>/v1/spec.proto`
+     * `catalog/<provider>/<kindfolder>/v1/stack_input.proto`
+     * `catalog/<provider>/<kindfolder>/v1/stack_outputs.proto`
    - Confirm you are in the project root directory
 
 2) Execute Command:
@@ -56,7 +56,7 @@ SEQUENTIAL STEPS
      (the repo is large enough that the whole-catalog generation can
      persistently outrun the remote plugins' server-side budget), scope the
      generation to just the changed protos:
-     `buf generate --path dev/planton/provider/<provider>/<kind>/v1/spec.proto`
+     `buf generate --path catalog/<provider>/<kind>/v1/spec.proto`
      (repeat `--path` per changed file, from `apis/`). This completes in
      seconds, uses the SAME pinned remote plugins (output is byte-identical
      for those files), and you then copy only those generated stubs into
@@ -142,10 +142,10 @@ Show results clearly:
 ✅ Success: Exit code 0
 
 📁 Generated files:
-   - apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/api.pb.go
-   - apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/spec.pb.go
-   - apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/stack_input.pb.go
-   - apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/stack_outputs.pb.go
+   - catalog/gcp/gcpcertmanagercert/v1alpha1/api.pb.go
+   - catalog/gcp/gcpcertmanagercert/v1alpha1/spec.pb.go
+   - catalog/gcp/gcpcertmanagercert/v1alpha1/stack_input.pb.go
+   - catalog/gcp/gcpcertmanagercert/v1alpha1/stack_outputs.pb.go
 
 ✅ Proto stub generation complete
 ```

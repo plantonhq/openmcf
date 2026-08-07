@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventhubauthorizationrule.v1alpha1;
+
+import "shared/options/options.proto";
+
+// **AzureEventHubAuthorizationRuleStackOutputs** captures the outputs of
+// provisioning a SAS authorization rule. Both scope variants expose
+// identical credential faces.
+message AzureEventHubAuthorizationRuleStackOutputs {
+  // The Azure Resource Manager ID of the authorization rule.
+  // Namespace scope: .../namespaces/{ns}/authorizationRules/{name}
+  // Hub scope: .../namespaces/{ns}/eventhubs/{hub}/authorizationRules/{name}
+  string authorization_rule_id = 1;
+
+  // The rule's name (the SharedAccessKeyName clients present).
+  string rule_name = 2;
+
+  // The primary key.
+  string primary_key = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // The secondary key -- the rotation partner: move clients here,
+  // regenerate the primary, move back.
+  string secondary_key = 4 [(dev.planton.shared.options.sensitive) = true];
+
+  // The ready-to-use primary connection string.
+  // Format: Endpoint=sb://{ns}.servicebus.windows.net/;SharedAccessKeyName={rule};SharedAccessKey={key}
+  // (hub-scoped rules append ;EntityPath={hub})
+  string primary_connection_string = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // The secondary connection string (rotation partner).
+  string secondary_connection_string = 6 [(dev.planton.shared.options.sensitive) = true];
+
+  // The primary connection string addressing the geo-DR alias hostname.
+  // Only populated when the namespace carries an
+  // AzureEventHubDisasterRecoveryConfig pairing; empty otherwise.
+  string primary_connection_string_alias = 7 [(dev.planton.shared.options.sensitive) = true];
+
+  // The secondary alias connection string (rotation partner).
+  string secondary_connection_string_alias = 8 [(dev.planton.shared.options.sensitive) = true];
+}

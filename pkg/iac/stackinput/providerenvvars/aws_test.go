@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
-	awsprovider "github.com/plantonhq/planton/apis/dev/planton/provider/aws"
+	awsprovider "github.com/plantonhq/planton/catalog/aws"
 	"github.com/plantonhq/planton/pkg/iac/provider/aws/awswebidentity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -7,13 +7,13 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/iac/gitrepo"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule"
 	"github.com/plantonhq/planton/pkg/iac/tofu/tofumodule"
+	"github.com/plantonhq/planton/shared"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"github.com/spf13/cobra"
 )
 
@@ -133,7 +133,7 @@ func buildExpectedModulePath(repoPath, kindName, provName string) string {
 		subdir = "tf"
 	}
 
-	return filepath.Join(repoPath, "apis/dev/planton/provider", provider,
+	return filepath.Join(repoPath, "catalog", provider,
 		strings.ToLower(kindName), versionDir, "iac", subdir)
 }
 

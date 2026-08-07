@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecontainerappenvironmentcertificate.v1alpha1;
+
+// **AzureContainerAppEnvironmentCertificateStackOutputs** captures the
+// outputs of storing a certificate on a Container App Environment.
+//
+// `certificate_id` is the binding seam: AzureContainerAppCustomDomain's
+// certificate reference consumes it. The remaining outputs are the
+// certificate facts Azure reads back from the uploaded material --
+// useful for expiry monitoring and for confirming the right certificate
+// landed.
+message AzureContainerAppEnvironmentCertificateStackOutputs {
+  // The Azure Resource Manager ID of the certificate.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.App/managedEnvironments/{env}/certificates/{name}
+  // Consumed by AzureContainerAppCustomDomain to bind the certificate to
+  // an app's custom domain.
+  string certificate_id = 1;
+
+  // The certificate's subject name (e.g. "CN=app.example.com") as read
+  // back from the uploaded material.
+  string subject_name = 2;
+
+  // The certificate's issuer (e.g. "CN=R11, O=Let's Encrypt, C=US").
+  string issuer = 3;
+
+  // When the certificate was issued (RFC 3339 timestamp).
+  string issue_date = 4;
+
+  // When the certificate expires (RFC 3339 timestamp) -- the value to
+  // alarm on for inline-PFX certificates, whose rotation is manual.
+  string expiration_date = 5;
+
+  // The certificate's SHA-1 thumbprint -- the fingerprint Azure and
+  // operational tooling use to identify the installed certificate.
+  string thumbprint = 6;
+}

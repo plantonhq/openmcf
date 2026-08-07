@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsautoscalinggroup.v1alpha1;
+
+// AwsAutoScalingGroupStackOutputs captures the observable outputs of a
+// provisioned auto-scaling group.
+message AwsAutoScalingGroupStackOutputs {
+  // The name of the auto-scaling group (metadata.name). The handle the
+  // AWS CLI, CloudWatch dimensions (AutoScalingGroupName), and ECS
+  // capacity providers reference.
+  string autoscaling_group_name = 1;
+
+  // The ARN of the auto-scaling group, for IAM policies and EventBridge
+  // rules scoped to this group.
+  string autoscaling_group_arn = 2;
+}

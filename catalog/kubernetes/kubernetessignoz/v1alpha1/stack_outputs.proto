@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetessignoz.v1alpha1;
+
+import "catalog/kubernetes/kubernetes.proto";
+
+//signoz-kubernetes stack outputs
+message KubernetesSignozStackOutputs {
+  //namespace SigNoz runs in.
+  string namespace = 1;
+
+  //name of the SigNoz server Service (UI + API), e.g. signoz-main.
+  string service = 2;
+
+  //in-cluster endpoint of the SigNoz UI/API,
+  //e.g. http://signoz-main.observability.svc.cluster.local:8080
+  string kube_endpoint = 3;
+
+  //command to port-forward the UI to a developer laptop,
+  //e.g. kubectl port-forward svc/signoz-main -n observability 8080:8080
+  //(then open http://localhost:8080).
+  string port_forward_command = 4;
+
+  //name of the ingestion collector Service,
+  //e.g. signoz-main-otel-collector.
+  string otel_collector_service = 5;
+
+  //in-cluster OTLP gRPC ingestion endpoint — point OTLP/gRPC
+  //exporters here, e.g.
+  //signoz-main-otel-collector.observability.svc.cluster.local:4317
+  string otlp_grpc_endpoint = 6;
+
+  //in-cluster OTLP HTTP ingestion endpoint — point OTLP/HTTP
+  //exporters here, e.g.
+  //http://signoz-main-otel-collector.observability.svc.cluster.local:4318
+  string otlp_http_endpoint = 7;
+
+  //ClickHouse native-protocol endpoint SigNoz stores telemetry in —
+  //a passthrough of the declared connection (this component installs
+  //no ClickHouse). Downstream kinds referencing it compose against
+  //the same store SigNoz uses.
+  string clickhouse_endpoint = 8;
+
+  //ClickHouse username SigNoz connects as (mirrors the declared
+  //connection).
+  string clickhouse_username = 9;
+
+  //Secret key holding that user's password — the declared Secret
+  //reference, never module-owned; the Secret lives in the SigNoz
+  //namespace (a secretKeyRef cannot cross namespaces).
+  dev.planton.kubernetes.KubernetesSecretKey clickhouse_password_secret = 10;
+}

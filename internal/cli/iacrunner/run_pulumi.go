@@ -4,10 +4,10 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/iac/pulumi"
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/flag"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumistack"
+	"github.com/plantonhq/planton/shared/iac/pulumi"
 	"github.com/spf13/cobra"
 )
 

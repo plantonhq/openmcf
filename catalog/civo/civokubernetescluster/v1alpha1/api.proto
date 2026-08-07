@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.civo.civokubernetescluster.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/civo/civokubernetescluster/v1alpha1/spec.proto";
+import "catalog/civo/civokubernetescluster/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// civo-kubernetes-cluster
+message CivoKubernetesCluster {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'civo.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CivoKubernetesCluster'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  CivoKubernetesClusterSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  CivoKubernetesClusterStatus status = 5;
+}
+
+// civo-kubernetes-cluster status
+message CivoKubernetesClusterStatus {
+  //stack-outputs
+  //  civo-kubernetes-cluster stack-outputs
+  CivoKubernetesClusterStackOutputs outputs = 1;
+}

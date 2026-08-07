@@ -1,11 +1,12 @@
 # =============================================================================
 # Proto Contract Gate
 # =============================================================================
-# The protos under apis/ ARE the product's API contract: stored documents,
-# IaC modules, and every client surface are projections of them. This gate
-# runs the two buf checks on every PR that touches them:
+# The protos under catalog/, shared/, qa/, and iac/ ARE the product's API
+# contract: stored documents, IaC modules, and every client surface are
+# projections of them. This gate runs the two buf checks on every PR that
+# touches them:
 #
-#   buf-lint     (BLOCKING)  -- style/structure rules from apis/buf.yaml.
+#   buf-lint     (BLOCKING)  -- style/structure rules from buf.yaml.
 #   buf-breaking (CHANNEL-AWARE) -- wire/API compatibility against main,
 #                 classified by the maturity channel each finding's version
 #                 directory declares: alpha findings are advisory (alpha may
@@ -22,8 +23,11 @@ name: lint.protos
 on:
   pull_request:
     paths:
-      - 'apis/**/*.proto'
-      - 'apis/buf.yaml'
+      - 'catalog/**/*.proto'
+      - 'shared/**/*.proto'
+      - 'qa/**/*.proto'
+      - 'iac/**/*.proto'
+      - 'buf.yaml'
       - '.github/workflows/lint.protos.yaml'
   workflow_dispatch: {}
 
@@ -40,7 +44,6 @@ jobs:
         with:
           setup_only: true
       - name: buf lint
-        working-directory: apis
         run: buf lint
 
   bundle-conformance:
@@ -73,5 +76,4 @@ jobs:
       - name: classifier self-test
         run: bash tools/ci/proto/buf_breaking_channel_gate.sh --self-test
       - name: buf breaking against main (alpha advisory, beta/stable/shared blocking)
-        working-directory: apis
-        run: bash ../tools/ci/proto/buf_breaking_channel_gate.sh '../.git#branch=origin/main,subdir=apis'
+        run: bash tools/ci/proto/buf_breaking_channel_gate.sh '.git#branch=origin/main'

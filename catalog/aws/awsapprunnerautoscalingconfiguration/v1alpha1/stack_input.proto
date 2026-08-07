@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsapprunnerautoscalingconfiguration.v1alpha1;
+
+import "catalog/aws/awsapprunnerautoscalingconfiguration/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsAppRunnerAutoScalingConfigurationStackInput is the input for the
+// aws-app-runner-auto-scaling-configuration IaC modules.
+message AwsAppRunnerAutoScalingConfigurationStackInput {
+  // target cloud-resource
+  AwsAppRunnerAutoScalingConfiguration target = 1;
+
+  // provider-config
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

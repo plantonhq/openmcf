@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kuberneteskyverno.v1alpha1;
+
+import "catalog/kubernetes/kuberneteskyverno/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+// KubernetesKyvernoStackInput defines the inputs required for the IaC modules.
+message KubernetesKyvernoStackInput {
+  // target cloud-resource
+  KubernetesKyverno target = 1;
+  // provider-config for Kubernetes
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

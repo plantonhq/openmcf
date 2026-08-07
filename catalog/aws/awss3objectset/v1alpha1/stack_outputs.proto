@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dev.planton.aws.awss3objectset.v1alpha1;
+
+// AwsS3ObjectSetStackOutputs captures observable outputs from the S3 object
+// upload operations.
+message AwsS3ObjectSetStackOutputs {
+  // The bucket the objects were uploaded to. Carried for downstream
+  // references and for E2E verification (HeadObject per key).
+  string bucket_id = 1;
+
+  // Map of object key to its ARN (arn:aws:s3:::bucket/key).
+  // Composes into IAM policy Resource lists that must grant access to
+  // exactly these objects.
+  map<string, string> object_arns = 2;
+
+  // Map of object key to its ETag (content hash).
+  // The ETag changes when the object content changes, useful for cache
+  // invalidation.
+  map<string, string> object_etags = 3;
+
+  // Map of object key to its version ID.
+  // Only populated when the target bucket has versioning enabled.
+  map<string, string> object_version_ids = 4;
+}

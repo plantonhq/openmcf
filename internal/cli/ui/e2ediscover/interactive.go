@@ -7,8 +7,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	componentv1 "github.com/plantonhq/planton/apis/dev/planton/qa/componente2eprofile/v1"
 	"github.com/plantonhq/planton/pkg/e2e/profile"
+	componentv1 "github.com/plantonhq/planton/qa/componente2eprofile/v1"
 )
 
 var (

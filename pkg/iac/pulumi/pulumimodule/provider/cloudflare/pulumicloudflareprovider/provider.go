@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	cloudflareprovider "github.com/plantonhq/planton/apis/dev/planton/provider/cloudflare"
+	cloudflareprovider "github.com/plantonhq/planton/catalog/cloudflare"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/pulumi/pulumioutput"
 
 	"github.com/pkg/errors"

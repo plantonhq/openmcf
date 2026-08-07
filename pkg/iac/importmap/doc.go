@@ -4,7 +4,7 @@
 // The knowledge is deliberately split in two tiers:
 //
 //   - Provider tier (ProviderImportCatalog, one per provider at
-//     apis/dev/planton/provider/{provider}/aa_import/catalog.yaml): for each
+//     catalog/{provider}/aa_import/catalog.yaml): for each
 //     IaC resource type, the import-ID FORMAT the engines expect --
 //     "{bucket}", "{vpc_id}", "{bucket}:{intelligent_tiering_name}". Stable,
 //     shared by every component of the provider.

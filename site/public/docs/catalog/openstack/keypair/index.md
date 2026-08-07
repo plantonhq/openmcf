@@ -35,13 +35,13 @@ metadata:
   name: my-keypair
   annotations:
     planton.dev/stack.jobId: prod.OpenstackKeypair.us-west-keypair
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackkeypair/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: staging.OpenstackKeypair.ephemeral-keypair
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackkeypair/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackKeypair.dev-keypair
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackkeypair/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackKeypair.my-keypair
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackkeypair/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   publicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ... user@host"

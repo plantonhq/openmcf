@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.alicloud.alicloudmongodbinstance.v1alpha1;
+
+import "catalog/alicloud/alicloudmongodbinstance/v1alpha1/api.proto";
+import "catalog/alicloud/provider.proto";
+
+// alicloud-mongodb-instance stack-input
+message AliCloudMongodbInstanceStackInput {
+  // target cloud-resource
+  AliCloudMongodbInstance target = 1;
+  // provider-config
+  dev.planton.alicloud.AliCloudProviderConfig provider_config = 2;
+}

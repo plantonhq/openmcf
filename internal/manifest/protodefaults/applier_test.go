@@ -3,8 +3,8 @@ package protodefaults
 import (
 	"testing"
 
-	testgenericv1 "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1"
-	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	testgenericv1 "github.com/plantonhq/planton/catalog/_test/testcloudresourcegeneric/v1alpha1"
+	"github.com/plantonhq/planton/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"

@@ -717,7 +717,7 @@ echo "Improvement: $BEFORE% → $AFTER% (+$(($AFTER - $BEFORE))%)"
 **Action:**
 ```bash
 # Check build errors
-go build ./apis/dev/planton/provider/<provider>/<component>/v1/...
+go build ./catalog/<provider>/<component>/v1/...
 
 # Fix manually
 # Re-run complete (it's idempotent)
@@ -744,9 +744,9 @@ After complete finishes:
 ✅ All critical gaps filled
 ✅ spec_test.go exists with validation tests
 ✅ Component tests execute successfully
-✅ All tests pass (`go test ./apis/.../v1/`)
-✅ Build validation passed (`go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`)
-✅ Full test suite passed (`go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`)
+✅ All tests pass (`go test ./catalog/.../v1/`)
+✅ Build validation passed (`go build ./catalog/<provider>/<component>/v1/...`)
+✅ Full test suite passed (`go test -v ./catalog/<provider>/<component>/v1/`)
 ✅ Two audit reports (before/after)
 ✅ Summary shows improvement
 ✅ Ready to commit

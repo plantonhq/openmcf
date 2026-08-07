@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	testgenericv1 "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1"
+	testgenericv1 "github.com/plantonhq/planton/catalog/_test/testcloudresourcegeneric/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/reflect/protoreflect"

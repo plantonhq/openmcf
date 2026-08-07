@@ -104,11 +104,11 @@ Determine the area from conversation context using these guidelines:
 
 When file paths are mentioned in the conversation, map them to simple areas:
 
-- **`apis/dev/planton/**`** → `deployment-component`
+- **`catalog/**`** → `deployment-component`
 - **`cmd/planton/**`** → `cli`
 - **`pkg/**`** → `pkg`
 - **`internal/**`** → `cli`
-- **`apis/**` (general)** → `apis`
+- **`shared/**`, `qa/**`, `iac/**` (proto surfaces)** → `apis`
 - **`docs/**`, `architecture/**`** → `docs`
 - **`.cursor/**`, `Makefile`, `MODULE.bazel`** → `repo`
 - **`docker/**`, `docker-compose.yml`** → `ops`
@@ -559,7 +559,7 @@ We should add validation rules to the spec.proto file to catch this at validatio
 time, before any deployment attempts. This aligns with our validation-first 
 deployment philosophy and saves debugging time.
 
-Affected file: `apis/dev/planton/provider/kubernetes/postgres/v1alpha1/spec.proto`
+Affected file: `catalog/kubernetes/postgres/v1alpha1/spec.proto`
 ```
 
 ### Example 2: Feature Request (Structured)
@@ -630,7 +630,7 @@ The generated Pulumi entrypoint shows:
 Import paths should correctly resolve to the nested proto package structure:
 ```go
 import (
-    "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/postgres/v1alpha1"
+    "github.com/plantonhq/planton/catalog/kubernetes/postgres/v1alpha1"
 )
 ```
 

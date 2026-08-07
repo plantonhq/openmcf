@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudwatchcompositealarm.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsCloudwatchCompositeAlarmSpec defines the desired configuration for an
+// AWS CloudWatch composite alarm.
+//
+// A composite alarm combines the states of OTHER alarms (metric alarms or
+// composite alarms) with a boolean rule expression, and takes action only
+// when the combined expression is true. This is the standard way to:
+//
+// - **Suppress alert storms** — one composite over "database ALARM AND
+//   api ALARM" pages once for a shared-cause outage instead of once per
+//   symptom.
+// - **Express dependencies** — page on a service's alarm only when its
+//   upstream dependency is healthy, so the team that can act gets paged.
+// - **Gate actions on maintenance** — pair with `actions_suppressor` to
+//   silence actions while a designated suppressor alarm (e.g. a maintenance
+//   flag) is in ALARM.
+//
+// The composite alarm evaluates the rule whenever any referenced alarm
+// changes state — it has no metrics, periods, or thresholds of its own.
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsCloudwatchCompositeAlarmSpec {
+  // The AWS region where the resource will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Boolean rule expression over the states of other alarms in the same
+  // account and region. Alarms are addressed BY NAME inside state functions:
+  //
+  //   ALARM("my-metric-alarm")                 — true while that alarm is in ALARM
+  //   OK("my-metric-alarm")                    — true while it is in OK
+  //   INSUFFICIENT_DATA("my-metric-alarm")     — true while it lacks data
+  //
+  // Functions combine with AND / OR / NOT and parentheses; the constants
+  // TRUE and FALSE are also valid (useful when testing a new composite).
+  //
+  // Example: "ALARM(\"cpu-high\") AND ALARM(\"error-rate-high\")"
+  //
+  // Compose alarm names from AwsCloudwatchAlarm resources via their exported
+  // `alarm_name` stack output. Maximum 10240 characters.
+  string alarm_rule = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 10240
+  ];
+
+  // Human-readable description of what this composite alarm represents and
+  // what to do when it fires. Maximum 1024 characters.
+  string alarm_description = 3 [(buf.validate.field).string.max_len = 1024];
+
+  // Whether actions execute when the composite alarm changes state. When
+  // unset, AWS defaults to true. Unlike metric alarms, this flag is
+  // create-time-only on composite alarms (ForceNew): changing it replaces
+  // the alarm.
+  optional bool actions_enabled = 4;
+
+  // Actions to execute when the composite alarm transitions to ALARM state.
+  // Composite alarms support SNS topic ARNs and Systems Manager OpsItem
+  // actions (not Auto Scaling or EC2 actions — those belong on metric
+  // alarms). Maximum 5 actions.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef alarm_actions = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+
+  // Actions to execute when the composite alarm transitions to OK state.
+  // Maximum 5 actions.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef ok_actions = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+
+  // Actions to execute when the composite alarm transitions to
+  // INSUFFICIENT_DATA state. Maximum 5 actions.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef insufficient_data_actions = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+
+  // Suppresses this composite alarm's actions while a designated suppressor
+  // alarm is in ALARM state — the mechanism for maintenance windows and
+  // deploy freezes. State transitions still happen and are recorded; only
+  // the actions are withheld.
+  AwsCloudwatchCompositeAlarmActionsSuppressor actions_suppressor = 8;
+
+  // Maximum 5 alarm actions.
+  option (buf.validate.message).cel = {
+    id: "alarm_actions_max_5"
+    message: "maximum 5 alarm_actions allowed"
+    expression: "size(this.alarm_actions) <= 5"
+  };
+
+  // Maximum 5 ok actions.
+  option (buf.validate.message).cel = {
+    id: "ok_actions_max_5"
+    message: "maximum 5 ok_actions allowed"
+    expression: "size(this.ok_actions) <= 5"
+  };
+
+  // Maximum 5 insufficient data actions.
+  option (buf.validate.message).cel = {
+    id: "insufficient_data_actions_max_5"
+    message: "maximum 5 insufficient_data_actions allowed"
+    expression: "size(this.insufficient_data_actions) <= 5"
+  };
+}
+
+// AwsCloudwatchCompositeAlarmActionsSuppressor designates an alarm whose
+// ALARM state suppresses this composite alarm's actions, with wait and
+// extension windows that bound how long suppression persists around the
+// suppressor's own state transitions.
+message AwsCloudwatchCompositeAlarmActionsSuppressor {
+  // The alarm that suppresses actions while it is in ALARM state, addressed
+  // by alarm NAME (the CloudWatch API contract). Reference an
+  // AwsCloudwatchAlarm's exported `alarm_name` output, or provide a literal
+  // alarm name.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef alarm = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchAlarm,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.alarm_name"
+  ];
+
+  // Maximum time (in seconds) the composite alarm waits for the suppressor
+  // alarm to enter ALARM state after the composite itself transitions,
+  // before concluding the suppressor is not firing and executing actions.
+  int32 wait_period = 2 [(buf.validate.field).int32.gte = 0];
+
+  // Maximum time (in seconds) actions remain suppressed AFTER the suppressor
+  // alarm leaves ALARM state — a grace window that avoids acting on
+  // transitions that occur while the suppression is winding down.
+  int32 extension_period = 3 [(buf.validate.field).int32.gte = 0];
+}

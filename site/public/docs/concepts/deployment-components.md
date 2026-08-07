@@ -16,13 +16,13 @@ Planton ships with 362 deployment components spanning 17 cloud providers. Each c
 Every deployment component lives at a predictable path in the repository:
 
 ```text
-apis/dev/planton/provider/{provider}/{component}/v1/
+catalog/{provider}/{component}/v1/
 ```
 
 Inside that directory, every component contains the same set of files:
 
 ```text
-apis/dev/planton/provider/kubernetes/kubernetespostgres/v1alpha1/
+catalog/kubernetes/kubernetespostgres/v1alpha1/
 |-- api.proto              # Resource envelope: apiVersion, kind, metadata, spec, status
 |-- spec.proto             # Configuration fields with types and validation rules
 |-- stack_input.proto      # IaC input contract: the resource + provider credentials
@@ -127,7 +127,7 @@ The `stack_input.proto` file defines what the IaC modules receive when they run.
 ```protobuf
 message KubernetesPostgresStackInput {
   KubernetesPostgres target = 1;
-  dev.planton.provider.kubernetes.KubernetesProviderConfig provider_config = 2;
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
 }
 ```
 
@@ -136,7 +136,7 @@ For an AWS component, the provider config is different:
 ```protobuf
 message AwsS3BucketStackInput {
   AwsS3Bucket target = 1;
-  dev.planton.provider.aws.AwsProviderConfig provider_config = 2;
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
 }
 ```
 

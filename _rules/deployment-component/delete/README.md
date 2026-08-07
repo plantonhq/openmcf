@@ -65,8 +65,8 @@ Deletion is **irreversible** without backups. Delete prioritizes safety:
 # (Type: DELETE ObsoleteComponent)
 
 # Step 6: Verify no issues
-go build ./apis/.../v1/...
-go test -v ./apis/.../v1/
+go build ./catalog/.../v1/...
+go test -v ./catalog/.../v1/
 
 # Step 7: Commit changes
 git add -A
@@ -80,7 +80,7 @@ Delete removes **everything** related to a component:
 ### 1. Component Folder (All Files)
 
 ```
-apis/dev/planton/provider/<provider>/<component>/v1/
+catalog/<provider>/<component>/v1/
 ├── api.proto                    ❌ Deleted
 ├── spec.proto                   ❌ Deleted
 ├── stack_input.proto            ❌ Deleted
@@ -170,7 +170,7 @@ Component Info:
   Provider: atlas
   Enum Value: 51
   ID Prefix: mdbatl
-  Path: apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
+  Path: catalog/atlas/mongodbatlas/v1alpha1/
 
 Would Delete:
   📁 Component folder
@@ -211,7 +211,7 @@ To proceed:
 
 **Creates:**
 ```
-apis/dev/planton/provider/atlas/
+catalog/atlas/
 ├── mongodbatlas/                         # Original (will be deleted)
 └── mongodbatlas-backup-2025-11-13-143022/  # Backup (preserved)
     ├── v1/
@@ -268,12 +268,12 @@ Delete automatically searches for references:
 
 **Go Code:**
 ```go
-import "dev/planton/provider/atlas/mongodbatlas/v1alpha1"  // ⚠️ Reference found
+import "catalog/atlas/mongodbatlas/v1alpha1"  // ⚠️ Reference found
 ```
 
 **Proto Files:**
 ```protobuf
-import "dev/planton/provider/atlas/mongodbatlas/v1alpha1/api.proto";  // ⚠️ Reference found
+import "catalog/atlas/mongodbatlas/v1alpha1/api.proto";  // ⚠️ Reference found
 ```
 
 **Documentation:**
@@ -292,8 +292,8 @@ kind: MongodbAtlas  // ⚠️ Reference found
 ⚠️  Warning: MongodbAtlas is referenced in 3 files
 
 Critical References (will break build):
-  1. apis/dev/planton/provider/atlas/backup/v1alpha1/spec.proto:15
-     import "dev/planton/provider/atlas/mongodbatlas/v1alpha1/api.proto";
+  1. catalog/atlas/backup/v1alpha1/spec.proto:15
+     import "catalog/atlas/mongodbatlas/v1alpha1/api.proto";
      → Must remove or update import
      
   2. docs/examples/database-comparison.md:45
@@ -359,7 +359,7 @@ After successful deletion:
 
 What Was Deleted:
   ✅ Component folder
-     Path: apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
+     Path: catalog/atlas/mongodbatlas/v1alpha1/
      Files: 23 deleted
      Size: 450 KB freed
      
@@ -391,12 +391,12 @@ Build Status:
   ⚠️  Not verified (references may cause build errors)
   
   Recommended:
-    go build ./apis/.../v1/...  # Check for import errors
-    go test -v ./apis/.../v1/   # Check for test failures
+    go build ./catalog/.../v1/...  # Check for import errors
+    go test -v ./catalog/.../v1/   # Check for test failures
 
 Next Steps:
   1. Fix critical references (2 files)
-  2. Run: go build ./apis/.../v1/... && go test -v ./apis/.../v1/
+  2. Run: go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
   3. Commit changes:
      git add -A
      git commit -m "Remove MongodbAtlas component"
@@ -418,7 +418,7 @@ Status: ✅ Complete
 # ✅ Deleted successfully
 # ✅ Build still passes
 
-go build ./apis/.../v1/... && go test -v ./apis/.../v1/  # ✅ All pass
+go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/  # ✅ All pass
 ```
 
 ### Scenario 2: Remove Obsolete Component
@@ -435,7 +435,7 @@ go build ./apis/.../v1/... && go test -v ./apis/.../v1/  # ✅ All pass
 @delete-planton-component OldPostgresKubernetes --backup
 
 # Verify
-go build ./apis/.../v1/... && go test -v ./apis/.../v1/  # ✅ All pass
+go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/  # ✅ All pass
 ```
 
 ### Scenario 3: Provider Discontinuation
@@ -505,11 +505,11 @@ Did you mean one of these?
 ```
 ❌ Error: Permission denied
 
-Cannot delete: apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
+Cannot delete: catalog/atlas/mongodbatlas/v1alpha1/
 Reason: Directory not writable
 
 Fix:
-  chmod -R u+w apis/dev/planton/provider/atlas/mongodbatlas/
+  chmod -R u+w catalog/atlas/mongodbatlas/
   
 Then retry:
   @delete-planton-component MongodbAtlas --backup
@@ -540,7 +540,7 @@ Or force delete (may break build):
 
 ```bash
 # List available backups
-ls apis/dev/planton/provider/<provider>/*-backup-*/
+ls catalog/<provider>/*-backup-*/
 
 # Restore component folder
 cp -r mongodbatlas-backup-2025-11-13-143022/v1 mongodbatlas/
@@ -548,21 +548,21 @@ cp -r mongodbatlas-backup-2025-11-13-143022/v1 mongodbatlas/
 # Restore enum entry
 cat mongodbatlas-backup-2025-11-13-143022/enum_entry.txt
 # Copy the enum entry text
-vim apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto
+vim shared/cloudresourcekind/cloud_resource_kind.proto
 # Paste enum entry in correct location (numeric order)
 
 # Regenerate proto stubs
 make protos
 
 # Verify restoration
-go build ./apis/.../v1/... && go test -v ./apis/.../v1/
+go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
 ```
 
 ### From Git History
 
 ```bash
 # Find when component was deleted
-git log --all --oneline -- apis/dev/planton/provider/atlas/mongodbatlas/
+git log --all --oneline -- catalog/atlas/mongodbatlas/
 
 # Example output:
 # abc1234 Remove MongodbAtlas component
@@ -570,14 +570,14 @@ git log --all --oneline -- apis/dev/planton/provider/atlas/mongodbatlas/
 # ...
 
 # Restore from commit before deletion
-git checkout def5678 -- apis/dev/planton/provider/atlas/mongodbatlas/
+git checkout def5678 -- catalog/atlas/mongodbatlas/
 
 # Restore enum entry
-git show def5678:apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto | grep -A 5 "MongodbAtlas"
+git show def5678:shared/cloudresourcekind/cloud_resource_kind.proto | grep -A 5 "MongodbAtlas"
 # Manually add to current cloud_resource_kind.proto
 
 # Regenerate and verify
-make protos && go build ./apis/.../v1/... && go test -v ./apis/.../v1/
+make protos && go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
 ```
 
 ## Best Practices
@@ -601,8 +601,8 @@ make protos && go build ./apis/.../v1/... && go test -v ./apis/.../v1/
 
 ### After Deletion
 
-- [ ] Run `go build ./apis/.../v1/...` (check for errors)
-- [ ] Run `go test -v ./apis/.../v1/` (check for failures)
+- [ ] Run `go build ./catalog/.../v1/...` (check for errors)
+- [ ] Run `go test -v ./catalog/.../v1/` (check for failures)
 - [ ] Fix any broken references
 - [ ] Update related documentation
 - [ ] Commit with descriptive message
@@ -626,28 +626,28 @@ Before confirming deletion:
 
 ```bash
 # Force remove if needed
-rm -rf apis/dev/planton/provider/<provider>/<component>/
+rm -rf catalog/<provider>/<component>/
 
 # Or fix permissions first
-chmod -R u+w apis/dev/planton/provider/<provider>/<component>/
+chmod -R u+w catalog/<provider>/<component>/
 ```
 
 ### "Build fails after deletion"
 
 ```bash
 # Find what broke
-go build ./apis/.../v1/... 2>&1 | grep "error"
+go build ./catalog/.../v1/... 2>&1 | grep "error"
 
 # Common issues:
 # 1. Unremoved imports
 grep -r "mongodbatlas" .
 
 # 2. Type references
-grep -r "MongodbAtlas" apis/
+grep -r "MongodbAtlas" catalog/
 
 # Fix imports and references
 # Then rebuild
-go build ./apis/.../v1/... && go test -v ./apis/.../v1/
+go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
 ```
 
 ### "Need to restore deleted component"
@@ -660,7 +660,7 @@ cp -r component-backup-*/v1 component/
 # Edit cloud_resource_kind.proto
 
 # Regenerate
-make protos && go build ./apis/.../v1/... && go test -v ./apis/.../v1/
+make protos && go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
 ```
 
 ## Success Metrics
@@ -669,8 +669,8 @@ Successful deletion:
 
 - ✅ Component folder removed (verified with `ls`)
 - ✅ Enum entry removed (verified in proto file)
-- ✅ Build succeeds (`go build ./apis/.../v1/...` passes)
-- ✅ Tests pass (`go test -v ./apis/.../v1/` passes)
+- ✅ Build succeeds (`go build ./catalog/.../v1/...` passes)
+- ✅ Tests pass (`go test -v ./catalog/.../v1/` passes)
 - ✅ Backup created (can be restored)
 - ✅ References updated or documented
 - ✅ Changes committed with clear message
@@ -691,4 +691,4 @@ Successful deletion:
 
 ---
 
-**Remember:** Always `--dry-run` first, always `--backup` when deleting, and always verify with `go build ./apis/.../v1/... && go test -v ./apis/.../v1/`!
+**Remember:** Always `--dry-run` first, always `--backup` when deleting, and always verify with `go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/`!

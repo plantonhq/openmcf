@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecontainerappenvironmentcertificate.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurecontainerappenvironmentcertificate/v1alpha1/spec.proto";
+import "catalog/azure/azurecontainerappenvironmentcertificate/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AzureContainerAppEnvironmentCertificate is the top-level API resource
+// for a bring-your-own TLS certificate stored on a Container App
+// Environment -- uploaded as a PFX or pulled from Azure Key Vault, and
+// bound to app custom domains through AzureContainerAppCustomDomain.
+message AzureContainerAppEnvironmentCertificate {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureContainerAppEnvironmentCertificate'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureContainerAppEnvironmentCertificateSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureContainerAppEnvironmentCertificateStatus status = 5;
+}
+
+// AzureContainerAppEnvironmentCertificateStatus holds the deployment status and outputs.
+message AzureContainerAppEnvironmentCertificateStatus {
+  // stack-outputs
+  AzureContainerAppEnvironmentCertificateStackOutputs outputs = 1;
+}

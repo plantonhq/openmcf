@@ -20,8 +20,8 @@ SCOPE
 TOOLS
 - Reader: `_rules/deployment-component/_scripts/spec_proto_reader.py`
 - Writer+Build: `_rules/deployment-component/_scripts/spec_proto_write_and_build.py`
-- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1alpha1/spec.proto`
-  and `aws/awsalb/v1/spec.proto` -- canonical examples of schema shape, enums, and default options.
+- Reference components (live ground truth): `catalog/aws/awsvpc/v1alpha1/spec.proto`
+  and `catalog/aws/awsalb/v1alpha1/spec.proto` -- canonical examples of schema shape, enums, and default options.
 
 SEQUENTIAL STEPS
 1) Read: `python3 _rules/deployment-component/_scripts/spec_proto_reader.py --provider <provider> --kindfolder <kindfolder>`
@@ -71,7 +71,7 @@ DEFAULT FIELD OPTIONS
 - When fields should have default values, use BOTH:
   1. `optional` keyword: Enables field presence tracking in Go
   2. `(dev.planton.shared.options.default)` field option: Specifies the default
-- Import: `import "dev/planton/shared/options/options.proto";`
+- Import: `import "shared/options/options.proto";`
 - Example: `optional string namespace = 1 [(dev.planton.shared.options.default) = "external-dns"];`
 - The `DEFAULT_REQUIRES_OPTIONAL` linter enforces this pattern at build time
 - See the reference component `spec.proto` files named in TOOLS for worked examples
@@ -185,7 +185,7 @@ PROACTIVE SENSITIVE-FIELD IDENTIFICATION (MANDATORY STEP)
   and resolves the reference just-in-time at deploy. Getting the annotation right here
   is what makes that secure-by-default behavior automatic for every consumer.
 - Authority for the option semantics: the `sensitive` / `sensitive_exempt_reason` field
-  comments in `dev/planton/shared/options/options.proto`.
+  comments in `shared/options/options.proto`.
 
 PROACTIVE CREATE-TIME-REQUIRED IDENTIFICATION (MANDATORY STEP)
 - The Terraform provider's schema flags are NOT the authority on what the cloud

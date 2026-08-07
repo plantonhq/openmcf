@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesotelcollector.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetesotelcollector/v1alpha1/spec.proto";
+import "catalog/kubernetes/kubernetesotelcollector/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//otel-collector-kubernetes
+message KubernetesOtelCollector {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesOtelCollector'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  KubernetesOtelCollectorSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  KubernetesOtelCollectorStatus status = 5;
+}
+
+//otel-collector-kubernetes status.
+message KubernetesOtelCollectorStatus {
+  //stack-outputs
+  KubernetesOtelCollectorStackOutputs outputs = 1;
+}

@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesnats.v1alpha1;
+
+/**
+ * **KubernetesNatsStackOutputs** — the composition handles a deployed
+ * NATS system exports. Applications connect through the client
+ * Service; credentials (when auth is declared) live in the exported
+ * auth Secret.
+ */
+message KubernetesNatsStackOutputs {
+  // Namespace the servers run in.
+  string namespace = 1;
+
+  // Name of the client Service (equals metadata.name).
+  string service_name = 2;
+
+  // Name of the headless Service (`<name>-headless`) — per-server DNS
+  // for clients that need direct server addressing.
+  string headless_service_name = 3;
+
+  // In-cluster client endpoint,
+  // `nats://<name>.<namespace>.svc.cluster.local:4222` — what NATS
+  // clients set as their server URL.
+  string client_endpoint = 4;
+
+  // In-cluster WebSocket endpoint
+  // (`ws://<name>.<namespace>.svc.cluster.local:<port>`); empty when
+  // the websocket listener is off.
+  string websocket_endpoint = 5;
+
+  // Name of the module-generated auth Secret (`<name>-auth`, one key
+  // per declared username holding that user's password); empty when
+  // auth is not declared.
+  string auth_secret_name = 6;
+
+  // Port-forward command for reaching the client port from a
+  // workstation when no exposure is composed
+  // (`kubectl port-forward svc/<name> -n <namespace> 4222:4222`).
+  string port_forward_command = 7;
+}

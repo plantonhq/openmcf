@@ -5,14 +5,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	awsiamrolev1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiamrole/v1alpha1"
-	awsnlbv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsnlb/v1alpha1"
-	awssubnetv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssubnet/v1alpha1"
-	gcpbackendservicev1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendservice/v1alpha1"
-	gcptargethttpsproxyv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpsproxy/v1alpha1"
-	gcpurlmapv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpurlmap/v1alpha1"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	awsiamrolev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamrole/v1alpha1"
+	awsnlbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsnlb/v1alpha1"
+	awssubnetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssubnet/v1alpha1"
+	gcpbackendservicev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpbackendservice/v1alpha1"
+	gcptargethttpsproxyv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcptargethttpsproxy/v1alpha1"
+	gcpurlmapv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpurlmap/v1alpha1"
 	"github.com/plantonhq/planton/internal/manifest"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 const subnetManifestWithRef = `apiVersion: aws.planton.dev/v1alpha1

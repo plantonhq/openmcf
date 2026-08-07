@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurestoragequeue.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureStorageQueueSpec** defines the configuration for creating a
+// Storage queue inside an Azure Storage Account: the simple, massive-
+// scale message buffer of Azure storage. Producers enqueue up to 64 KB
+// messages and workers poll-and-delete them -- the classic work-queue /
+// load-leveling pattern Functions queue triggers, WebJobs, and worker
+// pools consume. (For pub/sub topics, sessions, ordering guarantees, or
+// dead-lettering semantics, Service Bus is the richer sibling; Storage
+// queues win on cost, capacity, and operational simplicity.)
+//
+// Queues are many-per-account with independent lifecycles, which is why
+// they are a first-class kind referencing the account rather than a list
+// folded into the account's spec. The parent is fixed at creation: a
+// queue cannot move between accounts.
+message AzureStorageQueueSpec {
+  // The storage account the queue lives in, by ARM ID. References an
+  // AzureStorageAccount's storage_account_id output so the account and
+  // its queues compose in one manifest set. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The queue's name: 3-63 lowercase letters, digits, and hyphens;
+  // starts and ends with a letter or digit; no consecutive hyphens.
+  // Unique within the account (it becomes the URL path segment:
+  // https://{account}.queue.core.windows.net/{name}). Changing the name
+  // replaces the queue.
+  string queue_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 63,
+    (buf.validate.field).cel = {
+      id: "storage_queue_name_format"
+      message: "queue_name must be 3-63 lowercase letters, digits, and hyphens, starting and ending with a letter or digit, with no consecutive hyphens"
+      expression: "this.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$') && !this.contains('--')"
+    }
+  ];
+
+  // Free-form metadata key/value pairs stored on the queue (visible to
+  // anyone who can read queue properties -- not for secrets). Keys must
+  // be valid C# identifiers per Azure's rule; lowercase is canonical
+  // (Azure lowercases keys on read).
+  map<string, string> metadata = 3;
+}

@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetespoddisruptionbudget.v1alpha1;
+
+import "catalog/kubernetes/kubernetespoddisruptionbudget/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+/**
+ * **KubernetesPodDisruptionBudgetStackInput** defines the input structure for
+ * deploying a Kubernetes PodDisruptionBudget. It carries the target budget
+ * specification and the Kubernetes cluster configuration the IaC modules
+ * (Pulumi and Terraform) need to reach the cluster.
+ */
+message KubernetesPodDisruptionBudgetStackInput {
+  /**
+   * The target PodDisruptionBudget resource to be created.
+   * Contains the complete specification including metadata, pod selection,
+   * and availability bound.
+   */
+  KubernetesPodDisruptionBudget target = 1;
+
+  /**
+   * Kubernetes cluster configuration.
+   * Contains connection details and credentials for the target Kubernetes
+   * cluster where the PodDisruptionBudget will be created.
+   */
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

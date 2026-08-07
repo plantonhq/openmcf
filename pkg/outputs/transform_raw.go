@@ -5,7 +5,7 @@ package outputs
 
 import (
 	"github.com/pkg/errors"
-	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )

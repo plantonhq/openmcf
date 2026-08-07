@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"testing"
 
-	gcpprovider "github.com/plantonhq/planton/apis/dev/planton/provider/gcp"
+	gcpprovider "github.com/plantonhq/planton/catalog/gcp"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

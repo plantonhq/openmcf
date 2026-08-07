@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremssqlfailovergroup.v1alpha1;
+
+// **AzureMssqlFailoverGroupStackOutputs** captures the outputs of
+// provisioning an Azure SQL Failover Group.
+message AzureMssqlFailoverGroupStackOutputs {
+  // The Azure Resource Manager ID of the failover group.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Sql/servers/{server}/failoverGroups/{name}
+  string failover_group_id = 1;
+
+  // The failover group's name -- also the DNS label of its listener
+  // endpoints.
+  string failover_group_name = 2;
+
+  // The read-write listener FQDN applications connect to; it always points
+  // at the current primary, so it survives a failover unchanged.
+  // Format: {name}.database.windows.net
+  string read_write_listener_endpoint = 3;
+
+  // The read-only listener FQDN for read-only workloads routed to a
+  // secondary. Format: {name}.secondary.database.windows.net
+  string read_only_listener_endpoint = 4;
+}

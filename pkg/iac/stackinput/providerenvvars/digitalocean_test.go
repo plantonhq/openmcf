@@ -3,7 +3,7 @@ package providerenvvars
 import (
 	"testing"
 
-	digitaloceanprovider "github.com/plantonhq/planton/apis/dev/planton/provider/digitalocean"
+	digitaloceanprovider "github.com/plantonhq/planton/catalog/digitalocean"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"

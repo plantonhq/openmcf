@@ -82,7 +82,7 @@ The CLI validates the config file against the proto schema, then converts the fi
 | `region` | Yes | AWS region |
 | `session_token` | No | STS session token for temporary credentials |
 
-All field names use `snake_case`, matching the protobuf definition at `apis/dev/planton/provider/aws/provider.proto`.
+All field names use `snake_case`, matching the protobuf definition at `catalog/aws/provider.proto`.
 
 ### Method 4: IAM Roles (EC2, ECS, Lambda)
 

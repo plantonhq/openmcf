@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	kubernetesprovider "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
+	kubernetesprovider "github.com/plantonhq/planton/catalog/kubernetes"
 	"sigs.k8s.io/yaml"
 )
 

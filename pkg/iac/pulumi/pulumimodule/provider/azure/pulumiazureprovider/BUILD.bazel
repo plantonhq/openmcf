@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/dev/planton/provider/azure",
+        "//catalog/azure",
         "//pkg/iac/pulumi/pulumimodule/pulumi/pulumioutput",
         "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_azure_sdk_v6//go/azure",
@@ -19,7 +19,7 @@ go_test(
     srcs = ["provider_test.go"],
     embed = [":pulumiazureprovider"],
     deps = [
-        "//apis/dev/planton/provider/azure",
+        "//catalog/azure",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",

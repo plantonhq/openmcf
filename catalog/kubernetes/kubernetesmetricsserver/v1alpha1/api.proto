@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesmetricsserver.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetesmetricsserver/v1alpha1/spec.proto";
+import "catalog/kubernetes/kubernetesmetricsserver/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//kubernetes-metrics-server
+message KubernetesMetricsServer {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesMetricsServer'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  KubernetesMetricsServerSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  KubernetesMetricsServerStatus status = 5;
+}
+
+//kubernetes-metrics-server status.
+message KubernetesMetricsServerStatus {
+  //stack-outputs
+  KubernetesMetricsServerStackOutputs outputs = 1;
+}

@@ -72,7 +72,7 @@ type ComponentTestContext struct {
 
 	// RepoRoot is the absolute path to the planton repository root. Passed through
 	// to test helpers that need to locate checked-in assets (e.g. a function
-	// source tree under apis/.../e2e/fixtures/) or resolve module paths.
+	// source tree under catalog/.../e2e/fixtures/) or resolve module paths.
 	RepoRoot string
 
 	// RunID is the unique test run identifier, used for stack naming.

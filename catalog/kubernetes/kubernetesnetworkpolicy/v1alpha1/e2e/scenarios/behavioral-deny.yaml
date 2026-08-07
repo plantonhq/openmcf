@@ -1,0 +1,23 @@
+# The behavioral proof: on a cluster whose CNI ENFORCES NetworkPolicy
+# (Cilium, on the cilium-cni cluster profile — kind's default CNI silently
+# ignores policies), an ingress-deny policy selecting the backend must turn
+# the client's previously-working request into a dropped connection, and
+# destroying the policy must let traffic flow again. The verifier switches
+# to behavioral assertions precisely because this scenario names
+# KubernetesCilium in its prerequisites.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesNetworkPolicy
+metadata:
+  name: e2e-np-behavioral-deny
+  annotations:
+    planton.dev/e2e-cluster-profile: "cilium-cni"
+    planton.dev/e2e-prerequisites: "KubernetesCilium, catalog/kubernetes/kubernetesnetworkpolicy/v1alpha1/e2e/fixture-netpol-backend.yaml, catalog/kubernetes/kubernetesnetworkpolicy/v1alpha1/e2e/fixture-netpol-client.yaml"
+spec:
+  namespace:
+    value: e2e-netpol-behavioral
+  name: e2e-np-behavioral-deny
+  pod_selector:
+    match_labels:
+      app: e2e-netpol-backend
+  policy_types:
+    - ingress

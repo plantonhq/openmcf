@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarehyperdriveconfig.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarehyperdriveconfig/v1alpha1/spec.proto";
+import "catalog/cloudflare/cloudflarehyperdriveconfig/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// cloudflare-hyperdrive-config
+message CloudflareHyperdriveConfig {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareHyperdriveConfig'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  CloudflareHyperdriveConfigSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  CloudflareHyperdriveConfigStatus status = 5;
+}
+
+// cloudflare-hyperdrive-config status
+message CloudflareHyperdriveConfigStatus {
+  //stack-outputs
+  //  cloudflare-hyperdrive-config stack-outputs
+  CloudflareHyperdriveConfigStackOutputs outputs = 1;
+}

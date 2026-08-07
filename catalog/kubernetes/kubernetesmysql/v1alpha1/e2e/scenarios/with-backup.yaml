@@ -1,0 +1,53 @@
+# The backup proof: a single-node development cluster (the unsafe opt-ins
+# exercised deliberately: one database node, one proxy) with XtraBackup
+# into the in-cluster MinIO fixture — the full backup chain proven live
+# with no cloud account. The verifier (switched on by this scenario's
+# name) drives a real XtraBackup to completion against the declared
+# storage. A backup schedule rides along so the schedule surface deploys.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesMysql
+metadata:
+  name: e2e-my-backup
+  annotations:
+    planton.dev/e2e-prerequisites: "catalog/kubernetes/kubernetesmysql/v1alpha1/e2e/fixture-minio.yaml"
+spec:
+  namespace:
+    value: e2e-my-backup
+  create_namespace: true
+  instances: 1
+  storage:
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 700Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  proxy:
+    haproxy:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+  unsafe:
+    cluster_size: true
+    proxy_size: true
+  backup:
+    storages:
+      - name: minio
+        verify_tls: false
+        s3:
+          bucket: mysql-backups
+          region: minio
+          endpoint_url: http://minio.e2e-mysql-minio.svc.cluster.local:9000
+          force_path_style: true
+          access_keys:
+            access_key_id: minioadmin
+            secret_access_key: minioadmin
+    schedules:
+      - name: nightly
+        schedule: "0 3 * * *"
+        storage_name: minio
+        keep: 3

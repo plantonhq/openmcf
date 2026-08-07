@@ -25,7 +25,7 @@ name: lint.terraform-modules
 on:
   pull_request:
     paths:
-      - 'apis/**/iac/tf/**'
+      - 'catalog/**/iac/tf/**'
       - 'hack/guards/ensure_tf_provider_pins.sh'
       - 'hack/guards/ensure_create_namespace_default_false.sh'
       - '.github/workflows/lint.terraform-modules.yaml'
@@ -33,7 +33,7 @@ on:
     branches:
       - main
     paths:
-      - 'apis/**/iac/tf/**'
+      - 'catalog/**/iac/tf/**'
       - 'hack/guards/ensure_tf_provider_pins.sh'
       - 'hack/guards/ensure_create_namespace_default_false.sh'
       - '.github/workflows/lint.terraform-modules.yaml'
@@ -87,8 +87,8 @@ jobs:
           base="origin/${{ github.base_ref }}"
           git fetch --no-tags --depth=1 origin "${{ github.base_ref }}" || true
           : > changed_modules.txt
-          git diff --name-only "$base"...HEAD -- 'apis/**/iac/tf/**' \
-            | sed -nE 's#^(apis/.*/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf)/.*#\1#p' \
+          git diff --name-only "$base"...HEAD -- 'catalog/**/iac/tf/**' \
+            | sed -nE 's#^(catalog/.*/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf)/.*#\1#p' \
             | sort -u >> changed_modules.txt || true
           echo "Changed iac/tf modules:"
           cat changed_modules.txt
@@ -142,7 +142,7 @@ jobs:
               rc=1
             fi
             echo "::endgroup::"
-          done < <(find apis -type d -path '*/iac/tf' | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf$' | sort)
+          done < <(find catalog -type d -path '*/iac/tf' | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf$' | sort)
           if [ ${#failed[@]} -gt 0 ]; then
             echo "::warning::${#failed[@]} module(s) failed validate:"
             printf '  - %s\n' "${failed[@]}"

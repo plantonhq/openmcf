@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremanagedredis.v1alpha1;
+
+// **AzureManagedRedisStackOutputs** captures the outputs of provisioning
+// an Azure Managed Redis instance.
+//
+// For application connectivity, keyless (Entra) clients need only
+// `hostname` and `port` -- they authenticate with tokens under
+// AzureManagedRedisAccessPolicyAssignment grants. Key-authenticated
+// clients additionally use `primary_access_key` (populated only while
+// access-keys authentication is enabled on the default database).
+//
+// The access keys are SECRET-BEARING: treat any output that embeds them
+// as a credential in downstream configuration.
+message AzureManagedRedisStackOutputs {
+  // The Azure Resource Manager ID of the Managed Redis cluster.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Cache/redisEnterprise/{name}
+  //
+  // The reference target for everything that composes with the
+  // instance: AzureManagedRedisGeoReplication (group membership),
+  // AzureManagedRedisAccessPolicyAssignment (Entra data-plane grants),
+  // and AzurePrivateEndpoint (private connectivity).
+  string managed_redis_id = 1;
+
+  // The instance's name -- the DNS label of the endpoint and the value
+  // sibling resources address the cluster by within its resource group.
+  string managed_redis_name = 2;
+
+  // The Azure region the instance lives in.
+  string region = 3;
+
+  // The resource group the instance lives in.
+  string resource_group_name = 4;
+
+  // The instance's DNS hostname:
+  // {cluster_name}.{region}.redis.azure.net. Keyless (Entra) clients
+  // need only this and the port -- tokens replace keys.
+  string hostname = 5;
+
+  // The Azure Resource Manager ID of the default database -- the
+  // cluster ID with "/databases/default" appended. The scope Entra
+  // access-policy grants and geo-replication links operate on.
+  string database_id = 6;
+
+  // The TCP port the database listens on (10000 -- Managed Redis does
+  // not use classic Redis's 6379/6380 ports).
+  int32 port = 7;
+
+  // The primary access key (a SECRET). Used as the password in Redis
+  // connection strings. Empty when access-keys authentication is
+  // disabled -- the keyless default.
+  string primary_access_key = 8;
+
+  // The secondary access key (a SECRET). Kept live so clients can be
+  // rotated to it while the primary is regenerated, and vice versa --
+  // zero-downtime key rotation. Empty when access-keys authentication
+  // is disabled.
+  string secondary_access_key = 9;
+
+  // The system-assigned identity's principal (object) ID -- what RBAC
+  // grants target when the identity block requests SYSTEM_ASSIGNED.
+  // Empty otherwise.
+  string identity_principal_id = 10;
+}

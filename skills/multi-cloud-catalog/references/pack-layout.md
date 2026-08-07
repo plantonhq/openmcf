@@ -36,7 +36,7 @@ that is not reachable inside that boundary is simply not reachable -- take
 the fallback below.
 
 1. **A Planton open-source repo checkout** -- the pack root is
-   `apis/dev/planton/provider/` under the repo root. This is the common case
+   `catalog/` under the repo root. This is the common case
    for coding agents working in or beside the repo.
 2. **The release artifact** -- every Planton release publishes the pack as
    one zip:
@@ -47,7 +47,7 @@ the fallback below.
 
    Entries carry repo-relative paths, so after extracting into an empty
    directory the pack root is
-   `<dir>/apis/dev/planton/provider/`.
+   `<dir>/catalog/`.
 3. **A vendored copy**, when the tree you are working in embeds one. Do not
    assume it exists -- probe for the root marker and use it only on a hit:
 

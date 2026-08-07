@@ -10,12 +10,12 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	auth0e2e "github.com/plantonhq/planton/apis/dev/planton/provider/auth0/aa_e2e"
-	componentv1 "github.com/plantonhq/planton/apis/dev/planton/qa/componente2eprofile/v1"
+	auth0e2e "github.com/plantonhq/planton/catalog/auth0/aa_e2e"
 	"github.com/plantonhq/planton/e2e/framework/discovery"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/e2e/framework/runner"
 	profilepkg "github.com/plantonhq/planton/pkg/e2e/profile"
+	componentv1 "github.com/plantonhq/planton/qa/componente2eprofile/v1"
 )
 
 var (
@@ -66,28 +66,44 @@ func TestMain(m *testing.M) {
 
 // --- Auth0 Client ---
 
-func TestAuth0Client_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "auth0client", "pulumi") }
-func TestAuth0Client_Terraform(t *testing.T) { runAllScenariosForComponent(t, "auth0client", "terraform") }
+func TestAuth0Client_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "auth0client", "pulumi") }
+func TestAuth0Client_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "auth0client", "terraform")
+}
 
 // --- Auth0 Connection ---
 
-func TestAuth0Connection_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "auth0connection", "pulumi") }
-func TestAuth0Connection_Terraform(t *testing.T) { runAllScenariosForComponent(t, "auth0connection", "terraform") }
+func TestAuth0Connection_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "auth0connection", "pulumi")
+}
+func TestAuth0Connection_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "auth0connection", "terraform")
+}
 
 // --- Auth0 Resource Server ---
 
-func TestAuth0ResourceServer_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "auth0resourceserver", "pulumi") }
-func TestAuth0ResourceServer_Terraform(t *testing.T) { runAllScenariosForComponent(t, "auth0resourceserver", "terraform") }
+func TestAuth0ResourceServer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "auth0resourceserver", "pulumi")
+}
+func TestAuth0ResourceServer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "auth0resourceserver", "terraform")
+}
 
 // --- Auth0 Action ---
 
-func TestAuth0Action_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "auth0action", "pulumi") }
-func TestAuth0Action_Terraform(t *testing.T) { runAllScenariosForComponent(t, "auth0action", "terraform") }
+func TestAuth0Action_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "auth0action", "pulumi") }
+func TestAuth0Action_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "auth0action", "terraform")
+}
 
 // --- Auth0 Event Stream ---
 
-func TestAuth0EventStream_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "auth0eventstream", "pulumi") }
-func TestAuth0EventStream_Terraform(t *testing.T) { runAllScenariosForComponent(t, "auth0eventstream", "terraform") }
+func TestAuth0EventStream_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "auth0eventstream", "pulumi")
+}
+func TestAuth0EventStream_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "auth0eventstream", "terraform")
+}
 
 // --- Auth0 Role ---
 

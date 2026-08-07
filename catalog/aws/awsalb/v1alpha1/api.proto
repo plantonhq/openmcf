@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsalb.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awsalb/v1alpha1/spec.proto";
+import "catalog/aws/awsalb/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+//aws-alb
+message AwsAlb {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AwsAlb'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AwsAlbSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AwsAlbStatus status = 5;
+}
+
+//aws-alb status
+message AwsAlbStatus {
+  //stack-outputs
+  AwsAlbStackOutputs outputs = 1;
+}

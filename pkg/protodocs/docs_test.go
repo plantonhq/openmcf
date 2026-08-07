@@ -13,9 +13,9 @@ import (
 )
 
 // TestIndexCoversCompiledInProtos is the freshness gate for the committed
-// index: every dev/planton proto file compiled into this binary must be
-// present in the embedded artifact. Adding a kind (or any proto) without
-// running `make generate-proto-docs` fails here instead of silently
+// index: every proto file of this repo's module compiled into this binary
+// must be present in the embedded artifact. Adding a kind (or any proto)
+// without running `make generate-proto-docs` fails here instead of silently
 // rendering an undocumented schema.
 func TestIndexCoversCompiledInProtos(t *testing.T) {
 	indexed := make(map[string]bool, len(Files()))
@@ -23,11 +23,18 @@ func TestIndexCoversCompiledInProtos(t *testing.T) {
 		indexed[f] = true
 	}
 
+	// The module's proto roots; third-party descriptors in the registry
+	// (google/protobuf, buf/validate) are deliberately outside the index.
+	moduleRoots := []string{"catalog/", "shared/", "qa/", "iac/"}
+
 	var missing []string
 	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
 		path := fd.Path()
-		if strings.HasPrefix(path, "dev/planton/") && !indexed[path] {
-			missing = append(missing, path)
+		for _, root := range moduleRoots {
+			if strings.HasPrefix(path, root) && !indexed[path] {
+				missing = append(missing, path)
+				break
+			}
 		}
 		return true
 	})
@@ -42,7 +49,7 @@ func TestIndexCoversCompiledInProtos(t *testing.T) {
 // on a densely documented spec: message, plain field, and nested enum value
 // (enum values scope to the enum's PARENT per proto scoping rules).
 func TestLookupKeysMatchRuntimeReflection(t *testing.T) {
-	const specName = "dev.planton.provider.kubernetes.kubernetesnamespace.v1alpha1.KubernetesNamespaceSpec"
+	const specName = "dev.planton.kubernetes.kubernetesnamespace.v1alpha1.KubernetesNamespaceSpec"
 	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(protoreflect.FullName(specName))
 	if err != nil {
 		t.Fatalf("spec message not registered: %v", err)

@@ -6,10 +6,10 @@ go_library(
     importpath = "github.com/plantonhq/planton/cmd/planton/root/e2e",
     visibility = ["//visibility:public"],
     deps = [
-        "//apis/dev/planton/qa/componente2eprofile/v1:componente2eprofile",
-        "//apis/dev/planton/shared",
         "//internal/cli/ui/e2ediscover",
         "//pkg/e2e/profile",
+        "//qa/componente2eprofile/v1:componente2eprofile",
+        "//shared",
         "@com_github_spf13_cobra//:cobra",
         "@org_golang_x_term//:term",
     ],

@@ -29,7 +29,7 @@ func TestBundleRoundTrip(t *testing.T) {
 	bundlePath := filepath.Join(dir, "catalog-bundle.zip")
 	manifest, err := Build(BuildInput{
 		DescriptorSetPath: descriptorsPath,
-		ProviderBaseDir:   providerBaseDir(t),
+		CatalogDir:        catalogDir(t),
 		ReleaseTag:        "vTEST",
 		OutputPath:        bundlePath,
 	})
@@ -75,7 +75,7 @@ func TestLoadRefusesCorruption(t *testing.T) {
 	bundlePath := filepath.Join(dir, "catalog-bundle.zip")
 	if _, err := Build(BuildInput{
 		DescriptorSetPath: descriptorsPath,
-		ProviderBaseDir:   providerBaseDir(t),
+		CatalogDir:        catalogDir(t),
 		OutputPath:        bundlePath,
 	}); err != nil {
 		t.Fatal(err)
@@ -148,11 +148,11 @@ func writeLinkedDescriptorSet(t *testing.T, path string) {
 	}
 }
 
-func providerBaseDir(t *testing.T) string {
+func catalogDir(t *testing.T) string {
 	t.Helper()
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot resolve caller location")
 	}
-	return filepath.Join(filepath.Dir(thisFile), "..", "..", "apis", "dev", "planton", "provider")
+	return filepath.Join(filepath.Dir(thisFile), "..", "..", "catalog")
 }

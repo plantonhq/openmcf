@@ -29,16 +29,16 @@ type Component struct {
 	TerraformDir string
 }
 
-// DiscoverComponents scans the apis directory tree to find all components
+// DiscoverComponents scans the catalog tree to find all components
 // that have an iac/hack/manifest.yaml file (meaning they're testable).
 func DiscoverComponents(repoRoot string) ([]Component, error) {
-	apisDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider")
+	catalogDir := filepath.Join(repoRoot, "catalog")
 
 	var components []Component
 
-	providerDirs, err := os.ReadDir(apisDir)
+	providerDirs, err := os.ReadDir(catalogDir)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read provider directory %s", apisDir)
+		return nil, errors.Wrapf(err, "failed to read provider directory %s", catalogDir)
 	}
 
 	for _, providerEntry := range providerDirs {
@@ -46,7 +46,7 @@ func DiscoverComponents(repoRoot string) ([]Component, error) {
 			continue
 		}
 		providerName := providerEntry.Name()
-		providerPath := filepath.Join(apisDir, providerName)
+		providerPath := filepath.Join(catalogDir, providerName)
 
 		componentDirs, err := os.ReadDir(providerPath)
 		if err != nil {
@@ -163,17 +163,17 @@ func ModuleDir(repoRoot, provider, component, engine string) (string, error) {
 	default:
 		return "", errors.Errorf("unsupported engine %q: want pulumi or terraform", engine)
 	}
-	return filepath.Join(repoRoot, "apis", "dev", "planton", "provider", provider, component, versionDir, "iac", engineDir), nil
+	return filepath.Join(repoRoot, "catalog", provider, component, versionDir, "iac", engineDir), nil
 }
 
 // DiscoverTestScenarios scans the component's colocated e2e/scenarios/ directory for YAML manifests.
-// Path: apis/dev/planton/provider/{provider}/{component}/{version}/e2e/scenarios/
+// Path: catalog/{provider}/{component}/{version}/e2e/scenarios/
 func DiscoverTestScenarios(repoRoot, provider, component string) ([]TestScenario, error) {
 	versionDir, err := crkreflect.ComponentVersionDir(component)
 	if err != nil {
 		return nil, err
 	}
-	scenarioDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", provider, component, versionDir, "e2e", "scenarios")
+	scenarioDir := filepath.Join(repoRoot, "catalog", provider, component, versionDir, "e2e", "scenarios")
 
 	entries, err := os.ReadDir(scenarioDir)
 	if err != nil {
@@ -207,7 +207,7 @@ func DiscoverTestScenarios(repoRoot, provider, component string) ([]TestScenario
 
 // DiscoverAllTestScenarios scans all components under a provider for colocated e2e/ directories.
 func DiscoverAllTestScenarios(repoRoot, provider string) (map[string][]TestScenario, error) {
-	providerDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", provider)
+	providerDir := filepath.Join(repoRoot, "catalog", provider)
 
 	entries, err := os.ReadDir(providerDir)
 	if err != nil {

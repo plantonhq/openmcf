@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurestorageobjectreplication.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurestorageobjectreplication/v1alpha1/spec.proto";
+import "catalog/azure/azurestorageobjectreplication/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AzureStorageObjectReplication is the top-level API resource for an
+// object replication policy -- asynchronous, rule-driven copying of
+// block blobs between containers on two AzureStorageAccounts
+// (referenced via source/destination storage_account_id). The
+// storage-level building block for cross-region DR, read-local data
+// distribution, and archival fan-out.
+message AzureStorageObjectReplication {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureStorageObjectReplication'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureStorageObjectReplicationSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureStorageObjectReplicationStatus status = 5;
+}
+
+// AzureStorageObjectReplicationStatus holds the deployment status and outputs.
+message AzureStorageObjectReplicationStatus {
+  // stack-outputs
+  AzureStorageObjectReplicationStackOutputs outputs = 1;
+}

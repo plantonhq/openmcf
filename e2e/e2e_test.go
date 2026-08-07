@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	kubernetese2e "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/aa_e2e"
+	kubernetese2e "github.com/plantonhq/planton/catalog/kubernetes/aa_e2e"
 	"github.com/plantonhq/planton/e2e/framework/runner"
 )
 

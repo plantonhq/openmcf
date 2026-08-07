@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsclientvpn.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awsclientvpn/v1alpha1/spec.proto";
+import "catalog/aws/awsclientvpn/v1alpha1/stack_outputs.proto";
+import "shared/metadata.proto";
+
+// AwsClientVpn represents an AWS Client VPN endpoint resource — the managed
+// OpenVPN front door for remote access into AWS networks, attached to a VPC
+// (via folded subnet associations) or to a transit gateway, with folded
+// authorization rules and routes governing what connected clients can reach.
+message AwsClientVpn {
+  // api-version must be set to "aws.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
+
+  // resource-kind for this Client VPN resource, must be "AwsClientVpn".
+  string kind = 2 [(buf.validate.field).string.const = "AwsClientVpn"];
+
+  // metadata captures identifying information (name, org, version, etc.)
+  // and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the core configuration data defining how the Client VPN endpoint is deployed.
+  AwsClientVpnSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds runtime or post-deployment information.
+  AwsClientVpnStatus status = 5;
+}
+
+// AwsClientVpnStatus describes the status fields for a Client VPN resource.
+message AwsClientVpnStatus {
+  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  AwsClientVpnStackOutputs outputs = 1;
+}

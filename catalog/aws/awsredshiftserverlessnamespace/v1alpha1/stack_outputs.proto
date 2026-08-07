@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsredshiftserverlessnamespace.v1alpha1;
+
+// AwsRedshiftServerlessNamespaceStackOutputs captures the observable
+// identifiers of the namespace after deployment.
+message AwsRedshiftServerlessNamespaceStackOutputs {
+  // The namespace name. Exported because it is the join key workgroups
+  // attach with -- downstream references resolve against stack outputs,
+  // so the name must surface here even though it equals metadata.name.
+  string namespace_name = 1;
+
+  // The unique identifier AWS assigns to the namespace.
+  string namespace_id = 2;
+
+  // The Amazon Resource Name of the namespace, for IAM policies,
+  // usage limits, and resource policies.
+  string arn = 3;
+
+  // The name of the first database in the namespace.
+  string db_name = 4;
+
+  // The ARN of the AWS-managed admin-password secret in Secrets
+  // Manager. Populated only when manage_admin_password is true -- the
+  // handle applications use to fetch credentials at runtime.
+  string admin_password_secret_arn = 5;
+}
