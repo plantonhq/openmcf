@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.oci.ocidynamicroutinggateway.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/oci/ocidynamicroutinggateway/v1alpha1/outputs.proto";
 import "catalog/oci/ocidynamicroutinggateway/v1alpha1/spec.proto";
-import "catalog/oci/ocidynamicroutinggateway/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // OciDynamicRoutingGateway is the top-level resource representing an Oracle

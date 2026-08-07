@@ -114,7 +114,7 @@ func securityGroup(
 		}
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpSecurityGroupId, createdSG.ID())
 	ctx.Export(OpName, createdSG.Name)
 	ctx.Export(OpRegion, createdSG.Region)

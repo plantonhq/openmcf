@@ -102,7 +102,7 @@ func TestCheck_HermeticFixture(t *testing.T) {
 
 	for _, want := range []string{
 		"catalog/aws/awss3bucket/v1alpha1:missing-stub",
-		"catalog/aws/awss3bucket/v1alpha1:missing-proto", // stack_input/outputs absent
+		"catalog/aws/awss3bucket/v1alpha1:missing-proto", // input/outputs absent
 		"catalog/aws/awss3bucket/v1alpha1:missing-spec-test",
 		"catalog/aws/awss3bucket/v1alpha1:missing-reference",
 		"catalog/aws/awss3bucket/v1alpha1/iac:unexpected-entry",

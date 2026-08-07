@@ -31,7 +31,7 @@ pulumi up --stack dev
 - `module/main.go` — provider setup and resource orchestration
 - `module/locals.go` — metadata-derived values and the label merge
 - `module/memorystore_instance.go` — API enablement + the instance resource + discovery-endpoint extraction
-- `module/outputs.go` — stack output keys (must match `stack_outputs.proto`)
+- `module/outputs.go` — stack output keys (must match `outputs.proto`)
 
 ## Outputs
 

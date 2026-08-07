@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.azure.azurevirtualmachinescaleset.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/azure/azurevirtualmachinescaleset/v1alpha1/outputs.proto";
 import "catalog/azure/azurevirtualmachinescaleset/v1alpha1/spec.proto";
-import "catalog/azure/azurevirtualmachinescaleset/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // azure-virtual-machine-scale-set

@@ -10,8 +10,8 @@ A deployment component consists of:
 
 1. **API Definition (Protobuf)** - A strongly-typed, language-neutral schema that defines:
    - The configuration interface (`spec.proto`)
-   - The deployment inputs (`stack_input.proto`)
-   - The deployment outputs (`stack_outputs.proto`)
+   - The deployment inputs (`input.proto`)
+   - The deployment outputs (`outputs.proto`)
    - Field-level validation rules
 
 2. **Infrastructure-as-Code Modules** - Executable deployment logic in both:
@@ -225,12 +225,12 @@ GcpCertManagerCert = 616 [(kind_meta) = {
 catalog/gcp/gcpcertmanagercert/v1alpha1/
 ├── api.proto
 ├── spec.proto
-├── stack_input.proto
-├── stack_outputs.proto
+├── input.proto
+├── outputs.proto
 ├── api.pb.go
 ├── spec.pb.go
-├── stack_input.pb.go
-├── stack_outputs.pb.go
+├── input.pb.go
+├── outputs.pb.go
 ├── spec_test.go
 ├── README.md
 ├── docs/
@@ -281,7 +281,7 @@ catalog/gcp/gcpcertmanagercert/v1alpha1/
   ```protobuf
   import "buf/validate/validate.proto";
   import "catalog/<provider>/<component>/v1/spec.proto";
-  import "catalog/<provider>/<component>/v1/stack_outputs.proto";
+  import "catalog/<provider>/<component>/v1/outputs.proto";
   import "shared/metadata.proto";
   ```
 - [ ] **Resource Message** - Defines `<Kind>` message with KRM structure:
@@ -340,13 +340,13 @@ message GcpCertManagerCertSpec {
 }
 ```
 
-#### 3.3 stack_input.proto
+#### 3.3 input.proto
 
 **Purpose:** Defines inputs to the IaC modules (includes spec + credentials + environment context)
 
 **Requirements:**
 
-- [ ] **File Exists** - `v1/stack_input.proto` is present
+- [ ] **File Exists** - `v1/input.proto` is present
 - [ ] **Correct Package** - Package declaration matches path
 - [ ] **Standard Imports** - Imports common dependencies:
   ```protobuf
@@ -367,13 +367,13 @@ message GcpCertManagerCertSpec {
   - GCP: `dev.planton.gcp.GcpProviderConfig`
   - Kubernetes: `dev.planton.kubernetes.KubernetesProviderConfig`
 
-#### 3.4 stack_outputs.proto
+#### 3.4 outputs.proto
 
 **Purpose:** Defines outputs from the IaC deployment (what gets written to status.outputs)
 
 **Requirements:**
 
-- [ ] **File Exists** - `v1/stack_outputs.proto` is present
+- [ ] **File Exists** - `v1/outputs.proto` is present
 - [ ] **Correct Package** - Package declaration matches path
 - [ ] **StackOutputs Message** - Defines `<Kind>StackOutputs` message
 - [ ] **Relevant Outputs** - Contains outputs that users actually need:
@@ -404,8 +404,8 @@ message GcpCertManagerCertStackOutputs {
 - [ ] **Go Stubs Generated** - `.pb.go` files exist for all `.proto` files:
   - `api.pb.go`
   - `spec.pb.go`
-  - `stack_input.pb.go`
-  - `stack_outputs.pb.go`
+  - `input.pb.go`
+  - `outputs.pb.go`
 - [ ] **Stubs Are Current** - Generated files match proto definitions (run `make protos` to regenerate)
 
 #### 3.6 Unit Tests
@@ -496,9 +496,9 @@ func TestGcpCertManagerCertSpec_Validation(t *testing.T) {
   - **MUST NOT** just define empty structs
 - [ ] **outputs.go** - Maps deployed resources to `<Kind>StackOutputs`:
   - Extracts resource IDs, ARNs, endpoints
-  - Formats output structure matching `stack_outputs.proto`
+  - Formats output structure matching `outputs.proto`
   - **MUST** contain actual `ctx.Export()` calls
-  - **MUST** map all fields from `stack_outputs.proto`
+  - **MUST** map all fields from `outputs.proto`
 - [ ] **Resource-Specific Files** - One or more `.go` files containing actual resource provisioning logic
   - Example: `cert_manager_cert.go` for the certificate resource
   - Example: `dns_authorization.go` for DNS validation resources
@@ -589,7 +589,7 @@ func TestGcpCertManagerCertSpec_Validation(t *testing.T) {
   - **MUST** contain actual `resource` blocks using provider SDK
   - **MUST** implement all fields from spec.proto
 
-- [ ] **outputs.tf** - Output values matching `stack_outputs.proto`:
+- [ ] **outputs.tf** - Output values matching `outputs.proto`:
   - Every field in `<Kind>StackOutputs` has a corresponding Terraform output
   - Output descriptions match proto field comments
   - **MUST** contain actual `output` blocks
@@ -832,7 +832,7 @@ These are non-negotiable for a component to be considered functional:
 
 1. ✅ Entry in `cloud_resource_kind.proto` (4.44%)
 2. ✅ Correct folder structure (4.44%)
-3. ✅ All four proto files (api, spec, stack_input, stack_outputs) (13.32%)
+3. ✅ All four proto files (api, spec, input, outputs) (13.32%)
 4. ✅ Generated proto stubs (.pb.go files) (3.33%)
 5. ✅ spec_test.go with validation tests (2.77%)
 6. ✅ **Tests execute and pass** (2.78%) - Component-specific `go test` succeeds
@@ -900,7 +900,7 @@ Beyond file existence, assess quality:
 - **Proto Schema Quality** - Do fields match research findings? Are validations present?
 - **IaC Implementation Quality** - Are both modules feature-complete? Do they work? Are they richly commented to the module-comment bar (why/trade-offs/quirks/ordering, not narration)?
 - **Documentation Quality** - Is the research comprehensive? Are examples current?
-- **Consistency Quality** - Do variables.tf match spec.proto? Do outputs match stack_outputs.proto?
+- **Consistency Quality** - Do variables.tf match spec.proto? Do outputs match outputs.proto?
 
 A component with all files but low quality in these dimensions should be scored lower than the raw percentage suggests.
 
@@ -929,7 +929,7 @@ This document serves as the specification for an automated audit tool. The tool 
 3. Check proto stubs are current (compare timestamps)
 4. Validate terraform files with `terraform validate`
 5. Check that variables.tf fields match spec.proto fields
-6. Check that outputs.tf fields match stack_outputs.proto fields
+6. Check that outputs.tf fields match outputs.proto fields
 7. Run unit tests with `make test`
 8. **Verify IaC module implementation completeness**:
    - Pulumi module: Check main.go has provider setup and resource calls

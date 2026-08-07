@@ -10,7 +10,7 @@ output "fqdn" {
   value       = scaleway_domain_record.record.fqdn
 }
 
-# Complete outputs object matching stack_outputs.proto structure.
+# Complete outputs object matching outputs.proto structure.
 # Used by the Planton platform to populate status.outputs.
 output "outputs" {
   description = "Complete DNS record outputs for integration with other resources"

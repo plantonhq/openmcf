@@ -120,7 +120,7 @@ func (x *ScalewayLoadBalancer) GetStatus() *ScalewayLoadBalancerStatus {
 // ScalewayLoadBalancerStatus holds post-deployment information.
 type ScalewayLoadBalancerStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// stack_outputs captures the outputs returned by Pulumi/Terraform
+	// outputs captures the outputs returned by Pulumi/Terraform
 	// after provisioning the Load Balancer composite.
 	Outputs       *ScalewayLoadBalancerStackOutputs `protobuf:"bytes,1,opt,name=outputs,proto3" json:"outputs,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -168,7 +168,7 @@ var File_catalog_scaleway_scalewayloadbalancer_v1alpha1_api_proto protoreflect.F
 
 const file_catalog_scaleway_scalewayloadbalancer_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"8catalog/scaleway/scalewayloadbalancer/v1alpha1/api.proto\x122dev.planton.scaleway.scalewayloadbalancer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a9catalog/scaleway/scalewayloadbalancer/v1alpha1/spec.proto\x1aBcatalog/scaleway/scalewayloadbalancer/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xaf\x03\n" +
+	"8catalog/scaleway/scalewayloadbalancer/v1alpha1/api.proto\x122dev.planton.scaleway.scalewayloadbalancer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a<catalog/scaleway/scalewayloadbalancer/v1alpha1/outputs.proto\x1a9catalog/scaleway/scalewayloadbalancer/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xaf\x03\n" +
 	"\x14ScalewayLoadBalancer\x12E\n" +
 	"\vapi_version\x18\x01 \x01(\tB$\xbaH!r\x1f\n" +
 	"\x1dscaleway.planton.dev/v1alpha1R\n" +
@@ -219,8 +219,8 @@ func file_catalog_scaleway_scalewayloadbalancer_v1alpha1_api_proto_init() {
 	if File_catalog_scaleway_scalewayloadbalancer_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_scaleway_scalewayloadbalancer_v1alpha1_outputs_proto_init()
 	file_catalog_scaleway_scalewayloadbalancer_v1alpha1_spec_proto_init()
-	file_catalog_scaleway_scalewayloadbalancer_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awscloudwatchloggroup.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awscloudwatchloggroup/v1alpha1/outputs.proto";
 import "catalog/aws/awscloudwatchloggroup/v1alpha1/spec.proto";
-import "catalog/aws/awscloudwatchloggroup/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsCloudwatchLogGroup represents a CloudWatch Logs log group — a container
@@ -32,6 +32,6 @@ message AwsCloudwatchLogGroup {
 // AwsCloudwatchLogGroupStatus describes the status fields for a CloudWatch
 // Log Group resource.
 message AwsCloudwatchLogGroupStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsCloudwatchLogGroupStackOutputs outputs = 1;
 }

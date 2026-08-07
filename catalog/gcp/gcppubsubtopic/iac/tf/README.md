@@ -25,7 +25,7 @@ Credentials are provided via stack input (by the CLI), not in the manifest `spec
 - `variables.tf` — the converter-contract `metadata`/`spec` variables
 - `locals.tf` — ambient-project resolution + the merged label map
 - `main.tf` — API enablement + the topic resource
-- `outputs.tf` — stack outputs (must match `stack_outputs.proto`)
+- `outputs.tf` — stack outputs (must match `outputs.proto`)
 
 ## Inputs (high level)
 

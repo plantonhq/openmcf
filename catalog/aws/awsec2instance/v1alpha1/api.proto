@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awsec2instance.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awsec2instance/v1alpha1/outputs.proto";
 import "catalog/aws/awsec2instance/v1alpha1/spec.proto";
-import "catalog/aws/awsec2instance/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsEc2Instance represents a single EC2 virtual machine instance on AWS.
@@ -30,6 +30,6 @@ message AwsEc2Instance {
 
 // AwsEc2InstanceStatus describes the status fields for an EC2 instance resource.
 message AwsEc2InstanceStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsEc2InstanceStackOutputs outputs = 1;
 }

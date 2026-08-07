@@ -155,7 +155,7 @@ var File_catalog_atlas_atlasmongodb_v1alpha1_api_proto protoreflect.FileDescript
 
 const file_catalog_atlas_atlasmongodb_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"-catalog/atlas/atlasmongodb/v1alpha1/api.proto\x12'dev.planton.atlas.atlasmongodb.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a.catalog/atlas/atlasmongodb/v1alpha1/spec.proto\x1a7catalog/atlas/atlasmongodb/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xf6\x02\n" +
+	"-catalog/atlas/atlasmongodb/v1alpha1/api.proto\x12'dev.planton.atlas.atlasmongodb.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a1catalog/atlas/atlasmongodb/v1alpha1/outputs.proto\x1a.catalog/atlas/atlasmongodb/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xf6\x02\n" +
 	"\fAtlasMongodb\x12B\n" +
 	"\vapi_version\x18\x01 \x01(\tB!\xbaH\x1er\x1c\n" +
 	"\x1aatlas.planton.dev/v1alpha1R\n" +
@@ -206,8 +206,8 @@ func file_catalog_atlas_atlasmongodb_v1alpha1_api_proto_init() {
 	if File_catalog_atlas_atlasmongodb_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_atlas_atlasmongodb_v1alpha1_outputs_proto_init()
 	file_catalog_atlas_atlasmongodb_v1alpha1_spec_proto_init()
-	file_catalog_atlas_atlasmongodb_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

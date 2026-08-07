@@ -69,7 +69,7 @@ func monitor(
 		return errors.Wrap(err, "failed to create openstack load balancer monitor")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpMonitorId, createdMonitor.ID())
 	ctx.Export(OpName, createdMonitor.Name)
 	ctx.Export(OpType, createdMonitor.Type)

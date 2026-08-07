@@ -7,7 +7,7 @@
 #   presets.zip        -- Preset YAML + MD files, kind enum proto
 #   iac-source.zip     -- IaC source (.go, .tf, .md, .yaml under iac/)
 #   catalog-pages.zip  -- Per-component catalog-page.md files
-#   proto-source.zip   -- Raw proto source (spec, api, stack_input, stack_outputs)
+#   proto-source.zip   -- Raw proto source (spec, api, input, outputs)
 #   reference-pack.zip -- The component reference pack: generated reference
 #                         pages, catalog indexes, the cross-reference graph,
 #                         the commons page, and the authored GUIDE.md /
@@ -162,8 +162,8 @@ if wants proto-source; then
   find "$CATALOG_ROOT" -type f \( \
       -name 'spec.proto' \
       -o -name 'api.proto' \
-      -o -name 'stack_input.proto' \
-      -o -name 'stack_outputs.proto' \
+      -o -name 'input.proto' \
+      -o -name 'outputs.proto' \
     \) ! -path '*/_test/*' \
     | grep -E "/v[0-9]+((alpha|beta)[0-9]+)?/[a-z_]+\.proto$" \
     | create_zip "proto-source.zip" "proto source"

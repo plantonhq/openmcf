@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton._test.testcloudresourcegeneric.v1alpha2;
 
 import "buf/validate/validate.proto";
+import "catalog/_test/testcloudresourcegeneric/v1alpha2/outputs.proto";
 import "catalog/_test/testcloudresourcegeneric/v1alpha2/spec.proto";
-import "catalog/_test/testcloudresourcegeneric/v1alpha2/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // TestCloudResourceGeneric at v1alpha2 -- see spec.proto for the deliberate

@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.openfga.openfgarelationshiptuple.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/openfga/openfgarelationshiptuple/v1alpha1/outputs.proto";
 import "catalog/openfga/openfgarelationshiptuple/v1alpha1/spec.proto";
-import "catalog/openfga/openfgarelationshiptuple/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // OpenFgaRelationshipTuple is a deployment component that creates a relationship tuple in OpenFGA.

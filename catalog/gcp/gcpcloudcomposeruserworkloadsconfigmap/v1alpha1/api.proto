@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.gcp.gcpcloudcomposeruserworkloadsconfigmap.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/gcp/gcpcloudcomposeruserworkloadsconfigmap/v1alpha1/outputs.proto";
 import "catalog/gcp/gcpcloudcomposeruserworkloadsconfigmap/v1alpha1/spec.proto";
-import "catalog/gcp/gcpcloudcomposeruserworkloadsconfigmap/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 //gcp-cloud-composer-user-workloads-config-map

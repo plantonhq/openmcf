@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awsecsservice.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awsecsservice/v1alpha1/outputs.proto";
 import "catalog/aws/awsecsservice/v1alpha1/spec.proto";
-import "catalog/aws/awsecsservice/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsEcsService represents a containerized application deployed on AWS ECS.
@@ -29,6 +29,6 @@ message AwsEcsService {
 
 // AwsEcsServiceStatus describes the status fields for an ECS service resource.
 message AwsEcsServiceStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsEcsServiceStackOutputs outputs = 1;
 }

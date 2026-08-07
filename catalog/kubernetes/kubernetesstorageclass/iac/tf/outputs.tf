@@ -1,5 +1,5 @@
 # Stack outputs — must flatten onto KubernetesStorageClassStackOutputs
-# (stack_outputs.proto) identically to the Pulumi module's exports.
+# (outputs.proto) identically to the Pulumi module's exports.
 
 output "storage_class_name" {
   description = "The name of the StorageClass object as created in the cluster"

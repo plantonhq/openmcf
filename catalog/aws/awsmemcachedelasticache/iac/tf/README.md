@@ -8,7 +8,7 @@ This directory contains the Terraform IaC module for provisioning AWS ElastiCach
 .
 ├── main.tf        # Primary resources: subnet group, parameter group, cluster
 ├── locals.tf      # Computed values and StringValueOrRef resolution
-├── outputs.tf     # Output values matching stack_outputs.proto
+├── outputs.tf     # Output values matching outputs.proto
 ├── variables.tf   # Input variables (metadata + spec)
 └── provider.tf    # AWS provider configuration
 ```

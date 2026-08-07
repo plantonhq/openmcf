@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awsplantonrunner.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awsplantonrunner/v1alpha1/outputs.proto";
 import "catalog/aws/awsplantonrunner/v1alpha1/spec.proto";
-import "catalog/aws/awsplantonrunner/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsPlantonRunner is a standing Planton runner appliance hosted in your
@@ -34,7 +34,7 @@ message AwsPlantonRunner {
 // AwsPlantonRunnerStatus describes the status fields for a runner
 // appliance resource.
 message AwsPlantonRunnerStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after
+  // outputs captures the outputs returned by Pulumi/Terraform after
   // provisioning.
   AwsPlantonRunnerStackOutputs outputs = 1;
 }

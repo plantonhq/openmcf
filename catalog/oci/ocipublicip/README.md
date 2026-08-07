@@ -43,7 +43,7 @@ This component manages a single OCI public IP resource through a declarative YAM
 |------|-------------|
 | `api.proto` | Top-level OciPublicIp message with apiVersion, kind, metadata, spec, status |
 | `spec.proto` | OciPublicIpSpec — compartmentId, lifetime, displayName, privateIpId, publicIpPoolId |
-| `stack_outputs.proto` | OciPublicIpStackOutputs — publicIpId, ipAddress |
+| `outputs.proto` | OciPublicIpStackOutputs — publicIpId, ipAddress |
 | `iac/pulumi/module/main.go` | Pulumi module entry point |
 | `iac/pulumi/module/public_ip.go` | Creates the `core.PublicIp` resource and exports outputs |
 | `iac/pulumi/module/locals.go` | Initializes display name fallback and freeform tags |

@@ -64,7 +64,7 @@ func member(
 		return errors.Wrap(err, "failed to create openstack load balancer member")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpMemberId, createdMember.ID())
 	ctx.Export(OpName, createdMember.Name)
 	ctx.Export(OpAddress, createdMember.Address)

@@ -23,7 +23,7 @@ iac/pulumi/
 2. `module.Resources()` is called with the stack input
 3. `initializeLocals()` extracts the spec fields, resolving both `router_id` and `subnet_id` from `StringValueOrRef`
 4. `routerInterface()` creates the `networking.RouterInterface` resource
-5. Stack outputs are exported matching `stack_outputs.proto` fields
+5. Stack outputs are exported matching `outputs.proto` fields
 
 ## Local Development
 

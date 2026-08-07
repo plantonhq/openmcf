@@ -90,7 +90,7 @@ func router(
 		return errors.Wrap(err, "failed to create openstack router")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpRouterId, createdRouter.ID())
 	ctx.Export(OpName, createdRouter.Name)
 	ctx.Export(OpExternalNetworkId, createdRouter.ExternalNetworkId)

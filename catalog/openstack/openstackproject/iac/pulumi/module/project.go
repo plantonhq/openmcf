@@ -61,7 +61,7 @@ func project(
 		return errors.Wrap(err, "failed to create openstack identity project")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpProjectId, createdProject.ID())
 	ctx.Export(OpName, createdProject.Name)
 	ctx.Export(OpDomainId, createdProject.DomainId)

@@ -4,7 +4,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Output keys for stack outputs. Keys match stack_outputs.proto field names.
+// Output keys for stack outputs. Keys match outputs.proto field names.
 const (
 	OutputRoleName    = "role_name"
 	OutputRoleKind    = "role_kind"

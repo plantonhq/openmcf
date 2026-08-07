@@ -73,7 +73,7 @@ func floatingIp(
 		return errors.Wrap(err, "failed to create openstack floating ip")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpFloatingIpId, createdFip.ID())
 	ctx.Export(OpAddress, createdFip.Address)
 	ctx.Export(OpFloatingNetworkId, createdFip.Pool)

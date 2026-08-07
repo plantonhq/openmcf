@@ -1,4 +1,4 @@
-# Stack outputs -- names and meanings mirror stack_outputs.proto exactly.
+# Stack outputs -- names and meanings mirror outputs.proto exactly.
 
 output "id" {
   description = "Synthetic resource id (id_prefix + metadata.name)"

@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.openstack.openstackloadbalancermonitor.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/openstack/openstackloadbalancermonitor/v1alpha1/outputs.proto";
 import "catalog/openstack/openstackloadbalancermonitor/v1alpha1/spec.proto";
-import "catalog/openstack/openstackloadbalancermonitor/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // OpenStackLoadBalancerMonitor is a Kubernetes Resource Model (KRM) style resource

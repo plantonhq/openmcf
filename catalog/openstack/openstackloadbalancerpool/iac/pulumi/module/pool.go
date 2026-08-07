@@ -70,7 +70,7 @@ func pool(
 		return errors.Wrap(err, "failed to create openstack load balancer pool")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpPoolId, createdPool.ID())
 	ctx.Export(OpName, createdPool.Name)
 	ctx.Export(OpProtocol, createdPool.Protocol)

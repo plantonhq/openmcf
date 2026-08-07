@@ -164,7 +164,7 @@ var File_catalog_scaleway_scalewaydnsrecord_v1alpha1_api_proto protoreflect.File
 
 const file_catalog_scaleway_scalewaydnsrecord_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/scaleway/scalewaydnsrecord/v1alpha1/api.proto\x12/dev.planton.scaleway.scalewaydnsrecord.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a6catalog/scaleway/scalewaydnsrecord/v1alpha1/spec.proto\x1a?catalog/scaleway/scalewaydnsrecord/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\x9d\x03\n" +
+	"5catalog/scaleway/scalewaydnsrecord/v1alpha1/api.proto\x12/dev.planton.scaleway.scalewaydnsrecord.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a9catalog/scaleway/scalewaydnsrecord/v1alpha1/outputs.proto\x1a6catalog/scaleway/scalewaydnsrecord/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\x9d\x03\n" +
 	"\x11ScalewayDnsRecord\x12E\n" +
 	"\vapi_version\x18\x01 \x01(\tB$\xbaH!r\x1f\n" +
 	"\x1dscaleway.planton.dev/v1alpha1R\n" +
@@ -215,8 +215,8 @@ func file_catalog_scaleway_scalewaydnsrecord_v1alpha1_api_proto_init() {
 	if File_catalog_scaleway_scalewaydnsrecord_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_scaleway_scalewaydnsrecord_v1alpha1_outputs_proto_init()
 	file_catalog_scaleway_scalewaydnsrecord_v1alpha1_spec_proto_init()
-	file_catalog_scaleway_scalewaydnsrecord_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

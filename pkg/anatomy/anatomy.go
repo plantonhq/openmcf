@@ -18,7 +18,7 @@
 //	├── e2e/               test manifest, profile, scenarios      (optional, tiered)
 //	├── conversions/       cross-version conversion specs         (optional)
 //	└── <version>/         the versioned contract ONLY:
-//	    api.proto, spec.proto, stack_input.proto, stack_outputs.proto,
+//	    api.proto, spec.proto, input.proto, outputs.proto,
 //	    their .pb.go stubs, BUILD.bazel, spec_test.go, reference.md
 //	    (catalog-page.md is a tolerated RETIRING resident: it is being
 //	    replaced by the kind-root catalog.md and leaves with the forge
@@ -108,25 +108,27 @@ var componentEntries = map[string]bool{
 // versionEntries is the CLOSED set of names allowed inside a version dir:
 // the versioned contract, nothing living.
 var versionEntries = map[string]bool{
-	"api.proto":           true,
-	"api.pb.go":           true,
-	"spec.proto":          true,
-	"spec.pb.go":          true,
-	"stack_input.proto":   true,
-	"stack_input.pb.go":   true,
-	"stack_outputs.proto": true,
-	"stack_outputs.pb.go": true,
-	"BUILD.bazel":         true,
-	"spec_test.go":        true,
-	"reference.md":        true,
+	"api.proto":     true,
+	"api.pb.go":     true,
+	"spec.proto":    true,
+	"spec.pb.go":    true,
+	"input.proto":   true,
+	"input.pb.go":   true,
+	"outputs.proto": true,
+	"outputs.pb.go": true,
+	"BUILD.bazel":   true,
+	"spec_test.go":  true,
+	"reference.md":  true,
 	// RETIRING: replaced by the kind-root catalog.md; the tolerance leaves
 	// in the same change that retires the files.
 	"catalog-page.md": true,
 }
 
 // requiredContractProtos are the version-dir protos every kind must serve.
+// input/outputs carry the KEPT {Kind}StackInput / {Kind}StackOutputs
+// messages -- the filenames are layout, the message names are identity.
 var requiredContractProtos = []string{
-	"api.proto", "spec.proto", "stack_input.proto", "stack_outputs.proto",
+	"api.proto", "spec.proto", "input.proto", "outputs.proto",
 }
 
 // e2eDirs are the directories the e2e tier may carry (files there are

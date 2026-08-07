@@ -115,7 +115,7 @@ func (x *AwsTransitGateway) GetStatus() *AwsTransitGatewayStatus {
 // resource.
 type AwsTransitGatewayStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// stack_outputs captures the outputs returned by Pulumi/Terraform after
+	// outputs captures the outputs returned by Pulumi/Terraform after
 	// provisioning.
 	Outputs       *AwsTransitGatewayStackOutputs `protobuf:"bytes,1,opt,name=outputs,proto3" json:"outputs,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -163,7 +163,7 @@ var File_catalog_aws_awstransitgateway_v1alpha1_api_proto protoreflect.FileDescr
 
 const file_catalog_aws_awstransitgateway_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/aws/awstransitgateway/v1alpha1/api.proto\x12*dev.planton.aws.awstransitgateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a1catalog/aws/awstransitgateway/v1alpha1/spec.proto\x1a:catalog/aws/awstransitgateway/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\x8e\x03\n" +
+	"0catalog/aws/awstransitgateway/v1alpha1/api.proto\x12*dev.planton.aws.awstransitgateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a4catalog/aws/awstransitgateway/v1alpha1/outputs.proto\x1a1catalog/aws/awstransitgateway/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\x8e\x03\n" +
 	"\x11AwsTransitGateway\x12@\n" +
 	"\vapi_version\x18\x01 \x01(\tB\x1f\xbaH\x1cr\x1a\n" +
 	"\x18aws.planton.dev/v1alpha1R\n" +
@@ -214,8 +214,8 @@ func file_catalog_aws_awstransitgateway_v1alpha1_api_proto_init() {
 	if File_catalog_aws_awstransitgateway_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_aws_awstransitgateway_v1alpha1_outputs_proto_init()
 	file_catalog_aws_awstransitgateway_v1alpha1_spec_proto_init()
-	file_catalog_aws_awstransitgateway_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

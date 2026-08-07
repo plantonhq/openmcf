@@ -31,7 +31,7 @@ pulumi up --stack dev
 - `module/main.go` — provider setup and resource orchestration
 - `module/locals.go` — stack-input plumbing (no labels: the API has no labels surface)
 - `module/key_ring.go` — API enablement + the key ring resource + exports
-- `module/outputs.go` — stack output keys (must match `stack_outputs.proto`)
+- `module/outputs.go` — stack output keys (must match `outputs.proto`)
 
 ## Outputs
 

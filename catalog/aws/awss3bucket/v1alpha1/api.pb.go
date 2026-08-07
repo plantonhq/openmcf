@@ -155,7 +155,7 @@ var File_catalog_aws_awss3bucket_v1alpha1_api_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awss3bucket_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"*catalog/aws/awss3bucket/v1alpha1/api.proto\x12$dev.planton.aws.awss3bucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a+catalog/aws/awss3bucket/v1alpha1/spec.proto\x1a4catalog/aws/awss3bucket/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xea\x02\n" +
+	"*catalog/aws/awss3bucket/v1alpha1/api.proto\x12$dev.planton.aws.awss3bucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a.catalog/aws/awss3bucket/v1alpha1/outputs.proto\x1a+catalog/aws/awss3bucket/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xea\x02\n" +
 	"\vAwsS3Bucket\x12@\n" +
 	"\vapi_version\x18\x01 \x01(\tB\x1f\xbaH\x1cr\x1a\n" +
 	"\x18aws.planton.dev/v1alpha1R\n" +
@@ -206,8 +206,8 @@ func file_catalog_aws_awss3bucket_v1alpha1_api_proto_init() {
 	if File_catalog_aws_awss3bucket_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_aws_awss3bucket_v1alpha1_outputs_proto_init()
 	file_catalog_aws_awss3bucket_v1alpha1_spec_proto_init()
-	file_catalog_aws_awss3bucket_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

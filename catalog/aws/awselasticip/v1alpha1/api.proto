@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awselasticip.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awselasticip/v1alpha1/outputs.proto";
 import "catalog/aws/awselasticip/v1alpha1/spec.proto";
-import "catalog/aws/awselasticip/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsElasticIp represents a static public IPv4 address allocated from Amazon's
@@ -31,6 +31,6 @@ message AwsElasticIp {
 
 // AwsElasticIpStatus describes the status fields for an Elastic IP resource.
 message AwsElasticIpStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsElasticIpStackOutputs outputs = 1;
 }

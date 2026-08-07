@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.azure.azuremssqlserver.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/azure/azuremssqlserver/v1alpha1/outputs.proto";
 import "catalog/azure/azuremssqlserver/v1alpha1/spec.proto";
-import "catalog/azure/azuremssqlserver/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AzureMssqlServer is the top-level API resource for an Azure SQL Database

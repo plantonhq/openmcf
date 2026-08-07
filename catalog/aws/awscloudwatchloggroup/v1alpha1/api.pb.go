@@ -113,7 +113,7 @@ func (x *AwsCloudwatchLogGroup) GetStatus() *AwsCloudwatchLogGroupStatus {
 // Log Group resource.
 type AwsCloudwatchLogGroupStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+	// outputs captures the outputs returned by Pulumi/Terraform after provisioning.
 	Outputs       *AwsCloudwatchLogGroupStackOutputs `protobuf:"bytes,1,opt,name=outputs,proto3" json:"outputs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -160,7 +160,7 @@ var File_catalog_aws_awscloudwatchloggroup_v1alpha1_api_proto protoreflect.FileD
 
 const file_catalog_aws_awscloudwatchloggroup_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"4catalog/aws/awscloudwatchloggroup/v1alpha1/api.proto\x12.dev.planton.aws.awscloudwatchloggroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a5catalog/aws/awscloudwatchloggroup/v1alpha1/spec.proto\x1a>catalog/aws/awscloudwatchloggroup/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xa6\x03\n" +
+	"4catalog/aws/awscloudwatchloggroup/v1alpha1/api.proto\x12.dev.planton.aws.awscloudwatchloggroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a8catalog/aws/awscloudwatchloggroup/v1alpha1/outputs.proto\x1a5catalog/aws/awscloudwatchloggroup/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xa6\x03\n" +
 	"\x15AwsCloudwatchLogGroup\x12@\n" +
 	"\vapi_version\x18\x01 \x01(\tB\x1f\xbaH\x1cr\x1a\n" +
 	"\x18aws.planton.dev/v1alpha1R\n" +
@@ -211,8 +211,8 @@ func file_catalog_aws_awscloudwatchloggroup_v1alpha1_api_proto_init() {
 	if File_catalog_aws_awscloudwatchloggroup_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_aws_awscloudwatchloggroup_v1alpha1_outputs_proto_init()
 	file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_init()
-	file_catalog_aws_awscloudwatchloggroup_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

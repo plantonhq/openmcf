@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.scaleway.scalewayserverlessfunction.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/scaleway/scalewayserverlessfunction/v1alpha1/outputs.proto";
 import "catalog/scaleway/scalewayserverlessfunction/v1alpha1/spec.proto";
-import "catalog/scaleway/scalewayserverlessfunction/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // ScalewayServerlessFunction is a Kubernetes Resource Model (KRM) style

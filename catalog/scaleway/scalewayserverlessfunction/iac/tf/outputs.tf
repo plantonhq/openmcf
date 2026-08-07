@@ -15,7 +15,7 @@ output "domain_name" {
   value       = scaleway_function.function.domain_name
 }
 
-# Complete outputs object matching stack_outputs.proto structure.
+# Complete outputs object matching outputs.proto structure.
 # Used by the Planton platform to populate status.outputs.
 output "outputs" {
   description = "Complete function outputs for integration with other resources"

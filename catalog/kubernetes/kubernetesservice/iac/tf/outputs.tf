@@ -1,5 +1,5 @@
 # Stack outputs — must flatten onto KubernetesServiceStackOutputs
-# (stack_outputs.proto) identically to the Pulumi module's exports. Every
+# (outputs.proto) identically to the Pulumi module's exports. Every
 # output is present (empty when not applicable) so both engines export the
 # identical field set.
 

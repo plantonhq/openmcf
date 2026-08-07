@@ -8,7 +8,7 @@ Terraform HCL module that provisions an Amazon FSx for NetApp ONTAP Storage Virt
 tf/
 ├── main.tf       — SVM resource with dynamic AD configuration block
 ├── variables.tf  — Input variables (provider config, spec fields)
-├── outputs.tf    — 12 output values matching stack_outputs.proto
+├── outputs.tf    — 12 output values matching outputs.proto
 └── provider.tf   — AWS provider configuration
 ```
 

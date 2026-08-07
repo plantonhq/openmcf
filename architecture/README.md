@@ -205,8 +205,8 @@ Every deployment component contains:
 ├── api.proto                    # Main API definition (KRM structure)
 ├── spec.proto                   # Spec section (configuration options)
 ├── spec_test.go                 # Unit tests for validation rules
-├── stack_input.proto            # Input to IaC modules
-├── stack_outputs.proto          # Output from IaC modules
+├── input.proto            # Input to IaC modules
+├── outputs.proto          # Output from IaC modules
 ├── README.md                    # User-facing documentation
 ├── docs/
 │   └── README.md                # Deep research and design rationale
@@ -451,7 +451,7 @@ Planton provides a sophisticated lifecycle management system for deployment comp
 **Result:** 95-100% completion score
 
 **Workflow:** 21-step automated process organized in 7 phases:
-1. **Proto API** (6 rules): spec.proto, validations, tests, stack_outputs, api, stack_input
+1. **Proto API** (6 rules): spec.proto, validations, tests, outputs, api, input
 2. **Registration** (2 rules): cloud_resource_kind enum, proto stubs
 3. **Documentation** (2 rules): user-facing docs, research docs
 4. **Test Infrastructure** (1 rule): hack manifest

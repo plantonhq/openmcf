@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awstransitgateway.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awstransitgateway/v1alpha1/outputs.proto";
 import "catalog/aws/awstransitgateway/v1alpha1/spec.proto";
-import "catalog/aws/awstransitgateway/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsTransitGateway represents a managed AWS Transit Gateway deployed via
@@ -34,7 +34,7 @@ message AwsTransitGateway {
 // AwsTransitGatewayStatus describes the status fields for a Transit Gateway
 // resource.
 message AwsTransitGatewayStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after
+  // outputs captures the outputs returned by Pulumi/Terraform after
   // provisioning.
   AwsTransitGatewayStackOutputs outputs = 1;
 }

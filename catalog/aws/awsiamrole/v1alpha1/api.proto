@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awsiamrole.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awsiamrole/v1alpha1/outputs.proto";
 import "catalog/aws/awsiamrole/v1alpha1/spec.proto";
-import "catalog/aws/awsiamrole/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsIamRole represents an AWS IAM Role resource.
@@ -30,6 +30,6 @@ message AwsIamRole {
 
 // AwsIamRoleStatus describes the status fields for an IAM role resource.
 message AwsIamRoleStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsIamRoleStackOutputs outputs = 1;
 }

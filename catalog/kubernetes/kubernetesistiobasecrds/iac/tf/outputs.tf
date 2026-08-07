@@ -2,7 +2,7 @@
 # outputs.tf
 #
 # Output values for the KubernetesIstioBaseCrds
-# module. These match the stack_outputs.proto
+# module. These match the outputs.proto
 # definition.
 ##############################################
 

@@ -15,7 +15,7 @@
 #   presets.zip         -- Preset YAML + MD, kind enum proto
 #   iac-source.zip      -- IaC module source (.go, .tf, .md, .yaml)
 #   catalog-pages.zip   -- Per-component catalog-page.md
-#   proto-source.zip    -- Raw proto source (spec, api, stack_input, stack_outputs)
+#   proto-source.zip    -- Raw proto source (spec, api, input, outputs)
 #   reference-pack.zip  -- Component reference pack (generated reference pages,
 #                          indexes, cross-reference graph, commons, GUIDE.md /
 #                          patterns wisdom layer)

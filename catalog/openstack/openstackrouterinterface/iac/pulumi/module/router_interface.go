@@ -38,7 +38,7 @@ func routerInterface(
 		return errors.Wrap(err, "failed to create openstack router interface")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	// The Pulumi resource ID for a router interface is the port_id.
 	ctx.Export(OpPortId, createdRouterInterface.PortId)
 	ctx.Export(OpRouterId, createdRouterInterface.RouterId)

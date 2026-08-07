@@ -70,7 +70,7 @@ func image(
 		return errors.Wrap(err, "failed to create openstack glance image")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpImageId, createdImage.ID())
 	ctx.Export(OpName, createdImage.Name)
 	ctx.Export(OpChecksum, createdImage.Checksum)

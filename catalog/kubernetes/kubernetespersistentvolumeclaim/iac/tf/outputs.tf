@@ -1,5 +1,5 @@
 # Stack outputs — must flatten onto KubernetesPersistentVolumeClaimStackOutputs
-# (stack_outputs.proto) identically to the Pulumi module's exports.
+# (outputs.proto) identically to the Pulumi module's exports.
 
 output "pvc_name" {
   description = "The name of the PersistentVolumeClaim object as created in the cluster"

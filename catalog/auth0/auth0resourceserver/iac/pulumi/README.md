@@ -42,7 +42,7 @@ export AUTH0_CLIENT_SECRET="your-m2m-client-secret"
 
 ### Stack Input
 
-The module expects a `stack_input.yaml` file with the following structure:
+The module expects a `stack-input.yaml` file with the following structure:
 
 ```yaml
 target:

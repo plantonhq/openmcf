@@ -1,5 +1,5 @@
 # Stack outputs — must flatten onto KubernetesManifestStackOutputs
-# (stack_outputs.proto) identically to the Pulumi module's exports.
+# (outputs.proto) identically to the Pulumi module's exports.
 
 output "namespace" {
   description = "The anchor namespace: where namespaced documents without an explicit metadata.namespace were applied"

@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awseksnodegroup.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awseksnodegroup/v1alpha1/outputs.proto";
 import "catalog/aws/awseksnodegroup/v1alpha1/spec.proto";
-import "catalog/aws/awseksnodegroup/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsEksNodeGroup represents a managed EKS node group: an EC2 worker fleet
@@ -30,6 +30,6 @@ message AwsEksNodeGroup {
 
 // AwsEksNodeGroupStatus describes the status fields for a managed node group resource.
 message AwsEksNodeGroupStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsEksNodeGroupStackOutputs outputs = 1;
 }

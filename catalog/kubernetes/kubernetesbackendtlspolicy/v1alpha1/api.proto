@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.kubernetes.kubernetesbackendtlspolicy.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetesbackendtlspolicy/v1alpha1/outputs.proto";
 import "catalog/kubernetes/kubernetesbackendtlspolicy/v1alpha1/spec.proto";
-import "catalog/kubernetes/kubernetesbackendtlspolicy/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // KubernetesBackendTlsPolicy is a Kubernetes Gateway API BackendTLSPolicy: a

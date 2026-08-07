@@ -22,7 +22,7 @@ func Resources(ctx *pulumi.Context, stackInput *testcloudresourcegenericv1alpha2
 		tags = append(tags, pulumi.String(s.GetCommand()))
 	}
 
-	// Output names and meanings mirror stack_outputs.proto exactly; the id
+	// Output names and meanings mirror outputs.proto exactly; the id
 	// composes the kind's registry id_prefix, so output shapes look exactly
 	// like a real kind's.
 	ctx.Export("id", pulumi.String("tcrg-"+name))

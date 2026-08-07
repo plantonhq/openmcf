@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awsecscluster.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awsecscluster/v1alpha1/outputs.proto";
 import "catalog/aws/awsecscluster/v1alpha1/spec.proto";
-import "catalog/aws/awsecscluster/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsEcsCluster represents an ECS cluster on AWS -- the scheduling boundary
@@ -30,6 +30,6 @@ message AwsEcsCluster {
 
 // AwsEcsClusterStatus describes the status fields for an ECS cluster resource.
 message AwsEcsClusterStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsEcsClusterStackOutputs outputs = 1;
 }

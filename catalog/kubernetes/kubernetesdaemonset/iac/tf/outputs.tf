@@ -1,5 +1,5 @@
 # Stack outputs — must flatten onto KubernetesDaemonSetStackOutputs
-# (stack_outputs.proto) identically to the Pulumi module's exports.
+# (outputs.proto) identically to the Pulumi module's exports.
 # DaemonSets have no Service or ingress, so the composition surface is the
 # object identity and its selector labels.
 

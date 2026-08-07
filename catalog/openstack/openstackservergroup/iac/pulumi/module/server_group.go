@@ -40,7 +40,7 @@ func serverGroup(
 		return errors.Wrap(err, "failed to create openstack server group")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpServerGroupId, createdServerGroup.ID())
 	ctx.Export(OpName, createdServerGroup.Name)
 	ctx.Export(OpMembers, createdServerGroup.Members)

@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.alicloud.alicloudnatgateway.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/alicloud/alicloudnatgateway/v1alpha1/outputs.proto";
 import "catalog/alicloud/alicloudnatgateway/v1alpha1/spec.proto";
-import "catalog/alicloud/alicloudnatgateway/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // alicloud-nat-gateway

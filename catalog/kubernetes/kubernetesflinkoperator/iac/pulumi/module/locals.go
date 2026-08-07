@@ -57,7 +57,7 @@ type Locals struct {
 
 	// WebhookService is the operator's webhook Service name — CHART-
 	// FIXED, not fullname-derived. Empty when the webhook is disabled;
-	// matches stack_outputs.proto.
+	// matches outputs.proto.
 	WebhookService string
 
 	// JobServiceAccount is the service account name Flink job pods run

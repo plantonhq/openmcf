@@ -78,7 +78,7 @@ func volume(
 		return errors.Wrap(err, "failed to create openstack cinder volume")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpVolumeId, createdVolume.ID())
 	ctx.Export(OpName, createdVolume.Name)
 	ctx.Export(OpSize, createdVolume.Size)

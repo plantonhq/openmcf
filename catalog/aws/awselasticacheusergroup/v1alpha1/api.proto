@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awselasticacheusergroup.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awselasticacheusergroup/v1alpha1/outputs.proto";
 import "catalog/aws/awselasticacheusergroup/v1alpha1/spec.proto";
-import "catalog/aws/awselasticacheusergroup/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsElasticacheUserGroup represents the RBAC attachment unit for
@@ -31,6 +31,6 @@ message AwsElasticacheUserGroup {
 
 // AwsElasticacheUserGroupStatus describes the status fields for an ElastiCache user group resource.
 message AwsElasticacheUserGroupStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsElasticacheUserGroupStackOutputs outputs = 1;
 }

@@ -12,7 +12,7 @@ This Terraform module deploys an Alibaba Cloud PolarDB cluster with bundled data
 | `databases.tf` | Database resources (for_each) |
 | `accounts.tf` | Account and privilege resources (for_each) |
 | `variables.tf` | Input variables from proto spec |
-| `outputs.tf` | Output values matching stack_outputs.proto |
+| `outputs.tf` | Output values matching outputs.proto |
 | `locals.tf` | Tag computation, defaults, map flattening |
 | `provider.tf` | Alibaba Cloud provider configuration |
 

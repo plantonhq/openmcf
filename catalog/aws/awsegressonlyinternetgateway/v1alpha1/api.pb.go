@@ -158,7 +158,7 @@ var File_catalog_aws_awsegressonlyinternetgateway_v1alpha1_api_proto protoreflec
 
 const file_catalog_aws_awsegressonlyinternetgateway_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	";catalog/aws/awsegressonlyinternetgateway/v1alpha1/api.proto\x125dev.planton.aws.awsegressonlyinternetgateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a<catalog/aws/awsegressonlyinternetgateway/v1alpha1/spec.proto\x1aEcatalog/aws/awsegressonlyinternetgateway/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xd0\x03\n" +
+	";catalog/aws/awsegressonlyinternetgateway/v1alpha1/api.proto\x125dev.planton.aws.awsegressonlyinternetgateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a?catalog/aws/awsegressonlyinternetgateway/v1alpha1/outputs.proto\x1a<catalog/aws/awsegressonlyinternetgateway/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xd0\x03\n" +
 	"\x1cAwsEgressOnlyInternetGateway\x12@\n" +
 	"\vapi_version\x18\x01 \x01(\tB\x1f\xbaH\x1cr\x1a\n" +
 	"\x18aws.planton.dev/v1alpha1R\n" +
@@ -209,8 +209,8 @@ func file_catalog_aws_awsegressonlyinternetgateway_v1alpha1_api_proto_init() {
 	if File_catalog_aws_awsegressonlyinternetgateway_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_aws_awsegressonlyinternetgateway_v1alpha1_outputs_proto_init()
 	file_catalog_aws_awsegressonlyinternetgateway_v1alpha1_spec_proto_init()
-	file_catalog_aws_awsegressonlyinternetgateway_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

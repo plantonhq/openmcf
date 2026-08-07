@@ -147,7 +147,7 @@ var File_catalog_oci_ocinetworkloadbalancer_v1alpha1_api_proto protoreflect.File
 
 const file_catalog_oci_ocinetworkloadbalancer_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/oci/ocinetworkloadbalancer/v1alpha1/api.proto\x12/dev.planton.oci.ocinetworkloadbalancer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a6catalog/oci/ocinetworkloadbalancer/v1alpha1/spec.proto\x1a?catalog/oci/ocinetworkloadbalancer/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xac\x03\n" +
+	"5catalog/oci/ocinetworkloadbalancer/v1alpha1/api.proto\x12/dev.planton.oci.ocinetworkloadbalancer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a9catalog/oci/ocinetworkloadbalancer/v1alpha1/outputs.proto\x1a6catalog/oci/ocinetworkloadbalancer/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xac\x03\n" +
 	"\x16OciNetworkLoadBalancer\x12@\n" +
 	"\vapi_version\x18\x01 \x01(\tB\x1f\xbaH\x1cr\x1a\n" +
 	"\x18oci.planton.dev/v1alpha1R\n" +
@@ -198,8 +198,8 @@ func file_catalog_oci_ocinetworkloadbalancer_v1alpha1_api_proto_init() {
 	if File_catalog_oci_ocinetworkloadbalancer_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_oci_ocinetworkloadbalancer_v1alpha1_outputs_proto_init()
 	file_catalog_oci_ocinetworkloadbalancer_v1alpha1_spec_proto_init()
-	file_catalog_oci_ocinetworkloadbalancer_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

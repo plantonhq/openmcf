@@ -6,7 +6,7 @@ output "id" {
   value       = snowflake_database.this.id
 }
 
-# Note: The stack_outputs.proto currently has fields for bootstrap_endpoint, crn, and rest_endpoint
+# Note: The outputs.proto currently has fields for bootstrap_endpoint, crn, and rest_endpoint
 # which appear to be copied from a Kafka cluster resource. These are not applicable to Snowflake databases.
 # For now, we provide placeholder values to satisfy the proto contract, but these should be updated
 # in the proto definition to reflect actual Snowflake database outputs.

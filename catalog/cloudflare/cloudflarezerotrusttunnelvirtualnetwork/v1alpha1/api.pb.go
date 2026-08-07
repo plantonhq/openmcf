@@ -157,7 +157,7 @@ var File_catalog_cloudflare_cloudflarezerotrusttunnelvirtualnetwork_v1alpha1_api
 
 const file_catalog_cloudflare_cloudflarezerotrusttunnelvirtualnetwork_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"Mcatalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1/api.proto\x12Gdev.planton.cloudflare.cloudflarezerotrusttunnelvirtualnetwork.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1aNcatalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1/spec.proto\x1aWcatalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xa9\x04\n" +
+	"Mcatalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1/api.proto\x12Gdev.planton.cloudflare.cloudflarezerotrusttunnelvirtualnetwork.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1aQcatalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1/outputs.proto\x1aNcatalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xa9\x04\n" +
 	"'CloudflareZeroTrustTunnelVirtualNetwork\x12G\n" +
 	"\vapi_version\x18\x01 \x01(\tB&\xbaH#r!\n" +
 	"\x1fcloudflare.planton.dev/v1alpha1R\n" +
@@ -210,8 +210,8 @@ func file_catalog_cloudflare_cloudflarezerotrusttunnelvirtualnetwork_v1alpha1_ap
 	if File_catalog_cloudflare_cloudflarezerotrusttunnelvirtualnetwork_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_cloudflare_cloudflarezerotrusttunnelvirtualnetwork_v1alpha1_outputs_proto_init()
 	file_catalog_cloudflare_cloudflarezerotrusttunnelvirtualnetwork_v1alpha1_spec_proto_init()
-	file_catalog_cloudflare_cloudflarezerotrusttunnelvirtualnetwork_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

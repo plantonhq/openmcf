@@ -5,7 +5,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Output key constants matching stack_outputs.proto fields
+// Output key constants matching outputs.proto fields
 const (
 	OpId                    = "id"
 	OpName                  = "name"
@@ -21,7 +21,7 @@ const (
 
 // exportOutputs exports connection information to Pulumi stack outputs
 func exportOutputs(ctx *pulumi.Context, connection *auth0.Connection, locals *Locals) error {
-	// Export required outputs matching stack_outputs.proto
+	// Export required outputs matching outputs.proto
 	ctx.Export(OpId, connection.ID())
 	ctx.Export(OpName, connection.Name)
 	ctx.Export(OpStrategy, connection.Strategy)

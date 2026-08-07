@@ -30,7 +30,7 @@ output "droplet_ids" {
   value       = digitalocean_volume.this.droplet_ids
 }
 
-# Complete outputs object matching stack_outputs.proto structure
+# Complete outputs object matching outputs.proto structure
 output "outputs" {
   description = "Complete volume outputs for integration with other resources"
   value = {

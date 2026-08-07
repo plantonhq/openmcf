@@ -20,7 +20,7 @@ output "region" {
   value       = local.region
 }
 
-# Complete outputs object matching stack_outputs.proto structure.
+# Complete outputs object matching outputs.proto structure.
 # Used by the Planton platform to populate status.outputs.
 output "outputs" {
   description = "Complete registry namespace outputs for integration with other resources"

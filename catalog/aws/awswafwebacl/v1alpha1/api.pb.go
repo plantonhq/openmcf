@@ -115,7 +115,7 @@ func (x *AwsWafWebAcl) GetStatus() *AwsWafWebAclStatus {
 // AwsWafWebAclStatus describes the status fields for a Web ACL resource.
 type AwsWafWebAclStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+	// outputs captures the outputs returned by Pulumi/Terraform after provisioning.
 	Outputs       *AwsWafWebAclStackOutputs `protobuf:"bytes,1,opt,name=outputs,proto3" json:"outputs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -162,7 +162,7 @@ var File_catalog_aws_awswafwebacl_v1alpha1_api_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awswafwebacl_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"+catalog/aws/awswafwebacl/v1alpha1/api.proto\x12%dev.planton.aws.awswafwebacl.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a,catalog/aws/awswafwebacl/v1alpha1/spec.proto\x1a5catalog/aws/awswafwebacl/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xf0\x02\n" +
+	"+catalog/aws/awswafwebacl/v1alpha1/api.proto\x12%dev.planton.aws.awswafwebacl.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a/catalog/aws/awswafwebacl/v1alpha1/outputs.proto\x1a,catalog/aws/awswafwebacl/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xf0\x02\n" +
 	"\fAwsWafWebAcl\x12@\n" +
 	"\vapi_version\x18\x01 \x01(\tB\x1f\xbaH\x1cr\x1a\n" +
 	"\x18aws.planton.dev/v1alpha1R\n" +
@@ -213,8 +213,8 @@ func file_catalog_aws_awswafwebacl_v1alpha1_api_proto_init() {
 	if File_catalog_aws_awswafwebacl_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_aws_awswafwebacl_v1alpha1_outputs_proto_init()
 	file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_init()
-	file_catalog_aws_awswafwebacl_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

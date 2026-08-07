@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awscloudwatchalarm.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awscloudwatchalarm/v1alpha1/outputs.proto";
 import "catalog/aws/awscloudwatchalarm/v1alpha1/spec.proto";
-import "catalog/aws/awscloudwatchalarm/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsCloudwatchAlarm represents a CloudWatch metric alarm — a monitoring
@@ -39,6 +39,6 @@ message AwsCloudwatchAlarm {
 // AwsCloudwatchAlarmStatus describes the status fields for a CloudWatch
 // Alarm resource.
 message AwsCloudwatchAlarmStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsCloudwatchAlarmStackOutputs outputs = 1;
 }

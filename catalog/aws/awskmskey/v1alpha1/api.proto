@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awskmskey.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awskmskey/v1alpha1/outputs.proto";
 import "catalog/aws/awskmskey/v1alpha1/spec.proto";
-import "catalog/aws/awskmskey/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsKmsKey represents a customer-managed AWS KMS encryption key.
@@ -30,6 +30,6 @@ message AwsKmsKey {
 
 // AwsKmsKeyStatus describes the status fields for a KMS key resource.
 message AwsKmsKeyStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsKmsKeyStackOutputs outputs = 1;
 }

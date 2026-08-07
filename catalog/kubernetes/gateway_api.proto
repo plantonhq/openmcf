@@ -16,7 +16,7 @@ import "shared/options/options.proto";
 //
 // Status types (RouteStatus, RouteParentStatus, GatewayStatus, etc.) are
 // intentionally excluded — Planton captures deployment outputs via
-// stack_outputs.proto, not CRD status subresources.
+// outputs.proto, not CRD status subresources.
 //
 // Note on reference field validation: every object-reference message below
 // repeats the same group/kind (and, where present, section_name) buf.validate

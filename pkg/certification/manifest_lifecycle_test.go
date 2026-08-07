@@ -94,8 +94,8 @@ func TestCertify_TortureKindKeepsFullCatalogShape(t *testing.T) {
 	for _, required := range []string{
 		"api.proto",
 		"spec.proto",
-		"stack_input.proto",
-		"stack_outputs.proto",
+		"input.proto",
+		"outputs.proto",
 	} {
 		if _, err := os.Stat(filepath.Join(versionDir, required)); err != nil {
 			t.Errorf("torture kind lost part of its versioned contract: %s (%v)", required, err)

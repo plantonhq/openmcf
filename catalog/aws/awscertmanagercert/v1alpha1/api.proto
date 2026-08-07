@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awscertmanagercert.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awscertmanagercert/v1alpha1/outputs.proto";
 import "catalog/aws/awscertmanagercert/v1alpha1/spec.proto";
-import "catalog/aws/awscertmanagercert/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsCertManagerCert represents a containerized application deployed on AWS ECS.
@@ -29,6 +29,6 @@ message AwsCertManagerCert {
 
 // AwsCertManagerCertStatus describes the status fields for an ECS service resource.
 message AwsCertManagerCertStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsCertManagerCertStackOutputs outputs = 1;
 }

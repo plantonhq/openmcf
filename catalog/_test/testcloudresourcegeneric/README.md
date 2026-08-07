@@ -23,7 +23,7 @@ before it can touch a real kind.
 Both IaC engines are implemented against a no-op target: Terraform manages a
 single builtin `terraform_data` resource (a real lifecycle with no cloud
 behind it), and the Pulumi module exports outputs derived deterministically
-from inputs. Output names mirror `stack_outputs.proto` exactly.
+from inputs. Output names mirror `outputs.proto` exactly.
 
 ## Kubernetes-specific testing
 

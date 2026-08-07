@@ -10,7 +10,7 @@ Terraform (HCL) IaC module for provisioning OpenStack Neutron networks.
 ├── variables.tf    # Input variables (mirrors spec.proto)
 ├── locals.tf       # Computed local values
 ├── main.tf         # Network resource definition
-└── outputs.tf      # Output values (mirrors stack_outputs.proto)
+└── outputs.tf      # Output values (mirrors outputs.proto)
 ```
 
 ## Provider Configuration

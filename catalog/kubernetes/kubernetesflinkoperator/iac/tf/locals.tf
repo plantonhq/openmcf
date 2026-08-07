@@ -72,7 +72,7 @@ locals {
 
   # The webhook Service name is CHART-FIXED (templates/webhook/
   # service.yaml hardcodes it) — not fullname-derived. Empty when the
-  # webhook is disabled; matches stack_outputs.proto.
+  # webhook is disabled; matches outputs.proto.
   webhook_service = local.webhook_enabled ? "flink-operator-webhook-service" : ""
 
   # ---- operator configuration (chart: defaultConfiguration) --------------------

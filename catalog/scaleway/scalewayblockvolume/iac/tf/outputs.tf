@@ -15,7 +15,7 @@ output "zone" {
   value       = local.zone
 }
 
-# Complete outputs object matching stack_outputs.proto structure.
+# Complete outputs object matching outputs.proto structure.
 # Used by the Planton platform to populate status.outputs.
 output "outputs" {
   description = "Complete volume outputs for integration with other resources"

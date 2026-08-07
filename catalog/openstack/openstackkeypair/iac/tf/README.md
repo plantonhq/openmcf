@@ -10,7 +10,7 @@ Terraform (HCL) IaC module for provisioning OpenStack compute keypairs.
 ├── variables.tf    # Input variables (mirrors spec.proto)
 ├── locals.tf       # Computed local values
 ├── main.tf         # Keypair resource definition
-└── outputs.tf      # Output values (mirrors stack_outputs.proto)
+└── outputs.tf      # Output values (mirrors outputs.proto)
 ```
 
 ## Provider Configuration

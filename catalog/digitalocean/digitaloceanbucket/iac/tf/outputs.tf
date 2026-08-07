@@ -1,5 +1,5 @@
 # DigitalOcean Spaces Bucket Outputs
-# Matches stack_outputs.proto fields
+# Matches outputs.proto fields
 
 output "bucket_id" {
   description = "The unique ID of the Spaces bucket (format: region:bucket-name)"

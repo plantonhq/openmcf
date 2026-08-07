@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.scaleway.scalewayloadbalancer.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/scaleway/scalewayloadbalancer/v1alpha1/outputs.proto";
 import "catalog/scaleway/scalewayloadbalancer/v1alpha1/spec.proto";
-import "catalog/scaleway/scalewayloadbalancer/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // ScalewayLoadBalancer represents a managed Scaleway Load Balancer that bundles
@@ -39,7 +39,7 @@ message ScalewayLoadBalancer {
 
 // ScalewayLoadBalancerStatus holds post-deployment information.
 message ScalewayLoadBalancerStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform
+  // outputs captures the outputs returned by Pulumi/Terraform
   // after provisioning the Load Balancer composite.
   ScalewayLoadBalancerStackOutputs outputs = 1;
 }

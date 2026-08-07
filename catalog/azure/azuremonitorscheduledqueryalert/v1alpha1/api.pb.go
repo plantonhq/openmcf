@@ -158,7 +158,7 @@ var File_catalog_azure_azuremonitorscheduledqueryalert_v1alpha1_api_proto protor
 
 const file_catalog_azure_azuremonitorscheduledqueryalert_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"@catalog/azure/azuremonitorscheduledqueryalert/v1alpha1/api.proto\x12:dev.planton.azure.azuremonitorscheduledqueryalert.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1aAcatalog/azure/azuremonitorscheduledqueryalert/v1alpha1/spec.proto\x1aJcatalog/azure/azuremonitorscheduledqueryalert/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xe8\x03\n" +
+	"@catalog/azure/azuremonitorscheduledqueryalert/v1alpha1/api.proto\x12:dev.planton.azure.azuremonitorscheduledqueryalert.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1aDcatalog/azure/azuremonitorscheduledqueryalert/v1alpha1/outputs.proto\x1aAcatalog/azure/azuremonitorscheduledqueryalert/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xe8\x03\n" +
 	"\x1fAzureMonitorScheduledQueryAlert\x12B\n" +
 	"\vapi_version\x18\x01 \x01(\tB!\xbaH\x1er\x1c\n" +
 	"\x1aazure.planton.dev/v1alpha1R\n" +
@@ -209,8 +209,8 @@ func file_catalog_azure_azuremonitorscheduledqueryalert_v1alpha1_api_proto_init(
 	if File_catalog_azure_azuremonitorscheduledqueryalert_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_azure_azuremonitorscheduledqueryalert_v1alpha1_outputs_proto_init()
 	file_catalog_azure_azuremonitorscheduledqueryalert_v1alpha1_spec_proto_init()
-	file_catalog_azure_azuremonitorscheduledqueryalert_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

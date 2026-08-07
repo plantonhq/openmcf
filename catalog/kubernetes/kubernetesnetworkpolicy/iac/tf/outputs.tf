@@ -1,5 +1,5 @@
 # Stack outputs — must flatten onto KubernetesNetworkPolicyStackOutputs
-# (stack_outputs.proto) identically to the Pulumi module's exports.
+# (outputs.proto) identically to the Pulumi module's exports.
 
 output "network_policy_name" {
   description = "The name of the NetworkPolicy object as created in the cluster"

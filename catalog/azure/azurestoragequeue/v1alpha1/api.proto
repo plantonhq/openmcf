@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.azure.azurestoragequeue.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/azure/azurestoragequeue/v1alpha1/outputs.proto";
 import "catalog/azure/azurestoragequeue/v1alpha1/spec.proto";
-import "catalog/azure/azurestoragequeue/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AzureStorageQueue is the top-level API resource for a Storage queue --

@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awshttpapidomain.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awshttpapidomain/v1alpha1/outputs.proto";
 import "catalog/aws/awshttpapidomain/v1alpha1/spec.proto";
-import "catalog/aws/awshttpapidomain/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsHttpApiDomain is the API envelope for an API Gateway v2 custom domain

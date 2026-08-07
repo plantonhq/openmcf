@@ -11,7 +11,7 @@ tf/
 ├── locals.tf      # Tag computation, record map
 ├── main.tf        # Zone + VPC attachment
 ├── records.tf     # Zone records with for_each
-└── outputs.tf     # Output values matching stack_outputs.proto
+└── outputs.tf     # Output values matching outputs.proto
 ```
 
 ## Resources Created

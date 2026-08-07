@@ -23,7 +23,7 @@ iac/pulumi/
 2. `module.Resources()` is called with the stack input
 3. `initializeLocals()` extracts the spec fields, including resolving `listener_id` from `StringValueOrRef`
 4. `pool()` creates the `loadbalancer.Pool` resource with all spec fields mapped to Pulumi args
-5. Stack outputs are exported matching `stack_outputs.proto` fields
+5. Stack outputs are exported matching `outputs.proto` fields
 
 ## Local Development
 

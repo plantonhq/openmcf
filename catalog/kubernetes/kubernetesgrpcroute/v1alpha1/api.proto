@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.kubernetes.kubernetesgrpcroute.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetesgrpcroute/v1alpha1/outputs.proto";
 import "catalog/kubernetes/kubernetesgrpcroute/v1alpha1/spec.proto";
-import "catalog/kubernetes/kubernetesgrpcroute/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // KubernetesGrpcRoute is a Kubernetes Gateway API GRPCRoute: a namespaced set of

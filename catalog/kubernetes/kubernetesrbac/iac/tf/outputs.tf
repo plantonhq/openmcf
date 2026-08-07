@@ -1,5 +1,5 @@
 # Terraform outputs for the Kubernetes RBAC grant.
-# Keys match stack_outputs.proto field names and the Pulumi module's exports.
+# Keys match outputs.proto field names and the Pulumi module's exports.
 
 output "role_name" {
   description = "The name of the role in the grant: the created Role/ClusterRole, or the existing role that was bound to"

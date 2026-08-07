@@ -1,5 +1,5 @@
 # Stack outputs — must flatten onto KubernetesPodDisruptionBudgetStackOutputs
-# (stack_outputs.proto) identically to the Pulumi module's exports.
+# (outputs.proto) identically to the Pulumi module's exports.
 
 output "pod_disruption_budget_name" {
   description = "The name of the PodDisruptionBudget object as created in the cluster"

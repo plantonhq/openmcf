@@ -50,6 +50,16 @@ classify() {
   esac
 }
 
+deleted_path_from_message() {
+  # File-deletion findings (FILE_NO_DELETE) carry NO path field -- the file
+  # no longer exists in the input, so buf names it only inside the message:
+  #   Previously present file "catalog/.../foo.proto" was deleted.
+  # Extract that path so deletions classify like every other finding; a
+  # deletion the gate cannot classify would otherwise be dropped SILENTLY,
+  # letting a stable/shared file deletion pass unblocked.
+  echo "$1" | sed -n 's/^Previously present file "\([^"]*\)" was deleted\.$/\1/p'
+}
+
 if [ "${1:-}" = "--self-test" ]; then
   fail=0
   check() {
@@ -69,6 +79,19 @@ if [ "${1:-}" = "--self-test" ]; then
   check "shared/cloudresourcekind/cloud_resource_kind.proto" shared
   check "qa/componente2eprofile/v1/api.proto" internal
   check "iac/componentimportmap/v1/api.proto" internal
+  check_deleted() {
+    local got
+    got=$(deleted_path_from_message "$1")
+    if [ "$got" != "$2" ]; then
+      echo "SELF-TEST FAIL: deleted_path_from_message($1) = '${got}', want '$2'"
+      fail=1
+    fi
+  }
+  check_deleted 'Previously present file "catalog/aws/awsvpc/v1alpha1/input.proto" was deleted.' \
+    "catalog/aws/awsvpc/v1alpha1/input.proto"
+  check_deleted 'Previously present file "shared/metadata.proto" was deleted.' \
+    "shared/metadata.proto"
+  check_deleted 'Field "1" with name "x" on message "Y" moved from outside to inside a oneof.' ""
   if [ $fail -eq 0 ]; then
     echo "self-test: all classifications correct"
   fi
@@ -111,7 +134,16 @@ while IFS= read -r line; do
   [ -z "$line" ] && continue
   path=$(echo "$line" | jq -r '.path // empty')
   msg=$(echo "$line" | jq -r '.message // empty')
-  [ -z "$path" ] && continue
+  if [ -z "$path" ]; then
+    path=$(deleted_path_from_message "$msg")
+  fi
+  if [ -z "$path" ]; then
+    # A finding the gate cannot attribute to a file must never vanish
+    # silently -- treat it as blocking so a human looks at it.
+    blocking=$((blocking + 1))
+    echo "BLOCKING  [unattributable] ${msg}"
+    continue
+  fi
 
   channel=$(classify "$path")
   case "$channel" in

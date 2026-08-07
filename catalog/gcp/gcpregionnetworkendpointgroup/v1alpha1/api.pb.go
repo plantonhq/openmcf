@@ -148,7 +148,7 @@ var File_catalog_gcp_gcpregionnetworkendpointgroup_v1alpha1_api_proto protorefle
 
 const file_catalog_gcp_gcpregionnetworkendpointgroup_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"<catalog/gcp/gcpregionnetworkendpointgroup/v1alpha1/api.proto\x126dev.planton.gcp.gcpregionnetworkendpointgroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a=catalog/gcp/gcpregionnetworkendpointgroup/v1alpha1/spec.proto\x1aFcatalog/gcp/gcpregionnetworkendpointgroup/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xd6\x03\n" +
+	"<catalog/gcp/gcpregionnetworkendpointgroup/v1alpha1/api.proto\x126dev.planton.gcp.gcpregionnetworkendpointgroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a@catalog/gcp/gcpregionnetworkendpointgroup/v1alpha1/outputs.proto\x1a=catalog/gcp/gcpregionnetworkendpointgroup/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xd6\x03\n" +
 	"\x1dGcpRegionNetworkEndpointGroup\x12@\n" +
 	"\vapi_version\x18\x01 \x01(\tB\x1f\xbaH\x1cr\x1a\n" +
 	"\x18gcp.planton.dev/v1alpha1R\n" +
@@ -199,8 +199,8 @@ func file_catalog_gcp_gcpregionnetworkendpointgroup_v1alpha1_api_proto_init() {
 	if File_catalog_gcp_gcpregionnetworkendpointgroup_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_gcp_gcpregionnetworkendpointgroup_v1alpha1_outputs_proto_init()
 	file_catalog_gcp_gcpregionnetworkendpointgroup_v1alpha1_spec_proto_init()
-	file_catalog_gcp_gcpregionnetworkendpointgroup_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awsinternetgateway.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awsinternetgateway/v1alpha1/outputs.proto";
 import "catalog/aws/awsinternetgateway/v1alpha1/spec.proto";
-import "catalog/aws/awsinternetgateway/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsInternetGateway is the top-level resource representing an internet gateway

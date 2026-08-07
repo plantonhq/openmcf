@@ -7,7 +7,7 @@ output "id" {
   value       = atlasmongodb_advanced_cluster.main.cluster_id
 }
 
-# Note: The stack_outputs.proto currently has fields for bootstrap_endpoint, crn, and rest_endpoint
+# Note: The outputs.proto currently has fields for bootstrap_endpoint, crn, and rest_endpoint
 # which appear to be copied from a Kafka cluster resource. These fields don't directly map to 
 # Atlas MongoDB cluster outputs. We provide connection string and state information instead.
 

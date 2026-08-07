@@ -161,7 +161,7 @@ var File_catalog_openstack_openstackdnszone_v1alpha1_api_proto protoreflect.File
 
 const file_catalog_openstack_openstackdnszone_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/openstack/openstackdnszone/v1alpha1/api.proto\x12/dev.planton.openstack.openstackdnszone.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a6catalog/openstack/openstackdnszone/v1alpha1/spec.proto\x1a?catalog/openstack/openstackdnszone/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\x9a\x03\n" +
+	"5catalog/openstack/openstackdnszone/v1alpha1/api.proto\x12/dev.planton.openstack.openstackdnszone.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a9catalog/openstack/openstackdnszone/v1alpha1/outputs.proto\x1a6catalog/openstack/openstackdnszone/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\x9a\x03\n" +
 	"\x10OpenStackDnsZone\x12F\n" +
 	"\vapi_version\x18\x01 \x01(\tB%\xbaH\"r \n" +
 	"\x1eopenstack.planton.dev/v1alpha1R\n" +
@@ -212,8 +212,8 @@ func file_catalog_openstack_openstackdnszone_v1alpha1_api_proto_init() {
 	if File_catalog_openstack_openstackdnszone_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_openstack_openstackdnszone_v1alpha1_outputs_proto_init()
 	file_catalog_openstack_openstackdnszone_v1alpha1_spec_proto_init()
-	file_catalog_openstack_openstackdnszone_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

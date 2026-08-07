@@ -1,5 +1,5 @@
 # Stack outputs — must flatten onto KubernetesJobStackOutputs
-# (stack_outputs.proto) identically to the Pulumi module's exports.
+# (outputs.proto) identically to the Pulumi module's exports.
 
 output "namespace" {
   description = "The namespace the Job was created in"

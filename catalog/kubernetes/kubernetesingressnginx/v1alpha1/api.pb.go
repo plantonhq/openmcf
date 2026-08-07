@@ -155,7 +155,7 @@ var File_catalog_kubernetes_kubernetesingressnginx_v1alpha1_api_proto protorefle
 
 const file_catalog_kubernetes_kubernetesingressnginx_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"<catalog/kubernetes/kubernetesingressnginx/v1alpha1/api.proto\x126dev.planton.kubernetes.kubernetesingressnginx.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a=catalog/kubernetes/kubernetesingressnginx/v1alpha1/spec.proto\x1aFcatalog/kubernetes/kubernetesingressnginx/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xc1\x03\n" +
+	"<catalog/kubernetes/kubernetesingressnginx/v1alpha1/api.proto\x126dev.planton.kubernetes.kubernetesingressnginx.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a@catalog/kubernetes/kubernetesingressnginx/v1alpha1/outputs.proto\x1a=catalog/kubernetes/kubernetesingressnginx/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xc1\x03\n" +
 	"\x16KubernetesIngressNginx\x12G\n" +
 	"\vapi_version\x18\x01 \x01(\tB&\xbaH#r!\n" +
 	"\x1fkubernetes.planton.dev/v1alpha1R\n" +
@@ -206,8 +206,8 @@ func file_catalog_kubernetes_kubernetesingressnginx_v1alpha1_api_proto_init() {
 	if File_catalog_kubernetes_kubernetesingressnginx_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_kubernetes_kubernetesingressnginx_v1alpha1_outputs_proto_init()
 	file_catalog_kubernetes_kubernetesingressnginx_v1alpha1_spec_proto_init()
-	file_catalog_kubernetes_kubernetesingressnginx_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

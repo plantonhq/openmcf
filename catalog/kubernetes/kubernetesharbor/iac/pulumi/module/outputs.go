@@ -5,7 +5,7 @@ import (
 )
 
 // Output name constants — the stack-outputs contract
-// (stack_outputs.proto). The Terraform twin exports the same handles.
+// (outputs.proto). The Terraform twin exports the same handles.
 const (
 	OpNamespace           = "namespace"
 	OpExposeService       = "expose_service"

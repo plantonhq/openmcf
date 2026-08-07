@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awsroute53dnsrecord.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awsroute53dnsrecord/v1alpha1/outputs.proto";
 import "catalog/aws/awsroute53dnsrecord/v1alpha1/spec.proto";
-import "catalog/aws/awsroute53dnsrecord/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsRoute53DnsRecord represents a DNS record in an AWS Route53 hosted zone.

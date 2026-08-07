@@ -286,11 +286,11 @@ func specMessageDescriptor(t *testing.T, apiMessage proto.Message) protoreflect.
 }
 
 // stackOutputsDescriptor locates the kind's StackOutputs message from the
-// sibling stack_outputs.proto of the kind's api.proto.
+// sibling outputs.proto of the kind's api.proto.
 func stackOutputsDescriptor(t *testing.T, apiMessage proto.Message) protoreflect.MessageDescriptor {
 	t.Helper()
 	apiPath := apiMessage.ProtoReflect().Descriptor().ParentFile().Path()
-	outputsPath := filepath.Join(filepath.Dir(apiPath), "stack_outputs.proto")
+	outputsPath := filepath.Join(filepath.Dir(apiPath), "outputs.proto")
 	file, err := protoregistry.GlobalFiles.FindFileByPath(outputsPath)
 	if err != nil {
 		t.Fatalf("finding %s: %v", outputsPath, err)

@@ -8,7 +8,7 @@ This directory contains the Terraform IaC implementation for the `AzureLinuxWebA
 tf/
 ├── main.tf          # Linux Web App resource definition (all blocks)
 ├── variables.tf     # Input variables (metadata + spec)
-├── outputs.tf       # Output values matching stack_outputs.proto
+├── outputs.tf       # Output values matching outputs.proto
 ├── locals.tf        # Local computations (tags + enum-to-wire-value maps)
 ├── provider.tf      # Azure provider configuration
 └── README.md        # This file

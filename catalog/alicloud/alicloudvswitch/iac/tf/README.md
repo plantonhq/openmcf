@@ -27,7 +27,7 @@ For more examples, see `examples.md` and [`hack/manifest.yaml`](../../e2e/manife
 | `variables.tf` | Input variables mirroring the proto spec with validations |
 | `locals.tf` | Tag computation from metadata and spec.tags |
 | `main.tf` | VSwitch resource definition |
-| `outputs.tf` | Stack outputs matching `stack_outputs.proto` |
+| `outputs.tf` | Stack outputs matching `outputs.proto` |
 
 ## Outputs
 

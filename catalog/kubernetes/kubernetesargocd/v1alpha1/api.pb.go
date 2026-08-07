@@ -156,7 +156,7 @@ var File_catalog_kubernetes_kubernetesargocd_v1alpha1_api_proto protoreflect.Fil
 
 const file_catalog_kubernetes_kubernetesargocd_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"6catalog/kubernetes/kubernetesargocd/v1alpha1/api.proto\x120dev.planton.kubernetes.kubernetesargocd.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a7catalog/kubernetes/kubernetesargocd/v1alpha1/spec.proto\x1a@catalog/kubernetes/kubernetesargocd/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\x9d\x03\n" +
+	"6catalog/kubernetes/kubernetesargocd/v1alpha1/api.proto\x120dev.planton.kubernetes.kubernetesargocd.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a:catalog/kubernetes/kubernetesargocd/v1alpha1/outputs.proto\x1a7catalog/kubernetes/kubernetesargocd/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\x9d\x03\n" +
 	"\x10KubernetesArgocd\x12G\n" +
 	"\vapi_version\x18\x01 \x01(\tB&\xbaH#r!\n" +
 	"\x1fkubernetes.planton.dev/v1alpha1R\n" +
@@ -207,8 +207,8 @@ func file_catalog_kubernetes_kubernetesargocd_v1alpha1_api_proto_init() {
 	if File_catalog_kubernetes_kubernetesargocd_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_kubernetes_kubernetesargocd_v1alpha1_outputs_proto_init()
 	file_catalog_kubernetes_kubernetesargocd_v1alpha1_spec_proto_init()
-	file_catalog_kubernetes_kubernetesargocd_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

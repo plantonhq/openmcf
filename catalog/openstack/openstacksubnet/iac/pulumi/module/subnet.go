@@ -95,7 +95,7 @@ func subnet(
 		return errors.Wrap(err, "failed to create openstack subnet")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpSubnetId, createdSubnet.ID())
 	ctx.Export(OpName, createdSubnet.Name)
 	ctx.Export(OpCidr, createdSubnet.Cidr)

@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.oci.ocidevopsproject.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/oci/ocidevopsproject/v1alpha1/outputs.proto";
 import "catalog/oci/ocidevopsproject/v1alpha1/spec.proto";
-import "catalog/oci/ocidevopsproject/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // OciDevopsProject is the top-level resource representing an OCI

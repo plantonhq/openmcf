@@ -1,5 +1,5 @@
 # Stack outputs — must flatten onto KubernetesIngressStackOutputs
-# (stack_outputs.proto) identically to the Pulumi module's exports.
+# (outputs.proto) identically to the Pulumi module's exports.
 #
 # The load-balancer handles read the object's status WITHOUT waiting for a
 # controller (wait_for_load_balancer = false — see main.tf): on a cluster

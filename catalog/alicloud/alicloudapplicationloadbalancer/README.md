@@ -19,8 +19,8 @@ v1/
 ├── api.proto              # KRM resource definition (apiVersion/kind/metadata/spec/status)
 ├── spec.proto             # Specification (all configurable fields)
 ├── spec_test.go           # Validation tests
-├── stack_input.proto      # IaC module input
-├── stack_outputs.proto    # IaC module outputs
+├── input.proto      # IaC module input
+├── outputs.proto    # IaC module outputs
 ├── catalog-page.md        # User-facing documentation
 ├── examples.md            # YAML manifest examples
 ├── README.md              # This file

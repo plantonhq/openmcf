@@ -4,8 +4,8 @@ go_library(
     name = "v1alpha1",
     srcs = [
         "api.pb.go",
+        "outputs.pb.go",
         "spec.pb.go",
-        "stack_outputs.pb.go",
     ],
     importpath = "github.com/plantonhq/planton/catalog/_test/testcloudresourcekubernetes/v1alpha1",
     visibility = ["//visibility:public"],

@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.digitalocean.digitaloceanappplatformservice.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/digitalocean/digitaloceanappplatformservice/v1alpha1/outputs.proto";
 import "catalog/digitalocean/digitaloceanappplatformservice/v1alpha1/spec.proto";
-import "catalog/digitalocean/digitaloceanappplatformservice/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // digital-ocean-app-platform-service

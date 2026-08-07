@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awsiamuser.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awsiamuser/v1alpha1/outputs.proto";
 import "catalog/aws/awsiamuser/v1alpha1/spec.proto";
-import "catalog/aws/awsiamuser/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsIamUser represents an AWS IAM User resource for programmatic access.
@@ -30,6 +30,6 @@ message AwsIamUser {
 
 // AwsIamUserStatus describes the status fields for an IAM user resource.
 message AwsIamUserStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsIamUserStackOutputs outputs = 1;
 }

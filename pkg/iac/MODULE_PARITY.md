@@ -7,7 +7,7 @@ environment, and stack outputs. A divergence here is not cosmetic: it silently c
 what gets deployed depending on which provisioner a resource happens to use.
 
 **Neither engine is the reference.** Both must match the proto contract (`spec.proto` +
-`*_stack_outputs.proto`) and the intended behavior. When the two disagree, determine which
+`*_outputs.proto`) and the intended behavior. When the two disagree, determine which
 is correct against that contract/intent and fix the incorrect one — it can be either engine,
 not always Terraform.
 

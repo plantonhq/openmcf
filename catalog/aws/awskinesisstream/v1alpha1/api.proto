@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awskinesisstream.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awskinesisstream/v1alpha1/outputs.proto";
 import "catalog/aws/awskinesisstream/v1alpha1/spec.proto";
-import "catalog/aws/awskinesisstream/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsKinesisStream is the Kubernetes-style resource envelope for an Amazon

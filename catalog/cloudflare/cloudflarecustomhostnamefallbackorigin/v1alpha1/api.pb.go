@@ -157,7 +157,7 @@ var File_catalog_cloudflare_cloudflarecustomhostnamefallbackorigin_v1alpha1_api_
 
 const file_catalog_cloudflare_cloudflarecustomhostnamefallbackorigin_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"Lcatalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1/api.proto\x12Fdev.planton.cloudflare.cloudflarecustomhostnamefallbackorigin.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1aMcatalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1/spec.proto\x1aVcatalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xa3\x04\n" +
+	"Lcatalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1/api.proto\x12Fdev.planton.cloudflare.cloudflarecustomhostnamefallbackorigin.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1aPcatalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1/outputs.proto\x1aMcatalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xa3\x04\n" +
 	"&CloudflareCustomHostnameFallbackOrigin\x12G\n" +
 	"\vapi_version\x18\x01 \x01(\tB&\xbaH#r!\n" +
 	"\x1fcloudflare.planton.dev/v1alpha1R\n" +
@@ -208,8 +208,8 @@ func file_catalog_cloudflare_cloudflarecustomhostnamefallbackorigin_v1alpha1_api
 	if File_catalog_cloudflare_cloudflarecustomhostnamefallbackorigin_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_cloudflare_cloudflarecustomhostnamefallbackorigin_v1alpha1_outputs_proto_init()
 	file_catalog_cloudflare_cloudflarecustomhostnamefallbackorigin_v1alpha1_spec_proto_init()
-	file_catalog_cloudflare_cloudflarecustomhostnamefallbackorigin_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

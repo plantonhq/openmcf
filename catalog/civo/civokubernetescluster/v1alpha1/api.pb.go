@@ -157,7 +157,7 @@ var File_catalog_civo_civokubernetescluster_v1alpha1_api_proto protoreflect.File
 
 const file_catalog_civo_civokubernetescluster_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/civo/civokubernetescluster/v1alpha1/api.proto\x12/dev.planton.civo.civokubernetescluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a6catalog/civo/civokubernetescluster/v1alpha1/spec.proto\x1a?catalog/civo/civokubernetescluster/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xa9\x03\n" +
+	"5catalog/civo/civokubernetescluster/v1alpha1/api.proto\x12/dev.planton.civo.civokubernetescluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a9catalog/civo/civokubernetescluster/v1alpha1/outputs.proto\x1a6catalog/civo/civokubernetescluster/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xa9\x03\n" +
 	"\x15CivoKubernetesCluster\x12A\n" +
 	"\vapi_version\x18\x01 \x01(\tB \xbaH\x1dr\x1b\n" +
 	"\x19civo.planton.dev/v1alpha1R\n" +
@@ -208,8 +208,8 @@ func file_catalog_civo_civokubernetescluster_v1alpha1_api_proto_init() {
 	if File_catalog_civo_civokubernetescluster_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_civo_civokubernetescluster_v1alpha1_outputs_proto_init()
 	file_catalog_civo_civokubernetescluster_v1alpha1_spec_proto_init()
-	file_catalog_civo_civokubernetescluster_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awseksaccessentry.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awseksaccessentry/v1alpha1/outputs.proto";
 import "catalog/aws/awseksaccessentry/v1alpha1/spec.proto";
-import "catalog/aws/awseksaccessentry/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsEksAccessEntry represents an EKS access entry: the grant that lets
@@ -31,6 +31,6 @@ message AwsEksAccessEntry {
 
 // AwsEksAccessEntryStatus describes the status fields for an access entry resource.
 message AwsEksAccessEntryStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsEksAccessEntryStackOutputs outputs = 1;
 }

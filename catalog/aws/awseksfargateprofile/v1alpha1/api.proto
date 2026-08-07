@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awseksfargateprofile.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awseksfargateprofile/v1alpha1/outputs.proto";
 import "catalog/aws/awseksfargateprofile/v1alpha1/spec.proto";
-import "catalog/aws/awseksfargateprofile/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsEksFargateProfile represents an EKS Fargate profile: the selector
@@ -30,6 +30,6 @@ message AwsEksFargateProfile {
 
 // AwsEksFargateProfileStatus describes the status fields for a Fargate profile resource.
 message AwsEksFargateProfileStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsEksFargateProfileStackOutputs outputs = 1;
 }

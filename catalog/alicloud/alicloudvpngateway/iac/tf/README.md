@@ -15,7 +15,7 @@ This Terraform module provisions an Alibaba Cloud VPN Gateway with customer gate
 | `main.tf` | VPN Gateway resource |
 | `connections.tf` | Customer gateways and VPN connections via `for_each` |
 | `variables.tf` | Input variables (from proto spec) |
-| `outputs.tf` | Output values (matching stack_outputs.proto) |
+| `outputs.tf` | Output values (matching outputs.proto) |
 | `locals.tf` | Computed values, tags, connection map |
 | `provider.tf` | Provider configuration |
 

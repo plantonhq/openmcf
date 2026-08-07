@@ -31,7 +31,7 @@ pulumi up --stack dev
 - `module/main.go` — provider setup and resource orchestration
 - `module/locals.go` — the user-label + attribution-label merge
 - `module/kms_key.go` — API enablement + the crypto key resource + exports
-- `module/outputs.go` — stack output keys (must match `stack_outputs.proto`)
+- `module/outputs.go` — stack output keys (must match `outputs.proto`)
 
 ## Outputs
 

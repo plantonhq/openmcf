@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awsnlb.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awsnlb/v1alpha1/outputs.proto";
 import "catalog/aws/awsnlb/v1alpha1/spec.proto";
-import "catalog/aws/awsnlb/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsNlb represents a managed AWS Network Load Balancer
@@ -30,6 +30,6 @@ message AwsNlb {
 
 // AwsNlbStatus describes the status fields for an NLB resource.
 message AwsNlbStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsNlbStackOutputs outputs = 1;
 }

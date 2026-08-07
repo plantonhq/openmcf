@@ -157,7 +157,7 @@ var File_catalog_cloudflare_cloudflareorigincacertificate_v1alpha1_api_proto pro
 
 const file_catalog_cloudflare_cloudflareorigincacertificate_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	"Ccatalog/cloudflare/cloudflareorigincacertificate/v1alpha1/api.proto\x12=dev.planton.cloudflare.cloudflareorigincacertificate.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1aDcatalog/cloudflare/cloudflareorigincacertificate/v1alpha1/spec.proto\x1aMcatalog/cloudflare/cloudflareorigincacertificate/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xeb\x03\n" +
+	"Ccatalog/cloudflare/cloudflareorigincacertificate/v1alpha1/api.proto\x12=dev.planton.cloudflare.cloudflareorigincacertificate.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1aGcatalog/cloudflare/cloudflareorigincacertificate/v1alpha1/outputs.proto\x1aDcatalog/cloudflare/cloudflareorigincacertificate/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xeb\x03\n" +
 	"\x1dCloudflareOriginCaCertificate\x12G\n" +
 	"\vapi_version\x18\x01 \x01(\tB&\xbaH#r!\n" +
 	"\x1fcloudflare.planton.dev/v1alpha1R\n" +
@@ -208,8 +208,8 @@ func file_catalog_cloudflare_cloudflareorigincacertificate_v1alpha1_api_proto_in
 	if File_catalog_cloudflare_cloudflareorigincacertificate_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_cloudflare_cloudflareorigincacertificate_v1alpha1_outputs_proto_init()
 	file_catalog_cloudflare_cloudflareorigincacertificate_v1alpha1_spec_proto_init()
-	file_catalog_cloudflare_cloudflareorigincacertificate_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

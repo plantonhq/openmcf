@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.auth0.auth0connection.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/auth0/auth0connection/v1alpha1/outputs.proto";
 import "catalog/auth0/auth0connection/v1alpha1/spec.proto";
-import "catalog/auth0/auth0connection/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // Auth0Connection is a deployment component that configures an identity connection in Auth0.

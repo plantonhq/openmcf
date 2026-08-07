@@ -160,7 +160,7 @@ var File_catalog_azure_azurecosmosdbsqlcontainer_v1alpha1_api_proto protoreflect
 
 const file_catalog_azure_azurecosmosdbsqlcontainer_v1alpha1_api_proto_rawDesc = "" +
 	"\n" +
-	":catalog/azure/azurecosmosdbsqlcontainer/v1alpha1/api.proto\x124dev.planton.azure.azurecosmosdbsqlcontainer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a;catalog/azure/azurecosmosdbsqlcontainer/v1alpha1/spec.proto\x1aDcatalog/azure/azurecosmosdbsqlcontainer/v1alpha1/stack_outputs.proto\x1a\x15shared/metadata.proto\"\xc4\x03\n" +
+	":catalog/azure/azurecosmosdbsqlcontainer/v1alpha1/api.proto\x124dev.planton.azure.azurecosmosdbsqlcontainer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a>catalog/azure/azurecosmosdbsqlcontainer/v1alpha1/outputs.proto\x1a;catalog/azure/azurecosmosdbsqlcontainer/v1alpha1/spec.proto\x1a\x15shared/metadata.proto\"\xc4\x03\n" +
 	"\x19AzureCosmosdbSqlContainer\x12B\n" +
 	"\vapi_version\x18\x01 \x01(\tB!\xbaH\x1er\x1c\n" +
 	"\x1aazure.planton.dev/v1alpha1R\n" +
@@ -211,8 +211,8 @@ func file_catalog_azure_azurecosmosdbsqlcontainer_v1alpha1_api_proto_init() {
 	if File_catalog_azure_azurecosmosdbsqlcontainer_v1alpha1_api_proto != nil {
 		return
 	}
+	file_catalog_azure_azurecosmosdbsqlcontainer_v1alpha1_outputs_proto_init()
 	file_catalog_azure_azurecosmosdbsqlcontainer_v1alpha1_spec_proto_init()
-	file_catalog_azure_azurecosmosdbsqlcontainer_v1alpha1_stack_outputs_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

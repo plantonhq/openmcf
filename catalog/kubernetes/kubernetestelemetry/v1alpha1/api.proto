@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.kubernetes.kubernetestelemetry.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetestelemetry/v1alpha1/outputs.proto";
 import "catalog/kubernetes/kubernetestelemetry/v1alpha1/spec.proto";
-import "catalog/kubernetes/kubernetestelemetry/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // KubernetesTelemetry is an Istio Telemetry resource: a namespaced configuration of

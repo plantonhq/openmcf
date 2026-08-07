@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awstransitgatewayroutetable.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awstransitgatewayroutetable/v1alpha1/outputs.proto";
 import "catalog/aws/awstransitgatewayroutetable/v1alpha1/spec.proto";
-import "catalog/aws/awstransitgatewayroutetable/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsTransitGatewayRouteTable represents a managed AWS Transit Gateway route
@@ -33,7 +33,7 @@ message AwsTransitGatewayRouteTable {
 // AwsTransitGatewayRouteTableStatus describes the status fields for a
 // Transit Gateway route table resource.
 message AwsTransitGatewayRouteTableStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after
+  // outputs captures the outputs returned by Pulumi/Terraform after
   // provisioning.
   AwsTransitGatewayRouteTableStackOutputs outputs = 1;
 }

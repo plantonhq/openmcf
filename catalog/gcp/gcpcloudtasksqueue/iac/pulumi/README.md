@@ -40,9 +40,10 @@ Uses `pulumi-gcp/sdk/v9/go/gcp/cloudtasks` for the `cloudtasks.NewQueue` resourc
 
 ```bash
 cd ~/scm/github.com/plantonhq/planton/catalog/gcp/gcpcloudtasksqueue/iac/pulumi
-make build
-PULUMI_CONFIG_PASSPHRASE="" pulumi login --local
-pulumi stack init dev
-pulumi config set --path 'stack_input' --secret < ../../hack/manifest.yaml
-make preview
+
+# Preview against the component's validated example manifest
+planton pulumi preview \
+  --manifest ../../e2e/manifest.yaml \
+  --stack organization/<project>/<stack> \
+  --module-dir .
 ```

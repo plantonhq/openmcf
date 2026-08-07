@@ -67,7 +67,7 @@ func loadBalancer(
 		return errors.Wrap(err, "failed to create openstack load balancer")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpLoadBalancerId, createdLb.ID())
 	ctx.Export(OpName, createdLb.Name)
 	ctx.Export(OpVipAddress, createdLb.VipAddress)

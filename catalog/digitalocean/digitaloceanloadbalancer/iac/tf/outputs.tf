@@ -25,7 +25,7 @@ output "status" {
   value       = digitalocean_loadbalancer.this.status
 }
 
-# Complete outputs object matching stack_outputs.proto structure
+# Complete outputs object matching outputs.proto structure
 output "outputs" {
   description = "Complete load balancer outputs for integration with other resources"
   value = {

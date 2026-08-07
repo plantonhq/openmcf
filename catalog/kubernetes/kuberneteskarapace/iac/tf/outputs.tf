@@ -1,5 +1,5 @@
 # Stack outputs — must flatten onto KubernetesKarapaceStackOutputs
-# (stack_outputs.proto) identically to the Pulumi module's exports.
+# (outputs.proto) identically to the Pulumi module's exports.
 
 output "namespace" {
   description = "Namespace the registry runs in"

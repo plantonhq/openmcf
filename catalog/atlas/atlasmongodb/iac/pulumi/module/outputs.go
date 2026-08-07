@@ -21,7 +21,7 @@ const (
 
 // exportOutputs exports cluster information to Pulumi stack outputs
 func exportOutputs(ctx *pulumi.Context, cluster *mongodbatlas.AdvancedCluster, locals *Locals) error {
-	// Export required outputs matching stack_outputs.proto
+	// Export required outputs matching outputs.proto
 	ctx.Export(OpId, cluster.ID())
 
 	// Export connection strings with safe access

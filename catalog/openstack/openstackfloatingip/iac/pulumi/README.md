@@ -23,7 +23,7 @@ iac/pulumi/
 2. `main.go` loads the stack input and calls `module.Resources()`
 3. `locals.go` extracts the resolved FK values (`FloatingNetworkId`, `PortId`)
 4. `floating_ip.go` creates `networking.NewFloatingIp()` with the extracted values
-5. Outputs are exported matching `stack_outputs.proto` field names
+5. Outputs are exported matching `outputs.proto` field names
 
 ## Local Development
 

@@ -1,5 +1,5 @@
 # Stack outputs — must flatten onto KubernetesPriorityClassStackOutputs
-# (stack_outputs.proto) identically to the Pulumi module's exports.
+# (outputs.proto) identically to the Pulumi module's exports.
 
 output "priority_class_name" {
   description = "The name of the PriorityClass object as created in the cluster"

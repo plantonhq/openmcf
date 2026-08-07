@@ -1,5 +1,5 @@
 # Stack outputs — must flatten onto KubernetesResourceQuotaStackOutputs
-# (stack_outputs.proto) identically to the Pulumi module's exports.
+# (outputs.proto) identically to the Pulumi module's exports.
 
 output "resource_quota_name" {
   description = "The name of the ResourceQuota object as created in the cluster"

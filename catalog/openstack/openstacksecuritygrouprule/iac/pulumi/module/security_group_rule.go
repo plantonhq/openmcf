@@ -66,7 +66,7 @@ func securityGroupRule(
 		return errors.Wrap(err, "failed to create openstack security group rule")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpRuleId, createdRule.ID())
 	ctx.Export(OpSecurityGroupId, createdRule.SecurityGroupId)
 	ctx.Export(OpDirection, createdRule.Direction)

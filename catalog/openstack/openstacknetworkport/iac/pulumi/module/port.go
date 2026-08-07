@@ -104,7 +104,7 @@ func port(
 		return errors.Wrap(err, "failed to create openstack port")
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpPortId, createdPort.ID())
 	ctx.Export(OpMacAddress, createdPort.MacAddress)
 	ctx.Export(OpAllFixedIps, createdPort.AllFixedIps)

@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awsmemorydbuser.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awsmemorydbuser/v1alpha1/outputs.proto";
 import "catalog/aws/awsmemorydbuser/v1alpha1/spec.proto";
-import "catalog/aws/awsmemorydbuser/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsMemorydbUser represents one identity in MemoryDB's ACL authentication
@@ -32,6 +32,6 @@ message AwsMemorydbUser {
 
 // AwsMemorydbUserStatus describes the status fields for a MemoryDB user resource.
 message AwsMemorydbUserStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after provisioning.
+  // outputs captures the outputs returned by Pulumi/Terraform after provisioning.
   AwsMemorydbUserStackOutputs outputs = 1;
 }

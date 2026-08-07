@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.aws.awstransitgatewayvpcattachment.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awstransitgatewayvpcattachment/v1alpha1/outputs.proto";
 import "catalog/aws/awstransitgatewayvpcattachment/v1alpha1/spec.proto";
-import "catalog/aws/awstransitgatewayvpcattachment/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // AwsTransitGatewayVpcAttachment represents a managed AWS Transit Gateway
@@ -33,7 +33,7 @@ message AwsTransitGatewayVpcAttachment {
 // AwsTransitGatewayVpcAttachmentStatus describes the status fields for a
 // Transit Gateway VPC attachment resource.
 message AwsTransitGatewayVpcAttachmentStatus {
-  // stack_outputs captures the outputs returned by Pulumi/Terraform after
+  // outputs captures the outputs returned by Pulumi/Terraform after
   // provisioning.
   AwsTransitGatewayVpcAttachmentStackOutputs outputs = 1;
 }

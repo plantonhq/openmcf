@@ -3,8 +3,8 @@ syntax = "proto3";
 package dev.planton.kubernetes.kubernetesdestinationrule.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetesdestinationrule/v1alpha1/outputs.proto";
 import "catalog/kubernetes/kubernetesdestinationrule/v1alpha1/spec.proto";
-import "catalog/kubernetes/kubernetesdestinationrule/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 // KubernetesDestinationRule is an Istio DestinationRule: a namespaced resource configuring

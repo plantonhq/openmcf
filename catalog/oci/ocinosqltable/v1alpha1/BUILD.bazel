@@ -4,9 +4,9 @@ go_library(
     name = "v1alpha1",
     srcs = [
         "api.pb.go",
+        "input.pb.go",
+        "outputs.pb.go",
         "spec.pb.go",
-        "stack_input.pb.go",
-        "stack_outputs.pb.go",
     ],
     importpath = "github.com/plantonhq/planton/catalog/oci/ocinosqltable/v1alpha1",
     visibility = ["//visibility:public"],

@@ -103,7 +103,7 @@ func dnsZone(
 		}
 	}
 
-	// Export required outputs (matching stack_outputs.proto fields).
+	// Export required outputs (matching outputs.proto fields).
 	ctx.Export(OpZoneId, createdZone.ID())
 	ctx.Export(OpZoneName, createdZone.Name)
 	ctx.Export(OpRegion, createdZone.Region)
