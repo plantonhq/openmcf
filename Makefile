@@ -239,6 +239,20 @@ generate-proto-docs:
 		--out pkg/protodocs/index.json.gz
 	rm -f build/proto-docs-image.binpb
 
+# Regenerates pkg/providerparity/schemas/ -- the distilled Terraform provider
+# schemas the parity accounting measures the catalog against. One artifact
+# per provider at the exact release its pin resolves to; bumping a pin means
+# editing the constraint below and re-running (the artifact is replaced,
+# never accumulated). Requires `tofu` on PATH and network access to the
+# provider registry. Deterministic: an unchanged pin regenerates a
+# byte-identical artifact.
+.PHONY: generate-provider-schemas
+generate-provider-schemas:
+	go run ./pkg/providerparity/distiller \
+		--out-dir pkg/providerparity/schemas \
+		--provider 'google=hashicorp/google@~> 6.0' \
+		--provider 'google-beta=hashicorp/google-beta@~> 6.0'
+
 # Regenerates the committed catalog reference: per-kind reference.md files
 # (co-located with each kind's protos) plus the catalog-level indexes,
 # foreign-key graph, and commons page, all from the compiled-in descriptors

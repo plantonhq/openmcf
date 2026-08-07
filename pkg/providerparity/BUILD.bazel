@@ -1,0 +1,35 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "providerparity",
+    srcs = [
+        "doc.go",
+        "module_census.go",
+        "report.go",
+        "schema.go",
+        "spec_census.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/providerparity",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/crkreflect",
+        "//shared/cloudresourcekind",
+        "@com_github_pkg_errors//:errors",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)
+
+go_test(
+    name = "providerparity_test",
+    srcs = [
+        "module_census_test.go",
+        "report_test.go",
+        "schema_test.go",
+        "spec_census_test.go",
+    ],
+    embed = [":providerparity"],
+    deps = [
+        "//pkg/crkreflect",
+        "//shared/cloudresourcekind",
+    ],
+)
