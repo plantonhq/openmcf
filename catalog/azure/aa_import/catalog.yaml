@@ -38,3 +38,37 @@ spec:
     - terraform_type: azurerm_local_network_gateway
       pulumi_type: azure:network/localNetworkGateway:LocalNetworkGateway
       id_format: "{local_network_gateway_id}"
+
+    # --- Hybrid connectivity: Private Link and the ExpressRoute circuit
+    # family ---------------------------------------------------------------
+    - terraform_type: azurerm_private_link_service
+      # The classic SDK registers the resource under the legacy
+      # "privatedns" module -- a historical upstream placement, not a DNS
+      # resource.
+      pulumi_type: azure:privatedns/linkService:LinkService
+      id_format: "{private_link_service_id}"
+    - terraform_type: azurerm_express_route_circuit
+      pulumi_type: azure:network/expressRouteCircuit:ExpressRouteCircuit
+      id_format: "{express_route_circuit_id}"
+      # authorization_key (the key the circuit REDEEMS) is never returned
+      # by ARM -- an imported circuit configured with one legitimately
+      # plans an in-place update on it.
+      write_normalized_attributes: [authorization_key]
+    - terraform_type: azurerm_express_route_circuit_authorization
+      pulumi_type: azure:network/expressRouteCircuitAuthorization:ExpressRouteCircuitAuthorization
+      id_format: "{express_route_circuit_id}/authorizations/{authorization_name}"
+      # The module deploys one authorization per spec entry, keyed by
+      # name -- the address's instance key supplies {authorization_name}.
+    - terraform_type: azurerm_express_route_circuit_peering
+      pulumi_type: azure:network/expressRouteCircuitPeering:ExpressRouteCircuitPeering
+      id_format: "{express_route_circuit_peering_id}"
+      # shared_key is write-only in ARM (never read back) -- an imported
+      # peering configured with one legitimately plans an in-place update.
+      write_normalized_attributes: [shared_key]
+    - terraform_type: azurerm_express_route_circuit_connection
+      pulumi_type: azure:network/expressRouteCircuitConnection:ExpressRouteCircuitConnection
+      id_format: "{express_route_circuit_peering_id}/connections/{connection_name}"
+      # The module deploys one Global Reach connection per spec entry,
+      # keyed by name. ARM masks authorization_key on reads (a fixed
+      # asterisk sentinel), so it can never round-trip.
+      write_normalized_attributes: [authorization_key]

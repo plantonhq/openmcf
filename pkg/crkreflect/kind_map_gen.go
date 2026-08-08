@@ -193,6 +193,8 @@ import (
 	azureeventhubnamespacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventhubnamespace/v1alpha1"
 	azureeventhubnamespacecustomermanagedkeyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventhubnamespacecustomermanagedkey/v1alpha1"
 	azureeventhubschemagroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventhubschemagroup/v1alpha1"
+	azureexpressroutecircuitv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressroutecircuit/v1alpha1"
+	azureexpressroutecircuitpeeringv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressroutecircuitpeering/v1alpha1"
 	azurefederatedidentitycredentialv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefederatedidentitycredential/v1alpha1"
 	azurefirewallv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefirewall/v1alpha1"
 	azurefirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefirewallpolicy/v1alpha1"
@@ -237,6 +239,7 @@ import (
 	azureprivatednszonev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednszone/v1alpha1"
 	azureprivatednszonevirtualnetworklinkv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednszonevirtualnetworklink/v1alpha1"
 	azureprivateendpointv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivateendpoint/v1alpha1"
+	azureprivatelinkservicev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatelinkservice/v1alpha1"
 	azurepublicipv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepublicip/v1alpha1"
 	azurepublicipprefixv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepublicipprefix/v1alpha1"
 	azurerediscachev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurerediscache/v1alpha1"
@@ -839,6 +842,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureEventHubNamespace:                         &azureeventhubnamespacev1alpha1.AzureEventHubNamespace{},
 	cloudresourcekind.CloudResourceKind_AzureEventHubNamespaceCustomerManagedKey:       &azureeventhubnamespacecustomermanagedkeyv1alpha1.AzureEventHubNamespaceCustomerManagedKey{},
 	cloudresourcekind.CloudResourceKind_AzureEventHubSchemaGroup:                       &azureeventhubschemagroupv1alpha1.AzureEventHubSchemaGroup{},
+	cloudresourcekind.CloudResourceKind_AzureExpressRouteCircuit:                       &azureexpressroutecircuitv1alpha1.AzureExpressRouteCircuit{},
+	cloudresourcekind.CloudResourceKind_AzureExpressRouteCircuitPeering:                &azureexpressroutecircuitpeeringv1alpha1.AzureExpressRouteCircuitPeering{},
 	cloudresourcekind.CloudResourceKind_AzureFederatedIdentityCredential:               &azurefederatedidentitycredentialv1alpha1.AzureFederatedIdentityCredential{},
 	cloudresourcekind.CloudResourceKind_AzureFirewall:                                  &azurefirewallv1alpha1.AzureFirewall{},
 	cloudresourcekind.CloudResourceKind_AzureFirewallPolicy:                            &azurefirewallpolicyv1alpha1.AzureFirewallPolicy{},
@@ -883,6 +888,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsZone:                            &azureprivatednszonev1alpha1.AzurePrivateDnsZone{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsZoneVirtualNetworkLink:          &azureprivatednszonevirtualnetworklinkv1alpha1.AzurePrivateDnsZoneVirtualNetworkLink{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateEndpoint:                           &azureprivateendpointv1alpha1.AzurePrivateEndpoint{},
+	cloudresourcekind.CloudResourceKind_AzurePrivateLinkService:                        &azureprivatelinkservicev1alpha1.AzurePrivateLinkService{},
 	cloudresourcekind.CloudResourceKind_AzurePublicIp:                                  &azurepublicipv1alpha1.AzurePublicIp{},
 	cloudresourcekind.CloudResourceKind_AzurePublicIpPrefix:                            &azurepublicipprefixv1alpha1.AzurePublicIpPrefix{},
 	cloudresourcekind.CloudResourceKind_AzureRedisCache:                                &azurerediscachev1alpha1.AzureRedisCache{},

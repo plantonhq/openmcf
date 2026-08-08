@@ -1,0 +1,35 @@
+# Minimal AzureExpressRouteCircuitPeering scenario: private peering on
+# the fixture circuit (vlan 100, RFC-1918 /30 pair). The registry chain
+# deploys the fixture circuit; its provider side is NECESSARILY
+# NotProvisioned (no carrier behind the test subscription), and ARM
+# gates peering configuration on the Provisioned state -- so this lane's
+# live outcome is itself the proof point: either ARM accepts private-
+# peering CONFIG on an unprovisioned circuit (assert the ARM child), or
+# it rejects on provisioning state (record the deferral with unblock
+# condition). Never debug that rejection as a module defect.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureExpressRouteCircuitPeering
+metadata:
+  name: planton-oss-e2e-azureexpressroutecircuitpeering-smoke
+  id: planton-oss-e2e-azureexpressroutecircuitpeering-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureexpressroutecircuitpeering
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  expressRouteCircuitName:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-erc
+  peeringType: AZURE_PRIVATE_PEERING
+  vlanId: 100
+  primaryPeerAddressPrefix: "192.168.16.0/30"
+  secondaryPeerAddressPrefix: "192.168.16.4/30"
+  peerAsn: 65010

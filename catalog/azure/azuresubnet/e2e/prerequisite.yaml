@@ -89,3 +89,35 @@ spec:
   name: GatewaySubnet
   addressPrefixes:
     - "10.240.248.0/24"
+---
+# A fourth, private-link-shaped subnet instance: a Private Link Service's
+# NAT addresses only deploy onto a subnet whose
+# privateLinkServiceNetworkPoliciesEnabled flag is FALSE (an ARM
+# requirement no offline gate can check), so the generic fixture above --
+# which keeps the secure default -- cannot serve one. Consumers address
+# this instance by its metadata name
+# (planton-oss-e2e-azure-fixture-pls-subnet); the extra instance is
+# harmless for consumers that only use the generic one. The /24 is carved
+# below the gateway fixture's prefix to stay clear of scenario subnets.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureSubnet
+metadata:
+  name: planton-oss-e2e-azure-fixture-pls-subnet
+  id: planton-oss-e2e-azure-fixture-pls-subnet
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuresubnet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  virtualNetworkId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vnet
+  name: planton-oss-e2e-azure-fixture-pls-subnet
+  addressPrefixes:
+    - "10.240.247.0/24"
+  privateLinkServiceNetworkPoliciesEnabled: false

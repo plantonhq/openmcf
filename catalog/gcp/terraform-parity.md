@@ -27,6 +27,7 @@ that has progressed.
 
 | | |
 |---|---|
+| Provider schema | `azurerm@5.0.0` |
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 79 |

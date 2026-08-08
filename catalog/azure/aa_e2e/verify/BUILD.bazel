@@ -99,6 +99,7 @@ go_library(
         "virtual_machine.go",
         "virtual_machine_scale_set.go",
         "virtual_network.go",
+        "virtual_network_gateway.go",
         "virtual_network_peering.go",
         "web_application_firewall_policy.go",
     ],

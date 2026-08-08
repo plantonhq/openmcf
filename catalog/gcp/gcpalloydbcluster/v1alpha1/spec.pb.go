@@ -802,10 +802,10 @@ type GcpAlloydbClusterSpec struct {
 	KmsKeyName *v1.StringValueOrRef `protobuf:"bytes,11,opt,name=kms_key_name,json=kmsKeyName,proto3" json:"kms_key_name,omitempty"`
 	// Preferred maintenance window for system updates.
 	//
-	// NOTE: a cluster-level deletion-protection flag is deliberately not
-	// modeled: the released terraform provider has no such attribute for
-	// AlloyDB (it exists only on the unreleased main line), so modeling it
-	// would create a safety posture one engine cannot honor.
+	// NOTE: the provider's cluster-level deletion_protection flag is
+	// deliberately not modeled: it is a client-side guard (both modules pin
+	// it false so destroy always works), and deletion safety belongs to the
+	// platform's lifecycle layer rather than a per-resource toggle.
 	MaintenanceWindow *GcpAlloydbClusterMaintenanceWindow `protobuf:"bytes,12,opt,name=maintenance_window,json=maintenanceWindow,proto3" json:"maintenance_window,omitempty"`
 	// Primary instance configuration. Required -- a cluster without a
 	// primary instance cannot serve queries.

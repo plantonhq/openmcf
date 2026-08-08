@@ -286,6 +286,33 @@ func TestAzureVirtualNetworkGatewayConnection_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurevirtualnetworkgatewayconnection", "terraform")
 }
 
+// --- Azure Private Link Service (composed: policies-disabled subnet fixture + annotation-declared fixture load balancer -> the provider side of Private Link; ~1-2 min) ---
+
+func TestAzurePrivateLinkService_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatelinkservice", "pulumi")
+}
+func TestAzurePrivateLinkService_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatelinkservice", "terraform")
+}
+
+// --- Azure ExpressRoute Circuit (fixture RG -> a NotProvisioned 50 Mbps circuit + one authorization; minutes, bills from creation) ---
+
+func TestAzureExpressRouteCircuit_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressroutecircuit", "pulumi")
+}
+func TestAzureExpressRouteCircuit_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressroutecircuit", "terraform")
+}
+
+// --- Azure ExpressRoute Circuit Peering (composed: fixture circuit -> private peering; ARM gates peering config on provider provisioning -- see the scenario header) ---
+
+func TestAzureExpressRouteCircuitPeering_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressroutecircuitpeering", "pulumi")
+}
+func TestAzureExpressRouteCircuitPeering_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressroutecircuitpeering", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {

@@ -95,6 +95,8 @@ Fields on other kinds that can point at this resource:
 | AzureDnsZone | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureEventHubCluster | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureEventHubNamespace | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureExpressRouteCircuit | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureExpressRouteCircuitPeering | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFirewall | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFirewallPolicy | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFrontDoorFirewallPolicy | `spec.resourceGroup` | `status.outputs.resource_group_name` |
@@ -121,6 +123,7 @@ Fields on other kinds that can point at this resource:
 | AzurePostgresqlFlexibleServer | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePrivateDnsZone | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePrivateEndpoint | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzurePrivateLinkService | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePublicIp | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePublicIpPrefix | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureRedisCache | `spec.resourceGroup` | `status.outputs.resource_group_name` |

@@ -403,6 +403,7 @@ Fields on other kinds that can point at this resource:
 | AzureNetworkInterface | `spec.ipConfigurations[].subnetId` | `status.outputs.subnet_id` |
 | AzurePostgresqlFlexibleServer | `spec.delegatedSubnetId` | `status.outputs.subnet_id` |
 | AzurePrivateEndpoint | `spec.subnetId` | `status.outputs.subnet_id` |
+| AzurePrivateLinkService | `spec.natIpConfigurations[].subnetId` | `status.outputs.subnet_id` |
 | AzureRedisCache | `spec.subnetId` | `status.outputs.subnet_id` |
 | AzureServiceBusNamespace | `spec.networkRuleSet.networkRules[].subnetId` | `status.outputs.subnet_id` |
 | AzureStorageAccount | `spec.networkRules.virtualNetworkSubnetIds` | `status.outputs.subnet_id` |

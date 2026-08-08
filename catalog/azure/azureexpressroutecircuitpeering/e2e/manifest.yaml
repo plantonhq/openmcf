@@ -1,0 +1,20 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureExpressRouteCircuitPeering
+metadata:
+  name: test-express-route-circuit-peering
+spec:
+  resourceGroup:
+    value: test-rg
+  # ARM addresses peerings as children of the circuit NAME.
+  expressRouteCircuitName:
+    value: hq-circuit
+  # Private peering: VNet connectivity -- the type virtually every
+  # deployment needs. The type is the ARM identity (one per circuit).
+  peeringType: AZURE_PRIVATE_PEERING
+  # Provider-assigned; unique on the circuit.
+  vlanId: 100
+  # One /30 per physical link: your router takes the first usable
+  # address, Microsoft's edge the second.
+  primaryPeerAddressPrefix: "192.168.16.0/30"
+  secondaryPeerAddressPrefix: "192.168.16.4/30"
+  peerAsn: 65010

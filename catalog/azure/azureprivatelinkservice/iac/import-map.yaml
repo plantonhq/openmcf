@@ -1,0 +1,16 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureprivatelinkservice
+spec:
+  # The service's identity is its full ARM resource ID -- discoverable
+  # from a prior deploy's outputs or the portal, never derivable from the
+  # spec alone (the subscription id is not spec knowledge).
+  values:
+    - name: private_link_service_id
+      derivations:
+        - from_stack_output: private_link_service_id
+      where_to_find: >-
+        Portal -> Private Link Services -> the service -> Properties ->
+        Resource ID, or `az network private-link-service show -g <rg>
+        -n <name> --query id`.

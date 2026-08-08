@@ -251,7 +251,8 @@ generate-provider-schemas:
 	go run ./pkg/providerparity/distiller \
 		--out-dir pkg/providerparity/schemas \
 		--provider 'google=hashicorp/google@~> 7.0' \
-		--provider 'google-beta=hashicorp/google-beta@~> 7.0'
+		--provider 'google-beta=hashicorp/google-beta@~> 7.0' \
+		--provider 'azurerm=hashicorp/azurerm@5.0.0'
 
 # Regenerate every committed public parity page (catalog/<provider>/terraform-parity.md)
 # from the accounting. Each page embeds its own generation parameters, so this

@@ -2103,6 +2103,39 @@ enum CloudResourceKind {
     prerequisites: [AzureResourceGroup]
   }];
 
+  // AzureSubnet is the sole prerequisite: every NAT ip configuration
+  // draws its address from a subnet with private-link-service network
+  // policies disabled (the subnet install profile publishes a fixture
+  // instance with that flag off). The Standard load balancer whose
+  // frontend the service typically fronts is NOT a registry
+  // prerequisite -- the spec's destination is an exactly-one-of (load
+  // balancer frontend OR fixed destination IP), so scenarios that use
+  // the load-balancer shape declare it via the
+  // planton.dev/e2e-prerequisites annotation instead.
+  AzurePrivateLinkService = 2143 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azpls"
+    prerequisites: [AzureSubnet]
+  }];
+
+  AzureExpressRouteCircuit = 2144 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azerc"
+    prerequisites: [AzureResourceGroup]
+  }];
+
+  // The circuit is the prerequisite: a peering is an ARM child of the
+  // circuit, addressed by the circuit's name (the resource group chains
+  // transitively through the circuit).
+  AzureExpressRouteCircuitPeering = 2145 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azercp"
+    prerequisites: [AzureExpressRouteCircuit]
+  }];
+
   // 3000–3999: GCP resources
   GcpArtifactRegistryRepo = 3000 [(kind_meta) = {
     provider: gcp
