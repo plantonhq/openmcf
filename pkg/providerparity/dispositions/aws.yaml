@@ -387,14 +387,14 @@ resources:
     disposition: deferred
     reason: "compliance-audit vertical (Audit Manager); deferred pending demand"
   - resource: aws_autoscaling_attachment
-    disposition: model-planned
-    reason: "ASG companion surface; folds into the existing AwsAutoScalingGroup kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsAutoScalingGroup: target_groups registers ALB/NLB target groups and traffic_sources covers Classic ELBs -- the standalone attachment is the imperative pattern for a group that owns its attachments"
   - resource: aws_autoscaling_group_tag
-    disposition: model-planned
-    reason: "ASG companion surface; folds into the existing AwsAutoScalingGroup kind as its spec deepens"
+    disposition: deferred
+    reason: "tags auto-scaling groups OWNED BY ANOTHER SERVICE (e.g. EKS managed node groups' ASGs); AwsAutoScalingGroup tags its own group natively with propagate-at-launch -- revisit from the EKS family if node-group tag-propagation demand appears"
   - resource: aws_autoscaling_traffic_source_attachment
-    disposition: model-planned
-    reason: "ASG companion surface; folds into the existing AwsAutoScalingGroup kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsAutoScalingGroup.traffic_sources -- the standalone attachment is the imperative pattern for a group that owns its traffic sources"
   - resource: aws_autoscalingplans_scaling_plan
     disposition: excluded-deprecated
     reason: "AutoScaling Plans is the legacy predictive-scaling path, superseded by ASG predictive scaling policies"

@@ -36,3 +36,16 @@ spec:
         volumeSizeGb: 30
         volumeType: gp3
         encrypted: true
+  # Advanced-networking arms on the primary interface: template CREATION
+  # stores these (launch-time features bill nothing here), so the live lane
+  # proves AWS accepts the rendered shapes -- connection-tracking timeouts
+  # and ENA Express (SRD) with its UDP option.
+  networkInterfaces:
+    - deviceIndex: 0
+      description: primary with tuned conntrack and ENA Express
+      connectionTracking:
+        tcpEstablishedTimeoutSeconds: 86400
+        udpTimeoutSeconds: 45
+      enaSrd:
+        enabled: true
+        udpEnabled: true

@@ -359,6 +359,7 @@ Fields on other kinds that can point at this resource:
 | AwsKinesisFirehose | `spec.opensearchServerless.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | AwsLambda | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsLaunchTemplate | `spec.networkInterfaces[].subnetId` | `status.outputs.subnet_id` |
+| AwsLaunchTemplate | `spec.secondaryInterfaces[].secondarySubnetId` | `status.outputs.subnet_id` |
 | AwsMemcachedElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsMemorydbCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsMskCluster | `spec.subnetIds` | `status.outputs.subnet_id` |

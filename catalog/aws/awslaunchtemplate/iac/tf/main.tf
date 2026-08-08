@@ -153,6 +153,9 @@ resource "aws_launch_template" "this" {
           # mapping decides the default): null keeps the AMI default, an
           # explicit value overrides it.
           delete_on_termination = ebs.value.delete_on_termination == null ? null : tostring(ebs.value.delete_on_termination)
+          # Paid snapshot hydration: without it, blocks load lazily on
+          # first read (restored-volume cold start).
+          volume_initialization_rate = ebs.value.volume_initialization_rate_mibps > 0 ? ebs.value.volume_initialization_rate_mibps : null
         }
       }
     }
@@ -185,6 +188,54 @@ resource "aws_launch_template" "this" {
       ipv4_prefixes      = length(network_interfaces.value.ipv4_prefixes) > 0 ? network_interfaces.value.ipv4_prefixes : null
       ipv6_prefix_count  = network_interfaces.value.ipv6_prefix_count > 0 ? network_interfaces.value.ipv6_prefix_count : null
       ipv6_prefixes      = length(network_interfaces.value.ipv6_prefixes) > 0 ? network_interfaces.value.ipv6_prefixes : null
+
+      # Wavelength carrier IP: a nullable tri-state like the public-IP
+      # flag -- null inherits, an explicit value overrides.
+      associate_carrier_ip_address = network_interfaces.value.associate_carrier_ip_address == null ? null : tostring(network_interfaces.value.associate_carrier_ip_address)
+
+      # primary_ipv6 pins the auto-assigned IPv6 as the instance's stable
+      # primary identity (survives interface replacement).
+      primary_ipv6 = network_interfaces.value.primary_ipv6 == null ? null : tostring(network_interfaces.value.primary_ipv6)
+
+      ena_queue_count = network_interfaces.value.ena_queue_count > 0 ? network_interfaces.value.ena_queue_count : null
+
+      dynamic "connection_tracking_specification" {
+        for_each = network_interfaces.value.connection_tracking != null ? [network_interfaces.value.connection_tracking] : []
+        content {
+          tcp_established_timeout = connection_tracking_specification.value.tcp_established_timeout_seconds > 0 ? connection_tracking_specification.value.tcp_established_timeout_seconds : null
+          udp_stream_timeout      = connection_tracking_specification.value.udp_stream_timeout_seconds > 0 ? connection_tracking_specification.value.udp_stream_timeout_seconds : null
+          udp_timeout             = connection_tracking_specification.value.udp_timeout_seconds > 0 ? connection_tracking_specification.value.udp_timeout_seconds : null
+        }
+      }
+
+      dynamic "ena_srd_specification" {
+        for_each = network_interfaces.value.ena_srd != null ? [network_interfaces.value.ena_srd] : []
+        content {
+          ena_srd_enabled = ena_srd_specification.value.enabled
+          dynamic "ena_srd_udp_specification" {
+            for_each = ena_srd_specification.value.udp_enabled ? [true] : []
+            content {
+              ena_srd_udp_enabled = true
+            }
+          }
+        }
+      }
+    }
+  }
+
+  # Additional interfaces beyond the primary set -- multi-homed launches.
+  # AWS accepts exactly one interface_type today ("secondary"), so the
+  # module wires it rather than surfacing a one-value choice.
+  dynamic "secondary_interfaces" {
+    for_each = var.spec.secondary_interfaces
+    content {
+      interface_type           = "secondary"
+      device_index             = secondary_interfaces.value.device_index > 0 ? secondary_interfaces.value.device_index : null
+      network_card_index       = secondary_interfaces.value.network_card_index > 0 ? secondary_interfaces.value.network_card_index : null
+      delete_on_termination    = secondary_interfaces.value.delete_on_termination ? true : null
+      secondary_subnet_id      = secondary_interfaces.value.secondary_subnet_id != "" ? secondary_interfaces.value.secondary_subnet_id : null
+      private_ip_address_count = secondary_interfaces.value.private_ip_address_count > 0 ? secondary_interfaces.value.private_ip_address_count : null
+      private_ip_addresses     = length(secondary_interfaces.value.private_ip_addresses) > 0 ? secondary_interfaces.value.private_ip_addresses : null
     }
   }
 
@@ -211,19 +262,60 @@ resource "aws_launch_template" "this" {
   dynamic "placement" {
     for_each = var.spec.placement != null ? [var.spec.placement] : []
     content {
-      availability_zone = placement.value.availability_zone != "" ? placement.value.availability_zone : null
-      group_name        = placement.value.group_name != "" ? placement.value.group_name : null
-      partition_number  = placement.value.partition_number > 0 ? placement.value.partition_number : null
-      tenancy           = placement.value.tenancy != "" ? placement.value.tenancy : null
+      availability_zone       = placement.value.availability_zone != "" ? placement.value.availability_zone : null
+      group_name              = placement.value.group_name != "" ? placement.value.group_name : null
+      group_id                = placement.value.group_id != "" ? placement.value.group_id : null
+      partition_number        = placement.value.partition_number > 0 ? placement.value.partition_number : null
+      tenancy                 = placement.value.tenancy != "" ? placement.value.tenancy : null
+      host_id                 = placement.value.host_id != "" ? placement.value.host_id : null
+      host_resource_group_arn = placement.value.host_resource_group_arn != "" ? placement.value.host_resource_group_arn : null
+      affinity                = placement.value.affinity != "" ? placement.value.affinity : null
+      spread_domain           = placement.value.spread_domain != "" ? placement.value.spread_domain : null
     }
   }
 
   dynamic "cpu_options" {
     for_each = var.spec.cpu_options != null ? [var.spec.cpu_options] : []
     content {
-      core_count       = cpu_options.value.core_count > 0 ? cpu_options.value.core_count : null
-      threads_per_core = cpu_options.value.threads_per_core > 0 ? cpu_options.value.threads_per_core : null
-      amd_sev_snp      = cpu_options.value.amd_sev_snp != "" ? cpu_options.value.amd_sev_snp : null
+      core_count            = cpu_options.value.core_count > 0 ? cpu_options.value.core_count : null
+      threads_per_core      = cpu_options.value.threads_per_core > 0 ? cpu_options.value.threads_per_core : null
+      amd_sev_snp           = cpu_options.value.amd_sev_snp != "" ? cpu_options.value.amd_sev_snp : null
+      nested_virtualization = cpu_options.value.nested_virtualization != "" ? cpu_options.value.nested_virtualization : null
+    }
+  }
+
+  # Capacity Reservation targeting: a preference shapes how launches use
+  # reservations; a target pins them to one reservation or a resource
+  # group of reservations (the required form for Capacity Blocks).
+  dynamic "capacity_reservation_specification" {
+    for_each = var.spec.capacity_reservation != null ? [var.spec.capacity_reservation] : []
+    content {
+      capacity_reservation_preference = capacity_reservation_specification.value.preference != "" ? capacity_reservation_specification.value.preference : null
+      dynamic "capacity_reservation_target" {
+        for_each = (capacity_reservation_specification.value.capacity_reservation_id != "" || capacity_reservation_specification.value.capacity_reservation_resource_group_arn != "") ? [capacity_reservation_specification.value] : []
+        content {
+          capacity_reservation_id                 = capacity_reservation_target.value.capacity_reservation_id != "" ? capacity_reservation_target.value.capacity_reservation_id : null
+          capacity_reservation_resource_group_arn = capacity_reservation_target.value.capacity_reservation_resource_group_arn != "" ? capacity_reservation_target.value.capacity_reservation_resource_group_arn : null
+        }
+      }
+    }
+  }
+
+  # Network bandwidth weighting -- a no-cost bias toward VPC or EBS
+  # bandwidth on supported types.
+  dynamic "network_performance_options" {
+    for_each = var.spec.bandwidth_weighting != "" ? [var.spec.bandwidth_weighting] : []
+    content {
+      bandwidth_weighting = network_performance_options.value
+    }
+  }
+
+  # License Manager BYOL tracking: launched instances consume these
+  # license configurations.
+  dynamic "license_specification" {
+    for_each = var.spec.license_configuration_arns
+    content {
+      license_configuration_arn = license_specification.value
     }
   }
 
@@ -234,17 +326,21 @@ resource "aws_launch_template" "this" {
     }
   }
 
-  # Configuring spot_options makes every launch a Spot request; the market
-  # type is implied by the block's presence.
+  # The purchase market: spot_options implies the spot market; an explicit
+  # market_type covers capacity-block (pre-purchased ML capacity, paired
+  # with capacity_reservation targeting). No block at all means On-Demand.
   dynamic "instance_market_options" {
-    for_each = var.spec.spot_options != null ? [var.spec.spot_options] : []
+    for_each = (var.spec.spot_options != null || var.spec.market_type != "") ? [true] : []
     content {
-      market_type = "spot"
-      spot_options {
-        max_price                      = instance_market_options.value.max_price != "" ? instance_market_options.value.max_price : null
-        spot_instance_type             = instance_market_options.value.spot_instance_type != "" ? instance_market_options.value.spot_instance_type : null
-        instance_interruption_behavior = instance_market_options.value.instance_interruption_behavior != "" ? instance_market_options.value.instance_interruption_behavior : null
-        valid_until                    = instance_market_options.value.valid_until != "" ? instance_market_options.value.valid_until : null
+      market_type = var.spec.market_type != "" ? var.spec.market_type : "spot"
+      dynamic "spot_options" {
+        for_each = var.spec.spot_options != null ? [var.spec.spot_options] : []
+        content {
+          max_price                      = spot_options.value.max_price != "" ? spot_options.value.max_price : null
+          spot_instance_type             = spot_options.value.spot_instance_type != "" ? spot_options.value.spot_instance_type : null
+          instance_interruption_behavior = spot_options.value.instance_interruption_behavior != "" ? spot_options.value.instance_interruption_behavior : null
+          valid_until                    = spot_options.value.valid_until != "" ? spot_options.value.valid_until : null
+        }
       }
     }
   }

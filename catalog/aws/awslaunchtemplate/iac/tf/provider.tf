@@ -7,6 +7,10 @@ terraform {
       # a deliberate catalog-wide decision, and floor-at-latest-released-minor
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: network_interfaces.ena_queue_count needs 6.57.1;
+      # secondary_interfaces, cpu_options.nested_virtualization, and
+      # network_performance_options need 6.33.0.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

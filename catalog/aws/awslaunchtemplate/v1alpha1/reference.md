@@ -74,6 +74,21 @@ spec:
         throughputMibps: 250
         encrypted: true
         deleteOnTermination: true
+    # A pre-warmed data volume: hydrated from its snapshot at a paid rate
+    # instead of lazily on first read (restored-volume cold start).
+    - deviceName: /dev/xvdb
+      ebs:
+        snapshotId: snap-0123456789abcdef0
+        volumeType: gp3
+        volumeInitializationRateMibps: 200
+        deleteOnTermination: true
+  # Bias baseline bandwidth toward VPC networking -- free performance
+  # shaping for a web fleet on supported instance types.
+  bandwidthWeighting: vpc-1
+  # Consume a matching open Capacity Reservation when one exists,
+  # otherwise launch as regular On-Demand.
+  capacityReservation:
+    preference: open
   instanceInitiatedShutdownBehavior: terminate
 ```
 
@@ -146,6 +161,7 @@ spec:
 | `spec.blockDeviceMappings[].ebs.kmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.blockDeviceMappings[].ebs.snapshotId` | `string` |  |  |  |
 | `spec.blockDeviceMappings[].ebs.deleteOnTermination` | `bool` |  |  |  |
+| `spec.blockDeviceMappings[].ebs.volumeInitializationRateMibps` | `int32` |  |  |  |
 | `spec.networkInterfaces` | `[]AwsLaunchTemplateNetworkInterface` |  |  |  |
 | `spec.networkInterfaces[].deviceIndex` | `int32` |  |  |  |
 | `spec.networkInterfaces[].networkCardIndex` | `int32` |  |  |  |
@@ -165,6 +181,16 @@ spec:
 | `spec.networkInterfaces[].ipv4Prefixes` | `[]string` |  |  |  |
 | `spec.networkInterfaces[].ipv6PrefixCount` | `int32` |  |  |  |
 | `spec.networkInterfaces[].ipv6Prefixes` | `[]string` |  |  |  |
+| `spec.networkInterfaces[].associateCarrierIpAddress` | `bool` |  |  |  |
+| `spec.networkInterfaces[].connectionTracking` | `AwsLaunchTemplateConnectionTracking` |  |  |  |
+| `spec.networkInterfaces[].connectionTracking.tcpEstablishedTimeoutSeconds` | `int32` |  |  |  |
+| `spec.networkInterfaces[].connectionTracking.udpStreamTimeoutSeconds` | `int32` |  |  |  |
+| `spec.networkInterfaces[].connectionTracking.udpTimeoutSeconds` | `int32` |  |  |  |
+| `spec.networkInterfaces[].enaSrd` | `AwsLaunchTemplateEnaSrd` |  |  |  |
+| `spec.networkInterfaces[].enaSrd.enabled` | `bool` |  |  |  |
+| `spec.networkInterfaces[].enaSrd.udpEnabled` | `bool` |  |  |  |
+| `spec.networkInterfaces[].enaQueueCount` | `int32` |  |  |  |
+| `spec.networkInterfaces[].primaryIpv6` | `bool` |  |  |  |
 | `spec.metadataOptions` | `AwsLaunchTemplateMetadataOptions` |  |  |  |
 | `spec.metadataOptions.httpEndpoint` | `string` |  |  |  |
 | `spec.metadataOptions.httpTokens` | `string` |  |  |  |
@@ -177,10 +203,16 @@ spec:
 | `spec.placement.groupName` | `string` |  |  |  |
 | `spec.placement.partitionNumber` | `int32` |  |  |  |
 | `spec.placement.tenancy` | `string` |  |  |  |
+| `spec.placement.groupId` | `string` |  |  |  |
+| `spec.placement.hostId` | `string` |  |  |  |
+| `spec.placement.hostResourceGroupArn` | `string` |  |  |  |
+| `spec.placement.affinity` | `string` |  |  |  |
+| `spec.placement.spreadDomain` | `string` |  |  |  |
 | `spec.cpuOptions` | `AwsLaunchTemplateCpuOptions` |  |  |  |
 | `spec.cpuOptions.coreCount` | `int32` |  |  |  |
 | `spec.cpuOptions.threadsPerCore` | `int32` |  |  |  |
 | `spec.cpuOptions.amdSevSnp` | `string` |  |  |  |
+| `spec.cpuOptions.nestedVirtualization` | `string` |  |  |  |
 | `spec.cpuCredits` | `string` |  |  |  |
 | `spec.spotOptions` | `AwsLaunchTemplateSpotOptions` |  |  |  |
 | `spec.spotOptions.maxPrice` | `string` |  |  |  |
@@ -197,6 +229,20 @@ spec:
 | `spec.disableApiStop` | `bool` |  |  |  |
 | `spec.disableApiTermination` | `bool` |  |  |  |
 | `spec.instanceInitiatedShutdownBehavior` | `string` |  |  |  |
+| `spec.capacityReservation` | `AwsLaunchTemplateCapacityReservation` |  |  |  |
+| `spec.capacityReservation.preference` | `string` |  |  |  |
+| `spec.capacityReservation.capacityReservationId` | `string` |  |  |  |
+| `spec.capacityReservation.capacityReservationResourceGroupArn` | `string` |  |  |  |
+| `spec.marketType` | `string` |  |  |  |
+| `spec.bandwidthWeighting` | `string` |  |  |  |
+| `spec.licenseConfigurationArns` | `[]string` |  |  |  |
+| `spec.secondaryInterfaces` | `[]AwsLaunchTemplateSecondaryInterface` |  |  |  |
+| `spec.secondaryInterfaces[].deviceIndex` | `int32` |  |  |  |
+| `spec.secondaryInterfaces[].networkCardIndex` | `int32` |  |  |  |
+| `spec.secondaryInterfaces[].deleteOnTermination` | `bool` |  |  |  |
+| `spec.secondaryInterfaces[].secondarySubnetId` | `string \| valueFrom` |  |  | AwsSubnet (`status.outputs.subnet_id`) |
+| `spec.secondaryInterfaces[].privateIpAddressCount` | `int32` |  |  |  |
+| `spec.secondaryInterfaces[].privateIpAddresses` | `[]string` |  |  |  |
 
 ## Field Details
 
@@ -658,6 +704,8 @@ AMI-baked data volume. Mutually exclusive with ebs.
 
 EBS volume configuration for this device.
 
+- rule: volume_initialization_rate_mibps must be between 100 and 300 when set
+- rule: volume_initialization_rate_mibps only applies when creating the volume from snapshot_id
 - rule: volume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard
 - rule: throughput_mibps must be between 125 and 1000 when set
 - rule: throughput_mibps only applies to gp3 volumes
@@ -727,6 +775,10 @@ Delete the volume when the instance terminates. AWS default: true for
 the root volume, false for additional volumes (inherited from the
 AMI). Optional rather than plain bool so an explicit false ("keep the
 data volume") is distinguishable from unset ("keep the AMI default").
+
+### spec.blockDeviceMappings[].ebs.volumeInitializationRateMibps
+
+`int32`
 
 ### spec.networkInterfaces
 
@@ -881,6 +933,52 @@ ipv6_prefixes.
 Specific /80 IPv6 prefixes. Mutually exclusive with
 ipv6_prefix_count.
 
+### spec.networkInterfaces[].associateCarrierIpAddress
+
+`bool` · optional (explicit presence)
+
+### spec.networkInterfaces[].connectionTracking
+
+`AwsLaunchTemplateConnectionTracking`
+
+- rule: tcp_established_timeout_seconds must be between 60 and 432000 when set
+- rule: udp_stream_timeout_seconds must be between 60 and 180 when set
+- rule: udp_timeout_seconds must be between 30 and 60 when set
+
+### spec.networkInterfaces[].connectionTracking.tcpEstablishedTimeoutSeconds
+
+`int32`
+
+### spec.networkInterfaces[].connectionTracking.udpStreamTimeoutSeconds
+
+`int32`
+
+### spec.networkInterfaces[].connectionTracking.udpTimeoutSeconds
+
+`int32`
+
+### spec.networkInterfaces[].enaSrd
+
+`AwsLaunchTemplateEnaSrd`
+
+- rule: udp_enabled requires enabled to be true
+
+### spec.networkInterfaces[].enaSrd.enabled
+
+`bool`
+
+### spec.networkInterfaces[].enaSrd.udpEnabled
+
+`bool`
+
+### spec.networkInterfaces[].enaQueueCount
+
+`int32`
+
+### spec.networkInterfaces[].primaryIpv6
+
+`bool` · optional (explicit presence)
+
 ### spec.metadataOptions
 
 `AwsLaunchTemplateMetadataOptions`
@@ -951,6 +1049,10 @@ Placement of launched instances: availability zone pinning, placement
 group membership, and tenancy.
 
 - rule: tenancy must be 'default', 'dedicated', or 'host' when set
+- rule: group_name and group_id are mutually exclusive
+- rule: host_id and host_resource_group_arn are mutually exclusive
+- rule: affinity must be 'default' or 'host' when set
+- rule: host_id / host_resource_group_arn / affinity require tenancy 'host'
 
 ### spec.placement.availabilityZone
 
@@ -981,6 +1083,26 @@ Instance tenancy: "default" (shared hardware), "dedicated"
 (single-tenant hardware), or "host" (a specific Dedicated Host --
 licensing scenarios).
 
+### spec.placement.groupId
+
+`string`
+
+### spec.placement.hostId
+
+`string`
+
+### spec.placement.hostResourceGroupArn
+
+`string`
+
+### spec.placement.affinity
+
+`string`
+
+### spec.placement.spreadDomain
+
+`string`
+
 ### spec.cpuOptions
 
 `AwsLaunchTemplateCpuOptions`
@@ -989,6 +1111,7 @@ CPU topology and features: trim vCPUs on license-bound workloads
 (threads_per_core = 1), or enable AMD SEV-SNP memory encryption.
 
 - rule: threads_per_core must be 1 or 2 when set
+- rule: nested_virtualization must be 'enabled' or 'disabled' when set
 - rule: amd_sev_snp must be 'enabled' or 'disabled' when set
 
 ### spec.cpuOptions.coreCount
@@ -1013,6 +1136,10 @@ shared core resources).
 
 AMD SEV-SNP memory encryption on supported AMD types: "enabled" or
 "disabled". Confidential-computing hardening.
+
+### spec.cpuOptions.nestedVirtualization
+
+`string`
 
 ### spec.cpuCredits
 
@@ -1150,8 +1277,76 @@ default; the instance can be started again) or "terminate" (the
 instance is gone -- the right choice for immutable fleet members that
 should never be resurrected by hand).
 
+### spec.capacityReservation
+
+`AwsLaunchTemplateCapacityReservation`
+
+- rule: preference must be 'open', 'none', or 'capacity-reservations-only' when set
+- rule: capacity_reservation_id and capacity_reservation_resource_group_arn are mutually exclusive
+
+### spec.capacityReservation.preference
+
+`string`
+
+### spec.capacityReservation.capacityReservationId
+
+`string`
+
+### spec.capacityReservation.capacityReservationResourceGroupArn
+
+`string`
+
+### spec.marketType
+
+`string`
+
+### spec.bandwidthWeighting
+
+`string`
+
+### spec.licenseConfigurationArns
+
+`[]string`
+
+### spec.secondaryInterfaces
+
+`[]AwsLaunchTemplateSecondaryInterface`
+
+- rule: private_ip_address_count and private_ip_addresses are mutually exclusive
+
+### spec.secondaryInterfaces[].deviceIndex
+
+`int32`
+
+### spec.secondaryInterfaces[].networkCardIndex
+
+`int32`
+
+### spec.secondaryInterfaces[].deleteOnTermination
+
+`bool`
+
+### spec.secondaryInterfaces[].secondarySubnetId
+
+`string | valueFrom`
+
+- references: AwsSubnet (`status.outputs.subnet_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSubnet, name: <that resource's name>, fieldPath: status.outputs.subnet_id}} -- a bare string does not parse
+
+### spec.secondaryInterfaces[].privateIpAddressCount
+
+`int32`
+
+### spec.secondaryInterfaces[].privateIpAddresses
+
+`[]string`
+
 ## Validation Rules
 
+- `market_type_valid`: market_type must be 'spot' or 'capacity-block' when set
+- `spot_options_require_spot_market`: spot_options only applies to the 'spot' market (leave market_type unset or 'spot')
+- `capacity_block_requires_reservation_target`: market_type 'capacity-block' requires capacity_reservation with capacity_reservation_id or capacity_reservation_resource_group_arn
+- `bandwidth_weighting_valid`: bandwidth_weighting must be 'default', 'vpc-1', or 'ebs-1' when set
 - `instance_type_xor_requirements`: instance_type and instance_requirements are mutually exclusive -- name an exact type, or describe requirements, not both
 - `image_id_format`: image_id must be an AMI ID beginning with 'ami-'
 - `cpu_credits_valid`: cpu_credits must be 'standard' or 'unlimited' when set
@@ -1182,6 +1377,7 @@ Fields that can point at another resource's outputs:
 | `spec.blockDeviceMappings[].ebs.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.networkInterfaces[].subnetId` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.networkInterfaces[].securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
+| `spec.secondaryInterfaces[].secondarySubnetId` | AwsSubnet | `status.outputs.subnet_id` |
 
 ## Referenced By
 

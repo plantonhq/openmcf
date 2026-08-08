@@ -32,7 +32,7 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
 | Distinct provider resources consumed | 223 |
-| Spec fields authored across all kinds | 4085 |
+| Spec fields authored across all kinds | 4161 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**6 of 112 kinds are at total accounting; 87 proven live.**
+**8 of 112 kinds are at total accounting; 87 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -57,7 +57,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsAppRunnerService | 48 | 5 | 0 | 0 | 74 | ❌ | ✅ pulumi, terraform |
 | AwsAppRunnerVpcConnector | 6 | 1 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
 | AwsAthenaWorkgroup | 37 | 4 | 0 | 0 | 59 | ❌ | ✅ pulumi, terraform |
-| AwsAutoScalingGroup | 217 | 43 | 0 | 0 | 284 | ❌ | ✅ pulumi, terraform |
+| AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchComputeEnvironment | 33 | 20 | 0 | 0 | 19 | ❌ | ✅ pulumi, terraform |
 | AwsBatchJobDefinition | 67 | 12 | 0 | 0 | 98 | ❌ | ✅ pulumi, terraform |
 | AwsBatchJobQueue | 12 | 5 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
@@ -118,7 +118,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsKmsKey | 19 | 9 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
 | AwsLambda | 103 | 28 | 0 | 0 | 118 | ❌ | ✅ pulumi, terraform |
 | AwsLambdaEventSourceMapping | 45 | 11 | 0 | 0 | 58 | ❌ | ✅ pulumi, terraform |
-| AwsLaunchTemplate | 139 | 84 | 0 | 0 | 69 | ❌ | ✅ pulumi, terraform |
+| AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListener | 76 | 14 | 0 | 0 | 121 | ❌ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 0 | 0 | 113 | ❌ | ✅ pulumi, terraform |
 | AwsLbTargetGroup | 48 | 31 | 0 | 0 | 26 | ❌ | ✅ pulumi, terraform |
@@ -172,9 +172,9 @@ All resources of `aws@6.58.0` land in exactly one class:
 |---|---|---|
 | Modeled | 223 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 1 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 824 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 515 | deliberately not offered, each with the recorded reason |
+| Composed | 3 | capability covered through an existing kind's surface rather than a kind of its own |
+| Planned | 821 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 516 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 128 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -411,13 +411,15 @@ rather than trusted.
 | `aws_wafv2_web_acl_association` | consumed by AwsAlb, AwsAppRunnerService |
 | `aws_wafv2_web_acl_logging_configuration` | consumed by AwsWafWebAcl |
 
-### Composed (1)
+### Composed (3)
 
 | Resource | Recorded reason |
 |---|---|
+| `aws_autoscaling_attachment` | covered by AwsAutoScalingGroup: target_groups registers ALB/NLB target groups and traffic_sources covers Classic ELBs -- the standalone attachment is the imperative pattern for a group that owns its attachments |
+| `aws_autoscaling_traffic_source_attachment` | covered by AwsAutoScalingGroup.traffic_sources -- the standalone attachment is the imperative pattern for a group that owns its traffic sources |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
 
-### Planned (824)
+### Planned (821)
 
 | Resource | Recorded reason |
 |---|---|
@@ -496,9 +498,6 @@ rather than trusted.
 | `aws_appsync_source_api_association` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
 | `aws_appsync_type` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
 | `aws_athena_data_catalog` | federated data catalogs fold into the existing AwsAthenaWorkgroup kind as its spec deepens |
-| `aws_autoscaling_attachment` | ASG companion surface; folds into the existing AwsAutoScalingGroup kind as its spec deepens |
-| `aws_autoscaling_group_tag` | ASG companion surface; folds into the existing AwsAutoScalingGroup kind as its spec deepens |
-| `aws_autoscaling_traffic_source_attachment` | ASG companion surface; folds into the existing AwsAutoScalingGroup kind as its spec deepens |
 | `aws_backup_framework` | judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans) |
 | `aws_backup_global_settings` | judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in) |
 | `aws_backup_logically_air_gapped_vault` | judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in) |
@@ -1246,7 +1245,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (515)
+### Deferred (516)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1282,6 +1281,7 @@ rather than trusted.
 | `aws_auditmanager_framework` | compliance-audit vertical (Audit Manager); deferred pending demand |
 | `aws_auditmanager_framework_share` | compliance-audit vertical (Audit Manager); deferred pending demand |
 | `aws_auditmanager_organization_admin_account_registration` | compliance-audit vertical (Audit Manager); deferred pending demand |
+| `aws_autoscaling_group_tag` | tags auto-scaling groups OWNED BY ANOTHER SERVICE (e.g. EKS managed node groups' ASGs); AwsAutoScalingGroup tags its own group natively with propagate-at-launch -- revisit from the EKS family if node-group tag-propagation demand appears |
 | `aws_bedrock_evaluation_job` | model evaluation jobs are imperative run-once workloads, a poor declarative fit; deferred |
 | `aws_billing_view` | billing views are console/reporting configuration; deferred pending demand |
 | `aws_chatbot_slack_channel_configuration` | chat-channel notification integrations (AWS Chatbot); deferred pending demand |

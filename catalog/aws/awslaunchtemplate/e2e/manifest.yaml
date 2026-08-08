@@ -34,4 +34,19 @@ spec:
         throughputMibps: 250
         encrypted: true
         deleteOnTermination: true
+    # A pre-warmed data volume: hydrated from its snapshot at a paid rate
+    # instead of lazily on first read (restored-volume cold start).
+    - deviceName: /dev/xvdb
+      ebs:
+        snapshotId: snap-0123456789abcdef0
+        volumeType: gp3
+        volumeInitializationRateMibps: 200
+        deleteOnTermination: true
+  # Bias baseline bandwidth toward VPC networking -- free performance
+  # shaping for a web fleet on supported instance types.
+  bandwidthWeighting: vpc-1
+  # Consume a matching open Capacity Reservation when one exists,
+  # otherwise launch as regular On-Demand.
+  capacityReservation:
+    preference: open
   instanceInitiatedShutdownBehavior: terminate

@@ -18,7 +18,6 @@ entries:
   - kind:AwsAppRunnerService
   - kind:AwsAppRunnerVpcConnector
   - kind:AwsAthenaWorkgroup
-  - kind:AwsAutoScalingGroup
   - kind:AwsBatchComputeEnvironment
   - kind:AwsBatchJobDefinition
   - kind:AwsBatchJobQueue
@@ -76,7 +75,6 @@ entries:
   - kind:AwsKmsKey
   - kind:AwsLambda
   - kind:AwsLambdaEventSourceMapping
-  - kind:AwsLaunchTemplate
   - kind:AwsLbListener
   - kind:AwsLbListenerRule
   - kind:AwsLbTargetGroup

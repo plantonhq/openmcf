@@ -126,8 +126,103 @@ func group(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResource
 	if spec.ForceDelete {
 		args.ForceDelete = pulumi.BoolPtr(true)
 	}
+	if spec.ForceDeleteWarmPool {
+		args.ForceDeleteWarmPool = pulumi.BoolPtr(true)
+	}
 	if spec.WaitForCapacityTimeout != "" {
 		args.WaitForCapacityTimeout = pulumi.StringPtr(spec.WaitForCapacityTimeout)
+	}
+	// ELB-health waits (engine behavior, like wait_for_capacity_timeout):
+	// min_elb_capacity gates the CREATE; wait_for_elb_capacity gates
+	// create AND every update, and takes precedence when both are set.
+	if spec.MinElbCapacity > 0 {
+		args.MinElbCapacity = pulumi.IntPtr(int(spec.MinElbCapacity))
+	}
+	if spec.WaitForElbCapacity > 0 {
+		args.WaitForElbCapacity = pulumi.IntPtr(int(spec.WaitForElbCapacity))
+	}
+	// Keep IaC applies moving while a scaling activity is failing -- for
+	// groups whose scaling errors are watched by their own alarms.
+	if spec.IgnoreFailedScalingActivities {
+		args.IgnoreFailedScalingActivities = pulumi.BoolPtr(true)
+	}
+	// Launch into EC2 Capacity Reservations: a preference shapes
+	// reservation use; targets pin the group to specific reservations or
+	// a resource group of them.
+	if spec.CapacityReservation != nil {
+		reservationArgs := &autoscaling.GroupCapacityReservationSpecificationArgs{}
+		if spec.CapacityReservation.Preference != "" {
+			reservationArgs.CapacityReservationPreference = pulumi.StringPtr(spec.CapacityReservation.Preference)
+		}
+		if len(spec.CapacityReservation.CapacityReservationIds) > 0 || len(spec.CapacityReservation.CapacityReservationResourceGroupArns) > 0 {
+			targetArgs := &autoscaling.GroupCapacityReservationSpecificationCapacityReservationTargetArgs{}
+			if len(spec.CapacityReservation.CapacityReservationIds) > 0 {
+				targetArgs.CapacityReservationIds = pulumi.ToStringArray(spec.CapacityReservation.CapacityReservationIds)
+			}
+			if len(spec.CapacityReservation.CapacityReservationResourceGroupArns) > 0 {
+				targetArgs.CapacityReservationResourceGroupArns = pulumi.ToStringArray(spec.CapacityReservation.CapacityReservationResourceGroupArns)
+			}
+			reservationArgs.CapacityReservationTarget = targetArgs
+		}
+		args.CapacityReservationSpecification = reservationArgs
+	}
+	// Generalized traffic sources (VPC Lattice / Classic ELB); ALB/NLB
+	// target groups use target_group_arns above -- the spec forbids
+	// mixing the two, mirroring the provider's ConflictsWith.
+	if len(spec.TrafficSources) > 0 {
+		trafficSources := make(autoscaling.GroupTrafficSourceArray, 0, len(spec.TrafficSources))
+		for _, trafficSource := range spec.TrafficSources {
+			sourceArgs := &autoscaling.GroupTrafficSourceArgs{
+				Identifier: pulumi.String(trafficSource.Identifier.GetValue()),
+			}
+			if trafficSource.Type != "" {
+				sourceArgs.Type = pulumi.StringPtr(trafficSource.Type)
+			}
+			trafficSources = append(trafficSources, sourceArgs)
+		}
+		args.TrafficSources = trafficSources
+	}
+	// The fate of instances whose TERMINATING hook ends in ABANDON:
+	// "retain" keeps them running (out of the group) for post-mortems.
+	if spec.InstanceLifecyclePolicy != nil && spec.InstanceLifecyclePolicy.TerminateHookAbandon != "" {
+		args.InstanceLifecyclePolicy = &autoscaling.GroupInstanceLifecyclePolicyArgs{
+			RetentionTriggers: &autoscaling.GroupInstanceLifecyclePolicyRetentionTriggersArgs{
+				TerminateHookAbandon: pulumi.StringPtr(spec.InstanceLifecyclePolicy.TerminateHookAbandon),
+			},
+		}
+	}
+	// Hooks flagged apply_at_launch attach atomically at group creation,
+	// so even the very first instance is caught; AWS makes these
+	// creation-time hooks immutable (changing one replaces the group).
+	// The rest are standalone hook resources, individually updatable.
+	initialHooks := autoscaling.GroupInitialLifecycleHookArray{}
+	for _, hook := range spec.LifecycleHooks {
+		if !hook.ApplyAtLaunch {
+			continue
+		}
+		hookArgs := &autoscaling.GroupInitialLifecycleHookArgs{
+			Name:                pulumi.String(hook.Name),
+			LifecycleTransition: pulumi.String(hook.LifecycleTransition),
+		}
+		if hook.DefaultResult != "" {
+			hookArgs.DefaultResult = pulumi.StringPtr(hook.DefaultResult)
+		}
+		if hook.HeartbeatTimeoutSeconds > 0 {
+			hookArgs.HeartbeatTimeout = pulumi.IntPtr(int(hook.HeartbeatTimeoutSeconds))
+		}
+		if hook.NotificationTargetArn.GetValue() != "" {
+			hookArgs.NotificationTargetArn = pulumi.StringPtr(hook.NotificationTargetArn.GetValue())
+		}
+		if hook.RoleArn.GetValue() != "" {
+			hookArgs.RoleArn = pulumi.StringPtr(hook.RoleArn.GetValue())
+		}
+		if hook.NotificationMetadata != "" {
+			hookArgs.NotificationMetadata = pulumi.StringPtr(hook.NotificationMetadata)
+		}
+		initialHooks = append(initialHooks, hookArgs)
+	}
+	if len(initialHooks) > 0 {
+		args.InitialLifecycleHooks = initialHooks
 	}
 
 	createdGroup, err := autoscaling.NewGroup(ctx, groupName, args, pulumi.Provider(provider))

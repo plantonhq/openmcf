@@ -175,8 +175,32 @@ type AwsLaunchTemplateSpec struct {
 	// instance is gone -- the right choice for immutable fleet members that
 	// should never be resurrected by hand).
 	InstanceInitiatedShutdownBehavior string `protobuf:"bytes,25,opt,name=instance_initiated_shutdown_behavior,json=instanceInitiatedShutdownBehavior,proto3" json:"instance_initiated_shutdown_behavior,omitempty"`
-	unknownFields                     protoimpl.UnknownFields
-	sizeCache                         protoimpl.SizeCache
+	// Launch into EC2 Capacity Reservations -- guaranteed capacity a
+	// reserved fleet has already paid for (On-Demand Capacity
+	// Reservations, or Capacity Blocks for ML). Leave unset for the AWS
+	// default (use a matching open reservation when one exists).
+	CapacityReservation *AwsLaunchTemplateCapacityReservation `protobuf:"bytes,26,opt,name=capacity_reservation,json=capacityReservation,proto3" json:"capacity_reservation,omitempty"`
+	// The purchase market for launched instances: "spot" (pairs with
+	// spot_options) or "capacity-block" (pre-purchased Capacity Blocks
+	// for ML -- requires capacity_reservation targeting the block).
+	// Unset means On-Demand, unless spot_options implies "spot".
+	MarketType string `protobuf:"bytes,27,opt,name=market_type,json=marketType,proto3" json:"market_type,omitempty"`
+	// Network bandwidth weighting on supported types: "default", "vpc-1"
+	// (shift baseline bandwidth toward VPC networking), or "ebs-1"
+	// (shift it toward EBS throughput). A no-cost performance bias for
+	// network- or storage-heavy workloads.
+	BandwidthWeighting string `protobuf:"bytes,28,opt,name=bandwidth_weighting,json=bandwidthWeighting,proto3" json:"bandwidth_weighting,omitempty"`
+	// AWS License Manager license-configuration ARNs launched instances
+	// consume -- BYOL license tracking (e.g. per-core database
+	// licenses). Literal ARNs: License Manager has no Planton kind.
+	LicenseConfigurationArns []string `protobuf:"bytes,29,rep,name=license_configuration_arns,json=licenseConfigurationArns,proto3" json:"license_configuration_arns,omitempty"`
+	// Additional network interfaces attached at launch BEYOND the
+	// primary set in network_interfaces -- a 2026 EC2 capability for
+	// multi-homed instances (e.g. a dedicated storage-subnet interface).
+	// Interfaces are created and deleted with the instance.
+	SecondaryInterfaces []*AwsLaunchTemplateSecondaryInterface `protobuf:"bytes,30,rep,name=secondary_interfaces,json=secondaryInterfaces,proto3" json:"secondary_interfaces,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AwsLaunchTemplateSpec) Reset() {
@@ -384,6 +408,218 @@ func (x *AwsLaunchTemplateSpec) GetInstanceInitiatedShutdownBehavior() string {
 	return ""
 }
 
+func (x *AwsLaunchTemplateSpec) GetCapacityReservation() *AwsLaunchTemplateCapacityReservation {
+	if x != nil {
+		return x.CapacityReservation
+	}
+	return nil
+}
+
+func (x *AwsLaunchTemplateSpec) GetMarketType() string {
+	if x != nil {
+		return x.MarketType
+	}
+	return ""
+}
+
+func (x *AwsLaunchTemplateSpec) GetBandwidthWeighting() string {
+	if x != nil {
+		return x.BandwidthWeighting
+	}
+	return ""
+}
+
+func (x *AwsLaunchTemplateSpec) GetLicenseConfigurationArns() []string {
+	if x != nil {
+		return x.LicenseConfigurationArns
+	}
+	return nil
+}
+
+func (x *AwsLaunchTemplateSpec) GetSecondaryInterfaces() []*AwsLaunchTemplateSecondaryInterface {
+	if x != nil {
+		return x.SecondaryInterfaces
+	}
+	return nil
+}
+
+// AwsLaunchTemplateCapacityReservation targets launches at EC2 Capacity
+// Reservations: pre-purchased, guaranteed capacity (On-Demand Capacity
+// Reservations for steady reserved fleets, Capacity Blocks for
+// GPU/ML bursts).
+type AwsLaunchTemplateCapacityReservation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How launches relate to reservations:
+	//   - "open": use a matching open reservation when one exists (the AWS
+	//     default behavior), otherwise launch as regular On-Demand.
+	//   - "none": never consume a reservation, even a matching open one.
+	//   - "capacity-reservations-only": launch ONLY into reserved capacity
+	//     -- fail rather than fall back to On-Demand.
+	//
+	// Leave empty when targeting a specific reservation below.
+	Preference string `protobuf:"bytes,1,opt,name=preference,proto3" json:"preference,omitempty"`
+	// A specific Capacity Reservation to launch into ("cr-..."). The
+	// required target for Capacity Blocks. Mutually exclusive with
+	// capacity_reservation_resource_group_arn.
+	CapacityReservationId string `protobuf:"bytes,2,opt,name=capacity_reservation_id,json=capacityReservationId,proto3" json:"capacity_reservation_id,omitempty"`
+	// A resource-group ARN collecting Capacity Reservations -- target the
+	// group instead of one reservation ID. Mutually exclusive with
+	// capacity_reservation_id.
+	CapacityReservationResourceGroupArn string `protobuf:"bytes,3,opt,name=capacity_reservation_resource_group_arn,json=capacityReservationResourceGroupArn,proto3" json:"capacity_reservation_resource_group_arn,omitempty"`
+	unknownFields                       protoimpl.UnknownFields
+	sizeCache                           protoimpl.SizeCache
+}
+
+func (x *AwsLaunchTemplateCapacityReservation) Reset() {
+	*x = AwsLaunchTemplateCapacityReservation{}
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsLaunchTemplateCapacityReservation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsLaunchTemplateCapacityReservation) ProtoMessage() {}
+
+func (x *AwsLaunchTemplateCapacityReservation) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsLaunchTemplateCapacityReservation.ProtoReflect.Descriptor instead.
+func (*AwsLaunchTemplateCapacityReservation) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsLaunchTemplateCapacityReservation) GetPreference() string {
+	if x != nil {
+		return x.Preference
+	}
+	return ""
+}
+
+func (x *AwsLaunchTemplateCapacityReservation) GetCapacityReservationId() string {
+	if x != nil {
+		return x.CapacityReservationId
+	}
+	return ""
+}
+
+func (x *AwsLaunchTemplateCapacityReservation) GetCapacityReservationResourceGroupArn() string {
+	if x != nil {
+		return x.CapacityReservationResourceGroupArn
+	}
+	return ""
+}
+
+// AwsLaunchTemplateSecondaryInterface is one additional network interface
+// created and attached at launch beyond the primary interface set --
+// multi-homing for launched instances (e.g. a storage-subnet leg). The
+// interface lives and dies with its instance.
+type AwsLaunchTemplateSecondaryInterface struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The device index the interface attaches at.
+	DeviceIndex int32 `protobuf:"varint,1,opt,name=device_index,json=deviceIndex,proto3" json:"device_index,omitempty"`
+	// The network card the interface binds to, on instance types with
+	// multiple network cards.
+	NetworkCardIndex int32 `protobuf:"varint,2,opt,name=network_card_index,json=networkCardIndex,proto3" json:"network_card_index,omitempty"`
+	// Delete the interface when the instance terminates.
+	DeleteOnTermination bool `protobuf:"varint,3,opt,name=delete_on_termination,json=deleteOnTermination,proto3" json:"delete_on_termination,omitempty"`
+	// The subnet the secondary interface lives in. Reference an
+	// AwsSubnet's subnet_id output or pass a literal subnet ID -- e.g. a
+	// dedicated storage or replication subnet.
+	SecondarySubnetId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=secondary_subnet_id,json=secondarySubnetId,proto3" json:"secondary_subnet_id,omitempty"`
+	// Number of private IPv4 addresses AWS auto-assigns on the
+	// interface. Mutually exclusive with private_ip_addresses.
+	PrivateIpAddressCount int32 `protobuf:"varint,5,opt,name=private_ip_address_count,json=privateIpAddressCount,proto3" json:"private_ip_address_count,omitempty"`
+	// Specific private IPv4 addresses to assign. Mutually exclusive with
+	// private_ip_address_count.
+	PrivateIpAddresses []string `protobuf:"bytes,6,rep,name=private_ip_addresses,json=privateIpAddresses,proto3" json:"private_ip_addresses,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *AwsLaunchTemplateSecondaryInterface) Reset() {
+	*x = AwsLaunchTemplateSecondaryInterface{}
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsLaunchTemplateSecondaryInterface) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsLaunchTemplateSecondaryInterface) ProtoMessage() {}
+
+func (x *AwsLaunchTemplateSecondaryInterface) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsLaunchTemplateSecondaryInterface.ProtoReflect.Descriptor instead.
+func (*AwsLaunchTemplateSecondaryInterface) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsLaunchTemplateSecondaryInterface) GetDeviceIndex() int32 {
+	if x != nil {
+		return x.DeviceIndex
+	}
+	return 0
+}
+
+func (x *AwsLaunchTemplateSecondaryInterface) GetNetworkCardIndex() int32 {
+	if x != nil {
+		return x.NetworkCardIndex
+	}
+	return 0
+}
+
+func (x *AwsLaunchTemplateSecondaryInterface) GetDeleteOnTermination() bool {
+	if x != nil {
+		return x.DeleteOnTermination
+	}
+	return false
+}
+
+func (x *AwsLaunchTemplateSecondaryInterface) GetSecondarySubnetId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SecondarySubnetId
+	}
+	return nil
+}
+
+func (x *AwsLaunchTemplateSecondaryInterface) GetPrivateIpAddressCount() int32 {
+	if x != nil {
+		return x.PrivateIpAddressCount
+	}
+	return 0
+}
+
+func (x *AwsLaunchTemplateSecondaryInterface) GetPrivateIpAddresses() []string {
+	if x != nil {
+		return x.PrivateIpAddresses
+	}
+	return nil
+}
+
 // AwsLaunchTemplateInstanceRequirements describes compute by attributes so
 // AWS resolves the matching instance types at launch, instead of naming one
 // type. memory_mib and vcpu_count are the two required dimensions; every
@@ -474,7 +710,7 @@ type AwsLaunchTemplateInstanceRequirements struct {
 
 func (x *AwsLaunchTemplateInstanceRequirements) Reset() {
 	*x = AwsLaunchTemplateInstanceRequirements{}
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -486,7 +722,7 @@ func (x *AwsLaunchTemplateInstanceRequirements) String() string {
 func (*AwsLaunchTemplateInstanceRequirements) ProtoMessage() {}
 
 func (x *AwsLaunchTemplateInstanceRequirements) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -499,7 +735,7 @@ func (x *AwsLaunchTemplateInstanceRequirements) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use AwsLaunchTemplateInstanceRequirements.ProtoReflect.Descriptor instead.
 func (*AwsLaunchTemplateInstanceRequirements) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AwsLaunchTemplateInstanceRequirements) GetMemoryMib() *AwsLaunchTemplateIntRange {
@@ -685,7 +921,7 @@ type AwsLaunchTemplateIntRange struct {
 
 func (x *AwsLaunchTemplateIntRange) Reset() {
 	*x = AwsLaunchTemplateIntRange{}
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -697,7 +933,7 @@ func (x *AwsLaunchTemplateIntRange) String() string {
 func (*AwsLaunchTemplateIntRange) ProtoMessage() {}
 
 func (x *AwsLaunchTemplateIntRange) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -710,7 +946,7 @@ func (x *AwsLaunchTemplateIntRange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsLaunchTemplateIntRange.ProtoReflect.Descriptor instead.
 func (*AwsLaunchTemplateIntRange) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AwsLaunchTemplateIntRange) GetMin() int32 {
@@ -741,7 +977,7 @@ type AwsLaunchTemplateDoubleRange struct {
 
 func (x *AwsLaunchTemplateDoubleRange) Reset() {
 	*x = AwsLaunchTemplateDoubleRange{}
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -753,7 +989,7 @@ func (x *AwsLaunchTemplateDoubleRange) String() string {
 func (*AwsLaunchTemplateDoubleRange) ProtoMessage() {}
 
 func (x *AwsLaunchTemplateDoubleRange) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -766,7 +1002,7 @@ func (x *AwsLaunchTemplateDoubleRange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsLaunchTemplateDoubleRange.ProtoReflect.Descriptor instead.
 func (*AwsLaunchTemplateDoubleRange) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AwsLaunchTemplateDoubleRange) GetMin() float64 {
@@ -806,7 +1042,7 @@ type AwsLaunchTemplateBlockDeviceMapping struct {
 
 func (x *AwsLaunchTemplateBlockDeviceMapping) Reset() {
 	*x = AwsLaunchTemplateBlockDeviceMapping{}
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -818,7 +1054,7 @@ func (x *AwsLaunchTemplateBlockDeviceMapping) String() string {
 func (*AwsLaunchTemplateBlockDeviceMapping) ProtoMessage() {}
 
 func (x *AwsLaunchTemplateBlockDeviceMapping) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -831,7 +1067,7 @@ func (x *AwsLaunchTemplateBlockDeviceMapping) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use AwsLaunchTemplateBlockDeviceMapping.ProtoReflect.Descriptor instead.
 func (*AwsLaunchTemplateBlockDeviceMapping) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AwsLaunchTemplateBlockDeviceMapping) GetDeviceName() string {
@@ -897,13 +1133,19 @@ type AwsLaunchTemplateEbs struct {
 	// AMI). Optional rather than plain bool so an explicit false ("keep the
 	// data volume") is distinguishable from unset ("keep the AMI default").
 	DeleteOnTermination *bool `protobuf:"varint,8,opt,name=delete_on_termination,json=deleteOnTermination,proto3,oneof" json:"delete_on_termination,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// MiB/s at which the volume hydrates from its snapshot, 100-300.
+	// Without it, snapshot blocks load lazily on first read (the classic
+	// cold-start latency on restored volumes); a paid initialization rate
+	// makes the volume fully warm on a schedule. Only meaningful with
+	// snapshot_id.
+	VolumeInitializationRateMibps int32 `protobuf:"varint,9,opt,name=volume_initialization_rate_mibps,json=volumeInitializationRateMibps,proto3" json:"volume_initialization_rate_mibps,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *AwsLaunchTemplateEbs) Reset() {
 	*x = AwsLaunchTemplateEbs{}
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -915,7 +1157,7 @@ func (x *AwsLaunchTemplateEbs) String() string {
 func (*AwsLaunchTemplateEbs) ProtoMessage() {}
 
 func (x *AwsLaunchTemplateEbs) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -928,7 +1170,7 @@ func (x *AwsLaunchTemplateEbs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsLaunchTemplateEbs.ProtoReflect.Descriptor instead.
 func (*AwsLaunchTemplateEbs) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AwsLaunchTemplateEbs) GetVolumeSizeGb() int32 {
@@ -985,6 +1227,13 @@ func (x *AwsLaunchTemplateEbs) GetDeleteOnTermination() bool {
 		return *x.DeleteOnTermination
 	}
 	return false
+}
+
+func (x *AwsLaunchTemplateEbs) GetVolumeInitializationRateMibps() int32 {
+	if x != nil {
+		return x.VolumeInitializationRateMibps
+	}
+	return 0
 }
 
 // AwsLaunchTemplateNetworkInterface declares one network interface attached
@@ -1050,14 +1299,35 @@ type AwsLaunchTemplateNetworkInterface struct {
 	Ipv6PrefixCount int32 `protobuf:"varint,17,opt,name=ipv6_prefix_count,json=ipv6PrefixCount,proto3" json:"ipv6_prefix_count,omitempty"`
 	// Specific /80 IPv6 prefixes. Mutually exclusive with
 	// ipv6_prefix_count.
-	Ipv6Prefixes  []string `protobuf:"bytes,18,rep,name=ipv6_prefixes,json=ipv6Prefixes,proto3" json:"ipv6_prefixes,omitempty"`
+	Ipv6Prefixes []string `protobuf:"bytes,18,rep,name=ipv6_prefixes,json=ipv6Prefixes,proto3" json:"ipv6_prefixes,omitempty"`
+	// Associate a Carrier IP (AWS Wavelength zones) -- the Wavelength
+	// analog of a public IP, reachable from the carrier's mobile
+	// network. Only meaningful for interfaces in Wavelength-zone
+	// subnets. Optional tri-state like associate_public_ip_address.
+	AssociateCarrierIpAddress *bool `protobuf:"varint,19,opt,name=associate_carrier_ip_address,json=associateCarrierIpAddress,proto3,oneof" json:"associate_carrier_ip_address,omitempty"`
+	// Idle-timeout tuning for the interface's connection tracking --
+	// reclaim conntrack slots faster on connection-churning workloads
+	// (load-balancer backends, NAT-ish proxies).
+	ConnectionTracking *AwsLaunchTemplateConnectionTracking `protobuf:"bytes,20,opt,name=connection_tracking,json=connectionTracking,proto3" json:"connection_tracking,omitempty"`
+	// ENA Express (SRD -- Scalable Reliable Datagram): reduce tail
+	// latency between instances that both enable it, on supported
+	// types. TCP benefits transparently; UDP needs the explicit flag.
+	EnaSrd *AwsLaunchTemplateEnaSrd `protobuf:"bytes,21,opt,name=ena_srd,json=enaSrd,proto3" json:"ena_srd,omitempty"`
+	// Number of ENA queues for the interface, on instance types that
+	// support ENA queue tuning. 0 keeps the AWS default per instance
+	// size.
+	EnaQueueCount int32 `protobuf:"varint,22,opt,name=ena_queue_count,json=enaQueueCount,proto3" json:"ena_queue_count,omitempty"`
+	// Make the auto-assigned IPv6 address the instance's PRIMARY,
+	// stable identity: it survives network-interface replacement --
+	// required for IPv6-only instances whose address must not change.
+	PrimaryIpv6   *bool `protobuf:"varint,23,opt,name=primary_ipv6,json=primaryIpv6,proto3,oneof" json:"primary_ipv6,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsLaunchTemplateNetworkInterface) Reset() {
 	*x = AwsLaunchTemplateNetworkInterface{}
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1069,7 +1339,7 @@ func (x *AwsLaunchTemplateNetworkInterface) String() string {
 func (*AwsLaunchTemplateNetworkInterface) ProtoMessage() {}
 
 func (x *AwsLaunchTemplateNetworkInterface) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1082,7 +1352,7 @@ func (x *AwsLaunchTemplateNetworkInterface) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AwsLaunchTemplateNetworkInterface.ProtoReflect.Descriptor instead.
 func (*AwsLaunchTemplateNetworkInterface) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AwsLaunchTemplateNetworkInterface) GetDeviceIndex() int32 {
@@ -1211,6 +1481,168 @@ func (x *AwsLaunchTemplateNetworkInterface) GetIpv6Prefixes() []string {
 	return nil
 }
 
+func (x *AwsLaunchTemplateNetworkInterface) GetAssociateCarrierIpAddress() bool {
+	if x != nil && x.AssociateCarrierIpAddress != nil {
+		return *x.AssociateCarrierIpAddress
+	}
+	return false
+}
+
+func (x *AwsLaunchTemplateNetworkInterface) GetConnectionTracking() *AwsLaunchTemplateConnectionTracking {
+	if x != nil {
+		return x.ConnectionTracking
+	}
+	return nil
+}
+
+func (x *AwsLaunchTemplateNetworkInterface) GetEnaSrd() *AwsLaunchTemplateEnaSrd {
+	if x != nil {
+		return x.EnaSrd
+	}
+	return nil
+}
+
+func (x *AwsLaunchTemplateNetworkInterface) GetEnaQueueCount() int32 {
+	if x != nil {
+		return x.EnaQueueCount
+	}
+	return 0
+}
+
+func (x *AwsLaunchTemplateNetworkInterface) GetPrimaryIpv6() bool {
+	if x != nil && x.PrimaryIpv6 != nil {
+		return *x.PrimaryIpv6
+	}
+	return false
+}
+
+// AwsLaunchTemplateConnectionTracking tunes the interface's connection
+// tracking idle timeouts. Lower timeouts reclaim tracking slots faster on
+// connection-churning workloads; the defaults suit most fleets.
+type AwsLaunchTemplateConnectionTracking struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Idle timeout for established TCP connections, 60-432000 seconds
+	// (5 days, the AWS default).
+	TcpEstablishedTimeoutSeconds int32 `protobuf:"varint,1,opt,name=tcp_established_timeout_seconds,json=tcpEstablishedTimeoutSeconds,proto3" json:"tcp_established_timeout_seconds,omitempty"`
+	// Idle timeout for UDP "connections" that have seen traffic BOTH
+	// ways (streams), 60-180 seconds.
+	UdpStreamTimeoutSeconds int32 `protobuf:"varint,2,opt,name=udp_stream_timeout_seconds,json=udpStreamTimeoutSeconds,proto3" json:"udp_stream_timeout_seconds,omitempty"`
+	// Idle timeout for single-direction UDP flows, 30-60 seconds.
+	UdpTimeoutSeconds int32 `protobuf:"varint,3,opt,name=udp_timeout_seconds,json=udpTimeoutSeconds,proto3" json:"udp_timeout_seconds,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AwsLaunchTemplateConnectionTracking) Reset() {
+	*x = AwsLaunchTemplateConnectionTracking{}
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsLaunchTemplateConnectionTracking) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsLaunchTemplateConnectionTracking) ProtoMessage() {}
+
+func (x *AwsLaunchTemplateConnectionTracking) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsLaunchTemplateConnectionTracking.ProtoReflect.Descriptor instead.
+func (*AwsLaunchTemplateConnectionTracking) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AwsLaunchTemplateConnectionTracking) GetTcpEstablishedTimeoutSeconds() int32 {
+	if x != nil {
+		return x.TcpEstablishedTimeoutSeconds
+	}
+	return 0
+}
+
+func (x *AwsLaunchTemplateConnectionTracking) GetUdpStreamTimeoutSeconds() int32 {
+	if x != nil {
+		return x.UdpStreamTimeoutSeconds
+	}
+	return 0
+}
+
+func (x *AwsLaunchTemplateConnectionTracking) GetUdpTimeoutSeconds() int32 {
+	if x != nil {
+		return x.UdpTimeoutSeconds
+	}
+	return 0
+}
+
+// AwsLaunchTemplateEnaSrd enables ENA Express (Scalable Reliable
+// Datagram) on the interface -- lower tail latency between enabled
+// instances on supported instance types.
+type AwsLaunchTemplateEnaSrd struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Turn ENA Express on for the interface (TCP flows benefit
+	// transparently).
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Also run eligible UDP traffic over SRD. Only meaningful when
+	// enabled is true.
+	UdpEnabled    bool `protobuf:"varint,2,opt,name=udp_enabled,json=udpEnabled,proto3" json:"udp_enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsLaunchTemplateEnaSrd) Reset() {
+	*x = AwsLaunchTemplateEnaSrd{}
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsLaunchTemplateEnaSrd) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsLaunchTemplateEnaSrd) ProtoMessage() {}
+
+func (x *AwsLaunchTemplateEnaSrd) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsLaunchTemplateEnaSrd.ProtoReflect.Descriptor instead.
+func (*AwsLaunchTemplateEnaSrd) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AwsLaunchTemplateEnaSrd) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *AwsLaunchTemplateEnaSrd) GetUdpEnabled() bool {
+	if x != nil {
+		return x.UdpEnabled
+	}
+	return false
+}
+
 // AwsLaunchTemplateMetadataOptions controls the Instance Metadata Service
 // (IMDS) -- the on-instance endpoint that serves credentials and instance
 // identity. The hardened posture for new fleets: http_tokens = "required"
@@ -1243,7 +1675,7 @@ type AwsLaunchTemplateMetadataOptions struct {
 
 func (x *AwsLaunchTemplateMetadataOptions) Reset() {
 	*x = AwsLaunchTemplateMetadataOptions{}
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1255,7 +1687,7 @@ func (x *AwsLaunchTemplateMetadataOptions) String() string {
 func (*AwsLaunchTemplateMetadataOptions) ProtoMessage() {}
 
 func (x *AwsLaunchTemplateMetadataOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1268,7 +1700,7 @@ func (x *AwsLaunchTemplateMetadataOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsLaunchTemplateMetadataOptions.ProtoReflect.Descriptor instead.
 func (*AwsLaunchTemplateMetadataOptions) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AwsLaunchTemplateMetadataOptions) GetHttpEndpoint() string {
@@ -1316,21 +1748,38 @@ type AwsLaunchTemplatePlacement struct {
 	AvailabilityZone string `protobuf:"bytes,1,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
 	// The placement group to launch into: "cluster" groups pack instances
 	// for lowest latency, "spread" and "partition" groups separate them for
-	// fault isolation.
+	// fault isolation. Mutually exclusive with group_id.
 	GroupName string `protobuf:"bytes,2,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"`
 	// Partition number within a partition placement group.
 	PartitionNumber int32 `protobuf:"varint,3,opt,name=partition_number,json=partitionNumber,proto3" json:"partition_number,omitempty"`
 	// Instance tenancy: "default" (shared hardware), "dedicated"
 	// (single-tenant hardware), or "host" (a specific Dedicated Host --
 	// licensing scenarios).
-	Tenancy       string `protobuf:"bytes,4,opt,name=tenancy,proto3" json:"tenancy,omitempty"`
+	Tenancy string `protobuf:"bytes,4,opt,name=tenancy,proto3" json:"tenancy,omitempty"`
+	// The placement group by ID ("pg-...") instead of name. Mutually
+	// exclusive with group_name.
+	GroupId string `protobuf:"bytes,5,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	// The Dedicated Host to land on ("h-..."). Host tenancy pins BYOL
+	// workloads (per-socket/per-core licenses) to specific hardware.
+	// Mutually exclusive with host_resource_group_arn.
+	HostId string `protobuf:"bytes,6,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
+	// A License Manager host resource group ARN -- AWS picks (and
+	// manages) a Dedicated Host from the group instead of naming one.
+	// Mutually exclusive with host_id.
+	HostResourceGroupArn string `protobuf:"bytes,7,opt,name=host_resource_group_arn,json=hostResourceGroupArn,proto3" json:"host_resource_group_arn,omitempty"`
+	// Dedicated Host affinity: "default" (instance may restart on any
+	// host) or "host" (the instance always restarts on the same host --
+	// needed when licenses are bound to specific hardware).
+	Affinity string `protobuf:"bytes,8,opt,name=affinity,proto3" json:"affinity,omitempty"`
+	// Named spread domain on AWS Outposts placement groups.
+	SpreadDomain  string `protobuf:"bytes,9,opt,name=spread_domain,json=spreadDomain,proto3" json:"spread_domain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsLaunchTemplatePlacement) Reset() {
 	*x = AwsLaunchTemplatePlacement{}
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1342,7 +1791,7 @@ func (x *AwsLaunchTemplatePlacement) String() string {
 func (*AwsLaunchTemplatePlacement) ProtoMessage() {}
 
 func (x *AwsLaunchTemplatePlacement) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1355,7 +1804,7 @@ func (x *AwsLaunchTemplatePlacement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsLaunchTemplatePlacement.ProtoReflect.Descriptor instead.
 func (*AwsLaunchTemplatePlacement) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AwsLaunchTemplatePlacement) GetAvailabilityZone() string {
@@ -1386,6 +1835,41 @@ func (x *AwsLaunchTemplatePlacement) GetTenancy() string {
 	return ""
 }
 
+func (x *AwsLaunchTemplatePlacement) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *AwsLaunchTemplatePlacement) GetHostId() string {
+	if x != nil {
+		return x.HostId
+	}
+	return ""
+}
+
+func (x *AwsLaunchTemplatePlacement) GetHostResourceGroupArn() string {
+	if x != nil {
+		return x.HostResourceGroupArn
+	}
+	return ""
+}
+
+func (x *AwsLaunchTemplatePlacement) GetAffinity() string {
+	if x != nil {
+		return x.Affinity
+	}
+	return ""
+}
+
+func (x *AwsLaunchTemplatePlacement) GetSpreadDomain() string {
+	if x != nil {
+		return x.SpreadDomain
+	}
+	return ""
+}
+
 // AwsLaunchTemplateCpuOptions shapes the vCPU topology and CPU security
 // features of launched instances.
 type AwsLaunchTemplateCpuOptions struct {
@@ -1400,14 +1884,17 @@ type AwsLaunchTemplateCpuOptions struct {
 	ThreadsPerCore int32 `protobuf:"varint,2,opt,name=threads_per_core,json=threadsPerCore,proto3" json:"threads_per_core,omitempty"`
 	// AMD SEV-SNP memory encryption on supported AMD types: "enabled" or
 	// "disabled". Confidential-computing hardening.
-	AmdSevSnp     string `protobuf:"bytes,3,opt,name=amd_sev_snp,json=amdSevSnp,proto3" json:"amd_sev_snp,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	AmdSevSnp string `protobuf:"bytes,3,opt,name=amd_sev_snp,json=amdSevSnp,proto3" json:"amd_sev_snp,omitempty"`
+	// Hardware-assisted nested virtualization on supported types:
+	// "enabled" (run hypervisors/VMs inside the instance) or "disabled".
+	NestedVirtualization string `protobuf:"bytes,4,opt,name=nested_virtualization,json=nestedVirtualization,proto3" json:"nested_virtualization,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *AwsLaunchTemplateCpuOptions) Reset() {
 	*x = AwsLaunchTemplateCpuOptions{}
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1419,7 +1906,7 @@ func (x *AwsLaunchTemplateCpuOptions) String() string {
 func (*AwsLaunchTemplateCpuOptions) ProtoMessage() {}
 
 func (x *AwsLaunchTemplateCpuOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1432,7 +1919,7 @@ func (x *AwsLaunchTemplateCpuOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsLaunchTemplateCpuOptions.ProtoReflect.Descriptor instead.
 func (*AwsLaunchTemplateCpuOptions) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AwsLaunchTemplateCpuOptions) GetCoreCount() int32 {
@@ -1452,6 +1939,13 @@ func (x *AwsLaunchTemplateCpuOptions) GetThreadsPerCore() int32 {
 func (x *AwsLaunchTemplateCpuOptions) GetAmdSevSnp() string {
 	if x != nil {
 		return x.AmdSevSnp
+	}
+	return ""
+}
+
+func (x *AwsLaunchTemplateCpuOptions) GetNestedVirtualization() string {
+	if x != nil {
+		return x.NestedVirtualization
 	}
 	return ""
 }
@@ -1485,7 +1979,7 @@ type AwsLaunchTemplateSpotOptions struct {
 
 func (x *AwsLaunchTemplateSpotOptions) Reset() {
 	*x = AwsLaunchTemplateSpotOptions{}
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1497,7 +1991,7 @@ func (x *AwsLaunchTemplateSpotOptions) String() string {
 func (*AwsLaunchTemplateSpotOptions) ProtoMessage() {}
 
 func (x *AwsLaunchTemplateSpotOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1510,7 +2004,7 @@ func (x *AwsLaunchTemplateSpotOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsLaunchTemplateSpotOptions.ProtoReflect.Descriptor instead.
 func (*AwsLaunchTemplateSpotOptions) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AwsLaunchTemplateSpotOptions) GetMaxPrice() string {
@@ -1559,7 +2053,7 @@ type AwsLaunchTemplatePrivateDnsNameOptions struct {
 
 func (x *AwsLaunchTemplatePrivateDnsNameOptions) Reset() {
 	*x = AwsLaunchTemplatePrivateDnsNameOptions{}
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1571,7 +2065,7 @@ func (x *AwsLaunchTemplatePrivateDnsNameOptions) String() string {
 func (*AwsLaunchTemplatePrivateDnsNameOptions) ProtoMessage() {}
 
 func (x *AwsLaunchTemplatePrivateDnsNameOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1584,7 +2078,7 @@ func (x *AwsLaunchTemplatePrivateDnsNameOptions) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use AwsLaunchTemplatePrivateDnsNameOptions.ProtoReflect.Descriptor instead.
 func (*AwsLaunchTemplatePrivateDnsNameOptions) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AwsLaunchTemplatePrivateDnsNameOptions) GetHostnameType() string {
@@ -1612,7 +2106,7 @@ var File_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto protoreflect.FileDesc
 
 const file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/aws/awslaunchtemplate/v1alpha1/spec.proto\x12*dev.planton.aws.awslaunchtemplate.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xf0\x18\n" +
+	"1catalog/aws/awslaunchtemplate/v1alpha1/spec.proto\x12*dev.planton.aws.awslaunchtemplate.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb5#\n" +
 	"\x15AwsLaunchTemplateSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\vdescription\x12\x19\n" +
@@ -1641,14 +2135,40 @@ const file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDesc = "" +
 	"\x18private_dns_name_options\x18\x16 \x01(\v2R.dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplatePrivateDnsNameOptionsR\x15privateDnsNameOptions\x12(\n" +
 	"\x10disable_api_stop\x18\x17 \x01(\bR\x0edisableApiStop\x126\n" +
 	"\x17disable_api_termination\x18\x18 \x01(\bR\x15disableApiTermination\x12O\n" +
-	"$instance_initiated_shutdown_behavior\x18\x19 \x01(\tR!instanceInitiatedShutdownBehavior:\xf0\t\xbaH\xec\t\x1a\xd8\x01\n" +
+	"$instance_initiated_shutdown_behavior\x18\x19 \x01(\tR!instanceInitiatedShutdownBehavior\x12\x83\x01\n" +
+	"\x14capacity_reservation\x18\x1a \x01(\v2P.dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateCapacityReservationR\x13capacityReservation\x12\x1f\n" +
+	"\vmarket_type\x18\x1b \x01(\tR\n" +
+	"marketType\x12/\n" +
+	"\x13bandwidth_weighting\x18\x1c \x01(\tR\x12bandwidthWeighting\x12<\n" +
+	"\x1alicense_configuration_arns\x18\x1d \x03(\tR\x18licenseConfigurationArns\x12\x82\x01\n" +
+	"\x14secondary_interfaces\x18\x1e \x03(\v2O.dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSecondaryInterfaceR\x13secondaryInterfaces:\x9a\x11\xbaH\x96\x11\x1a\x96\x01\n" +
+	"\x11market_type_valid\x127market_type must be 'spot' or 'capacity-block' when set\x1aHthis.market_type == '' || this.market_type in ['spot', 'capacity-block']\x1a\xc7\x01\n" +
+	" spot_options_require_spot_market\x12Rspot_options only applies to the 'spot' market (leave market_type unset or 'spot')\x1aO!has(this.spot_options) || this.market_type == '' || this.market_type == 'spot'\x1a\x84\x03\n" +
+	"*capacity_block_requires_reservation_target\x12\x82\x01market_type 'capacity-block' requires capacity_reservation with capacity_reservation_id or capacity_reservation_resource_group_arn\x1a\xd0\x01this.market_type != 'capacity-block' || (has(this.capacity_reservation) && (this.capacity_reservation.capacity_reservation_id != '' || this.capacity_reservation.capacity_reservation_resource_group_arn != ''))\x1a\xbd\x01\n" +
+	"\x19bandwidth_weighting_valid\x12Cbandwidth_weighting must be 'default', 'vpc-1', or 'ebs-1' when set\x1a[this.bandwidth_weighting == '' || this.bandwidth_weighting in ['default', 'vpc-1', 'ebs-1']\x1a\xd8\x01\n" +
 	"\x1einstance_type_xor_requirements\x12xinstance_type and instance_requirements are mutually exclusive -- name an exact type, or describe requirements, not both\x1a<this.instance_type == '' || !has(this.instance_requirements)\x1a|\n" +
 	"\x0fimage_id_format\x120image_id must be an AMI ID beginning with 'ami-'\x1a7this.image_id == '' || this.image_id.startsWith('ami-')\x1a\x94\x01\n" +
 	"\x11cpu_credits_valid\x126cpu_credits must be 'standard' or 'unlimited' when set\x1aGthis.cpu_credits == '' || this.cpu_credits in ['standard', 'unlimited']\x1a\x98\x01\n" +
 	"\x13auto_recovery_valid\x126auto_recovery must be 'default' or 'disabled' when set\x1aIthis.auto_recovery == '' || this.auto_recovery in ['default', 'disabled']\x1a\xdd\x01\n" +
 	"\x17shutdown_behavior_valid\x12Kinstance_initiated_shutdown_behavior must be 'stop' or 'terminate' when set\x1authis.instance_initiated_shutdown_behavior == '' || this.instance_initiated_shutdown_behavior in ['stop', 'terminate']\x1a\x99\x01\n" +
 	"%enclave_incompatible_with_hibernation\x12;enclave_enabled and hibernation_enabled cannot both be true\x1a3!(this.enclave_enabled && this.hibernation_enabled)\x1a\xe2\x01\n" +
-	"(security_groups_conflict_with_interfaces\x12lwhen network_interfaces are declared, attach security groups on each interface instead of security_group_ids\x1aHsize(this.network_interfaces) == 0 || size(this.security_group_ids) == 0\"\xaa\x18\n" +
+	"(security_groups_conflict_with_interfaces\x12lwhen network_interfaces are declared, attach security groups on each interface instead of security_group_ids\x1aHsize(this.network_interfaces) == 0 || size(this.security_group_ids) == 0\"\xe9\x04\n" +
+	"$AwsLaunchTemplateCapacityReservation\x12\x1e\n" +
+	"\n" +
+	"preference\x18\x01 \x01(\tR\n" +
+	"preference\x126\n" +
+	"\x17capacity_reservation_id\x18\x02 \x01(\tR\x15capacityReservationId\x12T\n" +
+	"'capacity_reservation_resource_group_arn\x18\x03 \x01(\tR#capacityReservationResourceGroupArn:\x92\x03\xbaH\x8e\x03\x1a\xbb\x01\n" +
+	"\x10preference_valid\x12Kpreference must be 'open', 'none', or 'capacity-reservations-only' when set\x1aZthis.preference == '' || this.preference in ['open', 'none', 'capacity-reservations-only']\x1a\xcd\x01\n" +
+	"\x15id_xor_resource_group\x12Zcapacity_reservation_id and capacity_reservation_resource_group_arn are mutually exclusive\x1aXthis.capacity_reservation_id == '' || this.capacity_reservation_resource_group_arn == ''\"\xd5\x04\n" +
+	"#AwsLaunchTemplateSecondaryInterface\x12!\n" +
+	"\fdevice_index\x18\x01 \x01(\x05R\vdeviceIndex\x12,\n" +
+	"\x12network_card_index\x18\x02 \x01(\x05R\x10networkCardIndex\x122\n" +
+	"\x15delete_on_termination\x18\x03 \x01(\bR\x13deleteOnTermination\x12\x85\x01\n" +
+	"\x13secondary_subnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\x11secondarySubnetId\x127\n" +
+	"\x18private_ip_address_count\x18\x05 \x01(\x05R\x15privateIpAddressCount\x120\n" +
+	"\x14private_ip_addresses\x18\x06 \x03(\tR\x12privateIpAddresses:\xb5\x01\xbaH\xb1\x01\x1a\xae\x01\n" +
+	"\x16ip_count_xor_addresses\x12Hprivate_ip_address_count and private_ip_addresses are mutually exclusive\x1aJthis.private_ip_address_count == 0 || size(this.private_ip_addresses) == 0\"\xaa\x18\n" +
 	"%AwsLaunchTemplateInstanceRequirements\x12l\n" +
 	"\n" +
 	"memory_mib\x18\x01 \x01(\v2E.dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRangeB\x06\xbaH\x03\xc8\x01\x01R\tmemoryMib\x12l\n" +
@@ -1698,7 +2218,7 @@ const file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDesc = "" +
 	"\tno_device\x18\x03 \x01(\bR\bnoDevice\x12R\n" +
 	"\x03ebs\x18\x04 \x01(\v2@.dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateEbsR\x03ebs:\x8b\x02\xbaH\x87\x02\x1a\x88\x01\n" +
 	"\x1febs_conflicts_with_virtual_name\x12:ebs and virtual_name are mutually exclusive on one mapping\x1a)!has(this.ebs) || this.virtual_name == ''\x1az\n" +
-	"\x1cebs_conflicts_with_no_device\x127ebs and no_device are mutually exclusive on one mapping\x1a!!has(this.ebs) || !this.no_device\"\xa8\b\n" +
+	"\x1cebs_conflicts_with_no_device\x127ebs and no_device are mutually exclusive on one mapping\x1a!!has(this.ebs) || !this.no_device\"\xa8\f\n" +
 	"\x14AwsLaunchTemplateEbs\x12$\n" +
 	"\x0evolume_size_gb\x18\x01 \x01(\x05R\fvolumeSizeGb\x12\x1f\n" +
 	"\vvolume_type\x18\x02 \x01(\tR\n" +
@@ -1710,12 +2230,15 @@ const file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDesc = "" +
 	"kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1f\n" +
 	"\vsnapshot_id\x18\a \x01(\tR\n" +
 	"snapshotId\x127\n" +
-	"\x15delete_on_termination\x18\b \x01(\bH\x00R\x13deleteOnTermination\x88\x01\x01:\x84\x05\xbaH\x80\x05\x1a\xbd\x01\n" +
+	"\x15delete_on_termination\x18\b \x01(\bH\x00R\x13deleteOnTermination\x88\x01\x01\x12G\n" +
+	" volume_initialization_rate_mibps\x18\t \x01(\x05R\x1dvolumeInitializationRateMibps:\xbb\b\xbaH\xb7\b\x1a\xee\x01\n" +
+	"\x16volume_init_rate_range\x12Evolume_initialization_rate_mibps must be between 100 and 300 when set\x1a\x8c\x01this.volume_initialization_rate_mibps == 0 || (this.volume_initialization_rate_mibps >= 100 && this.volume_initialization_rate_mibps <= 300)\x1a\xc3\x01\n" +
+	"\"volume_init_rate_requires_snapshot\x12Wvolume_initialization_rate_mibps only applies when creating the volume from snapshot_id\x1aDthis.volume_initialization_rate_mibps == 0 || this.snapshot_id != ''\x1a\xbd\x01\n" +
 	"\x11volume_type_valid\x12Bvolume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard\x1adthis.volume_type == '' || this.volume_type in ['gp2', 'gp3', 'io1', 'io2', 'st1', 'sc1', 'standard']\x1a\xa9\x01\n" +
 	"\x10throughput_range\x126throughput_mibps must be between 125 and 1000 when set\x1a]this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 1000)\x1a\x80\x01\n" +
 	"\x17throughput_only_for_gp3\x12,throughput_mibps only applies to gp3 volumes\x1a7this.throughput_mibps == 0 || this.volume_type == 'gp3'\x1a\x8e\x01\n" +
 	"\x1fiops_only_for_provisioned_types\x12.iops only applies to gp3, io1, and io2 volumes\x1a;this.iops == 0 || this.volume_type in ['gp3', 'io1', 'io2']B\x18\n" +
-	"\x16_delete_on_termination\"\xcf\x0e\n" +
+	"\x16_delete_on_termination\"\xf8\x11\n" +
 	"!AwsLaunchTemplateNetworkInterface\x12!\n" +
 	"\fdevice_index\x18\x01 \x01(\x05R\vdeviceIndex\x12,\n" +
 	"\x12network_card_index\x18\x02 \x01(\x05R\x10networkCardIndex\x12 \n" +
@@ -1735,14 +2258,33 @@ const file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDesc = "" +
 	"\x11ipv4_prefix_count\x18\x0f \x01(\x05R\x0fipv4PrefixCount\x12#\n" +
 	"\ripv4_prefixes\x18\x10 \x03(\tR\fipv4Prefixes\x12*\n" +
 	"\x11ipv6_prefix_count\x18\x11 \x01(\x05R\x0fipv6PrefixCount\x12#\n" +
-	"\ripv6_prefixes\x18\x12 \x03(\tR\fipv6Prefixes:\xa6\x06\xbaH\xa2\x06\x1a\xaf\x01\n" +
+	"\ripv6_prefixes\x18\x12 \x03(\tR\fipv6Prefixes\x12D\n" +
+	"\x1cassociate_carrier_ip_address\x18\x13 \x01(\bH\x02R\x19associateCarrierIpAddress\x88\x01\x01\x12\x80\x01\n" +
+	"\x13connection_tracking\x18\x14 \x01(\v2O.dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateConnectionTrackingR\x12connectionTracking\x12\\\n" +
+	"\aena_srd\x18\x15 \x01(\v2C.dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateEnaSrdR\x06enaSrd\x12&\n" +
+	"\x0fena_queue_count\x18\x16 \x01(\x05R\renaQueueCount\x12&\n" +
+	"\fprimary_ipv6\x18\x17 \x01(\bH\x03R\vprimaryIpv6\x88\x01\x01:\xa6\x06\xbaH\xa2\x06\x1a\xaf\x01\n" +
 	"\x14interface_type_valid\x12Ainterface_type must be 'interface', 'efa', or 'efa-only' when set\x1aTthis.interface_type == '' || this.interface_type in ['interface', 'efa', 'efa-only']\x1a\x98\x01\n" +
 	"\x18ipv4_count_xor_addresses\x12<ipv4_address_count and ipv4_addresses are mutually exclusive\x1a>this.ipv4_address_count == 0 || size(this.ipv4_addresses) == 0\x1a\x98\x01\n" +
 	"\x18ipv6_count_xor_addresses\x12<ipv6_address_count and ipv6_addresses are mutually exclusive\x1a>this.ipv6_address_count == 0 || size(this.ipv6_addresses) == 0\x1a\x9a\x01\n" +
 	"\x1eipv4_prefix_count_xor_prefixes\x12:ipv4_prefix_count and ipv4_prefixes are mutually exclusive\x1a<this.ipv4_prefix_count == 0 || size(this.ipv4_prefixes) == 0\x1a\x9a\x01\n" +
 	"\x1eipv6_prefix_count_xor_prefixes\x12:ipv6_prefix_count and ipv6_prefixes are mutually exclusive\x1a<this.ipv6_prefix_count == 0 || size(this.ipv6_prefixes) == 0B\x1e\n" +
 	"\x1c_associate_public_ip_addressB\x18\n" +
-	"\x16_delete_on_termination\"\xc0\t\n" +
+	"\x16_delete_on_terminationB\x1f\n" +
+	"\x1d_associate_carrier_ip_addressB\x0f\n" +
+	"\r_primary_ipv6\"\xcb\x06\n" +
+	"#AwsLaunchTemplateConnectionTracking\x12E\n" +
+	"\x1ftcp_established_timeout_seconds\x18\x01 \x01(\x05R\x1ctcpEstablishedTimeoutSeconds\x12;\n" +
+	"\x1audp_stream_timeout_seconds\x18\x02 \x01(\x05R\x17udpStreamTimeoutSeconds\x12.\n" +
+	"\x13udp_timeout_seconds\x18\x03 \x01(\x05R\x11udpTimeoutSeconds:\xef\x04\xbaH\xeb\x04\x1a\xed\x01\n" +
+	"\x15tcp_established_range\x12Ftcp_established_timeout_seconds must be between 60 and 432000 when set\x1a\x8b\x01this.tcp_established_timeout_seconds == 0 || (this.tcp_established_timeout_seconds >= 60 && this.tcp_established_timeout_seconds <= 432000)\x1a\xcd\x01\n" +
+	"\x10udp_stream_range\x12>udp_stream_timeout_seconds must be between 60 and 180 when set\x1aythis.udp_stream_timeout_seconds == 0 || (this.udp_stream_timeout_seconds >= 60 && this.udp_stream_timeout_seconds <= 180)\x1a\xa8\x01\n" +
+	"\tudp_range\x126udp_timeout_seconds must be between 30 and 60 when set\x1acthis.udp_timeout_seconds == 0 || (this.udp_timeout_seconds >= 30 && this.udp_timeout_seconds <= 60)\"\xbd\x01\n" +
+	"\x17AwsLaunchTemplateEnaSrd\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1f\n" +
+	"\vudp_enabled\x18\x02 \x01(\bR\n" +
+	"udpEnabled:g\xbaHd\x1ab\n" +
+	"\x14udp_requires_enabled\x12'udp_enabled requires enabled to be true\x1a!!this.udp_enabled || this.enabled\"\xc0\t\n" +
 	" AwsLaunchTemplateMetadataOptions\x12#\n" +
 	"\rhttp_endpoint\x18\x01 \x01(\tR\fhttpEndpoint\x12a\n" +
 	"\vhttp_tokens\x18\x02 \x01(\tB@\xaa\xa6\x1d<IMDS enforcement mode (required/optional), not a token valueR\n" +
@@ -1754,20 +2296,31 @@ const file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDesc = "" +
 	"\x11http_tokens_valid\x125http_tokens must be 'required' or 'optional' when set\x1aFthis.http_tokens == '' || this.http_tokens in ['required', 'optional']\x1a\xcc\x01\n" +
 	"\x0fhop_limit_range\x12=http_put_response_hop_limit must be between 1 and 64 when set\x1azthis.http_put_response_hop_limit == 0 || (this.http_put_response_hop_limit >= 1 && this.http_put_response_hop_limit <= 64)\x1a\xac\x01\n" +
 	"\x18http_protocol_ipv6_valid\x12;http_protocol_ipv6 must be 'enabled' or 'disabled' when set\x1aSthis.http_protocol_ipv6 == '' || this.http_protocol_ipv6 in ['enabled', 'disabled']\x1a\xbc\x01\n" +
-	"\x1cinstance_metadata_tags_valid\x12?instance_metadata_tags must be 'enabled' or 'disabled' when set\x1a[this.instance_metadata_tags == '' || this.instance_metadata_tags in ['enabled', 'disabled']\"\xca\x02\n" +
+	"\x1cinstance_metadata_tags_valid\x12?instance_metadata_tags must be 'enabled' or 'disabled' when set\x1a[this.instance_metadata_tags == '' || this.instance_metadata_tags in ['enabled', 'disabled']\"\xdd\b\n" +
 	"\x1aAwsLaunchTemplatePlacement\x12+\n" +
 	"\x11availability_zone\x18\x01 \x01(\tR\x10availabilityZone\x12\x1d\n" +
 	"\n" +
 	"group_name\x18\x02 \x01(\tR\tgroupName\x12)\n" +
 	"\x10partition_number\x18\x03 \x01(\x05R\x0fpartitionNumber\x12\x18\n" +
-	"\atenancy\x18\x04 \x01(\tR\atenancy:\x9a\x01\xbaH\x96\x01\x1a\x93\x01\n" +
-	"\rtenancy_valid\x12:tenancy must be 'default', 'dedicated', or 'host' when set\x1aFthis.tenancy == '' || this.tenancy in ['default', 'dedicated', 'host']\"\xa4\x03\n" +
+	"\atenancy\x18\x04 \x01(\tR\atenancy\x12\x19\n" +
+	"\bgroup_id\x18\x05 \x01(\tR\agroupId\x12\x17\n" +
+	"\ahost_id\x18\x06 \x01(\tR\x06hostId\x125\n" +
+	"\x17host_resource_group_arn\x18\a \x01(\tR\x14hostResourceGroupArn\x12\x1a\n" +
+	"\baffinity\x18\b \x01(\tR\baffinity\x12#\n" +
+	"\rspread_domain\x18\t \x01(\tR\fspreadDomain:\x81\x06\xbaH\xfd\x05\x1a\x93\x01\n" +
+	"\rtenancy_valid\x12:tenancy must be 'default', 'dedicated', or 'host' when set\x1aFthis.tenancy == '' || this.tenancy in ['default', 'dedicated', 'host']\x1aw\n" +
+	"\x17group_name_xor_group_id\x12.group_name and group_id are mutually exclusive\x1a,this.group_name == '' || this.group_id == ''\x1a\x92\x01\n" +
+	"\x1ahost_id_xor_resource_group\x12:host_id and host_resource_group_arn are mutually exclusive\x1a8this.host_id == '' || this.host_resource_group_arn == ''\x1a|\n" +
+	"\x0eaffinity_valid\x12-affinity must be 'default' or 'host' when set\x1a;this.affinity == '' || this.affinity in ['default', 'host']\x1a\xd8\x01\n" +
+	"$host_targeting_requires_host_tenancy\x12Chost_id / host_resource_group_arn / affinity require tenancy 'host'\x1ak(this.host_id == '' && this.host_resource_group_arn == '' && this.affinity == '') || this.tenancy == 'host'\"\x94\x05\n" +
 	"\x1bAwsLaunchTemplateCpuOptions\x12\x1d\n" +
 	"\n" +
 	"core_count\x18\x01 \x01(\x05R\tcoreCount\x12(\n" +
 	"\x10threads_per_core\x18\x02 \x01(\x05R\x0ethreadsPerCore\x12\x1e\n" +
-	"\vamd_sev_snp\x18\x03 \x01(\tR\tamdSevSnp:\x9b\x02\xbaH\x97\x02\x1a\x81\x01\n" +
-	"\x16threads_per_core_valid\x12(threads_per_core must be 1 or 2 when set\x1a=this.threads_per_core == 0 || this.threads_per_core in [1, 2]\x1a\x90\x01\n" +
+	"\vamd_sev_snp\x18\x03 \x01(\tR\tamdSevSnp\x123\n" +
+	"\x15nested_virtualization\x18\x04 \x01(\tR\x14nestedVirtualization:\xd6\x03\xbaH\xd2\x03\x1a\x81\x01\n" +
+	"\x16threads_per_core_valid\x12(threads_per_core must be 1 or 2 when set\x1a=this.threads_per_core == 0 || this.threads_per_core in [1, 2]\x1a\xb8\x01\n" +
+	"\x1bnested_virtualization_valid\x12>nested_virtualization must be 'enabled' or 'disabled' when set\x1aYthis.nested_virtualization == '' || this.nested_virtualization in ['enabled', 'disabled']\x1a\x90\x01\n" +
 	"\x11amd_sev_snp_valid\x124amd_sev_snp must be 'enabled' or 'disabled' when set\x1aEthis.amd_sev_snp == '' || this.amd_sev_snp in ['enabled', 'disabled']\"\x93\b\n" +
 	"\x1cAwsLaunchTemplateSpotOptions\x12\x1b\n" +
 	"\tmax_price\x18\x01 \x01(\tR\bmaxPrice\x12,\n" +
@@ -1798,51 +2351,60 @@ func file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescGZIP() []byte
 	return file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsLaunchTemplateSpec)(nil),                  // 0: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec
-	(*AwsLaunchTemplateInstanceRequirements)(nil),  // 1: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements
-	(*AwsLaunchTemplateIntRange)(nil),              // 2: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
-	(*AwsLaunchTemplateDoubleRange)(nil),           // 3: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateDoubleRange
-	(*AwsLaunchTemplateBlockDeviceMapping)(nil),    // 4: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateBlockDeviceMapping
-	(*AwsLaunchTemplateEbs)(nil),                   // 5: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateEbs
-	(*AwsLaunchTemplateNetworkInterface)(nil),      // 6: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateNetworkInterface
-	(*AwsLaunchTemplateMetadataOptions)(nil),       // 7: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateMetadataOptions
-	(*AwsLaunchTemplatePlacement)(nil),             // 8: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplatePlacement
-	(*AwsLaunchTemplateCpuOptions)(nil),            // 9: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateCpuOptions
-	(*AwsLaunchTemplateSpotOptions)(nil),           // 10: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpotOptions
-	(*AwsLaunchTemplatePrivateDnsNameOptions)(nil), // 11: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplatePrivateDnsNameOptions
-	(*v1.StringValueOrRef)(nil),                    // 12: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsLaunchTemplateCapacityReservation)(nil),   // 1: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateCapacityReservation
+	(*AwsLaunchTemplateSecondaryInterface)(nil),    // 2: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSecondaryInterface
+	(*AwsLaunchTemplateInstanceRequirements)(nil),  // 3: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements
+	(*AwsLaunchTemplateIntRange)(nil),              // 4: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
+	(*AwsLaunchTemplateDoubleRange)(nil),           // 5: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateDoubleRange
+	(*AwsLaunchTemplateBlockDeviceMapping)(nil),    // 6: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateBlockDeviceMapping
+	(*AwsLaunchTemplateEbs)(nil),                   // 7: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateEbs
+	(*AwsLaunchTemplateNetworkInterface)(nil),      // 8: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateNetworkInterface
+	(*AwsLaunchTemplateConnectionTracking)(nil),    // 9: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateConnectionTracking
+	(*AwsLaunchTemplateEnaSrd)(nil),                // 10: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateEnaSrd
+	(*AwsLaunchTemplateMetadataOptions)(nil),       // 11: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateMetadataOptions
+	(*AwsLaunchTemplatePlacement)(nil),             // 12: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplatePlacement
+	(*AwsLaunchTemplateCpuOptions)(nil),            // 13: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateCpuOptions
+	(*AwsLaunchTemplateSpotOptions)(nil),           // 14: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpotOptions
+	(*AwsLaunchTemplatePrivateDnsNameOptions)(nil), // 15: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplatePrivateDnsNameOptions
+	(*v1.StringValueOrRef)(nil),                    // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_depIdxs = []int32{
-	1,  // 0: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.instance_requirements:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements
-	12, // 1: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.instance_profile:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 2: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 3: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.block_device_mappings:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateBlockDeviceMapping
-	6,  // 4: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.network_interfaces:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateNetworkInterface
-	7,  // 5: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.metadata_options:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateMetadataOptions
-	8,  // 6: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.placement:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplatePlacement
-	9,  // 7: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.cpu_options:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateCpuOptions
-	10, // 8: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.spot_options:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpotOptions
-	11, // 9: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.private_dns_name_options:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplatePrivateDnsNameOptions
-	2,  // 10: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.memory_mib:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
-	2,  // 11: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.vcpu_count:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
-	3,  // 12: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.total_local_storage_gb:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateDoubleRange
-	3,  // 13: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.memory_gib_per_vcpu:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateDoubleRange
-	2,  // 14: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.network_interface_count:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
-	3,  // 15: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.network_bandwidth_gbps:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateDoubleRange
-	2,  // 16: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.baseline_ebs_bandwidth_mbps:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
-	2,  // 17: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.accelerator_count:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
-	2,  // 18: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.accelerator_total_memory_mib:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
-	5,  // 19: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateBlockDeviceMapping.ebs:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateEbs
-	12, // 20: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateEbs.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 21: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateNetworkInterface.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 22: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateNetworkInterface.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	3,  // 0: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.instance_requirements:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements
+	16, // 1: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.instance_profile:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 2: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 3: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.block_device_mappings:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateBlockDeviceMapping
+	8,  // 4: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.network_interfaces:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateNetworkInterface
+	11, // 5: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.metadata_options:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateMetadataOptions
+	12, // 6: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.placement:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplatePlacement
+	13, // 7: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.cpu_options:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateCpuOptions
+	14, // 8: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.spot_options:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpotOptions
+	15, // 9: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.private_dns_name_options:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplatePrivateDnsNameOptions
+	1,  // 10: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.capacity_reservation:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateCapacityReservation
+	2,  // 11: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSpec.secondary_interfaces:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSecondaryInterface
+	16, // 12: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateSecondaryInterface.secondary_subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 13: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.memory_mib:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
+	4,  // 14: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.vcpu_count:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
+	5,  // 15: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.total_local_storage_gb:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateDoubleRange
+	5,  // 16: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.memory_gib_per_vcpu:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateDoubleRange
+	4,  // 17: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.network_interface_count:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
+	5,  // 18: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.network_bandwidth_gbps:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateDoubleRange
+	4,  // 19: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.baseline_ebs_bandwidth_mbps:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
+	4,  // 20: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.accelerator_count:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
+	4,  // 21: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateInstanceRequirements.accelerator_total_memory_mib:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateIntRange
+	7,  // 22: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateBlockDeviceMapping.ebs:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateEbs
+	16, // 23: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateEbs.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 24: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateNetworkInterface.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 25: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateNetworkInterface.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 26: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateNetworkInterface.connection_tracking:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateConnectionTracking
+	10, // 27: dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateNetworkInterface.ena_srd:type_name -> dev.planton.aws.awslaunchtemplate.v1alpha1.AwsLaunchTemplateEnaSrd
+	28, // [28:28] is the sub-list for method output_type
+	28, // [28:28] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_init() }
@@ -1850,15 +2412,15 @@ func file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto != nil {
 		return
 	}
-	file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[5].OneofWrappers = []any{}
-	file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[6].OneofWrappers = []any{}
+	file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[7].OneofWrappers = []any{}
+	file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_msgTypes[8].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

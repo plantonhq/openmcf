@@ -7,9 +7,13 @@ spec:
   # verify -> destroy -> verify-destroyed on both provisioners. Templates
   # are free, create in seconds, and never launch an instance during the
   # test, so this is one of the fastest components in the suite.
+  #
+  # pending_proof: the depth closure added Capacity Reservation targeting,
+  # the capacity-block market, dedicated-host placement, connection
+  # tracking, ENA Express, secondary interfaces, bandwidth weighting, and
+  # snapshot-hydration rate -- the prior green predates this surface, so
+  # the badge is revoked until the proof lane re-earns it.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

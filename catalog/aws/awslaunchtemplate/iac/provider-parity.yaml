@@ -1,0 +1,95 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_launch_template:
+    mappings:
+      # Wrapper blocks the spec flattens to single fields.
+      - arg: iam_instance_profile.arn
+        spec: spec.instance_profile
+      - arg: monitoring.enabled
+        spec: spec.detailed_monitoring
+      - arg: maintenance_options.auto_recovery
+        spec: spec.auto_recovery
+      - arg: credit_specification.cpu_credits
+        spec: spec.cpu_credits
+      - arg: enclave_options.enabled
+        spec: spec.enclave_enabled
+      - arg: hibernation_options.configured
+        spec: spec.hibernation_enabled
+      - arg: network_performance_options.bandwidth_weighting
+        spec: spec.bandwidth_weighting
+      # The set of single-ARN license blocks flattens to a repeated string.
+      - arg: license_specification.license_configuration_arn
+        spec: spec.license_configuration_arns
+      # The purchase market: market_type is top-level in the spec;
+      # spot_options keeps its name one level up.
+      - arg: instance_market_options.market_type
+        spec: spec.market_type
+      - arg: instance_market_options.spot_options
+        spec: spec.spot_options
+      # Capacity reservation: the spec drops the *_specification wrapper
+      # and the target sub-block; the preference drops its prefix.
+      - arg: capacity_reservation_specification.capacity_reservation_preference
+        spec: spec.capacity_reservation.preference
+      - arg: capacity_reservation_specification.capacity_reservation_target
+        spec: spec.capacity_reservation
+      # Renamed leaves (units made explicit, per the house style).
+      - arg: block_device_mappings.ebs.volume_size
+        spec: spec.block_device_mappings.ebs.volume_size_gb
+      - arg: block_device_mappings.ebs.throughput
+        spec: spec.block_device_mappings.ebs.throughput_mibps
+      - arg: block_device_mappings.ebs.volume_initialization_rate
+        spec: spec.block_device_mappings.ebs.volume_initialization_rate_mibps
+      - arg: vpc_security_group_ids
+        spec: spec.security_group_ids
+      - arg: network_interfaces.security_groups
+        spec: spec.network_interfaces.security_group_ids
+      # Connection tracking: the spec drops the *_specification suffix and
+      # makes the seconds unit explicit.
+      - arg: network_interfaces.connection_tracking_specification.tcp_established_timeout
+        spec: spec.network_interfaces.connection_tracking.tcp_established_timeout_seconds
+      - arg: network_interfaces.connection_tracking_specification.udp_stream_timeout
+        spec: spec.network_interfaces.connection_tracking.udp_stream_timeout_seconds
+      - arg: network_interfaces.connection_tracking_specification.udp_timeout
+        spec: spec.network_interfaces.connection_tracking.udp_timeout_seconds
+      # ENA Express: the spec drops the ena_srd_* prefixes and the UDP
+      # sub-block wrapper.
+      - arg: network_interfaces.ena_srd_specification.ena_srd_enabled
+        spec: spec.network_interfaces.ena_srd.enabled
+      - arg: network_interfaces.ena_srd_specification.ena_srd_udp_specification.ena_srd_udp_enabled
+        spec: spec.network_interfaces.ena_srd.udp_enabled
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name (truncated to AWS's 125-character limit) -- never free-form user surface
+      - arg: name_prefix
+        reason: covered alternative to name, which the module wires from metadata -- generated names have no place in a declarative catalog
+      - arg: update_default_version
+        reason: module-wired true -- the declarative contract promotes every new template version to the default, so "$Default" consumers roll on the next launch
+      - arg: default_version
+        reason: covered alternative to update_default_version (the two conflict at the provider); pinning an old default contradicts the spec-describes-one-configuration model
+      - arg: iam_instance_profile.name
+        reason: covered alternative -- the spec models the profile by ARN (instance_profile), the referenceable form
+      - arg: tag_specifications.resource_type
+        reason: wired by the module -- identity tags render onto the instance and volume resource types at launch (template tags do not propagate to launched resources)
+      - arg: tag_specifications.tags
+        reason: wired by the module from metadata (the same identity tags as the template's own) -- never free-form user surface
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+      - arg: kernel_id
+        reason: legacy paravirtual-AMI kernel selection -- PV AMIs are unsupported on all current instance types; deliberately unmodeled
+      - arg: ram_disk_id
+        reason: legacy paravirtual-AMI ramdisk selection -- same retired PV generation as kernel_id; deliberately unmodeled
+      - arg: security_group_names
+        reason: EC2-Classic-era addressing (groups by name); the spec models security groups by ID, the VPC form -- covered alternative
+      - arg: instance_market_options.spot_options.block_duration_minutes
+        reason: Spot blocks (defined-duration Spot) -- AWS retired the feature in 2022; deliberately unmodeled
+      - arg: secondary_interfaces.interface_type
+        reason: wired by the module -- the provider accepts exactly one value ("secondary"), so there is no configuration decision to surface

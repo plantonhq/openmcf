@@ -56,6 +56,12 @@ func scaling(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResour
 	}
 
 	for _, hook := range spec.LifecycleHooks {
+		// Hooks flagged apply_at_launch render inline on the group
+		// (attached atomically at creation); only the rest are standalone
+		// hook resources here.
+		if hook.ApplyAtLaunch {
+			continue
+		}
 		args := &autoscaling.LifecycleHookArgs{
 			AutoscalingGroupName: createdGroup.Name,
 			Name:                 pulumi.StringPtr(hook.Name),
@@ -120,6 +126,12 @@ func scalingPolicy(ctx *pulumi.Context, provider pulumi.ProviderResource, create
 		AutoscalingGroupName: createdGroup.Name,
 		Name:                 pulumi.StringPtr(policy.Name),
 		PolicyType:           pulumi.StringPtr(policy.PolicyType),
+	}
+	// The pause button: a disabled policy stays configured (alarms,
+	// history, forecast state) but stops acting on the group. AWS
+	// defaults to enabled, so only an explicit disable is sent.
+	if policy.Disabled {
+		args.Enabled = pulumi.BoolPtr(false)
 	}
 	if policy.EstimatedInstanceWarmupSeconds > 0 {
 		args.EstimatedInstanceWarmup = pulumi.IntPtr(int(policy.EstimatedInstanceWarmupSeconds))
@@ -281,19 +293,146 @@ func metricStatDimensions(dimensions []*awsautoscalinggroupv1alpha1.AwsAutoScali
 	return result
 }
 
-// predictiveScalingArgs maps forecast-driven pre-provisioning using the
-// predefined metric-pair form (load + scaling metric derived together).
+// predictiveScalingArgs maps forecast-driven pre-provisioning. The metrics
+// come in three forms (the spec's CEL enforces the choice): one predefined
+// PAIR, SPLIT predefined load + scaling metrics, or fully CUSTOMIZED
+// metric-math query sets.
 func predictiveScalingArgs(predictive *awsautoscalinggroupv1alpha1.AwsAutoScalingGroupPredictiveScalingConfig) *autoscaling.PolicyPredictiveScalingConfigurationArgs {
 	metricSpecification := &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationArgs{
 		TargetValue: pulumi.Float64(predictive.TargetValue),
 	}
-	pairArgs := &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationPredefinedMetricPairSpecificationArgs{
-		PredefinedMetricType: pulumi.String(predictive.PredefinedMetricPairType),
+	if predictive.PredefinedMetricPairType != "" {
+		pairArgs := &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationPredefinedMetricPairSpecificationArgs{
+			PredefinedMetricType: pulumi.String(predictive.PredefinedMetricPairType),
+		}
+		if predictive.ResourceLabel != "" {
+			pairArgs.ResourceLabel = pulumi.StringPtr(predictive.ResourceLabel)
+		}
+		metricSpecification.PredefinedMetricPairSpecification = pairArgs
 	}
-	if predictive.ResourceLabel != "" {
-		pairArgs.ResourceLabel = pulumi.StringPtr(predictive.ResourceLabel)
+	if predictive.PredefinedLoadMetric != nil {
+		loadArgs := &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationPredefinedLoadMetricSpecificationArgs{
+			PredefinedMetricType: pulumi.String(predictive.PredefinedLoadMetric.MetricType),
+		}
+		if predictive.PredefinedLoadMetric.ResourceLabel != "" {
+			loadArgs.ResourceLabel = pulumi.StringPtr(predictive.PredefinedLoadMetric.ResourceLabel)
+		}
+		metricSpecification.PredefinedLoadMetricSpecification = loadArgs
 	}
-	metricSpecification.PredefinedMetricPairSpecification = pairArgs
+	if predictive.PredefinedScalingMetric != nil {
+		scalingArgs := &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationPredefinedScalingMetricSpecificationArgs{
+			PredefinedMetricType: pulumi.String(predictive.PredefinedScalingMetric.MetricType),
+		}
+		if predictive.PredefinedScalingMetric.ResourceLabel != "" {
+			scalingArgs.ResourceLabel = pulumi.StringPtr(predictive.PredefinedScalingMetric.ResourceLabel)
+		}
+		metricSpecification.PredefinedScalingMetricSpecification = scalingArgs
+	}
+	if len(predictive.CustomizedLoadMetricQueries) > 0 {
+		queries := make(autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedLoadMetricSpecificationMetricDataQueryArray, 0, len(predictive.CustomizedLoadMetricQueries))
+		for _, query := range predictive.CustomizedLoadMetricQueries {
+			queryArgs := &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedLoadMetricSpecificationMetricDataQueryArgs{
+				Id: pulumi.String(query.Id),
+			}
+			if query.Expression != "" {
+				queryArgs.Expression = pulumi.StringPtr(query.Expression)
+			}
+			if query.Label != "" {
+				queryArgs.Label = pulumi.StringPtr(query.Label)
+			}
+			if query.ReturnData != nil {
+				queryArgs.ReturnData = pulumi.BoolPtr(query.GetReturnData())
+			}
+			if query.MetricStat != nil {
+				statArgs := &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedLoadMetricSpecificationMetricDataQueryMetricStatArgs{
+					Stat: pulumi.String(query.MetricStat.Stat),
+					Metric: &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedLoadMetricSpecificationMetricDataQueryMetricStatMetricArgs{
+						MetricName: pulumi.String(query.MetricStat.MetricName),
+						Namespace:  pulumi.String(query.MetricStat.Namespace),
+						Dimensions: predictiveLoadDimensions(query.MetricStat.Dimensions),
+					},
+				}
+				if query.MetricStat.Unit != "" {
+					statArgs.Unit = pulumi.StringPtr(query.MetricStat.Unit)
+				}
+				queryArgs.MetricStat = statArgs
+			}
+			queries = append(queries, queryArgs)
+		}
+		metricSpecification.CustomizedLoadMetricSpecification = &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedLoadMetricSpecificationArgs{
+			MetricDataQueries: queries,
+		}
+	}
+	if len(predictive.CustomizedScalingMetricQueries) > 0 {
+		queries := make(autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedScalingMetricSpecificationMetricDataQueryArray, 0, len(predictive.CustomizedScalingMetricQueries))
+		for _, query := range predictive.CustomizedScalingMetricQueries {
+			queryArgs := &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedScalingMetricSpecificationMetricDataQueryArgs{
+				Id: pulumi.String(query.Id),
+			}
+			if query.Expression != "" {
+				queryArgs.Expression = pulumi.StringPtr(query.Expression)
+			}
+			if query.Label != "" {
+				queryArgs.Label = pulumi.StringPtr(query.Label)
+			}
+			if query.ReturnData != nil {
+				queryArgs.ReturnData = pulumi.BoolPtr(query.GetReturnData())
+			}
+			if query.MetricStat != nil {
+				statArgs := &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedScalingMetricSpecificationMetricDataQueryMetricStatArgs{
+					Stat: pulumi.String(query.MetricStat.Stat),
+					Metric: &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedScalingMetricSpecificationMetricDataQueryMetricStatMetricArgs{
+						MetricName: pulumi.String(query.MetricStat.MetricName),
+						Namespace:  pulumi.String(query.MetricStat.Namespace),
+						Dimensions: predictiveScalingDimensions(query.MetricStat.Dimensions),
+					},
+				}
+				if query.MetricStat.Unit != "" {
+					statArgs.Unit = pulumi.StringPtr(query.MetricStat.Unit)
+				}
+				queryArgs.MetricStat = statArgs
+			}
+			queries = append(queries, queryArgs)
+		}
+		metricSpecification.CustomizedScalingMetricSpecification = &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedScalingMetricSpecificationArgs{
+			MetricDataQueries: queries,
+		}
+	}
+	if len(predictive.CustomizedCapacityMetricQueries) > 0 {
+		queries := make(autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedCapacityMetricSpecificationMetricDataQueryArray, 0, len(predictive.CustomizedCapacityMetricQueries))
+		for _, query := range predictive.CustomizedCapacityMetricQueries {
+			queryArgs := &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedCapacityMetricSpecificationMetricDataQueryArgs{
+				Id: pulumi.String(query.Id),
+			}
+			if query.Expression != "" {
+				queryArgs.Expression = pulumi.StringPtr(query.Expression)
+			}
+			if query.Label != "" {
+				queryArgs.Label = pulumi.StringPtr(query.Label)
+			}
+			if query.ReturnData != nil {
+				queryArgs.ReturnData = pulumi.BoolPtr(query.GetReturnData())
+			}
+			if query.MetricStat != nil {
+				statArgs := &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedCapacityMetricSpecificationMetricDataQueryMetricStatArgs{
+					Stat: pulumi.String(query.MetricStat.Stat),
+					Metric: &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedCapacityMetricSpecificationMetricDataQueryMetricStatMetricArgs{
+						MetricName: pulumi.String(query.MetricStat.MetricName),
+						Namespace:  pulumi.String(query.MetricStat.Namespace),
+						Dimensions: predictiveCapacityDimensions(query.MetricStat.Dimensions),
+					},
+				}
+				if query.MetricStat.Unit != "" {
+					statArgs.Unit = pulumi.StringPtr(query.MetricStat.Unit)
+				}
+				queryArgs.MetricStat = statArgs
+			}
+			queries = append(queries, queryArgs)
+		}
+		metricSpecification.CustomizedCapacityMetricSpecification = &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedCapacityMetricSpecificationArgs{
+			MetricDataQueries: queries,
+		}
+	}
 
 	args := &autoscaling.PolicyPredictiveScalingConfigurationArgs{
 		MetricSpecification: metricSpecification,
@@ -314,4 +453,48 @@ func predictiveScalingArgs(predictive *awsautoscalinggroupv1alpha1.AwsAutoScalin
 	}
 
 	return args
+}
+
+// The three predictive dimension helpers exist only because the provider
+// SDK generates a distinct (structurally identical) type per metric form.
+func predictiveLoadDimensions(dimensions []*awsautoscalinggroupv1alpha1.AwsAutoScalingGroupMetricDimension) autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedLoadMetricSpecificationMetricDataQueryMetricStatMetricDimensionArray {
+	if len(dimensions) == 0 {
+		return nil
+	}
+	result := make(autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedLoadMetricSpecificationMetricDataQueryMetricStatMetricDimensionArray, 0, len(dimensions))
+	for _, dimension := range dimensions {
+		result = append(result, &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedLoadMetricSpecificationMetricDataQueryMetricStatMetricDimensionArgs{
+			Name:  pulumi.String(dimension.Name),
+			Value: pulumi.String(dimension.Value),
+		})
+	}
+	return result
+}
+
+func predictiveScalingDimensions(dimensions []*awsautoscalinggroupv1alpha1.AwsAutoScalingGroupMetricDimension) autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedScalingMetricSpecificationMetricDataQueryMetricStatMetricDimensionArray {
+	if len(dimensions) == 0 {
+		return nil
+	}
+	result := make(autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedScalingMetricSpecificationMetricDataQueryMetricStatMetricDimensionArray, 0, len(dimensions))
+	for _, dimension := range dimensions {
+		result = append(result, &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedScalingMetricSpecificationMetricDataQueryMetricStatMetricDimensionArgs{
+			Name:  pulumi.String(dimension.Name),
+			Value: pulumi.String(dimension.Value),
+		})
+	}
+	return result
+}
+
+func predictiveCapacityDimensions(dimensions []*awsautoscalinggroupv1alpha1.AwsAutoScalingGroupMetricDimension) autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedCapacityMetricSpecificationMetricDataQueryMetricStatMetricDimensionArray {
+	if len(dimensions) == 0 {
+		return nil
+	}
+	result := make(autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedCapacityMetricSpecificationMetricDataQueryMetricStatMetricDimensionArray, 0, len(dimensions))
+	for _, dimension := range dimensions {
+		result = append(result, &autoscaling.PolicyPredictiveScalingConfigurationMetricSpecificationCustomizedCapacityMetricSpecificationMetricDataQueryMetricStatMetricDimensionArgs{
+			Name:  pulumi.String(dimension.Name),
+			Value: pulumi.String(dimension.Value),
+		})
+	}
+	return result
 }

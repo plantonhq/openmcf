@@ -1,0 +1,262 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_autoscaling_group:
+    mappings:
+      - arg: vpc_zone_identifier
+        spec: spec.subnets
+      # Renamed leaves (units made explicit, per the house style).
+      - arg: default_cooldown
+        spec: spec.default_cooldown_seconds
+      - arg: default_instance_warmup
+        spec: spec.default_instance_warmup_seconds
+      - arg: health_check_grace_period
+        spec: spec.health_check_grace_period_seconds
+      - arg: max_instance_lifetime
+        spec: spec.max_instance_lifetime_seconds
+      - arg: target_group_arns
+        spec: spec.target_groups
+      # The one-sub-arg wrapper block flattens to a top-level field.
+      - arg: availability_zone_distribution.capacity_distribution_strategy
+        spec: spec.capacity_distribution_strategy
+      # Capacity reservation: the spec drops the *_specification wrapper
+      # and the target sub-block; the preference drops its prefix.
+      - arg: capacity_reservation_specification.capacity_reservation_preference
+        spec: spec.capacity_reservation.preference
+      - arg: capacity_reservation_specification.capacity_reservation_target
+        spec: spec.capacity_reservation
+      # The three-level provider tree collapses to one small message: its
+      # only leaf today is the terminate-hook retention trigger.
+      - arg: instance_lifecycle_policy.retention_triggers
+        spec: spec.instance_lifecycle_policy
+      - arg: traffic_source
+        spec: spec.traffic_sources
+      # The single-template reference: the spec names the id field fully.
+      - arg: launch_template
+        spec: spec.launch_template
+      - arg: launch_template.id
+        spec: spec.launch_template.launch_template_id
+      # Mixed-instances: the spec drops the provider's double-nested
+      # launch_template.launch_template_specification wrapper and calls the
+      # override list what it is.
+      - arg: mixed_instances_policy.launch_template.launch_template_specification
+        spec: spec.mixed_instances_policy.launch_template
+      - arg: mixed_instances_policy.launch_template.override
+        spec: spec.mixed_instances_policy.overrides
+      - arg: mixed_instances_policy.launch_template.override.launch_template_specification
+        spec: spec.mixed_instances_policy.overrides.launch_template
+      # Hooks flagged apply_at_launch render as the group's creation-time
+      # inline hooks; the rest are standalone aws_autoscaling_lifecycle_hook
+      # resources -- one spec list, two provider mechanisms.
+      - arg: initial_lifecycle_hook
+        spec: spec.lifecycle_hooks
+      - arg: initial_lifecycle_hook.heartbeat_timeout
+        spec: spec.lifecycle_hooks.heartbeat_timeout_seconds
+      # The provider models refresh warmup and checkpoint delay as strings
+      # (nullable ints at AWS); the spec keeps honest ints with the unit.
+      - arg: instance_refresh.preferences.instance_warmup
+        spec: spec.instance_refresh.preferences.instance_warmup_seconds
+      - arg: instance_refresh.preferences.checkpoint_delay
+        spec: spec.instance_refresh.preferences.checkpoint_delay_seconds
+      - arg: instance_refresh.preferences.alarm_specification.alarms
+        spec: spec.instance_refresh.preferences.alarms
+      # The one-sub-arg reuse-policy wrapper flattens to a bool.
+      - arg: warm_pool.instance_reuse_policy.reuse_on_scale_in
+        spec: spec.warm_pool.reuse_on_scale_in
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- never free-form user surface
+      - arg: name_prefix
+        reason: covered alternative to name, which the module wires from metadata -- generated names have no place in a declarative catalog
+      - arg: availability_zones
+        reason: covered alternative -- the spec places capacity by subnet (vpc_zone_identifier), the VPC form; AZ-only placement is EC2-Classic-era
+      - arg: launch_configuration
+        reason: launch configurations are deprecated by AWS -- launch templates (the spec's launch_template / mixed_instances_policy) are the successor
+      - arg: launch_template.name
+        reason: covered alternative -- the spec references templates by ID, the referenceable form
+      - arg: mixed_instances_policy.launch_template.launch_template_specification.launch_template_name
+        reason: covered alternative -- the spec references templates by ID, the referenceable form
+      - arg: mixed_instances_policy.launch_template.override.launch_template_specification.launch_template_name
+        reason: covered alternative -- the spec references templates by ID, the referenceable form
+      - arg: load_balancers
+        reason: covered alternative -- Classic ELBs attach via traffic_sources with type "elb"; ALB/NLB target groups via target_groups
+      - arg: context
+        reason: reserved field ("Reserved" in the AWS API since introduction) -- no defined behavior to model
+      - arg: metrics_granularity
+        reason: single valid value ("1Minute") -- no configuration decision to surface; the provider default stands
+      - arg: tag.key
+        reason: wired by the module from metadata (identity tags with propagate_at_launch) -- never free-form user surface
+      - arg: tag.value
+        reason: wired by the module from metadata (identity tags with propagate_at_launch) -- never free-form user surface
+      - arg: tag.propagate_at_launch
+        reason: wired by the module -- identity tags always propagate so launched instances never escape cost-allocation and orphan-cleanup queries
+
+  aws_autoscaling_policy:
+    specRoot: spec.scaling_policies
+    mappings:
+      # v6 per-resource region override -- the module wires every
+      # resource to spec.region.
+      - arg: region
+        spec: spec.region
+      - arg: enabled
+        spec: spec.scaling_policies.disabled
+      - arg: estimated_instance_warmup
+        spec: spec.scaling_policies.estimated_instance_warmup_seconds
+      # Args shared by the simple and step engines map to the step form;
+      # the simple form's twins carry specExclusions below (one provider
+      # argument, two spec homes selected by policy_type).
+      - arg: adjustment_type
+        spec: spec.scaling_policies.step_scaling.adjustment_type
+      - arg: min_adjustment_magnitude
+        spec: spec.scaling_policies.step_scaling.min_adjustment_magnitude
+      - arg: metric_aggregation_type
+        spec: spec.scaling_policies.step_scaling.metric_aggregation_type
+      - arg: step_adjustment
+        spec: spec.scaling_policies.step_scaling.step_adjustments
+      - arg: scaling_adjustment
+        spec: spec.scaling_policies.simple_scaling.scaling_adjustment
+      - arg: cooldown
+        spec: spec.scaling_policies.simple_scaling.cooldown_seconds
+      # Target tracking: the spec shortens the block name and flattens the
+      # predefined-metric wrapper.
+      - arg: target_tracking_configuration
+        spec: spec.scaling_policies.target_tracking
+      - arg: target_tracking_configuration.predefined_metric_specification.predefined_metric_type
+        spec: spec.scaling_policies.target_tracking.predefined_metric_type
+      - arg: target_tracking_configuration.predefined_metric_specification.resource_label
+        spec: spec.scaling_policies.target_tracking.resource_label
+      - arg: target_tracking_configuration.customized_metric_specification
+        spec: spec.scaling_policies.target_tracking.customized_metric
+      - arg: target_tracking_configuration.customized_metric_specification.period
+        spec: spec.scaling_policies.target_tracking.customized_metric.period_seconds
+      - arg: target_tracking_configuration.customized_metric_specification.metric_dimension
+        spec: spec.scaling_policies.target_tracking.customized_metric.dimensions
+      - arg: target_tracking_configuration.customized_metric_specification.metrics.metric_stat.period
+        spec: spec.scaling_policies.target_tracking.customized_metric.metrics.metric_stat.period_seconds
+      # The metric-math stat flattens the provider's inner metric wrapper.
+      - arg: target_tracking_configuration.customized_metric_specification.metrics.metric_stat.metric.metric_name
+        spec: spec.scaling_policies.target_tracking.customized_metric.metrics.metric_stat.metric_name
+      - arg: target_tracking_configuration.customized_metric_specification.metrics.metric_stat.metric.namespace
+        spec: spec.scaling_policies.target_tracking.customized_metric.metrics.metric_stat.namespace
+      - arg: target_tracking_configuration.customized_metric_specification.metrics.metric_stat.metric.dimensions
+        spec: spec.scaling_policies.target_tracking.customized_metric.metrics.metric_stat.dimensions
+      # Predictive scaling: the spec shortens the block name, flattens
+      # metric_specification, and names each metric form directly.
+      - arg: predictive_scaling_configuration
+        spec: spec.scaling_policies.predictive_scaling
+      - arg: predictive_scaling_configuration.scheduling_buffer_time
+        spec: spec.scaling_policies.predictive_scaling.scheduling_buffer_time_seconds
+      - arg: predictive_scaling_configuration.metric_specification.target_value
+        spec: spec.scaling_policies.predictive_scaling.target_value
+      - arg: predictive_scaling_configuration.metric_specification.predefined_metric_pair_specification.predefined_metric_type
+        spec: spec.scaling_policies.predictive_scaling.predefined_metric_pair_type
+      - arg: predictive_scaling_configuration.metric_specification.predefined_metric_pair_specification.resource_label
+        spec: spec.scaling_policies.predictive_scaling.resource_label
+      - arg: predictive_scaling_configuration.metric_specification.predefined_load_metric_specification
+        spec: spec.scaling_policies.predictive_scaling.predefined_load_metric
+      - arg: predictive_scaling_configuration.metric_specification.predefined_load_metric_specification.predefined_metric_type
+        spec: spec.scaling_policies.predictive_scaling.predefined_load_metric.metric_type
+      - arg: predictive_scaling_configuration.metric_specification.predefined_scaling_metric_specification
+        spec: spec.scaling_policies.predictive_scaling.predefined_scaling_metric
+      - arg: predictive_scaling_configuration.metric_specification.predefined_scaling_metric_specification.predefined_metric_type
+        spec: spec.scaling_policies.predictive_scaling.predefined_scaling_metric.metric_type
+      - arg: predictive_scaling_configuration.metric_specification.customized_load_metric_specification.metric_data_queries
+        spec: spec.scaling_policies.predictive_scaling.customized_load_metric_queries
+      - arg: predictive_scaling_configuration.metric_specification.customized_load_metric_specification.metric_data_queries.metric_stat.metric.metric_name
+        spec: spec.scaling_policies.predictive_scaling.customized_load_metric_queries.metric_stat.metric_name
+      - arg: predictive_scaling_configuration.metric_specification.customized_load_metric_specification.metric_data_queries.metric_stat.metric.namespace
+        spec: spec.scaling_policies.predictive_scaling.customized_load_metric_queries.metric_stat.namespace
+      - arg: predictive_scaling_configuration.metric_specification.customized_load_metric_specification.metric_data_queries.metric_stat.metric.dimensions
+        spec: spec.scaling_policies.predictive_scaling.customized_load_metric_queries.metric_stat.dimensions
+      - arg: predictive_scaling_configuration.metric_specification.customized_scaling_metric_specification.metric_data_queries
+        spec: spec.scaling_policies.predictive_scaling.customized_scaling_metric_queries
+      - arg: predictive_scaling_configuration.metric_specification.customized_scaling_metric_specification.metric_data_queries.metric_stat.metric.metric_name
+        spec: spec.scaling_policies.predictive_scaling.customized_scaling_metric_queries.metric_stat.metric_name
+      - arg: predictive_scaling_configuration.metric_specification.customized_scaling_metric_specification.metric_data_queries.metric_stat.metric.namespace
+        spec: spec.scaling_policies.predictive_scaling.customized_scaling_metric_queries.metric_stat.namespace
+      - arg: predictive_scaling_configuration.metric_specification.customized_scaling_metric_specification.metric_data_queries.metric_stat.metric.dimensions
+        spec: spec.scaling_policies.predictive_scaling.customized_scaling_metric_queries.metric_stat.dimensions
+      - arg: predictive_scaling_configuration.metric_specification.customized_capacity_metric_specification.metric_data_queries
+        spec: spec.scaling_policies.predictive_scaling.customized_capacity_metric_queries
+      - arg: predictive_scaling_configuration.metric_specification.customized_capacity_metric_specification.metric_data_queries.metric_stat.metric.metric_name
+        spec: spec.scaling_policies.predictive_scaling.customized_capacity_metric_queries.metric_stat.metric_name
+      - arg: predictive_scaling_configuration.metric_specification.customized_capacity_metric_specification.metric_data_queries.metric_stat.metric.namespace
+        spec: spec.scaling_policies.predictive_scaling.customized_capacity_metric_queries.metric_stat.namespace
+      - arg: predictive_scaling_configuration.metric_specification.customized_capacity_metric_specification.metric_data_queries.metric_stat.metric.dimensions
+        spec: spec.scaling_policies.predictive_scaling.customized_capacity_metric_queries.metric_stat.dimensions
+    exclusions:
+      - arg: autoscaling_group_name
+        reason: wired by the module to the group it creates -- never user surface
+
+  aws_autoscaling_schedule:
+    specRoot: spec.scheduled_actions
+    mappings:
+      # v6 per-resource region override -- the module wires every
+      # resource to spec.region.
+      - arg: region
+        spec: spec.region
+      - arg: scheduled_action_name
+        spec: spec.scheduled_actions.name
+    exclusions:
+      - arg: autoscaling_group_name
+        reason: wired by the module to the group it creates -- never user surface
+
+  aws_autoscaling_lifecycle_hook:
+    specRoot: spec.lifecycle_hooks
+    mappings:
+      # v6 per-resource region override -- the module wires every
+      # resource to spec.region.
+      - arg: region
+        spec: spec.region
+      - arg: heartbeat_timeout
+        spec: spec.lifecycle_hooks.heartbeat_timeout_seconds
+    exclusions:
+      - arg: autoscaling_group_name
+        reason: wired by the module to the group it creates -- never user surface
+
+  aws_autoscaling_notification:
+    specRoot: spec.notifications
+    mappings:
+      # v6 per-resource region override -- the module wires every
+      # resource to spec.region.
+      - arg: region
+        spec: spec.region
+      - arg: notifications
+        spec: spec.notifications.event_types
+      - arg: topic_arn
+        spec: spec.notifications.topic
+    exclusions:
+      - arg: group_names
+        reason: wired by the module to the group it creates -- never user surface
+
+specExclusions:
+  # One provider argument, two spec homes: adjustment_type and
+  # min_adjustment_magnitude live on aws_autoscaling_policy once, but the
+  # spec keeps them inside each engine's config block (policy_type selects
+  # which one the module renders). The step form carries the mapping; the
+  # simple form's twins are recorded here.
+  - field: spec.scaling_policies.simple_scaling.adjustment_type
+    reason: fills the same aws_autoscaling_policy adjustment_type argument as the step form (policy_type selects which config block renders)
+  - field: spec.scaling_policies.simple_scaling.min_adjustment_magnitude
+    reason: fills the same aws_autoscaling_policy min_adjustment_magnitude argument as the step form (policy_type selects which config block renders)
+  # apply_at_launch selects WHICH provider mechanism renders a hook -- the
+  # group's creation-time initial_lifecycle_hook block or a standalone
+  # aws_autoscaling_lifecycle_hook resource -- rather than filling an
+  # argument of its own.
+  - field: spec.lifecycle_hooks.apply_at_launch
+    reason: selects the provider mechanism (inline initial_lifecycle_hook vs standalone hook resource) -- both argument sets are accounted above
+  # The shared metric-math query type carries period_seconds for target
+  # tracking; the predictive API has no per-stat period, and spec CEL
+  # rejects it on predictive queries instead of dropping it silently.
+  - field: spec.scaling_policies.predictive_scaling.customized_load_metric_queries.metric_stat.period_seconds
+    reason: the predictive-scaling API has no per-stat period (CEL rejects a set value); the field exists because the query type is shared with target tracking
+  - field: spec.scaling_policies.predictive_scaling.customized_scaling_metric_queries.metric_stat.period_seconds
+    reason: the predictive-scaling API has no per-stat period (CEL rejects a set value); the field exists because the query type is shared with target tracking
+  - field: spec.scaling_policies.predictive_scaling.customized_capacity_metric_queries.metric_stat.period_seconds
+    reason: the predictive-scaling API has no per-stat period (CEL rejects a set value); the field exists because the query type is shared with target tracking

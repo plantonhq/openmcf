@@ -9,9 +9,13 @@ spec:
   # verify-destroyed on both provisioners. The scenario runs min=0/
   # desired=0, so the group itself is free and no instance ever launches;
   # the prerequisite chain dominates the runtime.
+  #
+  # pending_proof: the depth closure added Capacity Reservation targeting,
+  # VPC Lattice traffic sources, the terminate-hook retention policy,
+  # creation-time lifecycle hooks, the policy pause button, and the split/
+  # customized predictive metric forms -- the prior green predates this
+  # surface, so the badge is revoked until the proof lane re-earns it.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 25

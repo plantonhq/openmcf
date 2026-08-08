@@ -7,6 +7,10 @@ terraform {
       # a deliberate catalog-wide decision, and floor-at-latest-released-minor
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: the availability_zone_distribution value
+      # "reservations-then-balanced" needs 6.57.1; instance_lifecycle_policy
+      # needs 6.56.0.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

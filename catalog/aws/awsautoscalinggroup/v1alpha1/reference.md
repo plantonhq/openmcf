@@ -69,6 +69,30 @@ spec:
       targetTracking:
         targetValue: 60
         predefinedMetricType: ASGAverageCPUUtilization
+    # A forecast policy staged in observe-only mode AND disabled: the split
+    # predefined form trains on total CPU while capacity is sized against
+    # average CPU. Enable it after the forecast has proven itself.
+    - name: cpu-forecast
+      policyType: PredictiveScaling
+      disabled: true
+      predictiveScaling:
+        targetValue: 60
+        predefinedLoadMetric:
+          metricType: ASGTotalCPUUtilization
+        predefinedScalingMetric:
+          metricType: ASGAverageCPUUtilization
+  # Retain instances whose terminate hook times out into ABANDON -- the
+  # post-mortem posture for fleets with drain hooks.
+  instanceLifecyclePolicy:
+    terminateHookAbandon: retain
+  lifecycleHooks:
+    # apply_at_launch attaches the hook atomically at group creation, so
+    # even the very first instance is caught by the warm-up pause.
+    - name: warm-cache
+      lifecycleTransition: autoscaling:EC2_INSTANCE_LAUNCHING
+      defaultResult: CONTINUE
+      heartbeatTimeoutSeconds: 120
+      applyAtLaunch: true
   enabledMetrics:
     - GroupMinSize
     - GroupMaxSize
@@ -234,12 +258,61 @@ spec:
 | `spec.scalingPolicies[].simpleScaling.minAdjustmentMagnitude` | `int32` |  |  |  |
 | `spec.scalingPolicies[].predictiveScaling` | `AwsAutoScalingGroupPredictiveScalingConfig` |  |  |  |
 | `spec.scalingPolicies[].predictiveScaling.targetValue` | `double` | yes |  |  |
-| `spec.scalingPolicies[].predictiveScaling.predefinedMetricPairType` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.predefinedMetricPairType` | `string` |  |  |  |
 | `spec.scalingPolicies[].predictiveScaling.resourceLabel` | `string` |  |  |  |
 | `spec.scalingPolicies[].predictiveScaling.mode` | `string` |  |  |  |
 | `spec.scalingPolicies[].predictiveScaling.schedulingBufferTimeSeconds` | `int32` |  |  |  |
 | `spec.scalingPolicies[].predictiveScaling.maxCapacityBreachBehavior` | `string` |  |  |  |
 | `spec.scalingPolicies[].predictiveScaling.maxCapacityBuffer` | `int32` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.predefinedLoadMetric` | `AwsAutoScalingGroupPredictiveScalingPredefinedMetric` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.predefinedLoadMetric.metricType` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.predefinedLoadMetric.resourceLabel` | `string` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.predefinedScalingMetric` | `AwsAutoScalingGroupPredictiveScalingPredefinedMetric` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.predefinedScalingMetric.metricType` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.predefinedScalingMetric.resourceLabel` | `string` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries` | `[]AwsAutoScalingGroupMetricDataQuery` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].id` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].expression` | `string` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat` | `AwsAutoScalingGroupMetricStat` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.metricName` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.namespace` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.stat` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.unit` | `string` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.dimensions` | `[]AwsAutoScalingGroupMetricDimension` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.dimensions[].name` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.dimensions[].value` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.periodSeconds` | `int32` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].label` | `string` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].returnData` | `bool` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries` | `[]AwsAutoScalingGroupMetricDataQuery` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].id` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].expression` | `string` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat` | `AwsAutoScalingGroupMetricStat` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.metricName` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.namespace` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.stat` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.unit` | `string` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.dimensions` | `[]AwsAutoScalingGroupMetricDimension` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.dimensions[].name` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.dimensions[].value` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.periodSeconds` | `int32` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].label` | `string` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].returnData` | `bool` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries` | `[]AwsAutoScalingGroupMetricDataQuery` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].id` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].expression` | `string` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat` | `AwsAutoScalingGroupMetricStat` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.metricName` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.namespace` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.stat` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.unit` | `string` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.dimensions` | `[]AwsAutoScalingGroupMetricDimension` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.dimensions[].name` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.dimensions[].value` | `string` | yes |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.periodSeconds` | `int32` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].label` | `string` |  |  |  |
+| `spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].returnData` | `bool` |  |  |  |
+| `spec.scalingPolicies[].disabled` | `bool` |  |  |  |
 | `spec.scheduledActions` | `[]AwsAutoScalingGroupScheduledAction` |  |  |  |
 | `spec.scheduledActions[].name` | `string` | yes |  |  |
 | `spec.scheduledActions[].recurrence` | `string` |  |  |  |
@@ -257,9 +330,23 @@ spec:
 | `spec.lifecycleHooks[].notificationTargetArn` | `string \| valueFrom` |  |  | AwsSnsTopic (`status.outputs.topic_arn`) |
 | `spec.lifecycleHooks[].roleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.lifecycleHooks[].notificationMetadata` | `string` |  |  |  |
+| `spec.lifecycleHooks[].applyAtLaunch` | `bool` |  |  |  |
 | `spec.notifications` | `AwsAutoScalingGroupNotifications` |  |  |  |
 | `spec.notifications.topic` | `string \| valueFrom` | yes |  | AwsSnsTopic (`status.outputs.topic_arn`) |
 | `spec.notifications.eventTypes` | `[]string` | yes |  |  |
+| `spec.capacityReservation` | `AwsAutoScalingGroupCapacityReservation` |  |  |  |
+| `spec.capacityReservation.preference` | `string` |  |  |  |
+| `spec.capacityReservation.capacityReservationIds` | `[]string` |  |  |  |
+| `spec.capacityReservation.capacityReservationResourceGroupArns` | `[]string` |  |  |  |
+| `spec.trafficSources` | `[]AwsAutoScalingGroupTrafficSource` |  |  |  |
+| `spec.trafficSources[].identifier` | `string \| valueFrom` | yes |  |  |
+| `spec.trafficSources[].type` | `string` |  |  |  |
+| `spec.instanceLifecyclePolicy` | `AwsAutoScalingGroupInstanceLifecyclePolicy` |  |  |  |
+| `spec.instanceLifecyclePolicy.terminateHookAbandon` | `string` |  |  |  |
+| `spec.ignoreFailedScalingActivities` | `bool` |  |  |  |
+| `spec.forceDeleteWarmPool` | `bool` |  |  |  |
+| `spec.minElbCapacity` | `int32` |  |  |  |
+| `spec.waitForElbCapacity` | `int32` |  |  |  |
 
 ## Field Details
 
@@ -1531,6 +1618,14 @@ adjustment changes.
 Configuration for "PredictiveScaling".
 
 - rule: predefined_metric_pair_type must be one of: ASGCPUUtilization, ASGNetworkIn, ASGNetworkOut, ALBRequestCount
+- rule: predefined_metric_pair_type is the all-in-one form -- it cannot combine with split predefined or customized metric fields
+- rule: predictive scaling needs a scaling metric: a predefined pair, predefined_scaling_metric, or customized_scaling_metric_queries
+- rule: predefined_load_metric and customized_load_metric_queries are mutually exclusive
+- rule: predefined_scaling_metric and customized_scaling_metric_queries are mutually exclusive
+- rule: customized_capacity_metric_queries cannot combine with predefined_load_metric (the provider rejects the combination)
+- rule: predefined_load_metric.metric_type must be one of: ASGTotalCPUUtilization, ASGTotalNetworkIn, ASGTotalNetworkOut, ALBTargetGroupRequestCount
+- rule: predefined_scaling_metric.metric_type must be one of: ASGAverageCPUUtilization, ASGAverageNetworkIn, ASGAverageNetworkOut, ALBRequestCountPerTarget
+- rule: metric_stat.period_seconds is not part of the predictive-scaling API -- leave it unset on predictive metric queries
 - rule: mode must be 'ForecastOnly' or 'ForecastAndScale' when set
 - rule: max_capacity_breach_behavior must be 'HonorMaxCapacity' or 'IncreaseMaxCapacity' when set
 - rule: max_capacity_buffer only applies when max_capacity_breach_behavior is 'IncreaseMaxCapacity'
@@ -1547,12 +1642,10 @@ Required.
 
 ### spec.scalingPolicies[].predictiveScaling.predefinedMetricPairType
 
-`string` · required
+`string`
 
 The load/scaling metric pair to forecast: "ASGCPUUtilization",
 "ASGNetworkIn", "ASGNetworkOut", or "ALBRequestCount". Required.
-
-- rule: {"required":true}
 
 ### spec.scalingPolicies[].predictiveScaling.resourceLabel
 
@@ -1590,6 +1683,347 @@ max_size by max_capacity_buffer percent).
 
 Percentage buffer above forecasted capacity when
 max_capacity_breach_behavior is "IncreaseMaxCapacity", 0-100.
+
+### spec.scalingPolicies[].predictiveScaling.predefinedLoadMetric
+
+`AwsAutoScalingGroupPredictiveScalingPredefinedMetric`
+
+### spec.scalingPolicies[].predictiveScaling.predefinedLoadMetric.metricType
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.predefinedLoadMetric.resourceLabel
+
+`string`
+
+### spec.scalingPolicies[].predictiveScaling.predefinedScalingMetric
+
+`AwsAutoScalingGroupPredictiveScalingPredefinedMetric`
+
+### spec.scalingPolicies[].predictiveScaling.predefinedScalingMetric.metricType
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.predefinedScalingMetric.resourceLabel
+
+`string`
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries
+
+`[]AwsAutoScalingGroupMetricDataQuery`
+
+- rule: {"repeated":{"maxItems":"10"}}
+- rule: exactly one of expression or metric_stat must be set
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].id
+
+`string` · required
+
+Short identifier, unique within the query set, referenced by
+expressions (e.g. "m1", "e1"). Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].expression
+
+`string`
+
+A metric-math expression over other query ids (e.g. "m1 / m2").
+Mutually exclusive with metric_stat.
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat
+
+`AwsAutoScalingGroupMetricStat`
+
+A raw metric to fetch. Mutually exclusive with expression.
+
+- rule: period_seconds must be 10, 30, or 60 when set
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.metricName
+
+`string` · required
+
+The metric name. Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.namespace
+
+`string` · required
+
+The metric namespace. Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.stat
+
+`string` · required
+
+The statistic to fetch (e.g. "Average", "Sum"). Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.unit
+
+`string`
+
+The metric unit.
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.dimensions
+
+`[]AwsAutoScalingGroupMetricDimension`
+
+Dimensions identifying the metric stream.
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.dimensions[].name
+
+`string` · required
+
+Dimension name (e.g. "QueueName"). Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.dimensions[].value
+
+`string` · required
+
+Dimension value (e.g. "orders"). Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].metricStat.periodSeconds
+
+`int32`
+
+Granularity in seconds: 10, 30, or 60.
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].label
+
+`string`
+
+Human-readable label for the query.
+
+### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries[].returnData
+
+`bool` · optional (explicit presence)
+
+Whether this entry is the value target tracking consumes. Exactly
+one entry in the set should return data (AWS default: true --
+explicitly set false on intermediate entries).
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries
+
+`[]AwsAutoScalingGroupMetricDataQuery`
+
+- rule: {"repeated":{"maxItems":"10"}}
+- rule: exactly one of expression or metric_stat must be set
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].id
+
+`string` · required
+
+Short identifier, unique within the query set, referenced by
+expressions (e.g. "m1", "e1"). Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].expression
+
+`string`
+
+A metric-math expression over other query ids (e.g. "m1 / m2").
+Mutually exclusive with metric_stat.
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat
+
+`AwsAutoScalingGroupMetricStat`
+
+A raw metric to fetch. Mutually exclusive with expression.
+
+- rule: period_seconds must be 10, 30, or 60 when set
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.metricName
+
+`string` · required
+
+The metric name. Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.namespace
+
+`string` · required
+
+The metric namespace. Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.stat
+
+`string` · required
+
+The statistic to fetch (e.g. "Average", "Sum"). Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.unit
+
+`string`
+
+The metric unit.
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.dimensions
+
+`[]AwsAutoScalingGroupMetricDimension`
+
+Dimensions identifying the metric stream.
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.dimensions[].name
+
+`string` · required
+
+Dimension name (e.g. "QueueName"). Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.dimensions[].value
+
+`string` · required
+
+Dimension value (e.g. "orders"). Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].metricStat.periodSeconds
+
+`int32`
+
+Granularity in seconds: 10, 30, or 60.
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].label
+
+`string`
+
+Human-readable label for the query.
+
+### spec.scalingPolicies[].predictiveScaling.customizedScalingMetricQueries[].returnData
+
+`bool` · optional (explicit presence)
+
+Whether this entry is the value target tracking consumes. Exactly
+one entry in the set should return data (AWS default: true --
+explicitly set false on intermediate entries).
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries
+
+`[]AwsAutoScalingGroupMetricDataQuery`
+
+- rule: {"repeated":{"maxItems":"10"}}
+- rule: exactly one of expression or metric_stat must be set
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].id
+
+`string` · required
+
+Short identifier, unique within the query set, referenced by
+expressions (e.g. "m1", "e1"). Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].expression
+
+`string`
+
+A metric-math expression over other query ids (e.g. "m1 / m2").
+Mutually exclusive with metric_stat.
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat
+
+`AwsAutoScalingGroupMetricStat`
+
+A raw metric to fetch. Mutually exclusive with expression.
+
+- rule: period_seconds must be 10, 30, or 60 when set
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.metricName
+
+`string` · required
+
+The metric name. Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.namespace
+
+`string` · required
+
+The metric namespace. Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.stat
+
+`string` · required
+
+The statistic to fetch (e.g. "Average", "Sum"). Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.unit
+
+`string`
+
+The metric unit.
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.dimensions
+
+`[]AwsAutoScalingGroupMetricDimension`
+
+Dimensions identifying the metric stream.
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.dimensions[].name
+
+`string` · required
+
+Dimension name (e.g. "QueueName"). Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.dimensions[].value
+
+`string` · required
+
+Dimension value (e.g. "orders"). Required.
+
+- rule: {"required":true}
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].metricStat.periodSeconds
+
+`int32`
+
+Granularity in seconds: 10, 30, or 60.
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].label
+
+`string`
+
+Human-readable label for the query.
+
+### spec.scalingPolicies[].predictiveScaling.customizedCapacityMetricQueries[].returnData
+
+`bool` · optional (explicit presence)
+
+Whether this entry is the value target tracking consumes. Exactly
+one entry in the set should return data (AWS default: true --
+explicitly set false on intermediate entries).
+
+### spec.scalingPolicies[].disabled
+
+`bool`
 
 ### spec.scheduledActions
 
@@ -1732,6 +2166,10 @@ Reference an AwsIamRole's role_arn output or pass a literal ARN.
 Free-form JSON delivered with every notification -- routing context
 for the consumer.
 
+### spec.lifecycleHooks[].applyAtLaunch
+
+`bool`
+
 ### spec.notifications
 
 `AwsAutoScalingGroupNotifications`
@@ -1764,15 +2202,82 @@ The event types to publish. At least one of:
 
 - rule: {"required":true,"repeated":{"minItems":"1"}}
 
+### spec.capacityReservation
+
+`AwsAutoScalingGroupCapacityReservation`
+
+- rule: preference must be one of: default, capacity-reservations-only, capacity-reservations-first, none
+- rule: capacity_reservation_ids and capacity_reservation_resource_group_arns are mutually exclusive
+
+### spec.capacityReservation.preference
+
+`string`
+
+### spec.capacityReservation.capacityReservationIds
+
+`[]string`
+
+### spec.capacityReservation.capacityReservationResourceGroupArns
+
+`[]string`
+
+### spec.trafficSources
+
+`[]AwsAutoScalingGroupTrafficSource`
+
+- rule: type must be 'elb', 'elbv2', or 'vpc-lattice' when set
+
+### spec.trafficSources[].identifier
+
+`string | valueFrom` · required
+
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+
+### spec.trafficSources[].type
+
+`string`
+
+### spec.instanceLifecyclePolicy
+
+`AwsAutoScalingGroupInstanceLifecyclePolicy`
+
+- rule: terminate_hook_abandon must be 'retain' or 'terminate' when set
+
+### spec.instanceLifecyclePolicy.terminateHookAbandon
+
+`string`
+
+### spec.ignoreFailedScalingActivities
+
+`bool`
+
+### spec.forceDeleteWarmPool
+
+`bool`
+
+### spec.minElbCapacity
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.waitForElbCapacity
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
 ## Validation Rules
 
+- `traffic_sources_xor_target_groups`: traffic_sources and target_groups are mutually exclusive -- the provider rejects declaring both
 - `launch_template_xor_mixed_instances`: exactly one of launch_template or mixed_instances_policy must be set
 - `max_size_gte_min_size`: max_size must be greater than or equal to min_size
 - `desired_within_bounds`: desired_capacity must be between min_size and max_size when set
 - `desired_capacity_type_valid`: desired_capacity_type must be 'units', 'vcpu', or 'memory-mib' when set
 - `health_check_type_valid`: health_check_type must be 'EC2' or 'ELB' when set
 - `max_instance_lifetime_range`: max_instance_lifetime_seconds must be 0 (disabled) or between 86400 (1 day) and 31536000 (1 year)
-- `capacity_distribution_strategy_valid`: capacity_distribution_strategy must be 'balanced-only' or 'balanced-best-effort' when set
+- `capacity_distribution_strategy_valid`: capacity_distribution_strategy must be 'balanced-only', 'balanced-best-effort', or 'reservations-then-balanced' when set
 - `suspended_processes_valid`: each suspended process must be one of: Launch, Terminate, AddToLoadBalancer, AlarmNotification, AZRebalance, HealthCheck, InstanceRefresh, ReplaceUnhealthy, ScheduledActions
 
 ## Outputs
