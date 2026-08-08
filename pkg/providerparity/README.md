@@ -68,9 +68,11 @@ resources:
         arg: name                   # subtree, so entries stay
       - spec: spec.lifecycle_rules  # O(divergences), never O(fields)
         arg: lifecycle_rule
-    exclusions:                     # deliberately unmodeled, reason mandatory
+    exclusions:                     # deliberately unmodeled, reason mandatory;
       - arg: lifecycle_rule.condition.send_age_if_zero
         reason: derived by the module from the optional field's presence
+      - arg: legacy_inline_block    # an exclusion may name a block: one
+        reason: fixed by the module # judgment covers its whole subtree
   google_storage_bucket_iam_member:
     specRoot: spec.iam_members      # secondary resource: the spec subtree
     exclusions:                     # that instantiates it

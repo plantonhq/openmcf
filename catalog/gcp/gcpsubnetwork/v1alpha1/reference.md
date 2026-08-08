@@ -401,7 +401,11 @@ Fields on other kinds that can point at this resource:
 | GcpGkeCluster | `spec.subnetwork` | `status.outputs.subnetwork_self_link` |
 | GcpGkeCluster | `spec.ipAllocation.clusterSecondaryRangeName` | `status.outputs.secondary_ranges.[*].range_name` |
 | GcpGkeCluster | `spec.ipAllocation.servicesSecondaryRangeName` | `status.outputs.secondary_ranges.[*].range_name` |
+| GcpGkeCluster | `spec.ipAllocation.additionalIpRanges[].subnetwork` | `status.outputs.subnetwork_self_link` |
 | GcpGkeCluster | `spec.privateCluster.privateEndpointSubnetwork` | `status.outputs.subnetwork_self_link` |
+| GcpGkeNodePool | `spec.networkConfig.subnetwork` | `status.outputs.subnetwork_self_link` |
+| GcpGkeNodePool | `spec.networkConfig.additionalNodeNetworks[].subnetwork` | `status.outputs.subnetwork_self_link` |
+| GcpGkeNodePool | `spec.networkConfig.additionalPodNetworks[].subnetwork` | `status.outputs.subnetwork_self_link` |
 | GcpGlobalForwardingRule | `spec.subnetwork` | `status.outputs.subnetwork_self_link` |
 | GcpRegionNetworkEndpointGroup | `spec.subnetwork` | `status.outputs.subnetwork_self_link` |
 | GcpRouterNat | `spec.subnetworks[].subnetwork` | `status.outputs.subnetwork_self_link` |

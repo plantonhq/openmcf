@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2519 |
+| Spec fields authored across all kinds | 2687 |
 | Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**7 of 79 kinds are at total accounting; 70 proven live.**
+**10 of 79 kinds are at total accounting; 68 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -86,9 +86,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | — |
 | GcpFirewallRule | 20 | 12 | 0 | 0 | 13 | ❌ | — |
 | GcpGcsBucket | 64 | 30 | 29 | 5 | 0 | ✅ | — |
-| GcpGkeCluster | 542 | 44 | 0 | 0 | 570 | ❌ | ✅ pulumi, terraform |
-| GcpGkeNodePool | 189 | 64 | 0 | 0 | 151 | ❌ | ✅ pulumi, terraform |
-| GcpGkeWorkloadIdentityBinding | 6 | 3 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
+| GcpGkeCluster | 537 | 61 | 137 | 339 | 0 | ✅ | — |
+| GcpGkeNodePool | 184 | 127 | 51 | 6 | 0 | ✅ | — |
+| GcpGkeWorkloadIdentityBinding | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGlobalAddress | 16 | 7 | 0 | 0 | 11 | ❌ | — |
 | GcpGlobalForwardingRule | 28 | 17 | 0 | 0 | 15 | ❌ | ✅ pulumi, terraform |
 | GcpHealthCheck | 105 | 12 | 0 | 0 | 136 | ❌ | ✅ pulumi, terraform |

@@ -225,6 +225,7 @@ Fields on other kinds that can point at this resource:
 | GcpFirewallRule | `spec.network` | `status.outputs.network_self_link` |
 | GcpGcsBucket | `spec.ipFilter.vpcNetworkSources[].network` | `status.outputs.network_id` |
 | GcpGkeCluster | `spec.network` | `status.outputs.network_self_link` |
+| GcpGkeNodePool | `spec.networkConfig.additionalNodeNetworks[].network` | `status.outputs.network_self_link` |
 | GcpGlobalAddress | `spec.network` | `status.outputs.network_self_link` |
 | GcpGlobalForwardingRule | `spec.network` | `status.outputs.network_self_link` |
 | GcpMemorystoreInstance | `spec.pscAutoConnections[].network` | `status.outputs.network_id` |

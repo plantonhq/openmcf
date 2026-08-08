@@ -366,9 +366,16 @@ var _ = ginkgo.Describe("GcpGkeClusterSpec Custom Validation Tests", func() {
 
 		ginkgo.It("rejects an invalid gateway_api_channel", func() {
 			spec := minimalSpec()
-			spec.GatewayApiChannel = "CHANNEL_EXPERIMENTAL"
+			spec.GatewayApiChannel = "CHANNEL_BOGUS"
 			err := protovalidate.Validate(newCluster(spec))
 			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts the experimental gateway channel", func() {
+			spec := minimalSpec()
+			spec.GatewayApiChannel = "CHANNEL_EXPERIMENTAL"
+			err := protovalidate.Validate(newCluster(spec))
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
 		ginkgo.It("rejects an invalid logging component", func() {
@@ -711,6 +718,230 @@ var _ = ginkgo.Describe("GcpGkeClusterSpec Custom Validation Tests", func() {
 			}
 			err := protovalidate.Validate(newCluster(spec))
 			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("lifecycle and platform controls", func() {
+
+		ginkgo.It("accepts every deletion_policy value and rejects others", func() {
+			spec := minimalSpec()
+			for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+				spec.DeletionPolicy = v
+				gomega.Expect(protovalidate.Validate(newCluster(spec))).To(gomega.BeNil())
+			}
+			spec.DeletionPolicy = "KEEP"
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid fleet_membership_type", func() {
+			spec := minimalSpec()
+			spec.FleetMembershipType = "HEAVYWEIGHT"
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid node_creation_mode", func() {
+			spec := minimalSpec()
+			spec.NodeCreationMode = "VIA_MAGIC"
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts ACCELERATED patch mode and rejects others", func() {
+			spec := minimalSpec()
+			spec.GkeAutoUpgradePatchMode = "ACCELERATED"
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).To(gomega.BeNil())
+			spec.GkeAutoUpgradePatchMode = "SLOW"
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("autopilot-only surfaces", func() {
+
+		ginkgo.It("rejects autopilot_policy on a Standard cluster", func() {
+			spec := minimalSpec()
+			spec.AutopilotPolicy = &GcpGkeClusterAutopilotPolicy{}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts autopilot_policy on an Autopilot cluster", func() {
+			spec := minimalSpec()
+			spec.EnableAutopilot = true
+			noPools := true
+			spec.AutopilotPolicy = &GcpGkeClusterAutopilotPolicy{NoStandardNodePools: &noPools}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects privileged admission paths on a Standard cluster", func() {
+			spec := minimalSpec()
+			spec.AutopilotPrivilegedAdmissionPaths = []string{"gs://partner/allowlist"}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a privileged admission path with the wrong scheme", func() {
+			spec := minimalSpec()
+			spec.EnableAutopilot = true
+			spec.AutopilotPrivilegedAdmissionPaths = []string{"https://partner/allowlist"}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects node_pool_auto_config on a Standard cluster", func() {
+			spec := minimalSpec()
+			spec.NodePoolAutoConfig = &GcpGkeClusterNodePoolAutoConfig{NetworkTags: []string{"gke-nodes"}}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts node_pool_auto_config on an Autopilot cluster", func() {
+			spec := minimalSpec()
+			spec.EnableAutopilot = true
+			spec.NodePoolAutoConfig = &GcpGkeClusterNodePoolAutoConfig{
+				NetworkTags:                        []string{"gke-nodes"},
+				InsecureKubeletReadonlyPortEnabled: "FALSE",
+			}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).To(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("widened provider vocabularies", func() {
+
+		ginkgo.It("accepts ALL_OBJECTS_ENCRYPTION_ENABLED with a key", func() {
+			spec := minimalSpec()
+			spec.DatabaseEncryption = &GcpGkeClusterDatabaseEncryption{
+				State:   "ALL_OBJECTS_ENCRYPTION_ENABLED",
+				KeyName: literal("projects/p/locations/l/keyRings/r/cryptoKeys/k"),
+			}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts KUBE_DNS as the cluster DNS provider", func() {
+			spec := minimalSpec()
+			spec.DnsConfig = &GcpGkeClusterDnsConfig{ClusterDns: "KUBE_DNS"}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts the KCP_VPA logging component", func() {
+			spec := minimalSpec()
+			spec.Logging = &GcpGkeClusterLogging{Components: []string{"SYSTEM_COMPONENTS", "KCP_VPA"}}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts hyperdisk-balanced NAP disks and rejects an unknown NAP image type", func() {
+			spec := minimalSpec()
+			spec.ClusterAutoscaling = &GcpGkeClusterAutoscaling{
+				Enabled: true,
+				ResourceLimits: []*GcpGkeClusterAutoscalingResourceLimit{
+					{ResourceType: "cpu", Maximum: 64},
+				},
+				AutoProvisioningDefaults: &GcpGkeClusterAutoProvisioningDefaults{
+					DiskType: "hyperdisk-balanced",
+				},
+			}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).To(gomega.BeNil())
+			spec.ClusterAutoscaling.AutoProvisioningDefaults.ImageType = "ARCH_LINUX"
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("NAP upgrade settings coherence", func() {
+
+		napWithUpgrade := func(us *GcpGkeClusterNapUpgradeSettings) *GcpGkeClusterSpec {
+			spec := minimalSpec()
+			spec.ClusterAutoscaling = &GcpGkeClusterAutoscaling{
+				Enabled: true,
+				ResourceLimits: []*GcpGkeClusterAutoscalingResourceLimit{
+					{ResourceType: "cpu", Maximum: 64},
+				},
+				AutoProvisioningDefaults: &GcpGkeClusterAutoProvisioningDefaults{
+					UpgradeSettings: us,
+				},
+			}
+			return spec
+		}
+
+		ginkgo.It("rejects blue_green_settings without the BLUE_GREEN strategy", func() {
+			spec := napWithUpgrade(&GcpGkeClusterNapUpgradeSettings{
+				Strategy:          "SURGE",
+				BlueGreenSettings: &GcpGkeClusterNapBlueGreenSettings{},
+			})
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects surge knobs on a BLUE_GREEN strategy", func() {
+			one := uint32(1)
+			spec := napWithUpgrade(&GcpGkeClusterNapUpgradeSettings{
+				Strategy: "BLUE_GREEN",
+				MaxSurge: &one,
+			})
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a rollout batch sized by both percentage and count", func() {
+			pct := float32(0.5)
+			count := uint32(2)
+			spec := napWithUpgrade(&GcpGkeClusterNapUpgradeSettings{
+				Strategy: "BLUE_GREEN",
+				BlueGreenSettings: &GcpGkeClusterNapBlueGreenSettings{
+					StandardRolloutPolicy: &GcpGkeClusterNapStandardRolloutPolicy{
+						BatchPercentage: &pct,
+						BatchNodeCount:  &count,
+					},
+				},
+			})
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("secrets, maintenance, and key-management additions", func() {
+
+		ginkgo.It("rejects a malformed secret rotation interval", func() {
+			spec := minimalSpec()
+			spec.SecretManagerRotation = &GcpGkeClusterSecretRotation{
+				Enabled:          true,
+				RotationInterval: "2m",
+			}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a malformed disruption budget interval", func() {
+			spec := minimalSpec()
+			spec.MaintenancePolicy = &GcpGkeClusterMaintenancePolicy{
+				DailyWindow:      &GcpGkeClusterDailyMaintenanceWindow{StartTime: "03:00"},
+				DisruptionBudget: &GcpGkeClusterDisruptionBudget{MinorVersionDisruptionInterval: "28d"},
+			}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts user-managed keys with KMS references", func() {
+			spec := minimalSpec()
+			spec.UserManagedKeys = &GcpGkeClusterUserManagedKeys{
+				ClusterCa:                     "projects/p/locations/l/caPools/pool",
+				ControlPlaneDiskEncryptionKey: ref("my-kms-key"),
+				ServiceAccountSigningKeys:     []string{"projects/p/locations/l/keyRings/r/cryptoKeys/k/cryptoKeyVersions/1"},
+			}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an additional IP range without a subnetwork", func() {
+			spec := minimalSpec()
+			spec.IpAllocation = &GcpGkeClusterIpAllocation{
+				AdditionalIpRanges: []*GcpGkeClusterAdditionalIpRange{
+					{PodIpv4RangeNames: []string{"pods-extra"}},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a registry CA domain without a secret URI", func() {
+			spec := minimalSpec()
+			spec.NodePoolDefaults = &GcpGkeClusterNodePoolDefaults{
+				ContainerdConfig: &GcpGkeClusterContainerdDefaults{
+					PrivateRegistryAccess: &GcpGkeClusterPrivateRegistryAccess{
+						Enabled: true,
+						CertificateAuthorityDomains: []*GcpGkeClusterRegistryCaDomain{
+							{Fqdns: []string{"registry.internal:5000"}},
+						},
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(newCluster(spec))).NotTo(gomega.BeNil())
 		})
 	})
 })

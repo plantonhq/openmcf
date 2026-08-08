@@ -66,7 +66,11 @@ type ResourceManifest struct {
 	Mappings []Mapping `yaml:"mappings,omitempty"`
 	// Exclusions are configurable arguments deliberately not modeled, each
 	// with its mandatory reason -- the recorded decision that makes the
-	// omission loud instead of silent.
+	// omission loud instead of silent. An exclusion may name an argument
+	// subtree (a block): one judgment then covers everything under it,
+	// mirroring mappings and specExclusions -- the form for a resource
+	// that embeds another kind's whole surface inline (the exclusion stays
+	// one recorded decision, not one line per leaf).
 	Exclusions []ArgExclusion `yaml:"exclusions,omitempty"`
 }
 
@@ -79,7 +83,8 @@ type Mapping struct {
 	Arg  string `yaml:"arg"`
 }
 
-// ArgExclusion is one deliberately unmodeled argument and its reason.
+// ArgExclusion is one deliberately unmodeled argument (or argument
+// subtree) and its reason.
 type ArgExclusion struct {
 	Arg    string `yaml:"arg"`
 	Reason string `yaml:"reason"`

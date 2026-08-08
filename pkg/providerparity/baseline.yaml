@@ -46,9 +46,6 @@ entries:
   - kind:GcpFirestoreBackupSchedule
   - kind:GcpFirestoreDatabase
   - kind:GcpFirewallRule
-  - kind:GcpGkeCluster
-  - kind:GcpGkeNodePool
-  - kind:GcpGkeWorkloadIdentityBinding
   - kind:GcpGlobalAddress
   - kind:GcpGlobalForwardingRule
   - kind:GcpHealthCheck

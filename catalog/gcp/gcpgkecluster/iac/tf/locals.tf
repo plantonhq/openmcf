@@ -26,7 +26,7 @@ locals {
   # Workload Identity is a project-scoped pool with exactly one valid value
   # for standard clusters. Autopilot has it always on — sending the block
   # would conflict, so it is suppressed there.
-  workload_pool = "${coalesce(local.project_id, data.google_client_config.current.project)}.svc.id.goog"
+  workload_pool = "${coalesce(local.project_id, try(data.google_client_config.current[0].project, null))}.svc.id.goog"
 
   # Autopilot clusters manage their own nodes: the default-node-pool
   # removal fields, shielded-nodes flag, and Calico network policy must be
@@ -70,5 +70,9 @@ locals {
 
 # Resolves the provider's ambient project for the Workload Identity pool
 # name when spec.project_id is empty (the pool is always
-# PROJECT_ID.svc.id.goog and the API does not accept a shorthand).
-data "google_client_config" "current" {}
+# PROJECT_ID.svc.id.goog and the API does not accept a shorthand). Read
+# ONLY in that case: an explicit project_id must not force a live
+# credential lookup at plan time.
+data "google_client_config" "current" {
+  count = var.spec.project_id != "" ? 0 : 1
+}

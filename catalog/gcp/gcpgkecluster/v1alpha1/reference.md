@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpGkeClusterSpec defines a GKE cluster (`google_container_cluster`) — the
 Kubernetes control plane plus cluster-wide configuration.
 
@@ -115,6 +117,12 @@ spec:
 | `spec.ipAllocation.stackType` | `string` |  | `IPV4` |  |
 | `spec.ipAllocation.additionalPodRangeNames` | `[]string` |  |  |  |
 | `spec.ipAllocation.podCidrOverprovisionDisabled` | `bool` |  |  |  |
+| `spec.ipAllocation.additionalIpRanges` | `[]GcpGkeClusterAdditionalIpRange` |  |  |  |
+| `spec.ipAllocation.additionalIpRanges[].subnetwork` | `string \| valueFrom` | yes |  | GcpSubnetwork (`status.outputs.subnetwork_self_link`) |
+| `spec.ipAllocation.additionalIpRanges[].podIpv4RangeNames` | `[]string` |  |  |  |
+| `spec.ipAllocation.additionalIpRanges[].status` | `string` |  |  |  |
+| `spec.ipAllocation.autoIpamEnabled` | `bool` |  |  |  |
+| `spec.ipAllocation.networkTier` | `string` |  |  |  |
 | `spec.datapathProvider` | `string` |  |  |  |
 | `spec.defaultMaxPodsPerNode` | `int32` |  |  |  |
 | `spec.enableIntranodeVisibility` | `bool` |  |  |  |
@@ -150,6 +158,8 @@ spec:
 | `spec.controlPlaneEndpoints` | `GcpGkeClusterControlPlaneEndpoints` |  |  |  |
 | `spec.controlPlaneEndpoints.dnsEndpointAllowExternalTraffic` | `bool` |  |  |  |
 | `spec.controlPlaneEndpoints.ipEndpointsEnabled` | `bool` |  | `true` |  |
+| `spec.controlPlaneEndpoints.enableK8sTokensViaDns` | `bool` |  |  |  |
+| `spec.controlPlaneEndpoints.enableK8sCertsViaDns` | `bool` |  |  |  |
 | `spec.releaseChannel` | `enum` |  | `REGULAR` |  |
 | `spec.minMasterVersion` | `string` |  |  |  |
 | `spec.maintenancePolicy` | `GcpGkeClusterMaintenancePolicy` |  |  |  |
@@ -164,6 +174,10 @@ spec:
 | `spec.maintenancePolicy.exclusions[].startTime` | `string` | yes |  |  |
 | `spec.maintenancePolicy.exclusions[].endTime` | `string` | yes |  |  |
 | `spec.maintenancePolicy.exclusions[].scope` | `string` |  |  |  |
+| `spec.maintenancePolicy.exclusions[].endTimeBehavior` | `string` |  |  |  |
+| `spec.maintenancePolicy.disruptionBudget` | `GcpGkeClusterDisruptionBudget` |  |  |  |
+| `spec.maintenancePolicy.disruptionBudget.minorVersionDisruptionInterval` | `string` |  |  |  |
+| `spec.maintenancePolicy.disruptionBudget.patchVersionDisruptionInterval` | `string` |  |  |  |
 | `spec.clusterAutoscaling` | `GcpGkeClusterAutoscaling` |  |  |  |
 | `spec.clusterAutoscaling.enabled` | `bool` |  |  |  |
 | `spec.clusterAutoscaling.resourceLimits` | `[]GcpGkeClusterAutoscalingResourceLimit` |  |  |  |
@@ -184,6 +198,17 @@ spec:
 | `spec.clusterAutoscaling.autoProvisioningDefaults.enableIntegrityMonitoring` | `bool` |  | `true` |  |
 | `spec.clusterAutoscaling.autoProvisioningDefaults.autoUpgrade` | `bool` |  | `true` |  |
 | `spec.clusterAutoscaling.autoProvisioningDefaults.autoRepair` | `bool` |  | `true` |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings` | `GcpGkeClusterNapUpgradeSettings` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.maxSurge` | `uint32` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.maxUnavailable` | `uint32` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.strategy` | `string` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings` | `GcpGkeClusterNapBlueGreenSettings` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.standardRolloutPolicy` | `GcpGkeClusterNapStandardRolloutPolicy` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.standardRolloutPolicy.batchPercentage` | `float` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.standardRolloutPolicy.batchNodeCount` | `uint32` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.standardRolloutPolicy.batchSoakDuration` | `string` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.nodePoolSoakDuration` | `string` |  |  |  |
+| `spec.clusterAutoscaling.defaultComputeClassEnabled` | `bool` |  |  |  |
 | `spec.enableVerticalPodAutoscaling` | `bool` |  |  |  |
 | `spec.hpaProfile` | `string` |  |  |  |
 | `spec.workloadIdentityEnabled` | `bool` |  | `true` |  |
@@ -232,9 +257,84 @@ spec:
 | `spec.addons.configConnectorEnabled` | `bool` |  |  |  |
 | `spec.addons.statefulHaEnabled` | `bool` |  |  |  |
 | `spec.addons.rayOperatorEnabled` | `bool` |  |  |  |
+| `spec.addons.rayClusterLoggingEnabled` | `bool` |  |  |  |
+| `spec.addons.rayClusterMonitoringEnabled` | `bool` |  |  |  |
+| `spec.addons.cloudrunEnabled` | `bool` |  |  |  |
+| `spec.addons.cloudrunLoadBalancerType` | `string` |  |  |  |
+| `spec.addons.parallelstoreCsiDriverEnabled` | `bool` |  |  |  |
+| `spec.addons.lustreCsiDriverEnabled` | `bool` |  |  |  |
+| `spec.addons.lustreCsiLegacyPortEnabled` | `bool` |  |  |  |
+| `spec.addons.lustreCsiDisableMultiNic` | `bool` |  |  |  |
+| `spec.addons.podSnapshotEnabled` | `bool` |  |  |  |
+| `spec.addons.agentSandboxEnabled` | `bool` |  |  |  |
+| `spec.addons.sliceControllerEnabled` | `bool` |  |  |  |
+| `spec.addons.slurmOperatorEnabled` | `bool` |  |  |  |
 | `spec.enableAutopilot` | `bool` |  |  |  |
 | `spec.allowNetAdmin` | `bool` |  |  |  |
 | `spec.fleetProject` | `string` |  |  |  |
+| `spec.fleetMembershipType` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
+| `spec.ignoreNodeCountChanges` | `bool` |  |  |  |
+| `spec.skipNodePoolRefresh` | `bool` |  |  |  |
+| `spec.enableKubernetesAlpha` | `bool` |  |  |  |
+| `spec.k8sBetaApis` | `[]string` |  |  |  |
+| `spec.dataplaneOptimizationMode` | `string` |  |  |  |
+| `spec.issueClientCertificate` | `bool` |  |  |  |
+| `spec.nodeCreationMode` | `string` |  |  |  |
+| `spec.gkeAutoUpgradePatchMode` | `string` |  |  |  |
+| `spec.rbacBindingConfig` | `GcpGkeClusterRbacBindingConfig` |  |  |  |
+| `spec.rbacBindingConfig.enableInsecureBindingSystemAuthenticated` | `bool` |  |  |  |
+| `spec.rbacBindingConfig.enableInsecureBindingSystemUnauthenticated` | `bool` |  |  |  |
+| `spec.autopilotPolicy` | `GcpGkeClusterAutopilotPolicy` |  |  |  |
+| `spec.autopilotPolicy.noStandardNodePools` | `bool` |  |  |  |
+| `spec.autopilotPolicy.noSystemImpersonation` | `bool` |  |  |  |
+| `spec.autopilotPolicy.noSystemMutation` | `bool` |  |  |  |
+| `spec.autopilotPolicy.noUnsafeWebhooks` | `bool` |  |  |  |
+| `spec.autopilotPrivilegedAdmissionPaths` | `[]string` |  |  |  |
+| `spec.nodePoolAutoConfig` | `GcpGkeClusterNodePoolAutoConfig` |  |  |  |
+| `spec.nodePoolAutoConfig.networkTags` | `[]string` |  |  |  |
+| `spec.nodePoolAutoConfig.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.nodePoolAutoConfig.cgroupMode` | `string` |  |  |  |
+| `spec.nodePoolAutoConfig.nodeKernelModuleLoadingPolicy` | `string` |  |  |  |
+| `spec.nodePoolAutoConfig.insecureKubeletReadonlyPortEnabled` | `string` |  |  |  |
+| `spec.nodePoolDefaults` | `GcpGkeClusterNodePoolDefaults` |  |  |  |
+| `spec.nodePoolDefaults.gcfsEnabled` | `bool` |  |  |  |
+| `spec.nodePoolDefaults.insecureKubeletReadonlyPortEnabled` | `string` |  |  |  |
+| `spec.nodePoolDefaults.loggingVariant` | `string` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig` | `GcpGkeClusterContainerdDefaults` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.privateRegistryAccess` | `GcpGkeClusterPrivateRegistryAccess` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.privateRegistryAccess.enabled` | `bool` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.privateRegistryAccess.certificateAuthorityDomains` | `[]GcpGkeClusterRegistryCaDomain` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.privateRegistryAccess.certificateAuthorityDomains[].fqdns` | `[]string` | yes |  |  |
+| `spec.nodePoolDefaults.containerdConfig.privateRegistryAccess.certificateAuthorityDomains[].gcpSecretManagerCertificateUri` | `string` | yes |  |  |
+| `spec.nodePoolDefaults.containerdConfig.registryHosts` | `[]GcpGkeClusterRegistryHost` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.registryHosts[].server` | `string` | yes |  |  |
+| `spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts` | `[]GcpGkeClusterRegistryHostEndpoint` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].host` | `string` | yes |  |  |
+| `spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].capabilities` | `[]string` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].dialTimeout` | `string` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].overridePath` | `bool` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].caSecretUri` | `string` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].clientCertSecretUri` | `string` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].clientKeySecretUri` | `string` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].headers` | `map<string, string>` |  |  |  |
+| `spec.nodePoolDefaults.containerdConfig.writableCgroupsEnabled` | `bool` |  |  |  |
+| `spec.userManagedKeys` | `GcpGkeClusterUserManagedKeys` |  |  |  |
+| `spec.userManagedKeys.clusterCa` | `string` |  |  |  |
+| `spec.userManagedKeys.etcdApiCa` | `string` |  |  |  |
+| `spec.userManagedKeys.etcdPeerCa` | `string` |  |  |  |
+| `spec.userManagedKeys.aggregationCa` | `string` |  |  |  |
+| `spec.userManagedKeys.controlPlaneDiskEncryptionKey` | `string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.userManagedKeys.gkeopsEtcdBackupEncryptionKey` | `string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.userManagedKeys.serviceAccountSigningKeys` | `[]string` |  |  |  |
+| `spec.userManagedKeys.serviceAccountVerificationKeys` | `[]string` |  |  |  |
+| `spec.secretManagerRotation` | `GcpGkeClusterSecretRotation` |  |  |  |
+| `spec.secretManagerRotation.enabled` | `bool` |  |  |  |
+| `spec.secretManagerRotation.rotationInterval` | `string` |  |  |  |
+| `spec.secretSync` | `GcpGkeClusterSecretSync` |  |  |  |
+| `spec.secretSync.enabled` | `bool` |  |  |  |
+| `spec.secretSync.rotationEnabled` | `bool` |  |  |  |
+| `spec.secretSync.rotationInterval` | `string` |  |  |  |
 
 ## Field Details
 
@@ -411,6 +511,36 @@ Disables the 2x pod-CIDR overprovisioning GKE applies per node by
 default — doubles node density per pod range at the cost of headroom
 for pod churn. Immutable.
 
+### spec.ipAllocation.additionalIpRanges
+
+`[]GcpGkeClusterAdditionalIpRange`
+
+### spec.ipAllocation.additionalIpRanges[].subnetwork
+
+`string | valueFrom` · required
+
+- references: GcpSubnetwork (`status.outputs.subnetwork_self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.subnetwork_self_link}} -- a bare string does not parse
+
+### spec.ipAllocation.additionalIpRanges[].podIpv4RangeNames
+
+`[]string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
+
+### spec.ipAllocation.additionalIpRanges[].status
+
+`string`
+
+### spec.ipAllocation.autoIpamEnabled
+
+`bool`
+
+### spec.ipAllocation.networkTier
+
+`string`
+
 ### spec.datapathProvider
 
 `string`
@@ -523,7 +653,7 @@ If omitted, GKE uses its platform default.
 In-cluster DNS provider: CLOUD_DNS (managed, no kube-dns pods to scale)
 or PLATFORM_DEFAULT (kube-dns).
 
-- rule: cluster_dns must be empty, PROVIDER_UNSPECIFIED, PLATFORM_DEFAULT, or CLOUD_DNS
+- rule: cluster_dns must be empty, PROVIDER_UNSPECIFIED, PLATFORM_DEFAULT, CLOUD_DNS, or KUBE_DNS
 
 ### spec.dnsConfig.clusterDnsScope
 
@@ -556,7 +686,7 @@ Gateway API support: CHANNEL_STANDARD installs the Gateway API CRDs and
 the GKE Gateway controller (the successor to Ingress);
 CHANNEL_DISABLED turns it off. Mutable.
 
-- rule: gateway_api_channel must be empty, CHANNEL_DISABLED, or CHANNEL_STANDARD
+- rule: gateway_api_channel must be empty, CHANNEL_DISABLED, CHANNEL_EXPERIMENTAL, or CHANNEL_STANDARD
 
 ### spec.enableServiceExternalIps
 
@@ -712,6 +842,14 @@ endpoint posture.
 
 - default: `true`
 
+### spec.controlPlaneEndpoints.enableK8sTokensViaDns
+
+`bool` · optional (explicit presence)
+
+### spec.controlPlaneEndpoints.enableK8sCertsViaDns
+
+`bool` · optional (explicit presence)
+
 ### spec.releaseChannel
 
 `enum` · optional (explicit presence)
@@ -806,6 +944,7 @@ freezes). Maximum 20; the allowed scope/duration depends on the release
 channel.
 
 - rule: {"repeated":{"maxItems":"20"}}
+- rule: end_time_behavior refines the exclusion scope — set scope alongside it
 
 ### spec.maintenancePolicy.exclusions[].exclusionName
 
@@ -840,6 +979,28 @@ NO_MINOR_UPGRADES, or NO_MINOR_OR_NODE_UPGRADES. Empty means
 NO_UPGRADES.
 
 - rule: scope must be empty, NO_UPGRADES, NO_MINOR_UPGRADES, or NO_MINOR_OR_NODE_UPGRADES
+
+### spec.maintenancePolicy.exclusions[].endTimeBehavior
+
+`string`
+
+- rule: end_time_behavior must be empty or UNTIL_END_OF_SUPPORT
+
+### spec.maintenancePolicy.disruptionBudget
+
+`GcpGkeClusterDisruptionBudget`
+
+### spec.maintenancePolicy.disruptionBudget.minorVersionDisruptionInterval
+
+`string`
+
+- rule: minor_version_disruption_interval must be a seconds-format duration like "2419200s"
+
+### spec.maintenancePolicy.disruptionBudget.patchVersionDisruptionInterval
+
+`string`
+
+- rule: patch_version_disruption_interval must be a seconds-format duration like "604800s"
 
 ### spec.clusterAutoscaling
 
@@ -951,13 +1112,15 @@ Boot disk size in GB for NAP-created nodes (default 100).
 
 Boot disk type: pd-standard (default), pd-balanced, or pd-ssd.
 
-- rule: disk_type must be empty, pd-standard, pd-balanced, or pd-ssd
+- rule: disk_type must be empty, pd-standard, pd-balanced, pd-ssd, or hyperdisk-balanced
 
 ### spec.clusterAutoscaling.autoProvisioningDefaults.imageType
 
 `string`
 
 Node image, e.g. "COS_CONTAINERD" (default) or "UBUNTU_CONTAINERD".
+
+- rule: image_type must be empty, COS_CONTAINERD, COS, UBUNTU_CONTAINERD, or UBUNTU
 
 ### spec.clusterAutoscaling.autoProvisioningDefaults.minCpuPlatform
 
@@ -1006,6 +1169,63 @@ required on a release channel).
 Automatic node repair on NAP-created pools (GCP default true).
 
 - default: `true`
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings
+
+`GcpGkeClusterNapUpgradeSettings`
+
+- rule: blue_green_settings apply only when strategy is BLUE_GREEN
+- rule: max_surge/max_unavailable apply to the SURGE strategy — remove them when strategy is BLUE_GREEN
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.maxSurge
+
+`uint32` · optional (explicit presence)
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.maxUnavailable
+
+`uint32` · optional (explicit presence)
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.strategy
+
+`string`
+
+- rule: strategy must be empty, SURGE, or BLUE_GREEN
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings
+
+`GcpGkeClusterNapBlueGreenSettings`
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.standardRolloutPolicy
+
+`GcpGkeClusterNapStandardRolloutPolicy`
+
+- rule: set batch_percentage or batch_node_count, not both
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.standardRolloutPolicy.batchPercentage
+
+`float` · optional (explicit presence)
+
+- rule: {"float":{"lte":1,"gte":0}}
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.standardRolloutPolicy.batchNodeCount
+
+`uint32` · optional (explicit presence)
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.standardRolloutPolicy.batchSoakDuration
+
+`string`
+
+- rule: batch_soak_duration must be a seconds-format duration like "600s"
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.nodePoolSoakDuration
+
+`string`
+
+- rule: node_pool_soak_duration must be a seconds-format duration like "3600s"
+
+### spec.clusterAutoscaling.defaultComputeClassEnabled
+
+`bool` · optional (explicit presence)
 
 ### spec.enableVerticalPodAutoscaling
 
@@ -1058,7 +1278,7 @@ a Cloud KMS key (CMEK for etcd secrets).
 
 ENCRYPTED (secrets wrapped with key_name) or DECRYPTED.
 
-- rule: state must be ENCRYPTED or DECRYPTED
+- rule: state must be ENCRYPTED, ALL_OBJECTS_ENCRYPTION_ENABLED, or DECRYPTED
 - rule: {"required":true}
 
 ### spec.databaseEncryption.keyName
@@ -1191,7 +1411,7 @@ Components exposing logs: SYSTEM_COMPONENTS, WORKLOADS, APISERVER,
 CONTROLLER_MANAGER, SCHEDULER, KCP_CONNECTION, KCP_SSHD, KCP_HPA.
 An empty list disables Cloud Logging integration entirely.
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"in":["SYSTEM_COMPONENTS","WORKLOADS","APISERVER","CONTROLLER_MANAGER","SCHEDULER","KCP_CONNECTION","KCP_SSHD","KCP_HPA"]}}}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"in":["SYSTEM_COMPONENTS","WORKLOADS","APISERVER","CONTROLLER_MANAGER","SCHEDULER","KCP_CONNECTION","KCP_SSHD","KCP_HPA","KCP_VPA"]}}}}
 
 ### spec.monitoring
 
@@ -1399,6 +1619,56 @@ Stateful HA operator (faster failover for stateful workloads).
 
 The Ray operator (KubeRay) for distributed Python/AI workloads.
 
+### spec.addons.rayClusterLoggingEnabled
+
+`bool`
+
+### spec.addons.rayClusterMonitoringEnabled
+
+`bool`
+
+### spec.addons.cloudrunEnabled
+
+`bool`
+
+### spec.addons.cloudrunLoadBalancerType
+
+`string`
+
+- rule: cloudrun_load_balancer_type must be empty or LOAD_BALANCER_TYPE_INTERNAL
+
+### spec.addons.parallelstoreCsiDriverEnabled
+
+`bool`
+
+### spec.addons.lustreCsiDriverEnabled
+
+`bool`
+
+### spec.addons.lustreCsiLegacyPortEnabled
+
+`bool`
+
+### spec.addons.lustreCsiDisableMultiNic
+
+`bool`
+
+### spec.addons.podSnapshotEnabled
+
+`bool`
+
+### spec.addons.agentSandboxEnabled
+
+`bool`
+
+### spec.addons.sliceControllerEnabled
+
+`bool`
+
+### spec.addons.slurmOperatorEnabled
+
+`bool`
+
 ### spec.enableAutopilot
 
 `bool`
@@ -1423,6 +1693,306 @@ Registers the cluster with a fleet in the given project (the hub for
 multi-cluster features: multi-cluster ingress/services, config
 management, team scopes).
 
+### spec.fleetMembershipType
+
+`string`
+
+- rule: fleet_membership_type must be empty or LIGHTWEIGHT
+
+### spec.deletionPolicy
+
+`string`
+
+- rule: deletion_policy must be empty, DELETE, PREVENT, or ABANDON
+
+### spec.ignoreNodeCountChanges
+
+`bool`
+
+### spec.skipNodePoolRefresh
+
+`bool`
+
+### spec.enableKubernetesAlpha
+
+`bool`
+
+### spec.k8sBetaApis
+
+`[]string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
+
+### spec.dataplaneOptimizationMode
+
+`string`
+
+### spec.issueClientCertificate
+
+`bool` · optional (explicit presence)
+
+### spec.nodeCreationMode
+
+`string`
+
+- rule: node_creation_mode must be empty, VIA_KUBELET, or VIA_CONTROL_PLANE
+
+### spec.gkeAutoUpgradePatchMode
+
+`string`
+
+- rule: gke_auto_upgrade_patch_mode must be empty or ACCELERATED
+
+### spec.rbacBindingConfig
+
+`GcpGkeClusterRbacBindingConfig`
+
+### spec.rbacBindingConfig.enableInsecureBindingSystemAuthenticated
+
+`bool` · optional (explicit presence)
+
+### spec.rbacBindingConfig.enableInsecureBindingSystemUnauthenticated
+
+`bool` · optional (explicit presence)
+
+### spec.autopilotPolicy
+
+`GcpGkeClusterAutopilotPolicy`
+
+### spec.autopilotPolicy.noStandardNodePools
+
+`bool` · optional (explicit presence)
+
+### spec.autopilotPolicy.noSystemImpersonation
+
+`bool` · optional (explicit presence)
+
+### spec.autopilotPolicy.noSystemMutation
+
+`bool` · optional (explicit presence)
+
+### spec.autopilotPolicy.noUnsafeWebhooks
+
+`bool` · optional (explicit presence)
+
+### spec.autopilotPrivilegedAdmissionPaths
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"pattern":"^((gke|gs)://.+)?$"}}}}
+
+### spec.nodePoolAutoConfig
+
+`GcpGkeClusterNodePoolAutoConfig`
+
+### spec.nodePoolAutoConfig.networkTags
+
+`[]string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
+
+### spec.nodePoolAutoConfig.resourceManagerTags
+
+`map<string, string>`
+
+### spec.nodePoolAutoConfig.cgroupMode
+
+`string`
+
+- rule: cgroup_mode must be empty, CGROUP_MODE_UNSPECIFIED, CGROUP_MODE_V1, or CGROUP_MODE_V2
+
+### spec.nodePoolAutoConfig.nodeKernelModuleLoadingPolicy
+
+`string`
+
+- rule: node_kernel_module_loading_policy must be empty, POLICY_UNSPECIFIED, ENFORCE_SIGNED_MODULES, or DO_NOT_ENFORCE_SIGNED_MODULES
+
+### spec.nodePoolAutoConfig.insecureKubeletReadonlyPortEnabled
+
+`string`
+
+- rule: insecure_kubelet_readonly_port_enabled must be empty, TRUE, or FALSE
+
+### spec.nodePoolDefaults
+
+`GcpGkeClusterNodePoolDefaults`
+
+### spec.nodePoolDefaults.gcfsEnabled
+
+`bool` · optional (explicit presence)
+
+### spec.nodePoolDefaults.insecureKubeletReadonlyPortEnabled
+
+`string`
+
+- rule: insecure_kubelet_readonly_port_enabled must be empty, TRUE, or FALSE
+
+### spec.nodePoolDefaults.loggingVariant
+
+`string`
+
+- rule: logging_variant must be empty, DEFAULT, or MAX_THROUGHPUT
+
+### spec.nodePoolDefaults.containerdConfig
+
+`GcpGkeClusterContainerdDefaults`
+
+### spec.nodePoolDefaults.containerdConfig.privateRegistryAccess
+
+`GcpGkeClusterPrivateRegistryAccess`
+
+### spec.nodePoolDefaults.containerdConfig.privateRegistryAccess.enabled
+
+`bool`
+
+### spec.nodePoolDefaults.containerdConfig.privateRegistryAccess.certificateAuthorityDomains
+
+`[]GcpGkeClusterRegistryCaDomain`
+
+### spec.nodePoolDefaults.containerdConfig.privateRegistryAccess.certificateAuthorityDomains[].fqdns
+
+`[]string` · required
+
+- rule: {"repeated":{"minItems":"1"}}
+
+### spec.nodePoolDefaults.containerdConfig.privateRegistryAccess.certificateAuthorityDomains[].gcpSecretManagerCertificateUri
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.nodePoolDefaults.containerdConfig.registryHosts
+
+`[]GcpGkeClusterRegistryHost`
+
+### spec.nodePoolDefaults.containerdConfig.registryHosts[].server
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts
+
+`[]GcpGkeClusterRegistryHostEndpoint`
+
+### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].host
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].capabilities
+
+`[]string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true}}
+
+### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].dialTimeout
+
+`string`
+
+### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].overridePath
+
+`bool` · optional (explicit presence)
+
+### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].caSecretUri
+
+`string`
+
+### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].clientCertSecretUri
+
+`string`
+
+### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].clientKeySecretUri
+
+`string`
+
+### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].headers
+
+`map<string, string>`
+
+### spec.nodePoolDefaults.containerdConfig.writableCgroupsEnabled
+
+`bool` · optional (explicit presence)
+
+### spec.userManagedKeys
+
+`GcpGkeClusterUserManagedKeys`
+
+### spec.userManagedKeys.clusterCa
+
+`string`
+
+### spec.userManagedKeys.etcdApiCa
+
+`string`
+
+### spec.userManagedKeys.etcdPeerCa
+
+`string`
+
+### spec.userManagedKeys.aggregationCa
+
+`string`
+
+### spec.userManagedKeys.controlPlaneDiskEncryptionKey
+
+`string | valueFrom`
+
+- references: GcpKmsKey (`status.outputs.key_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.userManagedKeys.gkeopsEtcdBackupEncryptionKey
+
+`string | valueFrom`
+
+- references: GcpKmsKey (`status.outputs.key_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.userManagedKeys.serviceAccountSigningKeys
+
+`[]string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
+
+### spec.userManagedKeys.serviceAccountVerificationKeys
+
+`[]string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
+
+### spec.secretManagerRotation
+
+`GcpGkeClusterSecretRotation`
+
+### spec.secretManagerRotation.enabled
+
+`bool`
+
+### spec.secretManagerRotation.rotationInterval
+
+`string`
+
+- rule: rotation_interval must be a seconds-format duration like "120s"
+
+### spec.secretSync
+
+`GcpGkeClusterSecretSync`
+
+### spec.secretSync.enabled
+
+`bool`
+
+### spec.secretSync.rotationEnabled
+
+`bool`
+
+### spec.secretSync.rotationInterval
+
+`string`
+
+- rule: rotation_interval must be a seconds-format duration like "120s"
+
 ## Validation Rules
 
 - `autopilot_conflicts_cluster_autoscaling`: cluster_autoscaling (node auto-provisioning) cannot be configured on an Autopilot cluster — Autopilot manages node provisioning itself
@@ -1432,6 +2002,9 @@ management, team scopes).
 - `autopilot_conflicts_shielded_nodes`: enable_shielded_nodes must be left unset on an Autopilot cluster — Autopilot nodes are always shielded
 - `autopilot_conflicts_addons`: dns_cache and stateful_ha addons cannot be enabled on an Autopilot cluster — Autopilot manages the addon set itself
 - `net_admin_requires_autopilot`: allow_net_admin applies to Autopilot clusters only — Standard clusters always permit NET_ADMIN
+- `autopilot_policy_requires_autopilot`: autopilot_policy applies to Autopilot clusters only
+- `privileged_admission_requires_autopilot`: autopilot_privileged_admission_paths applies to Autopilot clusters only
+- `node_pool_auto_config_requires_autopilot`: node_pool_auto_config configures the nodes GKE manages on an Autopilot cluster — on Standard clusters configure each GcpGkeNodePool instead
 
 ## Outputs
 
@@ -1459,12 +2032,15 @@ Fields that can point at another resource's outputs:
 | `spec.subnetwork` | GcpSubnetwork | `status.outputs.subnetwork_self_link` |
 | `spec.ipAllocation.clusterSecondaryRangeName` | GcpSubnetwork | `status.outputs.secondary_ranges.[*].range_name` |
 | `spec.ipAllocation.servicesSecondaryRangeName` | GcpSubnetwork | `status.outputs.secondary_ranges.[*].range_name` |
+| `spec.ipAllocation.additionalIpRanges[].subnetwork` | GcpSubnetwork | `status.outputs.subnetwork_self_link` |
 | `spec.privateCluster.privateEndpointSubnetwork` | GcpSubnetwork | `status.outputs.subnetwork_self_link` |
 | `spec.clusterAutoscaling.autoProvisioningDefaults.serviceAccount` | GcpServiceAccount | `status.outputs.email` |
 | `spec.clusterAutoscaling.autoProvisioningDefaults.bootDiskKmsKey` | GcpKmsKey | `status.outputs.key_id` |
 | `spec.databaseEncryption.keyName` | GcpKmsKey | `status.outputs.key_id` |
 | `spec.notificationPubsub.topic` | GcpPubSubTopic | `status.outputs.topic_id` |
 | `spec.resourceUsageExport.bigqueryDatasetId` | GcpBigQueryDataset | `status.outputs.dataset_id` |
+| `spec.userManagedKeys.controlPlaneDiskEncryptionKey` | GcpKmsKey | `status.outputs.key_id` |
+| `spec.userManagedKeys.gkeopsEtcdBackupEncryptionKey` | GcpKmsKey | `status.outputs.key_id` |
 
 ## Referenced By
 

@@ -63,6 +63,12 @@ type GcpGkeNodePoolSpec struct {
 	// hyphens; starting with a letter and ending with a letter or digit.
 	// Example: "general-pool", "spot-batch", "gpu-a100"
 	NodePoolName string `protobuf:"bytes,4,opt,name=node_pool_name,json=nodePoolName,proto3" json:"node_pool_name,omitempty"`
+	// Prefix for a GENERATED pool name — GKE appends a random suffix, so
+	// every replacement pool gets a fresh unique name (the
+	// create-before-destroy pattern for pools that must be swapped without
+	// a name collision). Mutually exclusive with node_pool_name; when both
+	// are empty, node_pool_name defaults to metadata.name. Immutable.
+	NamePrefix string `protobuf:"bytes,17,opt,name=name_prefix,json=namePrefix,proto3" json:"name_prefix,omitempty"`
 	// Zones this pool's nodes run in, e.g. ["us-central1-a", "us-central1-b"].
 	// Must be within the cluster's region. If unspecified, the cluster-level
 	// node_locations apply (all zones in the region for a regional cluster).
@@ -120,9 +126,26 @@ type GcpGkeNodePoolSpec struct {
 	// constraints, accelerators, security posture, and kubelet/OS tuning.
 	// If omitted entirely, GKE defaults apply (e2-medium, 100 GB pd-balanced,
 	// Container-Optimized OS, Compute Engine default service account).
-	NodeConfig    *GcpGkeNodePoolNodeConfig `protobuf:"bytes,16,opt,name=node_config,json=nodeConfig,proto3" json:"node_config,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	NodeConfig *GcpGkeNodePoolNodeConfig `protobuf:"bytes,16,opt,name=node_config,json=nodeConfig,proto3" json:"node_config,omitempty"`
+	// Destroy-time stance of the IaC engines toward the pool itself:
+	// DELETE (default) destroys it, PREVENT fails any plan that would
+	// destroy it, ABANDON removes it from state and leaves the pool
+	// running in GCP. This is an engine-side control, not a GKE API field.
+	DeletionPolicy string `protobuf:"bytes,18,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	// Skips the per-pool Instance Group Manager queries that reconcile the
+	// observed node count on every plan — a quota/performance optimization
+	// for very large pools. While true, node-count drift is invisible to
+	// plans and the instance_group_urls outputs go stale. The engines
+	// already never fight the autoscaler over node_count; this additionally
+	// silences the read-side queries.
+	IgnoreNodeCountChanges bool `protobuf:"varint,19,opt,name=ignore_node_count_changes,json=ignoreNodeCountChanges,proto3" json:"ignore_node_count_changes,omitempty"`
+	// How nodes drain when the POOL ITSELF is deleted or replaced: grace
+	// periods and whether PodDisruptionBudgets are honored during the
+	// teardown. Distinct from upgrade_settings, which paces upgrades of a
+	// pool that continues to exist.
+	NodeDrainConfig *GcpGkeNodePoolNodeDrainConfig `protobuf:"bytes,20,opt,name=node_drain_config,json=nodeDrainConfig,proto3" json:"node_drain_config,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GcpGkeNodePoolSpec) Reset() {
@@ -179,6 +202,13 @@ func (x *GcpGkeNodePoolSpec) GetLocation() *v1.StringValueOrRef {
 func (x *GcpGkeNodePoolSpec) GetNodePoolName() string {
 	if x != nil {
 		return x.NodePoolName
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolSpec) GetNamePrefix() string {
+	if x != nil {
+		return x.NamePrefix
 	}
 	return ""
 }
@@ -278,6 +308,27 @@ func (x *GcpGkeNodePoolSpec) GetNodeConfig() *GcpGkeNodePoolNodeConfig {
 	return nil
 }
 
+func (x *GcpGkeNodePoolSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolSpec) GetIgnoreNodeCountChanges() bool {
+	if x != nil {
+		return x.IgnoreNodeCountChanges
+	}
+	return false
+}
+
+func (x *GcpGkeNodePoolSpec) GetNodeDrainConfig() *GcpGkeNodePoolNodeDrainConfig {
+	if x != nil {
+		return x.NodeDrainConfig
+	}
+	return nil
+}
+
 type isGcpGkeNodePoolSpec_NodePoolSize interface {
 	isGcpGkeNodePoolSpec_NodePoolSize()
 }
@@ -296,6 +347,74 @@ type GcpGkeNodePoolSpec_Autoscaling struct {
 func (*GcpGkeNodePoolSpec_NodeCount) isGcpGkeNodePoolSpec_NodePoolSize() {}
 
 func (*GcpGkeNodePoolSpec_Autoscaling) isGcpGkeNodePoolSpec_NodePoolSize() {}
+
+// GcpGkeNodePoolNodeDrainConfig controls draining behavior when the pool
+// is deleted or replaced.
+type GcpGkeNodePoolNodeDrainConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Grace period each node gets to finish draining before it is removed,
+	// seconds format, e.g. "300s".
+	GraceTerminationDuration string `protobuf:"bytes,1,opt,name=grace_termination_duration,json=graceTerminationDuration,proto3" json:"grace_termination_duration,omitempty"`
+	// How long the drain waits on a blocking PodDisruptionBudget before
+	// proceeding anyway, seconds format, e.g. "3600s".
+	PdbTimeoutDuration string `protobuf:"bytes,2,opt,name=pdb_timeout_duration,json=pdbTimeoutDuration,proto3" json:"pdb_timeout_duration,omitempty"`
+	// Honor PodDisruptionBudgets while the pool is being deleted (bounded
+	// by pdb_timeout_duration) instead of evicting immediately.
+	RespectPdbDuringNodePoolDeletion *bool `protobuf:"varint,3,opt,name=respect_pdb_during_node_pool_deletion,json=respectPdbDuringNodePoolDeletion,proto3,oneof" json:"respect_pdb_during_node_pool_deletion,omitempty"`
+	unknownFields                    protoimpl.UnknownFields
+	sizeCache                        protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolNodeDrainConfig) Reset() {
+	*x = GcpGkeNodePoolNodeDrainConfig{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolNodeDrainConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolNodeDrainConfig) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolNodeDrainConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolNodeDrainConfig.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolNodeDrainConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GcpGkeNodePoolNodeDrainConfig) GetGraceTerminationDuration() string {
+	if x != nil {
+		return x.GraceTerminationDuration
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolNodeDrainConfig) GetPdbTimeoutDuration() string {
+	if x != nil {
+		return x.PdbTimeoutDuration
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolNodeDrainConfig) GetRespectPdbDuringNodePoolDeletion() bool {
+	if x != nil && x.RespectPdbDuringNodePoolDeletion != nil {
+		return *x.RespectPdbDuringNodePoolDeletion
+	}
+	return false
+}
 
 // GcpGkeNodePoolAutoscaling bounds cluster-autoscaler management of the
 // pool size. Exactly one addressing mode: per-zone limits (min/max — the
@@ -324,7 +443,7 @@ type GcpGkeNodePoolAutoscaling struct {
 
 func (x *GcpGkeNodePoolAutoscaling) Reset() {
 	*x = GcpGkeNodePoolAutoscaling{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -336,7 +455,7 @@ func (x *GcpGkeNodePoolAutoscaling) String() string {
 func (*GcpGkeNodePoolAutoscaling) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolAutoscaling) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -349,7 +468,7 @@ func (x *GcpGkeNodePoolAutoscaling) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolAutoscaling.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolAutoscaling) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GcpGkeNodePoolAutoscaling) GetMinNodes() uint32 {
@@ -404,7 +523,7 @@ type GcpGkeNodePoolManagement struct {
 
 func (x *GcpGkeNodePoolManagement) Reset() {
 	*x = GcpGkeNodePoolManagement{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -416,7 +535,7 @@ func (x *GcpGkeNodePoolManagement) String() string {
 func (*GcpGkeNodePoolManagement) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolManagement) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -429,7 +548,7 @@ func (x *GcpGkeNodePoolManagement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolManagement.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolManagement) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GcpGkeNodePoolManagement) GetAutoRepair() bool {
@@ -469,7 +588,7 @@ type GcpGkeNodePoolUpgradeSettings struct {
 
 func (x *GcpGkeNodePoolUpgradeSettings) Reset() {
 	*x = GcpGkeNodePoolUpgradeSettings{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -481,7 +600,7 @@ func (x *GcpGkeNodePoolUpgradeSettings) String() string {
 func (*GcpGkeNodePoolUpgradeSettings) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolUpgradeSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -494,7 +613,7 @@ func (x *GcpGkeNodePoolUpgradeSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolUpgradeSettings.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolUpgradeSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GcpGkeNodePoolUpgradeSettings) GetMaxSurge() uint32 {
@@ -540,7 +659,7 @@ type GcpGkeNodePoolBlueGreenSettings struct {
 
 func (x *GcpGkeNodePoolBlueGreenSettings) Reset() {
 	*x = GcpGkeNodePoolBlueGreenSettings{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -552,7 +671,7 @@ func (x *GcpGkeNodePoolBlueGreenSettings) String() string {
 func (*GcpGkeNodePoolBlueGreenSettings) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolBlueGreenSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -565,7 +684,7 @@ func (x *GcpGkeNodePoolBlueGreenSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolBlueGreenSettings.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolBlueGreenSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GcpGkeNodePoolBlueGreenSettings) GetStandardRolloutPolicy() *GcpGkeNodePoolStandardRolloutPolicy {
@@ -599,7 +718,7 @@ type GcpGkeNodePoolStandardRolloutPolicy struct {
 
 func (x *GcpGkeNodePoolStandardRolloutPolicy) Reset() {
 	*x = GcpGkeNodePoolStandardRolloutPolicy{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -611,7 +730,7 @@ func (x *GcpGkeNodePoolStandardRolloutPolicy) String() string {
 func (*GcpGkeNodePoolStandardRolloutPolicy) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolStandardRolloutPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -624,7 +743,7 @@ func (x *GcpGkeNodePoolStandardRolloutPolicy) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use GcpGkeNodePoolStandardRolloutPolicy.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolStandardRolloutPolicy) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GcpGkeNodePoolStandardRolloutPolicy) GetBatchPercentage() float32 {
@@ -668,7 +787,7 @@ type GcpGkeNodePoolPlacementPolicy struct {
 
 func (x *GcpGkeNodePoolPlacementPolicy) Reset() {
 	*x = GcpGkeNodePoolPlacementPolicy{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -680,7 +799,7 @@ func (x *GcpGkeNodePoolPlacementPolicy) String() string {
 func (*GcpGkeNodePoolPlacementPolicy) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolPlacementPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -693,7 +812,7 @@ func (x *GcpGkeNodePoolPlacementPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolPlacementPolicy.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolPlacementPolicy) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GcpGkeNodePoolPlacementPolicy) GetType() string {
@@ -744,13 +863,31 @@ type GcpGkeNodePoolNetworkConfig struct {
 	// doubles the pod range slice per node). Only relevant with a dedicated
 	// pod range. Immutable.
 	PodCidrOverprovisionDisabled bool `protobuf:"varint,6,opt,name=pod_cidr_overprovision_disabled,json=podCidrOverprovisionDisabled,proto3" json:"pod_cidr_overprovision_disabled,omitempty"`
-	unknownFields                protoimpl.UnknownFields
-	sizeCache                    protoimpl.SizeCache
+	// Places this pool's nodes on a DIFFERENT subnetwork than the cluster's
+	// default node subnetwork (same VPC). Accepts a subnetwork self link or
+	// a reference to a GcpSubnetwork resource. Immutable. Used to give pools
+	// their own address planning or firewall scope.
+	Subnetwork *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=subnetwork,proto3" json:"subnetwork,omitempty"`
+	// Accelerator network profile for the pool (e.g. RDMA-capable profiles
+	// on GPU supercomputer shapes). GKE validates the profile against the
+	// machine family at apply. Immutable.
+	AcceleratorNetworkProfile string `protobuf:"bytes,8,opt,name=accelerator_network_profile,json=acceleratorNetworkProfile,proto3" json:"accelerator_network_profile,omitempty"`
+	// Additional node network interfaces (multi-networking): each entry
+	// attaches every node to one more VPC network/subnetwork. Requires the
+	// cluster's enable_multi_networking. Immutable.
+	AdditionalNodeNetworks []*GcpGkeNodePoolAdditionalNodeNetwork `protobuf:"bytes,9,rep,name=additional_node_networks,json=additionalNodeNetworks,proto3" json:"additional_node_networks,omitempty"`
+	// Additional pod ranges (multi-networking): each entry makes a
+	// secondary range on a subnetwork available to this pool's pods beyond
+	// the primary pod range. Requires the cluster's
+	// enable_multi_networking. Immutable.
+	AdditionalPodNetworks []*GcpGkeNodePoolAdditionalPodNetwork `protobuf:"bytes,10,rep,name=additional_pod_networks,json=additionalPodNetworks,proto3" json:"additional_pod_networks,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *GcpGkeNodePoolNetworkConfig) Reset() {
 	*x = GcpGkeNodePoolNetworkConfig{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -762,7 +899,7 @@ func (x *GcpGkeNodePoolNetworkConfig) String() string {
 func (*GcpGkeNodePoolNetworkConfig) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolNetworkConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -775,7 +912,7 @@ func (x *GcpGkeNodePoolNetworkConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolNetworkConfig.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolNetworkConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GcpGkeNodePoolNetworkConfig) GetCreatePodRange() bool {
@@ -818,6 +955,158 @@ func (x *GcpGkeNodePoolNetworkConfig) GetPodCidrOverprovisionDisabled() bool {
 		return x.PodCidrOverprovisionDisabled
 	}
 	return false
+}
+
+func (x *GcpGkeNodePoolNetworkConfig) GetSubnetwork() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Subnetwork
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolNetworkConfig) GetAcceleratorNetworkProfile() string {
+	if x != nil {
+		return x.AcceleratorNetworkProfile
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolNetworkConfig) GetAdditionalNodeNetworks() []*GcpGkeNodePoolAdditionalNodeNetwork {
+	if x != nil {
+		return x.AdditionalNodeNetworks
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolNetworkConfig) GetAdditionalPodNetworks() []*GcpGkeNodePoolAdditionalPodNetwork {
+	if x != nil {
+		return x.AdditionalPodNetworks
+	}
+	return nil
+}
+
+// GcpGkeNodePoolAdditionalNodeNetwork attaches one extra network
+// interface to every node in the pool.
+type GcpGkeNodePoolAdditionalNodeNetwork struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The VPC network to attach. Accepts a network name/self link or a
+	// reference to a GcpVpcNetwork resource.
+	Network *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
+	// The subnetwork on that network the interface draws its IP from.
+	// Accepts a name/self link or a reference to a GcpSubnetwork resource.
+	Subnetwork    *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=subnetwork,proto3" json:"subnetwork,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolAdditionalNodeNetwork) Reset() {
+	*x = GcpGkeNodePoolAdditionalNodeNetwork{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolAdditionalNodeNetwork) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolAdditionalNodeNetwork) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolAdditionalNodeNetwork) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolAdditionalNodeNetwork.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolAdditionalNodeNetwork) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GcpGkeNodePoolAdditionalNodeNetwork) GetNetwork() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Network
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolAdditionalNodeNetwork) GetSubnetwork() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Subnetwork
+	}
+	return nil
+}
+
+// GcpGkeNodePoolAdditionalPodNetwork exposes one more secondary range to
+// this pool's pods.
+type GcpGkeNodePoolAdditionalPodNetwork struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The subnetwork holding the secondary range. Accepts a name/self link
+	// or a reference to a GcpSubnetwork resource.
+	Subnetwork *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=subnetwork,proto3" json:"subnetwork,omitempty"`
+	// Name of the secondary range on that subnetwork used for pod IPs.
+	SecondaryPodRange string `protobuf:"bytes,2,opt,name=secondary_pod_range,json=secondaryPodRange,proto3" json:"secondary_pod_range,omitempty"`
+	// Maximum pods per node drawing from this range (8-256).
+	MaxPodsPerNode *int32 `protobuf:"varint,3,opt,name=max_pods_per_node,json=maxPodsPerNode,proto3,oneof" json:"max_pods_per_node,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolAdditionalPodNetwork) Reset() {
+	*x = GcpGkeNodePoolAdditionalPodNetwork{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolAdditionalPodNetwork) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolAdditionalPodNetwork) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolAdditionalPodNetwork) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolAdditionalPodNetwork.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolAdditionalPodNetwork) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GcpGkeNodePoolAdditionalPodNetwork) GetSubnetwork() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Subnetwork
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolAdditionalPodNetwork) GetSecondaryPodRange() string {
+	if x != nil {
+		return x.SecondaryPodRange
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolAdditionalPodNetwork) GetMaxPodsPerNode() int32 {
+	if x != nil && x.MaxPodsPerNode != nil {
+		return *x.MaxPodsPerNode
+	}
+	return 0
 }
 
 // GcpGkeNodePoolNodeConfig is the VM configuration every node in the pool
@@ -953,13 +1242,74 @@ type GcpGkeNodePoolNodeConfig struct {
 	// which it is drained and deleted. Pairs with flex-start/Spot batch
 	// pools; leave empty for long-lived pools. Immutable.
 	MaxRunDuration string `protobuf:"bytes,32,opt,name=max_run_duration,json=maxRunDuration,proto3" json:"max_run_duration,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Confidential storage on the node disks (hardware-encrypted at the
+	// storage layer; pairs with confidential_nodes for end-to-end
+	// confidentiality). Requires a supporting machine family and hyperdisk
+	// boot disks. Immutable.
+	EnableConfidentialStorage bool `protobuf:"varint,33,opt,name=enable_confidential_storage,json=enableConfidentialStorage,proto3" json:"enable_confidential_storage,omitempty"`
+	// Encryption mode for local SSDs: STANDARD_ENCRYPTION (Google-managed)
+	// or EPHEMERAL_KEY_ENCRYPTION (per-node ephemeral keys destroyed with
+	// the node — local data is unrecoverable after preemption/deletion).
+	// Immutable.
+	LocalSsdEncryptionMode string `protobuf:"bytes,34,opt,name=local_ssd_encryption_mode,json=localSsdEncryptionMode,proto3" json:"local_ssd_encryption_mode,omitempty"`
+	// GPUDirect strategy for multi-GPU/multi-node communication (e.g.
+	// "GPUDIRECT_TCPX", "GPUDIRECT_TCPXO", "GPUDIRECT_RDMA"). GKE validates
+	// the strategy against the machine family and GPU type at apply; the
+	// provider passes the value through case-insensitively.
+	GpudirectStrategy string `protobuf:"bytes,35,opt,name=gpudirect_strategy,json=gpudirectStrategy,proto3" json:"gpudirect_strategy,omitempty"`
+	// Sole-tenant node group to schedule this pool's nodes onto (nodes on
+	// dedicated physical servers you already provisioned). Prefer
+	// sole_tenant_config's affinity form for flexible matching. Immutable.
+	NodeGroup string `protobuf:"bytes,36,opt,name=node_group,json=nodeGroup,proto3" json:"node_group,omitempty"`
+	// Hyperdisk storage pools the node boot disks are provisioned in —
+	// pre-purchased pooled capacity/IOPS shared across disks. Full resource
+	// paths. Immutable.
+	StoragePools []string `protobuf:"bytes,37,rep,name=storage_pools,json=storagePools,proto3" json:"storage_pools,omitempty"`
+	// Resource Manager tags bound to the node VMs (org-policy/firewall
+	// tags, distinct from network tags and labels), as
+	// {"tagKeys/123": "tagValues/456"} pairs. Mutable.
+	ResourceManagerTags map[string]string `protobuf:"bytes,38,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Advanced machine features: SMT control, nested virtualization, and
+	// the performance monitoring unit. Immutable.
+	AdvancedMachineFeatures *GcpGkeNodePoolAdvancedMachineFeatures `protobuf:"bytes,39,opt,name=advanced_machine_features,json=advancedMachineFeatures,proto3" json:"advanced_machine_features,omitempty"`
+	// Boot disk shape as a first-class block — required for hyperdisk
+	// tuning (provisioned IOPS/throughput). When set, its disk_type/size
+	// take precedence over the flat disk_type/disk_size_gb fields.
+	BootDisk *GcpGkeNodePoolBootDisk `protobuf:"bytes,40,opt,name=boot_disk,json=bootDisk,proto3" json:"boot_disk,omitempty"`
+	// Custom node OS image family, overriding the stock image_type image.
+	// Both fields must point at an image built for GKE nodes. Immutable.
+	NodeImage *GcpGkeNodePoolNodeImage `protobuf:"bytes,41,opt,name=node_image,json=nodeImage,proto3" json:"node_image,omitempty"`
+	// Sole-tenant scheduling: affinity rules selecting the sole-tenant node
+	// groups this pool's nodes run on, plus a dedicated-vCPU floor.
+	// Immutable.
+	SoleTenantConfig *GcpGkeNodePoolSoleTenantConfig `protobuf:"bytes,42,opt,name=sole_tenant_config,json=soleTenantConfig,proto3" json:"sole_tenant_config,omitempty"`
+	// GKE Sandbox: runs every pod in this pool inside gVisor (user-space
+	// kernel isolation) — for untrusted/multi-tenant workloads. The only
+	// value is "GVISOR". GKE taints sandbox pools automatically. Immutable.
+	SandboxType string `protobuf:"bytes,43,opt,name=sandbox_type,json=sandboxType,proto3" json:"sandbox_type,omitempty"`
+	// Windows Server version for WINDOWS_LTSC_CONTAINERD pools:
+	// OS_VERSION_LTSC2019 or OS_VERSION_LTSC2022. Immutable.
+	WindowsOsVersion string `protobuf:"bytes,44,opt,name=windows_os_version,json=windowsOsVersion,proto3" json:"windows_os_version,omitempty"`
+	// Host maintenance cadence for the underlying physical hosts:
+	// AS_NEEDED (default) or PERIODIC (predictable windows — required by
+	// some GPU/TPU shapes). Immutable.
+	HostMaintenanceInterval string `protobuf:"bytes,45,opt,name=host_maintenance_interval,json=hostMaintenanceInterval,proto3" json:"host_maintenance_interval,omitempty"`
+	// How GKE taints nodes based on CPU architecture: ARM applies the
+	// kubernetes.io/arch taint to Arm nodes (the default protection that
+	// keeps amd64-only workloads off T2A/Axion pools); NONE disables that
+	// automatic taint.
+	ArchitectureTaintBehavior string `protobuf:"bytes,46,opt,name=architecture_taint_behavior,json=architectureTaintBehavior,proto3" json:"architecture_taint_behavior,omitempty"`
+	// containerd runtime configuration: private registry access (custom CA
+	// domains), per-registry host overrides (mirrors, auth, headers), and
+	// writable cgroups.
+	ContainerdConfig *GcpGkeNodePoolContainerdConfig `protobuf:"bytes,47,opt,name=containerd_config,json=containerdConfig,proto3" json:"containerd_config,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GcpGkeNodePoolNodeConfig) Reset() {
 	*x = GcpGkeNodePoolNodeConfig{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -971,7 +1321,7 @@ func (x *GcpGkeNodePoolNodeConfig) String() string {
 func (*GcpGkeNodePoolNodeConfig) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolNodeConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -984,7 +1334,7 @@ func (x *GcpGkeNodePoolNodeConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolNodeConfig.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolNodeConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GcpGkeNodePoolNodeConfig) GetMachineType() string {
@@ -1211,6 +1561,790 @@ func (x *GcpGkeNodePoolNodeConfig) GetMaxRunDuration() string {
 	return ""
 }
 
+func (x *GcpGkeNodePoolNodeConfig) GetEnableConfidentialStorage() bool {
+	if x != nil {
+		return x.EnableConfidentialStorage
+	}
+	return false
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetLocalSsdEncryptionMode() string {
+	if x != nil {
+		return x.LocalSsdEncryptionMode
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetGpudirectStrategy() string {
+	if x != nil {
+		return x.GpudirectStrategy
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetNodeGroup() string {
+	if x != nil {
+		return x.NodeGroup
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetStoragePools() []string {
+	if x != nil {
+		return x.StoragePools
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetAdvancedMachineFeatures() *GcpGkeNodePoolAdvancedMachineFeatures {
+	if x != nil {
+		return x.AdvancedMachineFeatures
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetBootDisk() *GcpGkeNodePoolBootDisk {
+	if x != nil {
+		return x.BootDisk
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetNodeImage() *GcpGkeNodePoolNodeImage {
+	if x != nil {
+		return x.NodeImage
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetSoleTenantConfig() *GcpGkeNodePoolSoleTenantConfig {
+	if x != nil {
+		return x.SoleTenantConfig
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetSandboxType() string {
+	if x != nil {
+		return x.SandboxType
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetWindowsOsVersion() string {
+	if x != nil {
+		return x.WindowsOsVersion
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetHostMaintenanceInterval() string {
+	if x != nil {
+		return x.HostMaintenanceInterval
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetArchitectureTaintBehavior() string {
+	if x != nil {
+		return x.ArchitectureTaintBehavior
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolNodeConfig) GetContainerdConfig() *GcpGkeNodePoolContainerdConfig {
+	if x != nil {
+		return x.ContainerdConfig
+	}
+	return nil
+}
+
+// GcpGkeNodePoolAdvancedMachineFeatures tunes CPU-level machine features.
+type GcpGkeNodePoolAdvancedMachineFeatures struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Threads per physical core: 1 disables SMT (licensing or
+	// side-channel isolation), 2 keeps it on. Only 1 or 2 are meaningful.
+	ThreadsPerCore int64 `protobuf:"varint,1,opt,name=threads_per_core,json=threadsPerCore,proto3" json:"threads_per_core,omitempty"`
+	// Nested virtualization on the nodes (running VMs inside pods, e.g.
+	// KubeVirt). Requires Haswell-or-newer non-shared-core machine types.
+	EnableNestedVirtualization *bool `protobuf:"varint,2,opt,name=enable_nested_virtualization,json=enableNestedVirtualization,proto3,oneof" json:"enable_nested_virtualization,omitempty"`
+	// Performance monitoring unit exposure: ARCHITECTURAL (basic counters),
+	// STANDARD (most counters), or ENHANCED (all counters) — for profiling
+	// workloads that read hardware counters.
+	PerformanceMonitoringUnit string `protobuf:"bytes,3,opt,name=performance_monitoring_unit,json=performanceMonitoringUnit,proto3" json:"performance_monitoring_unit,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolAdvancedMachineFeatures) Reset() {
+	*x = GcpGkeNodePoolAdvancedMachineFeatures{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolAdvancedMachineFeatures) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolAdvancedMachineFeatures) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolAdvancedMachineFeatures) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolAdvancedMachineFeatures.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolAdvancedMachineFeatures) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GcpGkeNodePoolAdvancedMachineFeatures) GetThreadsPerCore() int64 {
+	if x != nil {
+		return x.ThreadsPerCore
+	}
+	return 0
+}
+
+func (x *GcpGkeNodePoolAdvancedMachineFeatures) GetEnableNestedVirtualization() bool {
+	if x != nil && x.EnableNestedVirtualization != nil {
+		return *x.EnableNestedVirtualization
+	}
+	return false
+}
+
+func (x *GcpGkeNodePoolAdvancedMachineFeatures) GetPerformanceMonitoringUnit() string {
+	if x != nil {
+		return x.PerformanceMonitoringUnit
+	}
+	return ""
+}
+
+// GcpGkeNodePoolBootDisk shapes the node boot disk, including hyperdisk
+// provisioning knobs the flat disk fields cannot express.
+type GcpGkeNodePoolBootDisk struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Boot disk type (pd-standard, pd-balanced, pd-ssd,
+	// hyperdisk-balanced...). Hyperdisk types unlock provisioned_iops /
+	// provisioned_throughput below.
+	DiskType string `protobuf:"bytes,1,opt,name=disk_type,json=diskType,proto3" json:"disk_type,omitempty"`
+	// Boot disk size in GB (min 10).
+	SizeGb *int64 `protobuf:"varint,2,opt,name=size_gb,json=sizeGb,proto3,oneof" json:"size_gb,omitempty"`
+	// Provisioned IOPS — hyperdisk types that support IOPS provisioning
+	// only.
+	ProvisionedIops *int64 `protobuf:"varint,3,opt,name=provisioned_iops,json=provisionedIops,proto3,oneof" json:"provisioned_iops,omitempty"`
+	// Provisioned throughput in MiB/s — hyperdisk types that support
+	// throughput provisioning only.
+	ProvisionedThroughput *int64 `protobuf:"varint,4,opt,name=provisioned_throughput,json=provisionedThroughput,proto3,oneof" json:"provisioned_throughput,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolBootDisk) Reset() {
+	*x = GcpGkeNodePoolBootDisk{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolBootDisk) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolBootDisk) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolBootDisk) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolBootDisk.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolBootDisk) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GcpGkeNodePoolBootDisk) GetDiskType() string {
+	if x != nil {
+		return x.DiskType
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolBootDisk) GetSizeGb() int64 {
+	if x != nil && x.SizeGb != nil {
+		return *x.SizeGb
+	}
+	return 0
+}
+
+func (x *GcpGkeNodePoolBootDisk) GetProvisionedIops() int64 {
+	if x != nil && x.ProvisionedIops != nil {
+		return *x.ProvisionedIops
+	}
+	return 0
+}
+
+func (x *GcpGkeNodePoolBootDisk) GetProvisionedThroughput() int64 {
+	if x != nil && x.ProvisionedThroughput != nil {
+		return *x.ProvisionedThroughput
+	}
+	return 0
+}
+
+// GcpGkeNodePoolNodeImage points nodes at a custom OS image.
+type GcpGkeNodePoolNodeImage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Image family or full image name to boot nodes from.
+	Image string `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
+	// Project hosting the image. Empty means the pool's own project.
+	ImageProject  string `protobuf:"bytes,2,opt,name=image_project,json=imageProject,proto3" json:"image_project,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolNodeImage) Reset() {
+	*x = GcpGkeNodePoolNodeImage{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolNodeImage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolNodeImage) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolNodeImage) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolNodeImage.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolNodeImage) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GcpGkeNodePoolNodeImage) GetImage() string {
+	if x != nil {
+		return x.Image
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolNodeImage) GetImageProject() string {
+	if x != nil {
+		return x.ImageProject
+	}
+	return ""
+}
+
+// GcpGkeNodePoolSoleTenantConfig schedules nodes onto sole-tenant node
+// groups via affinity rules.
+type GcpGkeNodePoolSoleTenantConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Affinity rules matching sole-tenant node groups. At least one rule
+	// selects the groups (e.g. key "compute.googleapis.com/node-group-name",
+	// operator IN, values [group name]).
+	NodeAffinities []*GcpGkeNodePoolSoleTenantAffinity `protobuf:"bytes,1,rep,name=node_affinities,json=nodeAffinities,proto3" json:"node_affinities,omitempty"`
+	// Minimum dedicated vCPUs per node reserved for this pool's workloads
+	// on the shared physical host.
+	MinNodeCpus   *int32 `protobuf:"varint,2,opt,name=min_node_cpus,json=minNodeCpus,proto3,oneof" json:"min_node_cpus,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolSoleTenantConfig) Reset() {
+	*x = GcpGkeNodePoolSoleTenantConfig{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolSoleTenantConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolSoleTenantConfig) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolSoleTenantConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolSoleTenantConfig.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolSoleTenantConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GcpGkeNodePoolSoleTenantConfig) GetNodeAffinities() []*GcpGkeNodePoolSoleTenantAffinity {
+	if x != nil {
+		return x.NodeAffinities
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolSoleTenantConfig) GetMinNodeCpus() int32 {
+	if x != nil && x.MinNodeCpus != nil {
+		return *x.MinNodeCpus
+	}
+	return 0
+}
+
+// GcpGkeNodePoolSoleTenantAffinity is one sole-tenant matching rule.
+type GcpGkeNodePoolSoleTenantAffinity struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Affinity label key, e.g. "compute.googleapis.com/node-group-name".
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// IN selects hosts matching values; NOT_IN avoids them.
+	Operator string `protobuf:"bytes,2,opt,name=operator,proto3" json:"operator,omitempty"`
+	// Values matched against the key.
+	Values        []string `protobuf:"bytes,3,rep,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolSoleTenantAffinity) Reset() {
+	*x = GcpGkeNodePoolSoleTenantAffinity{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolSoleTenantAffinity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolSoleTenantAffinity) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolSoleTenantAffinity) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolSoleTenantAffinity.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolSoleTenantAffinity) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GcpGkeNodePoolSoleTenantAffinity) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolSoleTenantAffinity) GetOperator() string {
+	if x != nil {
+		return x.Operator
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolSoleTenantAffinity) GetValues() []string {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
+// GcpGkeNodePoolContainerdConfig tunes the containerd runtime.
+type GcpGkeNodePoolContainerdConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Trust custom certificate authorities for specific registry domains —
+	// required for private registries with self-signed/internal CAs.
+	PrivateRegistryAccess *GcpGkeNodePoolPrivateRegistryAccess `protobuf:"bytes,1,opt,name=private_registry_access,json=privateRegistryAccess,proto3" json:"private_registry_access,omitempty"`
+	// Per-registry host overrides: mirrors, capabilities, dial timeouts,
+	// client certificates, and custom headers, in containerd hosts.toml
+	// semantics.
+	RegistryHosts []*GcpGkeNodePoolRegistryHost `protobuf:"bytes,2,rep,name=registry_hosts,json=registryHosts,proto3" json:"registry_hosts,omitempty"`
+	// Writable cgroup filesystem inside containers — for workloads that
+	// manage their own sub-cgroups (nested container runtimes, some JVMs).
+	WritableCgroupsEnabled *bool `protobuf:"varint,3,opt,name=writable_cgroups_enabled,json=writableCgroupsEnabled,proto3,oneof" json:"writable_cgroups_enabled,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolContainerdConfig) Reset() {
+	*x = GcpGkeNodePoolContainerdConfig{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolContainerdConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolContainerdConfig) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolContainerdConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolContainerdConfig.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolContainerdConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GcpGkeNodePoolContainerdConfig) GetPrivateRegistryAccess() *GcpGkeNodePoolPrivateRegistryAccess {
+	if x != nil {
+		return x.PrivateRegistryAccess
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolContainerdConfig) GetRegistryHosts() []*GcpGkeNodePoolRegistryHost {
+	if x != nil {
+		return x.RegistryHosts
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolContainerdConfig) GetWritableCgroupsEnabled() bool {
+	if x != nil && x.WritableCgroupsEnabled != nil {
+		return *x.WritableCgroupsEnabled
+	}
+	return false
+}
+
+// GcpGkeNodePoolPrivateRegistryAccess trusts private-CA registries.
+type GcpGkeNodePoolPrivateRegistryAccess struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Master toggle for private registry access configuration.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Per-domain CA trust: each entry names registry FQDNs and the Secret
+	// Manager secret holding the CA certificate for them.
+	CertificateAuthorityDomains []*GcpGkeNodePoolRegistryCaDomain `protobuf:"bytes,2,rep,name=certificate_authority_domains,json=certificateAuthorityDomains,proto3" json:"certificate_authority_domains,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolPrivateRegistryAccess) Reset() {
+	*x = GcpGkeNodePoolPrivateRegistryAccess{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolPrivateRegistryAccess) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolPrivateRegistryAccess) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolPrivateRegistryAccess) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolPrivateRegistryAccess.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolPrivateRegistryAccess) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GcpGkeNodePoolPrivateRegistryAccess) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *GcpGkeNodePoolPrivateRegistryAccess) GetCertificateAuthorityDomains() []*GcpGkeNodePoolRegistryCaDomain {
+	if x != nil {
+		return x.CertificateAuthorityDomains
+	}
+	return nil
+}
+
+// GcpGkeNodePoolRegistryCaDomain trusts one CA for a set of registry
+// domains.
+type GcpGkeNodePoolRegistryCaDomain struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Registry FQDNs this CA vouches for, e.g. ["registry.internal:5000"].
+	Fqdns []string `protobuf:"bytes,1,rep,name=fqdns,proto3" json:"fqdns,omitempty"`
+	// Secret Manager secret URI holding the CA certificate, in the form
+	// "projects/{project}/secrets/{secret}/versions/{version}".
+	GcpSecretManagerCertificateUri string `protobuf:"bytes,2,opt,name=gcp_secret_manager_certificate_uri,json=gcpSecretManagerCertificateUri,proto3" json:"gcp_secret_manager_certificate_uri,omitempty"`
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolRegistryCaDomain) Reset() {
+	*x = GcpGkeNodePoolRegistryCaDomain{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolRegistryCaDomain) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolRegistryCaDomain) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolRegistryCaDomain) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolRegistryCaDomain.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolRegistryCaDomain) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GcpGkeNodePoolRegistryCaDomain) GetFqdns() []string {
+	if x != nil {
+		return x.Fqdns
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolRegistryCaDomain) GetGcpSecretManagerCertificateUri() string {
+	if x != nil {
+		return x.GcpSecretManagerCertificateUri
+	}
+	return ""
+}
+
+// GcpGkeNodePoolRegistryHost overrides containerd behavior for one
+// registry server.
+type GcpGkeNodePoolRegistryHost struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The registry server the overrides apply to, e.g. "docker.io" or
+	// "registry.internal:5000".
+	Server string `protobuf:"bytes,1,opt,name=server,proto3" json:"server,omitempty"`
+	// Host endpoints serving this registry (mirrors first, in order).
+	Hosts         []*GcpGkeNodePoolRegistryHostEndpoint `protobuf:"bytes,2,rep,name=hosts,proto3" json:"hosts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolRegistryHost) Reset() {
+	*x = GcpGkeNodePoolRegistryHost{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolRegistryHost) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolRegistryHost) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolRegistryHost) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolRegistryHost.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolRegistryHost) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GcpGkeNodePoolRegistryHost) GetServer() string {
+	if x != nil {
+		return x.Server
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolRegistryHost) GetHosts() []*GcpGkeNodePoolRegistryHostEndpoint {
+	if x != nil {
+		return x.Hosts
+	}
+	return nil
+}
+
+// GcpGkeNodePoolRegistryHostEndpoint is one endpoint (mirror) entry for a
+// registry server.
+type GcpGkeNodePoolRegistryHostEndpoint struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Endpoint URL, e.g. "https://mirror.internal".
+	Host string `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	// Operations this endpoint can serve — typically "pull" and
+	// "resolve" (containerd hosts.toml capability names). GKE validates
+	// the values at apply.
+	Capabilities []string `protobuf:"bytes,2,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
+	// Dial timeout for this endpoint, e.g. "10s".
+	DialTimeout string `protobuf:"bytes,3,opt,name=dial_timeout,json=dialTimeout,proto3" json:"dial_timeout,omitempty"`
+	// Path override on the endpoint host (registry served under a
+	// non-standard path).
+	OverridePath *bool `protobuf:"varint,4,opt,name=override_path,json=overridePath,proto3,oneof" json:"override_path,omitempty"`
+	// Secret Manager secret URI for the CA certificate to trust for this
+	// endpoint.
+	CaSecretUri string `protobuf:"bytes,5,opt,name=ca_secret_uri,json=caSecretUri,proto3" json:"ca_secret_uri,omitempty"`
+	// Secret Manager secret URI for the client TLS certificate presented to
+	// this endpoint.
+	ClientCertSecretUri string `protobuf:"bytes,6,opt,name=client_cert_secret_uri,json=clientCertSecretUri,proto3" json:"client_cert_secret_uri,omitempty"`
+	// Secret Manager secret URI for the client TLS key presented to this
+	// endpoint.
+	ClientKeySecretUri string `protobuf:"bytes,7,opt,name=client_key_secret_uri,json=clientKeySecretUri,proto3" json:"client_key_secret_uri,omitempty"`
+	// Custom HTTP headers sent to this endpoint, e.g. authorization
+	// headers for pull-through caches.
+	Headers       map[string]string `protobuf:"bytes,8,rep,name=headers,proto3" json:"headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolRegistryHostEndpoint) Reset() {
+	*x = GcpGkeNodePoolRegistryHostEndpoint{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolRegistryHostEndpoint) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolRegistryHostEndpoint) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolRegistryHostEndpoint) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolRegistryHostEndpoint.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolRegistryHostEndpoint) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GcpGkeNodePoolRegistryHostEndpoint) GetHost() string {
+	if x != nil {
+		return x.Host
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolRegistryHostEndpoint) GetCapabilities() []string {
+	if x != nil {
+		return x.Capabilities
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolRegistryHostEndpoint) GetDialTimeout() string {
+	if x != nil {
+		return x.DialTimeout
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolRegistryHostEndpoint) GetOverridePath() bool {
+	if x != nil && x.OverridePath != nil {
+		return *x.OverridePath
+	}
+	return false
+}
+
+func (x *GcpGkeNodePoolRegistryHostEndpoint) GetCaSecretUri() string {
+	if x != nil {
+		return x.CaSecretUri
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolRegistryHostEndpoint) GetClientCertSecretUri() string {
+	if x != nil {
+		return x.ClientCertSecretUri
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolRegistryHostEndpoint) GetClientKeySecretUri() string {
+	if x != nil {
+		return x.ClientKeySecretUri
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolRegistryHostEndpoint) GetHeaders() map[string]string {
+	if x != nil {
+		return x.Headers
+	}
+	return nil
+}
+
 // GcpGkeNodePoolTaint is a Kubernetes taint applied to every node in the
 // pool.
 type GcpGkeNodePoolTaint struct {
@@ -1228,7 +2362,7 @@ type GcpGkeNodePoolTaint struct {
 
 func (x *GcpGkeNodePoolTaint) Reset() {
 	*x = GcpGkeNodePoolTaint{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1240,7 +2374,7 @@ func (x *GcpGkeNodePoolTaint) String() string {
 func (*GcpGkeNodePoolTaint) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolTaint) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1253,7 +2387,7 @@ func (x *GcpGkeNodePoolTaint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolTaint.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolTaint) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *GcpGkeNodePoolTaint) GetKey() string {
@@ -1302,7 +2436,7 @@ type GcpGkeNodePoolGuestAccelerator struct {
 
 func (x *GcpGkeNodePoolGuestAccelerator) Reset() {
 	*x = GcpGkeNodePoolGuestAccelerator{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1314,7 +2448,7 @@ func (x *GcpGkeNodePoolGuestAccelerator) String() string {
 func (*GcpGkeNodePoolGuestAccelerator) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolGuestAccelerator) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1327,7 +2461,7 @@ func (x *GcpGkeNodePoolGuestAccelerator) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolGuestAccelerator.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolGuestAccelerator) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GcpGkeNodePoolGuestAccelerator) GetType() string {
@@ -1379,7 +2513,7 @@ type GcpGkeNodePoolGpuSharingConfig struct {
 
 func (x *GcpGkeNodePoolGpuSharingConfig) Reset() {
 	*x = GcpGkeNodePoolGpuSharingConfig{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1391,7 +2525,7 @@ func (x *GcpGkeNodePoolGpuSharingConfig) String() string {
 func (*GcpGkeNodePoolGpuSharingConfig) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolGpuSharingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1404,7 +2538,7 @@ func (x *GcpGkeNodePoolGpuSharingConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolGpuSharingConfig.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolGpuSharingConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GcpGkeNodePoolGpuSharingConfig) GetGpuSharingStrategy() string {
@@ -1436,7 +2570,7 @@ type GcpGkeNodePoolShieldedInstanceConfig struct {
 
 func (x *GcpGkeNodePoolShieldedInstanceConfig) Reset() {
 	*x = GcpGkeNodePoolShieldedInstanceConfig{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1448,7 +2582,7 @@ func (x *GcpGkeNodePoolShieldedInstanceConfig) String() string {
 func (*GcpGkeNodePoolShieldedInstanceConfig) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolShieldedInstanceConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1461,7 +2595,7 @@ func (x *GcpGkeNodePoolShieldedInstanceConfig) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use GcpGkeNodePoolShieldedInstanceConfig.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolShieldedInstanceConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GcpGkeNodePoolShieldedInstanceConfig) GetEnableSecureBoot() bool {
@@ -1492,7 +2626,7 @@ type GcpGkeNodePoolConfidentialNodes struct {
 
 func (x *GcpGkeNodePoolConfidentialNodes) Reset() {
 	*x = GcpGkeNodePoolConfidentialNodes{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1504,7 +2638,7 @@ func (x *GcpGkeNodePoolConfidentialNodes) String() string {
 func (*GcpGkeNodePoolConfidentialNodes) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolConfidentialNodes) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1517,7 +2651,7 @@ func (x *GcpGkeNodePoolConfidentialNodes) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolConfidentialNodes.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolConfidentialNodes) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GcpGkeNodePoolConfidentialNodes) GetEnabled() bool {
@@ -1550,7 +2684,7 @@ type GcpGkeNodePoolEphemeralStorageLocalSsd struct {
 
 func (x *GcpGkeNodePoolEphemeralStorageLocalSsd) Reset() {
 	*x = GcpGkeNodePoolEphemeralStorageLocalSsd{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1562,7 +2696,7 @@ func (x *GcpGkeNodePoolEphemeralStorageLocalSsd) String() string {
 func (*GcpGkeNodePoolEphemeralStorageLocalSsd) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolEphemeralStorageLocalSsd) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1575,7 +2709,7 @@ func (x *GcpGkeNodePoolEphemeralStorageLocalSsd) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use GcpGkeNodePoolEphemeralStorageLocalSsd.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolEphemeralStorageLocalSsd) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GcpGkeNodePoolEphemeralStorageLocalSsd) GetLocalSsdCount() uint32 {
@@ -1603,7 +2737,7 @@ type GcpGkeNodePoolLocalNvmeSsdBlock struct {
 
 func (x *GcpGkeNodePoolLocalNvmeSsdBlock) Reset() {
 	*x = GcpGkeNodePoolLocalNvmeSsdBlock{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1615,7 +2749,7 @@ func (x *GcpGkeNodePoolLocalNvmeSsdBlock) String() string {
 func (*GcpGkeNodePoolLocalNvmeSsdBlock) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolLocalNvmeSsdBlock) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1628,7 +2762,7 @@ func (x *GcpGkeNodePoolLocalNvmeSsdBlock) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolLocalNvmeSsdBlock.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolLocalNvmeSsdBlock) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GcpGkeNodePoolLocalNvmeSsdBlock) GetLocalSsdCount() uint32 {
@@ -1643,7 +2777,10 @@ func (x *GcpGkeNodePoolLocalNvmeSsdBlock) GetLocalSsdCount() uint32 {
 type GcpGkeNodePoolReservationAffinity struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// NO_RESERVATION opts out; ANY_RESERVATION consumes any matching
-	// reservation; SPECIFIC_RESERVATION targets one by name.
+	// reservation; SPECIFIC_RESERVATION targets one by name;
+	// ANY_RESERVATION_THEN_FAIL consumes matching reservations and fails
+	// scale-up (instead of falling back to on-demand) when none is
+	// available.
 	ConsumeReservationType string `protobuf:"bytes,1,opt,name=consume_reservation_type,json=consumeReservationType,proto3" json:"consume_reservation_type,omitempty"`
 	// Reservation label key — "compute.googleapis.com/reservation-name" for
 	// SPECIFIC_RESERVATION.
@@ -1656,7 +2793,7 @@ type GcpGkeNodePoolReservationAffinity struct {
 
 func (x *GcpGkeNodePoolReservationAffinity) Reset() {
 	*x = GcpGkeNodePoolReservationAffinity{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[16]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1668,7 +2805,7 @@ func (x *GcpGkeNodePoolReservationAffinity) String() string {
 func (*GcpGkeNodePoolReservationAffinity) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolReservationAffinity) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[16]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1681,7 +2818,7 @@ func (x *GcpGkeNodePoolReservationAffinity) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GcpGkeNodePoolReservationAffinity.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolReservationAffinity) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GcpGkeNodePoolReservationAffinity) GetConsumeReservationType() string {
@@ -1720,7 +2857,7 @@ type GcpGkeNodePoolSecondaryBootDisk struct {
 
 func (x *GcpGkeNodePoolSecondaryBootDisk) Reset() {
 	*x = GcpGkeNodePoolSecondaryBootDisk{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[17]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1732,7 +2869,7 @@ func (x *GcpGkeNodePoolSecondaryBootDisk) String() string {
 func (*GcpGkeNodePoolSecondaryBootDisk) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolSecondaryBootDisk) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[17]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1745,7 +2882,7 @@ func (x *GcpGkeNodePoolSecondaryBootDisk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolSecondaryBootDisk.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolSecondaryBootDisk) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GcpGkeNodePoolSecondaryBootDisk) GetDiskImage() string {
@@ -1793,13 +2930,50 @@ type GcpGkeNodePoolKubeletConfig struct {
 	ImageGcLowThresholdPercent *int64 `protobuf:"varint,9,opt,name=image_gc_low_threshold_percent,json=imageGcLowThresholdPercent,proto3,oneof" json:"image_gc_low_threshold_percent,omitempty"`
 	// Disk usage percent above which image GC always runs.
 	ImageGcHighThresholdPercent *int64 `protobuf:"varint,10,opt,name=image_gc_high_threshold_percent,json=imageGcHighThresholdPercent,proto3,oneof" json:"image_gc_high_threshold_percent,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// Minimum age an unused image must reach before GC may remove it,
+	// seconds format, e.g. "120s".
+	ImageMinimumGcAge string `protobuf:"bytes,11,opt,name=image_minimum_gc_age,json=imageMinimumGcAge,proto3" json:"image_minimum_gc_age,omitempty"`
+	// Maximum age an unused image may reach before GC removes it regardless
+	// of disk pressure, seconds format, e.g. "86400s".
+	ImageMaximumGcAge string `protobuf:"bytes,12,opt,name=image_maximum_gc_age,json=imageMaximumGcAge,proto3" json:"image_maximum_gc_age,omitempty"`
+	// Sysctl patterns pods may set as unsafe sysctls (e.g. "net.*",
+	// "kernel.shm*") — gate carefully: unsafe sysctls affect the whole
+	// node, not just the pod that sets them.
+	AllowedUnsafeSysctls []string `protobuf:"bytes,13,rep,name=allowed_unsafe_sysctls,json=allowedUnsafeSysctls,proto3" json:"allowed_unsafe_sysctls,omitempty"`
+	// Maximum seconds the kubelet grants a pod to terminate during
+	// soft-eviction (caps the pod's own grace period in that path).
+	EvictionMaxPodGracePeriodSeconds *int64 `protobuf:"varint,14,opt,name=eviction_max_pod_grace_period_seconds,json=evictionMaxPodGracePeriodSeconds,proto3,oneof" json:"eviction_max_pod_grace_period_seconds,omitempty"`
+	// Kill only the offending process instead of the whole container on
+	// OOM — for containers running multiple processes where one leaking
+	// process should not take down its siblings.
+	SingleProcessOomKill *bool `protobuf:"varint,15,opt,name=single_process_oom_kill,json=singleProcessOomKill,proto3,oneof" json:"single_process_oom_kill,omitempty"`
+	// Soft eviction thresholds: the kubelet starts graceful pod eviction
+	// when a signal stays past its threshold for the paired grace period.
+	EvictionSoft *GcpGkeNodePoolEvictionSignals `protobuf:"bytes,16,opt,name=eviction_soft,json=evictionSoft,proto3" json:"eviction_soft,omitempty"`
+	// Grace periods paired with eviction_soft: how long a signal must stay
+	// past its threshold before eviction starts (durations like "90s").
+	EvictionSoftGracePeriod *GcpGkeNodePoolEvictionGracePeriods `protobuf:"bytes,17,opt,name=eviction_soft_grace_period,json=evictionSoftGracePeriod,proto3" json:"eviction_soft_grace_period,omitempty"`
+	// Minimum amounts reclaimed per eviction: prevents thrashing by making
+	// each eviction free at least this much of the signal's resource.
+	EvictionMinimumReclaim *GcpGkeNodePoolEvictionMinimumReclaim `protobuf:"bytes,18,opt,name=eviction_minimum_reclaim,json=evictionMinimumReclaim,proto3" json:"eviction_minimum_reclaim,omitempty"`
+	// Caps the exponential backoff for restarting crashed containers —
+	// lower caps recover crash-looping containers faster at the cost of
+	// more restart churn.
+	CrashLoopBackOff *GcpGkeNodePoolCrashLoopBackOff `protobuf:"bytes,19,opt,name=crash_loop_back_off,json=crashLoopBackOff,proto3" json:"crash_loop_back_off,omitempty"`
+	// Kubernetes Memory Manager policy: Static reserves exclusive NUMA
+	// memory for Guaranteed-QoS pods; None (default) does not.
+	MemoryManager *GcpGkeNodePoolMemoryManager `protobuf:"bytes,20,opt,name=memory_manager,json=memoryManager,proto3" json:"memory_manager,omitempty"`
+	// Kubernetes Topology Manager: aligns CPU, memory, and device (GPU)
+	// NUMA placement per pod or per container — for latency-critical and
+	// HPC workloads that suffer on cross-NUMA access.
+	TopologyManager *GcpGkeNodePoolTopologyManager `protobuf:"bytes,21,opt,name=topology_manager,json=topologyManager,proto3" json:"topology_manager,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GcpGkeNodePoolKubeletConfig) Reset() {
 	*x = GcpGkeNodePoolKubeletConfig{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[18]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1811,7 +2985,7 @@ func (x *GcpGkeNodePoolKubeletConfig) String() string {
 func (*GcpGkeNodePoolKubeletConfig) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolKubeletConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[18]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1824,7 +2998,7 @@ func (x *GcpGkeNodePoolKubeletConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolKubeletConfig.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolKubeletConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GcpGkeNodePoolKubeletConfig) GetCpuManagerPolicy() string {
@@ -1897,6 +3071,514 @@ func (x *GcpGkeNodePoolKubeletConfig) GetImageGcHighThresholdPercent() int64 {
 	return 0
 }
 
+func (x *GcpGkeNodePoolKubeletConfig) GetImageMinimumGcAge() string {
+	if x != nil {
+		return x.ImageMinimumGcAge
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolKubeletConfig) GetImageMaximumGcAge() string {
+	if x != nil {
+		return x.ImageMaximumGcAge
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolKubeletConfig) GetAllowedUnsafeSysctls() []string {
+	if x != nil {
+		return x.AllowedUnsafeSysctls
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolKubeletConfig) GetEvictionMaxPodGracePeriodSeconds() int64 {
+	if x != nil && x.EvictionMaxPodGracePeriodSeconds != nil {
+		return *x.EvictionMaxPodGracePeriodSeconds
+	}
+	return 0
+}
+
+func (x *GcpGkeNodePoolKubeletConfig) GetSingleProcessOomKill() bool {
+	if x != nil && x.SingleProcessOomKill != nil {
+		return *x.SingleProcessOomKill
+	}
+	return false
+}
+
+func (x *GcpGkeNodePoolKubeletConfig) GetEvictionSoft() *GcpGkeNodePoolEvictionSignals {
+	if x != nil {
+		return x.EvictionSoft
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolKubeletConfig) GetEvictionSoftGracePeriod() *GcpGkeNodePoolEvictionGracePeriods {
+	if x != nil {
+		return x.EvictionSoftGracePeriod
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolKubeletConfig) GetEvictionMinimumReclaim() *GcpGkeNodePoolEvictionMinimumReclaim {
+	if x != nil {
+		return x.EvictionMinimumReclaim
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolKubeletConfig) GetCrashLoopBackOff() *GcpGkeNodePoolCrashLoopBackOff {
+	if x != nil {
+		return x.CrashLoopBackOff
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolKubeletConfig) GetMemoryManager() *GcpGkeNodePoolMemoryManager {
+	if x != nil {
+		return x.MemoryManager
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolKubeletConfig) GetTopologyManager() *GcpGkeNodePoolTopologyManager {
+	if x != nil {
+		return x.TopologyManager
+	}
+	return nil
+}
+
+// GcpGkeNodePoolEvictionSignals holds per-signal soft-eviction thresholds.
+// Each value is an absolute quantity ("100Mi") or percentage ("10%").
+type GcpGkeNodePoolEvictionSignals struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Threshold for memory.available.
+	MemoryAvailable string `protobuf:"bytes,1,opt,name=memory_available,json=memoryAvailable,proto3" json:"memory_available,omitempty"`
+	// Threshold for nodefs.available (the filesystem backing pod volumes
+	// and logs).
+	NodefsAvailable string `protobuf:"bytes,2,opt,name=nodefs_available,json=nodefsAvailable,proto3" json:"nodefs_available,omitempty"`
+	// Threshold for nodefs.inodesFree.
+	NodefsInodesFree string `protobuf:"bytes,3,opt,name=nodefs_inodes_free,json=nodefsInodesFree,proto3" json:"nodefs_inodes_free,omitempty"`
+	// Threshold for imagefs.available (the filesystem backing container
+	// images and writable layers).
+	ImagefsAvailable string `protobuf:"bytes,4,opt,name=imagefs_available,json=imagefsAvailable,proto3" json:"imagefs_available,omitempty"`
+	// Threshold for imagefs.inodesFree.
+	ImagefsInodesFree string `protobuf:"bytes,5,opt,name=imagefs_inodes_free,json=imagefsInodesFree,proto3" json:"imagefs_inodes_free,omitempty"`
+	// Threshold for pid.available.
+	PidAvailable  string `protobuf:"bytes,6,opt,name=pid_available,json=pidAvailable,proto3" json:"pid_available,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolEvictionSignals) Reset() {
+	*x = GcpGkeNodePoolEvictionSignals{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolEvictionSignals) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolEvictionSignals) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolEvictionSignals) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolEvictionSignals.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolEvictionSignals) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *GcpGkeNodePoolEvictionSignals) GetMemoryAvailable() string {
+	if x != nil {
+		return x.MemoryAvailable
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionSignals) GetNodefsAvailable() string {
+	if x != nil {
+		return x.NodefsAvailable
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionSignals) GetNodefsInodesFree() string {
+	if x != nil {
+		return x.NodefsInodesFree
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionSignals) GetImagefsAvailable() string {
+	if x != nil {
+		return x.ImagefsAvailable
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionSignals) GetImagefsInodesFree() string {
+	if x != nil {
+		return x.ImagefsInodesFree
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionSignals) GetPidAvailable() string {
+	if x != nil {
+		return x.PidAvailable
+	}
+	return ""
+}
+
+// GcpGkeNodePoolEvictionGracePeriods pairs a grace period with each soft
+// eviction signal. Values are durations like "90s".
+type GcpGkeNodePoolEvictionGracePeriods struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Grace period for memory.available.
+	MemoryAvailable string `protobuf:"bytes,1,opt,name=memory_available,json=memoryAvailable,proto3" json:"memory_available,omitempty"`
+	// Grace period for nodefs.available.
+	NodefsAvailable string `protobuf:"bytes,2,opt,name=nodefs_available,json=nodefsAvailable,proto3" json:"nodefs_available,omitempty"`
+	// Grace period for nodefs.inodesFree.
+	NodefsInodesFree string `protobuf:"bytes,3,opt,name=nodefs_inodes_free,json=nodefsInodesFree,proto3" json:"nodefs_inodes_free,omitempty"`
+	// Grace period for imagefs.available.
+	ImagefsAvailable string `protobuf:"bytes,4,opt,name=imagefs_available,json=imagefsAvailable,proto3" json:"imagefs_available,omitempty"`
+	// Grace period for imagefs.inodesFree.
+	ImagefsInodesFree string `protobuf:"bytes,5,opt,name=imagefs_inodes_free,json=imagefsInodesFree,proto3" json:"imagefs_inodes_free,omitempty"`
+	// Grace period for pid.available.
+	PidAvailable  string `protobuf:"bytes,6,opt,name=pid_available,json=pidAvailable,proto3" json:"pid_available,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolEvictionGracePeriods) Reset() {
+	*x = GcpGkeNodePoolEvictionGracePeriods{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolEvictionGracePeriods) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolEvictionGracePeriods) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolEvictionGracePeriods) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolEvictionGracePeriods.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolEvictionGracePeriods) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *GcpGkeNodePoolEvictionGracePeriods) GetMemoryAvailable() string {
+	if x != nil {
+		return x.MemoryAvailable
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionGracePeriods) GetNodefsAvailable() string {
+	if x != nil {
+		return x.NodefsAvailable
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionGracePeriods) GetNodefsInodesFree() string {
+	if x != nil {
+		return x.NodefsInodesFree
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionGracePeriods) GetImagefsAvailable() string {
+	if x != nil {
+		return x.ImagefsAvailable
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionGracePeriods) GetImagefsInodesFree() string {
+	if x != nil {
+		return x.ImagefsInodesFree
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionGracePeriods) GetPidAvailable() string {
+	if x != nil {
+		return x.PidAvailable
+	}
+	return ""
+}
+
+// GcpGkeNodePoolEvictionMinimumReclaim sets per-signal minimum reclaim
+// amounts (quantities like "500Mi" or percentages).
+type GcpGkeNodePoolEvictionMinimumReclaim struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Minimum reclaim for memory.available.
+	MemoryAvailable string `protobuf:"bytes,1,opt,name=memory_available,json=memoryAvailable,proto3" json:"memory_available,omitempty"`
+	// Minimum reclaim for nodefs.available.
+	NodefsAvailable string `protobuf:"bytes,2,opt,name=nodefs_available,json=nodefsAvailable,proto3" json:"nodefs_available,omitempty"`
+	// Minimum reclaim for nodefs.inodesFree.
+	NodefsInodesFree string `protobuf:"bytes,3,opt,name=nodefs_inodes_free,json=nodefsInodesFree,proto3" json:"nodefs_inodes_free,omitempty"`
+	// Minimum reclaim for imagefs.available.
+	ImagefsAvailable string `protobuf:"bytes,4,opt,name=imagefs_available,json=imagefsAvailable,proto3" json:"imagefs_available,omitempty"`
+	// Minimum reclaim for imagefs.inodesFree.
+	ImagefsInodesFree string `protobuf:"bytes,5,opt,name=imagefs_inodes_free,json=imagefsInodesFree,proto3" json:"imagefs_inodes_free,omitempty"`
+	// Minimum reclaim for pid.available.
+	PidAvailable  string `protobuf:"bytes,6,opt,name=pid_available,json=pidAvailable,proto3" json:"pid_available,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolEvictionMinimumReclaim) Reset() {
+	*x = GcpGkeNodePoolEvictionMinimumReclaim{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolEvictionMinimumReclaim) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolEvictionMinimumReclaim) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolEvictionMinimumReclaim) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolEvictionMinimumReclaim.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolEvictionMinimumReclaim) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *GcpGkeNodePoolEvictionMinimumReclaim) GetMemoryAvailable() string {
+	if x != nil {
+		return x.MemoryAvailable
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionMinimumReclaim) GetNodefsAvailable() string {
+	if x != nil {
+		return x.NodefsAvailable
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionMinimumReclaim) GetNodefsInodesFree() string {
+	if x != nil {
+		return x.NodefsInodesFree
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionMinimumReclaim) GetImagefsAvailable() string {
+	if x != nil {
+		return x.ImagefsAvailable
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionMinimumReclaim) GetImagefsInodesFree() string {
+	if x != nil {
+		return x.ImagefsInodesFree
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolEvictionMinimumReclaim) GetPidAvailable() string {
+	if x != nil {
+		return x.PidAvailable
+	}
+	return ""
+}
+
+// GcpGkeNodePoolCrashLoopBackOff caps container-restart backoff.
+type GcpGkeNodePoolCrashLoopBackOff struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Maximum backoff delay between restarts of a crashing container,
+	// seconds format (e.g. "300s"; kubelet default caps at 300s).
+	MaxContainerRestartPeriod string `protobuf:"bytes,1,opt,name=max_container_restart_period,json=maxContainerRestartPeriod,proto3" json:"max_container_restart_period,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolCrashLoopBackOff) Reset() {
+	*x = GcpGkeNodePoolCrashLoopBackOff{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolCrashLoopBackOff) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolCrashLoopBackOff) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolCrashLoopBackOff) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolCrashLoopBackOff.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolCrashLoopBackOff) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *GcpGkeNodePoolCrashLoopBackOff) GetMaxContainerRestartPeriod() string {
+	if x != nil {
+		return x.MaxContainerRestartPeriod
+	}
+	return ""
+}
+
+// GcpGkeNodePoolMemoryManager selects the kubelet Memory Manager policy.
+type GcpGkeNodePoolMemoryManager struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// "Static" reserves exclusive NUMA-aligned memory for Guaranteed-QoS
+	// pods; "None" disables the manager. Capitalized, per the kubelet's
+	// own policy names.
+	Policy        string `protobuf:"bytes,1,opt,name=policy,proto3" json:"policy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolMemoryManager) Reset() {
+	*x = GcpGkeNodePoolMemoryManager{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolMemoryManager) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolMemoryManager) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolMemoryManager) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolMemoryManager.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolMemoryManager) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *GcpGkeNodePoolMemoryManager) GetPolicy() string {
+	if x != nil {
+		return x.Policy
+	}
+	return ""
+}
+
+// GcpGkeNodePoolTopologyManager aligns NUMA placement of CPU, memory, and
+// devices.
+type GcpGkeNodePoolTopologyManager struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Alignment policy: none (default), best-effort, restricted, or
+	// single-numa-node (strictest — pods failing alignment are rejected).
+	Policy string `protobuf:"bytes,1,opt,name=policy,proto3" json:"policy,omitempty"`
+	// Alignment scope: container (default; each container aligned
+	// independently) or pod (all containers of a pod share one alignment).
+	Scope         string `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolTopologyManager) Reset() {
+	*x = GcpGkeNodePoolTopologyManager{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolTopologyManager) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolTopologyManager) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolTopologyManager) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolTopologyManager.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolTopologyManager) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *GcpGkeNodePoolTopologyManager) GetPolicy() string {
+	if x != nil {
+		return x.Policy
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolTopologyManager) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
 // GcpGkeNodePoolLinuxNodeConfig tunes the node OS.
 type GcpGkeNodePoolLinuxNodeConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1909,13 +3591,32 @@ type GcpGkeNodePoolLinuxNodeConfig struct {
 	CgroupMode string `protobuf:"bytes,2,opt,name=cgroup_mode,json=cgroupMode,proto3" json:"cgroup_mode,omitempty"`
 	// Hugepage pre-allocation for DPDK/database workloads.
 	HugepagesConfig *GcpGkeNodePoolHugepagesConfig `protobuf:"bytes,3,opt,name=hugepages_config,json=hugepagesConfig,proto3" json:"hugepages_config,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Kernel transparent hugepage mode for anonymous memory:
+	// ALWAYS, MADVISE (only regions that request it), or NEVER.
+	TransparentHugepageEnabled string `protobuf:"bytes,4,opt,name=transparent_hugepage_enabled,json=transparentHugepageEnabled,proto3" json:"transparent_hugepage_enabled,omitempty"`
+	// Kernel defrag behavior when allocating transparent hugepages:
+	// ALWAYS (stall to reclaim), DEFER (kick background reclaim),
+	// DEFER_WITH_MADVISE, MADVISE, or NEVER.
+	TransparentHugepageDefrag string `protobuf:"bytes,5,opt,name=transparent_hugepage_defrag,json=transparentHugepageDefrag,proto3" json:"transparent_hugepage_defrag,omitempty"`
+	// Signed-kernel-module enforcement: ENFORCE_SIGNED_MODULES rejects
+	// unsigned module loads (the hardened posture);
+	// DO_NOT_ENFORCE_SIGNED_MODULES allows them.
+	NodeKernelModuleLoadingPolicy string `protobuf:"bytes,6,opt,name=node_kernel_module_loading_policy,json=nodeKernelModuleLoadingPolicy,proto3" json:"node_kernel_module_loading_policy,omitempty"`
+	// PTP/KVM paravirtual clock sync for sub-millisecond time accuracy —
+	// for workloads needing precise cross-node timestamps (trading,
+	// distributed tracing at fine granularity).
+	EnablePtpKvmTimeSync *bool `protobuf:"varint,7,opt,name=enable_ptp_kvm_time_sync,json=enablePtpKvmTimeSync,proto3,oneof" json:"enable_ptp_kvm_time_sync,omitempty"`
+	// Swap on the nodes (Kubernetes swap support): sizing profile plus
+	// encryption. Swap trades OOM kills for latency under memory pressure;
+	// pair with kubelet eviction tuning.
+	SwapConfig    *GcpGkeNodePoolSwapConfig `protobuf:"bytes,8,opt,name=swap_config,json=swapConfig,proto3" json:"swap_config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpGkeNodePoolLinuxNodeConfig) Reset() {
 	*x = GcpGkeNodePoolLinuxNodeConfig{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1927,7 +3628,7 @@ func (x *GcpGkeNodePoolLinuxNodeConfig) String() string {
 func (*GcpGkeNodePoolLinuxNodeConfig) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolLinuxNodeConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1940,7 +3641,7 @@ func (x *GcpGkeNodePoolLinuxNodeConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolLinuxNodeConfig.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolLinuxNodeConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *GcpGkeNodePoolLinuxNodeConfig) GetSysctls() map[string]string {
@@ -1964,6 +3665,275 @@ func (x *GcpGkeNodePoolLinuxNodeConfig) GetHugepagesConfig() *GcpGkeNodePoolHuge
 	return nil
 }
 
+func (x *GcpGkeNodePoolLinuxNodeConfig) GetTransparentHugepageEnabled() string {
+	if x != nil {
+		return x.TransparentHugepageEnabled
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolLinuxNodeConfig) GetTransparentHugepageDefrag() string {
+	if x != nil {
+		return x.TransparentHugepageDefrag
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolLinuxNodeConfig) GetNodeKernelModuleLoadingPolicy() string {
+	if x != nil {
+		return x.NodeKernelModuleLoadingPolicy
+	}
+	return ""
+}
+
+func (x *GcpGkeNodePoolLinuxNodeConfig) GetEnablePtpKvmTimeSync() bool {
+	if x != nil && x.EnablePtpKvmTimeSync != nil {
+		return *x.EnablePtpKvmTimeSync
+	}
+	return false
+}
+
+func (x *GcpGkeNodePoolLinuxNodeConfig) GetSwapConfig() *GcpGkeNodePoolSwapConfig {
+	if x != nil {
+		return x.SwapConfig
+	}
+	return nil
+}
+
+// GcpGkeNodePoolSwapConfig provisions and encrypts node swap space.
+// Size swap with AT MOST ONE profile: boot-disk, dedicated local SSDs,
+// or a slice of the ephemeral local SSDs (none lets GKE choose its
+// default sizing).
+type GcpGkeNodePoolSwapConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether swap is enabled on the nodes.
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// Swap carved from the boot disk.
+	BootDiskProfile *GcpGkeNodePoolSwapSizing `protobuf:"bytes,2,opt,name=boot_disk_profile,json=bootDiskProfile,proto3" json:"boot_disk_profile,omitempty"`
+	// Swap on local SSDs dedicated entirely to swap.
+	DedicatedLocalSsdProfile *GcpGkeNodePoolSwapDedicatedSsd `protobuf:"bytes,3,opt,name=dedicated_local_ssd_profile,json=dedicatedLocalSsdProfile,proto3" json:"dedicated_local_ssd_profile,omitempty"`
+	// Swap carved from the ephemeral-storage local SSDs.
+	EphemeralLocalSsdProfile *GcpGkeNodePoolSwapSizing `protobuf:"bytes,4,opt,name=ephemeral_local_ssd_profile,json=ephemeralLocalSsdProfile,proto3" json:"ephemeral_local_ssd_profile,omitempty"`
+	// Swap encryption (on by default; disabling trades confidentiality for
+	// a little throughput).
+	EncryptionConfig *GcpGkeNodePoolSwapEncryption `protobuf:"bytes,5,opt,name=encryption_config,json=encryptionConfig,proto3" json:"encryption_config,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolSwapConfig) Reset() {
+	*x = GcpGkeNodePoolSwapConfig{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolSwapConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolSwapConfig) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolSwapConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolSwapConfig.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolSwapConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *GcpGkeNodePoolSwapConfig) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *GcpGkeNodePoolSwapConfig) GetBootDiskProfile() *GcpGkeNodePoolSwapSizing {
+	if x != nil {
+		return x.BootDiskProfile
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolSwapConfig) GetDedicatedLocalSsdProfile() *GcpGkeNodePoolSwapDedicatedSsd {
+	if x != nil {
+		return x.DedicatedLocalSsdProfile
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolSwapConfig) GetEphemeralLocalSsdProfile() *GcpGkeNodePoolSwapSizing {
+	if x != nil {
+		return x.EphemeralLocalSsdProfile
+	}
+	return nil
+}
+
+func (x *GcpGkeNodePoolSwapConfig) GetEncryptionConfig() *GcpGkeNodePoolSwapEncryption {
+	if x != nil {
+		return x.EncryptionConfig
+	}
+	return nil
+}
+
+// GcpGkeNodePoolSwapSizing sizes swap as absolute GiB or a percentage of
+// the backing storage.
+type GcpGkeNodePoolSwapSizing struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Absolute swap size in GiB.
+	SwapSizeGib *int64 `protobuf:"varint,1,opt,name=swap_size_gib,json=swapSizeGib,proto3,oneof" json:"swap_size_gib,omitempty"`
+	// Swap size as a percentage of the backing storage (1-100).
+	SwapSizePercent *int32 `protobuf:"varint,2,opt,name=swap_size_percent,json=swapSizePercent,proto3,oneof" json:"swap_size_percent,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolSwapSizing) Reset() {
+	*x = GcpGkeNodePoolSwapSizing{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolSwapSizing) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolSwapSizing) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolSwapSizing) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolSwapSizing.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolSwapSizing) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *GcpGkeNodePoolSwapSizing) GetSwapSizeGib() int64 {
+	if x != nil && x.SwapSizeGib != nil {
+		return *x.SwapSizeGib
+	}
+	return 0
+}
+
+func (x *GcpGkeNodePoolSwapSizing) GetSwapSizePercent() int32 {
+	if x != nil && x.SwapSizePercent != nil {
+		return *x.SwapSizePercent
+	}
+	return 0
+}
+
+// GcpGkeNodePoolSwapDedicatedSsd dedicates whole local SSDs to swap.
+type GcpGkeNodePoolSwapDedicatedSsd struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Number of local SSDs dedicated to swap.
+	DiskCount     *int64 `protobuf:"varint,1,opt,name=disk_count,json=diskCount,proto3,oneof" json:"disk_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolSwapDedicatedSsd) Reset() {
+	*x = GcpGkeNodePoolSwapDedicatedSsd{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolSwapDedicatedSsd) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolSwapDedicatedSsd) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolSwapDedicatedSsd) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolSwapDedicatedSsd.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolSwapDedicatedSsd) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *GcpGkeNodePoolSwapDedicatedSsd) GetDiskCount() int64 {
+	if x != nil && x.DiskCount != nil {
+		return *x.DiskCount
+	}
+	return 0
+}
+
+// GcpGkeNodePoolSwapEncryption controls swap encryption.
+type GcpGkeNodePoolSwapEncryption struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Set true to DISABLE swap encryption (encrypted by default).
+	Disabled      *bool `protobuf:"varint,1,opt,name=disabled,proto3,oneof" json:"disabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGkeNodePoolSwapEncryption) Reset() {
+	*x = GcpGkeNodePoolSwapEncryption{}
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGkeNodePoolSwapEncryption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGkeNodePoolSwapEncryption) ProtoMessage() {}
+
+func (x *GcpGkeNodePoolSwapEncryption) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGkeNodePoolSwapEncryption.ProtoReflect.Descriptor instead.
+func (*GcpGkeNodePoolSwapEncryption) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *GcpGkeNodePoolSwapEncryption) GetDisabled() bool {
+	if x != nil && x.Disabled != nil {
+		return *x.Disabled
+	}
+	return false
+}
+
 // GcpGkeNodePoolHugepagesConfig pre-allocates hugepages on every node.
 type GcpGkeNodePoolHugepagesConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1977,7 +3947,7 @@ type GcpGkeNodePoolHugepagesConfig struct {
 
 func (x *GcpGkeNodePoolHugepagesConfig) Reset() {
 	*x = GcpGkeNodePoolHugepagesConfig{}
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1989,7 +3959,7 @@ func (x *GcpGkeNodePoolHugepagesConfig) String() string {
 func (*GcpGkeNodePoolHugepagesConfig) ProtoMessage() {}
 
 func (x *GcpGkeNodePoolHugepagesConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2002,7 +3972,7 @@ func (x *GcpGkeNodePoolHugepagesConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGkeNodePoolHugepagesConfig.ProtoReflect.Descriptor instead.
 func (*GcpGkeNodePoolHugepagesConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *GcpGkeNodePoolHugepagesConfig) GetHugepageSize_2M() int64 {
@@ -2023,13 +3993,15 @@ var File_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto protoreflect.FileDescrip
 
 const file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	".catalog/gcp/gcpgkenodepool/v1alpha1/spec.proto\x12'dev.planton.gcp.gcpgkenodepool.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xa7\r\n" +
+	".catalog/gcp/gcpgkenodepool/v1alpha1/spec.proto\x12'dev.planton.gcp.gcpgkenodepool.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x8a\x12\n" +
 	"\x12GcpGkeNodePoolSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12y\n" +
 	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xbf\x17\x92\xd4a\x13status.outputs.nameR\vclusterName\x12z\n" +
 	"\blocation\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xbf\x17\x92\xd4a\x17status.outputs.location\x98\xd4a\x01R\blocation\x12Q\n" +
-	"\x0enode_pool_name\x18\x04 \x01(\tB+\xbaH(\xd8\x01\x01r#2!^[a-z]([a-z0-9-]{0,38}[a-z0-9])?$R\fnodePoolName\x12S\n" +
+	"\x0enode_pool_name\x18\x04 \x01(\tB+\xbaH(\xd8\x01\x01r#2!^[a-z]([a-z0-9-]{0,38}[a-z0-9])?$R\fnodePoolName\x12D\n" +
+	"\vname_prefix\x18\x11 \x01(\tB#\xbaH \xd8\x01\x01r\x1b2\x19^[a-z]([a-z0-9-]{0,36})?$R\n" +
+	"namePrefix\x12S\n" +
 	"\x0enode_locations\x18\x05 \x03(\tB,\xbaH)\xd8\x01\x01\x92\x01#\x18\x01\"\x1fr\x1d2\x1b^[a-z]+-[a-z]+[0-9]+-[a-z]$R\rnodeLocations\x12\x18\n" +
 	"\aversion\x18\x06 \x01(\tR\aversion\x12:\n" +
 	"\x11max_pods_per_node\x18\a \x01(\x05B\n" +
@@ -2047,11 +4019,23 @@ const file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1bqueued_provisioning_enabled\x18\x0e \x01(\bR\x19queuedProvisioningEnabled\x12k\n" +
 	"\x0enetwork_config\x18\x0f \x01(\v2D.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNetworkConfigR\rnetworkConfig\x12b\n" +
 	"\vnode_config\x18\x10 \x01(\v2A.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfigR\n" +
-	"nodeConfig:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +
-	"'initial_node_count_requires_autoscaling\x12einitial_node_count only applies to autoscaled pools — a fixed-size pool's size is node_count itself\x1a6!has(this.initial_node_count) || has(this.autoscaling)B\x10\n" +
+	"nodeConfig\x12\xbd\x01\n" +
+	"\x0fdeletion_policy\x18\x12 \x01(\tB\x93\x01\xbaH\x8f\x01\xba\x01\x8b\x01\n" +
+	"\x15deletion_policy_valid\x12:deletion_policy must be empty, DELETE, PREVENT, or ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x129\n" +
+	"\x19ignore_node_count_changes\x18\x13 \x01(\bR\x16ignoreNodeCountChanges\x12r\n" +
+	"\x11node_drain_config\x18\x14 \x01(\v2F.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeDrainConfigR\x0fnodeDrainConfig:\xfd\x02\xbaH\xf9\x02\x1a\xc8\x01\n" +
+	"'initial_node_count_requires_autoscaling\x12einitial_node_count only applies to autoscaled pools — a fixed-size pool's size is node_count itself\x1a6!has(this.initial_node_count) || has(this.autoscaling)\x1a\xab\x01\n" +
+	"\x14name_xor_name_prefix\x12[set node_pool_name or name_prefix, not both — a prefixed pool gets its full name from GKE\x1a6!(this.node_pool_name != '' && this.name_prefix != '')B\x10\n" +
 	"\x0enode_pool_sizeB\x14\n" +
 	"\x12_max_pods_per_nodeB\x15\n" +
-	"\x13_initial_node_count\"\xa9\t\n" +
+	"\x13_initial_node_count\"\xce\x04\n" +
+	"\x1dGcpGkeNodePoolNodeDrainConfig\x12\xe0\x01\n" +
+	"\x1agrace_termination_duration\x18\x01 \x01(\tB\xa1\x01\xbaH\x9d\x01\xba\x01\x99\x01\n" +
+	"\x18grace_termination_format\x12Hgrace_termination_duration must be a seconds-format duration like \"300s\"\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')R\x18graceTerminationDuration\x12\xc9\x01\n" +
+	"\x14pdb_timeout_duration\x18\x02 \x01(\tB\x96\x01\xbaH\x92\x01\xba\x01\x8e\x01\n" +
+	"\x12pdb_timeout_format\x12Cpdb_timeout_duration must be a seconds-format duration like \"3600s\"\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')R\x12pdbTimeoutDuration\x12T\n" +
+	"%respect_pdb_during_node_pool_deletion\x18\x03 \x01(\bH\x00R respectPdbDuringNodePoolDeletion\x88\x01\x01B(\n" +
+	"&_respect_pdb_during_node_pool_deletion\"\xa9\t\n" +
 	"\x19GcpGkeNodePoolAutoscaling\x12 \n" +
 	"\tmin_nodes\x18\x01 \x01(\rH\x00R\bminNodes\x88\x01\x01\x12 \n" +
 	"\tmax_nodes\x18\x02 \x01(\rH\x01R\bmaxNodes\x88\x01\x01\x12+\n" +
@@ -2104,7 +4088,7 @@ const file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDesc = "" +
 	"\x04type\x18\x01 \x01(\tB\x11\xbaH\x0e\xc8\x01\x01r\tR\aCOMPACTR\x04type\x12\x1f\n" +
 	"\vpolicy_name\x18\x02 \x01(\tR\n" +
 	"policyName\x12!\n" +
-	"\ftpu_topology\x18\x03 \x01(\tR\vtpuTopology\"\xf5\x05\n" +
+	"\ftpu_topology\x18\x03 \x01(\tR\vtpuTopology\"\xc7\t\n" +
 	"\x1bGcpGkeNodePoolNetworkConfig\x12(\n" +
 	"\x10create_pod_range\x18\x01 \x01(\bR\x0ecreatePodRange\x12\x1b\n" +
 	"\tpod_range\x18\x02 \x01(\tR\bpodRange\x12-\n" +
@@ -2112,9 +4096,29 @@ const file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDesc = "" +
 	"\x14enable_private_nodes\x18\x04 \x01(\bH\x00R\x12enablePrivateNodes\x88\x01\x01\x12\xd9\x01\n" +
 	"\x1btotal_egress_bandwidth_tier\x18\x05 \x01(\tB\x99\x01\xbaH\x95\x01\xba\x01\x91\x01\n" +
 	"\x11egress_tier_valid\x12Ftotal_egress_bandwidth_tier must be empty, TIER_UNSPECIFIED, or TIER_1\x1a4this == '' || this in ['TIER_UNSPECIFIED', 'TIER_1']R\x18totalEgressBandwidthTier\x12E\n" +
-	"\x1fpod_cidr_overprovision_disabled\x18\x06 \x01(\bR\x1cpodCidrOverprovisionDisabled:\xec\x01\xbaH\xe8\x01\x1a\xe5\x01\n" +
+	"\x1fpod_cidr_overprovision_disabled\x18\x06 \x01(\bR\x1cpodCidrOverprovisionDisabled\x12\x80\x01\n" +
+	"\n" +
+	"subnetwork\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
+	"subnetwork\x12>\n" +
+	"\x1baccelerator_network_profile\x18\b \x01(\tR\x19acceleratorNetworkProfile\x12\x86\x01\n" +
+	"\x18additional_node_networks\x18\t \x03(\v2L.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAdditionalNodeNetworkR\x16additionalNodeNetworks\x12\x83\x01\n" +
+	"\x17additional_pod_networks\x18\n" +
+	" \x03(\v2K.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAdditionalPodNetworkR\x15additionalPodNetworks:\xec\x01\xbaH\xe8\x01\x1a\xe5\x01\n" +
 	"#create_pod_range_requires_pod_range\x12\x8d\x01create_pod_range names the NEW range to create — set pod_range (the range name) alongside it, or set neither to use the cluster's pod range\x1a.!this.create_pod_range || this.pod_range != ''B\x17\n" +
-	"\x15_enable_private_nodes\"\xdf\x1f\n" +
+	"\x15_enable_private_nodes\"\xad\x02\n" +
+	"#GcpGkeNodePoolAdditionalNodeNetwork\x12}\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x86\x01\n" +
+	"\n" +
+	"subnetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
+	"subnetwork\"\xb1\x02\n" +
+	"\"GcpGkeNodePoolAdditionalPodNetwork\x12\x80\x01\n" +
+	"\n" +
+	"subnetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
+	"subnetwork\x126\n" +
+	"\x13secondary_pod_range\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11secondaryPodRange\x12:\n" +
+	"\x11max_pods_per_node\x18\x03 \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\x80\x02(\bH\x00R\x0emaxPodsPerNode\x88\x01\x01B\x14\n" +
+	"\x12_max_pods_per_node\"\xd3/\n" +
 	"\x18GcpGkeNodePoolNodeConfig\x125\n" +
 	"\fmachine_type\x18\x01 \x01(\tB\r\x8a\xa6\x1d\te2-mediumH\x00R\vmachineType\x88\x01\x01\x12.\n" +
 	"\fdisk_size_gb\x18\x02 \x01(\rB\a\xbaH\x04*\x02(\n" +
@@ -2157,7 +4161,29 @@ const file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
 	"flex_start\x18\x1f \x01(\bR\tflexStart\x12\xc2\x01\n" +
 	"\x10max_run_duration\x18  \x01(\tB\x97\x01\xbaH\x93\x01\xba\x01\x8f\x01\n" +
-	"\x17max_run_duration_format\x12?max_run_duration must be a seconds-format duration like \"3600s\"\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')R\x0emaxRunDuration\x1a9\n" +
+	"\x17max_run_duration_format\x12?max_run_duration must be a seconds-format duration like \"3600s\"\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')R\x0emaxRunDuration\x12>\n" +
+	"\x1benable_confidential_storage\x18! \x01(\bR\x19enableConfidentialStorage\x12\x8b\x02\n" +
+	"\x19local_ssd_encryption_mode\x18\" \x01(\tB\xcf\x01\xbaH\xcb\x01\xba\x01\xc7\x01\n" +
+	"\x1flocal_ssd_encryption_mode_valid\x12Ylocal_ssd_encryption_mode must be empty, STANDARD_ENCRYPTION, or EPHEMERAL_KEY_ENCRYPTION\x1aIthis == '' || this in ['STANDARD_ENCRYPTION', 'EPHEMERAL_KEY_ENCRYPTION']R\x16localSsdEncryptionMode\x12-\n" +
+	"\x12gpudirect_strategy\x18# \x01(\tR\x11gpudirectStrategy\x12\x1d\n" +
+	"\n" +
+	"node_group\x18$ \x01(\tR\tnodeGroup\x12+\n" +
+	"\rstorage_pools\x18% \x03(\tB\x06\xbaH\x03\xd8\x01\x01R\fstoragePools\x12\x8e\x01\n" +
+	"\x15resource_manager_tags\x18& \x03(\v2Z.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.ResourceManagerTagsEntryR\x13resourceManagerTags\x12\x8a\x01\n" +
+	"\x19advanced_machine_features\x18' \x01(\v2N.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAdvancedMachineFeaturesR\x17advancedMachineFeatures\x12\\\n" +
+	"\tboot_disk\x18( \x01(\v2?.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolBootDiskR\bbootDisk\x12_\n" +
+	"\n" +
+	"node_image\x18) \x01(\v2@.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeImageR\tnodeImage\x12u\n" +
+	"\x12sole_tenant_config\x18* \x01(\v2G.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSoleTenantConfigR\x10soleTenantConfig\x12\x83\x01\n" +
+	"\fsandbox_type\x18+ \x01(\tB`\xbaH]\xba\x01Z\n" +
+	"\x12sandbox_type_valid\x12$sandbox_type must be empty or GVISOR\x1a\x1ethis == '' || this == 'GVISOR'R\vsandboxType\x12\xe6\x01\n" +
+	"\x12windows_os_version\x18, \x01(\tB\xb7\x01\xbaH\xb3\x01\xba\x01\xaf\x01\n" +
+	"\x18windows_os_version_valid\x12Mwindows_os_version must be empty, OS_VERSION_LTSC2019, or OS_VERSION_LTSC2022\x1aDthis == '' || this in ['OS_VERSION_LTSC2019', 'OS_VERSION_LTSC2022']R\x10windowsOsVersion\x12\xd8\x01\n" +
+	"\x19host_maintenance_interval\x18- \x01(\tB\x9b\x01\xbaH\x97\x01\xba\x01\x93\x01\n" +
+	"\x1fhost_maintenance_interval_valid\x12?host_maintenance_interval must be empty, AS_NEEDED, or PERIODIC\x1a/this == '' || this in ['AS_NEEDED', 'PERIODIC']R\x17hostMaintenanceInterval\x12\xcc\x01\n" +
+	"\x1barchitecture_taint_behavior\x18. \x01(\tB\x8b\x01\xbaH\x87\x01\xba\x01\x83\x01\n" +
+	"!architecture_taint_behavior_valid\x127architecture_taint_behavior must be empty, NONE, or ARM\x1a%this == '' || this in ['NONE', 'ARM']R\x19architectureTaintBehavior\x12t\n" +
+	"\x11containerd_config\x18/ \x01(\v2G.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolContainerdConfigR\x10containerdConfig\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aA\n" +
@@ -2166,13 +4192,71 @@ const file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xdf\x02\xbaH\xdb\x02\x1a\xb8\x01\n" +
 	"\x14spot_xor_preemptible\x12~spot and preemptible are mutually exclusive — spot is the current model (no 24h max lifetime); preemptible is the legacy one\x1a !(this.spot && this.preemptible)\x1a\x9d\x01\n" +
 	"\x1afast_socket_requires_gvnic\x12Nfast_socket_enabled requires gvnic_enabled — NCCL Fast Socket rides on gVNIC\x1a/!this.fast_socket_enabled || this.gvnic_enabledB\x0f\n" +
 	"\r_machine_typeB\x0f\n" +
 	"\r_disk_size_gbB\r\n" +
 	"\v_image_typeB\x12\n" +
-	"\x10_local_ssd_count\"\x9c\x01\n" +
+	"\x10_local_ssd_count\"\xad\x03\n" +
+	"%GcpGkeNodePoolAdvancedMachineFeatures\x123\n" +
+	"\x10threads_per_core\x18\x01 \x01(\x03B\t\xbaH\x06\"\x04\x18\x02(\x01R\x0ethreadsPerCore\x12E\n" +
+	"\x1cenable_nested_virtualization\x18\x02 \x01(\bH\x00R\x1aenableNestedVirtualization\x88\x01\x01\x12\xe6\x01\n" +
+	"\x1bperformance_monitoring_unit\x18\x03 \x01(\tB\xa5\x01\xbaH\xa1\x01\xba\x01\x9d\x01\n" +
+	"\tpmu_valid\x12Operformance_monitoring_unit must be empty, ARCHITECTURAL, STANDARD, or ENHANCED\x1a?this == '' || this in ['ARCHITECTURAL', 'STANDARD', 'ENHANCED']R\x19performanceMonitoringUnitB\x1f\n" +
+	"\x1d_enable_nested_virtualization\"\xb7\x04\n" +
+	"\x16GcpGkeNodePoolBootDisk\x12\xbb\x02\n" +
+	"\tdisk_type\x18\x01 \x01(\tB\x9d\x02\xbaH\x99\x02\xba\x01\x95\x02\n" +
+	"\x14boot_disk_type_valid\x12ydisk_type must be empty, pd-standard, pd-balanced, pd-ssd, hyperdisk-balanced, hyperdisk-extreme, or hyperdisk-throughput\x1a\x81\x01this == '' || this in ['pd-standard', 'pd-balanced', 'pd-ssd', 'hyperdisk-balanced', 'hyperdisk-extreme', 'hyperdisk-throughput']R\bdiskType\x12%\n" +
+	"\asize_gb\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02(\n" +
+	"H\x00R\x06sizeGb\x88\x01\x01\x127\n" +
+	"\x10provisioned_iops\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x01R\x0fprovisionedIops\x88\x01\x01\x12C\n" +
+	"\x16provisioned_throughput\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x02R\x15provisionedThroughput\x88\x01\x01B\n" +
+	"\n" +
+	"\b_size_gbB\x13\n" +
+	"\x11_provisioned_iopsB\x19\n" +
+	"\x17_provisioned_throughput\"\\\n" +
+	"\x17GcpGkeNodePoolNodeImage\x12\x1c\n" +
+	"\x05image\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05image\x12#\n" +
+	"\rimage_project\x18\x02 \x01(\tR\fimageProject\"\xe2\x01\n" +
+	"\x1eGcpGkeNodePoolSoleTenantConfig\x12|\n" +
+	"\x0fnode_affinities\x18\x01 \x03(\v2I.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSoleTenantAffinityB\b\xbaH\x05\x92\x01\x02\b\x01R\x0enodeAffinities\x120\n" +
+	"\rmin_node_cpus\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\vminNodeCpus\x88\x01\x01B\x10\n" +
+	"\x0e_min_node_cpus\"\x90\x01\n" +
+	" GcpGkeNodePoolSoleTenantAffinity\x12\x18\n" +
+	"\x03key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\x120\n" +
+	"\boperator\x18\x02 \x01(\tB\x14\xbaH\x11\xc8\x01\x01r\fR\x02INR\x06NOT_INR\boperator\x12 \n" +
+	"\x06values\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06values\"\xef\x02\n" +
+	"\x1eGcpGkeNodePoolContainerdConfig\x12\x84\x01\n" +
+	"\x17private_registry_access\x18\x01 \x01(\v2L.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolPrivateRegistryAccessR\x15privateRegistryAccess\x12j\n" +
+	"\x0eregistry_hosts\x18\x02 \x03(\v2C.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryHostR\rregistryHosts\x12=\n" +
+	"\x18writable_cgroups_enabled\x18\x03 \x01(\bH\x00R\x16writableCgroupsEnabled\x88\x01\x01B\x1b\n" +
+	"\x19_writable_cgroups_enabled\"\xcd\x01\n" +
+	"#GcpGkeNodePoolPrivateRegistryAccess\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x8b\x01\n" +
+	"\x1dcertificate_authority_domains\x18\x02 \x03(\v2G.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryCaDomainR\x1bcertificateAuthorityDomains\"\x94\x01\n" +
+	"\x1eGcpGkeNodePoolRegistryCaDomain\x12\x1e\n" +
+	"\x05fqdns\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x05fqdns\x12R\n" +
+	"\"gcp_secret_manager_certificate_uri\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x1egcpSecretManagerCertificateUri\"\x9f\x01\n" +
+	"\x1aGcpGkeNodePoolRegistryHost\x12\x1e\n" +
+	"\x06server\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06server\x12a\n" +
+	"\x05hosts\x18\x02 \x03(\v2K.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryHostEndpointR\x05hosts\"\x8c\x04\n" +
+	"\"GcpGkeNodePoolRegistryHostEndpoint\x12\x1a\n" +
+	"\x04host\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04host\x12/\n" +
+	"\fcapabilities\x18\x02 \x03(\tB\v\xbaH\b\xd8\x01\x01\x92\x01\x02\x18\x01R\fcapabilities\x12!\n" +
+	"\fdial_timeout\x18\x03 \x01(\tR\vdialTimeout\x12(\n" +
+	"\roverride_path\x18\x04 \x01(\bH\x00R\foverridePath\x88\x01\x01\x12\"\n" +
+	"\rca_secret_uri\x18\x05 \x01(\tR\vcaSecretUri\x123\n" +
+	"\x16client_cert_secret_uri\x18\x06 \x01(\tR\x13clientCertSecretUri\x121\n" +
+	"\x15client_key_secret_uri\x18\a \x01(\tR\x12clientKeySecretUri\x12r\n" +
+	"\aheaders\x18\b \x03(\v2X.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryHostEndpoint.HeadersEntryR\aheaders\x1a:\n" +
+	"\fHeadersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
+	"\x0e_override_path\"\x9c\x01\n" +
 	"\x13GcpGkeNodePoolTaint\x12\x18\n" +
 	"\x03key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\x12\x1c\n" +
 	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\x12M\n" +
@@ -2201,9 +4285,9 @@ const file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDesc = "" +
 	"\x10data_cache_count\x18\x02 \x01(\rH\x00R\x0edataCacheCount\x88\x01\x01B\x13\n" +
 	"\x11_data_cache_count\"R\n" +
 	"\x1fGcpGkeNodePoolLocalNvmeSsdBlock\x12/\n" +
-	"\x0flocal_ssd_count\x18\x01 \x01(\rB\a\xbaH\x04*\x02(\x01R\rlocalSsdCount\"\xc7\x03\n" +
-	"!GcpGkeNodePoolReservationAffinity\x12y\n" +
-	"\x18consume_reservation_type\x18\x01 \x01(\tB?\xbaH<\xc8\x01\x01r7R\x0eNO_RESERVATIONR\x0fANY_RESERVATIONR\x14SPECIFIC_RESERVATIONR\x16consumeReservationType\x12\x10\n" +
+	"\x0flocal_ssd_count\x18\x01 \x01(\rB\a\xbaH\x04*\x02(\x01R\rlocalSsdCount\"\xe3\x03\n" +
+	"!GcpGkeNodePoolReservationAffinity\x12\x94\x01\n" +
+	"\x18consume_reservation_type\x18\x01 \x01(\tBZ\xbaHW\xc8\x01\x01rRR\x0eNO_RESERVATIONR\x0fANY_RESERVATIONR\x14SPECIFIC_RESERVATIONR\x19ANY_RESERVATION_THEN_FAILR\x16consumeReservationType\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12\x16\n" +
 	"\x06values\x18\x03 \x03(\tR\x06values:\xfc\x01\xbaH\xf8\x01\x1a\xf5\x01\n" +
 	"\x1cspecific_requires_key_values\x12nSPECIFIC_RESERVATION requires key \"compute.googleapis.com/reservation-name\" and the reservation name in values\x1aethis.consume_reservation_type != 'SPECIFIC_RESERVATION' || (this.key != '' && this.values.size() > 0)\"\xdc\x01\n" +
@@ -2211,7 +4295,7 @@ const file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
 	"disk_image\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tdiskImage\x12\x91\x01\n" +
 	"\x04mode\x18\x02 \x01(\tB}\xbaHz\xba\x01w\n" +
-	"\x19secondary_disk_mode_valid\x12+mode must be empty or CONTAINER_IMAGE_CACHE\x1a-this == '' || this == 'CONTAINER_IMAGE_CACHE'R\x04mode\"\xcc\b\n" +
+	"\x19secondary_disk_mode_valid\x12+mode must be empty or CONTAINER_IMAGE_CACHE\x1a-this == '' || this == 'CONTAINER_IMAGE_CACHE'R\x04mode\"\xe5\x13\n" +
 	"\x1bGcpGkeNodePoolKubeletConfig\x12\xab\x01\n" +
 	"\x12cpu_manager_policy\x18\x01 \x01(\tB}\xbaHz\xba\x01w\n" +
 	"\x18cpu_manager_policy_valid\x121cpu_manager_policy must be empty, static, or none\x1a(this == '' || this in ['static', 'none']R\x10cpuManagerPolicy\x12'\n" +
@@ -2229,22 +4313,101 @@ const file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDesc = "" +
 	"H\x04R\x1aimageGcLowThresholdPercent\x88\x01\x01\x12T\n" +
 	"\x1fimage_gc_high_threshold_percent\x18\n" +
 	" \x01(\x03B\t\xbaH\x06\"\x04\x18U(\n" +
-	"H\x05R\x1bimageGcHighThresholdPercent\x88\x01\x01B\x10\n" +
+	"H\x05R\x1bimageGcHighThresholdPercent\x88\x01\x01\x12\xcc\x01\n" +
+	"\x14image_minimum_gc_age\x18\v \x01(\tB\x9a\x01\xbaH\x96\x01\xba\x01\x92\x01\n" +
+	"\x17image_min_gc_age_format\x12Bimage_minimum_gc_age must be a seconds-format duration like \"120s\"\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')R\x11imageMinimumGcAge\x12\xce\x01\n" +
+	"\x14image_maximum_gc_age\x18\f \x01(\tB\x9c\x01\xbaH\x98\x01\xba\x01\x94\x01\n" +
+	"\x17image_max_gc_age_format\x12Dimage_maximum_gc_age must be a seconds-format duration like \"86400s\"\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')R\x11imageMaximumGcAge\x12<\n" +
+	"\x16allowed_unsafe_sysctls\x18\r \x03(\tB\x06\xbaH\x03\xd8\x01\x01R\x14allowedUnsafeSysctls\x12]\n" +
+	"%eviction_max_pod_grace_period_seconds\x18\x0e \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x06R evictionMaxPodGracePeriodSeconds\x88\x01\x01\x12:\n" +
+	"\x17single_process_oom_kill\x18\x0f \x01(\bH\aR\x14singleProcessOomKill\x88\x01\x01\x12k\n" +
+	"\reviction_soft\x18\x10 \x01(\v2F.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEvictionSignalsR\fevictionSoft\x12\x88\x01\n" +
+	"\x1aeviction_soft_grace_period\x18\x11 \x01(\v2K.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEvictionGracePeriodsR\x17evictionSoftGracePeriod\x12\x87\x01\n" +
+	"\x18eviction_minimum_reclaim\x18\x12 \x01(\v2M.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEvictionMinimumReclaimR\x16evictionMinimumReclaim\x12v\n" +
+	"\x13crash_loop_back_off\x18\x13 \x01(\v2G.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolCrashLoopBackOffR\x10crashLoopBackOff\x12k\n" +
+	"\x0ememory_manager\x18\x14 \x01(\v2D.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolMemoryManagerR\rmemoryManager\x12q\n" +
+	"\x10topology_manager\x18\x15 \x01(\v2F.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolTopologyManagerR\x0ftopologyManagerB\x10\n" +
 	"\x0e_cpu_cfs_quotaB\x11\n" +
 	"\x0f_pod_pids_limitB\x1b\n" +
 	"\x19_max_parallel_image_pullsB\x1a\n" +
 	"\x18_container_log_max_filesB!\n" +
 	"\x1f_image_gc_low_threshold_percentB\"\n" +
-	" _image_gc_high_threshold_percent\"\xab\x04\n" +
+	" _image_gc_high_threshold_percentB(\n" +
+	"&_eviction_max_pod_grace_period_secondsB\x1a\n" +
+	"\x18_single_process_oom_kill\"\xa5\x02\n" +
+	"\x1dGcpGkeNodePoolEvictionSignals\x12)\n" +
+	"\x10memory_available\x18\x01 \x01(\tR\x0fmemoryAvailable\x12)\n" +
+	"\x10nodefs_available\x18\x02 \x01(\tR\x0fnodefsAvailable\x12,\n" +
+	"\x12nodefs_inodes_free\x18\x03 \x01(\tR\x10nodefsInodesFree\x12+\n" +
+	"\x11imagefs_available\x18\x04 \x01(\tR\x10imagefsAvailable\x12.\n" +
+	"\x13imagefs_inodes_free\x18\x05 \x01(\tR\x11imagefsInodesFree\x12#\n" +
+	"\rpid_available\x18\x06 \x01(\tR\fpidAvailable\"\xaa\x02\n" +
+	"\"GcpGkeNodePoolEvictionGracePeriods\x12)\n" +
+	"\x10memory_available\x18\x01 \x01(\tR\x0fmemoryAvailable\x12)\n" +
+	"\x10nodefs_available\x18\x02 \x01(\tR\x0fnodefsAvailable\x12,\n" +
+	"\x12nodefs_inodes_free\x18\x03 \x01(\tR\x10nodefsInodesFree\x12+\n" +
+	"\x11imagefs_available\x18\x04 \x01(\tR\x10imagefsAvailable\x12.\n" +
+	"\x13imagefs_inodes_free\x18\x05 \x01(\tR\x11imagefsInodesFree\x12#\n" +
+	"\rpid_available\x18\x06 \x01(\tR\fpidAvailable\"\xac\x02\n" +
+	"$GcpGkeNodePoolEvictionMinimumReclaim\x12)\n" +
+	"\x10memory_available\x18\x01 \x01(\tR\x0fmemoryAvailable\x12)\n" +
+	"\x10nodefs_available\x18\x02 \x01(\tR\x0fnodefsAvailable\x12,\n" +
+	"\x12nodefs_inodes_free\x18\x03 \x01(\tR\x10nodefsInodesFree\x12+\n" +
+	"\x11imagefs_available\x18\x04 \x01(\tR\x10imagefsAvailable\x12.\n" +
+	"\x13imagefs_inodes_free\x18\x05 \x01(\tR\x11imagefsInodesFree\x12#\n" +
+	"\rpid_available\x18\x06 \x01(\tR\fpidAvailable\"\x89\x02\n" +
+	"\x1eGcpGkeNodePoolCrashLoopBackOff\x12\xe6\x01\n" +
+	"\x1cmax_container_restart_period\x18\x01 \x01(\tB\xa4\x01\xbaH\xa0\x01\xba\x01\x9c\x01\n" +
+	"\x19max_restart_period_format\x12Jmax_container_restart_period must be a seconds-format duration like \"300s\"\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')R\x19maxContainerRestartPeriod\"\xac\x01\n" +
+	"\x1bGcpGkeNodePoolMemoryManager\x12\x8c\x01\n" +
+	"\x06policy\x18\x01 \x01(\tBt\xbaHq\xba\x01n\n" +
+	"\x1bmemory_manager_policy_valid\x12%policy must be empty, None, or Static\x1a(this == '' || this in ['None', 'Static']R\x06policy\"\x8e\x03\n" +
+	"\x1dGcpGkeNodePoolTopologyManager\x12\xdb\x01\n" +
+	"\x06policy\x18\x01 \x01(\tB\xc2\x01\xbaH\xbe\x01\xba\x01\xba\x01\n" +
+	"\x1dtopology_manager_policy_valid\x12Hpolicy must be empty, none, best-effort, restricted, or single-numa-node\x1aOthis == '' || this in ['none', 'best-effort', 'restricted', 'single-numa-node']R\x06policy\x12\x8e\x01\n" +
+	"\x05scope\x18\x02 \x01(\tBx\xbaHu\xba\x01r\n" +
+	"\x1ctopology_manager_scope_valid\x12&scope must be empty, container, or pod\x1a*this == '' || this in ['container', 'pod']R\x05scope\"\xa9\x11\n" +
 	"\x1dGcpGkeNodePoolLinuxNodeConfig\x12m\n" +
 	"\asysctls\x18\x01 \x03(\v2S.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig.SysctlsEntryR\asysctls\x12\xeb\x01\n" +
 	"\vcgroup_mode\x18\x02 \x01(\tB\xc9\x01\xbaH\xc5\x01\xba\x01\xc1\x01\n" +
 	"\x11cgroup_mode_valid\x12Ucgroup_mode must be empty, CGROUP_MODE_UNSPECIFIED, CGROUP_MODE_V1, or CGROUP_MODE_V2\x1aUthis == '' || this in ['CGROUP_MODE_UNSPECIFIED', 'CGROUP_MODE_V1', 'CGROUP_MODE_V2']R\n" +
 	"cgroupMode\x12q\n" +
-	"\x10hugepages_config\x18\x03 \x01(\v2F.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolHugepagesConfigR\x0fhugepagesConfig\x1a:\n" +
+	"\x10hugepages_config\x18\x03 \x01(\v2F.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolHugepagesConfigR\x0fhugepagesConfig\x12\xe1\x03\n" +
+	"\x1ctransparent_hugepage_enabled\x18\x04 \x01(\tB\x9e\x03\xbaH\x9a\x03\xba\x01\x96\x03\n" +
+	"\x11thp_enabled_valid\x12\xc6\x01transparent_hugepage_enabled must be empty, TRANSPARENT_HUGEPAGE_ENABLED_ALWAYS, TRANSPARENT_HUGEPAGE_ENABLED_MADVISE, TRANSPARENT_HUGEPAGE_ENABLED_NEVER, or TRANSPARENT_HUGEPAGE_ENABLED_UNSPECIFIED\x1a\xb7\x01this == '' || this in ['TRANSPARENT_HUGEPAGE_ENABLED_ALWAYS', 'TRANSPARENT_HUGEPAGE_ENABLED_MADVISE', 'TRANSPARENT_HUGEPAGE_ENABLED_NEVER', 'TRANSPARENT_HUGEPAGE_ENABLED_UNSPECIFIED']R\x1atransparentHugepageEnabled\x12\xff\x04\n" +
+	"\x1btransparent_hugepage_defrag\x18\x05 \x01(\tB\xbe\x04\xbaH\xba\x04\xba\x01\xb6\x04\n" +
+	"\x10thp_defrag_valid\x12\x94\x02transparent_hugepage_defrag must be empty, TRANSPARENT_HUGEPAGE_DEFRAG_ALWAYS, TRANSPARENT_HUGEPAGE_DEFRAG_DEFER, TRANSPARENT_HUGEPAGE_DEFRAG_DEFER_WITH_MADVISE, TRANSPARENT_HUGEPAGE_DEFRAG_MADVISE, TRANSPARENT_HUGEPAGE_DEFRAG_NEVER, or TRANSPARENT_HUGEPAGE_DEFRAG_UNSPECIFIED\x1a\x8a\x02this == '' || this in ['TRANSPARENT_HUGEPAGE_DEFRAG_ALWAYS', 'TRANSPARENT_HUGEPAGE_DEFRAG_DEFER', 'TRANSPARENT_HUGEPAGE_DEFRAG_DEFER_WITH_MADVISE', 'TRANSPARENT_HUGEPAGE_DEFRAG_MADVISE', 'TRANSPARENT_HUGEPAGE_DEFRAG_NEVER', 'TRANSPARENT_HUGEPAGE_DEFRAG_UNSPECIFIED']R\x19transparentHugepageDefrag\x12\xd7\x02\n" +
+	"!node_kernel_module_loading_policy\x18\x06 \x01(\tB\x8c\x02\xbaH\x88\x02\xba\x01\x84\x02\n" +
+	"\x1akernel_module_policy_valid\x12}node_kernel_module_loading_policy must be empty, POLICY_UNSPECIFIED, ENFORCE_SIGNED_MODULES, or DO_NOT_ENFORCE_SIGNED_MODULES\x1agthis == '' || this in ['POLICY_UNSPECIFIED', 'ENFORCE_SIGNED_MODULES', 'DO_NOT_ENFORCE_SIGNED_MODULES']R\x1dnodeKernelModuleLoadingPolicy\x12;\n" +
+	"\x18enable_ptp_kvm_time_sync\x18\a \x01(\bH\x00R\x14enablePtpKvmTimeSync\x88\x01\x01\x12b\n" +
+	"\vswap_config\x18\b \x01(\v2A.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapConfigR\n" +
+	"swapConfig\x1a:\n" +
 	"\fSysctlsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa7\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x1b\n" +
+	"\x19_enable_ptp_kvm_time_sync\"\xdd\x06\n" +
+	"\x18GcpGkeNodePoolSwapConfig\x12\x1d\n" +
+	"\aenabled\x18\x01 \x01(\bH\x00R\aenabled\x88\x01\x01\x12m\n" +
+	"\x11boot_disk_profile\x18\x02 \x01(\v2A.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapSizingR\x0fbootDiskProfile\x12\x86\x01\n" +
+	"\x1bdedicated_local_ssd_profile\x18\x03 \x01(\v2G.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapDedicatedSsdR\x18dedicatedLocalSsdProfile\x12\x80\x01\n" +
+	"\x1bephemeral_local_ssd_profile\x18\x04 \x01(\v2A.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapSizingR\x18ephemeralLocalSsdProfile\x12r\n" +
+	"\x11encryption_config\x18\x05 \x01(\v2E.dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapEncryptionR\x10encryptionConfig:\xa6\x02\xbaH\xa2\x02\x1a\x9f\x02\n" +
+	"\x18at_most_one_swap_profile\x12rsize swap with at most one profile: boot_disk_profile, dedicated_local_ssd_profile, or ephemeral_local_ssd_profile\x1a\x8e\x01(has(this.boot_disk_profile) ? 1 : 0) + (has(this.dedicated_local_ssd_profile) ? 1 : 0) + (has(this.ephemeral_local_ssd_profile) ? 1 : 0) <= 1B\n" +
+	"\n" +
+	"\b_enabled\"\xc2\x02\n" +
+	"\x18GcpGkeNodePoolSwapSizing\x120\n" +
+	"\rswap_size_gib\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x00R\vswapSizeGib\x88\x01\x01\x12:\n" +
+	"\x11swap_size_percent\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x01H\x01R\x0fswapSizePercent\x88\x01\x01:\x8f\x01\xbaH\x8b\x01\x1a\x88\x01\n" +
+	"\x19swap_size_gib_xor_percent\x120set swap_size_gib or swap_size_percent, not both\x1a9!(has(this.swap_size_gib) && has(this.swap_size_percent))B\x10\n" +
+	"\x0e_swap_size_gibB\x14\n" +
+	"\x12_swap_size_percent\"\\\n" +
+	"\x1eGcpGkeNodePoolSwapDedicatedSsd\x12+\n" +
+	"\n" +
+	"disk_count\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x00R\tdiskCount\x88\x01\x01B\r\n" +
+	"\v_disk_count\"L\n" +
+	"\x1cGcpGkeNodePoolSwapEncryption\x12\x1f\n" +
+	"\bdisabled\x18\x01 \x01(\bH\x00R\bdisabled\x88\x01\x01B\v\n" +
+	"\t_disabled\"\xa7\x01\n" +
 	"\x1dGcpGkeNodePoolHugepagesConfig\x12-\n" +
 	"\x10hugepage_size_2m\x18\x01 \x01(\x03H\x00R\x0ehugepageSize2m\x88\x01\x01\x12-\n" +
 	"\x10hugepage_size_1g\x18\x02 \x01(\x03H\x01R\x0ehugepageSize1g\x88\x01\x01B\x13\n" +
@@ -2264,70 +4427,125 @@ func file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 50)
 var file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpGkeNodePoolSpec)(nil),                     // 0: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec
-	(*GcpGkeNodePoolAutoscaling)(nil),              // 1: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAutoscaling
-	(*GcpGkeNodePoolManagement)(nil),               // 2: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolManagement
-	(*GcpGkeNodePoolUpgradeSettings)(nil),          // 3: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolUpgradeSettings
-	(*GcpGkeNodePoolBlueGreenSettings)(nil),        // 4: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolBlueGreenSettings
-	(*GcpGkeNodePoolStandardRolloutPolicy)(nil),    // 5: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolStandardRolloutPolicy
-	(*GcpGkeNodePoolPlacementPolicy)(nil),          // 6: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolPlacementPolicy
-	(*GcpGkeNodePoolNetworkConfig)(nil),            // 7: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNetworkConfig
-	(*GcpGkeNodePoolNodeConfig)(nil),               // 8: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig
-	(*GcpGkeNodePoolTaint)(nil),                    // 9: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolTaint
-	(*GcpGkeNodePoolGuestAccelerator)(nil),         // 10: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolGuestAccelerator
-	(*GcpGkeNodePoolGpuSharingConfig)(nil),         // 11: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolGpuSharingConfig
-	(*GcpGkeNodePoolShieldedInstanceConfig)(nil),   // 12: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolShieldedInstanceConfig
-	(*GcpGkeNodePoolConfidentialNodes)(nil),        // 13: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolConfidentialNodes
-	(*GcpGkeNodePoolEphemeralStorageLocalSsd)(nil), // 14: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEphemeralStorageLocalSsd
-	(*GcpGkeNodePoolLocalNvmeSsdBlock)(nil),        // 15: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLocalNvmeSsdBlock
-	(*GcpGkeNodePoolReservationAffinity)(nil),      // 16: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolReservationAffinity
-	(*GcpGkeNodePoolSecondaryBootDisk)(nil),        // 17: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSecondaryBootDisk
-	(*GcpGkeNodePoolKubeletConfig)(nil),            // 18: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolKubeletConfig
-	(*GcpGkeNodePoolLinuxNodeConfig)(nil),          // 19: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig
-	(*GcpGkeNodePoolHugepagesConfig)(nil),          // 20: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolHugepagesConfig
-	nil,                                            // 21: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.LabelsEntry
-	nil,                                            // 22: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.ResourceLabelsEntry
-	nil,                                            // 23: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.MetadataEntry
-	nil,                                            // 24: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig.SysctlsEntry
-	(*v1.StringValueOrRef)(nil),                    // 25: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpGkeNodePoolNodeDrainConfig)(nil),          // 1: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeDrainConfig
+	(*GcpGkeNodePoolAutoscaling)(nil),              // 2: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAutoscaling
+	(*GcpGkeNodePoolManagement)(nil),               // 3: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolManagement
+	(*GcpGkeNodePoolUpgradeSettings)(nil),          // 4: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolUpgradeSettings
+	(*GcpGkeNodePoolBlueGreenSettings)(nil),        // 5: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolBlueGreenSettings
+	(*GcpGkeNodePoolStandardRolloutPolicy)(nil),    // 6: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolStandardRolloutPolicy
+	(*GcpGkeNodePoolPlacementPolicy)(nil),          // 7: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolPlacementPolicy
+	(*GcpGkeNodePoolNetworkConfig)(nil),            // 8: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNetworkConfig
+	(*GcpGkeNodePoolAdditionalNodeNetwork)(nil),    // 9: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAdditionalNodeNetwork
+	(*GcpGkeNodePoolAdditionalPodNetwork)(nil),     // 10: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAdditionalPodNetwork
+	(*GcpGkeNodePoolNodeConfig)(nil),               // 11: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig
+	(*GcpGkeNodePoolAdvancedMachineFeatures)(nil),  // 12: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAdvancedMachineFeatures
+	(*GcpGkeNodePoolBootDisk)(nil),                 // 13: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolBootDisk
+	(*GcpGkeNodePoolNodeImage)(nil),                // 14: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeImage
+	(*GcpGkeNodePoolSoleTenantConfig)(nil),         // 15: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSoleTenantConfig
+	(*GcpGkeNodePoolSoleTenantAffinity)(nil),       // 16: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSoleTenantAffinity
+	(*GcpGkeNodePoolContainerdConfig)(nil),         // 17: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolContainerdConfig
+	(*GcpGkeNodePoolPrivateRegistryAccess)(nil),    // 18: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolPrivateRegistryAccess
+	(*GcpGkeNodePoolRegistryCaDomain)(nil),         // 19: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryCaDomain
+	(*GcpGkeNodePoolRegistryHost)(nil),             // 20: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryHost
+	(*GcpGkeNodePoolRegistryHostEndpoint)(nil),     // 21: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryHostEndpoint
+	(*GcpGkeNodePoolTaint)(nil),                    // 22: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolTaint
+	(*GcpGkeNodePoolGuestAccelerator)(nil),         // 23: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolGuestAccelerator
+	(*GcpGkeNodePoolGpuSharingConfig)(nil),         // 24: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolGpuSharingConfig
+	(*GcpGkeNodePoolShieldedInstanceConfig)(nil),   // 25: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolShieldedInstanceConfig
+	(*GcpGkeNodePoolConfidentialNodes)(nil),        // 26: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolConfidentialNodes
+	(*GcpGkeNodePoolEphemeralStorageLocalSsd)(nil), // 27: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEphemeralStorageLocalSsd
+	(*GcpGkeNodePoolLocalNvmeSsdBlock)(nil),        // 28: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLocalNvmeSsdBlock
+	(*GcpGkeNodePoolReservationAffinity)(nil),      // 29: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolReservationAffinity
+	(*GcpGkeNodePoolSecondaryBootDisk)(nil),        // 30: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSecondaryBootDisk
+	(*GcpGkeNodePoolKubeletConfig)(nil),            // 31: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolKubeletConfig
+	(*GcpGkeNodePoolEvictionSignals)(nil),          // 32: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEvictionSignals
+	(*GcpGkeNodePoolEvictionGracePeriods)(nil),     // 33: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEvictionGracePeriods
+	(*GcpGkeNodePoolEvictionMinimumReclaim)(nil),   // 34: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEvictionMinimumReclaim
+	(*GcpGkeNodePoolCrashLoopBackOff)(nil),         // 35: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolCrashLoopBackOff
+	(*GcpGkeNodePoolMemoryManager)(nil),            // 36: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolMemoryManager
+	(*GcpGkeNodePoolTopologyManager)(nil),          // 37: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolTopologyManager
+	(*GcpGkeNodePoolLinuxNodeConfig)(nil),          // 38: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig
+	(*GcpGkeNodePoolSwapConfig)(nil),               // 39: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapConfig
+	(*GcpGkeNodePoolSwapSizing)(nil),               // 40: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapSizing
+	(*GcpGkeNodePoolSwapDedicatedSsd)(nil),         // 41: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapDedicatedSsd
+	(*GcpGkeNodePoolSwapEncryption)(nil),           // 42: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapEncryption
+	(*GcpGkeNodePoolHugepagesConfig)(nil),          // 43: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolHugepagesConfig
+	nil,                                            // 44: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.LabelsEntry
+	nil,                                            // 45: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.ResourceLabelsEntry
+	nil,                                            // 46: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.MetadataEntry
+	nil,                                            // 47: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.ResourceManagerTagsEntry
+	nil,                                            // 48: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryHostEndpoint.HeadersEntry
+	nil,                                            // 49: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig.SysctlsEntry
+	(*v1.StringValueOrRef)(nil),                    // 50: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_depIdxs = []int32{
-	25, // 0: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	25, // 1: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.cluster_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	25, // 2: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.location:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 3: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.autoscaling:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAutoscaling
-	2,  // 4: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.management:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolManagement
-	3,  // 5: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.upgrade_settings:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolUpgradeSettings
-	6,  // 6: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.placement_policy:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolPlacementPolicy
-	7,  // 7: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.network_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNetworkConfig
-	8,  // 8: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.node_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig
-	4,  // 9: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolUpgradeSettings.blue_green_settings:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolBlueGreenSettings
-	5,  // 10: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolBlueGreenSettings.standard_rollout_policy:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolStandardRolloutPolicy
-	25, // 11: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 12: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.labels:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.LabelsEntry
-	22, // 13: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.resource_labels:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.ResourceLabelsEntry
-	23, // 14: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.metadata:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.MetadataEntry
-	9,  // 15: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.taints:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolTaint
-	10, // 16: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.guest_accelerators:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolGuestAccelerator
-	12, // 17: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.shielded_instance_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolShieldedInstanceConfig
-	13, // 18: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.confidential_nodes:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolConfidentialNodes
-	14, // 19: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.ephemeral_storage_local_ssd:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEphemeralStorageLocalSsd
-	15, // 20: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.local_nvme_ssd_block:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLocalNvmeSsdBlock
-	25, // 21: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.boot_disk_kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 22: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.reservation_affinity:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolReservationAffinity
-	17, // 23: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.secondary_boot_disks:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSecondaryBootDisk
-	18, // 24: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.kubelet_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolKubeletConfig
-	19, // 25: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.linux_node_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig
-	11, // 26: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolGuestAccelerator.gpu_sharing_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolGpuSharingConfig
-	24, // 27: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig.sysctls:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig.SysctlsEntry
-	20, // 28: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig.hugepages_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolHugepagesConfig
-	29, // [29:29] is the sub-list for method output_type
-	29, // [29:29] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	50, // 0: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	50, // 1: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.cluster_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	50, // 2: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.location:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 3: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.autoscaling:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAutoscaling
+	3,  // 4: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.management:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolManagement
+	4,  // 5: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.upgrade_settings:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolUpgradeSettings
+	7,  // 6: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.placement_policy:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolPlacementPolicy
+	8,  // 7: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.network_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNetworkConfig
+	11, // 8: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.node_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig
+	1,  // 9: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSpec.node_drain_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeDrainConfig
+	5,  // 10: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolUpgradeSettings.blue_green_settings:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolBlueGreenSettings
+	6,  // 11: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolBlueGreenSettings.standard_rollout_policy:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolStandardRolloutPolicy
+	50, // 12: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNetworkConfig.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 13: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNetworkConfig.additional_node_networks:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAdditionalNodeNetwork
+	10, // 14: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNetworkConfig.additional_pod_networks:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAdditionalPodNetwork
+	50, // 15: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAdditionalNodeNetwork.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	50, // 16: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAdditionalNodeNetwork.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	50, // 17: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAdditionalPodNetwork.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	50, // 18: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	44, // 19: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.labels:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.LabelsEntry
+	45, // 20: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.resource_labels:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.ResourceLabelsEntry
+	46, // 21: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.metadata:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.MetadataEntry
+	22, // 22: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.taints:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolTaint
+	23, // 23: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.guest_accelerators:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolGuestAccelerator
+	25, // 24: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.shielded_instance_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolShieldedInstanceConfig
+	26, // 25: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.confidential_nodes:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolConfidentialNodes
+	27, // 26: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.ephemeral_storage_local_ssd:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEphemeralStorageLocalSsd
+	28, // 27: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.local_nvme_ssd_block:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLocalNvmeSsdBlock
+	50, // 28: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.boot_disk_kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // 29: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.reservation_affinity:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolReservationAffinity
+	30, // 30: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.secondary_boot_disks:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSecondaryBootDisk
+	31, // 31: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.kubelet_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolKubeletConfig
+	38, // 32: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.linux_node_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig
+	47, // 33: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.resource_manager_tags:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.ResourceManagerTagsEntry
+	12, // 34: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.advanced_machine_features:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolAdvancedMachineFeatures
+	13, // 35: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.boot_disk:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolBootDisk
+	14, // 36: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.node_image:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeImage
+	15, // 37: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.sole_tenant_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSoleTenantConfig
+	17, // 38: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolNodeConfig.containerd_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolContainerdConfig
+	16, // 39: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSoleTenantConfig.node_affinities:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSoleTenantAffinity
+	18, // 40: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolContainerdConfig.private_registry_access:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolPrivateRegistryAccess
+	20, // 41: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolContainerdConfig.registry_hosts:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryHost
+	19, // 42: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolPrivateRegistryAccess.certificate_authority_domains:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryCaDomain
+	21, // 43: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryHost.hosts:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryHostEndpoint
+	48, // 44: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryHostEndpoint.headers:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolRegistryHostEndpoint.HeadersEntry
+	24, // 45: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolGuestAccelerator.gpu_sharing_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolGpuSharingConfig
+	32, // 46: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolKubeletConfig.eviction_soft:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEvictionSignals
+	33, // 47: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolKubeletConfig.eviction_soft_grace_period:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEvictionGracePeriods
+	34, // 48: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolKubeletConfig.eviction_minimum_reclaim:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolEvictionMinimumReclaim
+	35, // 49: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolKubeletConfig.crash_loop_back_off:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolCrashLoopBackOff
+	36, // 50: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolKubeletConfig.memory_manager:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolMemoryManager
+	37, // 51: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolKubeletConfig.topology_manager:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolTopologyManager
+	49, // 52: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig.sysctls:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig.SysctlsEntry
+	43, // 53: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig.hugepages_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolHugepagesConfig
+	39, // 54: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolLinuxNodeConfig.swap_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapConfig
+	40, // 55: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapConfig.boot_disk_profile:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapSizing
+	41, // 56: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapConfig.dedicated_local_ssd_profile:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapDedicatedSsd
+	40, // 57: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapConfig.ephemeral_local_ssd_profile:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapSizing
+	42, // 58: dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapConfig.encryption_config:type_name -> dev.planton.gcp.gcpgkenodepool.v1alpha1.GcpGkeNodePoolSwapEncryption
+	59, // [59:59] is the sub-list for method output_type
+	59, // [59:59] is the sub-list for method input_type
+	59, // [59:59] is the sub-list for extension type_name
+	59, // [59:59] is the sub-list for extension extendee
+	0,  // [0:59] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_init() }
@@ -2342,20 +4560,32 @@ func file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_init() {
 	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[3].OneofWrappers = []any{}
-	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[5].OneofWrappers = []any{}
-	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[7].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[6].OneofWrappers = []any{}
 	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[8].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[10].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[11].OneofWrappers = []any{}
 	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[12].OneofWrappers = []any{}
-	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[14].OneofWrappers = []any{}
-	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[18].OneofWrappers = []any{}
-	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[20].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[15].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[17].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[21].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[25].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[27].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[31].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[38].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[39].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[40].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[41].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[42].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_msgTypes[43].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   25,
+			NumMessages:   50,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -8,8 +8,14 @@ locals {
 
   # Pool name defaults to metadata.name (the spec-level contract), so a
   # manifest only sets node_pool_name when the cloud name must differ from
-  # the Planton object name.
-  node_pool_name = var.spec.node_pool_name != "" ? var.spec.node_pool_name : var.metadata.name
+  # the Planton object name. With name_prefix set, GKE generates the full
+  # name — the explicit name must then be absent entirely.
+  node_pool_name = var.spec.name_prefix != "" ? null : (var.spec.node_pool_name != "" ? var.spec.node_pool_name : var.metadata.name)
+  name_prefix    = var.spec.name_prefix != "" ? var.spec.name_prefix : null
+
+  # Attribution labels need a stable value even for prefixed pools whose
+  # final name is only known after create.
+  attribution_name = local.node_pool_name != null ? local.node_pool_name : var.spec.name_prefix
 
   # Node config is optional end to end: a spec that omits it gets GKE's
   # defaults. All node_config reads below go through this local so the
@@ -18,15 +24,15 @@ locals {
 
   # Empty optional strings become null so the provider omits them from the
   # API payload instead of sending empty values it would reject or diff on.
-  version          = var.spec.version != "" ? var.spec.version : null
-  machine_type     = try(local.nc.machine_type, "e2-medium")
-  disk_type        = try(local.nc.disk_type, "") != "" ? local.nc.disk_type : null
-  image_type       = try(local.nc.image_type, "COS_CONTAINERD")
-  service_account  = try(local.nc.service_account, "") != "" ? local.nc.service_account : null
-  min_cpu_platform = try(local.nc.min_cpu_platform, "") != "" ? local.nc.min_cpu_platform : null
+  version           = var.spec.version != "" ? var.spec.version : null
+  machine_type      = try(local.nc.machine_type, "e2-medium")
+  disk_type         = try(local.nc.disk_type, "") != "" ? local.nc.disk_type : null
+  image_type        = try(local.nc.image_type, "COS_CONTAINERD")
+  service_account   = try(local.nc.service_account, "") != "" ? local.nc.service_account : null
+  min_cpu_platform  = try(local.nc.min_cpu_platform, "") != "" ? local.nc.min_cpu_platform : null
   boot_disk_kms_key = try(local.nc.boot_disk_kms_key, "") != "" ? local.nc.boot_disk_kms_key : null
-  logging_variant  = try(local.nc.logging_variant, "") != "" ? local.nc.logging_variant : null
-  max_run_duration = try(local.nc.max_run_duration, "") != "" ? local.nc.max_run_duration : null
+  logging_variant   = try(local.nc.logging_variant, "") != "" ? local.nc.logging_variant : null
+  max_run_duration  = try(local.nc.max_run_duration, "") != "" ? local.nc.max_run_duration : null
 
   # The same planton-ai_* label set the Pulumi module applies, so a pool is
   # attributable to its Planton object regardless of the engine that created
@@ -34,7 +40,7 @@ locals {
   # matches what is visible in the GCP console.
   base_labels = {
     "planton-ai_resource" = "true"
-    "planton-ai_name"     = local.node_pool_name
+    "planton-ai_name"     = local.attribution_name
     "planton-ai_kind"     = "gcpgkenodepool"
   }
 

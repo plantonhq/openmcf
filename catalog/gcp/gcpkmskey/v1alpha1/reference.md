@@ -295,6 +295,8 @@ Fields on other kinds that can point at this resource:
 | GcpGcsBucket | `spec.kmsKeyName` | `status.outputs.key_id` |
 | GcpGkeCluster | `spec.clusterAutoscaling.autoProvisioningDefaults.bootDiskKmsKey` | `status.outputs.key_id` |
 | GcpGkeCluster | `spec.databaseEncryption.keyName` | `status.outputs.key_id` |
+| GcpGkeCluster | `spec.userManagedKeys.controlPlaneDiskEncryptionKey` | `status.outputs.key_id` |
+| GcpGkeCluster | `spec.userManagedKeys.gkeopsEtcdBackupEncryptionKey` | `status.outputs.key_id` |
 | GcpGkeNodePool | `spec.nodeConfig.bootDiskKmsKey` | `status.outputs.key_id` |
 | GcpKmsKeyIamMember | `spec.cryptoKeyId` | `status.outputs.key_id` |
 | GcpMemorystoreInstance | `spec.kmsKey` | `status.outputs.key_id` |

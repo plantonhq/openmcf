@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpGkeNodePoolSpec defines a GKE node pool (`google_container_node_pool`) —
 a group of Compute Engine VMs with one shared configuration, attached to a
 GcpGkeCluster.
@@ -89,6 +91,7 @@ spec:
 | `spec.clusterName` | `string \| valueFrom` | yes |  | GcpGkeCluster (`status.outputs.name`) |
 | `spec.location` | `string \| valueFrom` | yes |  | GcpGkeCluster (`status.outputs.location`) |
 | `spec.nodePoolName` | `string` |  |  |  |
+| `spec.namePrefix` | `string` |  |  |  |
 | `spec.nodeLocations` | `[]string` |  |  |  |
 | `spec.version` | `string` |  |  |  |
 | `spec.maxPodsPerNode` | `int32` |  |  |  |
@@ -125,6 +128,15 @@ spec:
 | `spec.networkConfig.enablePrivateNodes` | `bool` |  |  |  |
 | `spec.networkConfig.totalEgressBandwidthTier` | `string` |  |  |  |
 | `spec.networkConfig.podCidrOverprovisionDisabled` | `bool` |  |  |  |
+| `spec.networkConfig.subnetwork` | `string \| valueFrom` |  |  | GcpSubnetwork (`status.outputs.subnetwork_self_link`) |
+| `spec.networkConfig.acceleratorNetworkProfile` | `string` |  |  |  |
+| `spec.networkConfig.additionalNodeNetworks` | `[]GcpGkeNodePoolAdditionalNodeNetwork` |  |  |  |
+| `spec.networkConfig.additionalNodeNetworks[].network` | `string \| valueFrom` | yes |  | GcpVpcNetwork (`status.outputs.network_self_link`) |
+| `spec.networkConfig.additionalNodeNetworks[].subnetwork` | `string \| valueFrom` | yes |  | GcpSubnetwork (`status.outputs.subnetwork_self_link`) |
+| `spec.networkConfig.additionalPodNetworks` | `[]GcpGkeNodePoolAdditionalPodNetwork` |  |  |  |
+| `spec.networkConfig.additionalPodNetworks[].subnetwork` | `string \| valueFrom` |  |  | GcpSubnetwork (`status.outputs.subnetwork_self_link`) |
+| `spec.networkConfig.additionalPodNetworks[].secondaryPodRange` | `string` | yes |  |  |
+| `spec.networkConfig.additionalPodNetworks[].maxPodsPerNode` | `int32` |  |  |  |
 | `spec.nodeConfig` | `GcpGkeNodePoolNodeConfig` |  |  |  |
 | `spec.nodeConfig.machineType` | `string` |  | `e2-medium` |  |
 | `spec.nodeConfig.diskSizeGb` | `uint32` |  |  |  |
@@ -186,15 +198,116 @@ spec:
 | `spec.nodeConfig.kubeletConfig.containerLogMaxFiles` | `int64` |  |  |  |
 | `spec.nodeConfig.kubeletConfig.imageGcLowThresholdPercent` | `int64` |  |  |  |
 | `spec.nodeConfig.kubeletConfig.imageGcHighThresholdPercent` | `int64` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.imageMinimumGcAge` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.imageMaximumGcAge` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.allowedUnsafeSysctls` | `[]string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionMaxPodGracePeriodSeconds` | `int64` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.singleProcessOomKill` | `bool` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoft` | `GcpGkeNodePoolEvictionSignals` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoft.memoryAvailable` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoft.nodefsAvailable` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoft.nodefsInodesFree` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoft.imagefsAvailable` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoft.imagefsInodesFree` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoft.pidAvailable` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod` | `GcpGkeNodePoolEvictionGracePeriods` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.memoryAvailable` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.nodefsAvailable` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.nodefsInodesFree` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.imagefsAvailable` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.imagefsInodesFree` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.pidAvailable` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionMinimumReclaim` | `GcpGkeNodePoolEvictionMinimumReclaim` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.memoryAvailable` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.nodefsAvailable` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.nodefsInodesFree` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.imagefsAvailable` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.imagefsInodesFree` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.pidAvailable` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.crashLoopBackOff` | `GcpGkeNodePoolCrashLoopBackOff` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.crashLoopBackOff.maxContainerRestartPeriod` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.memoryManager` | `GcpGkeNodePoolMemoryManager` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.memoryManager.policy` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.topologyManager` | `GcpGkeNodePoolTopologyManager` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.topologyManager.policy` | `string` |  |  |  |
+| `spec.nodeConfig.kubeletConfig.topologyManager.scope` | `string` |  |  |  |
 | `spec.nodeConfig.linuxNodeConfig` | `GcpGkeNodePoolLinuxNodeConfig` |  |  |  |
 | `spec.nodeConfig.linuxNodeConfig.sysctls` | `map<string, string>` |  |  |  |
 | `spec.nodeConfig.linuxNodeConfig.cgroupMode` | `string` |  |  |  |
 | `spec.nodeConfig.linuxNodeConfig.hugepagesConfig` | `GcpGkeNodePoolHugepagesConfig` |  |  |  |
 | `spec.nodeConfig.linuxNodeConfig.hugepagesConfig.hugepageSize2m` | `int64` |  |  |  |
 | `spec.nodeConfig.linuxNodeConfig.hugepagesConfig.hugepageSize1g` | `int64` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.transparentHugepageEnabled` | `string` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.transparentHugepageDefrag` | `string` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.nodeKernelModuleLoadingPolicy` | `string` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.enablePtpKvmTimeSync` | `bool` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.swapConfig` | `GcpGkeNodePoolSwapConfig` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.swapConfig.enabled` | `bool` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.swapConfig.bootDiskProfile` | `GcpGkeNodePoolSwapSizing` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.swapConfig.bootDiskProfile.swapSizeGib` | `int64` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.swapConfig.bootDiskProfile.swapSizePercent` | `int32` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.swapConfig.dedicatedLocalSsdProfile` | `GcpGkeNodePoolSwapDedicatedSsd` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.swapConfig.dedicatedLocalSsdProfile.diskCount` | `int64` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.swapConfig.ephemeralLocalSsdProfile` | `GcpGkeNodePoolSwapSizing` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.swapConfig.ephemeralLocalSsdProfile.swapSizeGib` | `int64` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.swapConfig.ephemeralLocalSsdProfile.swapSizePercent` | `int32` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.swapConfig.encryptionConfig` | `GcpGkeNodePoolSwapEncryption` |  |  |  |
+| `spec.nodeConfig.linuxNodeConfig.swapConfig.encryptionConfig.disabled` | `bool` |  |  |  |
 | `spec.nodeConfig.loggingVariant` | `string` |  |  |  |
 | `spec.nodeConfig.flexStart` | `bool` |  |  |  |
 | `spec.nodeConfig.maxRunDuration` | `string` |  |  |  |
+| `spec.nodeConfig.enableConfidentialStorage` | `bool` |  |  |  |
+| `spec.nodeConfig.localSsdEncryptionMode` | `string` |  |  |  |
+| `spec.nodeConfig.gpudirectStrategy` | `string` |  |  |  |
+| `spec.nodeConfig.nodeGroup` | `string` |  |  |  |
+| `spec.nodeConfig.storagePools` | `[]string` |  |  |  |
+| `spec.nodeConfig.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.nodeConfig.advancedMachineFeatures` | `GcpGkeNodePoolAdvancedMachineFeatures` |  |  |  |
+| `spec.nodeConfig.advancedMachineFeatures.threadsPerCore` | `int64` |  |  |  |
+| `spec.nodeConfig.advancedMachineFeatures.enableNestedVirtualization` | `bool` |  |  |  |
+| `spec.nodeConfig.advancedMachineFeatures.performanceMonitoringUnit` | `string` |  |  |  |
+| `spec.nodeConfig.bootDisk` | `GcpGkeNodePoolBootDisk` |  |  |  |
+| `spec.nodeConfig.bootDisk.diskType` | `string` |  |  |  |
+| `spec.nodeConfig.bootDisk.sizeGb` | `int64` |  |  |  |
+| `spec.nodeConfig.bootDisk.provisionedIops` | `int64` |  |  |  |
+| `spec.nodeConfig.bootDisk.provisionedThroughput` | `int64` |  |  |  |
+| `spec.nodeConfig.nodeImage` | `GcpGkeNodePoolNodeImage` |  |  |  |
+| `spec.nodeConfig.nodeImage.image` | `string` | yes |  |  |
+| `spec.nodeConfig.nodeImage.imageProject` | `string` |  |  |  |
+| `spec.nodeConfig.soleTenantConfig` | `GcpGkeNodePoolSoleTenantConfig` |  |  |  |
+| `spec.nodeConfig.soleTenantConfig.nodeAffinities` | `[]GcpGkeNodePoolSoleTenantAffinity` | yes |  |  |
+| `spec.nodeConfig.soleTenantConfig.nodeAffinities[].key` | `string` | yes |  |  |
+| `spec.nodeConfig.soleTenantConfig.nodeAffinities[].operator` | `string` | yes |  |  |
+| `spec.nodeConfig.soleTenantConfig.nodeAffinities[].values` | `[]string` | yes |  |  |
+| `spec.nodeConfig.soleTenantConfig.minNodeCpus` | `int32` |  |  |  |
+| `spec.nodeConfig.sandboxType` | `string` |  |  |  |
+| `spec.nodeConfig.windowsOsVersion` | `string` |  |  |  |
+| `spec.nodeConfig.hostMaintenanceInterval` | `string` |  |  |  |
+| `spec.nodeConfig.architectureTaintBehavior` | `string` |  |  |  |
+| `spec.nodeConfig.containerdConfig` | `GcpGkeNodePoolContainerdConfig` |  |  |  |
+| `spec.nodeConfig.containerdConfig.privateRegistryAccess` | `GcpGkeNodePoolPrivateRegistryAccess` |  |  |  |
+| `spec.nodeConfig.containerdConfig.privateRegistryAccess.enabled` | `bool` |  |  |  |
+| `spec.nodeConfig.containerdConfig.privateRegistryAccess.certificateAuthorityDomains` | `[]GcpGkeNodePoolRegistryCaDomain` |  |  |  |
+| `spec.nodeConfig.containerdConfig.privateRegistryAccess.certificateAuthorityDomains[].fqdns` | `[]string` | yes |  |  |
+| `spec.nodeConfig.containerdConfig.privateRegistryAccess.certificateAuthorityDomains[].gcpSecretManagerCertificateUri` | `string` | yes |  |  |
+| `spec.nodeConfig.containerdConfig.registryHosts` | `[]GcpGkeNodePoolRegistryHost` |  |  |  |
+| `spec.nodeConfig.containerdConfig.registryHosts[].server` | `string` | yes |  |  |
+| `spec.nodeConfig.containerdConfig.registryHosts[].hosts` | `[]GcpGkeNodePoolRegistryHostEndpoint` |  |  |  |
+| `spec.nodeConfig.containerdConfig.registryHosts[].hosts[].host` | `string` | yes |  |  |
+| `spec.nodeConfig.containerdConfig.registryHosts[].hosts[].capabilities` | `[]string` |  |  |  |
+| `spec.nodeConfig.containerdConfig.registryHosts[].hosts[].dialTimeout` | `string` |  |  |  |
+| `spec.nodeConfig.containerdConfig.registryHosts[].hosts[].overridePath` | `bool` |  |  |  |
+| `spec.nodeConfig.containerdConfig.registryHosts[].hosts[].caSecretUri` | `string` |  |  |  |
+| `spec.nodeConfig.containerdConfig.registryHosts[].hosts[].clientCertSecretUri` | `string` |  |  |  |
+| `spec.nodeConfig.containerdConfig.registryHosts[].hosts[].clientKeySecretUri` | `string` |  |  |  |
+| `spec.nodeConfig.containerdConfig.registryHosts[].hosts[].headers` | `map<string, string>` |  |  |  |
+| `spec.nodeConfig.containerdConfig.writableCgroupsEnabled` | `bool` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
+| `spec.ignoreNodeCountChanges` | `bool` |  |  |  |
+| `spec.nodeDrainConfig` | `GcpGkeNodePoolNodeDrainConfig` |  |  |  |
+| `spec.nodeDrainConfig.graceTerminationDuration` | `string` |  |  |  |
+| `spec.nodeDrainConfig.pdbTimeoutDuration` | `string` |  |  |  |
+| `spec.nodeDrainConfig.respectPdbDuringNodePoolDeletion` | `bool` |  |  |  |
 
 ## Field Details
 
@@ -248,6 +361,12 @@ hyphens; starting with a letter and ending with a letter or digit.
 Example: "general-pool", "spot-batch", "gpu-a100"
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[a-z]([a-z0-9-]{0,38}[a-z0-9])?$"}}
+
+### spec.namePrefix
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[a-z]([a-z0-9-]{0,36})?$"}}
 
 ### spec.nodeLocations
 
@@ -557,6 +676,60 @@ pool (node_config.gvnic_enabled).
 Disables the pod CIDR overprovisioning for this pool (GKE normally
 doubles the pod range slice per node). Only relevant with a dedicated
 pod range. Immutable.
+
+### spec.networkConfig.subnetwork
+
+`string | valueFrom`
+
+- references: GcpSubnetwork (`status.outputs.subnetwork_self_link`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.subnetwork_self_link}} -- a bare string does not parse
+
+### spec.networkConfig.acceleratorNetworkProfile
+
+`string`
+
+### spec.networkConfig.additionalNodeNetworks
+
+`[]GcpGkeNodePoolAdditionalNodeNetwork`
+
+### spec.networkConfig.additionalNodeNetworks[].network
+
+`string | valueFrom` · required
+
+- references: GcpVpcNetwork (`status.outputs.network_self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpVpcNetwork, name: <that resource's name>, fieldPath: status.outputs.network_self_link}} -- a bare string does not parse
+
+### spec.networkConfig.additionalNodeNetworks[].subnetwork
+
+`string | valueFrom` · required
+
+- references: GcpSubnetwork (`status.outputs.subnetwork_self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.subnetwork_self_link}} -- a bare string does not parse
+
+### spec.networkConfig.additionalPodNetworks
+
+`[]GcpGkeNodePoolAdditionalPodNetwork`
+
+### spec.networkConfig.additionalPodNetworks[].subnetwork
+
+`string | valueFrom`
+
+- references: GcpSubnetwork (`status.outputs.subnetwork_self_link`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.subnetwork_self_link}} -- a bare string does not parse
+
+### spec.networkConfig.additionalPodNetworks[].secondaryPodRange
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.networkConfig.additionalPodNetworks[].maxPodsPerNode
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"lte":256,"gte":8}}
 
 ### spec.nodeConfig
 
@@ -952,7 +1125,7 @@ values [name]); NO_RESERVATION opts out. Immutable.
 NO_RESERVATION opts out; ANY_RESERVATION consumes any matching
 reservation; SPECIFIC_RESERVATION targets one by name.
 
-- rule: {"required":true,"string":{"in":["NO_RESERVATION","ANY_RESERVATION","SPECIFIC_RESERVATION"]}}
+- rule: {"required":true,"string":{"in":["NO_RESERVATION","ANY_RESERVATION","SPECIFIC_RESERVATION","ANY_RESERVATION_THEN_FAIL"]}}
 
 ### spec.nodeConfig.reservationAffinity.key
 
@@ -1078,6 +1251,154 @@ Disk usage percent above which image GC always runs.
 
 - rule: {"int64":{"lte":"85","gte":"10"}}
 
+### spec.nodeConfig.kubeletConfig.imageMinimumGcAge
+
+`string`
+
+- rule: image_minimum_gc_age must be a seconds-format duration like "120s"
+
+### spec.nodeConfig.kubeletConfig.imageMaximumGcAge
+
+`string`
+
+- rule: image_maximum_gc_age must be a seconds-format duration like "86400s"
+
+### spec.nodeConfig.kubeletConfig.allowedUnsafeSysctls
+
+`[]string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
+
+### spec.nodeConfig.kubeletConfig.evictionMaxPodGracePeriodSeconds
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"0"}}
+
+### spec.nodeConfig.kubeletConfig.singleProcessOomKill
+
+`bool` · optional (explicit presence)
+
+### spec.nodeConfig.kubeletConfig.evictionSoft
+
+`GcpGkeNodePoolEvictionSignals`
+
+### spec.nodeConfig.kubeletConfig.evictionSoft.memoryAvailable
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionSoft.nodefsAvailable
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionSoft.nodefsInodesFree
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionSoft.imagefsAvailable
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionSoft.imagefsInodesFree
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionSoft.pidAvailable
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod
+
+`GcpGkeNodePoolEvictionGracePeriods`
+
+### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.memoryAvailable
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.nodefsAvailable
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.nodefsInodesFree
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.imagefsAvailable
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.imagefsInodesFree
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.pidAvailable
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim
+
+`GcpGkeNodePoolEvictionMinimumReclaim`
+
+### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.memoryAvailable
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.nodefsAvailable
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.nodefsInodesFree
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.imagefsAvailable
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.imagefsInodesFree
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.pidAvailable
+
+`string`
+
+### spec.nodeConfig.kubeletConfig.crashLoopBackOff
+
+`GcpGkeNodePoolCrashLoopBackOff`
+
+### spec.nodeConfig.kubeletConfig.crashLoopBackOff.maxContainerRestartPeriod
+
+`string`
+
+- rule: max_container_restart_period must be a seconds-format duration like "300s"
+
+### spec.nodeConfig.kubeletConfig.memoryManager
+
+`GcpGkeNodePoolMemoryManager`
+
+### spec.nodeConfig.kubeletConfig.memoryManager.policy
+
+`string`
+
+- rule: policy must be empty, None, or Static
+
+### spec.nodeConfig.kubeletConfig.topologyManager
+
+`GcpGkeNodePoolTopologyManager`
+
+### spec.nodeConfig.kubeletConfig.topologyManager.policy
+
+`string`
+
+- rule: policy must be empty, none, best-effort, restricted, or single-numa-node
+
+### spec.nodeConfig.kubeletConfig.topologyManager.scope
+
+`string`
+
+- rule: scope must be empty, container, or pod
+
 ### spec.nodeConfig.linuxNodeConfig
 
 `GcpGkeNodePoolLinuxNodeConfig`
@@ -1119,6 +1440,92 @@ Number of 2MB hugepages.
 
 Number of 1GB hugepages.
 
+### spec.nodeConfig.linuxNodeConfig.transparentHugepageEnabled
+
+`string`
+
+- rule: transparent_hugepage_enabled must be empty, TRANSPARENT_HUGEPAGE_ENABLED_ALWAYS, TRANSPARENT_HUGEPAGE_ENABLED_MADVISE, TRANSPARENT_HUGEPAGE_ENABLED_NEVER, or TRANSPARENT_HUGEPAGE_ENABLED_UNSPECIFIED
+
+### spec.nodeConfig.linuxNodeConfig.transparentHugepageDefrag
+
+`string`
+
+- rule: transparent_hugepage_defrag must be empty, TRANSPARENT_HUGEPAGE_DEFRAG_ALWAYS, TRANSPARENT_HUGEPAGE_DEFRAG_DEFER, TRANSPARENT_HUGEPAGE_DEFRAG_DEFER_WITH_MADVISE, TRANSPARENT_HUGEPAGE_DEFRAG_MADVISE, TRANSPARENT_HUGEPAGE_DEFRAG_NEVER, or TRANSPARENT_HUGEPAGE_DEFRAG_UNSPECIFIED
+
+### spec.nodeConfig.linuxNodeConfig.nodeKernelModuleLoadingPolicy
+
+`string`
+
+- rule: node_kernel_module_loading_policy must be empty, POLICY_UNSPECIFIED, ENFORCE_SIGNED_MODULES, or DO_NOT_ENFORCE_SIGNED_MODULES
+
+### spec.nodeConfig.linuxNodeConfig.enablePtpKvmTimeSync
+
+`bool` · optional (explicit presence)
+
+### spec.nodeConfig.linuxNodeConfig.swapConfig
+
+`GcpGkeNodePoolSwapConfig`
+
+- rule: size swap with at most one profile: boot_disk_profile, dedicated_local_ssd_profile, or ephemeral_local_ssd_profile
+
+### spec.nodeConfig.linuxNodeConfig.swapConfig.enabled
+
+`bool` · optional (explicit presence)
+
+### spec.nodeConfig.linuxNodeConfig.swapConfig.bootDiskProfile
+
+`GcpGkeNodePoolSwapSizing`
+
+- rule: set swap_size_gib or swap_size_percent, not both
+
+### spec.nodeConfig.linuxNodeConfig.swapConfig.bootDiskProfile.swapSizeGib
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.nodeConfig.linuxNodeConfig.swapConfig.bootDiskProfile.swapSizePercent
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"lte":100,"gte":1}}
+
+### spec.nodeConfig.linuxNodeConfig.swapConfig.dedicatedLocalSsdProfile
+
+`GcpGkeNodePoolSwapDedicatedSsd`
+
+### spec.nodeConfig.linuxNodeConfig.swapConfig.dedicatedLocalSsdProfile.diskCount
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.nodeConfig.linuxNodeConfig.swapConfig.ephemeralLocalSsdProfile
+
+`GcpGkeNodePoolSwapSizing`
+
+- rule: set swap_size_gib or swap_size_percent, not both
+
+### spec.nodeConfig.linuxNodeConfig.swapConfig.ephemeralLocalSsdProfile.swapSizeGib
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.nodeConfig.linuxNodeConfig.swapConfig.ephemeralLocalSsdProfile.swapSizePercent
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"lte":100,"gte":1}}
+
+### spec.nodeConfig.linuxNodeConfig.swapConfig.encryptionConfig
+
+`GcpGkeNodePoolSwapEncryption`
+
+### spec.nodeConfig.linuxNodeConfig.swapConfig.encryptionConfig.disabled
+
+`bool` · optional (explicit presence)
+
 ### spec.nodeConfig.loggingVariant
 
 `string`
@@ -1146,9 +1553,270 @@ pools; leave empty for long-lived pools. Immutable.
 
 - rule: max_run_duration must be a seconds-format duration like "3600s"
 
+### spec.nodeConfig.enableConfidentialStorage
+
+`bool`
+
+### spec.nodeConfig.localSsdEncryptionMode
+
+`string`
+
+- rule: local_ssd_encryption_mode must be empty, STANDARD_ENCRYPTION, or EPHEMERAL_KEY_ENCRYPTION
+
+### spec.nodeConfig.gpudirectStrategy
+
+`string`
+
+### spec.nodeConfig.nodeGroup
+
+`string`
+
+### spec.nodeConfig.storagePools
+
+`[]string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
+
+### spec.nodeConfig.resourceManagerTags
+
+`map<string, string>`
+
+### spec.nodeConfig.advancedMachineFeatures
+
+`GcpGkeNodePoolAdvancedMachineFeatures`
+
+### spec.nodeConfig.advancedMachineFeatures.threadsPerCore
+
+`int64`
+
+- rule: {"int64":{"lte":"2","gte":"1"}}
+
+### spec.nodeConfig.advancedMachineFeatures.enableNestedVirtualization
+
+`bool` · optional (explicit presence)
+
+### spec.nodeConfig.advancedMachineFeatures.performanceMonitoringUnit
+
+`string`
+
+- rule: performance_monitoring_unit must be empty, ARCHITECTURAL, STANDARD, or ENHANCED
+
+### spec.nodeConfig.bootDisk
+
+`GcpGkeNodePoolBootDisk`
+
+### spec.nodeConfig.bootDisk.diskType
+
+`string`
+
+- rule: disk_type must be empty, pd-standard, pd-balanced, pd-ssd, hyperdisk-balanced, hyperdisk-extreme, or hyperdisk-throughput
+
+### spec.nodeConfig.bootDisk.sizeGb
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"10"}}
+
+### spec.nodeConfig.bootDisk.provisionedIops
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.nodeConfig.bootDisk.provisionedThroughput
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.nodeConfig.nodeImage
+
+`GcpGkeNodePoolNodeImage`
+
+### spec.nodeConfig.nodeImage.image
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.nodeConfig.nodeImage.imageProject
+
+`string`
+
+### spec.nodeConfig.soleTenantConfig
+
+`GcpGkeNodePoolSoleTenantConfig`
+
+### spec.nodeConfig.soleTenantConfig.nodeAffinities
+
+`[]GcpGkeNodePoolSoleTenantAffinity` · required
+
+- rule: {"repeated":{"minItems":"1"}}
+
+### spec.nodeConfig.soleTenantConfig.nodeAffinities[].key
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.nodeConfig.soleTenantConfig.nodeAffinities[].operator
+
+`string` · required
+
+- rule: {"required":true,"string":{"in":["IN","NOT_IN"]}}
+
+### spec.nodeConfig.soleTenantConfig.nodeAffinities[].values
+
+`[]string` · required
+
+- rule: {"repeated":{"minItems":"1"}}
+
+### spec.nodeConfig.soleTenantConfig.minNodeCpus
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"gte":1}}
+
+### spec.nodeConfig.sandboxType
+
+`string`
+
+- rule: sandbox_type must be empty or GVISOR
+
+### spec.nodeConfig.windowsOsVersion
+
+`string`
+
+- rule: windows_os_version must be empty, OS_VERSION_LTSC2019, or OS_VERSION_LTSC2022
+
+### spec.nodeConfig.hostMaintenanceInterval
+
+`string`
+
+- rule: host_maintenance_interval must be empty, AS_NEEDED, or PERIODIC
+
+### spec.nodeConfig.architectureTaintBehavior
+
+`string`
+
+- rule: architecture_taint_behavior must be empty, NONE, or ARM
+
+### spec.nodeConfig.containerdConfig
+
+`GcpGkeNodePoolContainerdConfig`
+
+### spec.nodeConfig.containerdConfig.privateRegistryAccess
+
+`GcpGkeNodePoolPrivateRegistryAccess`
+
+### spec.nodeConfig.containerdConfig.privateRegistryAccess.enabled
+
+`bool`
+
+### spec.nodeConfig.containerdConfig.privateRegistryAccess.certificateAuthorityDomains
+
+`[]GcpGkeNodePoolRegistryCaDomain`
+
+### spec.nodeConfig.containerdConfig.privateRegistryAccess.certificateAuthorityDomains[].fqdns
+
+`[]string` · required
+
+- rule: {"repeated":{"minItems":"1"}}
+
+### spec.nodeConfig.containerdConfig.privateRegistryAccess.certificateAuthorityDomains[].gcpSecretManagerCertificateUri
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.nodeConfig.containerdConfig.registryHosts
+
+`[]GcpGkeNodePoolRegistryHost`
+
+### spec.nodeConfig.containerdConfig.registryHosts[].server
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.nodeConfig.containerdConfig.registryHosts[].hosts
+
+`[]GcpGkeNodePoolRegistryHostEndpoint`
+
+### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].host
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].capabilities
+
+`[]string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true}}
+
+### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].dialTimeout
+
+`string`
+
+### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].overridePath
+
+`bool` · optional (explicit presence)
+
+### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].caSecretUri
+
+`string`
+
+### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].clientCertSecretUri
+
+`string`
+
+### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].clientKeySecretUri
+
+`string`
+
+### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].headers
+
+`map<string, string>`
+
+### spec.nodeConfig.containerdConfig.writableCgroupsEnabled
+
+`bool` · optional (explicit presence)
+
+### spec.deletionPolicy
+
+`string`
+
+- rule: deletion_policy must be empty, DELETE, PREVENT, or ABANDON
+
+### spec.ignoreNodeCountChanges
+
+`bool`
+
+### spec.nodeDrainConfig
+
+`GcpGkeNodePoolNodeDrainConfig`
+
+### spec.nodeDrainConfig.graceTerminationDuration
+
+`string`
+
+- rule: grace_termination_duration must be a seconds-format duration like "300s"
+
+### spec.nodeDrainConfig.pdbTimeoutDuration
+
+`string`
+
+- rule: pdb_timeout_duration must be a seconds-format duration like "3600s"
+
+### spec.nodeDrainConfig.respectPdbDuringNodePoolDeletion
+
+`bool` · optional (explicit presence)
+
 ## Validation Rules
 
 - `initial_node_count_requires_autoscaling`: initial_node_count only applies to autoscaled pools — a fixed-size pool's size is node_count itself
+- `name_xor_name_prefix`: set node_pool_name or name_prefix, not both — a prefixed pool gets its full name from GKE
 
 ## Outputs
 
@@ -1174,6 +1842,10 @@ Fields that can point at another resource's outputs:
 | `spec.projectId` | GcpProject | `status.outputs.project_id` |
 | `spec.clusterName` | GcpGkeCluster | `status.outputs.name` |
 | `spec.location` | GcpGkeCluster | `status.outputs.location` |
+| `spec.networkConfig.subnetwork` | GcpSubnetwork | `status.outputs.subnetwork_self_link` |
+| `spec.networkConfig.additionalNodeNetworks[].network` | GcpVpcNetwork | `status.outputs.network_self_link` |
+| `spec.networkConfig.additionalNodeNetworks[].subnetwork` | GcpSubnetwork | `status.outputs.subnetwork_self_link` |
+| `spec.networkConfig.additionalPodNetworks[].subnetwork` | GcpSubnetwork | `status.outputs.subnetwork_self_link` |
 | `spec.nodeConfig.serviceAccount` | GcpServiceAccount | `status.outputs.email` |
 | `spec.nodeConfig.bootDiskKmsKey` | GcpKmsKey | `status.outputs.key_id` |
 

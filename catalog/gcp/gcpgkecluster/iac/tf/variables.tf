@@ -50,13 +50,27 @@ variable "spec" {
     ip_allocation = optional(object({
       # Named existing ranges (plain strings after ref resolution) XOR CIDR
       # blocks for GKE-created ranges — spec-level CEL enforces exclusivity.
-      cluster_secondary_range_name  = optional(string, "")
-      services_secondary_range_name = optional(string, "")
-      cluster_ipv4_cidr_block       = optional(string, "")
-      services_ipv4_cidr_block      = optional(string, "")
-      stack_type                    = optional(string, "IPV4")
-      additional_pod_range_names    = optional(list(string), [])
+      cluster_secondary_range_name    = optional(string, "")
+      services_secondary_range_name   = optional(string, "")
+      cluster_ipv4_cidr_block         = optional(string, "")
+      services_ipv4_cidr_block        = optional(string, "")
+      stack_type                      = optional(string, "IPV4")
+      additional_pod_range_names      = optional(list(string), [])
       pod_cidr_overprovision_disabled = optional(bool, false)
+
+      # Extra subnetworks whose secondary ranges pods may draw from.
+      additional_ip_ranges = optional(list(object({
+        # Subnetwork self link (plain string after ref resolution).
+        subnetwork           = string
+        pod_ipv4_range_names = optional(list(string), [])
+        status               = optional(string, "")
+      })), [])
+
+      # GKE-planned pod/service ranges (no manual CIDR planning).
+      auto_ipam_enabled = optional(bool, false)
+
+      # Network tier for the cluster's IP allocation.
+      network_tier = optional(string, "")
     }), null)
 
     # LEGACY_DATAPATH or ADVANCED_DATAPATH (Dataplane V2). Immutable.
@@ -65,11 +79,11 @@ variable "spec" {
     # Cluster-wide default pods-per-node (8-256). Immutable.
     default_max_pods_per_node = optional(number, null)
 
-    enable_intranode_visibility             = optional(bool, false)
-    enable_l4_ilb_subsetting                = optional(bool, false)
-    enable_fqdn_network_policy              = optional(bool, false)
+    enable_intranode_visibility              = optional(bool, false)
+    enable_l4_ilb_subsetting                 = optional(bool, false)
+    enable_fqdn_network_policy               = optional(bool, false)
     enable_cilium_clusterwide_network_policy = optional(bool, false)
-    enable_multi_networking                 = optional(bool, false)
+    enable_multi_networking                  = optional(bool, false)
 
     # PRIVATE_IPV6_GOOGLE_ACCESS_* value or empty for the GCP default.
     private_ipv6_google_access = optional(string, "")
@@ -119,14 +133,16 @@ variable "spec" {
         cidr_block   = string
         display_name = optional(string, "")
       })), [])
-      gcp_public_cidrs_access_enabled        = optional(bool, null)
-      private_endpoint_enforcement_enabled   = optional(bool, null)
+      gcp_public_cidrs_access_enabled      = optional(bool, null)
+      private_endpoint_enforcement_enabled = optional(bool, null)
     }), null)
 
     # DNS endpoint / IP endpoints posture.
     control_plane_endpoints = optional(object({
       dns_endpoint_allow_external_traffic = optional(bool, false)
       ip_endpoints_enabled                = optional(bool, true)
+      enable_k8s_tokens_via_dns           = optional(bool, null)
+      enable_k8s_certs_via_dns            = optional(bool, null)
     }), null)
 
     # Release channel arrives as the proto enum NAME (string):
@@ -147,11 +163,18 @@ variable "spec" {
         recurrence = string
       }), null)
       exclusions = optional(list(object({
-        exclusion_name = string
-        start_time     = string
-        end_time       = string
-        scope          = optional(string, "")
+        exclusion_name    = string
+        start_time        = string
+        end_time          = string
+        scope             = optional(string, "")
+        end_time_behavior = optional(string, "")
       })), [])
+
+      # Minimum spacing between disruptive maintenance events.
+      disruption_budget = optional(object({
+        minor_version_disruption_interval = optional(string, "")
+        patch_version_disruption_interval = optional(string, "")
+      }), null)
     }), null)
 
     # Node auto-provisioning (NAP).
@@ -162,23 +185,41 @@ variable "spec" {
         minimum       = optional(number, 0)
         maximum       = number
       })), [])
-      autoscaling_profile          = optional(string, "BALANCED")
-      auto_provisioning_locations  = optional(list(string), [])
+      autoscaling_profile         = optional(string, "BALANCED")
+      auto_provisioning_locations = optional(list(string), [])
       auto_provisioning_defaults = optional(object({
         # Service account email (plain string after ref resolution).
-        service_account   = optional(string, "")
-        oauth_scopes      = optional(list(string), [])
-        disk_size_gb      = optional(number, null)
-        disk_type         = optional(string, "")
-        image_type        = optional(string, "")
-        min_cpu_platform  = optional(string, "")
+        service_account  = optional(string, "")
+        oauth_scopes     = optional(list(string), [])
+        disk_size_gb     = optional(number, null)
+        disk_type        = optional(string, "")
+        image_type       = optional(string, "")
+        min_cpu_platform = optional(string, "")
         # KMS key path (plain string after ref resolution).
-        boot_disk_kms_key = optional(string, "")
-        enable_secure_boot           = optional(bool, false)
-        enable_integrity_monitoring  = optional(bool, true)
-        auto_upgrade                 = optional(bool, true)
-        auto_repair                  = optional(bool, true)
+        boot_disk_kms_key           = optional(string, "")
+        enable_secure_boot          = optional(bool, false)
+        enable_integrity_monitoring = optional(bool, true)
+        auto_upgrade                = optional(bool, true)
+        auto_repair                 = optional(bool, true)
+
+        # Upgrade rollout for NAP-created pools (surge or blue-green).
+        upgrade_settings = optional(object({
+          max_surge       = optional(number, null)
+          max_unavailable = optional(number, null)
+          strategy        = optional(string, "")
+          blue_green_settings = optional(object({
+            standard_rollout_policy = optional(object({
+              batch_percentage    = optional(number, null)
+              batch_node_count    = optional(number, null)
+              batch_soak_duration = optional(string, "")
+            }), null)
+            node_pool_soak_duration = optional(string, "")
+          }), null)
+        }), null)
       }), null)
+
+      # NAP through default ComputeClass definitions.
+      default_compute_class_enabled = optional(bool, null)
     }), null)
 
     enable_vertical_pod_autoscaling = optional(bool, false)
@@ -212,9 +253,22 @@ variable "spec" {
     # gke-security-groups@DOMAIN Google Group for RBAC.
     authenticator_security_group = optional(string, "")
 
-    enable_legacy_abac       = optional(bool, false)
-    enable_mesh_certificates = optional(bool, false)
+    enable_legacy_abac        = optional(bool, false)
+    enable_mesh_certificates  = optional(bool, false)
     enable_secret_manager_csi = optional(bool, false)
+
+    # Rotation cadence for CSI-mounted Secret Manager secrets.
+    secret_manager_rotation = optional(object({
+      enabled           = optional(bool, false)
+      rotation_interval = optional(string, "")
+    }), null)
+
+    # The Secret Manager SYNC add-on (secrets into Kubernetes Secrets).
+    secret_sync = optional(object({
+      enabled           = optional(bool, false)
+      rotation_enabled  = optional(bool, false)
+      rotation_interval = optional(string, "")
+    }), null)
 
     # Confidential GKE nodes (hardware memory encryption). Immutable.
     confidential_nodes = optional(object({
@@ -272,6 +326,18 @@ variable "spec" {
       config_connector_enabled               = optional(bool, false)
       stateful_ha_enabled                    = optional(bool, false)
       ray_operator_enabled                   = optional(bool, false)
+      ray_cluster_logging_enabled            = optional(bool, false)
+      ray_cluster_monitoring_enabled         = optional(bool, false)
+      cloudrun_enabled                       = optional(bool, false)
+      cloudrun_load_balancer_type            = optional(string, "")
+      parallelstore_csi_driver_enabled       = optional(bool, false)
+      lustre_csi_driver_enabled              = optional(bool, false)
+      lustre_csi_legacy_port_enabled         = optional(bool, false)
+      lustre_csi_disable_multi_nic           = optional(bool, false)
+      pod_snapshot_enabled                   = optional(bool, false)
+      agent_sandbox_enabled                  = optional(bool, false)
+      slice_controller_enabled               = optional(bool, false)
+      slurm_operator_enabled                 = optional(bool, false)
     }), null)
 
     # Autopilot mode (GKE manages nodes; no GcpGkeNodePool resources).
@@ -280,7 +346,102 @@ variable "spec" {
     # Autopilot only: permit NET_ADMIN workloads.
     allow_net_admin = optional(bool, false)
 
-    # Fleet registration project.
-    fleet_project = optional(string, "")
+    # Fleet registration project and membership type.
+    fleet_project         = optional(string, "")
+    fleet_membership_type = optional(string, "")
+
+    # Engine-side destroy stance: DELETE (default), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
+
+    # Read-side performance switches for large clusters.
+    ignore_node_count_changes = optional(bool, false)
+    skip_node_pool_refresh    = optional(bool, false)
+
+    # ALPHA cluster (30-day lifetime, no SLA). Immutable.
+    enable_kubernetes_alpha = optional(bool, false)
+
+    # Kubernetes BETA API groups to enable.
+    k8s_beta_apis = optional(list(string), [])
+
+    # Dataplane optimization mode (pass-through). Immutable.
+    dataplane_optimization_mode = optional(string, "")
+
+    # Legacy client-certificate issuance; null takes no stance.
+    issue_client_certificate = optional(bool, null)
+
+    # VIA_KUBELET or VIA_CONTROL_PLANE. Immutable.
+    node_creation_mode = optional(string, "")
+
+    # ACCELERATED patch auto-upgrades; empty keeps channel pacing.
+    gke_auto_upgrade_patch_mode = optional(string, "")
+
+    # Legacy catch-all RBAC subject lockdown.
+    rbac_binding_config = optional(object({
+      enable_insecure_binding_system_authenticated   = optional(bool, null)
+      enable_insecure_binding_system_unauthenticated = optional(bool, null)
+    }), null)
+
+    # Autopilot conversion/posture policies.
+    autopilot_policy = optional(object({
+      no_standard_node_pools  = optional(bool, null)
+      no_system_impersonation = optional(bool, null)
+      no_system_mutation      = optional(bool, null)
+      no_unsafe_webhooks      = optional(bool, null)
+    }), null)
+
+    # Autopilot privileged-workload allowlist paths (gke:// or gs://).
+    autopilot_privileged_admission_paths = optional(list(string), [])
+
+    # Node settings for Autopilot-managed pools.
+    node_pool_auto_config = optional(object({
+      network_tags                           = optional(list(string), [])
+      resource_manager_tags                  = optional(map(string), {})
+      cgroup_mode                            = optional(string, "")
+      node_kernel_module_loading_policy      = optional(string, "")
+      insecure_kubelet_readonly_port_enabled = optional(string, "")
+    }), null)
+
+    # Creation-time defaults for node pools on Standard clusters.
+    node_pool_defaults = optional(object({
+      gcfs_enabled                           = optional(bool, null)
+      insecure_kubelet_readonly_port_enabled = optional(string, "")
+      logging_variant                        = optional(string, "")
+      containerd_config = optional(object({
+        private_registry_access = optional(object({
+          enabled = optional(bool, false)
+          certificate_authority_domains = optional(list(object({
+            fqdns                              = list(string)
+            gcp_secret_manager_certificate_uri = string
+          })), [])
+        }), null)
+        registry_hosts = optional(list(object({
+          server = string
+          hosts = optional(list(object({
+            host                   = string
+            capabilities           = optional(list(string), [])
+            dial_timeout           = optional(string, "")
+            override_path          = optional(bool, null)
+            ca_secret_uri          = optional(string, "")
+            client_cert_secret_uri = optional(string, "")
+            client_key_secret_uri  = optional(string, "")
+            headers                = optional(map(string), {})
+          })), [])
+        })), [])
+        writable_cgroups_enabled = optional(bool, null)
+      }), null)
+    }), null)
+
+    # Customer-managed control-plane CAs and KMS keys.
+    user_managed_keys = optional(object({
+      cluster_ca     = optional(string, "")
+      etcd_api_ca    = optional(string, "")
+      etcd_peer_ca   = optional(string, "")
+      aggregation_ca = optional(string, "")
+      # KMS key paths (plain strings after ref resolution).
+      control_plane_disk_encryption_key = optional(string, "")
+      gkeops_etcd_backup_encryption_key = optional(string, "")
+      service_account_signing_keys      = optional(list(string), [])
+      service_account_verification_keys = optional(list(string), [])
+    }), null)
   })
 }

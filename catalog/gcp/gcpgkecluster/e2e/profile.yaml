@@ -4,11 +4,13 @@ metadata:
   name: gcpgkecluster
 spec:
   # GKE control planes are the slowest resources in the harness: creates run
-  # 10-25 minutes and destroys 5-10, per scenario per engine. Batch runs with
-  # a go test -timeout of at least 120m.
+  # 10-25 minutes and destroys 5-10, per scenario per engine. With three
+  # scenarios (minimal, private-cluster, autopilot), batch runs with a
+  # go test -timeout of at least 180m.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
-  timeout_minutes: 120
+  # The spec and both modules were rebuilt to the full 7.43.0 provider
+  # surface; the prior proofs describe code that no longer exists. Flips
+  # back to green when the proof lane passes the live lanes.
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 180

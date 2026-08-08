@@ -41,7 +41,7 @@ func TestRenderPublicReport_Hermetic(t *testing.T) {
 		"built for 100% Terraform parity",
 		"`google@6.50.0`",
 		// Green with both engines is proven; green with one is partial.
-		"| TestWidget | 10 | 5 | 3 | 2 | 1 | ❌ | ✅ pulumi, terraform |",
+		"| TestWidget | 12 | 5 | 3 | 4 | 1 | ❌ | ✅ pulumi, terraform |",
 		"| TestPlain | 1 | 0 | 0 | 0 | 2 | ❌ | partial: pulumi |",
 		"### Composed (1)",
 		"| `google_composed_thing` | covered by TestWidget's composed_thing field |",

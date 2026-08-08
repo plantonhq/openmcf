@@ -325,17 +325,19 @@ func buildAccounting(cloudProvider string, spec []KindCensus, modules []ModuleCe
 	return acc
 }
 
-// argMatcher applies one resource's recorded judgment: exclusions by exact
-// path, then the longest recorded mapping prefix, then the default spec
-// root. No name heuristics, by design.
+// argMatcher applies one resource's recorded judgment: exclusions first
+// (exact path or subtree prefix — one judgment covers an excluded block and
+// everything under it, mirroring mappings and specExclusions), then the
+// longest recorded mapping prefix, then the default spec root. No name
+// heuristics, by design.
 type argMatcher struct {
 	specRoot   string
 	mappings   []Mapping // sorted by arg length, longest first
-	exclusions map[string]string
+	exclusions []string  // arg paths; each excludes itself and its subtree
 }
 
 func newArgMatcher(rm *ResourceManifest) argMatcher {
-	m := argMatcher{specRoot: specPathRoot, exclusions: map[string]string{}}
+	m := argMatcher{specRoot: specPathRoot}
 	if rm == nil {
 		return m
 	}
@@ -345,9 +347,22 @@ func newArgMatcher(rm *ResourceManifest) argMatcher {
 	m.mappings = append(m.mappings, rm.Mappings...)
 	sort.Slice(m.mappings, func(i, j int) bool { return len(m.mappings[i].Arg) > len(m.mappings[j].Arg) })
 	for _, ex := range rm.Exclusions {
-		m.exclusions[ex.Arg] = ex.Reason
+		m.exclusions = append(m.exclusions, ex.Arg)
 	}
 	return m
+}
+
+// excluded reports whether an argument is covered by a recorded exclusion,
+// either exactly or as a descendant of an excluded subtree. Blocks never
+// appear as arguments themselves (the census walks leaves), so a
+// block-naming exclusion is meaningful ONLY through this prefix form.
+func (m argMatcher) excluded(argPath string) bool {
+	for _, ex := range m.exclusions {
+		if argPath == ex || strings.HasPrefix(argPath, ex+".") {
+			return true
+		}
+	}
+	return false
 }
 
 // derive returns the spec path an argument must match, and whether a
@@ -410,7 +425,7 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 			}
 			argPaths[arg.Path] = true
 			ka.TotalArgs++
-			if _, excluded := matcher.exclusions[arg.Path]; excluded {
+			if matcher.excluded(arg.Path) {
 				ka.ExcludedArgs++
 				continue
 			}
@@ -453,7 +468,7 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 			}
 		}
 		for _, ex := range rm.Exclusions {
-			if !argPaths[ex.Arg] {
+			if !underPath(sortedArgs, ex.Arg) {
 				ka.ManifestStale = append(ka.ManifestStale,
 					fmt.Sprintf("%s: exclusion %s matches no configurable argument at the pin -- remove it", res, ex.Arg))
 			}
