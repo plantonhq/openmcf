@@ -1,11 +1,18 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor 6.33.0: the newest argument this module sends
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor 6.33.0: the newest argument this module sends
       # (domain_settings.trusted_identity_propagation_settings) landed in
       # provider 6.33.0; every other block in the module predates it.
-      version = ">= 6.33.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

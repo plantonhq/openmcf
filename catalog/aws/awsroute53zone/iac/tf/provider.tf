@@ -1,10 +1,17 @@
 terraform {
   required_providers {
     aws = {
-      # Floor 6.25.0: enable_accelerated_recovery landed there (the zone's
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor 6.25.0: enable_accelerated_recovery landed there (the zone's
       # vpc block, DNSSEC resources, and query logging are far older).
       source  = "hashicorp/aws"
-      version = ">= 6.25.0"
+      version = "~> 6.58"
     }
   }
 }

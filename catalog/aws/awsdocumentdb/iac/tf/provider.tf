@@ -1,12 +1,19 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a cap: DocumentDB Serverless
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: DocumentDB Serverless
       # (serverless_v2_scaling_configuration, v6.10) and network_type
       # (v6.23) are v6-line additions -- the v6.23 floor keeps the module
       # on the modern major where the whole modeled surface is present.
-      version = ">= 6.23.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

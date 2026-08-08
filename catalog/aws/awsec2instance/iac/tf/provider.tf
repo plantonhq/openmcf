@@ -3,12 +3,18 @@ terraform {
 
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a ceiling: cpu_options.nested_virtualization (6.33) is
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: cpu_options.nested_virtualization (6.33) is
       # the newest argument this module uses; secondary_network_interface
-      # landed in 6.32 and primary_network_interface in 6.10. `init`
-      # resolves the latest release at or above the floor.
-      version = ">= 6.33.0"
+      # landed in 6.32 and primary_network_interface in 6.10.
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

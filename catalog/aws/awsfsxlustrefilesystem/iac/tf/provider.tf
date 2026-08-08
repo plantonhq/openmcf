@@ -1,13 +1,20 @@
 terraform {
   required_providers {
     aws = {
-      # Family floor: >= 6.8.0 carries the full Lustre surface used by this
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor 6.8.0 carries the full Lustre surface used by this
       # module — INTELLIGENT_TIERING with throughput_capacity and
       # data_read_cache_configuration (including the read-cache size
       # validation fixed in 6.8.0), efa_enabled, root_squash_configuration,
       # final_backup_tags, and the legacy S3 link arm.
       source  = "hashicorp/aws"
-      version = ">= 6.8.0"
+      version = "~> 6.58"
     }
   }
 }

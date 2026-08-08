@@ -1,11 +1,18 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a cap: the valkey engine value and the current
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: the valkey engine value and the current
       # authentication_mode semantics are v6-era; an older floor would
       # silently reject part of the modeled surface.
-      version = ">= 6.0.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

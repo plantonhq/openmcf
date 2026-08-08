@@ -533,6 +533,21 @@ default-rule-set IDs are bare numerics (`942100`) -- an inferred bare
 `300700` was rejected by ARM on both engines with "managed rule IDs are
 not supported".
 
+### Angle-bracket placeholders in canonical manifests fail the offline plan gate
+
+A kind's `e2e/manifest.yaml` is the canonical validated example — refgen's
+Example source AND an offline-plan fixture — so every reference-shaped
+value in it must be syntactically REAL, never a `<placeholder>`. Provider
+schemas validate resource-identifier syntax at plan time (the AWS provider
+runs `ValidARN` on every ARN-typed argument), so `value: "<sns-topic-arn>"`
+passes proto validation (a free string) and fails the offline `tofu plan`
+with "invalid ARN: arn: invalid prefix". Use realistic well-formed values
+(`arn:aws:sns:us-west-2:123456789012:order-events`,
+`subnet-0a1b2c3d4e5f60001`) — they document the expected shape for users
+and agents, and they keep the manifest a working plan fixture. The same
+rule already governs presets; the trap here is that a manifest predating
+the offline gate can hide placeholders for years.
+
 ### Placeholder domains in receiver/endpoint URLs are server-validated
 
 When a fixture (or preset, or hack manifest) carries a URL the SERVICE

@@ -1,10 +1,17 @@
 terraform {
   required_providers {
     aws = {
-      # v6 family floor — kms_key_identifier, dead_letter_config, and
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor (v6 family baseline): kms_key_identifier, dead_letter_config, and
       # log_config on aws_cloudwatch_event_bus require the 6.x provider line.
       source  = "hashicorp/aws"
-      version = ">= 6.0.0"
+      version = "~> 6.58"
     }
   }
 }

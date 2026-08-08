@@ -1,11 +1,18 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a pin: the newest surface this module renders is the Kafka
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: the newest surface this module renders is the Kafka
       # schema_registry_config block, added to aws_lambda_event_source_mapping
       # in provider 6.16.0.
-      version = ">= 6.16.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

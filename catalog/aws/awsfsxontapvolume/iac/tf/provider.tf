@@ -1,12 +1,19 @@
 terraform {
   required_providers {
     aws = {
-      # Family floor: the complete volume surface used by this module
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor (family baseline): the complete volume surface used by this module
       # predates the v6 line (the last addition — final_backup_tags — landed
       # in 5.59.0), so the floor is the v6 major itself, keeping the FSx
       # family on one provider line.
       source  = "hashicorp/aws"
-      version = ">= 6.0.0"
+      version = "~> 6.58"
     }
   }
 }

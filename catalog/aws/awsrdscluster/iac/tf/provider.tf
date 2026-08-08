@@ -1,13 +1,20 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a cap: Serverless v2 automatic pause
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: Serverless v2 automatic pause
       # (serverlessv2_scaling_configuration.seconds_until_auto_pause) and
       # database_insights_mode are late-v5 additions -- the v6 floor keeps
       # the module on the modern major where the whole modeled surface
       # (including the iam-db-auth-error log type) is present.
-      version = ">= 6.0.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

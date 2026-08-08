@@ -9,8 +9,5 @@ spec:
   # AWS-managed policy by literal ARN and an inline policy, exercising the
   # attachment reconciliation on both engines. IAM is global and free.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 10

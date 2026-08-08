@@ -1,10 +1,17 @@
 terraform {
   required_providers {
     aws = {
-      # v6 family floor: everything this module renders (incl. the origin
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor (v6 family baseline): everything this module renders (incl. the origin
       # vpc_origin_config and per-behavior grpc_config blocks) predates 6.0.
       source  = "hashicorp/aws"
-      version = ">= 6.0.0"
+      version = "~> 6.58"
     }
   }
 }

@@ -2,13 +2,20 @@ terraform {
   required_version = ">= 1.0"
   required_providers {
     aws = {
-      # Floor 6.29.0: the API/domain ip_address_type argument landed on the
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor 6.29.0: the API/domain ip_address_type argument landed on the
       # 5.97 line, but 6.29.0 is where the apigatewayv2 family last changed
       # shape (domain routing_mode / routing rules) -- pinning the family
       # floor there keeps every argument this module and its siblings use
       # resolvable from one provider build.
       source  = "hashicorp/aws"
-      version = ">= 6.29.0"
+      version = "~> 6.58"
     }
   }
 }

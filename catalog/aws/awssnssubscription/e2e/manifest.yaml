@@ -5,8 +5,8 @@ metadata:
 spec:
   region: us-west-2
   topicArn:
-    value: "<sns-topic-arn>"
+    value: "arn:aws:sns:us-west-2:123456789012:order-events"
   protocol: sqs
   endpoint:
-    value: "<sqs-queue-arn>"
+    value: "arn:aws:sqs:us-west-2:123456789012:order-processor"
   rawMessageDelivery: true

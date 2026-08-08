@@ -10,8 +10,5 @@ spec:
   # allows one provider per unique URL per account) and never depends on an
   # external issuer being reachable. IAM is global and free.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 10
