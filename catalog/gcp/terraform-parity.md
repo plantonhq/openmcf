@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2687 |
+| Spec fields authored across all kinds | 2762 |
 | Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**10 of 79 kinds are at total accounting; 68 proven live.**
+**15 of 79 kinds are at total accounting; 63 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -70,14 +70,14 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpCloudRun | 134 | 16 | 0 | 0 | 193 | ❌ | ✅ pulumi, terraform |
 | GcpCloudRunJob | 79 | 7 | 0 | 0 | 117 | ❌ | ✅ pulumi, terraform |
 | GcpCloudSchedulerJob | 37 | 28 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
-| GcpCloudSql | 152 | 18 | 0 | 0 | 203 | ❌ | ✅ pulumi, terraform |
-| GcpCloudSqlDatabase | 6 | 3 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
-| GcpCloudSqlUser | 14 | 8 | 0 | 0 | 8 | ❌ | ✅ pulumi, terraform |
+| GcpCloudSql | 147 | 40 | 97 | 10 | 0 | ✅ | — |
+| GcpCloudSqlDatabase | 6 | 4 | 2 | 0 | 0 | ✅ | — |
+| GcpCloudSqlUser | 14 | 10 | 2 | 2 | 0 | ✅ | — |
 | GcpCloudTasksQueue | 34 | 20 | 0 | 0 | 21 | ❌ | ✅ pulumi, terraform |
 | GcpComputeDisk | 36 | 18 | 14 | 4 | 0 | ✅ | — |
 | GcpComputeInstance | 129 | 42 | 0 | 0 | 132 | ❌ | ✅ pulumi, terraform |
-| GcpDataprocAutoscalingPolicy | 21 | 14 | 0 | 0 | 8 | ❌ | ✅ pulumi, terraform |
-| GcpDataprocCluster | 153 | 64 | 0 | 0 | 137 | ❌ | ✅ pulumi, terraform |
+| GcpDataprocAutoscalingPolicy | 16 | 15 | 1 | 0 | 0 | ✅ | — |
+| GcpDataprocCluster | 148 | 77 | 52 | 19 | 0 | ✅ | — |
 | GcpDnsRecord | 54 | 42 | 0 | 0 | 18 | ❌ | ✅ pulumi, terraform |
 | GcpDnsZone | 28 | 16 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
 | GcpFilestoreInstance | 41 | 12 | 0 | 0 | 44 | ❌ | ✅ pulumi, terraform |

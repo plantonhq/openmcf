@@ -6,8 +6,6 @@ spec:
   # Leaf scenario: the policy is a pure control-plane object — create,
   # posture-verify (worker bounds + YARN algorithm), destroy in seconds.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

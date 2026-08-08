@@ -41,6 +41,13 @@ func database(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) er
 		args.Collation = pulumi.StringPtr(spec.Collation)
 	}
 
+	// DELETE (default) drops the database; ABANDON removes it from IaC
+	// management — the documented workaround when live connections block a
+	// PostgreSQL drop; PREVENT fails destroying previews.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdDatabase, err := sql.NewDatabase(ctx, "database", args, pulumi.Provider(gcpProvider))
 	if err != nil {
 		return errors.Wrap(err, "failed to create database")

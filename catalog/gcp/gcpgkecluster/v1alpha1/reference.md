@@ -57,10 +57,24 @@ spec:
     cidrBlocks:
       - cidrBlock: 203.0.113.0/24
         displayName: office
+  controlPlaneEndpoints:
+    dnsEndpointAllowExternalTraffic: true
+    enableK8sTokensViaDns: true
+  issueClientCertificate: false
+  nodeCreationMode: VIA_CONTROL_PLANE
   releaseChannel: REGULAR
+  gkeAutoUpgradePatchMode: ACCELERATED
   maintenancePolicy:
     dailyWindow:
       startTime: "03:00"
+    exclusions:
+      - exclusionName: year-end-freeze
+        startTime: "2026-12-20T00:00:00Z"
+        endTime: "2027-01-05T00:00:00Z"
+        scope: NO_MINOR_UPGRADES
+        endTimeBehavior: UNTIL_END_OF_SUPPORT
+    disruptionBudget:
+      patchVersionDisruptionInterval: "604800s"
   clusterAutoscaling:
     enabled: true
     resourceLimits:
@@ -72,6 +86,10 @@ spec:
         maximum: 256
     autoProvisioningDefaults:
       diskType: pd-balanced
+      upgradeSettings:
+        strategy: SURGE
+        maxSurge: 1
+        maxUnavailable: 0
   enableVerticalPodAutoscaling: true
   databaseEncryption:
     state: ENCRYPTED
@@ -89,9 +107,33 @@ spec:
       - SYSTEM_COMPONENTS
     managedPrometheusEnabled: true
   enableCostManagement: true
+  enableSecretManagerCsi: true
+  secretManagerRotation:
+    enabled: true
+    rotationInterval: "120s"
+  secretSync:
+    enabled: true
+    rotationEnabled: true
+    rotationInterval: "300s"
+  rbacBindingConfig:
+    enableInsecureBindingSystemAuthenticated: false
+    enableInsecureBindingSystemUnauthenticated: false
+  nodePoolDefaults:
+    gcfsEnabled: true
+    insecureKubeletReadonlyPortEnabled: "FALSE"
+    loggingVariant: DEFAULT
+  userManagedKeys:
+    clusterCa: projects/test-project-123/locations/us-central1/caPools/test-cluster-ca
+    controlPlaneDiskEncryptionKey:
+      value: projects/test-project-123/locations/us-central1/keyRings/test-ring/cryptoKeys/cp-disk-key
   addons:
     gcsFuseCsiDriverEnabled: true
     gkeBackupAgentEnabled: true
+    parallelstoreCsiDriverEnabled: true
+    rayOperatorEnabled: true
+    rayClusterLoggingEnabled: true
+  skipNodePoolRefresh: true
+  deletionPolicy: DELETE
   resourceLabels:
     team: platform
 ```

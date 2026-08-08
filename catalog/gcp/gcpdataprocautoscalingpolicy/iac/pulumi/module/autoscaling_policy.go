@@ -85,6 +85,13 @@ func autoscalingPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
 	}
 
+	// DELETE (default) deletes the policy; ABANDON removes it from IaC
+	// management; PREVENT fails destroying previews. The API's own
+	// referenced-by-a-cluster guard applies on top.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	// Secondary workers are the cost-optimized burst arm — no HDFS data,
 	// so the autoscaler can add and remove them aggressively.
 	if spec.SecondaryWorkerConfig != nil {

@@ -133,9 +133,11 @@ type GcpCloudSqlSpec struct {
 	Collation string `protobuf:"bytes,23,opt,name=collation,proto3" json:"collation,omitempty"`
 	// SQL Server only: SQLServer Audit — writes audit files to a GCS bucket.
 	SqlServerAuditConfig *GcpCloudSqlSqlServerAuditConfig `protobuf:"bytes,24,opt,name=sql_server_audit_config,json=sqlServerAuditConfig,proto3" json:"sql_server_audit_config,omitempty"`
-	// SQL Server only: domain of the Managed Microsoft AD the instance joins
-	// for Windows authentication, e.g. "ad.example.com".
-	ActiveDirectoryDomain string `protobuf:"bytes,25,opt,name=active_directory_domain,json=activeDirectoryDomain,proto3" json:"active_directory_domain,omitempty"`
+	// SQL Server only: the Active Directory the instance joins for Windows
+	// authentication — a Managed Microsoft AD domain or (with mode
+	// CUSTOMER_MANAGED_ACTIVE_DIRECTORY) a self-managed AD reached through
+	// the listed domain controllers.
+	ActiveDirectory *GcpCloudSqlActiveDirectoryConfig `protobuf:"bytes,25,opt,name=active_directory,json=activeDirectory,proto3" json:"active_directory,omitempty"`
 	// Connection-path enforcement. REQUIRED rejects all direct connections,
 	// admitting only Cloud SQL connectors / Auth Proxy traffic (which is
 	// always TLS-encrypted and IAM-authenticated). NOT_REQUIRED (default)
@@ -168,8 +170,9 @@ type GcpCloudSqlSpec struct {
 	// Accepts the primary's instance name or a reference to a GcpCloudSql
 	// resource. Immutable — an existing primary cannot be converted in place.
 	// The primary must have automated backups enabled (and binary logs on
-	// MySQL). Replica promotion (detaching a replica into a standalone
-	// primary) is an operational action performed outside IaC.
+	// MySQL). To promote a replica into a standalone primary, set
+	// instance_type to CLOUD_SQL_INSTANCE and clear this field and
+	// replica_configuration in the same change (the instance restarts).
 	MasterInstanceName *v1.StringValueOrRef `protobuf:"bytes,33,opt,name=master_instance_name,json=masterInstanceName,proto3" json:"master_instance_name,omitempty"`
 	// Replica behavior (failover target, cascading) and — for replicas of an
 	// external source — the replication channel credentials. Only meaningful
@@ -180,7 +183,69 @@ type GcpCloudSqlSpec struct {
 	// REQUIRED). Write-only in GCP: never readable back from the API and
 	// never exported in outputs. Create additional users as first-class
 	// GcpCloudSqlUser resources.
-	RootPassword  string `protobuf:"bytes,35,opt,name=root_password,json=rootPassword,proto3" json:"root_password,omitempty"`
+	RootPassword string `protobuf:"bytes,35,opt,name=root_password,json=rootPassword,proto3" json:"root_password,omitempty"`
+	// Engine-side teardown behavior. "DELETE" (default) destroys the
+	// instance; "PREVENT" fails any plan that would destroy it; "ABANDON"
+	// removes it from IaC management while leaving it running in GCP.
+	// Distinct from deletion_protection (which blocks the destroy) — ABANDON
+	// is the lever for handing an instance over to out-of-band management.
+	DeletionPolicy string `protobuf:"bytes,36,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	// The instance's role. Usually derived by GCP (primary vs replica);
+	// set explicitly for two workflows: READ_POOL_INSTANCE turns the
+	// resource into a read pool (with node_count / read_pool_auto_scale),
+	// and CLOUD_SQL_INSTANCE promotes an existing read replica into a
+	// standalone primary (clear master_instance_name and
+	// replica_configuration in the same change).
+	InstanceType string `protobuf:"bytes,37,opt,name=instance_type,json=instanceType,proto3" json:"instance_type,omitempty"`
+	// Read pools only: number of nodes serving reads behind the pool's
+	// single endpoint. Read-only while read_pool_auto_scale is enabled (the
+	// autoscaler owns it).
+	NodeCount *int32 `protobuf:"varint,38,opt,name=node_count,json=nodeCount,proto3,oneof" json:"node_count,omitempty"`
+	// Read pools only: automatic node-count scaling between min and max
+	// bounds, driven by target metrics.
+	ReadPoolAutoScale *GcpCloudSqlReadPoolAutoScale `protobuf:"bytes,39,opt,name=read_pool_auto_scale,json=readPoolAutoScale,proto3" json:"read_pool_auto_scale,omitempty"`
+	// Creates this instance as a CLONE of another instance — a full copy of
+	// its data at a point in time. A create-time source: changing it on an
+	// existing instance triggers a new clone operation.
+	Clone *GcpCloudSqlClone `protobuf:"bytes,40,opt,name=clone,proto3" json:"clone,omitempty"`
+	// Restores a specific backup run into this instance. An imperative
+	// restore trigger expressed declaratively: adding or changing the block
+	// runs the restore after the instance exists.
+	RestoreBackupContext *GcpCloudSqlRestoreBackupContext `protobuf:"bytes,41,opt,name=restore_backup_context,json=restoreBackupContext,proto3" json:"restore_backup_context,omitempty"`
+	// Restores this instance from a Backup and DR datasource to a point in
+	// time. Like restore_backup_context, adding or changing the block
+	// triggers the restore.
+	PointInTimeRestoreContext *GcpCloudSqlPointInTimeRestoreContext `protobuf:"bytes,42,opt,name=point_in_time_restore_context,json=pointInTimeRestoreContext,proto3" json:"point_in_time_restore_context,omitempty"`
+	// Restores from a Backup and DR backup (the backup's full resource
+	// name). The backup must be in active state. Adding or changing this
+	// triggers the restore.
+	BackupdrBackup string `protobuf:"bytes,43,opt,name=backupdr_backup,json=backupdrBackup,proto3" json:"backupdr_backup,omitempty"`
+	// Pins the instance's maintenance (patch) version. Cannot be set at
+	// creation; updating it restarts the instance. Values older than the
+	// running version are ignored by the API.
+	MaintenanceVersion string `protobuf:"bytes,44,opt,name=maintenance_version,json=maintenanceVersion,proto3" json:"maintenance_version,omitempty"`
+	// Declares the instance's read replicas by name from the primary's side.
+	// Most compositions leave this to GCP (replicas declare their primary
+	// via master_instance_name instead).
+	ReplicaNames []string `protobuf:"bytes,45,rep,name=replica_names,json=replicaNames,proto3" json:"replica_names,omitempty"`
+	// MySQL/PostgreSQL disaster recovery: names this primary's DR replica
+	// ("project:instance" or plain instance name), enabling switchover /
+	// replica failover between regions.
+	FailoverDrReplicaName string `protobuf:"bytes,46,opt,name=failover_dr_replica_name,json=failoverDrReplicaName,proto3" json:"failover_dr_replica_name,omitempty"`
+	// MySQL 8.0 only: opts the instance into automatic minor-version
+	// upgrades. The database_version must be an eligible MYSQL_8_0 minor.
+	AutoUpgradeEnabled bool `protobuf:"varint,47,opt,name=auto_upgrade_enabled,json=autoUpgradeEnabled,proto3" json:"auto_upgrade_enabled,omitempty"`
+	// Whether the ExecuteSql API may connect to this instance.
+	// DISALLOW_DATA_API (default) rejects it; ALLOW_DATA_API admits it —
+	// on private-IP instances this allows authorized users to reach the
+	// instance from the public internet through the API.
+	DataApiAccess string `protobuf:"bytes,48,opt,name=data_api_access,json=dataApiAccess,proto3" json:"data_api_access,omitempty"`
+	// A final backup taken automatically when the instance is deleted — the
+	// safety net that survives the teardown itself.
+	FinalBackup *GcpCloudSqlFinalBackup `protobuf:"bytes,49,opt,name=final_backup,json=finalBackup,proto3" json:"final_backup,omitempty"`
+	// SQL Server only: Microsoft Entra ID (Azure AD) authentication for the
+	// instance.
+	EntraId       *GcpCloudSqlEntraIdConfig `protobuf:"bytes,50,opt,name=entra_id,json=entraId,proto3" json:"entra_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -383,11 +448,11 @@ func (x *GcpCloudSqlSpec) GetSqlServerAuditConfig() *GcpCloudSqlSqlServerAuditCo
 	return nil
 }
 
-func (x *GcpCloudSqlSpec) GetActiveDirectoryDomain() string {
+func (x *GcpCloudSqlSpec) GetActiveDirectory() *GcpCloudSqlActiveDirectoryConfig {
 	if x != nil {
-		return x.ActiveDirectoryDomain
+		return x.ActiveDirectory
 	}
-	return ""
+	return nil
 }
 
 func (x *GcpCloudSqlSpec) GetConnectorEnforcement() string {
@@ -460,6 +525,111 @@ func (x *GcpCloudSqlSpec) GetRootPassword() string {
 	return ""
 }
 
+func (x *GcpCloudSqlSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlSpec) GetInstanceType() string {
+	if x != nil {
+		return x.InstanceType
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlSpec) GetNodeCount() int32 {
+	if x != nil && x.NodeCount != nil {
+		return *x.NodeCount
+	}
+	return 0
+}
+
+func (x *GcpCloudSqlSpec) GetReadPoolAutoScale() *GcpCloudSqlReadPoolAutoScale {
+	if x != nil {
+		return x.ReadPoolAutoScale
+	}
+	return nil
+}
+
+func (x *GcpCloudSqlSpec) GetClone() *GcpCloudSqlClone {
+	if x != nil {
+		return x.Clone
+	}
+	return nil
+}
+
+func (x *GcpCloudSqlSpec) GetRestoreBackupContext() *GcpCloudSqlRestoreBackupContext {
+	if x != nil {
+		return x.RestoreBackupContext
+	}
+	return nil
+}
+
+func (x *GcpCloudSqlSpec) GetPointInTimeRestoreContext() *GcpCloudSqlPointInTimeRestoreContext {
+	if x != nil {
+		return x.PointInTimeRestoreContext
+	}
+	return nil
+}
+
+func (x *GcpCloudSqlSpec) GetBackupdrBackup() string {
+	if x != nil {
+		return x.BackupdrBackup
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlSpec) GetMaintenanceVersion() string {
+	if x != nil {
+		return x.MaintenanceVersion
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlSpec) GetReplicaNames() []string {
+	if x != nil {
+		return x.ReplicaNames
+	}
+	return nil
+}
+
+func (x *GcpCloudSqlSpec) GetFailoverDrReplicaName() string {
+	if x != nil {
+		return x.FailoverDrReplicaName
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlSpec) GetAutoUpgradeEnabled() bool {
+	if x != nil {
+		return x.AutoUpgradeEnabled
+	}
+	return false
+}
+
+func (x *GcpCloudSqlSpec) GetDataApiAccess() string {
+	if x != nil {
+		return x.DataApiAccess
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlSpec) GetFinalBackup() *GcpCloudSqlFinalBackup {
+	if x != nil {
+		return x.FinalBackup
+	}
+	return nil
+}
+
+func (x *GcpCloudSqlSpec) GetEntraId() *GcpCloudSqlEntraIdConfig {
+	if x != nil {
+		return x.EntraId
+	}
+	return nil
+}
+
 // GcpCloudSqlDisk defines the instance's data disk.
 type GcpCloudSqlDisk struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -477,8 +647,14 @@ type GcpCloudSqlDisk struct {
 	// stops a runaway workload from growing a disk — and a bill — without
 	// bound.
 	AutoResizeLimit *int32 `protobuf:"varint,4,opt,name=auto_resize_limit,json=autoResizeLimit,proto3,oneof" json:"auto_resize_limit,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// HYPERDISK_BALANCED only: provisioned I/O operations per second for the
+	// data disk — the IOPS dial decoupled from disk size.
+	ProvisionedIops *int64 `protobuf:"varint,5,opt,name=provisioned_iops,json=provisionedIops,proto3,oneof" json:"provisioned_iops,omitempty"`
+	// HYPERDISK_BALANCED only: provisioned throughput in MiB/s for the data
+	// disk — the bandwidth dial decoupled from disk size.
+	ProvisionedThroughput *int64 `protobuf:"varint,6,opt,name=provisioned_throughput,json=provisionedThroughput,proto3,oneof" json:"provisioned_throughput,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *GcpCloudSqlDisk) Reset() {
@@ -539,6 +715,20 @@ func (x *GcpCloudSqlDisk) GetAutoResizeLimit() int32 {
 	return 0
 }
 
+func (x *GcpCloudSqlDisk) GetProvisionedIops() int64 {
+	if x != nil && x.ProvisionedIops != nil {
+		return *x.ProvisionedIops
+	}
+	return 0
+}
+
+func (x *GcpCloudSqlDisk) GetProvisionedThroughput() int64 {
+	if x != nil && x.ProvisionedThroughput != nil {
+		return *x.ProvisionedThroughput
+	}
+	return 0
+}
+
 // GcpCloudSqlNetwork defines how the instance is reachable: public IPv4,
 // private VPC IP, and/or Private Service Connect. At least one path must be
 // enabled.
@@ -589,9 +779,14 @@ type GcpCloudSqlNetwork struct {
 	// attachment that consumer VPCs connect to via PSC endpoints — private
 	// connectivity WITHOUT VPC peering. The PSC alternative to
 	// private_network.
-	Psc           *GcpCloudSqlPscConfig `protobuf:"bytes,10,opt,name=psc,proto3" json:"psc,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Psc *GcpCloudSqlPscConfig `protobuf:"bytes,10,opt,name=psc,proto3" json:"psc,omitempty"`
+	// Controls automatic rotation of the server certificate.
+	// NO_AUTOMATIC_ROTATION (default) or
+	// AUTOMATIC_ROTATION_DURING_MAINTENANCE (requires a CA Service
+	// server_ca_mode: GOOGLE_MANAGED_CAS_CA or CUSTOMER_MANAGED_CAS_CA).
+	ServerCertificateRotationMode string `protobuf:"bytes,11,opt,name=server_certificate_rotation_mode,json=serverCertificateRotationMode,proto3" json:"server_certificate_rotation_mode,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *GcpCloudSqlNetwork) Reset() {
@@ -694,6 +889,13 @@ func (x *GcpCloudSqlNetwork) GetPsc() *GcpCloudSqlPscConfig {
 	return nil
 }
 
+func (x *GcpCloudSqlNetwork) GetServerCertificateRotationMode() string {
+	if x != nil {
+		return x.ServerCertificateRotationMode
+	}
+	return ""
+}
+
 // GcpCloudSqlAuthorizedNetwork is one CIDR range allowed to connect directly
 // to the instance's public IP.
 type GcpCloudSqlAuthorizedNetwork struct {
@@ -774,8 +976,15 @@ type GcpCloudSqlPscConfig struct {
 	// PSC endpoints GCP creates automatically in the listed consumer
 	// networks — endpoint provisioning without consumer-side IaC.
 	AutoConnections []*GcpCloudSqlPscAutoConnection `protobuf:"bytes,4,rep,name=auto_connections,json=autoConnections,proto3" json:"auto_connections,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Automatically create DNS records for the PSC endpoints in the
+	// consumer networks — clients resolve the instance by name instead of
+	// tracking endpoint IPs.
+	AutoDnsEnabled bool `protobuf:"varint,5,opt,name=auto_dns_enabled,json=autoDnsEnabled,proto3" json:"auto_dns_enabled,omitempty"`
+	// Enterprise Plus only: also create a DNS record for the PSA write
+	// endpoint, so clients follow the primary across switchovers by name.
+	WriteEndpointDnsEnabled bool `protobuf:"varint,6,opt,name=write_endpoint_dns_enabled,json=writeEndpointDnsEnabled,proto3" json:"write_endpoint_dns_enabled,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *GcpCloudSqlPscConfig) Reset() {
@@ -834,6 +1043,20 @@ func (x *GcpCloudSqlPscConfig) GetAutoConnections() []*GcpCloudSqlPscAutoConnect
 		return x.AutoConnections
 	}
 	return nil
+}
+
+func (x *GcpCloudSqlPscConfig) GetAutoDnsEnabled() bool {
+	if x != nil {
+		return x.AutoDnsEnabled
+	}
+	return false
+}
+
+func (x *GcpCloudSqlPscConfig) GetWriteEndpointDnsEnabled() bool {
+	if x != nil {
+		return x.WriteEndpointDnsEnabled
+	}
+	return false
 }
 
 // GcpCloudSqlPscAutoConnection is one automatically created PSC endpoint in
@@ -977,8 +1200,11 @@ type GcpCloudSqlBackup struct {
 	// Number of daily backups retained (default 7). Older backups are pruned
 	// automatically.
 	RetainedBackups *int32 `protobuf:"varint,7,opt,name=retained_backups,json=retainedBackups,proto3,oneof" json:"retained_backups,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The unit retained_backups counts in. COUNT (the default and the only
+	// unit the API defines) retains that many most-recent backups.
+	RetentionUnit string `protobuf:"bytes,8,opt,name=retention_unit,json=retentionUnit,proto3" json:"retention_unit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpCloudSqlBackup) Reset() {
@@ -1058,6 +1284,13 @@ func (x *GcpCloudSqlBackup) GetRetainedBackups() int32 {
 		return *x.RetainedBackups
 	}
 	return 0
+}
+
+func (x *GcpCloudSqlBackup) GetRetentionUnit() string {
+	if x != nil {
+		return x.RetentionUnit
+	}
+	return ""
 }
 
 // GcpCloudSqlMaintenanceWindow is the weekly one-hour window in which GCP may
@@ -1208,8 +1441,11 @@ type GcpCloudSqlInsightsConfig struct {
 	// Sampled execution plans captured per minute across all queries
 	// (0 disables plan sampling; default 5).
 	QueryPlansPerMinute *int32 `protobuf:"varint,5,opt,name=query_plans_per_minute,json=queryPlansPerMinute,proto3,oneof" json:"query_plans_per_minute,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Enhanced Query Insights: longer retention and finer-grained query
+	// telemetry than the standard tier.
+	EnhancedQueryInsightsEnabled bool `protobuf:"varint,6,opt,name=enhanced_query_insights_enabled,json=enhancedQueryInsightsEnabled,proto3" json:"enhanced_query_insights_enabled,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *GcpCloudSqlInsightsConfig) Reset() {
@@ -1275,6 +1511,13 @@ func (x *GcpCloudSqlInsightsConfig) GetQueryPlansPerMinute() int32 {
 		return *x.QueryPlansPerMinute
 	}
 	return 0
+}
+
+func (x *GcpCloudSqlInsightsConfig) GetEnhancedQueryInsightsEnabled() bool {
+	if x != nil {
+		return x.EnhancedQueryInsightsEnabled
+	}
+	return false
 }
 
 // GcpCloudSqlPasswordValidationPolicy enforces password rules for built-in
@@ -1651,11 +1894,650 @@ func (x *GcpCloudSqlReplicaConfiguration) GetVerifyServerCertificate() bool {
 	return false
 }
 
+// GcpCloudSqlActiveDirectoryConfig joins a SQL Server instance to an Active
+// Directory for Windows authentication.
+type GcpCloudSqlActiveDirectoryConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The AD domain to join, e.g. "ad.example.com". With the default
+	// (managed) mode this is a Managed Microsoft AD domain in the project.
+	Domain string `protobuf:"bytes,1,opt,name=domain,proto3" json:"domain,omitempty"`
+	// MANAGED_ACTIVE_DIRECTORY (default) joins a Managed Microsoft AD
+	// domain; CUSTOMER_MANAGED_ACTIVE_DIRECTORY joins a self-managed AD
+	// bootstrapped through dns_servers and the admin credential.
+	Mode string `protobuf:"bytes,2,opt,name=mode,proto3" json:"mode,omitempty"`
+	// Customer-managed AD only: domain controller IPv4 addresses used to
+	// bootstrap the join.
+	DnsServers []string `protobuf:"bytes,3,rep,name=dns_servers,json=dnsServers,proto3" json:"dns_servers,omitempty"`
+	// Customer-managed AD only: the Secret Manager secret
+	// (projects/{project}/secrets/{secret}) holding the AD administrator
+	// credential used to join the domain. A secret NAME, not the credential
+	// itself.
+	AdminCredentialSecretName string `protobuf:"bytes,4,opt,name=admin_credential_secret_name,json=adminCredentialSecretName,proto3" json:"admin_credential_secret_name,omitempty"`
+	// Customer-managed AD only: the organizational unit distinguished name
+	// (full hierarchical path) the instance's computer account joins under.
+	OrganizationalUnit string `protobuf:"bytes,5,opt,name=organizational_unit,json=organizationalUnit,proto3" json:"organizational_unit,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *GcpCloudSqlActiveDirectoryConfig) Reset() {
+	*x = GcpCloudSqlActiveDirectoryConfig{}
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudSqlActiveDirectoryConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudSqlActiveDirectoryConfig) ProtoMessage() {}
+
+func (x *GcpCloudSqlActiveDirectoryConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudSqlActiveDirectoryConfig.ProtoReflect.Descriptor instead.
+func (*GcpCloudSqlActiveDirectoryConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GcpCloudSqlActiveDirectoryConfig) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlActiveDirectoryConfig) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlActiveDirectoryConfig) GetDnsServers() []string {
+	if x != nil {
+		return x.DnsServers
+	}
+	return nil
+}
+
+func (x *GcpCloudSqlActiveDirectoryConfig) GetAdminCredentialSecretName() string {
+	if x != nil {
+		return x.AdminCredentialSecretName
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlActiveDirectoryConfig) GetOrganizationalUnit() string {
+	if x != nil {
+		return x.OrganizationalUnit
+	}
+	return ""
+}
+
+// GcpCloudSqlEntraIdConfig enables Microsoft Entra ID (Azure AD)
+// authentication on a SQL Server instance. Both fields must be set together.
+type GcpCloudSqlEntraIdConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Entra ID application (client) ID.
+	ApplicationId string `protobuf:"bytes,1,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
+	// The Entra ID tenant (directory) ID.
+	TenantId      string `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudSqlEntraIdConfig) Reset() {
+	*x = GcpCloudSqlEntraIdConfig{}
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudSqlEntraIdConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudSqlEntraIdConfig) ProtoMessage() {}
+
+func (x *GcpCloudSqlEntraIdConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudSqlEntraIdConfig.ProtoReflect.Descriptor instead.
+func (*GcpCloudSqlEntraIdConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GcpCloudSqlEntraIdConfig) GetApplicationId() string {
+	if x != nil {
+		return x.ApplicationId
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlEntraIdConfig) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+// GcpCloudSqlFinalBackup configures the backup taken automatically when the
+// instance is deleted.
+type GcpCloudSqlFinalBackup struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether a final backup is taken on delete.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Days the final backup is retained.
+	RetentionDays *int32 `protobuf:"varint,2,opt,name=retention_days,json=retentionDays,proto3,oneof" json:"retention_days,omitempty"`
+	// Description recorded on the final backup.
+	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudSqlFinalBackup) Reset() {
+	*x = GcpCloudSqlFinalBackup{}
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudSqlFinalBackup) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudSqlFinalBackup) ProtoMessage() {}
+
+func (x *GcpCloudSqlFinalBackup) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudSqlFinalBackup.ProtoReflect.Descriptor instead.
+func (*GcpCloudSqlFinalBackup) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GcpCloudSqlFinalBackup) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *GcpCloudSqlFinalBackup) GetRetentionDays() int32 {
+	if x != nil && x.RetentionDays != nil {
+		return *x.RetentionDays
+	}
+	return 0
+}
+
+func (x *GcpCloudSqlFinalBackup) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+// GcpCloudSqlReadPoolAutoScale automatically sizes a read pool's node count
+// between bounds, driven by target metrics.
+type GcpCloudSqlReadPoolAutoScale struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether auto scaling is active. While enabled, node_count is owned by
+	// the autoscaler and read-only.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Lower bound of pool nodes; scale-in never goes below it.
+	MinNodeCount *int32 `protobuf:"varint,2,opt,name=min_node_count,json=minNodeCount,proto3,oneof" json:"min_node_count,omitempty"`
+	// Upper bound of pool nodes; scale-out never exceeds it.
+	MaxNodeCount *int32 `protobuf:"varint,3,opt,name=max_node_count,json=maxNodeCount,proto3,oneof" json:"max_node_count,omitempty"`
+	// Disables scale-in entirely: the pool only ever grows automatically.
+	DisableScaleIn bool `protobuf:"varint,4,opt,name=disable_scale_in,json=disableScaleIn,proto3" json:"disable_scale_in,omitempty"`
+	// Cooldown in seconds after a scale-in before another may run.
+	ScaleInCooldownSeconds *int32 `protobuf:"varint,5,opt,name=scale_in_cooldown_seconds,json=scaleInCooldownSeconds,proto3,oneof" json:"scale_in_cooldown_seconds,omitempty"`
+	// Cooldown in seconds after a scale-out before another may run.
+	ScaleOutCooldownSeconds *int32 `protobuf:"varint,6,opt,name=scale_out_cooldown_seconds,json=scaleOutCooldownSeconds,proto3,oneof" json:"scale_out_cooldown_seconds,omitempty"`
+	// Metrics the autoscaler steers by; nodes are added or removed to hold
+	// each metric at its target value.
+	TargetMetrics []*GcpCloudSqlReadPoolTargetMetric `protobuf:"bytes,7,rep,name=target_metrics,json=targetMetrics,proto3" json:"target_metrics,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudSqlReadPoolAutoScale) Reset() {
+	*x = GcpCloudSqlReadPoolAutoScale{}
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudSqlReadPoolAutoScale) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudSqlReadPoolAutoScale) ProtoMessage() {}
+
+func (x *GcpCloudSqlReadPoolAutoScale) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudSqlReadPoolAutoScale.ProtoReflect.Descriptor instead.
+func (*GcpCloudSqlReadPoolAutoScale) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GcpCloudSqlReadPoolAutoScale) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *GcpCloudSqlReadPoolAutoScale) GetMinNodeCount() int32 {
+	if x != nil && x.MinNodeCount != nil {
+		return *x.MinNodeCount
+	}
+	return 0
+}
+
+func (x *GcpCloudSqlReadPoolAutoScale) GetMaxNodeCount() int32 {
+	if x != nil && x.MaxNodeCount != nil {
+		return *x.MaxNodeCount
+	}
+	return 0
+}
+
+func (x *GcpCloudSqlReadPoolAutoScale) GetDisableScaleIn() bool {
+	if x != nil {
+		return x.DisableScaleIn
+	}
+	return false
+}
+
+func (x *GcpCloudSqlReadPoolAutoScale) GetScaleInCooldownSeconds() int32 {
+	if x != nil && x.ScaleInCooldownSeconds != nil {
+		return *x.ScaleInCooldownSeconds
+	}
+	return 0
+}
+
+func (x *GcpCloudSqlReadPoolAutoScale) GetScaleOutCooldownSeconds() int32 {
+	if x != nil && x.ScaleOutCooldownSeconds != nil {
+		return *x.ScaleOutCooldownSeconds
+	}
+	return 0
+}
+
+func (x *GcpCloudSqlReadPoolAutoScale) GetTargetMetrics() []*GcpCloudSqlReadPoolTargetMetric {
+	if x != nil {
+		return x.TargetMetrics
+	}
+	return nil
+}
+
+// GcpCloudSqlReadPoolTargetMetric is one metric target the read pool
+// autoscaler holds.
+type GcpCloudSqlReadPoolTargetMetric struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Metric name, e.g. a CPU utilization metric.
+	Metric string `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
+	// Target value for the metric.
+	TargetValue   float64 `protobuf:"fixed64,2,opt,name=target_value,json=targetValue,proto3" json:"target_value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudSqlReadPoolTargetMetric) Reset() {
+	*x = GcpCloudSqlReadPoolTargetMetric{}
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudSqlReadPoolTargetMetric) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudSqlReadPoolTargetMetric) ProtoMessage() {}
+
+func (x *GcpCloudSqlReadPoolTargetMetric) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudSqlReadPoolTargetMetric.ProtoReflect.Descriptor instead.
+func (*GcpCloudSqlReadPoolTargetMetric) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GcpCloudSqlReadPoolTargetMetric) GetMetric() string {
+	if x != nil {
+		return x.Metric
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlReadPoolTargetMetric) GetTargetValue() float64 {
+	if x != nil {
+		return x.TargetValue
+	}
+	return 0
+}
+
+// GcpCloudSqlClone creates the instance as a full copy of another instance's
+// data, optionally at a point in time.
+type GcpCloudSqlClone struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the source instance to clone.
+	SourceInstanceName string `protobuf:"bytes,1,opt,name=source_instance_name,json=sourceInstanceName,proto3" json:"source_instance_name,omitempty"`
+	// Project of the source instance, for cross-project clones. Defaults to
+	// this instance's project.
+	SourceProject string `protobuf:"bytes,2,opt,name=source_project,json=sourceProject,proto3" json:"source_project,omitempty"`
+	// RFC 3339 timestamp to clone from (point-in-time clone). Requires PITR
+	// (or binary logs on MySQL) on the source.
+	PointInTime string `protobuf:"bytes,3,opt,name=point_in_time,json=pointInTime,proto3" json:"point_in_time,omitempty"`
+	// PostgreSQL point-in-time clones only: the zone the clone lands in.
+	// Defaults to the source's zone.
+	PreferredZone string `protobuf:"bytes,4,opt,name=preferred_zone,json=preferredZone,proto3" json:"preferred_zone,omitempty"`
+	// SQL Server point-in-time clones only: clone just the named databases.
+	// Empty clones all databases.
+	DatabaseNames []string `protobuf:"bytes,5,rep,name=database_names,json=databaseNames,proto3" json:"database_names,omitempty"`
+	// Private-IP clones: the allocated IP range name (RFC 1035) the clone's
+	// private IP is drawn from.
+	AllocatedIpRange string `protobuf:"bytes,6,opt,name=allocated_ip_range,json=allocatedIpRange,proto3" json:"allocated_ip_range,omitempty"`
+	// Cloning a DELETED instance: the RFC 3339 timestamp of the source's
+	// deletion.
+	SourceInstanceDeletionTime string `protobuf:"bytes,7,opt,name=source_instance_deletion_time,json=sourceInstanceDeletionTime,proto3" json:"source_instance_deletion_time,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
+}
+
+func (x *GcpCloudSqlClone) Reset() {
+	*x = GcpCloudSqlClone{}
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudSqlClone) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudSqlClone) ProtoMessage() {}
+
+func (x *GcpCloudSqlClone) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudSqlClone.ProtoReflect.Descriptor instead.
+func (*GcpCloudSqlClone) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GcpCloudSqlClone) GetSourceInstanceName() string {
+	if x != nil {
+		return x.SourceInstanceName
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlClone) GetSourceProject() string {
+	if x != nil {
+		return x.SourceProject
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlClone) GetPointInTime() string {
+	if x != nil {
+		return x.PointInTime
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlClone) GetPreferredZone() string {
+	if x != nil {
+		return x.PreferredZone
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlClone) GetDatabaseNames() []string {
+	if x != nil {
+		return x.DatabaseNames
+	}
+	return nil
+}
+
+func (x *GcpCloudSqlClone) GetAllocatedIpRange() string {
+	if x != nil {
+		return x.AllocatedIpRange
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlClone) GetSourceInstanceDeletionTime() string {
+	if x != nil {
+		return x.SourceInstanceDeletionTime
+	}
+	return ""
+}
+
+// GcpCloudSqlRestoreBackupContext restores a specific backup run into this
+// instance. Declaratively expressed but imperative in effect: adding or
+// changing the block triggers the restore.
+type GcpCloudSqlRestoreBackupContext struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The backup run ID to restore.
+	BackupRunId int64 `protobuf:"varint,1,opt,name=backup_run_id,json=backupRunId,proto3" json:"backup_run_id,omitempty"`
+	// The instance the backup was taken from. Defaults to this instance.
+	InstanceId string `protobuf:"bytes,2,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
+	// The full project ID of the source instance.
+	Project       string `protobuf:"bytes,3,opt,name=project,proto3" json:"project,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudSqlRestoreBackupContext) Reset() {
+	*x = GcpCloudSqlRestoreBackupContext{}
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudSqlRestoreBackupContext) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudSqlRestoreBackupContext) ProtoMessage() {}
+
+func (x *GcpCloudSqlRestoreBackupContext) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudSqlRestoreBackupContext.ProtoReflect.Descriptor instead.
+func (*GcpCloudSqlRestoreBackupContext) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GcpCloudSqlRestoreBackupContext) GetBackupRunId() int64 {
+	if x != nil {
+		return x.BackupRunId
+	}
+	return 0
+}
+
+func (x *GcpCloudSqlRestoreBackupContext) GetInstanceId() string {
+	if x != nil {
+		return x.InstanceId
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlRestoreBackupContext) GetProject() string {
+	if x != nil {
+		return x.Project
+	}
+	return ""
+}
+
+// GcpCloudSqlPointInTimeRestoreContext restores this instance from a Backup
+// and DR datasource to a point in time. Adding or changing the block
+// triggers the restore.
+type GcpCloudSqlPointInTimeRestoreContext struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Backup and DR datasource URI to restore from.
+	Datasource string `protobuf:"bytes,1,opt,name=datasource,proto3" json:"datasource,omitempty"`
+	// RFC 3339 timestamp to restore to.
+	PointInTime string `protobuf:"bytes,2,opt,name=point_in_time,json=pointInTime,proto3" json:"point_in_time,omitempty"`
+	// Name of the target instance receiving the restore.
+	TargetInstance string `protobuf:"bytes,3,opt,name=target_instance,json=targetInstance,proto3" json:"target_instance,omitempty"`
+	// Region of the target instance, e.g. "us-central1".
+	Region string `protobuf:"bytes,4,opt,name=region,proto3" json:"region,omitempty"`
+	// The zone the restored instance lands in. Defaults to the source
+	// primary's zone.
+	PreferredZone string `protobuf:"bytes,5,opt,name=preferred_zone,json=preferredZone,proto3" json:"preferred_zone,omitempty"`
+	// Private-IP restores: the allocated IP range name (RFC 1035) the
+	// restored instance's private IP is drawn from.
+	AllocatedIpRange string `protobuf:"bytes,6,opt,name=allocated_ip_range,json=allocatedIpRange,proto3" json:"allocated_ip_range,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GcpCloudSqlPointInTimeRestoreContext) Reset() {
+	*x = GcpCloudSqlPointInTimeRestoreContext{}
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudSqlPointInTimeRestoreContext) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudSqlPointInTimeRestoreContext) ProtoMessage() {}
+
+func (x *GcpCloudSqlPointInTimeRestoreContext) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudSqlPointInTimeRestoreContext.ProtoReflect.Descriptor instead.
+func (*GcpCloudSqlPointInTimeRestoreContext) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *GcpCloudSqlPointInTimeRestoreContext) GetDatasource() string {
+	if x != nil {
+		return x.Datasource
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlPointInTimeRestoreContext) GetPointInTime() string {
+	if x != nil {
+		return x.PointInTime
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlPointInTimeRestoreContext) GetTargetInstance() string {
+	if x != nil {
+		return x.TargetInstance
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlPointInTimeRestoreContext) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlPointInTimeRestoreContext) GetPreferredZone() string {
+	if x != nil {
+		return x.PreferredZone
+	}
+	return ""
+}
+
+func (x *GcpCloudSqlPointInTimeRestoreContext) GetAllocatedIpRange() string {
+	if x != nil {
+		return x.AllocatedIpRange
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"+catalog/gcp/gcpcloudsql/v1alpha1/spec.proto\x12$dev.planton.gcp.gcpcloudsql.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x978\n" +
+	"+catalog/gcp/gcpcloudsql/v1alpha1/spec.proto\x12$dev.planton.gcp.gcpcloudsql.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xa2J\n" +
 	"\x0fGcpCloudSqlSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12M\n" +
@@ -1689,8 +2571,8 @@ const file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDesc = "" +
 	"\x10threads_per_core\x18\x15 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x02(\x01H\x03R\x0ethreadsPerCore\x88\x01\x01\x12\x1b\n" +
 	"\ttime_zone\x18\x16 \x01(\tR\btimeZone\x12\x1c\n" +
 	"\tcollation\x18\x17 \x01(\tR\tcollation\x12|\n" +
-	"\x17sql_server_audit_config\x18\x18 \x01(\v2E.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSqlServerAuditConfigR\x14sqlServerAuditConfig\x126\n" +
-	"\x17active_directory_domain\x18\x19 \x01(\tR\x15activeDirectoryDomain\x12\xcf\x01\n" +
+	"\x17sql_server_audit_config\x18\x18 \x01(\v2E.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSqlServerAuditConfigR\x14sqlServerAuditConfig\x12q\n" +
+	"\x10active_directory\x18\x19 \x01(\v2F.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlActiveDirectoryConfigR\x0factiveDirectory\x12\xcf\x01\n" +
 	"\x15connector_enforcement\x18\x1a \x01(\tB\x99\x01\xbaH\x95\x01\xba\x01\x91\x01\n" +
 	"\x1bconnector_enforcement_valid\x12>connector_enforcement must be empty, NOT_REQUIRED, or REQUIRED\x1a2this == '' || this in ['NOT_REQUIRED', 'REQUIRED']R\x14connectorEnforcement\x12?\n" +
 	"\x1cenable_google_ml_integration\x18\x1b \x01(\bR\x19enableGoogleMlIntegration\x12>\n" +
@@ -1701,10 +2583,29 @@ const file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDesc = "" +
 	"\x18retain_backups_on_delete\x18  \x01(\bR\x15retainBackupsOnDelete\x12\x8f\x01\n" +
 	"\x14master_instance_name\x18! \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xbc\x17\x92\xd4a\x1cstatus.outputs.instance_name\x98\xd4a\x01R\x12masterInstanceName\x12z\n" +
 	"\x15replica_configuration\x18\" \x01(\v2E.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlReplicaConfigurationR\x14replicaConfiguration\x123\n" +
-	"\rroot_password\x18# \x01(\tB\x0e\xbaH\a\xd8\x01\x01r\x02\x10\b\xa0\xa6\x1d\x01R\frootPassword\x1a@\n" +
+	"\rroot_password\x18# \x01(\tB\x0e\xbaH\a\xd8\x01\x01r\x02\x10\b\xa0\xa6\x1d\x01R\frootPassword\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18$ \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x12\xad\x02\n" +
+	"\rinstance_type\x18% \x01(\tB\x87\x02\xbaH\x83\x02\xba\x01\xff\x01\n" +
+	"\x13instance_type_valid\x12sinstance_type must be empty, CLOUD_SQL_INSTANCE, READ_REPLICA_INSTANCE, READ_POOL_INSTANCE, or ON_PREMISES_INSTANCE\x1asthis == '' || this in ['CLOUD_SQL_INSTANCE', 'READ_REPLICA_INSTANCE', 'READ_POOL_INSTANCE', 'ON_PREMISES_INSTANCE']R\finstanceType\x12+\n" +
+	"\n" +
+	"node_count\x18& \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x04R\tnodeCount\x88\x01\x01\x12s\n" +
+	"\x14read_pool_auto_scale\x18' \x01(\v2B.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlReadPoolAutoScaleR\x11readPoolAutoScale\x12L\n" +
+	"\x05clone\x18( \x01(\v26.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlCloneR\x05clone\x12{\n" +
+	"\x16restore_backup_context\x18) \x01(\v2E.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlRestoreBackupContextR\x14restoreBackupContext\x12\x8c\x01\n" +
+	"\x1dpoint_in_time_restore_context\x18* \x01(\v2J.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPointInTimeRestoreContextR\x19pointInTimeRestoreContext\x12'\n" +
+	"\x0fbackupdr_backup\x18+ \x01(\tR\x0ebackupdrBackup\x12/\n" +
+	"\x13maintenance_version\x18, \x01(\tR\x12maintenanceVersion\x126\n" +
+	"\rreplica_names\x18- \x03(\tB\x11\xbaH\x0e\xd8\x01\x01\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\freplicaNames\x127\n" +
+	"\x18failover_dr_replica_name\x18. \x01(\tR\x15failoverDrReplicaName\x120\n" +
+	"\x14auto_upgrade_enabled\x18/ \x01(\bR\x12autoUpgradeEnabled\x12\xcc\x01\n" +
+	"\x0fdata_api_access\x180 \x01(\tB\xa3\x01\xbaH\x9f\x01\xba\x01\x9b\x01\n" +
+	"\x15data_api_access_valid\x12Cdata_api_access must be empty, ALLOW_DATA_API, or DISALLOW_DATA_API\x1a=this == '' || this in ['ALLOW_DATA_API', 'DISALLOW_DATA_API']R\rdataApiAccess\x12_\n" +
+	"\ffinal_backup\x181 \x01(\v2<.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlFinalBackupR\vfinalBackup\x12Y\n" +
+	"\bentra_id\x182 \x01(\v2>.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlEntraIdConfigR\aentraId\x1a@\n" +
 	"\x12DatabaseFlagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x92\x1c\xbaH\x8e\x1c\x1a\x9f\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe1 \xbaH\xdd \x1a\x9f\x03\n" +
 	"\x1fdatabase_version_matches_engine\x12tdatabase_version must match database_engine: MYSQL_* for MYSQL, POSTGRES_* for POSTGRESQL, SQLSERVER_* for SQLSERVER\x1a\x85\x02(this.database_engine == 'MYSQL' && this.database_version.startsWith('MYSQL_')) || (this.database_engine == 'POSTGRESQL' && this.database_version.startsWith('POSTGRES_')) || (this.database_engine == 'SQLSERVER' && this.database_version.startsWith('SQLSERVER_'))\x1a\xe4\x01\n" +
 	" sqlserver_requires_root_password\x12\x7froot_password is required for SQL Server instances — the engine cannot bootstrap without an initial 'sqlserver' user password\x1a?this.database_engine != 'SQLSERVER' || this.root_password != ''\x1a\xba\x02\n" +
 	"#pitr_requires_postgres_or_sqlserver\x12\x99\x01point_in_time_recovery_enabled applies to POSTGRESQL and SQLSERVER only — MySQL point-in-time recovery is enabled via backup.binary_log_enabled instead\x1aw!has(this.backup) || !this.backup.point_in_time_recovery_enabled || this.database_engine in ['POSTGRESQL', 'SQLSERVER']\x1a\xee\x01\n" +
@@ -1715,8 +2616,11 @@ const file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1ctime_zone_requires_sqlserver\x12.time_zone applies to SQL Server instances only\x1a;this.time_zone == '' || this.database_engine == 'SQLSERVER'\x1a\xce\x01\n" +
 	"\x1ccollation_requires_sqlserver\x12qcollation (server-level) applies to SQL Server instances only — MySQL and PostgreSQL set collation per database\x1a;this.collation == '' || this.database_engine == 'SQLSERVER'\x1a\xa0\x01\n" +
 	"#threads_per_core_requires_sqlserver\x125threads_per_core applies to SQL Server instances only\x1aB!has(this.threads_per_core) || this.database_engine == 'SQLSERVER'\x1a\xaa\x01\n" +
-	"\x1faudit_config_requires_sqlserver\x12<sql_server_audit_config applies to SQL Server instances only\x1aI!has(this.sql_server_audit_config) || this.database_engine == 'SQLSERVER'\x1a\xae\x01\n" +
-	"#active_directory_requires_sqlserver\x12<active_directory_domain applies to SQL Server instances only\x1aIthis.active_directory_domain == '' || this.database_engine == 'SQLSERVER'\x1a\x98\x02\n" +
+	"\x1faudit_config_requires_sqlserver\x12<sql_server_audit_config applies to SQL Server instances only\x1aI!has(this.sql_server_audit_config) || this.database_engine == 'SQLSERVER'\x1a\xa0\x01\n" +
+	"#active_directory_requires_sqlserver\x125active_directory applies to SQL Server instances only\x1aB!has(this.active_directory) || this.database_engine == 'SQLSERVER'\x1a\x88\x01\n" +
+	"\x1bentra_id_requires_sqlserver\x12-entra_id applies to SQL Server instances only\x1a:!has(this.entra_id) || this.database_engine == 'SQLSERVER'\x1a\xfb\x01\n" +
+	"%read_pool_requires_read_pool_instance\x12hnode_count and read_pool_auto_scale apply to read pools only — set instance_type to READ_POOL_INSTANCE\x1ah(!has(this.node_count) && !has(this.read_pool_auto_scale)) || this.instance_type == 'READ_POOL_INSTANCE'\x1a\xd1\x01\n" +
+	")final_backup_description_requires_enabled\x12Gfinal_backup.description applies only when final_backup.enabled is true\x1a[!has(this.final_backup) || this.final_backup.description == '' || this.final_backup.enabled\x1a\x98\x02\n" +
 	"*password_change_interval_requires_postgres\x12Xpassword_validation_policy.password_change_interval applies to POSTGRESQL instances only\x1a\x8f\x01!has(this.password_validation_policy) || this.password_validation_policy.password_change_interval == '' || this.database_engine == 'POSTGRESQL'\x1a\xb6\x02\n" +
 	"%replica_configuration_requires_master\x12oreplica_configuration is only meaningful on a read replica — set master_instance_name to the primary instance\x1a\x9b\x01!has(this.replica_configuration) || (has(this.master_instance_name) && (has(this.master_instance_name.value) || has(this.master_instance_name.value_from)))\x1a\xef\x01\n" +
 	" secondary_zone_requires_regional\x12Rlocation_preference.secondary_zone applies only when availability_type is REGIONAL\x1aw!has(this.location_preference) || this.location_preference.secondary_zone == '' || this.availability_type == 'REGIONAL'B\n" +
@@ -1724,7 +2628,8 @@ const file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDesc = "" +
 	"\b_editionB\x14\n" +
 	"\x12_availability_typeB\x14\n" +
 	"\x12_activation_policyB\x13\n" +
-	"\x11_threads_per_core\"\xba\x04\n" +
+	"\x11_threads_per_coreB\r\n" +
+	"\v_node_count\"\xd4\a\n" +
 	"\x0fGcpCloudSqlDisk\x12\xa9\x01\n" +
 	"\x04type\x18\x01 \x01(\tB\x8f\x01\xbaH\x81\x01\xba\x01~\n" +
 	"\x0fdisk_type_valid\x127disk type must be PD_SSD, PD_HDD, or HYPERDISK_BALANCED\x1a2this in ['PD_SSD', 'PD_HDD', 'HYPERDISK_BALANCED']\x8a\xa6\x1d\x06PD_SSDH\x00R\x04type\x88\x01\x01\x12/\n" +
@@ -1732,13 +2637,18 @@ const file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDesc = "" +
 	"\x8a\xa6\x1d\x0210H\x01R\x06sizeGb\x88\x01\x01\x12.\n" +
 	"\vauto_resize\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\n" +
 	"autoResize\x88\x01\x01\x128\n" +
-	"\x11auto_resize_limit\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x03R\x0fautoResizeLimit\x88\x01\x01:\xa4\x01\xbaH\xa0\x01\x1a\x9d\x01\n" +
-	"\x12hyperdisk_min_size\x127HYPERDISK_BALANCED disks require size_gb of at least 20\x1aNthis.type != 'HYPERDISK_BALANCED' || (has(this.size_gb) && this.size_gb >= 20)B\a\n" +
+	"\x11auto_resize_limit\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x03R\x0fautoResizeLimit\x88\x01\x01\x127\n" +
+	"\x10provisioned_iops\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x04R\x0fprovisionedIops\x88\x01\x01\x12C\n" +
+	"\x16provisioned_throughput\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x05R\x15provisionedThroughput\x88\x01\x01:\x90\x03\xbaH\x8c\x03\x1a\x9d\x01\n" +
+	"\x12hyperdisk_min_size\x127HYPERDISK_BALANCED disks require size_gb of at least 20\x1aNthis.type != 'HYPERDISK_BALANCED' || (has(this.size_gb) && this.size_gb >= 20)\x1a\xe9\x01\n" +
+	"*provisioned_performance_requires_hyperdisk\x12Rprovisioned_iops and provisioned_throughput apply to HYPERDISK_BALANCED disks only\x1ag(!has(this.provisioned_iops) && !has(this.provisioned_throughput)) || this.type == 'HYPERDISK_BALANCED'B\a\n" +
 	"\x05_typeB\n" +
 	"\n" +
 	"\b_size_gbB\x0e\n" +
 	"\f_auto_resizeB\x14\n" +
-	"\x12_auto_resize_limit\"\x98\x16\n" +
+	"\x12_auto_resize_limitB\x13\n" +
+	"\x11_provisioned_iopsB\x19\n" +
+	"\x17_provisioned_throughput\"\xa8\x1b\n" +
 	"\x12GcpCloudSqlNetwork\x12\x83\x01\n" +
 	"\x0fprivate_network\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xc2\x17\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\x0eprivateNetwork\x12!\n" +
 	"\fipv4_enabled\x18\x02 \x01(\bR\vipv4Enabled\x12s\n" +
@@ -1752,31 +2662,36 @@ const file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0eserver_ca_pool\x18\b \x01(\tR\fserverCaPool\x12Z\n" +
 	" custom_subject_alternative_names\x18\t \x03(\tB\x11\xbaH\x0e\xd8\x01\x01\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\x1dcustomSubjectAlternativeNames\x12L\n" +
 	"\x03psc\x18\n" +
-	" \x01(\v2:.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscConfigR\x03psc:\xca\f\xbaH\xc6\f\x1a\x9d\x02\n" +
+	" \x01(\v2:.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscConfigR\x03psc\x12\xb7\x02\n" +
+	" server_certificate_rotation_mode\x18\v \x01(\tB\xed\x01\xbaH\xe9\x01\xba\x01\xe5\x01\n" +
+	"\x18cert_rotation_mode_valid\x12oserver_certificate_rotation_mode must be empty, NO_AUTOMATIC_ROTATION, or AUTOMATIC_ROTATION_DURING_MAINTENANCE\x1aXthis == '' || this in ['NO_AUTOMATIC_ROTATION', 'AUTOMATIC_ROTATION_DURING_MAINTENANCE']R\x1dserverCertificateRotationMode:\xa0\x0f\xbaH\x9c\x0f\x1a\x9d\x02\n" +
 	"\x15connectivity_required\x12]at least one connectivity path must be enabled: ipv4_enabled, private_network, or psc.enabled\x1a\xa4\x01this.ipv4_enabled || (has(this.private_network) && (has(this.private_network.value) || has(this.private_network.value_from))) || (has(this.psc) && this.psc.enabled)\x1a\xa5\x01\n" +
 	" authorized_networks_require_ipv4\x12Gauthorized_networks apply to the public IP — set ipv4_enabled to true\x1a8size(this.authorized_networks) == 0 || this.ipv4_enabled\x1a\xf8\x01\n" +
 	"(allocated_range_requires_private_network\x12@allocated_ip_range applies to private IP — set private_network\x1a\x89\x01this.allocated_ip_range == '' || (has(this.private_network) && (has(this.private_network.value) || has(this.private_network.value_from)))\x1a\xa6\x02\n" +
 	"%private_path_requires_private_network\x12[enable_private_path_for_google_cloud_services applies to private IP — set private_network\x1a\x9f\x01!this.enable_private_path_for_google_cloud_services || (has(this.private_network) && (has(this.private_network.value) || has(this.private_network.value_from)))\x1a\xb6\x01\n" +
 	"\x1acustomer_cas_requires_pool\x12Iserver_ca_pool is required when server_ca_mode is CUSTOMER_MANAGED_CAS_CA\x1aMthis.server_ca_mode != 'CUSTOMER_MANAGED_CAS_CA' || this.server_ca_pool != ''\x1a\xb7\x01\n" +
 	"\x1apool_requires_customer_cas\x12Jserver_ca_pool applies only when server_ca_mode is CUSTOMER_MANAGED_CAS_CA\x1aMthis.server_ca_pool == '' || this.server_ca_mode == 'CUSTOMER_MANAGED_CAS_CA'\x1a\xe4\x01\n" +
-	" custom_sans_require_customer_cas\x12Zcustom_subject_alternative_names apply only when server_ca_mode is CUSTOMER_MANAGED_CAS_CA\x1adsize(this.custom_subject_alternative_names) == 0 || this.server_ca_mode == 'CUSTOMER_MANAGED_CAS_CA'\"\xa5\x01\n" +
+	" custom_sans_require_customer_cas\x12Zcustom_subject_alternative_names apply only when server_ca_mode is CUSTOMER_MANAGED_CAS_CA\x1adsize(this.custom_subject_alternative_names) == 0 || this.server_ca_mode == 'CUSTOMER_MANAGED_CAS_CA'\x1a\xd3\x02\n" +
+	"\x1dcert_rotation_requires_cas_ca\x12\x8f\x01server_certificate_rotation_mode AUTOMATIC_ROTATION_DURING_MAINTENANCE requires server_ca_mode GOOGLE_MANAGED_CAS_CA or CUSTOMER_MANAGED_CAS_CA\x1a\x9f\x01this.server_certificate_rotation_mode != 'AUTOMATIC_ROTATION_DURING_MAINTENANCE' || this.server_ca_mode in ['GOOGLE_MANAGED_CAS_CA', 'CUSTOMER_MANAGED_CAS_CA']\"\xa5\x01\n" +
 	"\x1cGcpCloudSqlAuthorizedNetwork\x12H\n" +
 	"\x05value\x18\x01 \x01(\tB2\xbaH/\xc8\x01\x01r*2(^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$R\x05value\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12'\n" +
-	"\x0fexpiration_time\x18\x03 \x01(\tR\x0eexpirationTime\"\x83\x04\n" +
+	"\x0fexpiration_time\x18\x03 \x01(\tR\x0eexpirationTime\"\xa8\x05\n" +
 	"\x14GcpCloudSqlPscConfig\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12M\n" +
 	"\x19allowed_consumer_projects\x18\x02 \x03(\tB\x11\xbaH\x0e\xd8\x01\x01\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\x17allowedConsumerProjects\x124\n" +
 	"\x16network_attachment_uri\x18\x03 \x01(\tR\x14networkAttachmentUri\x12m\n" +
-	"\x10auto_connections\x18\x04 \x03(\v2B.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscAutoConnectionR\x0fautoConnections:\xdc\x01\xbaH\xd8\x01\x1a\xd5\x01\n" +
-	"\x1apsc_fields_require_enabled\x120PSC settings apply only when psc.enabled is true\x1a\x84\x01this.enabled || (size(this.allowed_consumer_projects) == 0 && this.network_attachment_uri == '' && size(this.auto_connections) == 0)\"\x94\x01\n" +
+	"\x10auto_connections\x18\x04 \x03(\v2B.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscAutoConnectionR\x0fautoConnections\x12(\n" +
+	"\x10auto_dns_enabled\x18\x05 \x01(\bR\x0eautoDnsEnabled\x12;\n" +
+	"\x1awrite_endpoint_dns_enabled\x18\x06 \x01(\bR\x17writeEndpointDnsEnabled:\x9a\x02\xbaH\x96\x02\x1a\x93\x02\n" +
+	"\x1apsc_fields_require_enabled\x120PSC settings apply only when psc.enabled is true\x1a\xc2\x01this.enabled || (size(this.allowed_consumer_projects) == 0 && this.network_attachment_uri == '' && size(this.auto_connections) == 0 && !this.auto_dns_enabled && !this.write_endpoint_dns_enabled)\"\x94\x01\n" +
 	"\x1cGcpCloudSqlPscAutoConnection\x125\n" +
 	"\x10consumer_network\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x0fconsumerNetwork\x12=\n" +
 	"\x1bconsumer_service_project_id\x18\x02 \x01(\tR\x18consumerServiceProjectId\"Z\n" +
 	"\x1dGcpCloudSqlLocationPreference\x12\x12\n" +
 	"\x04zone\x18\x01 \x01(\tR\x04zone\x12%\n" +
-	"\x0esecondary_zone\x18\x02 \x01(\tR\rsecondaryZone\"\xb0\x06\n" +
+	"\x0esecondary_zone\x18\x02 \x01(\tR\rsecondaryZone\"\xbc\a\n" +
 	"\x11GcpCloudSqlBackup\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12I\n" +
 	"\n" +
@@ -1785,7 +2700,9 @@ const file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDesc = "" +
 	"\x12binary_log_enabled\x18\x04 \x01(\bR\x10binaryLogEnabled\x12B\n" +
 	"\x1epoint_in_time_recovery_enabled\x18\x05 \x01(\bR\x1apointInTimeRecoveryEnabled\x12S\n" +
 	"\x1etransaction_log_retention_days\x18\x06 \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x01H\x00R\x1btransactionLogRetentionDays\x88\x01\x01\x127\n" +
-	"\x10retained_backups\x18\a \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x01R\x0fretainedBackups\x88\x01\x01:\xe1\x02\xbaH\xdd\x02\x1a\xda\x02\n" +
+	"\x10retained_backups\x18\a \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x01R\x0fretainedBackups\x88\x01\x01\x12\x89\x01\n" +
+	"\x0eretention_unit\x18\b \x01(\tBb\xbaH_\xba\x01\\\n" +
+	"\x14retention_unit_valid\x12%retention_unit must be empty or COUNT\x1a\x1dthis == '' || this == 'COUNT'R\rretentionUnit:\xe1\x02\xbaH\xdd\x02\x1a\xda\x02\n" +
 	"\x1fbackup_settings_require_enabled\x12fbackup settings (start_time, location, retention, binary logs, PITR) require backup.enabled to be true\x1a\xce\x01this.enabled || (this.start_time == '' && this.location == '' && !this.binary_log_enabled && !this.point_in_time_recovery_enabled && !has(this.transaction_log_retention_days) && !has(this.retained_backups))B!\n" +
 	"\x1f_transaction_log_retention_daysB\x13\n" +
 	"\x11_retained_backups\"\x98\x02\n" +
@@ -1799,13 +2716,14 @@ const file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
 	"start_date\x18\x01 \x01(\tB)\xbaH&\xc8\x01\x01r!2\x1f^([0-9]{4}-)?[0-9]{2}-[0-9]{2}$R\tstartDate\x12D\n" +
 	"\bend_date\x18\x02 \x01(\tB)\xbaH&\xc8\x01\x01r!2\x1f^([0-9]{4}-)?[0-9]{2}-[0-9]{2}$R\aendDate\x12@\n" +
-	"\x04time\x18\x03 \x01(\tB,\xbaH)\xc8\x01\x01r$2\"^[0-2][0-9]:[0-5][0-9]:[0-5][0-9]$R\x04time\"\x8d\x05\n" +
+	"\x04time\x18\x03 \x01(\tB,\xbaH)\xc8\x01\x01r$2\"^[0-2][0-9]:[0-5][0-9]:[0-5][0-9]$R\x04time\"\xd4\x05\n" +
 	"\x19GcpCloudSqlInsightsConfig\x124\n" +
 	"\x16query_insights_enabled\x18\x01 \x01(\bR\x14queryInsightsEnabled\x12@\n" +
 	"\x13query_string_length\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x94#(\x80\x02H\x00R\x11queryStringLength\x88\x01\x01\x126\n" +
 	"\x17record_application_tags\x18\x03 \x01(\bR\x15recordApplicationTags\x122\n" +
 	"\x15record_client_address\x18\x04 \x01(\bR\x13recordClientAddress\x12C\n" +
-	"\x16query_plans_per_minute\x18\x05 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x14(\x00H\x01R\x13queryPlansPerMinute\x88\x01\x01:\x93\x02\xbaH\x8f\x02\x1a\x8c\x02\n" +
+	"\x16query_plans_per_minute\x18\x05 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x14(\x00H\x01R\x13queryPlansPerMinute\x88\x01\x01\x12E\n" +
+	"\x1fenhanced_query_insights_enabled\x18\x06 \x01(\bR\x1cenhancedQueryInsightsEnabled:\x93\x02\xbaH\x8f\x02\x1a\x8c\x02\n" +
 	"!insights_settings_require_enabled\x12@insights settings apply only when query_insights_enabled is true\x1a\xa4\x01this.query_insights_enabled || (!has(this.query_string_length) && !this.record_application_tags && !this.record_client_address && !has(this.query_plans_per_minute))B\x16\n" +
 	"\x14_query_string_lengthB\x19\n" +
 	"\x17_query_plans_per_minute\"\xc9\x05\n" +
@@ -1855,7 +2773,69 @@ const file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDesc = "" +
 	"ssl_cipher\x18\v \x01(\tR\tsslCipher\x12:\n" +
 	"\x19verify_server_certificate\x18\f \x01(\bR\x17verifyServerCertificateB\x19\n" +
 	"\x17_connect_retry_intervalB\x1a\n" +
-	"\x18_master_heartbeat_periodB\xbd\x02\n" +
+	"\x18_master_heartbeat_period\"\xa5\x06\n" +
+	" GcpCloudSqlActiveDirectoryConfig\x12\"\n" +
+	"\x06domain\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06domain\x12\xd9\x01\n" +
+	"\x04mode\x18\x02 \x01(\tB\xc4\x01\xbaH\xc0\x01\xba\x01\xbc\x01\n" +
+	"\rad_mode_valid\x12Rmode must be empty, MANAGED_ACTIVE_DIRECTORY, or CUSTOMER_MANAGED_ACTIVE_DIRECTORY\x1aWthis == '' || this in ['MANAGED_ACTIVE_DIRECTORY', 'CUSTOMER_MANAGED_ACTIVE_DIRECTORY']R\x04mode\x12O\n" +
+	"\vdns_servers\x18\x03 \x03(\tB.\xbaH+\xd8\x01\x01\x92\x01%\x18\x01\"!r\x1f2\x1d^([0-9]{1,3}\\.){3}[0-9]{1,3}$R\n" +
+	"dnsServers\x12?\n" +
+	"\x1cadmin_credential_secret_name\x18\x04 \x01(\tR\x19adminCredentialSecretName\x12/\n" +
+	"\x13organizational_unit\x18\x05 \x01(\tR\x12organizationalUnit:\xbd\x02\xbaH\xb9\x02\x1a\xb6\x02\n" +
+	"\x1acustomer_managed_ad_fields\x12wdns_servers, admin_credential_secret_name, and organizational_unit apply to CUSTOMER_MANAGED_ACTIVE_DIRECTORY mode only\x1a\x9e\x01this.mode == 'CUSTOMER_MANAGED_ACTIVE_DIRECTORY' || (size(this.dns_servers) == 0 && this.admin_credential_secret_name == '' && this.organizational_unit == '')\"v\n" +
+	"\x18GcpCloudSqlEntraIdConfig\x121\n" +
+	"\x0eapplication_id\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\rapplicationId\x12'\n" +
+	"\ttenant_id\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\btenantId\"\x9c\x01\n" +
+	"\x16GcpCloudSqlFinalBackup\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x123\n" +
+	"\x0eretention_days\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\rretentionDays\x88\x01\x01\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescriptionB\x11\n" +
+	"\x0f_retention_days\"\xf9\x05\n" +
+	"\x1cGcpCloudSqlReadPoolAutoScale\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x122\n" +
+	"\x0emin_node_count\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\fminNodeCount\x88\x01\x01\x122\n" +
+	"\x0emax_node_count\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x01R\fmaxNodeCount\x88\x01\x01\x12(\n" +
+	"\x10disable_scale_in\x18\x04 \x01(\bR\x0edisableScaleIn\x12G\n" +
+	"\x19scale_in_cooldown_seconds\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x02R\x16scaleInCooldownSeconds\x88\x01\x01\x12I\n" +
+	"\x1ascale_out_cooldown_seconds\x18\x06 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x03R\x17scaleOutCooldownSeconds\x88\x01\x01\x12l\n" +
+	"\x0etarget_metrics\x18\a \x03(\v2E.dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlReadPoolTargetMetricR\rtargetMetrics:\xc7\x01\xbaH\xc3\x01\x1a\xc0\x01\n" +
+	"\x18read_pool_bounds_ordered\x12>max_node_count must be greater than or equal to min_node_count\x1ad!has(this.min_node_count) || !has(this.max_node_count) || this.max_node_count >= this.min_node_countB\x11\n" +
+	"\x0f_min_node_countB\x11\n" +
+	"\x0f_max_node_countB\x1c\n" +
+	"\x1a_scale_in_cooldown_secondsB\x1d\n" +
+	"\x1b_scale_out_cooldown_seconds\"h\n" +
+	"\x1fGcpCloudSqlReadPoolTargetMetric\x12\"\n" +
+	"\x06metric\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06metric\x12!\n" +
+	"\ftarget_value\x18\x02 \x01(\x01R\vtargetValue\"\xed\x02\n" +
+	"\x10GcpCloudSqlClone\x12<\n" +
+	"\x14source_instance_name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x12sourceInstanceName\x12%\n" +
+	"\x0esource_project\x18\x02 \x01(\tR\rsourceProject\x12\"\n" +
+	"\rpoint_in_time\x18\x03 \x01(\tR\vpointInTime\x12%\n" +
+	"\x0epreferred_zone\x18\x04 \x01(\tR\rpreferredZone\x128\n" +
+	"\x0edatabase_names\x18\x05 \x03(\tB\x11\xbaH\x0e\xd8\x01\x01\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\rdatabaseNames\x12,\n" +
+	"\x12allocated_ip_range\x18\x06 \x01(\tR\x10allocatedIpRange\x12A\n" +
+	"\x1dsource_instance_deletion_time\x18\a \x01(\tR\x1asourceInstanceDeletionTime\"\x89\x01\n" +
+	"\x1fGcpCloudSqlRestoreBackupContext\x12+\n" +
+	"\rbackup_run_id\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02(\x01R\vbackupRunId\x12\x1f\n" +
+	"\vinstance_id\x18\x02 \x01(\tR\n" +
+	"instanceId\x12\x18\n" +
+	"\aproject\x18\x03 \x01(\tR\aproject\"\x98\x02\n" +
+	"$GcpCloudSqlPointInTimeRestoreContext\x12*\n" +
+	"\n" +
+	"datasource\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\n" +
+	"datasource\x12.\n" +
+	"\rpoint_in_time\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vpointInTime\x12'\n" +
+	"\x0ftarget_instance\x18\x03 \x01(\tR\x0etargetInstance\x12\x16\n" +
+	"\x06region\x18\x04 \x01(\tR\x06region\x12%\n" +
+	"\x0epreferred_zone\x18\x05 \x01(\tR\rpreferredZone\x12,\n" +
+	"\x12allocated_ip_range\x18\x06 \x01(\tR\x10allocatedIpRangeB\xbd\x02\n" +
 	"(com.dev.planton.gcp.gcpcloudsql.v1alpha1B\tSpecProtoP\x01ZQgithub.com/plantonhq/planton/catalog/gcp/gcpcloudsql/v1alpha1;gcpcloudsqlv1alpha1\xa2\x02\x04DPGG\xaa\x02$Dev.Planton.Gcp.Gcpcloudsql.V1alpha1\xca\x02$Dev\\Planton\\Gcp\\Gcpcloudsql\\V1alpha1\xe2\x020Dev\\Planton\\Gcp\\Gcpcloudsql\\V1alpha1\\GPBMetadata\xea\x02(Dev::Planton::Gcp::Gcpcloudsql::V1alpha1b\x06proto3"
 
 var (
@@ -1870,29 +2850,37 @@ func file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_goTypes = []any{
-	(*GcpCloudSqlSpec)(nil),                     // 0: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec
-	(*GcpCloudSqlDisk)(nil),                     // 1: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlDisk
-	(*GcpCloudSqlNetwork)(nil),                  // 2: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlNetwork
-	(*GcpCloudSqlAuthorizedNetwork)(nil),        // 3: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlAuthorizedNetwork
-	(*GcpCloudSqlPscConfig)(nil),                // 4: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscConfig
-	(*GcpCloudSqlPscAutoConnection)(nil),        // 5: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscAutoConnection
-	(*GcpCloudSqlLocationPreference)(nil),       // 6: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlLocationPreference
-	(*GcpCloudSqlBackup)(nil),                   // 7: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlBackup
-	(*GcpCloudSqlMaintenanceWindow)(nil),        // 8: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlMaintenanceWindow
-	(*GcpCloudSqlDenyMaintenancePeriod)(nil),    // 9: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlDenyMaintenancePeriod
-	(*GcpCloudSqlInsightsConfig)(nil),           // 10: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlInsightsConfig
-	(*GcpCloudSqlPasswordValidationPolicy)(nil), // 11: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPasswordValidationPolicy
-	(*GcpCloudSqlConnectionPooling)(nil),        // 12: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlConnectionPooling
-	(*GcpCloudSqlSqlServerAuditConfig)(nil),     // 13: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSqlServerAuditConfig
-	(*GcpCloudSqlReplicaConfiguration)(nil),     // 14: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlReplicaConfiguration
-	nil,                                         // 15: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.DatabaseFlagsEntry
-	nil,                                         // 16: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlConnectionPooling.FlagsEntry
-	(*v1.StringValueOrRef)(nil),                 // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpCloudSqlSpec)(nil),                      // 0: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec
+	(*GcpCloudSqlDisk)(nil),                      // 1: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlDisk
+	(*GcpCloudSqlNetwork)(nil),                   // 2: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlNetwork
+	(*GcpCloudSqlAuthorizedNetwork)(nil),         // 3: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlAuthorizedNetwork
+	(*GcpCloudSqlPscConfig)(nil),                 // 4: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscConfig
+	(*GcpCloudSqlPscAutoConnection)(nil),         // 5: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscAutoConnection
+	(*GcpCloudSqlLocationPreference)(nil),        // 6: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlLocationPreference
+	(*GcpCloudSqlBackup)(nil),                    // 7: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlBackup
+	(*GcpCloudSqlMaintenanceWindow)(nil),         // 8: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlMaintenanceWindow
+	(*GcpCloudSqlDenyMaintenancePeriod)(nil),     // 9: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlDenyMaintenancePeriod
+	(*GcpCloudSqlInsightsConfig)(nil),            // 10: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlInsightsConfig
+	(*GcpCloudSqlPasswordValidationPolicy)(nil),  // 11: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPasswordValidationPolicy
+	(*GcpCloudSqlConnectionPooling)(nil),         // 12: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlConnectionPooling
+	(*GcpCloudSqlSqlServerAuditConfig)(nil),      // 13: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSqlServerAuditConfig
+	(*GcpCloudSqlReplicaConfiguration)(nil),      // 14: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlReplicaConfiguration
+	(*GcpCloudSqlActiveDirectoryConfig)(nil),     // 15: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlActiveDirectoryConfig
+	(*GcpCloudSqlEntraIdConfig)(nil),             // 16: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlEntraIdConfig
+	(*GcpCloudSqlFinalBackup)(nil),               // 17: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlFinalBackup
+	(*GcpCloudSqlReadPoolAutoScale)(nil),         // 18: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlReadPoolAutoScale
+	(*GcpCloudSqlReadPoolTargetMetric)(nil),      // 19: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlReadPoolTargetMetric
+	(*GcpCloudSqlClone)(nil),                     // 20: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlClone
+	(*GcpCloudSqlRestoreBackupContext)(nil),      // 21: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlRestoreBackupContext
+	(*GcpCloudSqlPointInTimeRestoreContext)(nil), // 22: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPointInTimeRestoreContext
+	nil,                         // 23: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.DatabaseFlagsEntry
+	nil,                         // 24: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlConnectionPooling.FlagsEntry
+	(*v1.StringValueOrRef)(nil), // 25: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_depIdxs = []int32{
-	17, // 0: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 0: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 1: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.disk:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlDisk
 	2,  // 2: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.network:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlNetwork
 	6,  // 3: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.location_preference:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlLocationPreference
@@ -1902,21 +2890,29 @@ var file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_depIdxs = []int32{
 	10, // 7: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.insights_config:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlInsightsConfig
 	11, // 8: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.password_validation_policy:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPasswordValidationPolicy
 	12, // 9: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.connection_pooling:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlConnectionPooling
-	15, // 10: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.database_flags:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.DatabaseFlagsEntry
+	23, // 10: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.database_flags:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.DatabaseFlagsEntry
 	13, // 11: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.sql_server_audit_config:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSqlServerAuditConfig
-	17, // 12: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.encryption_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 13: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.master_instance_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 14: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.replica_configuration:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlReplicaConfiguration
-	17, // 15: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlNetwork.private_network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 16: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlNetwork.authorized_networks:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlAuthorizedNetwork
-	4,  // 17: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlNetwork.psc:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscConfig
-	5,  // 18: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscConfig.auto_connections:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscAutoConnection
-	16, // 19: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlConnectionPooling.flags:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlConnectionPooling.FlagsEntry
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	15, // 12: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.active_directory:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlActiveDirectoryConfig
+	25, // 13: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.encryption_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 14: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.master_instance_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 15: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.replica_configuration:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlReplicaConfiguration
+	18, // 16: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.read_pool_auto_scale:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlReadPoolAutoScale
+	20, // 17: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.clone:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlClone
+	21, // 18: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.restore_backup_context:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlRestoreBackupContext
+	22, // 19: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.point_in_time_restore_context:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPointInTimeRestoreContext
+	17, // 20: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.final_backup:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlFinalBackup
+	16, // 21: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlSpec.entra_id:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlEntraIdConfig
+	25, // 22: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlNetwork.private_network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 23: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlNetwork.authorized_networks:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlAuthorizedNetwork
+	4,  // 24: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlNetwork.psc:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscConfig
+	5,  // 25: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscConfig.auto_connections:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlPscAutoConnection
+	24, // 26: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlConnectionPooling.flags:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlConnectionPooling.FlagsEntry
+	19, // 27: dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlReadPoolAutoScale.target_metrics:type_name -> dev.planton.gcp.gcpcloudsql.v1alpha1.GcpCloudSqlReadPoolTargetMetric
+	28, // [28:28] is the sub-list for method output_type
+	28, // [28:28] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_init() }
@@ -1931,13 +2927,15 @@ func file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_init() {
 	file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[10].OneofWrappers = []any{}
 	file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[11].OneofWrappers = []any{}
 	file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[14].OneofWrappers = []any{}
+	file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[17].OneofWrappers = []any{}
+	file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_msgTypes[18].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpcloudsql_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

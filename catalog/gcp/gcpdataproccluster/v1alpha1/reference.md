@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpDataprocClusterSpec defines the configuration for a Google Cloud
 Dataproc cluster running Apache Spark, Hadoop, and related
 open-source data processing frameworks.
@@ -149,6 +151,7 @@ spec:
 | `spec.clusterConfig.gceConfig.nodeGroupAffinity.nodeGroupUri` | `string` | yes |  |  |
 | `spec.clusterConfig.gceConfig.confidentialInstanceConfig` | `GcpDataprocClusterConfidentialInstanceConfig` |  |  |  |
 | `spec.clusterConfig.gceConfig.confidentialInstanceConfig.enableConfidentialCompute` | `bool` |  |  |  |
+| `spec.clusterConfig.gceConfig.resourceManagerTags` | `map<string, string>` |  |  |  |
 | `spec.clusterConfig.masterConfig` | `GcpDataprocClusterMasterConfig` |  |  |  |
 | `spec.clusterConfig.masterConfig.numInstances` | `int32` |  |  |  |
 | `spec.clusterConfig.masterConfig.machineType` | `string` |  |  |  |
@@ -157,11 +160,20 @@ spec:
 | `spec.clusterConfig.masterConfig.diskConfig.bootDiskType` | `string` |  |  |  |
 | `spec.clusterConfig.masterConfig.diskConfig.numLocalSsds` | `int32` |  |  |  |
 | `spec.clusterConfig.masterConfig.diskConfig.localSsdInterface` | `string` |  |  |  |
+| `spec.clusterConfig.masterConfig.diskConfig.bootDiskProvisionedIops` | `int64` |  |  |  |
+| `spec.clusterConfig.masterConfig.diskConfig.bootDiskProvisionedThroughput` | `int64` |  |  |  |
 | `spec.clusterConfig.masterConfig.accelerators` | `[]GcpDataprocClusterAccelerator` |  |  |  |
 | `spec.clusterConfig.masterConfig.accelerators[].acceleratorType` | `string` | yes |  |  |
 | `spec.clusterConfig.masterConfig.accelerators[].acceleratorCount` | `int32` |  |  |  |
 | `spec.clusterConfig.masterConfig.minCpuPlatform` | `string` |  |  |  |
 | `spec.clusterConfig.masterConfig.imageUri` | `string` |  |  |  |
+| `spec.clusterConfig.masterConfig.instanceFlexibilityPolicy` | `GcpDataprocClusterInstanceFlexibilityPolicy` |  |  |  |
+| `spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.instanceSelectionList` | `[]GcpDataprocClusterInstanceSelection` |  |  |  |
+| `spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.instanceSelectionList[].machineTypes` | `[]string` | yes |  |  |
+| `spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.instanceSelectionList[].rank` | `int32` |  |  |  |
+| `spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.provisioningModelMix` | `GcpDataprocClusterProvisioningModelMix` |  |  |  |
+| `spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.provisioningModelMix.standardCapacityBase` | `int32` |  |  |  |
+| `spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.provisioningModelMix.standardCapacityPercentAboveBase` | `int32` |  |  |  |
 | `spec.clusterConfig.workerConfig` | `GcpDataprocClusterWorkerConfig` |  |  |  |
 | `spec.clusterConfig.workerConfig.numInstances` | `int32` |  |  |  |
 | `spec.clusterConfig.workerConfig.machineType` | `string` |  |  |  |
@@ -170,12 +182,21 @@ spec:
 | `spec.clusterConfig.workerConfig.diskConfig.bootDiskType` | `string` |  |  |  |
 | `spec.clusterConfig.workerConfig.diskConfig.numLocalSsds` | `int32` |  |  |  |
 | `spec.clusterConfig.workerConfig.diskConfig.localSsdInterface` | `string` |  |  |  |
+| `spec.clusterConfig.workerConfig.diskConfig.bootDiskProvisionedIops` | `int64` |  |  |  |
+| `spec.clusterConfig.workerConfig.diskConfig.bootDiskProvisionedThroughput` | `int64` |  |  |  |
 | `spec.clusterConfig.workerConfig.accelerators` | `[]GcpDataprocClusterAccelerator` |  |  |  |
 | `spec.clusterConfig.workerConfig.accelerators[].acceleratorType` | `string` | yes |  |  |
 | `spec.clusterConfig.workerConfig.accelerators[].acceleratorCount` | `int32` |  |  |  |
 | `spec.clusterConfig.workerConfig.minCpuPlatform` | `string` |  |  |  |
 | `spec.clusterConfig.workerConfig.imageUri` | `string` |  |  |  |
 | `spec.clusterConfig.workerConfig.minNumInstances` | `int32` |  |  |  |
+| `spec.clusterConfig.workerConfig.instanceFlexibilityPolicy` | `GcpDataprocClusterInstanceFlexibilityPolicy` |  |  |  |
+| `spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.instanceSelectionList` | `[]GcpDataprocClusterInstanceSelection` |  |  |  |
+| `spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.instanceSelectionList[].machineTypes` | `[]string` | yes |  |  |
+| `spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.instanceSelectionList[].rank` | `int32` |  |  |  |
+| `spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.provisioningModelMix` | `GcpDataprocClusterProvisioningModelMix` |  |  |  |
+| `spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.provisioningModelMix.standardCapacityBase` | `int32` |  |  |  |
+| `spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.provisioningModelMix.standardCapacityPercentAboveBase` | `int32` |  |  |  |
 | `spec.clusterConfig.secondaryWorkerConfig` | `GcpDataprocClusterSecondaryWorkerConfig` |  |  |  |
 | `spec.clusterConfig.secondaryWorkerConfig.numInstances` | `int32` |  |  |  |
 | `spec.clusterConfig.secondaryWorkerConfig.preemptibility` | `string` |  |  |  |
@@ -184,6 +205,8 @@ spec:
 | `spec.clusterConfig.secondaryWorkerConfig.diskConfig.bootDiskType` | `string` |  |  |  |
 | `spec.clusterConfig.secondaryWorkerConfig.diskConfig.numLocalSsds` | `int32` |  |  |  |
 | `spec.clusterConfig.secondaryWorkerConfig.diskConfig.localSsdInterface` | `string` |  |  |  |
+| `spec.clusterConfig.secondaryWorkerConfig.diskConfig.bootDiskProvisionedIops` | `int64` |  |  |  |
+| `spec.clusterConfig.secondaryWorkerConfig.diskConfig.bootDiskProvisionedThroughput` | `int64` |  |  |  |
 | `spec.clusterConfig.secondaryWorkerConfig.instanceFlexibilityPolicy` | `GcpDataprocClusterInstanceFlexibilityPolicy` |  |  |  |
 | `spec.clusterConfig.secondaryWorkerConfig.instanceFlexibilityPolicy.instanceSelectionList` | `[]GcpDataprocClusterInstanceSelection` |  |  |  |
 | `spec.clusterConfig.secondaryWorkerConfig.instanceFlexibilityPolicy.instanceSelectionList[].machineTypes` | `[]string` | yes |  |  |
@@ -224,6 +247,8 @@ spec:
 | `spec.clusterConfig.lifecycleConfig` | `GcpDataprocClusterLifecycleConfig` |  |  |  |
 | `spec.clusterConfig.lifecycleConfig.idleDeleteTtl` | `string` |  |  |  |
 | `spec.clusterConfig.lifecycleConfig.autoDeleteTime` | `string` |  |  |  |
+| `spec.clusterConfig.lifecycleConfig.idleStopTtl` | `string` |  |  |  |
+| `spec.clusterConfig.lifecycleConfig.autoStopTime` | `string` |  |  |  |
 | `spec.clusterConfig.metastoreConfig` | `GcpDataprocClusterMetastoreConfig` |  |  |  |
 | `spec.clusterConfig.metastoreConfig.dataprocMetastoreService` | `string \| valueFrom` | yes |  |  |
 | `spec.clusterConfig.dataprocMetricConfig` | `GcpDataprocClusterMetricConfig` |  |  |  |
@@ -241,10 +266,14 @@ spec:
 | `spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.diskConfig.bootDiskType` | `string` |  |  |  |
 | `spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.diskConfig.numLocalSsds` | `int32` |  |  |  |
 | `spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.diskConfig.localSsdInterface` | `string` |  |  |  |
+| `spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.diskConfig.bootDiskProvisionedIops` | `int64` |  |  |  |
+| `spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.diskConfig.bootDiskProvisionedThroughput` | `int64` |  |  |  |
 | `spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.accelerators` | `[]GcpDataprocClusterAccelerator` |  |  |  |
 | `spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.accelerators[].acceleratorType` | `string` | yes |  |  |
 | `spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.accelerators[].acceleratorCount` | `int32` |  |  |  |
 | `spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupId` | `string` |  |  |  |
+| `spec.clusterConfig.clusterType` | `string` |  |  |  |
+| `spec.clusterConfig.engine` | `string` |  |  |  |
 | `spec.virtualClusterConfig` | `GcpDataprocClusterVirtualClusterConfig` |  |  |  |
 | `spec.virtualClusterConfig.stagingBucket` | `string \| valueFrom` |  |  | GcpGcsBucket (`status.outputs.bucket_id`) |
 | `spec.virtualClusterConfig.kubernetesClusterConfig` | `GcpDataprocClusterKubernetesClusterConfig` | yes |  |  |
@@ -274,6 +303,7 @@ spec:
 | `spec.virtualClusterConfig.auxiliaryServicesConfig.sparkHistoryServerConfig.dataprocCluster` | `string \| valueFrom` |  |  | GcpDataprocCluster (`status.outputs.cluster_id`) |
 | `spec.gracefulDecommissionTimeout` | `string` |  |  |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -517,12 +547,18 @@ Requires an N2D machine type.
 
 Enable Confidential Compute for all cluster nodes.
 
+### spec.clusterConfig.gceConfig.resourceManagerTags
+
+`map<string, string>`
+
 ### spec.clusterConfig.masterConfig
 
 `GcpDataprocClusterMasterConfig`
 
 Master node configuration. If not specified, GCP defaults to
 1 master with a default machine type and 500 GB pd-standard disk.
+
+- rule: provisioning_model_mix applies to secondary workers only
 
 ### spec.clusterConfig.masterConfig.numInstances
 
@@ -580,6 +616,18 @@ images do).
 
 - rule: local_ssd_interface must be scsi or nvme
 
+### spec.clusterConfig.masterConfig.diskConfig.bootDiskProvisionedIops
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.clusterConfig.masterConfig.diskConfig.bootDiskProvisionedThroughput
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
+
 ### spec.clusterConfig.masterConfig.accelerators
 
 `[]GcpDataprocClusterAccelerator`
@@ -618,6 +666,59 @@ Forces nodes onto a specific or newer CPU generation.
 Custom Dataproc image URI. If not specified, GCP uses the image
 determined by software_config.image_version.
 
+### spec.clusterConfig.masterConfig.instanceFlexibilityPolicy
+
+`GcpDataprocClusterInstanceFlexibilityPolicy`
+
+### spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.instanceSelectionList
+
+`[]GcpDataprocClusterInstanceSelection`
+
+Ranked machine-type preferences. Dataproc provisions from the
+lowest-rank entry with available capacity.
+
+### spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.instanceSelectionList[].machineTypes
+
+`[]string` · required
+
+Machine types to try for this selection entry (e.g.
+["n2-standard-8", "n2d-standard-8"]).
+
+- rule: {"repeated":{"minItems":"1"}}
+
+### spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.instanceSelectionList[].rank
+
+`int32`
+
+Preference rank. Lower rank is preferred; Dataproc falls back to
+higher ranks when capacity for the preferred types is unavailable.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.provisioningModelMix
+
+`GcpDataprocClusterProvisioningModelMix`
+
+Standard/spot capacity mix for the group.
+
+### spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.provisioningModelMix.standardCapacityBase
+
+`int32`
+
+Number of secondary workers that must be standard (on-demand)
+capacity before any spot VMs are used.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.provisioningModelMix.standardCapacityPercentAboveBase
+
+`int32`
+
+Percentage of capacity above the base that should also be standard
+(0-100). The remainder is provisioned as spot.
+
+- rule: {"int32":{"lte":100,"gte":0}}
+
 ### spec.clusterConfig.workerConfig
 
 `GcpDataprocClusterWorkerConfig`
@@ -626,6 +727,8 @@ Primary worker node configuration. If not specified, GCP defaults
 to 2 workers. For a single-node cluster set the software property
 "dataproc:dataproc.allow.zero.workers" = "true" instead of a
 worker count of zero.
+
+- rule: provisioning_model_mix applies to secondary workers only
 
 ### spec.clusterConfig.workerConfig.numInstances
 
@@ -684,6 +787,18 @@ images do).
 
 - rule: local_ssd_interface must be scsi or nvme
 
+### spec.clusterConfig.workerConfig.diskConfig.bootDiskProvisionedIops
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.clusterConfig.workerConfig.diskConfig.bootDiskProvisionedThroughput
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
+
 ### spec.clusterConfig.workerConfig.accelerators
 
 `[]GcpDataprocClusterAccelerator`
@@ -726,6 +841,59 @@ Custom Dataproc image URI.
 
 Minimum number of primary worker instances when autoscaling is active.
 The autoscaler will not scale below this threshold. Updatable in place.
+
+### spec.clusterConfig.workerConfig.instanceFlexibilityPolicy
+
+`GcpDataprocClusterInstanceFlexibilityPolicy`
+
+### spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.instanceSelectionList
+
+`[]GcpDataprocClusterInstanceSelection`
+
+Ranked machine-type preferences. Dataproc provisions from the
+lowest-rank entry with available capacity.
+
+### spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.instanceSelectionList[].machineTypes
+
+`[]string` · required
+
+Machine types to try for this selection entry (e.g.
+["n2-standard-8", "n2d-standard-8"]).
+
+- rule: {"repeated":{"minItems":"1"}}
+
+### spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.instanceSelectionList[].rank
+
+`int32`
+
+Preference rank. Lower rank is preferred; Dataproc falls back to
+higher ranks when capacity for the preferred types is unavailable.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.provisioningModelMix
+
+`GcpDataprocClusterProvisioningModelMix`
+
+Standard/spot capacity mix for the group.
+
+### spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.provisioningModelMix.standardCapacityBase
+
+`int32`
+
+Number of secondary workers that must be standard (on-demand)
+capacity before any spot VMs are used.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.provisioningModelMix.standardCapacityPercentAboveBase
+
+`int32`
+
+Percentage of capacity above the base that should also be standard
+(0-100). The remainder is provisioned as spot.
+
+- rule: {"int32":{"lte":100,"gte":0}}
 
 ### spec.clusterConfig.secondaryWorkerConfig
 
@@ -798,6 +966,18 @@ requires an image that ships NVMe drivers (all current Dataproc
 images do).
 
 - rule: local_ssd_interface must be scsi or nvme
+
+### spec.clusterConfig.secondaryWorkerConfig.diskConfig.bootDiskProvisionedIops
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.clusterConfig.secondaryWorkerConfig.diskConfig.bootDiskProvisionedThroughput
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
 
 ### spec.clusterConfig.secondaryWorkerConfig.instanceFlexibilityPolicy
 
@@ -1110,6 +1290,16 @@ RFC3339 timestamp at which the cluster is automatically deleted,
 regardless of activity (e.g., "2026-03-01T00:00:00Z").
 Useful for time-boxed clusters with a known end date.
 
+### spec.clusterConfig.lifecycleConfig.idleStopTtl
+
+`string`
+
+- rule: idle_stop_ttl must be a duration in seconds (e.g., '1800s')
+
+### spec.clusterConfig.lifecycleConfig.autoStopTime
+
+`string`
+
 ### spec.clusterConfig.metastoreConfig
 
 `GcpDataprocClusterMetastoreConfig`
@@ -1238,6 +1428,18 @@ images do).
 
 - rule: local_ssd_interface must be scsi or nvme
 
+### spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.diskConfig.bootDiskProvisionedIops
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.diskConfig.bootDiskProvisionedThroughput
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"1"}}
+
 ### spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.accelerators
 
 `[]GcpDataprocClusterAccelerator`
@@ -1269,6 +1471,18 @@ Optional stable identifier for the group (3-33 characters).
 If unset, Dataproc generates one.
 
 - rule: node_group_id must be 3-33 characters
+
+### spec.clusterConfig.clusterType
+
+`string`
+
+- rule: cluster_type must be STANDARD, SINGLE_NODE, or ZERO_SCALE
+
+### spec.clusterConfig.engine
+
+`string`
+
+- rule: engine must be DEFAULT or LIGHTNING
 
 ### spec.virtualClusterConfig
 
@@ -1518,6 +1732,12 @@ User-defined labels applied to the cluster (and propagated to its
 VMs). Merged beneath Planton's platform attribution labels
 (platform keys win on conflict). Not supported by the API for the
 virtual (GKE-based) arm.
+
+### spec.deletionPolicy
+
+`string`
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

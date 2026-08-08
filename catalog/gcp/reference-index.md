@@ -29,14 +29,14 @@
 | [GcpCloudRun](gcpcloudrun/v1alpha1/reference.md) | GcpCloudRunSpec defines a Cloud Run service (`google_cloud_run_v2_service`) — a fully managed, request-serving container deployment that scales from zero to thousands of instances. | yes |  |
 | [GcpCloudRunJob](gcpcloudrunjob/v1alpha1/reference.md) | GcpCloudRunJobSpec defines a Cloud Run job (`google_cloud_run_v2_job`) — a run-to-completion container workload that executes a fixed number of parallel tasks and exits. | yes |  |
 | [GcpCloudSchedulerJob](gcpcloudschedulerjob/v1alpha1/reference.md) | GcpCloudSchedulerJobSpec defines the configuration for a GCP Cloud Scheduler job. | yes |  |
-| [GcpCloudSql](gcpcloudsql/v1alpha1/reference.md) | GcpCloudSqlSpec defines a Cloud SQL instance (`google_sql_database_instance`) — a fully managed MySQL, PostgreSQL, or SQL Server database server. | yes |  |
-| [GcpCloudSqlDatabase](gcpcloudsqldatabase/v1alpha1/reference.md) | GcpCloudSqlDatabaseSpec defines a logical database (`google_sql_database`) inside a Cloud SQL instance. | yes |  |
-| [GcpCloudSqlUser](gcpcloudsqluser/v1alpha1/reference.md) | GcpCloudSqlUserSpec defines a database user (`google_sql_user`) on a Cloud SQL instance. | yes |  |
+| [GcpCloudSql](gcpcloudsql/v1alpha1/reference.md) | GcpCloudSqlSpec defines a Cloud SQL instance (`google_sql_database_instance`) — a fully managed MySQL, PostgreSQL, or SQL Server database server. | yes | yes |
+| [GcpCloudSqlDatabase](gcpcloudsqldatabase/v1alpha1/reference.md) | GcpCloudSqlDatabaseSpec defines a logical database (`google_sql_database`) inside a Cloud SQL instance. | yes | yes |
+| [GcpCloudSqlUser](gcpcloudsqluser/v1alpha1/reference.md) | GcpCloudSqlUserSpec defines a database user (`google_sql_user`) on a Cloud SQL instance. | yes | yes |
 | [GcpCloudTasksQueue](gcpcloudtasksqueue/v1alpha1/reference.md) | GcpCloudTasksQueueSpec defines the configuration for a GCP Cloud Tasks queue. | yes |  |
 | [GcpComputeDisk](gcpcomputedisk/v1alpha1/reference.md) | GcpComputeDiskSpec defines the configuration for a zonal Google Compute Engine persistent disk — the durable block device behind stateful VMs: database volumes, shared read-only datasets, bootable golden images, and any data that must outlive the instance it is attached to. | yes | yes |
 | [GcpComputeInstance](gcpcomputeinstance/v1alpha1/reference.md) | GcpComputeInstanceSpec defines the configuration for a Google Compute Engine virtual machine — the general-purpose compute node behind databases-on-VM, stateful application servers, GPU workers, bastion hosts, and any workload that needs a full OS rather than a managed runtime. | yes |  |
-| [GcpDataprocAutoscalingPolicy](gcpdataprocautoscalingpolicy/v1alpha1/reference.md) | GcpDataprocAutoscalingPolicySpec defines a reusable Dataproc autoscaling policy. | yes |  |
-| [GcpDataprocCluster](gcpdataproccluster/v1alpha1/reference.md) | GcpDataprocClusterSpec defines the configuration for a Google Cloud Dataproc cluster running Apache Spark, Hadoop, and related open-source data processing frameworks. | yes |  |
+| [GcpDataprocAutoscalingPolicy](gcpdataprocautoscalingpolicy/v1alpha1/reference.md) | GcpDataprocAutoscalingPolicySpec defines a reusable Dataproc autoscaling policy. | yes | yes |
+| [GcpDataprocCluster](gcpdataproccluster/v1alpha1/reference.md) | GcpDataprocClusterSpec defines the configuration for a Google Cloud Dataproc cluster running Apache Spark, Hadoop, and related open-source data processing frameworks. | yes | yes |
 | [GcpDnsRecord](gcpdnsrecord/v1alpha1/reference.md) | GcpDnsRecordSpec creates one DNS record set inside an existing Cloud DNS managed zone. | yes |  |
 | [GcpDnsZone](gcpdnszone/v1alpha1/reference.md) | GcpDnsZoneSpec defines a Google Cloud DNS managed zone (`google_dns_managed_zone`). | yes |  |
 | [GcpFilestoreInstance](gcpfilestoreinstance/v1alpha1/reference.md) | GcpFilestoreInstanceSpec defines the configuration for a Google Cloud Filestore instance. | yes |  |

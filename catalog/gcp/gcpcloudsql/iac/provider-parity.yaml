@@ -1,0 +1,212 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_sql_database_instance:
+    mappings:
+      # Renames: the spec says what the field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.instance_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+
+      # The spec flattens the provider's settings wrapper: every field
+      # below IS a settings argument, organized by what it configures
+      # instead of where the API nests it.
+      - spec: spec.tier
+        arg: settings.tier
+      - spec: spec.edition
+        arg: settings.edition
+      - spec: spec.availability_type
+        arg: settings.availability_type
+      - spec: spec.activation_policy
+        arg: settings.activation_policy
+      - spec: spec.connector_enforcement
+        arg: settings.connector_enforcement
+      - spec: spec.enable_google_ml_integration
+        arg: settings.enable_google_ml_integration
+      - spec: spec.enable_dataplex_integration
+        arg: settings.enable_dataplex_integration
+      - spec: spec.deletion_protection_enabled
+        arg: settings.deletion_protection_enabled
+      - spec: spec.retain_backups_on_delete
+        arg: settings.retain_backups_on_delete
+      - spec: spec.auto_upgrade_enabled
+        arg: settings.auto_upgrade_enabled
+      - spec: spec.data_api_access
+        arg: settings.data_api_access
+      - spec: spec.time_zone
+        arg: settings.time_zone
+      - spec: spec.collation
+        arg: settings.collation
+
+      # The disk message gathers the provider's flat data-disk arguments.
+      - spec: spec.disk.type
+        arg: settings.disk_type
+      - spec: spec.disk.size_gb
+        arg: settings.disk_size
+      - spec: spec.disk.auto_resize
+        arg: settings.disk_autoresize
+      - spec: spec.disk.auto_resize_limit
+        arg: settings.disk_autoresize_limit
+      - spec: spec.disk.provisioned_iops
+        arg: settings.data_disk_provisioned_iops
+      - spec: spec.disk.provisioned_throughput
+        arg: settings.data_disk_provisioned_throughput
+
+      # Connectivity subtree (exact matching resumes below the mapping).
+      - spec: spec.network
+        arg: settings.ip_configuration
+      - spec: spec.network.psc
+        arg: settings.ip_configuration.psc_config
+      - spec: spec.network.psc.enabled
+        arg: settings.ip_configuration.psc_config.psc_enabled
+      - spec: spec.network.psc.auto_connections
+        arg: settings.ip_configuration.psc_config.psc_auto_connections
+      - spec: spec.network.psc.auto_dns_enabled
+        arg: settings.ip_configuration.psc_config.psc_auto_dns_enabled
+      - spec: spec.network.psc.write_endpoint_dns_enabled
+        arg: settings.ip_configuration.psc_config.psc_write_endpoint_dns_enabled
+
+      # Settings blocks the spec carries under their configuring name.
+      - spec: spec.location_preference
+        arg: settings.location_preference
+      - spec: spec.backup
+        arg: settings.backup_configuration
+      - spec: spec.backup.retained_backups
+        arg: settings.backup_configuration.backup_retention_settings.retained_backups
+      - spec: spec.backup.retention_unit
+        arg: settings.backup_configuration.backup_retention_settings.retention_unit
+      - spec: spec.maintenance_window
+        arg: settings.maintenance_window
+      - spec: spec.deny_maintenance_period
+        arg: settings.deny_maintenance_period
+      - spec: spec.insights_config
+        arg: settings.insights_config
+      - spec: spec.password_validation_policy
+        arg: settings.password_validation_policy
+      - spec: spec.sql_server_audit_config
+        arg: settings.sql_server_audit_config
+      - spec: spec.active_directory
+        arg: settings.active_directory_config
+      - spec: spec.entra_id
+        arg: settings.entraid_config
+      - spec: spec.read_pool_auto_scale
+        arg: settings.read_pool_auto_scale_config
+
+      # Single-field provider blocks flattened to spec leaves.
+      - spec: spec.data_cache_enabled
+        arg: settings.data_cache_config.data_cache_enabled
+      - spec: spec.threads_per_core
+        arg: settings.advanced_machine_features.threads_per_core
+      - spec: spec.failover_dr_replica_name
+        arg: replication_cluster.failover_dr_replica_name
+
+      # The final-backup message gathers the provider's split surface: the
+      # toggle and retention live in settings, the description at the top
+      # level.
+      - spec: spec.final_backup.enabled
+        arg: settings.final_backup_config.enabled
+      - spec: spec.final_backup.retention_days
+        arg: settings.final_backup_config.retention_days
+      - spec: spec.final_backup.description
+        arg: final_backup_description
+
+      # The provider models flags as name/value pairs; the spec holds one
+      # map -- both argument sides land on the same map field.
+      - spec: spec.database_flags
+        arg: settings.database_flags.name
+      - spec: spec.database_flags
+        arg: settings.database_flags.value
+      - spec: spec.connection_pooling.enabled
+        arg: settings.connection_pool_config.connection_pooling_enabled
+      - spec: spec.connection_pooling.flags
+        arg: settings.connection_pool_config.flags.name
+      - spec: spec.connection_pooling.flags
+        arg: settings.connection_pool_config.flags.value
+    exclusions:
+      # Terraform's ephemeral write-only variants of the modeled
+      # root_password: the same credential capability through a different
+      # engine-side idiom. The spec's root_password is secret-annotated
+      # and encrypted in state on both engines.
+      - arg: root_password_wo
+        reason: >-
+          write-only variant of the modeled root_password field -- same
+          capability, engine-side ergonomics; the spec field is
+          secret-annotated and encrypted in state on both engines
+      - arg: root_password_wo_version
+        reason: >-
+          version counter that only accompanies root_password_wo;
+          meaningless without the write-only variant
+
+      # Not yet bridged by the pinned Pulumi SDK (pulumi-gcp v9.29.0,
+      # google-beta 7.38): modeling these only in Terraform would break
+      # cross-engine parity -- a spec field one engine silently drops.
+      # Re-evaluate at the next SDK bump.
+      - arg: switch_transaction_logs_to_cloud_storage_enabled
+        reason: >-
+          GA at the pin but not yet bridged by the pinned Pulumi SDK;
+          modeling it would break cross-engine parity. Re-evaluate at the
+          next pulumi-gcp bump.
+      - arg: include_replicas_for_major_version_upgrade
+        reason: >-
+          GA at the pin but not yet bridged by the pinned Pulumi SDK;
+          modeling it would break cross-engine parity. Re-evaluate at the
+          next pulumi-gcp bump.
+      - arg: enforce_new_sql_network_architecture
+        reason: >-
+          GA at the pin but not yet bridged by the pinned Pulumi SDK;
+          modeling it would break cross-engine parity. Re-evaluate at the
+          next pulumi-gcp bump.
+      - arg: settings.ip_configuration.psc_config.psc_auto_connection_policy_enabled
+        reason: >-
+          GA at the pin but not yet bridged by the pinned Pulumi SDK;
+          modeling it would break cross-engine parity. Re-evaluate at the
+          next pulumi-gcp bump.
+
+      # Legacy first-generation surfaces with named modern successors.
+      - arg: settings.pricing_plan
+        reason: >-
+          first-generation billing selector whose only valid value on
+          second-generation instances is the provider default PER_USE --
+          no reachable capability
+      - arg: settings.location_preference.follow_gae_application
+        reason: >-
+          legacy App Engine zone-following; the modeled
+          location_preference.zone is the direct modern placement control
+
+      # Provider-documented read-only surface.
+      - arg: replication_cluster.psa_write_endpoint
+        reason: >-
+          documented read-only field (returned as information) despite a
+          configurable schema entry; the DR pairing is driven through
+          failover_dr_replica_name
+
+      # Platform-owned surface.
+      - arg: settings.user_labels
+        reason: >-
+          driven by the platform metadata labels (merged with Planton's
+          attribution set in both engines), not spec surface
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables sqladmin.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      instance never disables the API project-wide); not spec surface.
+
+specExclusions:
+  # The engine discriminator exists for spec-level validation (version
+  # prefixes, PITR-vs-binlog semantics, the SQL Server-only surface); the
+  # API derives the engine from database_version, so no provider argument
+  # carries it.
+  - field: spec.database_engine
+    reason: >-
+      validation discriminator -- the provider derives the engine from
+      database_version; this field drives the spec's engine-conditional
+      CEL rules, not an API argument

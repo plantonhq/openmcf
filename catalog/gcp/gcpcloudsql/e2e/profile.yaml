@@ -7,8 +7,6 @@ spec:
   # chain before every instance create. Cloud SQL instances are slow (~10–15
   # min each); run the package with a generous go test -timeout.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

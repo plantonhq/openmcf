@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCloudSqlDatabaseSpec defines a logical database (`google_sql_database`)
 inside a Cloud SQL instance.
 
@@ -48,6 +50,7 @@ spec:
 | `spec.databaseName` | `string` | yes |  |  |
 | `spec.charset` | `string` |  |  |  |
 | `spec.collation` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -98,6 +101,12 @@ applies.
 Collation. MySQL: e.g. "utf8mb4_0900_ai_ci". PostgreSQL: an OS locale
 such as "en_US.UTF8". SQL Server: a SQL Server collation name. If
 empty, the engine default applies.
+
+### spec.deletionPolicy
+
+`string`
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 
