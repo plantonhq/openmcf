@@ -8,6 +8,34 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
+**AzureVirtualNetworkGatewaySpec** defines a virtual network gateway --
+the managed gateway appliance Azure deploys into a virtual network to
+terminate hybrid connectivity: site-to-site IPsec VPN tunnels,
+point-to-site client VPN, VNet-to-VNet tunnels, and ExpressRoute
+private circuits.
+
+**Two gateway types**, selected by `type`:
+- **VPN** (the default): terminates IPsec tunnels. Pairs with an
+  AzureLocalNetworkGateway (the on-premises side) and an
+  AzureVirtualNetworkGatewayConnection (the tunnel) for site-to-site,
+  or carries a vpn_client_configuration for point-to-site.
+- **EXPRESS_ROUTE**: terminates an ExpressRoute circuit's private
+  peering into the VNet. ExpressRoute gateways get Azure-managed
+  addressing -- ip_configurations must NOT carry public IPs.
+
+**The GatewaySubnet contract**: every gateway lives in a dedicated
+subnet of its virtual network whose ARM name is EXACTLY
+"GatewaySubnet" -- ARM rejects any other name. Microsoft recommends
+/27 or larger; the subnet carries no other workloads, no NSG, and no
+route table pointing 0.0.0.0/0 away from Azure infrastructure.
+
+**Cost and time**: gateways bill hourly per SKU from the moment they
+provision, and provisioning is SLOW -- 25-45 minutes to create,
+10-20 minutes to delete. The ForceNew surface (name, region,
+resource_group, type, vpn_type, generation, edge_zone,
+private_ip_address_enabled, every ip_configuration) is therefore
+expensive; design changes to avoid replacement.
+
 ## Example
 
 ```yaml
@@ -141,11 +169,19 @@ spec:
 
 `string` · required
 
+The Azure region the gateway lives in, e.g. "eastus". Must match the
+virtual network it deploys into. Changing the region replaces the
+gateway.
+
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.resourceGroup
 
 `string | valueFrom` · required
+
+The Azure resource group the gateway is created in. Can be a literal
+resource-group name or a reference to an AzureResourceGroup's name
+output. Changing it replaces the gateway.
 
 - references: AzureResourceGroup (`status.outputs.resource_group_name`)
 - rule: {"required":true}
@@ -155,6 +191,12 @@ spec:
 
 `string` · required
 
+The gateway's name, unique within the resource group. 1-80
+characters; must begin with a letter or number, end with a letter,
+number, or underscore, and may contain only letters, numbers,
+underscores, periods, or hyphens. Changing the name replaces the
+gateway.
+
 - rule: Gateway names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"80"}}
 
@@ -162,70 +204,101 @@ spec:
 
 `enum`
 
+What the gateway terminates: VPN (IPsec tunnels -- the default) or
+EXPRESS_ROUTE (an ExpressRoute circuit's private peering). Fixed at
+creation. Unspecified deploys VPN, the site-to-site shape.
+
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_virtual_network_gateway_type_unspecified`
-- `VPN`
-- `EXPRESS_ROUTE`
+- `azure_virtual_network_gateway_type_unspecified` -- Not specified -- deploys VPN, the site-to-site/point-to-site shape.
+- `VPN` -- Terminate IPsec VPN tunnels (site-to-site, VNet-to-VNet) and point-to-site client VPN.
+- `EXPRESS_ROUTE` -- Terminate an ExpressRoute circuit's private peering into the VNet.
 
 ### spec.vpnType
 
 `enum`
 
+The VPN routing model: ROUTE_BASED (any-to-any IKEv2 tunnels, BGP,
+P2S -- the default and what virtually every modern deployment uses)
+or POLICY_BASED (legacy IKEv1 with static traffic selectors; Basic
+SKU only, no BGP, no P2S). Fixed at creation. Only meaningful on VPN
+gateways.
+
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_virtual_network_gateway_vpn_type_unspecified`
-- `ROUTE_BASED`
-- `POLICY_BASED`
+- `azure_virtual_network_gateway_vpn_type_unspecified` -- Not specified -- deploys ROUTE_BASED, the modern any-to-any model.
+- `ROUTE_BASED` -- Any-to-any IKEv2 tunnels with dynamic routing, BGP, and point-to-site support. The default and the right choice for anything new.
+- `POLICY_BASED` -- Legacy IKEv1 with static traffic selectors. Basic SKU only; no BGP, no point-to-site. Exists for old on-premises devices that cannot do route-based.
 
 ### spec.sku
 
 `enum`
 
+The gateway SKU -- sizes throughput, tunnel/connection counts, and
+hourly cost, and decides zone redundancy (the *_AZ variants). VPN
+gateways use BASIC through VPN_GW_5[_AZ]; ExpressRoute gateways use
+STANDARD/HIGH_PERFORMANCE/ULTRA_PERFORMANCE or ER_GW_*_AZ; ER_GW_SCALE
+autoscales between minimum_scale_unit and maximum_scale_unit. BASIC is
+dev/test only (no zone redundancy, no IKEv2 P2S) and cannot resize to
+other SKUs in place. Generation2 VPN SKUs start at VPN_GW_2.
+
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_virtual_network_gateway_sku_unspecified`
-- `BASIC`
-- `STANDARD`
-- `HIGH_PERFORMANCE`
-- `ULTRA_PERFORMANCE`
-- `VPN_GW_1`
-- `VPN_GW_2`
-- `VPN_GW_3`
-- `VPN_GW_4`
-- `VPN_GW_5`
-- `VPN_GW_1_AZ`
-- `VPN_GW_2_AZ`
-- `VPN_GW_3_AZ`
-- `VPN_GW_4_AZ`
-- `VPN_GW_5_AZ`
-- `ER_GW_1_AZ`
-- `ER_GW_2_AZ`
-- `ER_GW_3_AZ`
-- `ER_GW_SCALE`
+- `azure_virtual_network_gateway_sku_unspecified` -- Not specified -- invalid: the SKU choice is explicit (see the sku_required contract).
+- `BASIC` -- Dev/test VPN tier: no zone redundancy, no IKEv2 point-to-site, no in-place resize to other SKUs.
+- `STANDARD` -- Legacy VPN/ExpressRoute tier (predates the VpnGw/ErGw families).
+- `HIGH_PERFORMANCE` -- Legacy VPN/ExpressRoute tier (predates the VpnGw/ErGw families).
+- `ULTRA_PERFORMANCE` -- ExpressRoute-only legacy top tier.
+- `VPN_GW_1` -- Generation1 VPN production entry point (~650 Mbps aggregate).
+- `VPN_GW_2` -- VPN tier 2 (Generation1 or Generation2).
+- `VPN_GW_3` -- VPN tier 3 (Generation1 or Generation2).
+- `VPN_GW_4` -- VPN tier 4 (Generation2 only).
+- `VPN_GW_5` -- VPN tier 5 (Generation2 only).
+- `VPN_GW_1_AZ` -- Zone-redundant VPN_GW_1 (Generation1 only).
+- `VPN_GW_2_AZ` -- Zone-redundant VPN_GW_2.
+- `VPN_GW_3_AZ` -- Zone-redundant VPN_GW_3.
+- `VPN_GW_4_AZ` -- Zone-redundant VPN_GW_4 (Generation2 only).
+- `VPN_GW_5_AZ` -- Zone-redundant VPN_GW_5 (Generation2 only).
+- `ER_GW_1_AZ` -- Zone-redundant ExpressRoute gateway, size 1.
+- `ER_GW_2_AZ` -- Zone-redundant ExpressRoute gateway, size 2.
+- `ER_GW_3_AZ` -- Zone-redundant ExpressRoute gateway, size 3.
+- `ER_GW_SCALE` -- Autoscaling ExpressRoute gateway -- requires minimum_scale_unit and maximum_scale_unit (Terraform engine only; see the spec's parity note).
 
 ### spec.generation
 
 `enum`
 
+The VPN gateway generation. GENERATION2 doubles throughput ceilings
+and requires VPN_GW_2 or higher. Fixed at creation. Unspecified lets
+Azure pick the default generation for the SKU. Not applicable to
+ExpressRoute gateways (leave unset or NONE).
+
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_virtual_network_gateway_generation_unspecified`
-- `GENERATION1`
-- `GENERATION2`
-- `NONE`
+- `azure_virtual_network_gateway_generation_unspecified` -- Not specified -- Azure picks the default generation for the SKU.
+- `GENERATION1` -- First generation: supports BASIC through VPN_GW_3[_AZ].
+- `GENERATION2` -- Second generation: doubled throughput ceilings; requires VPN_GW_2 or higher.
+- `NONE` -- No generation -- ExpressRoute gateways.
 
 ### spec.ipConfigurations
 
 `[]AzureVirtualNetworkGatewayIpConfiguration` · required
+
+The gateway's IP configurations, each binding a public IP on the
+dedicated "GatewaySubnet". One configuration is the norm; ACTIVE-ACTIVE
+VPN gateways need two (each with its own public IP); three supports
+active-active with a separate P2S configuration. FIXED AT CREATION --
+any change replaces the gateway. VPN gateways require a public IP on
+every configuration; ExpressRoute gateways must NOT set public IPs
+(Azure manages their addressing).
 
 - rule: {"repeated":{"minItems":"1","maxItems":"3"}}
 
@@ -233,9 +306,17 @@ Allowed values (use exactly as shown):
 
 `string`
 
+The configuration's name, unique on the gateway. Defaults to
+"vnetGatewayConfig" (the name the Azure portal uses) when empty.
+
 ### spec.ipConfigurations[].subnetId
 
 `string | valueFrom` · required
+
+The gateway's subnet -- references an AzureSubnet's ARM id. ARM
+requires the subnet's name to be EXACTLY "GatewaySubnet" (/27 or
+larger recommended); the subnet carries nothing but gateways. Fixed
+at creation.
 
 - references: AzureSubnet (`status.outputs.subnet_id`)
 - rule: {"required":true}
@@ -245,6 +326,11 @@ Allowed values (use exactly as shown):
 
 `string | valueFrom`
 
+The public IP tunnels terminate on -- references an AzurePublicIp's
+ARM id (Standard SKU, static). REQUIRED on VPN gateways (every
+configuration); FORBIDDEN on ExpressRoute gateways (Azure manages
+their addressing).
+
 - references: AzurePublicIp (`status.outputs.public_ip_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzurePublicIp, name: <that resource's name>, fieldPath: status.outputs.public_ip_id}} -- a bare string does not parse
 
@@ -252,37 +338,65 @@ Allowed values (use exactly as shown):
 
 `enum`
 
+How the gateway's PRIVATE IP on the GatewaySubnet is assigned.
+Unspecified uses DYNAMIC, Azure's default.
+
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_virtual_network_gateway_ip_allocation_unspecified`
-- `DYNAMIC`
-- `STATIC`
+- `azure_virtual_network_gateway_ip_allocation_unspecified` -- Not specified -- uses DYNAMIC, Azure's default.
+- `DYNAMIC` -- Azure assigns the private IP.
+- `STATIC` -- The private IP is fixed for the gateway's lifetime.
 
 ### spec.activeActive
 
 `bool`
 
+Run the VPN gateway as an ACTIVE-ACTIVE pair: two gateway instances,
+each with its own ip_configuration and public IP, both terminating
+tunnels simultaneously (higher availability, no failover gap).
+Requires at least two ip_configurations. VPN gateways only.
+
 ### spec.privateIpAddressEnabled
 
 `bool`
+
+Also assign the gateway a PRIVATE IP from the GatewaySubnet
+(required for private-peering scenarios like ExpressRoute private
+connectivity to the gateway). Fixed at creation.
 
 ### spec.edgeZone
 
 `string`
 
+The extended-zone (Edge Zone) to deploy the gateway in. Rarely used;
+leave empty for regional deployment. Fixed at creation.
+
 ### spec.bgpEnabled
 
 `bool`
+
+Enable BGP on the gateway -- required for route-based tunnels that
+exchange routes dynamically (and for ExpressRoute route exchange,
+where Azure enables it implicitly). Tune the speaker via
+bgp_settings.
 
 ### spec.bgpSettings
 
 `AzureVirtualNetworkGatewayBgpSettings`
 
+The gateway's BGP speaker settings: its ASN, route weight, and
+per-ip-configuration APIPA peering addresses (for tunnels whose
+peers require link-local BGP endpoints, e.g. AWS site-to-site VPN).
+
 ### spec.bgpSettings.asn
 
 `int64`
+
+The gateway's Autonomous System Number. Azure defaults to 65515;
+private ASNs 64512-65514 and 65521-65534 are safe custom choices
+(65515-65520 are Azure-reserved).
 
 - rule: {"int64":{"gte":"0"}}
 
@@ -290,11 +404,18 @@ Allowed values (use exactly as shown):
 
 `int32`
 
+The weight added to routes learned over BGP, 0-100. Higher wins in
+route selection on the gateway.
+
 - rule: {"int32":{"lte":100,"gte":0}}
 
 ### spec.bgpSettings.peeringAddresses
 
 `[]AzureVirtualNetworkGatewayBgpPeeringAddress`
+
+Per-ip-configuration BGP peering addresses. One entry unless the
+gateway is active-active (then one per ip_configuration, each named
+explicitly).
 
 - rule: {"repeated":{"maxItems":"2"}}
 
@@ -302,9 +423,17 @@ Allowed values (use exactly as shown):
 
 `string`
 
+The ip_configuration this entry applies to. May be omitted when the
+gateway has exactly one ip_configuration; REQUIRED (by ARM) when it
+has several.
+
 ### spec.bgpSettings.peeringAddresses[].apipaAddresses
 
 `[]string` · required
+
+Azure custom APIPA addresses assigned to this BGP peer -- the
+link-local endpoints some peers (e.g. AWS site-to-site VPN) require.
+Azure public regions accept 169.254.21.0 through 169.254.22.255.
 
 - rule: {"repeated":{"minItems":"1","items":{"string":{"ipv4":true}}}}
 
@@ -312,11 +441,20 @@ Allowed values (use exactly as shown):
 
 `[]string`
 
+Custom address prefixes the gateway advertises to ALL connected
+clients and tunnels beyond the VNet's own space (the gateway's
+"custom routes"). CIDR notation.
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.defaultLocalNetworkGatewayId
 
 `string | valueFrom`
+
+FORCED TUNNELING: the local network gateway whose address space
+becomes the gateway's default route -- on-premises egress inspection
+for all VNet traffic. References an AzureLocalNetworkGateway's ARM
+id. Leave unset for normal split routing.
 
 - references: AzureLocalNetworkGateway (`status.outputs.local_network_gateway_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureLocalNetworkGateway, name: <that resource's name>, fieldPath: status.outputs.local_network_gateway_id}} -- a bare string does not parse
@@ -325,6 +463,11 @@ Allowed values (use exactly as shown):
 
 `AzureVirtualNetworkGatewayVpnClientConfiguration`
 
+POINT-TO-SITE: the client VPN configuration -- address pool,
+authentication (Entra ID, certificate, or RADIUS), tunnel protocols,
+and per-group routing. VPN gateways only; requires a route-based
+gateway on VPN_GW_1/aZ or higher for IKEv2/OpenVPN.
+
 - rule: Entra ID authentication needs all three of aad_tenant, aad_audience, and aad_issuer
 - rule: radius_server_address and radius_server_secret are set together
 
@@ -332,27 +475,44 @@ Allowed values (use exactly as shown):
 
 `[]string` · required
 
+The address pool VPN clients draw from, in CIDR notation. Must not
+overlap the VNet or any connected network.
+
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
 ### spec.vpnClientConfiguration.aadTenant
 
 `string`
 
+Entra ID (Azure AD) authentication -- the tenant URL, e.g.
+"https://login.microsoftonline.com/{tenant-id}". Set with
+aad_audience and aad_issuer (the three travel together).
+
 ### spec.vpnClientConfiguration.aadAudience
 
 `string`
+
+Entra ID authentication -- the Azure VPN application's client id.
 
 ### spec.vpnClientConfiguration.aadIssuer
 
 `string`
 
+Entra ID authentication -- the STS issuer URL, e.g.
+"https://sts.windows.net/{tenant-id}/".
+
 ### spec.vpnClientConfiguration.rootCertificates
 
 `[]AzureVirtualNetworkGatewayVpnClientRootCertificate`
 
+Certificate authentication -- root certificates whose chains sign
+client certificates.
+
 ### spec.vpnClientConfiguration.rootCertificates[].name
 
 `string` · required
+
+The certificate's name on the gateway.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -360,15 +520,23 @@ Allowed values (use exactly as shown):
 
 `string` · required
 
+The base64-encoded public certificate data (the .cer body, without
+the PEM header/footer lines).
+
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.vpnClientConfiguration.revokedCertificates
 
 `[]AzureVirtualNetworkGatewayVpnClientRevokedCertificate`
 
+Certificate authentication -- individually revoked client
+certificates (by thumbprint).
+
 ### spec.vpnClientConfiguration.revokedCertificates[].name
 
 `string` · required
+
+The revocation entry's name on the gateway.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -376,15 +544,23 @@ Allowed values (use exactly as shown):
 
 `string` · required
 
+The revoked client certificate's SHA-1 thumbprint.
+
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.vpnClientConfiguration.radiusServerAddress
 
 `string`
 
+RADIUS authentication -- the single-server form. Set with
+radius_server_secret; use radius_servers for multiple servers.
+
 ### spec.vpnClientConfiguration.radiusServerSecret
 
 `string | valueFrom` · sensitive
+
+The RADIUS shared secret for radius_server_address. Reference a
+secret rather than embedding the literal in manifests.
 
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
@@ -392,15 +568,24 @@ Allowed values (use exactly as shown):
 
 `[]AzureVirtualNetworkGatewayVpnClientRadiusServer`
 
+RADIUS authentication -- the multi-server form (each with its own
+secret and score).
+
 ### spec.vpnClientConfiguration.radiusServers[].address
 
 `string` · required
+
+The RADIUS server's IPv4 address.
 
 - rule: {"required":true,"string":{"ipv4":true}}
 
 ### spec.vpnClientConfiguration.radiusServers[].secret
 
 `string | valueFrom` · required · sensitive
+
+The RADIUS shared secret (1-128 characters). Reference a secret
+rather than embedding the literal in manifests. Azure never returns
+it on reads.
 
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
@@ -409,15 +594,22 @@ Allowed values (use exactly as shown):
 
 `int32`
 
+The server's priority score, 1-30 (lower is preferred).
+
 - rule: {"int32":{"lte":30,"gte":1}}
 
 ### spec.vpnClientConfiguration.ipsecPolicy
 
 `AzureVirtualNetworkGatewayVpnClientIpsecPolicy`
 
+A custom IPsec policy for point-to-site IKEv2/OpenVPN connections.
+Leave unset to use Azure's defaults.
+
 ### spec.vpnClientConfiguration.ipsecPolicy.dhGroup
 
 `string`
+
+The IKE Phase 1 Diffie-Hellman group.
 
 - rule: {"string":{"in":["DHGroup1","DHGroup14","DHGroup2","DHGroup2048","DHGroup24","ECP256","ECP384","None"]}}
 
@@ -425,11 +617,15 @@ Allowed values (use exactly as shown):
 
 `string`
 
+The IKE encryption algorithm.
+
 - rule: {"string":{"in":["AES128","AES192","AES256","DES","DES3","GCMAES128","GCMAES256"]}}
 
 ### spec.vpnClientConfiguration.ipsecPolicy.ikeIntegrity
 
 `string`
+
+The IKE integrity algorithm.
 
 - rule: {"string":{"in":["GCMAES128","GCMAES256","MD5","SHA1","SHA256","SHA384"]}}
 
@@ -437,11 +633,15 @@ Allowed values (use exactly as shown):
 
 `string`
 
+The IPsec (Phase 2) encryption algorithm.
+
 - rule: {"string":{"in":["AES128","AES192","AES256","DES","DES3","GCMAES128","GCMAES192","GCMAES256","None"]}}
 
 ### spec.vpnClientConfiguration.ipsecPolicy.ipsecIntegrity
 
 `string`
+
+The IPsec (Phase 2) integrity algorithm.
 
 - rule: {"string":{"in":["GCMAES128","GCMAES192","GCMAES256","MD5","SHA1","SHA256"]}}
 
@@ -449,11 +649,15 @@ Allowed values (use exactly as shown):
 
 `string`
 
+The Perfect Forward Secrecy group.
+
 - rule: {"string":{"in":["ECP256","ECP384","None","PFS1","PFS14","PFS2","PFS2048","PFS24","PFSMM"]}}
 
 ### spec.vpnClientConfiguration.ipsecPolicy.saLifetimeSeconds
 
 `int32`
+
+The security association lifetime in seconds, 300-172799.
 
 - rule: {"int32":{"lte":172799,"gte":300}}
 
@@ -461,11 +665,16 @@ Allowed values (use exactly as shown):
 
 `int32`
 
+The security association size limit in kilobytes, at least 1024.
+
 - rule: {"int32":{"gte":1024}}
 
 ### spec.vpnClientConfiguration.vpnClientProtocols
 
 `[]string`
+
+The tunnel protocols clients may use: "OpenVPN" (recommended),
+"IkeV2", and/or "SSTP". Unset lets Azure pick its default set.
 
 - rule: {"repeated":{"items":{"string":{"in":["IkeV2","OpenVPN","SSTP"]}}}}
 
@@ -473,15 +682,24 @@ Allowed values (use exactly as shown):
 
 `[]string`
 
+The enabled authentication types: "Certificate", "AAD" (Entra ID),
+and/or "Radius". REQUIRED by Azure when combining multiple types;
+unset lets Azure infer the single configured type.
+
 - rule: {"repeated":{"maxItems":"3","items":{"string":{"in":["Certificate","AAD","Radius"]}}}}
 
 ### spec.vpnClientConfiguration.clientConnections
 
 `[]AzureVirtualNetworkGatewayClientConnection`
 
+Per-policy-group client connection pools: map policy groups (defined
+in the spec's policy_groups) to dedicated address prefixes.
+
 ### spec.vpnClientConfiguration.clientConnections[].name
 
 `string` · required
+
+The connection configuration's name.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -489,11 +707,17 @@ Allowed values (use exactly as shown):
 
 `[]string` · required
 
+The policy groups (by name, from the spec's policy_groups) whose
+members receive addresses from this pool.
+
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
 ### spec.vpnClientConfiguration.clientConnections[].addressPrefixes
 
 `[]string` · required
+
+The address prefixes this group's clients draw from, in CIDR
+notation (carved from the vpn_client_configuration address pool).
 
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
@@ -501,9 +725,17 @@ Allowed values (use exactly as shown):
 
 `[]AzureVirtualNetworkGatewayPolicyGroup`
 
+Policy groups for point-to-site connection segmentation: members are
+matched by Entra ID group, certificate CN, or RADIUS attribute, and
+vpn_client_configuration.client_connections maps each group to its
+own address pool.
+
 ### spec.policyGroups[].name
 
 `string` · required
+
+The policy group's name (referenced by
+vpn_client_configuration.client_connections).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -511,11 +743,16 @@ Allowed values (use exactly as shown):
 
 `[]AzureVirtualNetworkGatewayPolicyMember` · required
 
+The membership rules -- a client matching ANY member joins the
+group.
+
 - rule: {"repeated":{"minItems":"1"}}
 
 ### spec.policyGroups[].policyMembers[].name
 
 `string` · required
+
+The member rule's name.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -523,11 +760,17 @@ Allowed values (use exactly as shown):
 
 `string`
 
+The attribute matched: "AADGroupId" (Entra ID group object id),
+"CertificateGroupId" (certificate CN), or "RadiusAzureGroupId"
+(RADIUS-provided group).
+
 - rule: {"string":{"in":["AADGroupId","CertificateGroupId","RadiusAzureGroupId"]}}
 
 ### spec.policyGroups[].policyMembers[].value
 
 `string` · required
+
+The attribute value to match (e.g. the Entra ID group's object id).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -535,9 +778,15 @@ Allowed values (use exactly as shown):
 
 `bool`
 
+Whether this is the gateway's default policy group (for clients
+matching no other group).
+
 ### spec.policyGroups[].priority
 
 `int32`
+
+The group's evaluation priority (lower evaluates first). Azure
+defaults to 0.
 
 - rule: {"int32":{"gte":0}}
 
@@ -545,13 +794,25 @@ Allowed values (use exactly as shown):
 
 `bool`
 
+Translate BGP-learned routes through the gateway's NAT rules --
+advertise post-NAT prefixes instead of the raw on-premises ones.
+Only meaningful when nat_rules are configured.
+
 ### spec.dnsForwardingEnabled
 
 `bool`
 
+Let point-to-site clients resolve names through Azure DNS via the
+gateway. Sent only when enabled -- ARM rejects the parameter on
+SKUs/types that do not support DNS forwarding.
+
 ### spec.ipSecReplayProtectionEnabled
 
 `bool` · optional (explicit presence)
+
+IPsec replay protection (anti-replay windows on tunnels). Azure and
+the provider default this ON; disable only for peers whose replay
+windows misbehave.
 
 - default: `true`
 
@@ -559,11 +820,24 @@ Allowed values (use exactly as shown):
 
 `int32` · optional (explicit presence)
 
+ER_GW_SCALE autoscale floor, 1-40 scale units. REQUIRED (with
+maximum_scale_unit) when sku is ER_GW_SCALE; invalid on any other
+SKU.
+
+PARITY-EXCEPTION: the Pulumi engine's classic SDK does not expose
+the autoscale bounds, so ER_GW_SCALE gateways deploy via the
+Terraform engine only -- the Pulumi module fails loudly when these
+are set.
+
 - rule: {"int32":{"lte":40,"gte":1}}
 
 ### spec.maximumScaleUnit
 
 `int32` · optional (explicit presence)
+
+ER_GW_SCALE autoscale ceiling, 1-40 scale units; must be >=
+minimum_scale_unit. See minimum_scale_unit for the engine parity
+note.
 
 - rule: {"int32":{"lte":40,"gte":1}}
 
@@ -571,17 +845,31 @@ Allowed values (use exactly as shown):
 
 `bool`
 
+Allow traffic from remote (peered) virtual networks to transit this
+gateway -- the hub side of hub-spoke gateway transit toward
+non-Virtual-WAN remotes.
+
 ### spec.virtualWanTrafficEnabled
 
 `bool`
+
+Allow traffic from Virtual WAN networks to transit this gateway.
 
 ### spec.natRules
 
 `[]AzureVirtualNetworkGatewayNatRule`
 
+NAT rules applied on the gateway -- translate overlapping address
+space between on-premises sites and the VNet. Connections opt into
+specific rules via their egress/ingress NAT rule id lists; the
+gateway publishes each rule's ARM id in the nat_rule_ids output.
+
 ### spec.natRules[].name
 
 `string` · required
+
+The rule's name, unique on the gateway. The rule's ARM id surfaces
+in the gateway's nat_rule_ids output under this name.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -589,29 +877,39 @@ Allowed values (use exactly as shown):
 
 `enum`
 
+The translation direction: EGRESS_SNAT (translate the VNet-side
+source -- the default) or INGRESS_SNAT (translate the
+on-premises-side source).
+
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_virtual_network_gateway_nat_rule_mode_unspecified`
-- `EGRESS_SNAT`
-- `INGRESS_SNAT`
+- `azure_virtual_network_gateway_nat_rule_mode_unspecified` -- Not specified -- uses EGRESS_SNAT, the default direction.
+- `EGRESS_SNAT` -- Translate the VNet-side source address space.
+- `INGRESS_SNAT` -- Translate the on-premises-side source address space.
 
 ### spec.natRules[].type
 
 `enum`
 
+The translation type: STATIC_NAT (one-to-one, no port translation
+-- the default) or DYNAMIC_NAT (many-to-one with port translation).
+
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_virtual_network_gateway_nat_rule_type_unspecified`
-- `STATIC_NAT`
-- `DYNAMIC_NAT`
+- `azure_virtual_network_gateway_nat_rule_type_unspecified` -- Not specified -- uses STATIC_NAT, one-to-one translation.
+- `STATIC_NAT` -- One-to-one address translation without ports (wire value "Static").
+- `DYNAMIC_NAT` -- Many-to-one translation with port translation (wire value "Dynamic").
 
 ### spec.natRules[].externalMappings
 
 `[]AzureVirtualNetworkGatewayNatRuleMapping` · required
+
+The external (post-translation, as seen by the remote side)
+mappings.
 
 - rule: {"repeated":{"minItems":"1"}}
 
@@ -619,15 +917,21 @@ Allowed values (use exactly as shown):
 
 `string` · required
 
+The address space in CIDR notation.
+
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.natRules[].externalMappings[].portRange
 
 `string`
 
+The port range (e.g. "100-200"). Dynamic rules only.
+
 ### spec.natRules[].internalMappings
 
 `[]AzureVirtualNetworkGatewayNatRuleMapping` · required
+
+The internal (pre-translation, VNet-side) mappings.
 
 - rule: {"repeated":{"minItems":"1"}}
 
@@ -635,19 +939,31 @@ Allowed values (use exactly as shown):
 
 `string` · required
 
+The address space in CIDR notation.
+
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.natRules[].internalMappings[].portRange
 
 `string`
 
+The port range (e.g. "100-200"). Dynamic rules only.
+
 ### spec.natRules[].ipConfigurationId
 
 `string`
 
+Pin the rule to one gateway ip_configuration by its ARM id (of the
+form {gateway-id}/ipConfigurations/{name}). Rarely needed -- leave
+empty to apply on all configurations.
+
 ### spec.tags
 
 `map<string, string>`
+
+Free-form tags applied to the gateway, merged over the
+Planton-derived resource tags (organization, environment, resource
+id); a user tag with the same key wins.
 
 ## Validation Rules
 
@@ -675,9 +991,9 @@ Reference an output from another manifest as `valueFrom: {kind: AzureVirtualNetw
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.virtual_network_gateway_id` | `string` |  |
-| `status.outputs.virtual_network_gateway_name` | `string` |  |
-| `status.outputs.nat_rule_ids` | `map<string, string>` |  |
+| `status.outputs.virtual_network_gateway_id` | `string` | The Azure Resource Manager ID of the gateway -- what connections reference as virtual_network_gateway_id. Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworkGateways/{name} |
+| `status.outputs.virtual_network_gateway_name` | `string` | The name of the gateway resource. |
+| `status.outputs.nat_rule_ids` | `map<string, string>` | The ARM ids of the gateway's NAT rules, keyed by rule name -- connections opt into rules via their egress/ingress NAT rule id lists. Empty when the spec defines no nat_rules. (The gateway's PUBLIC address is not an output here: it belongs to the referenced AzurePublicIp resource and surfaces through that kind's outputs.) |
 
 ## References
 
