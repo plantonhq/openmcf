@@ -13,7 +13,8 @@
 //	├── iac/               ONE live module set per component      (required)
 //	│   ├── pulumi/        with README.md, no Makefile            (required)
 //	│   ├── tf/            with README.md, no .gitignore          (required)
-//	│   └── import-map.yaml                                       (optional)
+//	│   ├── import-map.yaml                                       (optional)
+//	│   └── provider-parity.yaml   recorded parity judgment       (optional)
 //	├── presets/           .yaml manifests + .md sidecar pairs    (required)
 //	├── e2e/               test manifest, profile, scenarios      (optional, tiered)
 //	├── conversions/       cross-version conversion specs         (optional)
@@ -248,13 +249,13 @@ func checkComponent(repoRoot, componentRel string, add func(rel, rule, detail st
 		iacEntries, _ := os.ReadDir(filepath.Join(repoRoot, iacRel))
 		for _, e := range iacEntries {
 			switch e.Name() {
-			case "pulumi", "tf", "import-map.yaml":
+			case "pulumi", "tf", "import-map.yaml", "provider-parity.yaml":
 			case "crds":
 				// Operator kinds stage the CRD manifests their modules apply
 				// (both engines read them) -- declared-optional module payload.
 			default:
 				add(filepath.Join(iacRel, e.Name()), RuleUnexpectedEntry,
-					"iac/ holds exactly pulumi/, tf/, optionally import-map.yaml and staged crds/")
+					"iac/ holds exactly pulumi/, tf/, optionally import-map.yaml, provider-parity.yaml, and staged crds/")
 			}
 		}
 		for _, engine := range []string{"pulumi", "tf"} {

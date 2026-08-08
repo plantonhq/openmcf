@@ -3,7 +3,6 @@ syntax = "proto3";
 package dev.planton.shared.relationship.v1;
 
 import "buf/validate/validate.proto";
-import "google/protobuf/descriptor.proto";
 import "shared/cloudresourcekind/cloud_resource_kind.proto";
 
 // CloudResourceRelationship defines a relationship between two cloud resources.

@@ -39,6 +39,7 @@ func init() {
 		root.Downgrade,
 		root.E2E,
 		root.Explain,
+		root.ProviderParity,
 		root.Upgrade,
 		root.Version,
 	)

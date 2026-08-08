@@ -33,8 +33,9 @@ type Options struct {
 // commands through the same exported surface, so the two cannot drift.
 //
 // Binary self-management commands (version, upgrade, downgrade) and developer
-// tools (e2e) are deliberately not part of the engine set -- a binary owns its
-// own lifecycle. The standalone binary adds them separately.
+// tools (e2e, provider-parity) are deliberately not part of the engine set --
+// a binary owns its own lifecycle, and repo-audit tools only work in a repo
+// checkout. The standalone binary adds them separately.
 func RegisterCommands(parent *cobra.Command, opts Options) {
 	SetModulesVersion(opts.ModulesVersion)
 	RegisterPersistentFlags(parent)

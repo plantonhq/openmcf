@@ -85,14 +85,12 @@ func aiEndpoint(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) 
 	}
 
 	// Private Service Connect: the endpoint exposed via a service
-	// attachment. The secure flag adds IAM authorization on top of
-	// network reachability.
+	// attachment. Secure PSC (IAM authorization on top of network
+	// reachability) is not offered: the GA provider does not expose it,
+	// and GA is the catalog's parity baseline.
 	if spec.PrivateServiceConnectConfig != nil {
 		pscArgs := &vertex.AiEndpointPrivateServiceConnectConfigArgs{
 			EnablePrivateServiceConnect: pulumi.Bool(true),
-		}
-		if spec.PrivateServiceConnectConfig.EnableSecurePrivateServiceConnect {
-			pscArgs.EnableSecurePrivateServiceConnect = pulumi.BoolPtr(true)
 		}
 		if len(spec.PrivateServiceConnectConfig.ProjectAllowlist) > 0 {
 			pscArgs.ProjectAllowlists = pulumi.ToStringArray(spec.PrivateServiceConnectConfig.ProjectAllowlist)

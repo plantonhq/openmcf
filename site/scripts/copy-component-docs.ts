@@ -652,12 +652,34 @@ Ready-to-deploy configuration presets for ${doc.title}. Each preset is a complet
 }
 
 /**
+ * Copy a provider's generated Terraform parity report page
+ * (catalog/{provider}/terraform-parity.md, committed and drift-tested in the
+ * repository) into the site tree. The source page carries its own
+ * frontmatter, so the copy is verbatim. Returns whether the provider has one.
+ */
+function copyParityReport(
+  apisRoot: string,
+  provider: string,
+  outputRoot: string
+): boolean {
+  const sourcePath = path.join(apisRoot, provider, 'terraform-parity.md');
+  if (!fs.existsSync(sourcePath)) {
+    return false;
+  }
+  const providerDir = path.join(outputRoot, provider);
+  fs.mkdirSync(providerDir, { recursive: true });
+  fs.copyFileSync(sourcePath, path.join(providerDir, 'terraform-parity.md'));
+  return true;
+}
+
+/**
  * Generate provider index page listing all components
  */
 function generateProviderIndex(
   provider: string,
   docs: ComponentDoc[],
-  outputRoot: string
+  outputRoot: string,
+  hasParityReport: boolean
 ): void {
   const providerDir = path.join(outputRoot, provider);
 
@@ -677,6 +699,10 @@ function generateProviderIndex(
     .map(doc => `- [${doc.title}](/docs/catalog/${provider}/${doc.slug})`)
     .join('\n');
 
+  const parityLine = hasParityReport
+    ? `\nCoverage is measured, not asserted: see the [Terraform Parity Report](/docs/catalog/${provider}/terraform-parity) for the generated accounting against the pinned provider.\n`
+    : '';
+
   const indexContent = `---
 title: "${providerTitle}"
 description: "Deploy ${providerTitle} resources using Planton"
@@ -689,7 +715,7 @@ order: 10
 The following ${providerTitle} resources can be deployed using Planton:
 
 ${componentList}
-`;
+${parityLine}`;
 
   const indexPath = path.join(providerDir, 'index.md');
   fs.writeFileSync(indexPath, indexContent, 'utf-8');
@@ -829,7 +855,11 @@ async function copyComponentDocs(): Promise<void> {
       }
     }
 
-    generateProviderIndex(provider, docs, siteDocsRoot);
+    const hasParityReport = copyParityReport(apisRoot, provider, siteDocsRoot);
+    if (hasParityReport) {
+      console.log(`   Copied Terraform parity report`);
+    }
+    generateProviderIndex(provider, docs, siteDocsRoot, hasParityReport);
     console.log(`   Generated index page\n`);
   }
 

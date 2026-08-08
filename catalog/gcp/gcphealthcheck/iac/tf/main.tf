@@ -30,12 +30,6 @@ resource "google_project_service" "compute_api" {
 resource "google_compute_health_check" "this" {
   count = local.is_regional ? 0 : 1
 
-  # google-beta: the grpc_tls_health_check block is beta-only on the released
-  # 6.x line (everything else here is GA and identical in beta). The Pulumi
-  # provider is beta-bridged by construction, so both engines expose the same
-  # surface.
-  provider = google-beta
-
   name        = local.health_check_name
   project     = local.project_id
   description = var.spec.description
@@ -146,10 +140,6 @@ resource "google_compute_health_check" "this" {
 # reference health checks in their own region.
 resource "google_compute_region_health_check" "this" {
   count = local.is_regional ? 1 : 0
-
-  # google-beta for the same reason as the global resource: the
-  # grpc_tls_health_check block is beta-only on the released 6.x line.
-  provider = google-beta
 
   name        = local.health_check_name
   project     = local.project_id

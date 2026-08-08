@@ -88,3 +88,5 @@ The following GCP resources can be deployed using Planton:
 - [VPC Network](/docs/catalog/gcp/vpc-network)
 - [Workload Identity Pool on Google Cloud](/docs/catalog/gcp/workload-identity-pool-on-google-cloud)
 - [Workload Identity Pool Provider on Google Cloud](/docs/catalog/gcp/workload-identity-pool-provider-on-google-cloud)
+
+Coverage is measured, not asserted: see the [Terraform Parity Report](/docs/catalog/gcp/terraform-parity) for the generated accounting against the pinned provider.

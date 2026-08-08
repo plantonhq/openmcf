@@ -182,11 +182,10 @@ var _ = ginkgo.Describe("GcpVertexAiEndpointSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should accept spec with secure PSC enabled", func() {
+	ginkgo.It("should accept spec with a PSC project allowlist", func() {
 		msg := minimal()
 		msg.Spec.PrivateServiceConnectConfig = &GcpVertexAiEndpointPrivateServiceConnectConfig{
-			ProjectAllowlist:                  []string{"project-a"},
-			EnableSecurePrivateServiceConnect: true,
+			ProjectAllowlist: []string{"project-a"},
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
