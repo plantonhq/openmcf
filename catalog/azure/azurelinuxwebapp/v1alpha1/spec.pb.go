@@ -936,9 +936,9 @@ func (AzureLinuxWebAppCookieExpirationConvention) EnumDescriptor() ([]byte, []in
 // **Application stack**:
 //
 // The application_stack within site_config selects the runtime. Exactly one
-// runtime must be chosen: .NET, Node.js, Python, PHP, Ruby, Go, Java
+// runtime must be chosen: .NET, Node.js, Python, PHP, Go, Java
 // (with server selection), or Docker container. Web Apps support a broader
-// set of runtimes compared to Function Apps, including PHP, Ruby, Go, and
+// set of runtimes compared to Function Apps, including PHP, Go, and
 // Java with configurable application servers (Tomcat, JBoss EAP).
 //
 // **Authentication (Easy Auth)**: the `auth_settings_v2` block turns on
@@ -1385,7 +1385,7 @@ type AzureLinuxWebAppSiteConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The application stack defines the runtime for the Web App.
 	// Exactly one runtime must be specified: dotnet_version, node_version,
-	// python_version, php_version, ruby_version, go_version, java_version
+	// python_version, php_version, go_version, java_version
 	// (with java_server + java_server_version), or docker.
 	ApplicationStack *AzureLinuxWebAppApplicationStack `protobuf:"bytes,1,opt,name=application_stack,json=applicationStack,proto3" json:"application_stack,omitempty"`
 	// Keep the Web App always loaded in memory.
@@ -1799,17 +1799,20 @@ func (x *AzureLinuxWebAppSiteConfig) GetAutoHealSetting() *AzureLinuxWebAppAutoH
 // optional semantics for this pattern.
 //
 // Web Apps support a broader set of runtimes compared to Function Apps,
-// including PHP, Ruby, Go, and Java with configurable application servers.
+// including PHP, Go, and Java with configurable application servers.
 //
 // Runtime options:
 // - .NET: dotnet_version
 // - Node.js: node_version
 // - Python: python_version
 // - PHP: php_version
-// - Ruby: ruby_version (deprecated, limited support)
 // - Go: go_version (deprecated, limited support)
 // - Java: java_version + java_server + java_server_version
 // - Container: docker (registry_url + image_name + image_tag)
+//
+// Ruby is deliberately not modeled: Azure retired Ruby on App Service,
+// and the provider no longer accepts a Ruby runtime. Run Ruby apps as
+// custom containers via the docker block.
 type AzureLinuxWebAppApplicationStack struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// .NET runtime version.
@@ -1830,14 +1833,6 @@ type AzureLinuxWebAppApplicationStack struct {
 	//
 	// Valid values: "7.4", "8.0", "8.1", "8.2", "8.3", "8.4"
 	PhpVersion string `protobuf:"bytes,4,opt,name=php_version,json=phpVersion,proto3" json:"php_version,omitempty"`
-	// Ruby runtime version.
-	//
-	// **Deprecated**: Ruby support on Azure App Service is limited and
-	// not recommended for new deployments. Consider containerized deployment
-	// via the docker block instead.
-	//
-	// Valid values: "2.6", "2.7"
-	RubyVersion string `protobuf:"bytes,5,opt,name=ruby_version,json=rubyVersion,proto3" json:"ruby_version,omitempty"`
 	// Go runtime version.
 	//
 	// **Deprecated**: Go support on Azure App Service is limited and
@@ -1935,13 +1930,6 @@ func (x *AzureLinuxWebAppApplicationStack) GetPythonVersion() string {
 func (x *AzureLinuxWebAppApplicationStack) GetPhpVersion() string {
 	if x != nil {
 		return x.PhpVersion
-	}
-	return ""
-}
-
-func (x *AzureLinuxWebAppApplicationStack) GetRubyVersion() string {
-	if x != nil {
-		return x.RubyVersion
 	}
 	return ""
 }
@@ -4828,7 +4816,7 @@ const file_catalog_azure_azurelinuxwebapp_v1alpha1_spec_proto_rawDesc = "" +
 	"\x14_local_mysql_enabledB\x1b\n" +
 	"\x19_remote_debugging_enabledB\x1e\n" +
 	"\x1c_scm_use_main_ip_restrictionB*\n" +
-	"(_container_registry_use_managed_identity\"\xd6\x0e\n" +
+	"(_container_registry_use_managed_identity\"\xdd\r\n" +
 	" AzureLinuxWebAppApplicationStack\x12\xd3\x01\n" +
 	"\x0edotnet_version\x18\x01 \x01(\tB\xab\x01\xbaH\xa7\x01\xba\x01\xa3\x01\n" +
 	"\x14dotnet_version_valid\x12Adotnet_version must be one of: 3.1, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0\x1aHthis == '' || this in ['3.1', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0']R\rdotnetVersion\x12\xf3\x01\n" +
@@ -4838,9 +4826,7 @@ const file_catalog_azure_azurelinuxwebapp_v1alpha1_spec_proto_rawDesc = "" +
 	"\x14python_version_valid\x12Dpython_version must be one of: 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13\x1aKthis == '' || this in ['3.7', '3.8', '3.9', '3.10', '3.11', '3.12', '3.13']R\rpythonVersion\x12\xb9\x01\n" +
 	"\vphp_version\x18\x04 \x01(\tB\x97\x01\xbaH\x93\x01\xba\x01\x8f\x01\n" +
 	"\x11php_version_valid\x128php_version must be one of: 7.4, 8.0, 8.1, 8.2, 8.3, 8.4\x1a@this == '' || this in ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4']R\n" +
-	"phpVersion\x12\x8a\x01\n" +
-	"\fruby_version\x18\x05 \x01(\tBg\xbaHd\xba\x01a\n" +
-	"\x12ruby_version_valid\x12%ruby_version must be one of: 2.6, 2.7\x1a$this == '' || this in ['2.6', '2.7']R\vrubyVersion\x12\x86\x01\n" +
+	"phpVersion\x12\x86\x01\n" +
 	"\n" +
 	"go_version\x18\x06 \x01(\tBg\xbaHd\xba\x01a\n" +
 	"\x10go_version_valid\x12%go_version must be one of: 1.18, 1.19\x1a&this == '' || this in ['1.18', '1.19']R\tgoVersion\x12\x98\x01\n" +
@@ -4851,7 +4837,7 @@ const file_catalog_azure_azurelinuxwebapp_v1alpha1_spec_proto_rawDesc = "" +
 	"\x13java_server_version\x18\t \x01(\tR\x11javaServerVersion\x12a\n" +
 	"\x06docker\x18\n" +
 	" \x01(\v2I.dev.planton.azure.azurelinuxwebapp.v1alpha1.AzureLinuxWebAppDockerConfigR\x06docker:\x95\x02\xbaH\x91\x02\x1a\x8e\x02\n" +
-	"\x14java_fields_together\x12Gjava_version, java_server, and java_server_version must be set together\x1a\xac\x01(this.java_version == '' && this.java_server == 0 && this.java_server_version == '') || (this.java_version != '' && this.java_server != 0 && this.java_server_version != '')\"\xb5\x02\n" +
+	"\x14java_fields_together\x12Gjava_version, java_server, and java_server_version must be set together\x1a\xac\x01(this.java_version == '' && this.java_server == 0 && this.java_server_version == '') || (this.java_version != '' && this.java_server != 0 && this.java_server_version != '')J\x04\b\x05\x10\x06R\fruby_version\"\xb5\x02\n" +
 	"\x1cAzureLinuxWebAppDockerConfig\x12-\n" +
 	"\fregistry_url\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vregistryUrl\x12)\n" +

@@ -112,6 +112,14 @@ var _ = ginkgo.Describe("AzureStorageAccountSpec Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
+		ginkgo.It("should reject the retired TLS 1.0/1.1 floors (reserved enum slots)", func() {
+			for _, retired := range []AzureStorageAccountMinTlsVersion{1, 2} {
+				input := minimalSpec()
+				input.Spec.MinTlsVersion = retired
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil(), "retired TLS floor %d must be rejected", retired)
+			}
+		})
+
 		ginkgo.It("should accept a data-lake account with SFTP and NFSv3", func() {
 			input := minimalSpec()
 			input.Spec.IsHnsEnabled = true

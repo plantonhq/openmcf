@@ -1,13 +1,13 @@
 # Azure Container Registry
 
-Deploys an Azure Container Registry (ACR): the managed, private OCI registry that stores the container images and artifacts a platform's workloads run. The SKU is the registry's feature gate -- Basic and Standard carry the core push/pull surface, while Premium unlocks the enterprise surface: geo-replication, zone redundancy, network isolation, content-trust/quarantine/retention policies, and customer-managed-key encryption. Spec-level validation enforces the same SKU gates ARM does, so a misconfigured manifest fails at validation, not at apply.
+Deploys an Azure Container Registry (ACR): the managed, private OCI registry that stores the container images and artifacts a platform's workloads run. The SKU is the registry's feature gate -- Basic and Standard carry the core push/pull surface, while Premium unlocks the enterprise surface: geo-replication, zone redundancy, network isolation, quarantine/retention policies, and customer-managed-key encryption. Spec-level validation enforces the same SKU gates ARM does, so a misconfigured manifest fails at validation, not at apply.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Container Registry** -- an Azure Container Registry in the specified region and resource group, with the chosen SKU tier, access posture (admin account, anonymous pull, public network access, export policy), and trusted-services bypass
-- **Geo-Replications** -- created only on the Premium SKU when `georeplications` entries are configured; each replica serves pulls locally in its region, with per-replica zone redundancy, optional regional endpoints, and its own tags
+- **Geo-Replications** -- created only on the Premium SKU when `georeplications` entries are configured; each replica serves pulls locally in its region, with per-replica zone redundancy, an explicit global-endpoint-routing choice, and its own tags
 - **Network Rule Set** -- created only on the Premium SKU when `networkRuleSet` is configured; a default action plus an IPv4 CIDR allowlist for a public-but-restricted registry
 - **Customer-Managed-Key Encryption** -- created only on the Premium SKU when `encryption` is configured; the registry's data is encrypted with a Key Vault key you own, unwrapped by a user-assigned identity
 - **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
@@ -79,11 +79,11 @@ These are the most important decisions when configuring a Container Registry. Ex
 
 **Access posture** -- `adminUserEnabled` (off by default; Entra is the production path), `anonymousPullEnabled` (Standard+; makes EVERY repository publicly readable), `publicNetworkAccessEnabled` (default true; explicit false takes the registry private-endpoints-only and requires Premium), and `exportPolicyEnabled` (default true; disabling is a data-exfiltration control requiring Premium plus public access explicitly false).
 
-**Geo-replication** -- `georeplications` replicates images to additional Azure regions (Premium only). Each entry carries its own `location`, `zoneRedundancyEnabled`, `regionalEndpointEnabled`, and `tags`. The list must not contain the home region -- the home replica is implicit. Pulls are served from the nearest replica; pushes propagate automatically.
+**Geo-replication** -- `georeplications` replicates images to additional Azure regions (Premium only). Each entry carries its own `location`, `zoneRedundancyEnabled`, `globalEndpointRoutingEnabled` (whether the replica participates in global endpoint routing for the registry's login server), and `tags`. The list must not contain the home region -- the home replica is implicit. Pulls are served from the nearest replica; pushes propagate automatically.
 
 **Network rules** -- `networkRuleSet` (Premium only) keeps the registry public but restricted: set `defaultAction: DENY` and enumerate IPv4 CIDR `ipRules`. `networkRuleBypassOption` decides whether trusted Azure services (ACR Tasks, Defender) skip the restrictions; `dataEndpointEnabled` gives blob traffic exact per-region hostnames for egress allowlists.
 
-**Artifact policies** -- `retentionPolicyInDays` purges untagged manifests (0 = immediately; unset = keep forever), `trustPolicyEnabled` enables Docker Content Trust, `quarantinePolicyEnabled` holds new pushes until scanning clears them. All Premium-only.
+**Artifact policies** -- `retentionPolicyInDays` purges untagged manifests (0 = immediately; unset = keep forever), `quarantinePolicyEnabled` holds new pushes until scanning clears them. Both Premium-only. Docker Content Trust is deliberately not modeled: the ACR service retired it; sign images with the Notation/ORAS artifact flow instead, which needs no registry-level toggle.
 
 **CMK encryption** -- `encryption` (Premium only, fixed at creation) encrypts with a Key Vault key you own: `keyVaultKeyId` references an AzureKeyVaultKey's versionless ID so rotation propagates, and `identityClientId` names the user-assigned identity (by CLIENT id) that unwraps it. Requires a USER_ASSIGNED flavor in `identity`.
 

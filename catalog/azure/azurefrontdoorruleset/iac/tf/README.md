@@ -21,6 +21,12 @@ profile plus one `azurerm_cdn_frontdoor_rule` per entry in
   to `Http`/`Https` on the redirect action but `HttpOnly`/`HttpsOnly`
   on the route-configuration override -- both maps live in `locals.tf`
   with the reason.
+- **Negation is folded into the operator value** -- the provider has no
+  `negate_condition` argument; the spec's per-condition boolean becomes
+  a `Not` prefix on the operator (`NotEqual`, `NotIPMatch`, ...), and
+  the equality-only conditions (method, scheme, HTTP version, device,
+  TLS) always emit an explicit `Equal`/`NotEqual` because the provider
+  requires an operator on every condition.
 - **Address-condition operators default to `IPMatch`** when unspecified
   (the provider's documented default, materialized because tfvars drops
   unset fields).

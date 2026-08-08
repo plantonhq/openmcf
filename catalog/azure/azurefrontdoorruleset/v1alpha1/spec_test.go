@@ -476,6 +476,53 @@ var _ = ginkgo.Describe("AzureFrontDoorRuleSetSpec Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(withRules(rule))).NotTo(gomega.BeNil())
 		})
 
+		ginkgo.It("should reject the ANY operator on a remote address condition", func() {
+			rule := headerRule("remoteany", 1)
+			rule.Conditions = &AzureFrontDoorRuleConditions{
+				RemoteAddress: []*AzureFrontDoorRuleRemoteAddressCondition{{
+					Operator: AzureFrontDoorRuleOperator_ANY,
+				}},
+			}
+			gomega.Expect(protovalidate.Validate(withRules(rule))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject the ANY operator on a socket address condition", func() {
+			rule := headerRule("socketany", 1)
+			rule.Conditions = &AzureFrontDoorRuleConditions{
+				SocketAddress: []*AzureFrontDoorRuleSocketAddressCondition{{
+					Operator: AzureFrontDoorRuleOperator_ANY,
+				}},
+			}
+			gomega.Expect(protovalidate.Validate(withRules(rule))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a remote address condition with no match values", func() {
+			rule := headerRule("remotenovalues", 1)
+			rule.Conditions = &AzureFrontDoorRuleConditions{
+				RemoteAddress: []*AzureFrontDoorRuleRemoteAddressCondition{{
+					Operator: AzureFrontDoorRuleOperator_IP_MATCH,
+				}},
+			}
+			gomega.Expect(protovalidate.Validate(withRules(rule))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a rule combining a redirect with a route-configuration override", func() {
+			rule := &AzureFrontDoorRule{
+				Name:  "redirectplusoverride",
+				Order: 1,
+				Actions: &AzureFrontDoorRuleActions{
+					UrlRedirect: &AzureFrontDoorRuleUrlRedirectAction{
+						RedirectType:        AzureFrontDoorRuleRedirectType_PERMANENT_REDIRECT,
+						DestinationHostname: "www.example.com",
+					},
+					RouteConfigurationOverride: &AzureFrontDoorRuleRouteConfigurationOverrideAction{
+						CacheBehavior: AzureFrontDoorRuleCacheBehavior_DISABLED,
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(withRules(rule))).NotTo(gomega.BeNil())
+		})
+
 		ginkgo.It("should reject an unknown request method value", func() {
 			rule := headerRule("badmethod", 1)
 			rule.Conditions = &AzureFrontDoorRuleConditions{

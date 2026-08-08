@@ -290,11 +290,8 @@ type AzureStorageAccountMinTlsVersion int32
 const (
 	// Not specified: TLS1_2 (Azure's default and the compliance floor).
 	AzureStorageAccountMinTlsVersion_azure_storage_account_min_tls_version_unspecified AzureStorageAccountMinTlsVersion = 0
-	// TLS 1.0 -- legacy clients only; fails most compliance scans.
-	AzureStorageAccountMinTlsVersion_TLS1_0 AzureStorageAccountMinTlsVersion = 1
-	// TLS 1.1 -- legacy clients only; fails most compliance scans.
-	AzureStorageAccountMinTlsVersion_TLS1_1 AzureStorageAccountMinTlsVersion = 2
-	// TLS 1.2 -- the floor for new deployments.
+	// TLS 1.2 -- the floor for new deployments and the only floor Azure
+	// still accepts.
 	AzureStorageAccountMinTlsVersion_TLS1_2 AzureStorageAccountMinTlsVersion = 3
 )
 
@@ -302,14 +299,10 @@ const (
 var (
 	AzureStorageAccountMinTlsVersion_name = map[int32]string{
 		0: "azure_storage_account_min_tls_version_unspecified",
-		1: "TLS1_0",
-		2: "TLS1_1",
 		3: "TLS1_2",
 	}
 	AzureStorageAccountMinTlsVersion_value = map[string]int32{
 		"azure_storage_account_min_tls_version_unspecified": 0,
-		"TLS1_0": 1,
-		"TLS1_1": 2,
 		"TLS1_2": 3,
 	}
 )
@@ -1104,9 +1097,9 @@ type AzureStorageAccountSpec struct {
 	// this setting by design).
 	HttpsTrafficOnlyEnabled *bool `protobuf:"varint,10,opt,name=https_traffic_only_enabled,json=httpsTrafficOnlyEnabled,proto3,oneof" json:"https_traffic_only_enabled,omitempty"`
 	// The minimum TLS version the account accepts. Unspecified applies
-	// TLS1_2 (Azure's default since 2024 and the compliance floor); the
-	// older versions exist only for legacy clients that cannot negotiate
-	// TLS 1.2.
+	// TLS1_2 (Azure's default since 2024, the compliance floor, and the
+	// only floor still provisionable -- the legacy 1.0/1.1 floors are
+	// retired; see the enum).
 	MinTlsVersion AzureStorageAccountMinTlsVersion `protobuf:"varint,11,opt,name=min_tls_version,json=minTlsVersion,proto3,enum=dev.planton.azure.azurestorageaccount.v1alpha1.AzureStorageAccountMinTlsVersion" json:"min_tls_version,omitempty"`
 	// Whether the account's shared access keys (and SAS tokens signed by
 	// them) are accepted for authorization. Azure's default is true.
@@ -1120,12 +1113,13 @@ type AzureStorageAccountSpec struct {
 	// it does not disable keys (that is shared_access_key_enabled).
 	DefaultToOauthAuthentication bool `protobuf:"varint,13,opt,name=default_to_oauth_authentication,json=defaultToOauthAuthentication,proto3" json:"default_to_oauth_authentication,omitempty"`
 	// Whether individual containers may opt into public (anonymous) read
-	// access. Azure's (and the provider's) current default is true --
-	// which only PERMITS per-container public access; each container is
-	// still private unless its own access type says otherwise. Set false
-	// to make anonymous access unrepresentable account-wide, the
-	// recommended posture for anything that isn't a public website/CDN
-	// origin.
+	// access. This only PERMITS per-container public access; each
+	// container is still private unless its own access type says
+	// otherwise. Azure and the provider default to false; this spec
+	// deliberately defaults to true so a container-level access type
+	// works without a second account-level switch. Set false to make
+	// anonymous access unrepresentable account-wide, the recommended
+	// posture for anything that isn't a public website/CDN origin.
 	AllowNestedItemsToBePublic *bool `protobuf:"varint,14,opt,name=allow_nested_items_to_be_public,json=allowNestedItemsToBePublic,proto3,oneof" json:"allow_nested_items_to_be_public,omitempty"`
 	// Whether the account's public endpoints accept traffic at all.
 	// Azure's default is true. Setting false removes the public endpoint
@@ -1151,7 +1145,7 @@ type AzureStorageAccountSpec struct {
 	// Lake Gen2 feature) and bills per enabled hour.
 	SftpEnabled bool `protobuf:"varint,19,opt,name=sftp_enabled,json=sftpEnabled,proto3" json:"sftp_enabled,omitempty"`
 	// Whether object replication may cross Microsoft Entra tenants.
-	// Azure's (and the provider's v4) default is false; enable only when
+	// Azure's (and the provider's) default is false; enable only when
 	// an object-replication policy genuinely spans tenants.
 	CrossTenantReplicationEnabled bool `protobuf:"varint,20,opt,name=cross_tenant_replication_enabled,json=crossTenantReplicationEnabled,proto3" json:"cross_tenant_replication_enabled,omitempty"`
 	// Whether the account has a hierarchical namespace (Data Lake Storage
@@ -3501,7 +3495,7 @@ var File_catalog_azure_azurestorageaccount_v1alpha1_spec_proto protoreflect.File
 
 const file_catalog_azure_azurestorageaccount_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/azure/azurestorageaccount/v1alpha1/spec.proto\x12.dev.planton.azure.azurestorageaccount.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xef@\n" +
+	"5catalog/azure/azurestorageaccount/v1alpha1/spec.proto\x12.dev.planton.azure.azurestorageaccount.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xfa@\n" +
 	"\x17AzureStorageAccountSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -3516,8 +3510,8 @@ const file_catalog_azure_azurestorageaccount_v1alpha1_spec_proto_rawDesc = "" +
 	" storage_account_billing_model_v2\x12]provisioned_billing_model_version must be \"V2\" or left unset (pay-as-you-go / provisioned v1)\x1a\x1athis == '' || this == 'V2'R\x1eprovisionedBillingModelVersion\x12\x1b\n" +
 	"\tedge_zone\x18\t \x01(\tR\bedgeZone\x12J\n" +
 	"\x1ahttps_traffic_only_enabled\x18\n" +
-	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x17httpsTrafficOnlyEnabled\x88\x01\x01\x12x\n" +
-	"\x0fmin_tls_version\x18\v \x01(\x0e2P.dev.planton.azure.azurestorageaccount.v1alpha1.AzureStorageAccountMinTlsVersionR\rminTlsVersion\x12H\n" +
+	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x17httpsTrafficOnlyEnabled\x88\x01\x01\x12\x82\x01\n" +
+	"\x0fmin_tls_version\x18\v \x01(\x0e2P.dev.planton.azure.azurestorageaccount.v1alpha1.AzureStorageAccountMinTlsVersionB\b\xbaH\x05\x82\x01\x02\x10\x01R\rminTlsVersion\x12H\n" +
 	"\x19shared_access_key_enabled\x18\f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x16sharedAccessKeyEnabled\x88\x01\x01\x12E\n" +
 	"\x1fdefault_to_oauth_authentication\x18\r \x01(\bR\x1cdefaultToOauthAuthentication\x12R\n" +
 	"\x1fallow_nested_items_to_be_public\x18\x0e \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x1aallowNestedItemsToBePublic\x88\x01\x01\x12P\n" +
@@ -3795,15 +3789,11 @@ const file_catalog_azure_azurestorageaccount_v1alpha1_spec_proto_rawDesc = "" +
 	"\x03HOT\x10\x01\x12\b\n" +
 	"\x04COOL\x10\x02\x12\b\n" +
 	"\x04COLD\x10\x03\x12\x17\n" +
-	"\x13ACCESS_TIER_PREMIUM\x10\x04*}\n" +
+	"\x13ACCESS_TIER_PREMIUM\x10\x04*\x81\x01\n" +
 	" AzureStorageAccountMinTlsVersion\x125\n" +
 	"1azure_storage_account_min_tls_version_unspecified\x10\x00\x12\n" +
 	"\n" +
-	"\x06TLS1_0\x10\x01\x12\n" +
-	"\n" +
-	"\x06TLS1_1\x10\x02\x12\n" +
-	"\n" +
-	"\x06TLS1_2\x10\x03*z\n" +
+	"\x06TLS1_2\x10\x03\"\x04\b\x01\x10\x01\"\x04\b\x02\x10\x02*\x06TLS1_0*\x06TLS1_1*z\n" +
 	"#AzureStorageAccountAllowedCopyScope\x128\n" +
 	"4azure_storage_account_allowed_copy_scope_unspecified\x10\x00\x12\a\n" +
 	"\x03AAD\x10\x01\x12\x10\n" +

@@ -214,15 +214,17 @@ var _ = ginkgo.Describe("AzureCosmosdbAccountSpec Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept every TLS floor Azure's API allows", func() {
-			for _, tlsVersion := range []AzureCosmosdbAccountMinimalTlsVersion{
-				AzureCosmosdbAccountMinimalTlsVersion_TLS_1_0,
-				AzureCosmosdbAccountMinimalTlsVersion_TLS_1_1,
-				AzureCosmosdbAccountMinimalTlsVersion_TLS_1_2,
-			} {
+		ginkgo.It("should accept TLS 1.2, the only floor Azure still provisions", func() {
+			input := minimalSpec()
+			input.Spec.MinimalTlsVersion = AzureCosmosdbAccountMinimalTlsVersion_TLS_1_2
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject the retired TLS 1.0/1.1 floors (reserved enum slots)", func() {
+			for _, retired := range []AzureCosmosdbAccountMinimalTlsVersion{1, 2} {
 				input := minimalSpec()
-				input.Spec.MinimalTlsVersion = tlsVersion
-				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil(), "TLS floor %v must be accepted", tlsVersion)
+				input.Spec.MinimalTlsVersion = retired
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil(), "retired TLS floor %d must be rejected", retired)
 			}
 		})
 

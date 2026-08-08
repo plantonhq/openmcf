@@ -51,8 +51,8 @@ variable "spec" {
     # Whether plaintext HTTP is rejected (Azure's default is true).
     https_traffic_only_enabled = optional(bool, true)
 
-    # The minimum TLS version (TLS1_0, TLS1_1, TLS1_2). Unset means
-    # TLS1_2.
+    # The minimum TLS version (TLS1_2 -- the only floor Azure still
+    # accepts). Unset means TLS1_2.
     min_tls_version = optional(string)
 
     # Whether shared access keys authorize requests (Azure's default is
@@ -63,8 +63,9 @@ variable "spec" {
     # data (Azure's default is false).
     default_to_oauth_authentication = optional(bool, false)
 
-    # Whether containers may opt into anonymous public access (Azure's
-    # current default is true; this only PERMITS it per container).
+    # Whether containers may opt into anonymous public access (this only
+    # PERMITS it per container; the spec deliberately defaults to true
+    # while Azure and the provider default to false).
     allow_nested_items_to_be_public = optional(bool, true)
 
     # Whether the account's public endpoints accept traffic at all.
@@ -128,8 +129,8 @@ variable "spec" {
     # resolved user-assigned-identity ARM ID (must be attached via
     # identity).
     customer_managed_key = optional(object({
-      key_vault_key_id           = string
-      user_assigned_identity_id  = string
+      key_vault_key_id          = string
+      user_assigned_identity_id = string
     }))
 
     # Data-plane network access control. default_action arrives as the
@@ -206,8 +207,8 @@ variable "spec" {
     # string (MICROSOFT_ROUTING, INTERNET_ROUTING); unset means
     # Microsoft routing.
     routing = optional(object({
-      choice                     = optional(string)
-      publish_internet_endpoints = optional(bool, false)
+      choice                      = optional(string)
+      publish_internet_endpoints  = optional(bool, false)
       publish_microsoft_endpoints = optional(bool, false)
     }))
 
@@ -236,9 +237,9 @@ variable "spec" {
     # Account-level immutability (WORM) policy. state arrives as the
     # spec enum's name string (DISABLED, UNLOCKED, LOCKED).
     immutability_policy = optional(object({
-      state                          = string
-      period_since_creation_in_days  = number
-      allow_protected_append_writes  = optional(bool, false)
+      state                         = string
+      period_since_creation_in_days = number
+      allow_protected_append_writes = optional(bool, false)
     }))
 
     # Blob lifecycle management rules (realized as the singleton

@@ -1,0 +1,32 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualNetworkGatewayConnection
+metadata:
+  name: test-gateway-connection
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: hq-to-azure
+  # IPSEC (site-to-site) joins the gateway to an on-premises device
+  # described by an AzureLocalNetworkGateway.
+  type: IPSEC
+  virtualNetworkGatewayId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworkGateways/hub-vpn-gateway
+  localNetworkGatewayId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/localNetworkGateways/hq-datacenter
+  # The pre-shared key both tunnel ends must agree on. Reference a secret
+  # in real manifests; omit to let Azure generate one.
+  sharedKey:
+    value: replace-with-a-strong-pre-shared-key
+  dpdTimeoutSeconds: 45
+  # A pinned IPsec/IKE proposal for devices that need exact algorithms;
+  # omit to use Azure's default proposal set.
+  ipsecPolicy:
+    dhGroup: DHGroup14
+    ikeEncryption: AES256
+    ikeIntegrity: SHA256
+    ipsecEncryption: AES256
+    ipsecIntegrity: SHA256
+    pfsGroup: PFS2048
+  tags:
+    purpose: hack-test

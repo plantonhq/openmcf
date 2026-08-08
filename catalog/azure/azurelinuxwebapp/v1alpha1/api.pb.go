@@ -26,7 +26,7 @@ const (
 // AzureLinuxWebApp is the top-level API resource for an Azure Linux Web App.
 // A web app is a fully managed web hosting platform for running HTTP-based
 // applications, supporting multiple language runtimes (Node.js, Python, .NET,
-// Java, PHP, Ruby, Go) and custom Docker containers.
+// Java, PHP, Go) and custom Docker containers.
 //
 // It runs on an AzureServicePlan and provides built-in load balancing,
 // auto-scaling, and CI/CD integration.

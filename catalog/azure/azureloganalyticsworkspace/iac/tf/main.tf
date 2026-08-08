@@ -26,14 +26,18 @@ resource "azurerm_log_analytics_workspace" "main" {
 
   # Security and network posture. All four default to Azure's own
   # defaults (true); explicit false is preserved end to end because the
-  # spec models them with presence.
+  # spec models them with presence. The provider expresses internet
+  # ingestion/query as an access-type string (Enabled / Disabled /
+  # SecuredByPerimeter); the spec's booleans map to the first two, and
+  # SecuredByPerimeter (network security perimeter) is intentionally not
+  # reachable until the spec models perimeter association itself.
   local_authentication_enabled    = var.spec.local_authentication_enabled
-  internet_ingestion_enabled      = var.spec.internet_ingestion_enabled
-  internet_query_enabled          = var.spec.internet_query_enabled
+  internet_ingestion_access_type  = var.spec.internet_ingestion_enabled ? "Enabled" : "Disabled"
+  internet_query_access_type      = var.spec.internet_query_enabled ? "Enabled" : "Disabled"
   allow_resource_only_permissions = var.spec.allow_resource_only_permissions
 
-  cmk_for_query_forced                     = var.spec.cmk_for_query_forced
-  immediate_data_purge_on_30_days_enabled  = var.spec.immediate_data_purge_on_30_days_enabled
+  cmk_for_query_forced                    = var.spec.cmk_for_query_forced
+  immediate_data_purge_on_30_days_enabled = var.spec.immediate_data_purge_on_30_days_enabled
 
   # The default DCR is a literal ARM id (no Data Collection Rule kind
   # exists in the catalog); empty means Azure's default handling.

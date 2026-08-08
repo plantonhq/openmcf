@@ -329,7 +329,11 @@ type AzureMssqlServerSpec struct {
 	// characters). Can be a literal value or a reference to another
 	// resource's output. Required with administrator_login; rotates in
 	// place -- but ARM rejects a password change while
-	// azuread_authentication_only is true.
+	// azuread_authentication_only is true. The provider's write-only
+	// variant (administrator_login_password_wo + its version counter) is
+	// deliberately not modeled: it is an ephemeral input that duplicates
+	// this field, and secret values here are already reference-resolved
+	// at deploy time rather than stored in the manifest.
 	AdministratorPassword *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=administrator_password,json=administratorPassword,proto3" json:"administrator_password,omitempty"`
 	// The server's Microsoft Entra (Azure AD) administrator -- the
 	// principal (use a group to admit a team) that can administer the

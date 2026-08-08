@@ -12,9 +12,15 @@ spec:
   # family timing class). The route's rule-set-attach scenario
   # additionally live-proves the attach seam through this kind's install
   # profile.
+  #
+  # pending_proof: the Terraform module was remapped wholesale to the
+  # azurerm 5 rule grammar (renamed condition/action blocks, negation
+  # folded into Not* operator values, explicit Equal on the
+  # equality-only conditions, the route override's nested
+  # origin_group/caching shape). Offline plans render the new grammar
+  # (incl. NotGeoMatch) and are green; the prior green (both engines)
+  # was earned on the v4 module and no longer stands as live proof.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 45

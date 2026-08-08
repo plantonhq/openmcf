@@ -69,8 +69,8 @@ resource "azurerm_mssql_database" "main" {
   # when enabled. The rotation flag rides WITH the key -- the provider
   # requires the two set together (configuring the flag alone, even
   # false, is rejected), so it is null unless a CMK key exists.
-  transparent_data_encryption_enabled                         = var.spec.transparent_data_encryption_enabled
-  transparent_data_encryption_key_vault_key_id                = var.spec.transparent_data_encryption_key_vault_key_id
+  transparent_data_encryption_enabled                        = var.spec.transparent_data_encryption_enabled
+  transparent_data_encryption_key_vault_key_id               = var.spec.transparent_data_encryption_key_vault_key_id
   transparent_data_encryption_key_automatic_rotation_enabled = var.spec.transparent_data_encryption_key_vault_key_id != null ? var.spec.transparent_data_encryption_key_automatic_rotation_enabled : null
 
   # A bacpac import applied right after creation (fresh databases only --
@@ -114,13 +114,13 @@ resource "azurerm_mssql_database" "main" {
   dynamic "threat_detection_policy" {
     for_each = var.spec.threat_detection_policy != null ? [var.spec.threat_detection_policy] : []
     content {
-      state                      = local.threat_detection_state_map[threat_detection_policy.value.state]
-      disabled_alerts            = threat_detection_policy.value.disabled_alerts
-      email_account_admins       = threat_detection_policy.value.email_account_admins ? "Enabled" : "Disabled"
-      email_addresses            = threat_detection_policy.value.email_addresses
-      retention_days             = threat_detection_policy.value.retention_days
-      storage_endpoint           = threat_detection_policy.value.storage_endpoint
-      storage_account_access_key = threat_detection_policy.value.storage_account_access_key
+      state                        = local.threat_detection_state_map[threat_detection_policy.value.state]
+      disabled_alerts              = threat_detection_policy.value.disabled_alerts
+      email_account_admins_enabled = threat_detection_policy.value.email_account_admins
+      email_addresses              = threat_detection_policy.value.email_addresses
+      retention_days               = threat_detection_policy.value.retention_days
+      storage_endpoint             = threat_detection_policy.value.storage_endpoint
+      storage_account_access_key   = threat_detection_policy.value.storage_account_access_key
     }
   }
 

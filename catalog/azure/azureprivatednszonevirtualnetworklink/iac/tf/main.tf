@@ -9,14 +9,10 @@
 # - Azure allows only ONE registration-enabled link per virtual network;
 #   additional links to the same network must keep VM auto-registration
 #   off.
-# - The zone's name and resource group are derived from the referenced
-#   zone's ARM ID (see locals), so the module never asks the user to
-#   restate derivable state that could then disagree with the zone.
 resource "azurerm_private_dns_zone_virtual_network_link" "main" {
-  name                  = var.spec.name
-  resource_group_name   = local.zone_resource_group_name
-  private_dns_zone_name = local.zone_name
-  virtual_network_id    = var.spec.virtual_network_id
+  name                = var.spec.name
+  private_dns_zone_id = var.spec.private_dns_zone_id
+  virtual_network_id  = var.spec.virtual_network_id
 
   # Azure defaults VM auto-registration to off; it is only meaningful for
   # custom internal zones (privatelink zones are populated by private

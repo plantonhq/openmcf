@@ -29,7 +29,15 @@ resource "azurerm_subnet" "main" {
     }
   }
 
-  service_endpoints           = length(var.spec.service_endpoints) > 0 ? var.spec.service_endpoints : null
+  # The provider models service endpoints as repeated blocks (service +
+  # optional network_identifier); the spec's plain service-name list maps
+  # onto the required field, one block per name.
+  dynamic "service_endpoint" {
+    for_each = var.spec.service_endpoints
+    content {
+      service = service_endpoint.value
+    }
+  }
   service_endpoint_policy_ids = length(var.spec.service_endpoint_policy_ids) > 0 ? var.spec.service_endpoint_policy_ids : null
 
   # Delegations hand the subnet to a PaaS service. An explicit action list

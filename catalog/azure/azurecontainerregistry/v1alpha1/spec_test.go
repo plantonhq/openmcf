@@ -77,7 +77,7 @@ var _ = ginkgo.Describe("AzureContainerRegistrySpec Custom Validation Tests", fu
 			spec.Sku = AzureContainerRegistrySku_PREMIUM
 			spec.Georeplications = []*AzureContainerRegistryGeoreplication{
 				{Location: "westeurope", ZoneRedundancyEnabled: true},
-				{Location: "southeastasia", RegionalEndpointEnabled: true},
+				{Location: "southeastasia", GlobalEndpointRoutingEnabled: true},
 			}
 			err := protovalidate.Validate(validInput(spec))
 			gomega.Expect(err).To(gomega.BeNil())
@@ -92,12 +92,11 @@ var _ = ginkgo.Describe("AzureContainerRegistrySpec Custom Validation Tests", fu
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept PREMIUM policies (quarantine, retention, trust)", func() {
+		ginkgo.It("should accept PREMIUM policies (quarantine, retention)", func() {
 			spec := validSpec()
 			spec.Sku = AzureContainerRegistrySku_PREMIUM
 			spec.QuarantinePolicyEnabled = true
 			spec.RetentionPolicyInDays = proto.Int32(7)
-			spec.TrustPolicyEnabled = true
 			err := protovalidate.Validate(validInput(spec))
 			gomega.Expect(err).To(gomega.BeNil())
 		})
@@ -242,13 +241,6 @@ var _ = ginkgo.Describe("AzureContainerRegistrySpec Custom Validation Tests", fu
 			spec := validSpec()
 			spec.Sku = AzureContainerRegistrySku_PREMIUM
 			spec.RetentionPolicyInDays = proto.Int32(366)
-			err := protovalidate.Validate(validInput(spec))
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should reject the trust policy on a non-PREMIUM SKU", func() {
-			spec := validSpec()
-			spec.TrustPolicyEnabled = true
 			err := protovalidate.Validate(validInput(spec))
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})

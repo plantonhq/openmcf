@@ -1,0 +1,25 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureLocalNetworkGateway
+metadata:
+  name: test-local-network-gateway
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: hq-datacenter
+  # The on-premises VPN device's public endpoint (exactly one of
+  # gatewayAddress or gatewayFqdn).
+  gatewayAddress: "203.0.113.10"
+  # The prefixes reachable behind the device -- Azure routes these into
+  # the tunnel. Leave empty only when bgpSettings carries the routing.
+  addressSpaces:
+    - "192.168.100.0/24"
+    - "192.168.101.0/24"
+  bgpSettings:
+    asn: 65010
+    # An IP INSIDE the tunnel (the device's tunnel interface), not the
+    # device's public address.
+    bgpPeeringAddress: "10.255.255.1"
+    peerWeight: 0
+  tags:
+    purpose: hack-test

@@ -1,6 +1,6 @@
 # AzureFrontDoorFirewallPolicy -- Terraform Module
 
-Creates an `azurerm_cdn_frontdoor_firewall_policy` (azurerm ~> 4.0) in
+Creates an `azurerm_cdn_frontdoor_firewall_policy` (azurerm ~> 5.0) in
 the referenced resource group. Credentials arrive as ARM_* environment
 variables (service principal or keyless OIDC); the provider block stays
 empty.

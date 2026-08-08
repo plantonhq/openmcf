@@ -104,6 +104,7 @@ Fields on other kinds that can point at this resource:
 | AzureKeyVault | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureLinuxWebApp | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureLoadBalancer | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureLocalNetworkGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureLogAnalyticsWorkspace | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureManagedDisk | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureManagedRedis | `spec.resourceGroup` | `status.outputs.resource_group_name` |
@@ -134,6 +135,8 @@ Fields on other kinds that can point at this resource:
 | AzureVirtualMachine | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVirtualMachineScaleSet | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVirtualNetwork | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureVirtualNetworkGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureVirtualNetworkGatewayConnection | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureWebApplicationFirewallPolicy | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 
 ## See Also

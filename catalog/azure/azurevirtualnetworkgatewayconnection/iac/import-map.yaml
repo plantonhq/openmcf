@@ -1,0 +1,15 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurevirtualnetworkgatewayconnection
+spec:
+  # A connection's identity is its full ARM resource ID (the resource type
+  # is "connections" -- ARM's name for gateway connections).
+  values:
+    - name: connection_id
+      derivations:
+        - from_stack_output: connection_id
+      where_to_find: >-
+        Portal -> the virtual network gateway -> Connections -> the
+        connection -> Properties -> Resource ID, or `az network
+        vpn-connection show -g <rg> -n <name> --query id`.

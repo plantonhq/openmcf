@@ -29,8 +29,8 @@ storage.Account (the account)
   not sent (the provider's -1 sentinel is an HCL-ergonomics artifact
   this module never needs).
 - **The static website is the standalone `storage.AccountStaticWebsite`
-  resource** -- the inline block is deprecated for removal in azurerm
-  v5; the spec's shape is identical either way.
+  resource** -- azurerm removed the inline block in v5; the spec's
+  shape is identical either way.
 - **`identity_principal_id` is exported via ApplyT** on the identity
   output (empty unless the type includes SystemAssigned).
 

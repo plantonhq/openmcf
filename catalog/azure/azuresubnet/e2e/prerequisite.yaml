@@ -60,3 +60,32 @@ spec:
   name: AzureFirewallSubnet
   addressPrefixes:
     - "10.240.249.0/26"
+---
+# A third, gateway-shaped subnet instance: virtual network gateways only
+# deploy into a subnet whose ARM name is EXACTLY "GatewaySubnet" (/27 or
+# larger recommended), so neither fixture above can serve one. Consumers
+# address this instance by its metadata name
+# (planton-oss-e2e-azure-fixture-gateway-subnet); the extra instance is
+# harmless for consumers that only use the generic one. The /24 is carved
+# below the firewall fixture's /26 to stay clear of scenario subnets.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureSubnet
+metadata:
+  name: planton-oss-e2e-azure-fixture-gateway-subnet
+  id: planton-oss-e2e-azure-fixture-gateway-subnet
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuresubnet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  virtualNetworkId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vnet
+  name: GatewaySubnet
+  addressPrefixes:
+    - "10.240.248.0/24"

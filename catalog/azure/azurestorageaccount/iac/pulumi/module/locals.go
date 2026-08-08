@@ -52,11 +52,11 @@ var accessTierStrings = map[azurestorageaccountv1alpha1.AzureStorageAccountAcces
 	azurestorageaccountv1alpha1.AzureStorageAccountAccessTier_ACCESS_TIER_PREMIUM: "Premium",
 }
 
-// minTlsVersionStrings maps the spec's TLS-floor enum; ARM's values happen
-// to match the proto value names verbatim.
+// minTlsVersionStrings maps the spec's TLS-floor enum; ARM's value happens
+// to match the proto value name verbatim. TLS1_2 is the only floor Azure
+// still provisions; the retired 1.0/1.1 values no longer exist on the
+// spec enum.
 var minTlsVersionStrings = map[azurestorageaccountv1alpha1.AzureStorageAccountMinTlsVersion]string{
-	azurestorageaccountv1alpha1.AzureStorageAccountMinTlsVersion_TLS1_0: "TLS1_0",
-	azurestorageaccountv1alpha1.AzureStorageAccountMinTlsVersion_TLS1_1: "TLS1_1",
 	azurestorageaccountv1alpha1.AzureStorageAccountMinTlsVersion_TLS1_2: "TLS1_2",
 }
 

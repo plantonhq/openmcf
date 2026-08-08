@@ -31,7 +31,7 @@ variable "spec" {
     # Delegated allocation from an Azure Network Manager IPAM pool -- the
     # alternative to self-managed address_prefixes.
     ip_address_pool = optional(object({
-      id                    = string
+      id                     = string
       number_of_ip_addresses = string
     }))
 

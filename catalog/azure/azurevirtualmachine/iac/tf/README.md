@@ -3,7 +3,7 @@
 ## Overview
 
 This Terraform module provisions an Azure Virtual Machine using the
-`azurerm` provider (`~> 4.0`). ARM models Linux and Windows VMs as separate
+`azurerm` provider (`~> 5.0`). ARM models Linux and Windows VMs as separate
 management surfaces (different auth contracts, patch vocabularies, and OS
 settings), so the module deploys exactly one of
 `azurerm_linux_virtual_machine` or `azurerm_windows_virtual_machine` from

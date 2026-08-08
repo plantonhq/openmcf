@@ -3,7 +3,7 @@
 ## Overview
 
 This Terraform module provisions an Azure Virtual Machine Scale Set
-using the `azurerm` provider (`~> 4.0`). One spec, three dispatch
+using the `azurerm` provider (`~> 5.0`). One spec, three dispatch
 branches: the module reads `orchestration_mode` and the OS profile and
 creates exactly one of `azurerm_orchestrated_virtual_machine_scale_set`
 (FLEXIBLE — the default), `azurerm_linux_virtual_machine_scale_set`, or

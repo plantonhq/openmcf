@@ -7,9 +7,9 @@ import (
 	pkgerrors "github.com/pkg/errors"
 )
 
-// servicePlanAPIVersion is the stable Microsoft.Web API version the
-// generic existence probe is pinned to (the same generation azurerm v4's
-// appservice service uses).
+// servicePlanAPIVersion is the stable GA Microsoft.Web API version the
+// generic existence probe is pinned to; the probe only needs GetByID,
+// so any GA generation the service supports works.
 const servicePlanAPIVersion = "2023-12-01"
 
 // servicePlanVerifier verifies an AzureServicePlan via the generic ARM

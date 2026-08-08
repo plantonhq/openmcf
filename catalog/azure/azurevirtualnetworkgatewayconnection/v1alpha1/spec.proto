@@ -1,0 +1,413 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevirtualnetworkgatewayconnection.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureVirtualNetworkGatewayConnectionSpec** defines a connection on a
+// virtual network gateway -- the tunnel object that joins the gateway to
+// its far side. Three connection types, selected by `type`:
+//
+// - **IPSEC** (site-to-site): the gateway to an on-premises VPN device,
+//   described by an AzureLocalNetworkGateway. The classic
+//   datacenter-to-Azure tunnel. Requires local_network_gateway_id.
+// - **VNET_TO_VNET**: the gateway to another virtual network gateway --
+//   an encrypted tunnel between two VNets (typically across regions;
+//   same-region pairs usually prefer VNet peering, which is cheaper and
+//   faster). Requires peer_virtual_network_gateway_id, and a mirror
+//   connection on the far gateway with the same shared_key.
+// - **EXPRESS_ROUTE**: the gateway to an ExpressRoute circuit's private
+//   peering. Requires express_route_circuit_id.
+//
+// **Provisioned is not connected**: ARM provisions the connection object
+// as soon as the parameters are valid; the tunnel itself only reaches
+// its Connected state when the far side (the on-premises device or peer
+// gateway) negotiates successfully. A Succeeded deployment with a
+// tunnel stuck in Connecting means the far side, the shared key, or the
+// IPsec parameters disagree -- not that the deployment failed.
+//
+// **ForceNew fields**: `name`, `region`, `resource_group`, `type`,
+// `virtual_network_gateway_id`, `peer_virtual_network_gateway_id`,
+// `express_route_circuit_id`, `dpd_timeout_seconds`,
+// `local_azure_ip_address_enabled`, `connection_protocol`, and
+// `connection_mode` -- changing any of them replaces the connection
+// (cheap: seconds, no gateway rebuild).
+message AzureVirtualNetworkGatewayConnectionSpec {
+  // The Azure region the connection lives in, e.g. "eastus". Must match
+  // the gateway's region. Changing it replaces the connection.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the connection is created in. Can be a
+  // literal resource-group name or a reference to an AzureResourceGroup's
+  // name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The connection's name, unique within the resource group. Changing
+  // the name replaces the connection.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // What the connection joins the gateway to: IPSEC (an on-premises
+  // device), VNET_TO_VNET (another gateway), or EXPRESS_ROUTE (a
+  // circuit). Fixed at creation, and it decides which far-side
+  // reference is required.
+  AzureVirtualNetworkGatewayConnectionType type = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // The virtual network gateway this connection belongs to -- references
+  // an AzureVirtualNetworkGateway's ARM id. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_gateway_id = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualNetworkGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_gateway_id"
+  ];
+
+  // IPSEC connections: the on-premises side -- references an
+  // AzureLocalNetworkGateway's ARM id (the object carrying the device's
+  // public IP/FQDN and reachable prefixes).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef local_network_gateway_id = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLocalNetworkGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.local_network_gateway_id"
+  ];
+
+  // VNET_TO_VNET connections: the far-side virtual network gateway --
+  // references an AzureVirtualNetworkGateway's ARM id. The far side
+  // needs its own mirror connection back to this gateway carrying the
+  // same shared_key. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef peer_virtual_network_gateway_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualNetworkGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_gateway_id"
+  ];
+
+  // EXPRESS_ROUTE connections: the circuit's ARM id. A bare reference:
+  // supply the id as a literal or an explicit kind/fieldPath reference.
+  // Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef express_route_circuit_id = 8;
+
+  // The IPsec pre-shared key both tunnel ends must agree on (IPSEC and
+  // VNET_TO_VNET connections). Reference a secret rather than embedding
+  // the literal in manifests. Omit to let Azure generate one (readable
+  // back from the connection's shared-key API).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef shared_key = 9 [(dev.planton.shared.options.sensitive) = true];
+
+  // EXPRESS_ROUTE connections to a circuit in ANOTHER subscription: the
+  // circuit authorization key its owner issued. Reference a secret
+  // rather than embedding the literal.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef authorization_key = 10 [(dev.planton.shared.options.sensitive) = true];
+
+  // Exchange routes over BGP instead of static address spaces. Both
+  // tunnel ends must speak BGP (the gateway needs bgp_enabled and the
+  // local network gateway its bgp_settings).
+  bool bgp_enabled = 11;
+
+  // Custom APIPA BGP endpoints for this connection (IPSEC only) --
+  // pick which of the gateway's configured APIPA addresses this tunnel
+  // peers from. Requires bgp_enabled and an active-active gateway with
+  // APIPA peering addresses configured.
+  AzureVirtualNetworkGatewayConnectionCustomBgpAddresses custom_bgp_addresses = 12;
+
+  // Dead Peer Detection timeout in seconds. Azure's default is 45.
+  // Fixed at creation.
+  optional int32 dpd_timeout_seconds = 13 [(buf.validate.field).int32.gte = 9];
+
+  // The IKE protocol version (route-based IPSEC connections). Azure
+  // defaults to IKEv2; IKEv1 exists for legacy devices. Fixed at
+  // creation.
+  AzureVirtualNetworkGatewayConnectionProtocol connection_protocol = 14 [(buf.validate.field).enum.defined_only = true];
+
+  // Which side initiates the tunnel: DEFAULT (either), INITIATOR_ONLY,
+  // or RESPONDER_ONLY. Fixed at creation. Unspecified deploys DEFAULT.
+  AzureVirtualNetworkGatewayConnectionMode connection_mode = 15 [(buf.validate.field).enum.defined_only = true];
+
+  // The routing weight for this connection (0-32000; higher is
+  // preferred among parallel connections).
+  optional int32 routing_weight = 16 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 32000
+  ];
+
+  // Gateway NAT rules applied to this connection's EGRESS (VNet ->
+  // remote) traffic, by ARM id. The owning gateway publishes its rules'
+  // ids in its nat_rule_ids output (a map keyed by rule name) -- supply
+  // the ids as literals or explicit references.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef egress_nat_rule_ids = 17;
+
+  // Gateway NAT rules applied to this connection's INGRESS (remote ->
+  // VNet) traffic, by ARM id.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef ingress_nat_rule_ids = 18;
+
+  // Use policy-based traffic selectors on this route-based connection
+  // (compatibility with policy-based on-premises devices). Requires a
+  // custom ipsec_policy -- Azure rejects the flag without one.
+  bool use_policy_based_traffic_selectors = 19;
+
+  // EXPRESS_ROUTE: bypass the gateway for data-path traffic (FastPath)
+  // -- lower latency, higher throughput; the gateway stays for route
+  // exchange only.
+  bool express_route_gateway_bypass = 20;
+
+  // EXPRESS_ROUTE FastPath for Private Link traffic. Requires
+  // express_route_gateway_bypass.
+  bool private_link_fast_path_enabled = 21;
+
+  // Terminate the tunnel on the gateway's PRIVATE IP instead of its
+  // public one (for tunnels that ride ExpressRoute private peering).
+  // The gateway needs private_ip_address_enabled. Fixed at creation.
+  bool local_azure_ip_address_enabled = 22;
+
+  // Restrict the tunnel to specific address pairs: each policy names
+  // local and remote CIDR sets. Most connections leave this empty (the
+  // address spaces come from the gateways).
+  //
+  // PARITY-EXCEPTION: the Pulumi engine's classic SDK models exactly ONE
+  // traffic selector policy -- manifests carrying more than one deploy
+  // via the Terraform engine only (the Pulumi module fails loudly).
+  repeated AzureVirtualNetworkGatewayConnectionTrafficSelectorPolicy traffic_selector_policies = 23;
+
+  // A custom IPsec/IKE policy for this connection. Leave unset to use
+  // Azure's default proposal set; set it when the on-premises device
+  // needs pinned algorithms.
+  AzureVirtualNetworkGatewayConnectionIpsecPolicy ipsec_policy = 24;
+
+  // Free-form tags applied to the connection, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins.
+  map<string, string> tags = 25;
+
+  // The connection type decides which far-side reference is required --
+  // the contracts below front-load ARM's create-time errors.
+  option (buf.validate.message).cel = {
+    id: "type_required"
+    message: "Choose the connection type explicitly: IPSEC (to an on-premises device), VNET_TO_VNET (to another gateway), or EXPRESS_ROUTE (to a circuit)"
+    expression: "this.type != 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "ipsec_requires_local_network_gateway"
+    message: "An IPSEC (site-to-site) connection needs local_network_gateway_id -- the AzureLocalNetworkGateway describing the on-premises side"
+    expression: "this.type != 1 || has(this.local_network_gateway_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "vnet_to_vnet_requires_peer_gateway"
+    message: "A VNET_TO_VNET connection needs peer_virtual_network_gateway_id (and the far gateway needs a mirror connection with the same shared_key)"
+    expression: "this.type != 2 || has(this.peer_virtual_network_gateway_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "express_route_requires_circuit"
+    message: "An EXPRESS_ROUTE connection needs express_route_circuit_id"
+    expression: "this.type != 3 || has(this.express_route_circuit_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "custom_bgp_is_ipsec_only"
+    message: "custom_bgp_addresses applies to IPSEC connections only"
+    expression: "!has(this.custom_bgp_addresses) || this.type == 1"
+  };
+  option (buf.validate.message).cel = {
+    id: "custom_bgp_requires_bgp"
+    message: "custom_bgp_addresses requires bgp_enabled"
+    expression: "!has(this.custom_bgp_addresses) || this.bgp_enabled"
+  };
+  option (buf.validate.message).cel = {
+    id: "private_link_fast_path_requires_bypass"
+    message: "private_link_fast_path_enabled requires express_route_gateway_bypass (Azure's FastPath contract)"
+    expression: "!this.private_link_fast_path_enabled || this.express_route_gateway_bypass"
+  };
+  option (buf.validate.message).cel = {
+    id: "policy_based_selectors_require_ipsec_policy"
+    message: "use_policy_based_traffic_selectors requires a custom ipsec_policy (Azure rejects the flag without one)"
+    expression: "!this.use_policy_based_traffic_selectors || has(this.ipsec_policy)"
+  };
+  option (buf.validate.message).cel = {
+    id: "shared_key_not_for_express_route"
+    message: "ExpressRoute connections carry no pre-shared key -- remove shared_key (use authorization_key for cross-subscription circuits)"
+    expression: "this.type != 3 || !has(this.shared_key)"
+  };
+  option (buf.validate.message).cel = {
+    id: "authorization_key_is_express_route_only"
+    message: "authorization_key authorizes an ExpressRoute circuit in another subscription -- it has no meaning on IPSEC or VNET_TO_VNET connections"
+    expression: "!has(this.authorization_key) || this.type == 3"
+  };
+}
+
+// What the connection joins the gateway to.
+enum AzureVirtualNetworkGatewayConnectionType {
+  // Not specified -- invalid: the connection type decides the required
+  // far side (see the type_required contract).
+  azure_virtual_network_gateway_connection_type_unspecified = 0;
+
+  // Site-to-site: to an on-premises VPN device described by an
+  // AzureLocalNetworkGateway.
+  IPSEC = 1;
+
+  // To another virtual network gateway -- an encrypted VNet-to-VNet
+  // tunnel.
+  VNET_TO_VNET = 2;
+
+  // To an ExpressRoute circuit's private peering.
+  EXPRESS_ROUTE = 3;
+}
+
+// The IKE protocol version.
+enum AzureVirtualNetworkGatewayConnectionProtocol {
+  // Not specified -- Azure applies its default (IKEv2).
+  azure_virtual_network_gateway_connection_protocol_unspecified = 0;
+
+  // IKE version 1 -- legacy devices only.
+  IKE_V1 = 1;
+
+  // IKE version 2 -- the modern default.
+  IKE_V2 = 2;
+}
+
+// Which side initiates the tunnel.
+enum AzureVirtualNetworkGatewayConnectionMode {
+  // Not specified -- deploys DEFAULT (either side initiates).
+  azure_virtual_network_gateway_connection_mode_unspecified = 0;
+
+  // Either side may initiate.
+  DEFAULT = 1;
+
+  // Only this side initiates.
+  INITIATOR_ONLY = 2;
+
+  // Only the far side initiates.
+  RESPONDER_ONLY = 3;
+}
+
+// Custom APIPA BGP endpoints for this connection.
+message AzureVirtualNetworkGatewayConnectionCustomBgpAddresses {
+  // The primary APIPA address -- one of the gateway's first
+  // ip_configuration's configured APIPA peering addresses.
+  string primary = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.ipv4 = true
+  ];
+
+  // The secondary APIPA address (active-active gateways) -- one of the
+  // second ip_configuration's APIPA peering addresses.
+  string secondary = 2 [(buf.validate.field).cel = {
+    id: "secondary_apipa_is_ipv4"
+    message: "secondary must be an IPv4 address"
+    expression: "this == '' || this.isIp(4)"
+  }];
+}
+
+// One traffic selector policy: a local/remote CIDR pairing the tunnel is
+// restricted to.
+message AzureVirtualNetworkGatewayConnectionTrafficSelectorPolicy {
+  // The local (Azure-side) address ranges in CIDR notation.
+  repeated string local_address_cidrs = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+
+  // The remote (far-side) address ranges in CIDR notation.
+  repeated string remote_address_cidrs = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+}
+
+// A custom IPsec/IKE proposal for the connection. All six algorithm
+// fields are required together; the security-association bounds are
+// optional (Azure fills its defaults).
+message AzureVirtualNetworkGatewayConnectionIpsecPolicy {
+  // The IKE Phase 1 Diffie-Hellman group.
+  string dh_group = 1 [(buf.validate.field).string = {
+    in: [
+      "DHGroup1",
+      "DHGroup14",
+      "DHGroup2",
+      "DHGroup2048",
+      "DHGroup24",
+      "ECP256",
+      "ECP384",
+      "None"
+    ]
+  }];
+
+  // The IKE encryption algorithm.
+  string ike_encryption = 2 [(buf.validate.field).string = {
+    in: [
+      "AES128",
+      "AES192",
+      "AES256",
+      "DES",
+      "DES3",
+      "GCMAES128",
+      "GCMAES256"
+    ]
+  }];
+
+  // The IKE integrity algorithm. With GCM IKE encryption, Azure requires
+  // the MATCHING GCM integrity value.
+  string ike_integrity = 3 [(buf.validate.field).string = {
+    in: [
+      "GCMAES128",
+      "GCMAES256",
+      "MD5",
+      "SHA1",
+      "SHA256",
+      "SHA384"
+    ]
+  }];
+
+  // The IPsec (Phase 2) encryption algorithm.
+  string ipsec_encryption = 4 [(buf.validate.field).string = {
+    in: [
+      "AES128",
+      "AES192",
+      "AES256",
+      "DES",
+      "DES3",
+      "GCMAES128",
+      "GCMAES192",
+      "GCMAES256",
+      "None"
+    ]
+  }];
+
+  // The IPsec (Phase 2) integrity algorithm.
+  string ipsec_integrity = 5 [(buf.validate.field).string = {
+    in: [
+      "GCMAES128",
+      "GCMAES192",
+      "GCMAES256",
+      "MD5",
+      "SHA1",
+      "SHA256"
+    ]
+  }];
+
+  // The Perfect Forward Secrecy group.
+  string pfs_group = 6 [(buf.validate.field).string = {
+    in: [
+      "ECP256",
+      "ECP384",
+      "None",
+      "PFS1",
+      "PFS14",
+      "PFS2",
+      "PFS2048",
+      "PFS24",
+      "PFSMM"
+    ]
+  }];
+
+  // The security association size limit in kilobytes. Omit for Azure's
+  // default; when set, at least 1024.
+  optional int32 sa_datasize = 7 [(buf.validate.field).int32.gte = 1024];
+
+  // The security association lifetime in seconds. Omit for Azure's
+  // default; when set, at least 300.
+  optional int32 sa_lifetime = 8 [(buf.validate.field).int32.gte = 300];
+}

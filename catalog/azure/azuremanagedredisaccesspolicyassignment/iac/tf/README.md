@@ -18,10 +18,9 @@ deployment component.
 
 ## Provider Version
 
-`azurerm ~> 4.0`. The `azurerm_managed_redis_access_policy_assignment`
-resource landed in recent 4.x releases -- a lockfile pinned to an old
-4.x resolves a provider without the resource; re-init to the current
-4.x line.
+`azurerm ~> 5.0`. The `azurerm_managed_redis_access_policy_assignment`
+resource predates the 5.0 line, so every resolvable 5.x provider
+carries it.
 
 ## Usage
 

@@ -36,7 +36,7 @@ the private frontends' `private_ip_address`/`private_ip_addresses`.
 This Terraform module has feature parity with the Pulumi implementation
 across the full surface: L7 and L4 routing, TLS/mTLS, rewrites,
 redirects, WAF policy attachment at all three levels, Private Link,
-buffering, and the map outputs. Three azurerm 4.80 backend-settings
-fields (`sni_name`, `sni_validation_enabled`,
+buffering, and the map outputs. Three azurerm backend-settings fields
+(`sni_name`, `sni_validation_enabled`,
 `certificate_chain_validation_enabled`) are deliberately unmodeled -- the
 pulumi SDK cannot express them yet (recorded in `../../GUIDE.md`).

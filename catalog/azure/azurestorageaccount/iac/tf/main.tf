@@ -335,9 +335,9 @@ resource "azurerm_storage_management_policy" "main" {
   }
 }
 
-# Static website hosting, via the standalone resource (azurerm's inline
-# static_website block is deprecated for removal in v5). The service
-# auto-creates the $web container; upload site content there.
+# Static website hosting, via the standalone resource (azurerm removed
+# the inline static_website block in v5). The service auto-creates the
+# $web container; upload site content there.
 resource "azurerm_storage_account_static_website" "main" {
   count = var.spec.static_website != null ? 1 : 0
 

@@ -1,0 +1,14 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurelocalnetworkgateway
+spec:
+  # A local network gateway's identity is its full ARM resource ID.
+  values:
+    - name: local_network_gateway_id
+      derivations:
+        - from_stack_output: local_network_gateway_id
+      where_to_find: >-
+        Portal -> Local network gateways -> the gateway -> Properties ->
+        Resource ID, or `az network local-gateway show -g <rg> -n <name>
+        --query id`.

@@ -325,7 +325,11 @@ type AzureMysqlFlexibleServerSpec struct {
 	// The administrator password (8-128 characters, from at least three of:
 	// uppercase, lowercase, digits, special characters). Can be a literal
 	// value or a reference to another resource's output. Required for a
-	// fresh (DEFAULT) server; updatable in place.
+	// fresh (DEFAULT) server; updatable in place. The provider's write-only
+	// variant (administrator_password_wo + its version counter) is
+	// deliberately not modeled: it is an ephemeral input that duplicates
+	// this field, and secret values here are already reference-resolved at
+	// deploy time rather than stored in the manifest.
 	AdministratorPassword *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=administrator_password,json=administratorPassword,proto3" json:"administrator_password,omitempty"`
 	// The MySQL version, using Azure's exact version strings. Unspecified
 	// applies "8.0.21" (Azure's identifier for the MySQL 8.0 series -- the

@@ -11,9 +11,14 @@ spec:
   # CMK) are proven offline: a live geo-replicated run replicates real
   # storage across regions and adds cost/time without exercising any
   # additional module seam.
+  #
+  # pending_proof: the azurerm v5 treatment removed the service-retired
+  # trust policy from the spec and renamed the geo-replication routing
+  # field to global_endpoint_routing_enabled (Required in v5, same ARM
+  # property). Offline plans are green on azurerm 5; the prior green
+  # (both engines) predates the v5 pin and no longer stands as live
+  # proof for the reworked surface.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

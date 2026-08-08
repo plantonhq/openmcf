@@ -7,9 +7,9 @@ import (
 	pkgerrors "github.com/pkg/errors"
 )
 
-// containerAppsAPIVersion is the stable Microsoft.App API version the
-// generic existence probes are pinned to (the same generation azurerm v4's
-// containerapps service targets).
+// containerAppsAPIVersion is the stable GA Microsoft.App API version the
+// generic existence probes are pinned to; the probes only need GetByID,
+// so any GA generation the service supports works.
 const containerAppsAPIVersion = "2025-01-01"
 
 // containerAppEnvironmentVerifier verifies an AzureContainerAppEnvironment

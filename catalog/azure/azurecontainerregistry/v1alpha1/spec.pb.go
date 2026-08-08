@@ -38,8 +38,8 @@ const (
 	// anonymous pull available.
 	AzureContainerRegistrySku_STANDARD AzureContainerRegistrySku = 2
 	// The enterprise tier: geo-replication, zone redundancy, network
-	// isolation, content-trust/quarantine/retention policies, CMK
-	// encryption, highest throughput.
+	// isolation, quarantine/retention policies, CMK encryption, highest
+	// throughput.
 	AzureContainerRegistrySku_PREMIUM AzureContainerRegistrySku = 3
 )
 
@@ -264,8 +264,8 @@ func (AzureContainerRegistryIdentityType) EnumDescriptor() ([]byte, []int) {
 //     allows anonymous pull).
 //   - PREMIUM unlocks the enterprise surface: geo-replication, zone
 //     redundancy, network isolation (network_rule_set, disabling public
-//     access, dedicated data endpoints), content-trust/quarantine/retention
-//     policies, and customer-managed-key encryption.
+//     access, dedicated data endpoints), quarantine/retention policies,
+//     and customer-managed-key encryption.
 //
 // Spec-level validation enforces the same SKU gates ARM does, so a
 // misconfigured manifest fails at validation, not at apply.
@@ -343,10 +343,6 @@ type AzureContainerRegistrySpec struct {
 	// default). This is the built-in hygiene lever that stops CI push churn
 	// from growing storage without bound. Updatable in place.
 	RetentionPolicyInDays *int32 `protobuf:"varint,11,opt,name=retention_policy_in_days,json=retentionPolicyInDays,proto3,oneof" json:"retention_policy_in_days,omitempty"`
-	// Whether Docker Content Trust (image signing) is enabled: clients with
-	// content trust enabled can push signed images and verify signatures at
-	// pull. PREMIUM only; Azure's default is false. Updatable in place.
-	TrustPolicyEnabled bool `protobuf:"varint,12,opt,name=trust_policy_enabled,json=trustPolicyEnabled,proto3" json:"trust_policy_enabled,omitempty"`
 	// Whether registry artifacts can be exported (e.g. imported into another
 	// registry or transferred out). Azure's default is true. Disabling
 	// export is a data-exfiltration control for locked-down registries; it
@@ -503,13 +499,6 @@ func (x *AzureContainerRegistrySpec) GetRetentionPolicyInDays() int32 {
 	return 0
 }
 
-func (x *AzureContainerRegistrySpec) GetTrustPolicyEnabled() bool {
-	if x != nil {
-		return x.TrustPolicyEnabled
-	}
-	return false
-}
-
 func (x *AzureContainerRegistrySpec) GetExportPolicyEnabled() bool {
 	if x != nil && x.ExportPolicyEnabled != nil {
 		return *x.ExportPolicyEnabled
@@ -569,11 +558,13 @@ type AzureContainerRegistryGeoreplication struct {
 	// zones. Changing it replaces the underlying replication (a re-sync, not
 	// a registry replacement).
 	ZoneRedundancyEnabled bool `protobuf:"varint,2,opt,name=zone_redundancy_enabled,json=zoneRedundancyEnabled,proto3" json:"zone_redundancy_enabled,omitempty"`
-	// Whether the replica gets its own regional endpoint clients can address
-	// directly ({name}.{region}.data.azurecr.io). Off, clients always use
-	// the registry's global endpoint and Azure routes to the nearest
-	// replica.
-	RegionalEndpointEnabled bool `protobuf:"varint,3,opt,name=regional_endpoint_enabled,json=regionalEndpointEnabled,proto3" json:"regional_endpoint_enabled,omitempty"`
+	// Whether this replica participates in global endpoint routing for the
+	// registry's geo-replicated login server: on, Azure may route pulls
+	// addressed to the global endpoint ({name}.azurecr.io) to this replica;
+	// off, the replica still syncs data but is excluded from global
+	// routing. The provider requires an explicit choice; unset deploys
+	// false.
+	GlobalEndpointRoutingEnabled bool `protobuf:"varint,3,opt,name=global_endpoint_routing_enabled,json=globalEndpointRoutingEnabled,proto3" json:"global_endpoint_routing_enabled,omitempty"`
 	// Tags applied to this replication (each replication is its own tracked
 	// ARM resource); independent of the registry's tags.
 	Tags          map[string]string `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -625,9 +616,9 @@ func (x *AzureContainerRegistryGeoreplication) GetZoneRedundancyEnabled() bool {
 	return false
 }
 
-func (x *AzureContainerRegistryGeoreplication) GetRegionalEndpointEnabled() bool {
+func (x *AzureContainerRegistryGeoreplication) GetGlobalEndpointRoutingEnabled() bool {
 	if x != nil {
-		return x.RegionalEndpointEnabled
+		return x.GlobalEndpointRoutingEnabled
 	}
 	return false
 }
@@ -873,7 +864,7 @@ var File_catalog_azure_azurecontainerregistry_v1alpha1_spec_proto protoreflect.F
 
 const file_catalog_azure_azurecontainerregistry_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8catalog/azure/azurecontainerregistry/v1alpha1/spec.proto\x121dev.planton.azure.azurecontainerregistry.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xea\x1d\n" +
+	"8catalog/azure/azurecontainerregistry/v1alpha1/spec.proto\x121dev.planton.azure.azurecontainerregistry.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd7\x1c\n" +
 	"\x1aAzureContainerRegistrySpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -888,8 +879,7 @@ const file_catalog_azure_azurecontainerregistry_v1alpha1_spec_proto_rawDesc = ""
 	"\x19quarantine_policy_enabled\x18\n" +
 	" \x01(\bR\x17quarantinePolicyEnabled\x12H\n" +
 	"\x18retention_policy_in_days\x18\v \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xed\x02(\x00H\x01R\x15retentionPolicyInDays\x88\x01\x01\x120\n" +
-	"\x14trust_policy_enabled\x18\f \x01(\bR\x12trustPolicyEnabled\x12A\n" +
+	"\xbaH\a\x1a\x05\x18\xed\x02(\x00H\x01R\x15retentionPolicyInDays\x88\x01\x01\x12A\n" +
 	"\x15export_policy_enabled\x18\r \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x13exportPolicyEnabled\x88\x01\x01\x12\x9d\x01\n" +
 	"\x1anetwork_rule_bypass_option\x18\x0e \x01(\x0e2`.dev.planton.azure.azurecontainerregistry.v1alpha1.AzureContainerRegistryNetworkRuleBypassOptionR\x17networkRuleBypassOption\x12\x81\x01\n" +
 	"\x10network_rule_set\x18\x0f \x01(\v2W.dev.planton.azure.azurecontainerregistry.v1alpha1.AzureContainerRegistryNetworkRuleSetR\x0enetworkRuleSet\x12\x81\x01\n" +
@@ -901,27 +891,26 @@ const file_catalog_azure_azurecontainerregistry_v1alpha1_spec_proto_rawDesc = ""
 	"\x04tags\x18\x13 \x03(\v2W.dev.planton.azure.azurecontainerregistry.v1alpha1.AzureContainerRegistrySpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xcf\x0f\xbaH\xcb\x0f\x1a\x7f\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xd2\x0e\xbaH\xce\x0e\x1a\x7f\n" +
 	" acr_georeplications_premium_only\x12(georeplications requires the PREMIUM SKU\x1a1this.georeplications.size() == 0 || this.sku == 3\x1a\xc1\x01\n" +
 	"'acr_georeplications_exclude_home_region\x12Zgeoreplications must not contain the registry's own region -- the home replica is implicit\x1a:!this.georeplications.exists(g, g.location == this.region)\x1a\x84\x01\n" +
 	" acr_zone_redundancy_premium_only\x120zone_redundancy_enabled requires the PREMIUM SKU\x1a.!this.zone_redundancy_enabled || this.sku == 3\x1a\x94\x01\n" +
 	"&acr_anonymous_pull_standard_or_premium\x12;anonymous_pull_enabled requires the STANDARD or PREMIUM SKU\x1a-!this.anonymous_pull_enabled || this.sku != 1\x1a~\n" +
 	"\x1eacr_data_endpoint_premium_only\x12.data_endpoint_enabled requires the PREMIUM SKU\x1a,!this.data_endpoint_enabled || this.sku == 3\x1a\x83\x01\n" +
 	"\x1bacr_quarantine_premium_only\x122quarantine_policy_enabled requires the PREMIUM SKU\x1a0!this.quarantine_policy_enabled || this.sku == 3\x1a\x85\x01\n" +
-	"\x1aacr_retention_premium_only\x121retention_policy_in_days requires the PREMIUM SKU\x1a4!has(this.retention_policy_in_days) || this.sku == 3\x1a{\n" +
-	"\x1dacr_trust_policy_premium_only\x12-trust_policy_enabled requires the PREMIUM SKU\x1a+!this.trust_policy_enabled || this.sku == 3\x1a\xc3\x02\n" +
+	"\x1aacr_retention_premium_only\x121retention_policy_in_days requires the PREMIUM SKU\x1a4!has(this.retention_policy_in_days) || this.sku == 3\x1a\xc3\x02\n" +
 	"&acr_export_disable_premium_and_private\x12kdisabling export_policy_enabled requires the PREMIUM SKU and public_network_access_enabled explicitly false\x1a\xab\x01!has(this.export_policy_enabled) || this.export_policy_enabled || (this.sku == 3 && has(this.public_network_access_enabled) && this.public_network_access_enabled == false)\x1a|\n" +
 	"!acr_network_rule_set_premium_only\x12)network_rule_set requires the PREMIUM SKU\x1a,!has(this.network_rule_set) || this.sku == 3\x1a\x82\x01\n" +
 	"\x1bacr_encryption_premium_only\x12;encryption (customer-managed keys) requires the PREMIUM SKU\x1a&!has(this.encryption) || this.sku == 3\x1a\x91\x02\n" +
 	".acr_encryption_requires_user_assigned_identity\x12xencryption requires a USER_ASSIGNED (or SYSTEM_AND_USER_ASSIGNED) identity -- the user-assigned identity unwraps the key\x1ae!has(this.encryption) || (has(this.identity) && (this.identity.type == 2 || this.identity.type == 3))B \n" +
 	"\x1e_public_network_access_enabledB\x1b\n" +
 	"\x19_retention_policy_in_daysB\x18\n" +
-	"\x16_export_policy_enabled\"\xf2\x02\n" +
+	"\x16_export_policy_enabledJ\x04\b\f\x10\rR\x14trust_policy_enabled\"\xfd\x02\n" +
 	"$AzureContainerRegistryGeoreplication\x12&\n" +
 	"\blocation\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\blocation\x126\n" +
-	"\x17zone_redundancy_enabled\x18\x02 \x01(\bR\x15zoneRedundancyEnabled\x12:\n" +
-	"\x19regional_endpoint_enabled\x18\x03 \x01(\bR\x17regionalEndpointEnabled\x12u\n" +
+	"\x17zone_redundancy_enabled\x18\x02 \x01(\bR\x15zoneRedundancyEnabled\x12E\n" +
+	"\x1fglobal_endpoint_routing_enabled\x18\x03 \x01(\bR\x1cglobalEndpointRoutingEnabled\x12u\n" +
 	"\x04tags\x18\x04 \x03(\v2a.dev.planton.azure.azurecontainerregistry.v1alpha1.AzureContainerRegistryGeoreplication.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +

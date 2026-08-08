@@ -718,6 +718,21 @@ const (
 	// fixture subnet with that exact name and a /26 prefix.
 	CloudResourceKind_AzureFirewall CloudResourceKind = 2132
 	CloudResourceKind_AzureIpGroup  CloudResourceKind = 2133
+	// AzureSubnet is a prerequisite because every virtual network gateway
+	// lives in a dedicated subnet named exactly "GatewaySubnet" (the
+	// virtual network and resource group chain transitively through the
+	// subnet); the subnet install profile publishes a fixture instance
+	// with that exact ARM name. AzurePublicIp is a prerequisite because a
+	// VPN-type gateway (the default shape) requires a public IP per ip
+	// configuration; the address install profile publishes a dedicated
+	// no-zone instance (a gateway binds its address exclusively).
+	CloudResourceKind_AzureVirtualNetworkGateway CloudResourceKind = 2140
+	// Both gateways are prerequisites: a connection joins a virtual
+	// network gateway to a far side, and the site-to-site far side is a
+	// local network gateway (the GatewaySubnet, VNet, and resource group
+	// chain transitively through the virtual network gateway).
+	CloudResourceKind_AzureVirtualNetworkGatewayConnection CloudResourceKind = 2141
+	CloudResourceKind_AzureLocalNetworkGateway             CloudResourceKind = 2142
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
@@ -1452,6 +1467,9 @@ var (
 		2131:  "AzureFirewallPolicyRuleCollectionGroup",
 		2132:  "AzureFirewall",
 		2133:  "AzureIpGroup",
+		2140:  "AzureVirtualNetworkGateway",
+		2141:  "AzureVirtualNetworkGatewayConnection",
+		2142:  "AzureLocalNetworkGateway",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2068,6 +2086,9 @@ var (
 		"AzureFirewallPolicyRuleCollectionGroup":         2131,
 		"AzureFirewall":                                  2132,
 		"AzureIpGroup":                                   2133,
+		"AzureVirtualNetworkGateway":                     2140,
+		"AzureVirtualNetworkGatewayConnection":           2141,
+		"AzureLocalNetworkGateway":                       2142,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -2733,7 +2754,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xae\x90\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf6\x91\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -2972,7 +2993,10 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x13AzureFirewallPolicy\x10\xd2\x10\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazfwpol:\x02\xd0\x0f\x12J\n" +
 	"&AzureFirewallPolicyRuleCollectionGroup\x10\xd3\x10\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazfwrcg:\x02\xd2\x10\x12.\n" +
 	"\rAzureFirewall\x10\xd4\x10\x1a\x1a\xa2\xf7\x04\x16\b\r\x12\bv1alpha1\"\x04azfw:\x02\xdb\x0f\x12.\n" +
-	"\fAzureIpGroup\x10\xd5\x10\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azipg:\x02\xd0\x0f\x12:\n" +
+	"\fAzureIpGroup\x10\xd5\x10\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azipg:\x02\xd0\x0f\x12>\n" +
+	"\x1aAzureVirtualNetworkGateway\x10\xdc\x10\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\x05azvng:\x04\xdb\x0f\xdd\x0f\x12I\n" +
+	"$AzureVirtualNetworkGatewayConnection\x10\xdd\x10\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azvngc:\x04\xdc\x10\xde\x10\x12;\n" +
+	"\x18AzureLocalNetworkGateway\x10\xde\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azlngw:\x02\xd0\x0f\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
 	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x124\n" +

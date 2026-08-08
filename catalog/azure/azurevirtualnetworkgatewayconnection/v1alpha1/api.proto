@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevirtualnetworkgatewayconnection.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurevirtualnetworkgatewayconnection/v1alpha1/outputs.proto";
+import "catalog/azure/azurevirtualnetworkgatewayconnection/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureVirtualNetworkGatewayConnection is the top-level API resource for
+// a gateway connection: the tunnel object joining an
+// AzureVirtualNetworkGateway to its far side -- an on-premises device
+// (via an AzureLocalNetworkGateway), another gateway, or an ExpressRoute
+// circuit. The gateway, the site description, and the connection are
+// three separate resources by design: one gateway carries many
+// connections, and each site is described once.
+message AzureVirtualNetworkGatewayConnection {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureVirtualNetworkGatewayConnection".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureVirtualNetworkGatewayConnection'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Gateway connection specification.
+  AzureVirtualNetworkGatewayConnectionSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureVirtualNetworkGatewayConnectionStatus status = 5;
+}
+
+// AzureVirtualNetworkGatewayConnectionStatus holds the deployment outputs.
+message AzureVirtualNetworkGatewayConnectionStatus {
+  // Stack outputs from the IaC deployment.
+  AzureVirtualNetworkGatewayConnectionStackOutputs outputs = 1;
+}

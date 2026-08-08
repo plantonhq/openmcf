@@ -11,7 +11,7 @@
 // That chain is populated keylessly (an `az` CLI login locally, or a GitHub
 // Actions OIDC federation in CI), so no static secret is ever stored on disk.
 //
-// The one Azure-specific requirement: azurerm v4 no longer infers the
+// The one Azure-specific requirement: azurerm does not infer the
 // subscription, so Setup exports ARM_SUBSCRIPTION_ID (and ARM_TENANT_ID) into the
 // process environment, which the framework forwards to both engines.
 package aa_e2e
@@ -90,7 +90,7 @@ func (h *Harness) Setup(ctx context.Context) error {
 			"(set E2E_AZURE_SUBSCRIPTION_ID / ARM_SUBSCRIPTION_ID or run `az login`)")
 	}
 
-	// Export for both engines: azurerm v4 requires an explicit subscription, and
+	// Export for both engines: azurerm requires an explicit subscription, and
 	// the empty provider block reads ARM_* from the environment.
 	if err := os.Setenv("ARM_SUBSCRIPTION_ID", subscriptionID); err != nil {
 		return errors.Wrap(err, "failed to export ARM_SUBSCRIPTION_ID")
@@ -102,17 +102,17 @@ func (h *Harness) Setup(ctx context.Context) error {
 	}
 
 	// Skip per-apply Azure Resource Provider registration for the ephemeral test
-	// run. By default both engines' Azure providers try to auto-register a broad
-	// set of resource providers (Microsoft.Compute, .Storage, ...) at init, firing
-	// the registrations concurrently; Azure serialises subscription-level writes
-	// and returns 409 ConflictingConcurrentWriteNotAllowed on a subscription whose
+	// run. The pulumi-azure classic engine auto-registers a broad set of resource
+	// providers (Microsoft.Compute, .Storage, ...) at init, firing the
+	// registrations concurrently; Azure serialises subscription-level writes and
+	// returns 409 ConflictingConcurrentWriteNotAllowed on a subscription whose
 	// providers are not yet registered. Registration is a one-time subscription
 	// bootstrap, orthogonal to whether a module's resource is created correctly --
 	// the contract E2E actually validates -- so the harness opts out for the test
-	// environment. Both engines honor this single env var: azurerm v4 reads it (the
-	// v4 provider-block analog is `resource_provider_registrations = "none"`), and
-	// pulumi-azure classic reads it when the provider arg is unset. Respect an
-	// explicit override if the caller already set it.
+	// environment. pulumi-azure classic reads this env var when the provider arg
+	// is unset; azurerm itself needs nothing (its
+	// `resource_provider_registrations` default is "none", so it ignores the
+	// var harmlessly). Respect an explicit override if the caller already set it.
 	if os.Getenv("ARM_SKIP_PROVIDER_REGISTRATION") == "" {
 		if err := os.Setenv("ARM_SKIP_PROVIDER_REGISTRATION", "true"); err != nil {
 			return errors.Wrap(err, "failed to export ARM_SKIP_PROVIDER_REGISTRATION")

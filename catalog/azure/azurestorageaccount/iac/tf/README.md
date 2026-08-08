@@ -14,8 +14,8 @@ component.
   (ARM hardcodes its name to "default", which is why the rules fold into
   the account spec)
 - `azurerm_storage_account_static_website.main` (when `static_website`
-  is declared) -- realized via the standalone resource because the
-  inline `static_website` block is deprecated for removal in azurerm v5
+  is declared) -- realized via the standalone resource because azurerm
+  removed the inline `static_website` block in v5
 
 ## Variable Highlights
 

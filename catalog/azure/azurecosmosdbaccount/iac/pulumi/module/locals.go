@@ -116,10 +116,10 @@ var createModeStrings = map[azurecosmosdbaccountv1alpha1.AzureCosmosdbAccountCre
 
 // minimalTlsVersionStrings maps the TLS-floor enum to ARM's wire values.
 // Unspecified materializes Tls12 in the module (Azure's own default
-// since April 2023), matching the Terraform module.
+// since April 2023), matching the Terraform module. Tls12 is the only
+// floor Azure still provisions; the retired Tls/Tls11 values no longer
+// exist on the spec enum.
 var minimalTlsVersionStrings = map[azurecosmosdbaccountv1alpha1.AzureCosmosdbAccountMinimalTlsVersion]string{
-	azurecosmosdbaccountv1alpha1.AzureCosmosdbAccountMinimalTlsVersion_TLS_1_0: "Tls",
-	azurecosmosdbaccountv1alpha1.AzureCosmosdbAccountMinimalTlsVersion_TLS_1_1: "Tls11",
 	azurecosmosdbaccountv1alpha1.AzureCosmosdbAccountMinimalTlsVersion_TLS_1_2: "Tls12",
 }
 

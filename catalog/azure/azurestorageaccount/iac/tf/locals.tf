@@ -66,9 +66,9 @@ locals {
     "ACCESS_TIER_PREMIUM" = "Premium"
   }
 
+  # TLS1_2 is the only floor Azure still provisions; the legacy 1.0/1.1
+  # floors are retired and no longer exist on the spec enum.
   min_tls_version_map = {
-    "TLS1_0" = "TLS1_0"
-    "TLS1_1" = "TLS1_1"
     "TLS1_2" = "TLS1_2"
   }
 
@@ -212,8 +212,8 @@ locals {
   )
 
   # The static website is realized as the standalone
-  # azurerm_storage_account_static_website resource (the inline block is
-  # deprecated for removal in azurerm v5); empty documents are sent as
+  # azurerm_storage_account_static_website resource (azurerm removed the
+  # inline block in v5); empty documents are sent as
   # null so the AtLeastOneOf contract stays visible in the plan.
   static_website_index_document = (
     var.spec.static_website == null ? null :

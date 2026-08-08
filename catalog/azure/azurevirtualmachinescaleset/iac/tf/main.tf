@@ -75,29 +75,29 @@ resource "azurerm_linux_virtual_machine_scale_set" "main" {
   dynamic "data_disk" {
     for_each = var.spec.data_disks
     content {
-      lun                            = data_disk.value.lun
-      caching                        = local.caching_map[data_disk.value.caching]
-      disk_size_gb                   = data_disk.value.disk_size_gb
-      storage_account_type           = local.data_disk_storage_map[data_disk.value.storage_account_type]
-      create_option                  = data_disk.value.create_option != null ? local.create_option_map[data_disk.value.create_option] : "Empty"
-      write_accelerator_enabled      = data_disk.value.write_accelerator_enabled
-      disk_encryption_set_id         = data_disk.value.disk_encryption_set_id
-      ultra_ssd_disk_iops_read_write = data_disk.value.ultra_ssd_disk_iops_read_write
-      ultra_ssd_disk_mbps_read_write = data_disk.value.ultra_ssd_disk_mbps_read_write
+      lun                       = data_disk.value.lun
+      caching                   = local.caching_map[data_disk.value.caching]
+      disk_size_gb              = data_disk.value.disk_size_gb
+      storage_account_type      = local.data_disk_storage_map[data_disk.value.storage_account_type]
+      create_option             = data_disk.value.create_option != null ? local.create_option_map[data_disk.value.create_option] : "Empty"
+      write_accelerator_enabled = data_disk.value.write_accelerator_enabled
+      disk_encryption_set_id    = data_disk.value.disk_encryption_set_id
+      disk_iops_read_write      = data_disk.value.ultra_ssd_disk_iops_read_write
+      disk_mbps_read_write      = data_disk.value.ultra_ssd_disk_mbps_read_write
     }
   }
 
   dynamic "network_interface" {
     for_each = var.spec.network_interfaces
     content {
-      name                          = network_interface.value.name
-      primary                       = network_interface.value.primary
-      dns_servers                   = network_interface.value.dns_servers
-      enable_accelerated_networking = network_interface.value.accelerated_networking_enabled
-      enable_ip_forwarding          = network_interface.value.ip_forwarding_enabled
-      network_security_group_id     = network_interface.value.network_security_group_id
-      auxiliary_mode                = network_interface.value.auxiliary_mode != null ? local.auxiliary_mode_map[network_interface.value.auxiliary_mode] : null
-      auxiliary_sku                 = network_interface.value.auxiliary_sku != null ? local.auxiliary_sku_map[network_interface.value.auxiliary_sku] : null
+      name                           = network_interface.value.name
+      primary                        = network_interface.value.primary
+      dns_servers                    = network_interface.value.dns_servers
+      accelerated_networking_enabled = network_interface.value.accelerated_networking_enabled
+      ip_forwarding_enabled          = network_interface.value.ip_forwarding_enabled
+      network_security_group_id      = network_interface.value.network_security_group_id
+      auxiliary_mode                 = network_interface.value.auxiliary_mode != null ? local.auxiliary_mode_map[network_interface.value.auxiliary_mode] : null
+      auxiliary_sku                  = network_interface.value.auxiliary_sku != null ? local.auxiliary_sku_map[network_interface.value.auxiliary_sku] : null
 
       dynamic "ip_configuration" {
         for_each = network_interface.value.ip_configurations
@@ -154,8 +154,11 @@ resource "azurerm_linux_virtual_machine_scale_set" "main" {
   dynamic "automatic_os_upgrade_policy" {
     for_each = var.spec.upgrade_policy != null && try(var.spec.upgrade_policy.automatic_os_upgrade, null) != null ? [var.spec.upgrade_policy.automatic_os_upgrade] : []
     content {
-      enable_automatic_os_upgrade = automatic_os_upgrade_policy.value.enabled
-      disable_automatic_rollback  = automatic_os_upgrade_policy.value.disable_automatic_rollback
+      # The provider expresses rollback as a positive flag; the spec keeps
+      # the ARM-side disable_automatic_rollback name, so the value inverts
+      # here (and only here).
+      automatic_os_upgrade_enabled = automatic_os_upgrade_policy.value.enabled
+      automatic_rollback_enabled   = !automatic_os_upgrade_policy.value.disable_automatic_rollback
     }
   }
 
@@ -317,9 +320,9 @@ resource "azurerm_windows_virtual_machine_scale_set" "main" {
   admin_password       = local.windows_profile.admin_password
   computer_name_prefix = local.computer_name_prefix
 
-  enable_automatic_updates = local.windows_profile.automatic_updates_enabled
-  timezone                 = local.windows_profile.timezone
-  license_type             = local.windows_profile.license_type != null ? local.windows_license_map[local.windows_profile.license_type] : null
+  automatic_updates_enabled = local.windows_profile.automatic_updates_enabled
+  timezone                  = local.windows_profile.timezone
+  license_type              = local.windows_profile.license_type != null ? local.windows_license_map[local.windows_profile.license_type] : null
 
   dynamic "winrm_listener" {
     for_each = local.windows_profile.winrm_listeners
@@ -372,29 +375,29 @@ resource "azurerm_windows_virtual_machine_scale_set" "main" {
   dynamic "data_disk" {
     for_each = var.spec.data_disks
     content {
-      lun                            = data_disk.value.lun
-      caching                        = local.caching_map[data_disk.value.caching]
-      disk_size_gb                   = data_disk.value.disk_size_gb
-      storage_account_type           = local.data_disk_storage_map[data_disk.value.storage_account_type]
-      create_option                  = data_disk.value.create_option != null ? local.create_option_map[data_disk.value.create_option] : "Empty"
-      write_accelerator_enabled      = data_disk.value.write_accelerator_enabled
-      disk_encryption_set_id         = data_disk.value.disk_encryption_set_id
-      ultra_ssd_disk_iops_read_write = data_disk.value.ultra_ssd_disk_iops_read_write
-      ultra_ssd_disk_mbps_read_write = data_disk.value.ultra_ssd_disk_mbps_read_write
+      lun                       = data_disk.value.lun
+      caching                   = local.caching_map[data_disk.value.caching]
+      disk_size_gb              = data_disk.value.disk_size_gb
+      storage_account_type      = local.data_disk_storage_map[data_disk.value.storage_account_type]
+      create_option             = data_disk.value.create_option != null ? local.create_option_map[data_disk.value.create_option] : "Empty"
+      write_accelerator_enabled = data_disk.value.write_accelerator_enabled
+      disk_encryption_set_id    = data_disk.value.disk_encryption_set_id
+      disk_iops_read_write      = data_disk.value.ultra_ssd_disk_iops_read_write
+      disk_mbps_read_write      = data_disk.value.ultra_ssd_disk_mbps_read_write
     }
   }
 
   dynamic "network_interface" {
     for_each = var.spec.network_interfaces
     content {
-      name                          = network_interface.value.name
-      primary                       = network_interface.value.primary
-      dns_servers                   = network_interface.value.dns_servers
-      enable_accelerated_networking = network_interface.value.accelerated_networking_enabled
-      enable_ip_forwarding          = network_interface.value.ip_forwarding_enabled
-      network_security_group_id     = network_interface.value.network_security_group_id
-      auxiliary_mode                = network_interface.value.auxiliary_mode != null ? local.auxiliary_mode_map[network_interface.value.auxiliary_mode] : null
-      auxiliary_sku                 = network_interface.value.auxiliary_sku != null ? local.auxiliary_sku_map[network_interface.value.auxiliary_sku] : null
+      name                           = network_interface.value.name
+      primary                        = network_interface.value.primary
+      dns_servers                    = network_interface.value.dns_servers
+      accelerated_networking_enabled = network_interface.value.accelerated_networking_enabled
+      ip_forwarding_enabled          = network_interface.value.ip_forwarding_enabled
+      network_security_group_id      = network_interface.value.network_security_group_id
+      auxiliary_mode                 = network_interface.value.auxiliary_mode != null ? local.auxiliary_mode_map[network_interface.value.auxiliary_mode] : null
+      auxiliary_sku                  = network_interface.value.auxiliary_sku != null ? local.auxiliary_sku_map[network_interface.value.auxiliary_sku] : null
 
       dynamic "ip_configuration" {
         for_each = network_interface.value.ip_configurations
@@ -451,8 +454,11 @@ resource "azurerm_windows_virtual_machine_scale_set" "main" {
   dynamic "automatic_os_upgrade_policy" {
     for_each = var.spec.upgrade_policy != null && try(var.spec.upgrade_policy.automatic_os_upgrade, null) != null ? [var.spec.upgrade_policy.automatic_os_upgrade] : []
     content {
-      enable_automatic_os_upgrade = automatic_os_upgrade_policy.value.enabled
-      disable_automatic_rollback  = automatic_os_upgrade_policy.value.disable_automatic_rollback
+      # The provider expresses rollback as a positive flag; the spec keeps
+      # the ARM-side disable_automatic_rollback name, so the value inverts
+      # here (and only here).
+      automatic_os_upgrade_enabled = automatic_os_upgrade_policy.value.enabled
+      automatic_rollback_enabled   = !automatic_os_upgrade_policy.value.disable_automatic_rollback
     }
   }
 
@@ -618,7 +624,7 @@ resource "azurerm_orchestrated_virtual_machine_scale_set" "main" {
   network_api_version = var.spec.network_api_version != null && var.spec.network_api_version != "" ? var.spec.network_api_version : null
 
   # PARITY-EXCEPTION: this module realizes ranked virtual_machine_size
-  # blocks (azurerm v4 supports per-size ranks), while the Pulumi module's
+  # blocks (azurerm v5 supports per-size ranks), while the Pulumi module's
   # pinned pulumi-azure v6 SDK bridges the legacy sku_profile shape (plain
   # vm_sizes, no ranks) and fails loudly on any ranked profile. Sizes
   # deploy identically on both engines; output-neutral (sku_profile never
@@ -678,15 +684,15 @@ resource "azurerm_orchestrated_virtual_machine_scale_set" "main" {
     dynamic "windows_configuration" {
       for_each = local.is_linux ? [] : [local.windows_profile]
       content {
-        admin_username           = windows_configuration.value.admin_username
-        admin_password           = windows_configuration.value.admin_password
-        computer_name_prefix     = local.computer_name_prefix
-        enable_automatic_updates = windows_configuration.value.automatic_updates_enabled
-        hotpatching_enabled      = windows_configuration.value.hotpatching_enabled
-        provision_vm_agent       = var.spec.provision_vm_agent
-        patch_mode               = windows_configuration.value.patch_mode != null ? local.windows_patch_mode_map[windows_configuration.value.patch_mode] : null
-        patch_assessment_mode    = windows_configuration.value.patch_assessment_mode != null ? local.assessment_mode_map[windows_configuration.value.patch_assessment_mode] : null
-        timezone                 = windows_configuration.value.timezone
+        admin_username            = windows_configuration.value.admin_username
+        admin_password            = windows_configuration.value.admin_password
+        computer_name_prefix      = local.computer_name_prefix
+        automatic_updates_enabled = windows_configuration.value.automatic_updates_enabled
+        hotpatching_enabled       = windows_configuration.value.hotpatching_enabled
+        provision_vm_agent        = var.spec.provision_vm_agent
+        patch_mode                = windows_configuration.value.patch_mode != null ? local.windows_patch_mode_map[windows_configuration.value.patch_mode] : null
+        patch_assessment_mode     = windows_configuration.value.patch_assessment_mode != null ? local.assessment_mode_map[windows_configuration.value.patch_assessment_mode] : null
+        timezone                  = windows_configuration.value.timezone
 
         dynamic "winrm_listener" {
           for_each = windows_configuration.value.winrm_listeners
@@ -759,29 +765,29 @@ resource "azurerm_orchestrated_virtual_machine_scale_set" "main" {
   dynamic "data_disk" {
     for_each = var.spec.data_disks
     content {
-      lun                            = data_disk.value.lun
-      caching                        = local.caching_map[data_disk.value.caching]
-      disk_size_gb                   = data_disk.value.disk_size_gb
-      storage_account_type           = local.data_disk_storage_map[data_disk.value.storage_account_type]
-      create_option                  = data_disk.value.create_option != null ? local.create_option_map[data_disk.value.create_option] : "Empty"
-      write_accelerator_enabled      = data_disk.value.write_accelerator_enabled
-      disk_encryption_set_id         = data_disk.value.disk_encryption_set_id
-      ultra_ssd_disk_iops_read_write = data_disk.value.ultra_ssd_disk_iops_read_write
-      ultra_ssd_disk_mbps_read_write = data_disk.value.ultra_ssd_disk_mbps_read_write
+      lun                       = data_disk.value.lun
+      caching                   = local.caching_map[data_disk.value.caching]
+      disk_size_gb              = data_disk.value.disk_size_gb
+      storage_account_type      = local.data_disk_storage_map[data_disk.value.storage_account_type]
+      create_option             = data_disk.value.create_option != null ? local.create_option_map[data_disk.value.create_option] : "Empty"
+      write_accelerator_enabled = data_disk.value.write_accelerator_enabled
+      disk_encryption_set_id    = data_disk.value.disk_encryption_set_id
+      disk_iops_read_write      = data_disk.value.ultra_ssd_disk_iops_read_write
+      disk_mbps_read_write      = data_disk.value.ultra_ssd_disk_mbps_read_write
     }
   }
 
   dynamic "network_interface" {
     for_each = var.spec.network_interfaces
     content {
-      name                          = network_interface.value.name
-      primary                       = network_interface.value.primary
-      dns_servers                   = network_interface.value.dns_servers
-      enable_accelerated_networking = network_interface.value.accelerated_networking_enabled
-      enable_ip_forwarding          = network_interface.value.ip_forwarding_enabled
-      network_security_group_id     = network_interface.value.network_security_group_id
-      auxiliary_mode                = network_interface.value.auxiliary_mode != null ? local.auxiliary_mode_map[network_interface.value.auxiliary_mode] : null
-      auxiliary_sku                 = network_interface.value.auxiliary_sku != null ? local.auxiliary_sku_map[network_interface.value.auxiliary_sku] : null
+      name                           = network_interface.value.name
+      primary                        = network_interface.value.primary
+      dns_servers                    = network_interface.value.dns_servers
+      accelerated_networking_enabled = network_interface.value.accelerated_networking_enabled
+      ip_forwarding_enabled          = network_interface.value.ip_forwarding_enabled
+      network_security_group_id      = network_interface.value.network_security_group_id
+      auxiliary_mode                 = network_interface.value.auxiliary_mode != null ? local.auxiliary_mode_map[network_interface.value.auxiliary_mode] : null
+      auxiliary_sku                  = network_interface.value.auxiliary_sku != null ? local.auxiliary_sku_map[network_interface.value.auxiliary_sku] : null
 
       dynamic "ip_configuration" {
         for_each = network_interface.value.ip_configurations

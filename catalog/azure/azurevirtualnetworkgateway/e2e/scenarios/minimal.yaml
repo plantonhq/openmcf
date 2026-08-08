@@ -1,0 +1,51 @@
+# Minimal AzureVirtualNetworkGateway scenario: a route-based VpnGw1
+# site-to-site gateway with BGP and a composed NAT rule -- the flagship
+# proof that the gateway, its GatewaySubnet ARM-name contract, its
+# exclusive public IP binding, and the child NAT rule (surfaced in the
+# nat_rule_ids output) all deploy on both engines.
+#
+# THE SLOW LANE OF THE AZURE SUITE: gateway creation runs 25-45 minutes
+# and deletion 10-20 -- the profile's timeout budgets a full cycle plus
+# fixtures. The chain: fixture resource group -> fixture VNet -> the
+# gateway-shaped subnet instance (ARM name exactly "GatewaySubnet") ->
+# the dedicated no-zone public IP -> this gateway.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualNetworkGateway
+metadata:
+  name: planton-oss-e2e-azurevirtualnetworkgateway-smoke
+  id: planton-oss-e2e-azurevirtualnetworkgateway-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevirtualnetworkgateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-vng-smoke
+  sku: VPN_GW_1
+  ipConfigurations:
+    - subnetId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-gateway-subnet
+      publicIpAddressId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-vng-pip
+  bgpEnabled: true
+  bgpSettings:
+    asn: 65515
+  natRules:
+    - name: egress-overlap
+      externalMappings:
+        - addressSpace: "100.64.1.0/24"
+      internalMappings:
+        - addressSpace: "10.0.1.0/24"
+  tags:
+    e2e-suite: azure
+    purpose: smoke

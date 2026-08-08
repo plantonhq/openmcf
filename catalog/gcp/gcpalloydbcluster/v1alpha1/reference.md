@@ -387,10 +387,10 @@ Immutable after creation.
 
 Preferred maintenance window for system updates.
 
-NOTE: a cluster-level deletion-protection flag is deliberately not
-modeled: the released terraform provider has no such attribute for
-AlloyDB (it exists only on the unreleased main line), so modeling it
-would create a safety posture one engine cannot honor.
+NOTE: the provider's cluster-level deletion_protection flag is
+deliberately not modeled: it is a client-side guard (both modules pin
+it false so destroy always works), and deletion safety belongs to the
+platform's lifecycle layer rather than a per-resource toggle.
 
 ### spec.maintenanceWindow.day
 

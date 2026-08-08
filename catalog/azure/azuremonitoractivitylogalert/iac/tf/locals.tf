@@ -39,13 +39,13 @@ locals {
   location = lookup(local.location_map, coalesce(var.spec.location, "GLOBAL"), "global")
 
   category_map = {
-    "ADMINISTRATIVE" = "Administrative"
-    "AUTOSCALE"      = "Autoscale"
-    "POLICY"         = "Policy"
-    "RECOMMENDATION" = "Recommendation"
+    "ADMINISTRATIVE"  = "Administrative"
+    "AUTOSCALE"       = "Autoscale"
+    "POLICY"          = "Policy"
+    "RECOMMENDATION"  = "Recommendation"
     "RESOURCE_HEALTH" = "ResourceHealth"
-    "SECURITY"       = "Security"
-    "SERVICE_HEALTH" = "ServiceHealth"
+    "SECURITY"        = "Security"
+    "SERVICE_HEALTH"  = "ServiceHealth"
   }
   category = lookup(local.category_map, var.spec.criteria.category, null)
 
@@ -59,11 +59,11 @@ locals {
   levels = [for l in var.spec.criteria.levels : local.level_map[l]]
 
   recommendation_category_map = {
-    "COST"                   = "Cost"
-    "RELIABILITY"            = "Reliability"
-    "OPERATIONAL_EXCELLENCE" = "OperationalExcellence"
-    "PERFORMANCE"            = "Performance"
-    "HIGH_AVAILABILITY"      = "HighAvailability"
+    "COST"                    = "Cost"
+    "RELIABILITY"             = "Reliability"
+    "OPERATIONAL_EXCELLENCE"  = "OperationalExcellence"
+    "PERFORMANCE"             = "Performance"
+    "HIGH_AVAILABILITY"       = "HighAvailability"
     "SECURITY_RECOMMENDATION" = "Security"
   }
   recommendation_category = var.spec.criteria.recommendation_category != "" ? local.recommendation_category_map[var.spec.criteria.recommendation_category] : null

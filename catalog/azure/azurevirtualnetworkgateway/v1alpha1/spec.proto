@@ -1,0 +1,871 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevirtualnetworkgateway.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureVirtualNetworkGatewaySpec** defines a virtual network gateway --
+// the managed gateway appliance Azure deploys into a virtual network to
+// terminate hybrid connectivity: site-to-site IPsec VPN tunnels,
+// point-to-site client VPN, VNet-to-VNet tunnels, and ExpressRoute
+// private circuits.
+//
+// **Two gateway types**, selected by `type`:
+// - **VPN** (the default): terminates IPsec tunnels. Pairs with an
+//   AzureLocalNetworkGateway (the on-premises side) and an
+//   AzureVirtualNetworkGatewayConnection (the tunnel) for site-to-site,
+//   or carries a vpn_client_configuration for point-to-site.
+// - **EXPRESS_ROUTE**: terminates an ExpressRoute circuit's private
+//   peering into the VNet. ExpressRoute gateways get Azure-managed
+//   addressing -- ip_configurations must NOT carry public IPs.
+//
+// **The GatewaySubnet contract**: every gateway lives in a dedicated
+// subnet of its virtual network whose ARM name is EXACTLY
+// "GatewaySubnet" -- ARM rejects any other name. Microsoft recommends
+// /27 or larger; the subnet carries no other workloads, no NSG, and no
+// route table pointing 0.0.0.0/0 away from Azure infrastructure.
+//
+// **Cost and time**: gateways bill hourly per SKU from the moment they
+// provision, and provisioning is SLOW -- 25-45 minutes to create,
+// 10-20 minutes to delete. The ForceNew surface (name, region,
+// resource_group, type, vpn_type, generation, edge_zone,
+// private_ip_address_enabled, every ip_configuration) is therefore
+// expensive; design changes to avoid replacement.
+message AzureVirtualNetworkGatewaySpec {
+  // The Azure region the gateway lives in, e.g. "eastus". Must match the
+  // virtual network it deploys into. Changing the region replaces the
+  // gateway.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the gateway is created in. Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's name
+  // output. Changing it replaces the gateway.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The gateway's name, unique within the resource group. 1-80
+  // characters; must begin with a letter or number, end with a letter,
+  // number, or underscore, and may contain only letters, numbers,
+  // underscores, periods, or hyphens. Changing the name replaces the
+  // gateway.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 80,
+    (buf.validate.field).cel = {
+      id: "gateway_name_format"
+      message: "Gateway names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens"
+      expression: "this == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')"
+    }
+  ];
+
+  // What the gateway terminates: VPN (IPsec tunnels -- the default) or
+  // EXPRESS_ROUTE (an ExpressRoute circuit's private peering). Fixed at
+  // creation. Unspecified deploys VPN, the site-to-site shape.
+  AzureVirtualNetworkGatewayType type = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // The VPN routing model: ROUTE_BASED (any-to-any IKEv2 tunnels, BGP,
+  // P2S -- the default and what virtually every modern deployment uses)
+  // or POLICY_BASED (legacy IKEv1 with static traffic selectors; Basic
+  // SKU only, no BGP, no P2S). Fixed at creation. Only meaningful on VPN
+  // gateways.
+  AzureVirtualNetworkGatewayVpnType vpn_type = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // The gateway SKU -- sizes throughput, tunnel/connection counts, and
+  // hourly cost, and decides zone redundancy (the *_AZ variants). VPN
+  // gateways use BASIC through VPN_GW_5[_AZ]; ExpressRoute gateways use
+  // STANDARD/HIGH_PERFORMANCE/ULTRA_PERFORMANCE or ER_GW_*_AZ; ER_GW_SCALE
+  // autoscales between minimum_scale_unit and maximum_scale_unit. BASIC is
+  // dev/test only (no zone redundancy, no IKEv2 P2S) and cannot resize to
+  // other SKUs in place. Generation2 VPN SKUs start at VPN_GW_2.
+  AzureVirtualNetworkGatewaySku sku = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // The VPN gateway generation. GENERATION2 doubles throughput ceilings
+  // and requires VPN_GW_2 or higher. Fixed at creation. Unspecified lets
+  // Azure pick the default generation for the SKU. Not applicable to
+  // ExpressRoute gateways (leave unset or NONE).
+  AzureVirtualNetworkGatewayGeneration generation = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // The gateway's IP configurations, each binding a public IP on the
+  // dedicated "GatewaySubnet". One configuration is the norm; ACTIVE-ACTIVE
+  // VPN gateways need two (each with its own public IP); three supports
+  // active-active with a separate P2S configuration. FIXED AT CREATION --
+  // any change replaces the gateway. VPN gateways require a public IP on
+  // every configuration; ExpressRoute gateways must NOT set public IPs
+  // (Azure manages their addressing).
+  repeated AzureVirtualNetworkGatewayIpConfiguration ip_configurations = 8 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 3
+  ];
+
+  // Run the VPN gateway as an ACTIVE-ACTIVE pair: two gateway instances,
+  // each with its own ip_configuration and public IP, both terminating
+  // tunnels simultaneously (higher availability, no failover gap).
+  // Requires at least two ip_configurations. VPN gateways only.
+  bool active_active = 9;
+
+  // Also assign the gateway a PRIVATE IP from the GatewaySubnet
+  // (required for private-peering scenarios like ExpressRoute private
+  // connectivity to the gateway). Fixed at creation.
+  bool private_ip_address_enabled = 10;
+
+  // The extended-zone (Edge Zone) to deploy the gateway in. Rarely used;
+  // leave empty for regional deployment. Fixed at creation.
+  string edge_zone = 11;
+
+  // Enable BGP on the gateway -- required for route-based tunnels that
+  // exchange routes dynamically (and for ExpressRoute route exchange,
+  // where Azure enables it implicitly). Tune the speaker via
+  // bgp_settings.
+  bool bgp_enabled = 12;
+
+  // The gateway's BGP speaker settings: its ASN, route weight, and
+  // per-ip-configuration APIPA peering addresses (for tunnels whose
+  // peers require link-local BGP endpoints, e.g. AWS site-to-site VPN).
+  AzureVirtualNetworkGatewayBgpSettings bgp_settings = 13;
+
+  // Custom address prefixes the gateway advertises to ALL connected
+  // clients and tunnels beyond the VNet's own space (the gateway's
+  // "custom routes"). CIDR notation.
+  repeated string custom_route_address_prefixes = 14 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // FORCED TUNNELING: the local network gateway whose address space
+  // becomes the gateway's default route -- on-premises egress inspection
+  // for all VNet traffic. References an AzureLocalNetworkGateway's ARM
+  // id. Leave unset for normal split routing.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef default_local_network_gateway_id = 15 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLocalNetworkGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.local_network_gateway_id"
+  ];
+
+  // POINT-TO-SITE: the client VPN configuration -- address pool,
+  // authentication (Entra ID, certificate, or RADIUS), tunnel protocols,
+  // and per-group routing. VPN gateways only; requires a route-based
+  // gateway on VPN_GW_1/aZ or higher for IKEv2/OpenVPN.
+  AzureVirtualNetworkGatewayVpnClientConfiguration vpn_client_configuration = 16;
+
+  // Policy groups for point-to-site connection segmentation: members are
+  // matched by Entra ID group, certificate CN, or RADIUS attribute, and
+  // vpn_client_configuration.client_connections maps each group to its
+  // own address pool.
+  repeated AzureVirtualNetworkGatewayPolicyGroup policy_groups = 17;
+
+  // Translate BGP-learned routes through the gateway's NAT rules --
+  // advertise post-NAT prefixes instead of the raw on-premises ones.
+  // Only meaningful when nat_rules are configured.
+  bool bgp_route_translation_for_nat_enabled = 18;
+
+  // Let point-to-site clients resolve names through Azure DNS via the
+  // gateway. Sent only when enabled -- ARM rejects the parameter on
+  // SKUs/types that do not support DNS forwarding.
+  bool dns_forwarding_enabled = 19;
+
+  // IPsec replay protection (anti-replay windows on tunnels). Azure and
+  // the provider default this ON; disable only for peers whose replay
+  // windows misbehave.
+  optional bool ip_sec_replay_protection_enabled = 20 [(dev.planton.shared.options.default) = "true"];
+
+  // ER_GW_SCALE autoscale floor, 1-40 scale units. REQUIRED (with
+  // maximum_scale_unit) when sku is ER_GW_SCALE; invalid on any other
+  // SKU.
+  //
+  // PARITY-EXCEPTION: the Pulumi engine's classic SDK does not expose
+  // the autoscale bounds, so ER_GW_SCALE gateways deploy via the
+  // Terraform engine only -- the Pulumi module fails loudly when these
+  // are set.
+  optional int32 minimum_scale_unit = 21 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 40
+  ];
+
+  // ER_GW_SCALE autoscale ceiling, 1-40 scale units; must be >=
+  // minimum_scale_unit. See minimum_scale_unit for the engine parity
+  // note.
+  optional int32 maximum_scale_unit = 22 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 40
+  ];
+
+  // Allow traffic from remote (peered) virtual networks to transit this
+  // gateway -- the hub side of hub-spoke gateway transit toward
+  // non-Virtual-WAN remotes.
+  bool remote_vnet_traffic_enabled = 23;
+
+  // Allow traffic from Virtual WAN networks to transit this gateway.
+  bool virtual_wan_traffic_enabled = 24;
+
+  // NAT rules applied on the gateway -- translate overlapping address
+  // space between on-premises sites and the VNet. Connections opt into
+  // specific rules via their egress/ingress NAT rule id lists; the
+  // gateway publishes each rule's ARM id in the nat_rule_ids output.
+  repeated AzureVirtualNetworkGatewayNatRule nat_rules = 25;
+
+  // Free-form tags applied to the gateway, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins.
+  map<string, string> tags = 26;
+
+  // The SKU is fundamental -- there is no sensible engine-side default
+  // across the VPN/ExpressRoute split, so the choice is explicit.
+  option (buf.validate.message).cel = {
+    id: "sku_required"
+    message: "Choose the gateway SKU explicitly -- it sizes throughput, cost, and zone redundancy (VPN_GW_1 is the common production entry point for VPN gateways)"
+    expression: "this.sku != 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "vpn_sku_vocabulary"
+    message: "VPN gateways use BASIC, STANDARD, HIGH_PERFORMANCE, or the VPN_GW_1..5[_AZ] SKUs -- the ER_GW/ULTRA_PERFORMANCE SKUs are ExpressRoute-only"
+    expression: "this.type == 2 || this.sku in [0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]"
+  };
+  option (buf.validate.message).cel = {
+    id: "express_route_sku_vocabulary"
+    message: "ExpressRoute gateways use STANDARD, HIGH_PERFORMANCE, ULTRA_PERFORMANCE, ER_GW_1_AZ..3_AZ, or ER_GW_SCALE"
+    expression: "this.type != 2 || this.sku in [0, 2, 3, 4, 15, 16, 17, 18]"
+  };
+  option (buf.validate.message).cel = {
+    id: "policy_based_requires_basic_sku"
+    message: "Policy-based VPN gateways support only the BASIC SKU (legacy IKEv1 -- prefer route-based for anything new)"
+    expression: "!(this.type != 2 && this.vpn_type == 2) || this.sku in [0, 1]"
+  };
+  option (buf.validate.message).cel = {
+    id: "generation1_sku_vocabulary"
+    message: "Generation1 VPN gateways use BASIC, STANDARD, HIGH_PERFORMANCE, VPN_GW_1..3, or VPN_GW_1_AZ..3_AZ"
+    expression: "!(this.type != 2 && this.generation == 1) || this.sku in [0, 1, 2, 3, 5, 6, 7, 10, 11, 12]"
+  };
+  option (buf.validate.message).cel = {
+    id: "generation2_sku_vocabulary"
+    message: "Generation2 VPN gateways start at VPN_GW_2: use VPN_GW_2..5 or VPN_GW_2_AZ..5_AZ"
+    expression: "!(this.type != 2 && this.generation == 2) || this.sku in [0, 6, 7, 8, 9, 11, 12, 13, 14]"
+  };
+  option (buf.validate.message).cel = {
+    id: "generation_is_vpn_only"
+    message: "The generation knob applies to VPN gateways only -- leave it unset (or NONE) on ExpressRoute gateways"
+    expression: "this.type != 2 || this.generation in [0, 3]"
+  };
+  option (buf.validate.message).cel = {
+    id: "express_route_gateway_has_no_public_ips"
+    message: "ExpressRoute gateways get Azure-managed addressing -- remove public_ip_address_id from every ip_configuration"
+    expression: "this.type != 2 || !this.ip_configurations.exists(c, has(c.public_ip_address_id))"
+  };
+  option (buf.validate.message).cel = {
+    id: "vpn_gateway_requires_public_ips"
+    message: "VPN gateways require a public IP on every ip_configuration (tunnels terminate on it)"
+    expression: "this.type == 2 || this.ip_configurations.all(c, has(c.public_ip_address_id))"
+  };
+  option (buf.validate.message).cel = {
+    id: "active_active_requires_two_ip_configurations"
+    message: "An active-active gateway is a two-instance pair -- give it (at least) two ip_configurations, each with its own public IP"
+    expression: "!this.active_active || this.ip_configurations.size() >= 2"
+  };
+  option (buf.validate.message).cel = {
+    id: "active_active_is_vpn_only"
+    message: "Active-active mode applies to VPN gateways only"
+    expression: "!this.active_active || this.type != 2"
+  };
+  option (buf.validate.message).cel = {
+    id: "vpn_client_configuration_is_vpn_only"
+    message: "Point-to-site (vpn_client_configuration) runs on VPN gateways only"
+    expression: "this.type != 2 || !has(this.vpn_client_configuration)"
+  };
+  option (buf.validate.message).cel = {
+    id: "scale_units_require_each_other"
+    message: "minimum_scale_unit and maximum_scale_unit are set together (both bound the ER_GW_SCALE autoscaler)"
+    expression: "has(this.minimum_scale_unit) == has(this.maximum_scale_unit)"
+  };
+  option (buf.validate.message).cel = {
+    id: "scale_units_only_on_ergwscale"
+    message: "Autoscale bounds apply only to the ER_GW_SCALE SKU"
+    expression: "!(has(this.minimum_scale_unit) || has(this.maximum_scale_unit)) || this.sku == 18"
+  };
+  option (buf.validate.message).cel = {
+    id: "ergwscale_requires_scale_units"
+    message: "The ER_GW_SCALE SKU requires minimum_scale_unit and maximum_scale_unit (Azure's autoscale contract)"
+    expression: "this.sku != 18 || (has(this.minimum_scale_unit) && has(this.maximum_scale_unit))"
+  };
+  option (buf.validate.message).cel = {
+    id: "scale_unit_floor_not_above_ceiling"
+    message: "minimum_scale_unit cannot exceed maximum_scale_unit"
+    expression: "!(has(this.minimum_scale_unit) && has(this.maximum_scale_unit)) || this.minimum_scale_unit <= this.maximum_scale_unit"
+  };
+  option (buf.validate.message).cel = {
+    id: "nat_rule_names_unique"
+    message: "NAT rule names must be unique on the gateway"
+    expression: "this.nat_rules.all(r, this.nat_rules.filter(o, o.name == r.name).size() == 1)"
+  };
+}
+
+// What the gateway terminates.
+enum AzureVirtualNetworkGatewayType {
+  // Not specified -- deploys VPN, the site-to-site/point-to-site shape.
+  azure_virtual_network_gateway_type_unspecified = 0;
+
+  // Terminate IPsec VPN tunnels (site-to-site, VNet-to-VNet) and
+  // point-to-site client VPN.
+  VPN = 1;
+
+  // Terminate an ExpressRoute circuit's private peering into the VNet.
+  EXPRESS_ROUTE = 2;
+}
+
+// The VPN routing model.
+enum AzureVirtualNetworkGatewayVpnType {
+  // Not specified -- deploys ROUTE_BASED, the modern any-to-any model.
+  azure_virtual_network_gateway_vpn_type_unspecified = 0;
+
+  // Any-to-any IKEv2 tunnels with dynamic routing, BGP, and
+  // point-to-site support. The default and the right choice for
+  // anything new.
+  ROUTE_BASED = 1;
+
+  // Legacy IKEv1 with static traffic selectors. Basic SKU only; no BGP,
+  // no point-to-site. Exists for old on-premises devices that cannot do
+  // route-based.
+  POLICY_BASED = 2;
+}
+
+// The gateway SKU. VPN and ExpressRoute vocabularies are disjoint except
+// STANDARD and HIGH_PERFORMANCE (legacy names valid on both); the *_AZ
+// variants are zone-redundant.
+enum AzureVirtualNetworkGatewaySku {
+  // Not specified -- invalid: the SKU choice is explicit (see the
+  // sku_required contract).
+  azure_virtual_network_gateway_sku_unspecified = 0;
+
+  // Dev/test VPN tier: no zone redundancy, no IKEv2 point-to-site, no
+  // in-place resize to other SKUs.
+  BASIC = 1;
+
+  // Legacy VPN/ExpressRoute tier (predates the VpnGw/ErGw families).
+  STANDARD = 2;
+
+  // Legacy VPN/ExpressRoute tier (predates the VpnGw/ErGw families).
+  HIGH_PERFORMANCE = 3;
+
+  // ExpressRoute-only legacy top tier.
+  ULTRA_PERFORMANCE = 4;
+
+  // Generation1 VPN production entry point (~650 Mbps aggregate).
+  VPN_GW_1 = 5;
+
+  // VPN tier 2 (Generation1 or Generation2).
+  VPN_GW_2 = 6;
+
+  // VPN tier 3 (Generation1 or Generation2).
+  VPN_GW_3 = 7;
+
+  // VPN tier 4 (Generation2 only).
+  VPN_GW_4 = 8;
+
+  // VPN tier 5 (Generation2 only).
+  VPN_GW_5 = 9;
+
+  // Zone-redundant VPN_GW_1 (Generation1 only).
+  VPN_GW_1_AZ = 10;
+
+  // Zone-redundant VPN_GW_2.
+  VPN_GW_2_AZ = 11;
+
+  // Zone-redundant VPN_GW_3.
+  VPN_GW_3_AZ = 12;
+
+  // Zone-redundant VPN_GW_4 (Generation2 only).
+  VPN_GW_4_AZ = 13;
+
+  // Zone-redundant VPN_GW_5 (Generation2 only).
+  VPN_GW_5_AZ = 14;
+
+  // Zone-redundant ExpressRoute gateway, size 1.
+  ER_GW_1_AZ = 15;
+
+  // Zone-redundant ExpressRoute gateway, size 2.
+  ER_GW_2_AZ = 16;
+
+  // Zone-redundant ExpressRoute gateway, size 3.
+  ER_GW_3_AZ = 17;
+
+  // Autoscaling ExpressRoute gateway -- requires minimum_scale_unit and
+  // maximum_scale_unit (Terraform engine only; see the spec's parity
+  // note).
+  ER_GW_SCALE = 18;
+}
+
+// The VPN gateway generation.
+enum AzureVirtualNetworkGatewayGeneration {
+  // Not specified -- Azure picks the default generation for the SKU.
+  azure_virtual_network_gateway_generation_unspecified = 0;
+
+  // First generation: supports BASIC through VPN_GW_3[_AZ].
+  GENERATION1 = 1;
+
+  // Second generation: doubled throughput ceilings; requires VPN_GW_2 or
+  // higher.
+  GENERATION2 = 2;
+
+  // No generation -- ExpressRoute gateways.
+  NONE = 3;
+}
+
+// One gateway IP configuration: a binding of the GatewaySubnet and (for
+// VPN gateways) a public IP.
+message AzureVirtualNetworkGatewayIpConfiguration {
+  // The configuration's name, unique on the gateway. Defaults to
+  // "vnetGatewayConfig" (the name the Azure portal uses) when empty.
+  string name = 1;
+
+  // The gateway's subnet -- references an AzureSubnet's ARM id. ARM
+  // requires the subnet's name to be EXACTLY "GatewaySubnet" (/27 or
+  // larger recommended); the subnet carries nothing but gateways. Fixed
+  // at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // The public IP tunnels terminate on -- references an AzurePublicIp's
+  // ARM id (Standard SKU, static). REQUIRED on VPN gateways (every
+  // configuration); FORBIDDEN on ExpressRoute gateways (Azure manages
+  // their addressing).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef public_ip_address_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePublicIp,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.public_ip_id"
+  ];
+
+  // How the gateway's PRIVATE IP on the GatewaySubnet is assigned.
+  // Unspecified uses DYNAMIC, Azure's default.
+  AzureVirtualNetworkGatewayIpAllocation private_ip_address_allocation = 4 [(buf.validate.field).enum.defined_only = true];
+}
+
+// Private IP allocation method on the GatewaySubnet.
+enum AzureVirtualNetworkGatewayIpAllocation {
+  // Not specified -- uses DYNAMIC, Azure's default.
+  azure_virtual_network_gateway_ip_allocation_unspecified = 0;
+
+  // Azure assigns the private IP.
+  DYNAMIC = 1;
+
+  // The private IP is fixed for the gateway's lifetime.
+  STATIC = 2;
+}
+
+// The gateway's BGP speaker settings.
+message AzureVirtualNetworkGatewayBgpSettings {
+  // The gateway's Autonomous System Number. Azure defaults to 65515;
+  // private ASNs 64512-65514 and 65521-65534 are safe custom choices
+  // (65515-65520 are Azure-reserved).
+  int64 asn = 1 [(buf.validate.field).int64.gte = 0];
+
+  // The weight added to routes learned over BGP, 0-100. Higher wins in
+  // route selection on the gateway.
+  int32 peer_weight = 2 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 100
+  ];
+
+  // Per-ip-configuration BGP peering addresses. One entry unless the
+  // gateway is active-active (then one per ip_configuration, each named
+  // explicitly).
+  repeated AzureVirtualNetworkGatewayBgpPeeringAddress peering_addresses = 3 [(buf.validate.field).repeated.max_items = 2];
+}
+
+// APIPA BGP addresses for one gateway ip_configuration.
+message AzureVirtualNetworkGatewayBgpPeeringAddress {
+  // The ip_configuration this entry applies to. May be omitted when the
+  // gateway has exactly one ip_configuration; REQUIRED (by ARM) when it
+  // has several.
+  string ip_configuration_name = 1;
+
+  // Azure custom APIPA addresses assigned to this BGP peer -- the
+  // link-local endpoints some peers (e.g. AWS site-to-site VPN) require.
+  // Azure public regions accept 169.254.21.0 through 169.254.22.255.
+  repeated string apipa_addresses = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.ipv4 = true
+  ];
+}
+
+// Point-to-site client VPN configuration.
+message AzureVirtualNetworkGatewayVpnClientConfiguration {
+  // The address pool VPN clients draw from, in CIDR notation. Must not
+  // overlap the VNet or any connected network.
+  repeated string address_spaces = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+
+  // Entra ID (Azure AD) authentication -- the tenant URL, e.g.
+  // "https://login.microsoftonline.com/{tenant-id}". Set with
+  // aad_audience and aad_issuer (the three travel together).
+  string aad_tenant = 2;
+
+  // Entra ID authentication -- the Azure VPN application's client id.
+  string aad_audience = 3;
+
+  // Entra ID authentication -- the STS issuer URL, e.g.
+  // "https://sts.windows.net/{tenant-id}/".
+  string aad_issuer = 4;
+
+  // Certificate authentication -- root certificates whose chains sign
+  // client certificates.
+  repeated AzureVirtualNetworkGatewayVpnClientRootCertificate root_certificates = 5;
+
+  // Certificate authentication -- individually revoked client
+  // certificates (by thumbprint).
+  repeated AzureVirtualNetworkGatewayVpnClientRevokedCertificate revoked_certificates = 6;
+
+  // RADIUS authentication -- the single-server form. Set with
+  // radius_server_secret; use radius_servers for multiple servers.
+  string radius_server_address = 7;
+
+  // The RADIUS shared secret for radius_server_address. Reference a
+  // secret rather than embedding the literal in manifests.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef radius_server_secret = 8 [(dev.planton.shared.options.sensitive) = true];
+
+  // RADIUS authentication -- the multi-server form (each with its own
+  // secret and score).
+  repeated AzureVirtualNetworkGatewayVpnClientRadiusServer radius_servers = 9;
+
+  // A custom IPsec policy for point-to-site IKEv2/OpenVPN connections.
+  // Leave unset to use Azure's defaults.
+  AzureVirtualNetworkGatewayVpnClientIpsecPolicy ipsec_policy = 10;
+
+  // The tunnel protocols clients may use: "OpenVPN" (recommended),
+  // "IkeV2", and/or "SSTP". Unset lets Azure pick its default set.
+  repeated string vpn_client_protocols = 11 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "IkeV2",
+      "OpenVPN",
+      "SSTP"
+    ]
+  }];
+
+  // The enabled authentication types: "Certificate", "AAD" (Entra ID),
+  // and/or "Radius". REQUIRED by Azure when combining multiple types;
+  // unset lets Azure infer the single configured type.
+  repeated string vpn_auth_types = 12 [
+    (buf.validate.field).repeated.max_items = 3,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "Certificate",
+        "AAD",
+        "Radius"
+      ]
+    }
+  ];
+
+  // Per-policy-group client connection pools: map policy groups (defined
+  // in the spec's policy_groups) to dedicated address prefixes.
+  repeated AzureVirtualNetworkGatewayClientConnection client_connections = 13;
+
+  // Entra ID settings travel as a trio -- ARM rejects partial
+  // configuration.
+  option (buf.validate.message).cel = {
+    id: "aad_settings_travel_together"
+    message: "Entra ID authentication needs all three of aad_tenant, aad_audience, and aad_issuer"
+    expression: "(this.aad_tenant == '' && this.aad_audience == '' && this.aad_issuer == '') || (this.aad_tenant != '' && this.aad_audience != '' && this.aad_issuer != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "radius_single_server_pair"
+    message: "radius_server_address and radius_server_secret are set together"
+    expression: "(this.radius_server_address == '') == !has(this.radius_server_secret)"
+  };
+}
+
+// A root certificate for point-to-site certificate authentication.
+message AzureVirtualNetworkGatewayVpnClientRootCertificate {
+  // The certificate's name on the gateway.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The base64-encoded public certificate data (the .cer body, without
+  // the PEM header/footer lines).
+  string public_cert_data = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// A revoked client certificate for point-to-site certificate
+// authentication.
+message AzureVirtualNetworkGatewayVpnClientRevokedCertificate {
+  // The revocation entry's name on the gateway.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The revoked client certificate's SHA-1 thumbprint.
+  string thumbprint = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// One RADIUS server for point-to-site RADIUS authentication.
+message AzureVirtualNetworkGatewayVpnClientRadiusServer {
+  // The RADIUS server's IPv4 address.
+  string address = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.ipv4 = true
+  ];
+
+  // The RADIUS shared secret (1-128 characters). Reference a secret
+  // rather than embedding the literal in manifests. Azure never returns
+  // it on reads.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The server's priority score, 1-30 (lower is preferred).
+  int32 score = 3 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 30
+  ];
+}
+
+// A custom IPsec policy for point-to-site connections. All six algorithm
+// fields plus both security-association bounds are required together --
+// a partial policy is not a policy.
+message AzureVirtualNetworkGatewayVpnClientIpsecPolicy {
+  // The IKE Phase 1 Diffie-Hellman group.
+  string dh_group = 1 [(buf.validate.field).string = {
+    in: [
+      "DHGroup1",
+      "DHGroup14",
+      "DHGroup2",
+      "DHGroup2048",
+      "DHGroup24",
+      "ECP256",
+      "ECP384",
+      "None"
+    ]
+  }];
+
+  // The IKE encryption algorithm.
+  string ike_encryption = 2 [(buf.validate.field).string = {
+    in: [
+      "AES128",
+      "AES192",
+      "AES256",
+      "DES",
+      "DES3",
+      "GCMAES128",
+      "GCMAES256"
+    ]
+  }];
+
+  // The IKE integrity algorithm.
+  string ike_integrity = 3 [(buf.validate.field).string = {
+    in: [
+      "GCMAES128",
+      "GCMAES256",
+      "MD5",
+      "SHA1",
+      "SHA256",
+      "SHA384"
+    ]
+  }];
+
+  // The IPsec (Phase 2) encryption algorithm.
+  string ipsec_encryption = 4 [(buf.validate.field).string = {
+    in: [
+      "AES128",
+      "AES192",
+      "AES256",
+      "DES",
+      "DES3",
+      "GCMAES128",
+      "GCMAES192",
+      "GCMAES256",
+      "None"
+    ]
+  }];
+
+  // The IPsec (Phase 2) integrity algorithm.
+  string ipsec_integrity = 5 [(buf.validate.field).string = {
+    in: [
+      "GCMAES128",
+      "GCMAES192",
+      "GCMAES256",
+      "MD5",
+      "SHA1",
+      "SHA256"
+    ]
+  }];
+
+  // The Perfect Forward Secrecy group.
+  string pfs_group = 6 [(buf.validate.field).string = {
+    in: [
+      "ECP256",
+      "ECP384",
+      "None",
+      "PFS1",
+      "PFS14",
+      "PFS2",
+      "PFS2048",
+      "PFS24",
+      "PFSMM"
+    ]
+  }];
+
+  // The security association lifetime in seconds, 300-172799.
+  int32 sa_lifetime_seconds = 7 [
+    (buf.validate.field).int32.gte = 300,
+    (buf.validate.field).int32.lte = 172799
+  ];
+
+  // The security association size limit in kilobytes, at least 1024.
+  int32 sa_data_size_kilobytes = 8 [(buf.validate.field).int32.gte = 1024];
+}
+
+// A per-policy-group client connection pool.
+message AzureVirtualNetworkGatewayClientConnection {
+  // The connection configuration's name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The policy groups (by name, from the spec's policy_groups) whose
+  // members receive addresses from this pool.
+  repeated string policy_group_names = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+
+  // The address prefixes this group's clients draw from, in CIDR
+  // notation (carved from the vpn_client_configuration address pool).
+  repeated string address_prefixes = 3 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+}
+
+// A point-to-site policy group: matches clients by identity attribute.
+message AzureVirtualNetworkGatewayPolicyGroup {
+  // The policy group's name (referenced by
+  // vpn_client_configuration.client_connections).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The membership rules -- a client matching ANY member joins the
+  // group.
+  repeated AzureVirtualNetworkGatewayPolicyMember policy_members = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Whether this is the gateway's default policy group (for clients
+  // matching no other group).
+  bool is_default = 3;
+
+  // The group's evaluation priority (lower evaluates first). Azure
+  // defaults to 0.
+  int32 priority = 4 [(buf.validate.field).int32.gte = 0];
+}
+
+// One policy group membership rule.
+message AzureVirtualNetworkGatewayPolicyMember {
+  // The member rule's name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The attribute matched: "AADGroupId" (Entra ID group object id),
+  // "CertificateGroupId" (certificate CN), or "RadiusAzureGroupId"
+  // (RADIUS-provided group).
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "AADGroupId",
+      "CertificateGroupId",
+      "RadiusAzureGroupId"
+    ]
+  }];
+
+  // The attribute value to match (e.g. the Entra ID group's object id).
+  string value = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// A NAT rule on the gateway -- translates address space on tunnels that
+// opt into it (via the connection's egress/ingress NAT rule id lists).
+message AzureVirtualNetworkGatewayNatRule {
+  // The rule's name, unique on the gateway. The rule's ARM id surfaces
+  // in the gateway's nat_rule_ids output under this name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The translation direction: EGRESS_SNAT (translate the VNet-side
+  // source -- the default) or INGRESS_SNAT (translate the
+  // on-premises-side source).
+  AzureVirtualNetworkGatewayNatRuleMode mode = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // The translation type: STATIC_NAT (one-to-one, no port translation
+  // -- the default) or DYNAMIC_NAT (many-to-one with port translation).
+  AzureVirtualNetworkGatewayNatRuleType type = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // The external (post-translation, as seen by the remote side)
+  // mappings.
+  repeated AzureVirtualNetworkGatewayNatRuleMapping external_mappings = 4 [(buf.validate.field).repeated.min_items = 1];
+
+  // The internal (pre-translation, VNet-side) mappings.
+  repeated AzureVirtualNetworkGatewayNatRuleMapping internal_mappings = 5 [(buf.validate.field).repeated.min_items = 1];
+
+  // Pin the rule to one gateway ip_configuration by its ARM id (of the
+  // form {gateway-id}/ipConfigurations/{name}). Rarely needed -- leave
+  // empty to apply on all configurations.
+  string ip_configuration_id = 6;
+}
+
+// The NAT translation direction.
+enum AzureVirtualNetworkGatewayNatRuleMode {
+  // Not specified -- uses EGRESS_SNAT, the default direction.
+  azure_virtual_network_gateway_nat_rule_mode_unspecified = 0;
+
+  // Translate the VNet-side source address space.
+  EGRESS_SNAT = 1;
+
+  // Translate the on-premises-side source address space.
+  INGRESS_SNAT = 2;
+}
+
+// The NAT translation type.
+enum AzureVirtualNetworkGatewayNatRuleType {
+  // Not specified -- uses STATIC_NAT, one-to-one translation.
+  azure_virtual_network_gateway_nat_rule_type_unspecified = 0;
+
+  // One-to-one address translation without ports (wire value "Static").
+  STATIC_NAT = 1;
+
+  // Many-to-one translation with port translation (wire value
+  // "Dynamic").
+  DYNAMIC_NAT = 2;
+}
+
+// One NAT mapping: an address range and (for dynamic rules) a port
+// range.
+message AzureVirtualNetworkGatewayNatRuleMapping {
+  // The address space in CIDR notation.
+  string address_space = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The port range (e.g. "100-200"). Dynamic rules only.
+  string port_range = 2;
+}

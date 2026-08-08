@@ -14,12 +14,13 @@ spec:
   # The x_azure_fdid repeated-StringValueOrRef retrofit was live-proven
   # on the Pulumi engine (2026-07-15, 294.1s); the Terraform re-run was
   # stopped mid-flight by the owner's project-wide live-E2E closure the
-  # same day. Terraform's green stands on its pre-retrofit run plus the
-  # tfvars flattening contract (references arrive pre-resolved as
-  # literals, so the module change is comment-only).
+  # same day.
+  #
+  # pending_proof: the azurerm v5 treatment removed the service-retired
+  # Ruby runtime from the application stack (spec and both modules).
+  # Offline plans are green on azurerm 5; the prior green predates the
+  # v5 pin and no longer stands as live proof for the reworked surface.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

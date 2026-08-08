@@ -1,0 +1,40 @@
+apiVersion: iac.planton.dev/v1
+kind: ProviderImportCatalog
+metadata:
+  name: azure
+spec:
+  # Import-ID formats per Azure resource type, as documented by the upstream
+  # terraform-provider-azurerm / pulumi-azure providers. The FORMAT lives
+  # here (provider knowledge, shared by every component); which concrete
+  # value fills each {placeholder} lives in the owning component's
+  # import-map.yaml. Correctness is machine-proven by the E2E import
+  # round-trip (deploy a fixture, set state aside, re-import blind, plan
+  # must show zero diff) -- never by review alone.
+  #
+  # Azure's uniformity is the catalog's shape: azurerm imports virtually
+  # every resource by its FULL ARM resource ID (the
+  # /subscriptions/{sub}/resourceGroups/{rg}/providers/... path), so most
+  # formats are a single placeholder filled from the component's own id
+  # stack output. Child resources nested under a parent's ARM path (a
+  # gateway's NAT rules) compose the parent's id with the child segment.
+  resource_types:
+    # --- Hybrid connectivity: the virtual network gateway family ----------
+    - terraform_type: azurerm_virtual_network_gateway
+      pulumi_type: azure:network/virtualNetworkGateway:VirtualNetworkGateway
+      id_format: "{virtual_network_gateway_id}"
+    - terraform_type: azurerm_virtual_network_gateway_nat_rule
+      pulumi_type: azure:network/virtualNetworkGatewayNatRule:VirtualNetworkGatewayNatRule
+      id_format: "{virtual_network_gateway_id}/natRules/{nat_rule_name}"
+      # The module deploys one rule per spec entry, keyed by rule name --
+      # the address's instance key supplies {nat_rule_name}.
+    - terraform_type: azurerm_virtual_network_gateway_connection
+      pulumi_type: azure:network/virtualNetworkGatewayConnection:VirtualNetworkGatewayConnection
+      id_format: "{connection_id}"
+      # shared_key is Optional+Computed and read back from the connection's
+      # shared-key API on import; authorization_key is never returned by
+      # ARM (state-only), so an imported connection configured with one
+      # legitimately plans an in-place update on it.
+      write_normalized_attributes: [authorization_key]
+    - terraform_type: azurerm_local_network_gateway
+      pulumi_type: azure:network/localNetworkGateway:LocalNetworkGateway
+      id_format: "{local_network_gateway_id}"

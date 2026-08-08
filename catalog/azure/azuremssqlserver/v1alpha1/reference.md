@@ -237,7 +237,11 @@ from at least three of: uppercase, lowercase, digits, special
 characters). Can be a literal value or a reference to another
 resource's output. Required with administrator_login; rotates in
 place -- but ARM rejects a password change while
-azuread_authentication_only is true.
+azuread_authentication_only is true. The provider's write-only
+variant (administrator_login_password_wo + its version counter) is
+deliberately not modeled: it is an ephemeral input that duplicates
+this field, and secret values here are already reference-resolved
+at deploy time rather than stored in the manifest.
 
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 

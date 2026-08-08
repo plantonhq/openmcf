@@ -52,22 +52,22 @@ resource "azurerm_linux_web_app" "main" {
     scm_minimum_tls_version           = local.scm_minimum_tls_version
     # Absent accepts Azure's platform default cipher set -- the provider
     # treats an unset value as "do not manage".
-    minimum_tls_cipher_suite                       = var.spec.site_config.minimum_tls_cipher_suite
-    worker_count                                   = var.spec.site_config.worker_count
-    http2_enabled                                  = var.spec.site_config.http2_enabled
-    websockets_enabled                             = var.spec.site_config.websockets_enabled
-    use_32_bit_worker                              = var.spec.site_config.use_32_bit_worker
-    vnet_route_all_enabled                         = var.spec.site_config.vnet_route_all_enabled
-    ftps_state                                     = local.ftps_state
-    load_balancing_mode                            = local.load_balancing_mode
-    managed_pipeline_mode                          = local.managed_pipeline_mode
-    local_mysql_enabled                            = var.spec.site_config.local_mysql_enabled
-    remote_debugging_enabled                       = var.spec.site_config.remote_debugging_enabled
-    ip_restriction_default_action                  = local.ip_restriction_default_action
-    scm_use_main_ip_restriction                    = var.spec.site_config.scm_use_main_ip_restriction
-    scm_ip_restriction_default_action              = local.scm_ip_restriction_default_action
-    container_registry_use_managed_identity        = var.spec.site_config.container_registry_use_managed_identity
-    container_registry_managed_identity_client_id  = var.spec.site_config.container_registry_managed_identity_client_id
+    minimum_tls_cipher_suite                      = var.spec.site_config.minimum_tls_cipher_suite
+    worker_count                                  = var.spec.site_config.worker_count
+    http2_enabled                                 = var.spec.site_config.http2_enabled
+    websockets_enabled                            = var.spec.site_config.websockets_enabled
+    use_32_bit_worker                             = var.spec.site_config.use_32_bit_worker
+    vnet_route_all_enabled                        = var.spec.site_config.vnet_route_all_enabled
+    ftps_state                                    = local.ftps_state
+    load_balancing_mode                           = local.load_balancing_mode
+    managed_pipeline_mode                         = local.managed_pipeline_mode
+    local_mysql_enabled                           = var.spec.site_config.local_mysql_enabled
+    remote_debugging_enabled                      = var.spec.site_config.remote_debugging_enabled
+    ip_restriction_default_action                 = local.ip_restriction_default_action
+    scm_use_main_ip_restriction                   = var.spec.site_config.scm_use_main_ip_restriction
+    scm_ip_restriction_default_action             = local.scm_ip_restriction_default_action
+    container_registry_use_managed_identity       = var.spec.site_config.container_registry_use_managed_identity
+    container_registry_managed_identity_client_id = var.spec.site_config.container_registry_managed_identity_client_id
 
     # --- Application Stack ---
     # The spec's nested docker message maps onto azurerm's flattened
@@ -83,7 +83,6 @@ resource "azurerm_linux_web_app" "main" {
         java_server              = application_stack.value.java_server != null ? local.java_server_map[application_stack.value.java_server] : null
         java_server_version      = application_stack.value.java_server_version
         php_version              = application_stack.value.php_version
-        ruby_version             = application_stack.value.ruby_version
         go_version               = application_stack.value.go_version
         docker_image_name        = application_stack.value.docker != null ? "${application_stack.value.docker.image_name}:${application_stack.value.docker.image_tag}" : null
         docker_registry_url      = application_stack.value.docker != null ? application_stack.value.docker.registry_url : null

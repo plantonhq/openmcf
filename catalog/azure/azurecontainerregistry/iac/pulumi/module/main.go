@@ -58,7 +58,6 @@ func Resources(ctx *pulumi.Context, stackInput *azurecontainerregistryv1alpha1.A
 	registryArgs.AnonymousPullEnabled = pulumi.Bool(spec.AnonymousPullEnabled)
 	registryArgs.DataEndpointEnabled = pulumi.Bool(spec.DataEndpointEnabled)
 	registryArgs.QuarantinePolicyEnabled = pulumi.Bool(spec.QuarantinePolicyEnabled)
-	registryArgs.TrustPolicyEnabled = pulumi.Bool(spec.TrustPolicyEnabled)
 
 	// Unset keeps untagged manifests forever (Azure's default); a value
 	// (including 0 = purge immediately) turns the retention policy on.
@@ -103,9 +102,13 @@ func Resources(ctx *pulumi.Context, stackInput *azurecontainerregistryv1alpha1.A
 		georeplications := containerservice.RegistryGeoreplicationArray{}
 		for _, replication := range sorted {
 			georeplications = append(georeplications, containerservice.RegistryGeoreplicationArgs{
-				Location:                pulumi.String(replication.Location),
-				ZoneRedundancyEnabled:   pulumi.Bool(replication.ZoneRedundancyEnabled),
-				RegionalEndpointEnabled: pulumi.Bool(replication.RegionalEndpointEnabled),
+				Location:              pulumi.String(replication.Location),
+				ZoneRedundancyEnabled: pulumi.Bool(replication.ZoneRedundancyEnabled),
+				// The classic pulumi-azure v6 SDK is bridged from azurerm 4.x,
+				// whose argument name is regional_endpoint_enabled; it carries
+				// the same ARM property (RegionEndpointEnabled) that azurerm 5
+				// renamed to global_endpoint_routing_enabled.
+				RegionalEndpointEnabled: pulumi.Bool(replication.GlobalEndpointRoutingEnabled),
 				Tags:                    pulumi.ToStringMap(replication.Tags),
 			})
 		}

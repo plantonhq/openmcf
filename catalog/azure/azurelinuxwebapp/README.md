@@ -8,13 +8,13 @@ The `AzureLinuxWebApp` component provisions an `azurerm_linux_web_app` resource,
 
 Every Web App requires:
 - **An App Service Plan** (`AzureServicePlan`): Determines cost model, compute tier, and available features (Free through Premium v4)
-- **An application stack**: The runtime (.NET, Node.js, Python, PHP, Ruby, Go, Java with Tomcat/JBoss, or Docker container)
+- **An application stack**: The runtime (.NET, Node.js, Python, PHP, Go, Java with Tomcat/JBoss, or Docker container)
 
 ## Key Features
 
 - **Dual IaC support**: Both Pulumi and Terraform modules with feature parity
 - **StringValueOrRef composability**: `service_plan_id`, `resource_group`, `virtual_network_subnet_id`, and `application_insights_connection_string` all support `valueFrom` references
-- **Broad runtime support**: .NET, Node.js, Python, PHP, Ruby, Go, Java (SE/Tomcat/JBoss EAP), and Docker containers -- more runtimes than Function Apps
+- **Broad runtime support**: .NET, Node.js, Python, PHP, Go, Java (SE/Tomcat/JBoss EAP), and Docker containers -- more runtimes than Function Apps. Ruby is deliberately not modeled: Azure retired the Ruby runtime on App Service; run Ruby apps as Docker containers
 - **Full-feature site_config**: Application stack selection, health checks, TLS floors + minimum cipher suite, FTPS state, load balancing, request pipeline mode, CORS, IP restrictions, HTTP/2, WebSockets, API Management wiring, default documents, remote debugging
 - **Auto-heal**: Recycle the app automatically on request-volume, status-code, or slow-request triggers, with a minimum-uptime guard against recycle loops
 - **Built-in authentication (Easy Auth v2)**: Platform-level authentication against Microsoft Entra ID, Apple, Facebook, GitHub, Google, Microsoft account, Twitter, or any OpenID Connect provider -- validated before requests reach application code, with provider secrets referenced by app setting name
