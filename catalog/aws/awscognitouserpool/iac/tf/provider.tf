@@ -3,12 +3,19 @@ terraform {
 
   required_providers {
     aws = {
-      source = "hashicorp/aws"
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
       # 6.11.0 is the floor for the surface this module manages: the
       # aws_cognito_log_delivery_configuration resource landed in 6.5.0 and
       # 6.11.0 fixed the provider to accept email_mfa_configuration as this
       # module sends it.
-      version = ">= 6.11.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

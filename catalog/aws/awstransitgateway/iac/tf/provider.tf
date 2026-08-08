@@ -2,13 +2,20 @@ terraform {
   required_version = ">= 1.0"
   required_providers {
     aws = {
-      # Family floor: >= 6.26.0. The gateway's encryption_support argument
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor 6.26.0. The gateway's encryption_support argument
       # landed in 6.25.0 with a crash regression that 6.26.0 fixed, so the
       # floor deliberately clears the broken release. The whole Transit
       # Gateway family (gateway, VPC attachment, route table) shares this
       # floor so composed deployments resolve one provider build.
       source  = "hashicorp/aws"
-      version = ">= 6.26.0"
+      version = "~> 6.58"
     }
   }
 }

@@ -1,12 +1,19 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a cap: the MemoryDB family floor is set by the cluster's
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: the MemoryDB family floor is set by the cluster's
       # ip_discovery/network_type arguments (v6.34.0); the user resource
       # itself is stable across the v6 line, and one family floor keeps the
       # engines' resolved provider versions aligned.
-      version = ">= 6.34.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

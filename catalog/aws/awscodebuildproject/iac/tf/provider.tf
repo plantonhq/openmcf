@@ -3,11 +3,18 @@ terraform {
 
   required_providers {
     aws = {
-      # Floor 6.16.0: the project's auto_retry_limit lands there (the
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor 6.16.0: the project's auto_retry_limit lands there (the
       # webhook's pull_request_build_policy 6.13.0, the environment's
       # docker_server 6.2.0, and everything else are below the floor).
       source  = "hashicorp/aws"
-      version = ">= 6.16.0"
+      version = "~> 6.58"
     }
   }
 }

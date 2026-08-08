@@ -3,11 +3,18 @@ terraform {
 
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a cap: ip_discovery and network_type land in v6.34.0 --
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: ip_discovery and network_type land in v6.34.0 --
       # an older floor would silently reject the dual-stack surface. (The
       # valkey engine and multi_region_cluster_name predate it.)
-      version = ">= 6.34.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

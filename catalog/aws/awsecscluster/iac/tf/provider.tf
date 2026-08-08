@@ -3,11 +3,17 @@ terraform {
 
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a ceiling: the cluster's managed_storage_configuration
-      # and the capacity provider's managed_draining land on the v6 line;
-      # `init` resolves the latest release at or above the floor.
-      version = ">= 6.0.0"
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: the cluster's managed_storage_configuration
+      # and the capacity provider's managed_draining land on the v6 line.
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

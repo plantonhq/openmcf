@@ -3,13 +3,20 @@ terraform {
 
   required_providers {
     aws = {
-      # Floor: >= 6.0.0. The newest arguments this module sends — the
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor 6.0.0. The newest arguments this module sends — the
       # endpoint configuration's attachment_arn (cross-account attachments)
       # and the accelerator's dual-stack surface — landed on the v5 line
       # (v5.47-v5.48), so the v6 major floor carries the full modeled
       # surface with current provider behavior.
       source  = "hashicorp/aws"
-      version = ">= 6.0.0"
+      version = "~> 6.58"
     }
   }
 }

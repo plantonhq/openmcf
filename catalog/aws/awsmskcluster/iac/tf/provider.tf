@@ -1,12 +1,19 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a cap: connectivity_info.network_type landed in 6.40.0 and
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: connectivity_info.network_type landed in 6.40.0 and
       # 6.41.0 fixed a vpc_connectivity update regression introduced there;
       # the rebalancing block (Express brokers) is older (6.22.1). Everything
       # else this module uses predates the v6 line.
-      version = ">= 6.41.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

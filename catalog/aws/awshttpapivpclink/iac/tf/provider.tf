@@ -2,12 +2,19 @@ terraform {
   required_version = ">= 1.0"
   required_providers {
     aws = {
-      # Family floor: the apigatewayv2 family's newest shape change
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor (family baseline): the apigatewayv2 family's newest shape change
       # (routing_mode / routing rules) landed in 6.29.0; the VPC link
       # resource itself is far older, but the family pins one floor so every
       # sibling resolves from the same provider build.
       source  = "hashicorp/aws"
-      version = ">= 6.29.0"
+      version = "~> 6.58"
     }
   }
 }

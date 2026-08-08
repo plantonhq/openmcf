@@ -1,11 +1,18 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a cap: aiml_options landed in 6.15.0, identity_center_options
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: aiml_options landed in 6.15.0, identity_center_options
       # in 6.20.0, and the aiml serverless_vector_acceleration block this module
       # emits arrived in 6.31.0 -- the newest argument in use.
-      version = ">= 6.31.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

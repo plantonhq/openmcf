@@ -1,12 +1,19 @@
 terraform {
   required_providers {
     aws = {
-      # v6 family floor: the Batch compute-environment surface (including
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor (v6 family baseline): the Batch compute-environment surface (including
       # eks_configuration, ec2_configuration.image_kubernetes_version, and
       # update_policy) is stable before the v6 line; the floor keeps the
       # Batch family on one provider generation.
       source  = "hashicorp/aws"
-      version = ">= 6.0.0"
+      version = "~> 6.58"
     }
   }
 }

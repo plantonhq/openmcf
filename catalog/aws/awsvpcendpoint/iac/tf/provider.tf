@@ -1,12 +1,19 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a cap: dns_options.private_dns_preference and
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: dns_options.private_dns_preference and
       # private_dns_specified_domains landed in provider 6.28.0, and the
       # Resource / ServiceNetwork endpoint types are v6-era -- an older
       # floor would silently reject parts of the modeled surface.
-      version = ">= 6.28.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

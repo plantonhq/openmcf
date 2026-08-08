@@ -6,15 +6,15 @@ spec:
   region: us-west-2
   airflowVersion: "2.10.1"
   sourceBucketArn:
-    value: "<s3-bucket-arn>"
+    value: "arn:aws:s3:::airflow-dags-bucket"
   dagS3Path: "dags/"
   executionRoleArn:
-    value: "<execution-role-arn>"
+    value: "arn:aws:iam::123456789012:role/airflow-execution-role"
   subnetIds:
-    - value: "<private-subnet-id-az1>"
-    - value: "<private-subnet-id-az2>"
+    - value: "subnet-0a1b2c3d4e5f60001"
+    - value: "subnet-0a1b2c3d4e5f60002"
   securityGroupIds:
-    - value: "<mwaa-security-group-id>"
+    - value: "sg-0a1b2c3d4e5f60003"
   environmentClass: mw1.small
   minWorkers: 1
   maxWorkers: 5

@@ -1,12 +1,19 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a pin: 6.37.0 carries the full surface this module
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: 6.37.0 carries the full surface this module
       # renders -- global_table_witness (6.22), multi-attribute GSI
       # key_schema (6.29), and the 6.37 fix for GSI removal under the
       # key_schema syntax deleting every index on the table.
-      version = ">= 6.37.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }

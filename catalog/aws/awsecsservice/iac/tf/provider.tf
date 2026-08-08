@@ -1,13 +1,20 @@
 terraform {
   required_providers {
     aws = {
-      # Floor, not a cap: native blue/green deployments
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: native blue/green deployments
       # (deployment_configuration, load_balancer.advanced_configuration),
       # alarm-gated rollbacks, Service Connect access logs, and managed EBS
       # task volumes all landed across the provider's v6 line -- this floor
       # is the first release carrying the full surface this module drives.
       source  = "hashicorp/aws"
-      version = ">= 6.50.0"
+      version = "~> 6.58"
     }
   }
 

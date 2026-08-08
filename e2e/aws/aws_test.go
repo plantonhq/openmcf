@@ -87,6 +87,15 @@ func TestAwsVpc_Terraform(t *testing.T) { runAllScenariosForComponent(t, "awsvpc
 func TestAwsSubnet_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "awssubnet", "pulumi") }
 func TestAwsSubnet_Terraform(t *testing.T) { runAllScenariosForComponent(t, "awssubnet", "terraform") }
 
+// --- AWS Elastic IP (standalone allocation; also serves as the NAT Gateway prerequisite) ---
+
+func TestAwsElasticIp_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awselasticip", "pulumi")
+}
+func TestAwsElasticIp_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awselasticip", "terraform")
+}
+
 // --- AWS NAT Gateway (deep composed topology: AwsVpc -> AwsSubnet -> AwsElasticIp) ---
 
 func TestAwsNatGateway_Pulumi(t *testing.T) {

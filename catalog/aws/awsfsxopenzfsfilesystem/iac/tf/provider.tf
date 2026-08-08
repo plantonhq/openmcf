@@ -1,12 +1,19 @@
 terraform {
   required_providers {
     aws = {
-      # Family floor: >= 6.22.1 carries the full OpenZFS surface used by this
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor 6.22.1 carries the full OpenZFS surface used by this
       # module — the INTELLIGENT_TIERING storage type with
       # read_cache_configuration (landed in 6.22.1), plus backup_id,
       # delete_options, and final_backup_tags.
       source  = "hashicorp/aws"
-      version = ">= 6.22.1"
+      version = "~> 6.58"
     }
   }
 }

@@ -1,13 +1,20 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
-      # Floor, not a cap: endpoint_ip_address_type / traffic_ip_address_type
+      # One pessimistic pin, catalog-wide: every AWS module tracks the same
+      # provider line, floored at the newest minor already released when the
+      # monthly pin sweep last advanced it. The `~>` cap makes the next major
+      # a deliberate catalog-wide decision, and floor-at-latest-released-minor
+      # means the constraint never understates what any module's newest
+      # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: endpoint_ip_address_type / traffic_ip_address_type
       # (and client_cidr_block becoming optional for IPv6 traffic) land in
       # v6.11.0 -- an older floor would silently reject the dual-stack
       # surface. (client_route_enforcement_options and
       # disconnect_on_session_timeout predate it.)
-      version = ">= 6.11.0"
+      source  = "hashicorp/aws"
+      version = "~> 6.58"
     }
   }
 }
