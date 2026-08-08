@@ -338,6 +338,7 @@ Fields on other kinds that can point at this resource:
 | AwsDocumentDb | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsEc2Instance | `spec.subnetId` | `status.outputs.subnet_id` |
 | AwsEc2Instance | `spec.secondaryNetworkInterfaces[].subnetId` | `status.outputs.subnet_id` |
+| AwsEcsCluster | `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.subnets` | `status.outputs.subnet_id` |
 | AwsEcsService | `spec.network.subnets` | `status.outputs.subnet_id` |
 | AwsEksCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsEksFargateProfile | `spec.subnetIds` | `status.outputs.subnet_id` |

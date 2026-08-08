@@ -15,11 +15,12 @@ locals {
   }
 
   # The union of associated provider names: the Fargate built-ins plus
-  # every folded EC2 capacity provider. This is the vocabulary services
-  # can name in a capacity_provider_strategy, and what the single
-  # association resource PUTs onto the cluster.
+  # every folded EC2 and managed-instances capacity provider. This is the
+  # vocabulary services can name in a capacity_provider_strategy, and what
+  # the single association resource PUTs onto the cluster.
   associated_capacity_providers = concat(
     var.spec.capacity_providers,
     [for p in var.spec.ec2_capacity_providers : p.name],
+    [for p in var.spec.managed_instances_capacity_providers : p.name],
   )
 }

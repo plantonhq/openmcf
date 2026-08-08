@@ -15,9 +15,12 @@ import "shared/foreignkey/v1/foreign_key.proto";
 // FARGATE / FARGATE_SPOT providers and never thinks about instances. An
 // EC2-backed cluster defines ec2_capacity_providers -- each wrapping a
 // referenced AwsAutoScalingGroup whose fleet ECS scales up and down through
-// managed scaling -- and services blend across all of it by provider name
-// in their capacity_provider_strategy. The cluster itself is free; only
-// the tasks and instances it schedules cost money.
+// managed scaling. A managed-instances cluster defines
+// managed_instances_capacity_providers -- ECS launches and retires the EC2
+// instances itself from attribute-based requirements, no auto-scaling group
+// to own. Services blend across all of it by provider name in their
+// capacity_provider_strategy. The cluster itself is free; only the tasks
+// and instances it schedules cost money.
 message AwsEcsClusterSpec {
   // The AWS region where the resource will be created.
   // Example: "us-west-2", "eu-west-1"
@@ -99,6 +102,18 @@ message AwsEcsClusterSpec {
   // mesh namespace without per-service wiring.
   string service_connect_namespace_arn = 8;
 
+  // ECS Managed Instances capacity providers: ECS launches, patches, and
+  // retires the EC2 instances itself -- you describe the compute by
+  // attributes (vCPUs, memory, accelerators) and the network to launch
+  // into, and ECS owns the fleet end to end (no auto-scaling group, no
+  // AMI, no user data). Each entry materializes as its own capacity
+  // provider resource bound to this cluster and is associated alongside
+  // the Fargate built-ins and ec2_capacity_providers; services reference
+  // entries by name in their capacity_provider_strategy. Requires an
+  // infrastructure role the ECS service principal can assume and an
+  // instance profile for the launched instances.
+  repeated AwsEcsClusterManagedInstancesCapacityProvider managed_instances_capacity_providers = 9;
+
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
   // ---------------------------------------------------------------------------
@@ -108,8 +123,8 @@ message AwsEcsClusterSpec {
   // with an opaque error; failing at validate names the entry instead.
   option (buf.validate.message).cel = {
     id: "default_strategy_names_associated_providers"
-    message: "every default_capacity_provider_strategy entry must name an associated provider -- a capacity_providers built-in (FARGATE/FARGATE_SPOT) or an ec2_capacity_providers entry"
-    expression: "this.default_capacity_provider_strategy.all(s, s.capacity_provider in this.capacity_providers || this.ec2_capacity_providers.exists(p, p.name == s.capacity_provider))"
+    message: "every default_capacity_provider_strategy entry must name an associated provider -- a capacity_providers built-in (FARGATE/FARGATE_SPOT), an ec2_capacity_providers entry, or a managed_instances_capacity_providers entry"
+    expression: "this.default_capacity_provider_strategy.all(s, s.capacity_provider in this.capacity_providers || this.ec2_capacity_providers.exists(p, p.name == s.capacity_provider) || this.managed_instances_capacity_providers.exists(p, p.name == s.capacity_provider))"
   };
 
   // AWS allows at most one strategy entry to carry a non-zero base.
@@ -119,11 +134,24 @@ message AwsEcsClusterSpec {
     expression: "this.default_capacity_provider_strategy.filter(s, s.base > 0).size() <= 1"
   };
 
-  // Capacity provider names must be unique across the folded entries.
+  // Capacity provider names must be unique across the folded entries --
+  // both lists materialize into the same per-cluster provider namespace.
   option (buf.validate.message).cel = {
     id: "ec2_capacity_provider_names_unique"
     message: "ec2_capacity_providers entries must have unique names"
     expression: "this.ec2_capacity_providers.all(p, this.ec2_capacity_providers.filter(q, q.name == p.name).size() == 1)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "managed_instances_capacity_provider_names_unique"
+    message: "managed_instances_capacity_providers entries must have unique names"
+    expression: "this.managed_instances_capacity_providers.all(p, this.managed_instances_capacity_providers.filter(q, q.name == p.name).size() == 1)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "capacity_provider_names_unique_across_types"
+    message: "a managed_instances_capacity_providers entry may not reuse an ec2_capacity_providers name -- both lists share one provider namespace"
+    expression: "this.managed_instances_capacity_providers.all(p, !this.ec2_capacity_providers.exists(q, q.name == p.name))"
   };
 }
 
@@ -248,6 +276,375 @@ message AwsEcsClusterManagedScaling {
     id: "step_sizes_ordered"
     message: "maximum_scaling_step_size must be greater than or equal to minimum_scaling_step_size when both are set"
     expression: "this.minimum_scaling_step_size == 0 || this.maximum_scaling_step_size == 0 || this.maximum_scaling_step_size >= this.minimum_scaling_step_size"
+  };
+}
+
+// AwsEcsClusterManagedInstancesCapacityProvider is one ECS Managed
+// Instances capacity provider: ECS itself launches and retires EC2
+// instances matching the launch template's attribute-based requirements,
+// so there is no auto-scaling group, AMI, or user data to manage. The
+// provider is create-time bound to its cluster and name; the launch
+// template's contents (except capacity_option_type) update in place.
+// Creating the provider launches nothing -- instances appear only when a
+// service's capacity_provider_strategy schedules tasks onto it.
+message AwsEcsClusterManagedInstancesCapacityProvider {
+  // The capacity provider name -- what services put in their
+  // capacity_provider_strategy. 1-255 characters: letters, digits,
+  // hyphens, underscores; must not start with "aws", "ecs", or "fargate"
+  // (AWS reserves those prefixes).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9_-]{1,255}$"
+  ];
+
+  // The infrastructure role ECS assumes to launch, patch, and retire the
+  // managed instances. Reference an AwsIamRole's role_arn output or pass
+  // a literal ARN. The role must trust the ecs.amazonaws.com service
+  // principal and carry AmazonECSInfrastructureRolePolicyForManagedInstances
+  // (or equivalent); the caller applying the manifest needs iam:PassRole
+  // on it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef infrastructure_role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // What the launched instances look like: instance profile, network
+  // placement, and the attribute-based requirements ECS resolves into
+  // concrete instance types.
+  AwsEcsClusterManagedInstancesLaunchTemplate instance_launch_template = 3 [(buf.validate.field).required = true];
+
+  // Seconds an empty managed instance idles before ECS scales it in,
+  // 0-3600; -1 disables scale-in entirely (instances stay until
+  // terminated another way). Unset keeps AWS's default optimization.
+  optional int32 scale_in_after_seconds = 4 [(buf.validate.field).int32 = {
+    gte: -1
+    lte: 3600
+  }];
+
+  // Propagate the capacity provider's tags to the EC2 instances ECS
+  // launches: "CAPACITY_PROVIDER" or "NONE". Unset keeps AWS's default.
+  string propagate_tags = 5;
+
+  option (buf.validate.message).cel = {
+    id: "name_not_reserved"
+    message: "capacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)"
+    expression: "!(this.name.lowerAscii().startsWith('aws') || this.name.lowerAscii().startsWith('ecs') || this.name.lowerAscii().startsWith('fargate'))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "propagate_tags_valid"
+    message: "propagate_tags must be 'CAPACITY_PROVIDER' or 'NONE' when set"
+    expression: "this.propagate_tags == '' || this.propagate_tags in ['CAPACITY_PROVIDER', 'NONE']"
+  };
+}
+
+// AwsEcsClusterManagedInstancesLaunchTemplate describes the instances ECS
+// launches for a managed-instances capacity provider: identity (instance
+// profile), placement (network configuration), shape (attribute-based
+// instance requirements), and purchase model (on-demand, spot, or
+// capacity reservations).
+message AwsEcsClusterManagedInstancesLaunchTemplate {
+  // The instance profile attached to every launched instance -- the
+  // instance-side identity (the ECS agent's permissions come from here).
+  // Reference an AwsIamInstanceProfile's instance_profile_arn output or
+  // pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef ec2_instance_profile_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamInstanceProfile,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.instance_profile_arn"
+  ];
+
+  // Where the managed instances launch: the subnets (required) and
+  // security groups applied to each instance.
+  AwsEcsClusterManagedInstancesNetworkConfiguration network_configuration = 2 [(buf.validate.field).required = true];
+
+  // Purchase model for the launched capacity: "ON_DEMAND" (AWS default),
+  // "SPOT", or "RESERVED" (draw from capacity reservations --
+  // capacity_reservations must then be set). Changing this replaces the
+  // capacity provider; everything else in the launch template updates in
+  // place.
+  string capacity_option_type = 3;
+
+  // Which capacity reservations RESERVED capacity draws from. Only legal
+  // (and required) when capacity_option_type is "RESERVED".
+  AwsEcsClusterManagedInstancesCapacityReservations capacity_reservations = 4;
+
+  // Attribute-based instance requirements -- describe the compute
+  // (memory, vCPUs, accelerators, price protection) and ECS resolves
+  // matching instance types at launch. Required when
+  // capacity_reservations uses a RESERVATIONS_ONLY or RESERVATIONS_FIRST
+  // preference.
+  AwsEcsClusterManagedInstancesRequirements instance_requirements = 5;
+
+  // Use instance-store (local NVMe) volumes for container storage on
+  // instance types that have them. Unset keeps AWS's default placement.
+  optional bool use_local_storage = 6;
+
+  // CloudWatch monitoring detail for the launched instances: "BASIC"
+  // (AWS default) or "DETAILED" (1-minute metrics, billed).
+  string monitoring = 7;
+
+  // Root EBS volume size for each launched instance, in GiB (>= 1).
+  // Unset keeps AWS's default size.
+  int32 storage_size_gib = 8;
+
+  option (buf.validate.message).cel = {
+    id: "capacity_option_type_valid"
+    message: "capacity_option_type must be 'ON_DEMAND', 'SPOT', or 'RESERVED' when set"
+    expression: "this.capacity_option_type == '' || this.capacity_option_type in ['ON_DEMAND', 'SPOT', 'RESERVED']"
+  };
+
+  // AWS enforces both directions of the RESERVED pairing at plan time;
+  // mirroring them here names the field instead of failing the apply.
+  option (buf.validate.message).cel = {
+    id: "reserved_requires_reservations"
+    message: "capacity_option_type 'RESERVED' requires capacity_reservations"
+    expression: "this.capacity_option_type != 'RESERVED' || has(this.capacity_reservations)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "reservations_require_reserved"
+    message: "capacity_reservations is only legal when capacity_option_type is 'RESERVED'"
+    expression: "!has(this.capacity_reservations) || this.capacity_option_type == 'RESERVED'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "reservation_preference_requires_requirements"
+    message: "reservation_preference 'RESERVATIONS_ONLY' or 'RESERVATIONS_FIRST' requires instance_requirements"
+    expression: "!has(this.capacity_reservations) || !(this.capacity_reservations.reservation_preference in ['RESERVATIONS_ONLY', 'RESERVATIONS_FIRST']) || has(this.instance_requirements)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "monitoring_valid"
+    message: "monitoring must be 'BASIC' or 'DETAILED' when set"
+    expression: "this.monitoring == '' || this.monitoring in ['BASIC', 'DETAILED']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "storage_size_positive"
+    message: "storage_size_gib must be at least 1 when set"
+    expression: "this.storage_size_gib == 0 || this.storage_size_gib >= 1"
+  };
+}
+
+// AwsEcsClusterManagedInstancesNetworkConfiguration places the managed
+// instances on the network: which subnets they launch into and which
+// security groups guard them.
+message AwsEcsClusterManagedInstancesNetworkConfiguration {
+  // Subnets the instances launch into -- span at least two AZs for
+  // availability. Reference AwsSubnet subnet_id outputs or pass literal
+  // subnet IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups applied to each instance. Reference AwsSecurityGroup
+  // security_group_id outputs or pass literal group IDs. Unset falls back
+  // to the VPC default group -- set one explicitly for production.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_groups = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}
+
+// AwsEcsClusterManagedInstancesCapacityReservations selects the capacity
+// reservations RESERVED capacity draws from.
+message AwsEcsClusterManagedInstancesCapacityReservations {
+  // How reservations are used:
+  // "RESERVATIONS_ONLY" -- launch only into reservations (pair with
+  //   reservation_group_arn to scope which ones).
+  // "RESERVATIONS_FIRST" -- prefer reservations, overflow to on-demand.
+  // "RESERVATIONS_EXCLUDED" -- never consume reservations.
+  // RESERVATIONS_ONLY and RESERVATIONS_FIRST require instance_requirements
+  // on the launch template.
+  string reservation_preference = 1;
+
+  // A capacity-reservation group ARN scoping which reservations to use.
+  // Only legal when reservation_preference is "RESERVATIONS_ONLY".
+  string reservation_group_arn = 2;
+
+  option (buf.validate.message).cel = {
+    id: "reservation_preference_valid"
+    message: "reservation_preference must be 'RESERVATIONS_ONLY', 'RESERVATIONS_FIRST', or 'RESERVATIONS_EXCLUDED' when set"
+    expression: "this.reservation_preference == '' || this.reservation_preference in ['RESERVATIONS_ONLY', 'RESERVATIONS_FIRST', 'RESERVATIONS_EXCLUDED']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "group_arn_requires_reservations_only"
+    message: "reservation_group_arn is only legal when reservation_preference is 'RESERVATIONS_ONLY'"
+    expression: "this.reservation_group_arn == '' || this.reservation_preference == 'RESERVATIONS_ONLY'"
+  };
+}
+
+// AwsEcsClusterManagedInstancesRequirements describes compute by
+// attributes so ECS resolves the matching instance types at launch,
+// instead of naming one type. memory_mib and vcpu_count are the two
+// required dimensions; every other field narrows the candidate set.
+// Instance types are excluded unless a field says otherwise (e.g.
+// bare_metal defaults to "excluded").
+message AwsEcsClusterManagedInstancesRequirements {
+  // Required. Memory per instance, in MiB. min is required; leave max
+  // unset (0) for no upper bound.
+  AwsEcsClusterIntRange memory_mib = 1 [(buf.validate.field).required = true];
+
+  // Required. vCPUs per instance. min is required; leave max unset (0)
+  // for no upper bound.
+  AwsEcsClusterIntRange vcpu_count = 2 [(buf.validate.field).required = true];
+
+  // Allow-list of instance types or families, with wildcards
+  // ("m5.large", "m5.*", "c*"). At most 400 entries. Mutually exclusive
+  // with excluded_instance_types.
+  repeated string allowed_instance_types = 3 [(buf.validate.field).repeated.max_items = 400];
+
+  // Deny-list of instance types or families, with wildcards. At most 400
+  // entries. Mutually exclusive with allowed_instance_types.
+  repeated string excluded_instance_types = 4 [(buf.validate.field).repeated.max_items = 400];
+
+  // Instance generations to include: "current" and/or "previous". AWS
+  // default: any generation matching the other requirements.
+  repeated string instance_generations = 5;
+
+  // CPU manufacturers to include: "intel", "amd", "amazon-web-services"
+  // (Graviton), "apple". AWS default: any.
+  repeated string cpu_manufacturers = 6;
+
+  // Bare-metal eligibility: "included", "excluded" (AWS default), or
+  // "required".
+  string bare_metal = 7;
+
+  // Burstable (T-family) eligibility: "included", "excluded" (AWS
+  // default), or "required".
+  string burstable_performance = 8;
+
+  // Only instance types that support hibernation.
+  bool require_hibernate_support = 9;
+
+  // Spot price protection: exclude types whose Spot price exceeds the
+  // identified lowest-priced type's Spot price by more than this
+  // percentage. Mutually exclusive with
+  // max_spot_price_as_percentage_of_optimal_on_demand_price.
+  int32 spot_max_price_percentage_over_lowest_price = 10;
+
+  // Spot price protection anchored to On-Demand: exclude types whose
+  // Spot price exceeds this percentage of the optimal type's On-Demand
+  // price. Mutually exclusive with
+  // spot_max_price_percentage_over_lowest_price.
+  int32 max_spot_price_as_percentage_of_optimal_on_demand_price = 11;
+
+  // On-Demand price protection: exclude types whose On-Demand price
+  // exceeds the identified lowest-priced type's by more than this
+  // percentage. AWS default: 20.
+  int32 on_demand_max_price_percentage_over_lowest_price = 12;
+
+  // Instance-store (local disk) eligibility: "included" (AWS default),
+  // "excluded", or "required".
+  string local_storage = 13;
+
+  // Local storage technologies when instance-store is in play: "hdd"
+  // and/or "ssd".
+  repeated string local_storage_types = 14;
+
+  // Total local (instance-store) storage, in GB.
+  AwsEcsClusterDoubleRange total_local_storage_gb = 15;
+
+  // Memory-to-vCPU ratio, in GiB per vCPU -- a compact way to say
+  // "memory optimized" (min 8) or "compute optimized" (max 2) without
+  // naming families.
+  AwsEcsClusterDoubleRange memory_gib_per_vcpu = 16;
+
+  // Number of network interfaces the type must support.
+  AwsEcsClusterIntRange network_interface_count = 17;
+
+  // Network bandwidth, in Gbps.
+  AwsEcsClusterDoubleRange network_bandwidth_gbps = 18;
+
+  // Baseline (non-burst) EBS bandwidth, in Mbps.
+  AwsEcsClusterIntRange baseline_ebs_bandwidth_mbps = 19;
+
+  // Number of accelerators (GPUs, FPGAs, inference chips). Set min 1 to
+  // require accelerated types; to EXCLUDE accelerators, leave this unset
+  // and rely on accelerator_types being empty.
+  AwsEcsClusterIntRange accelerator_count = 20;
+
+  // Accelerator manufacturers: "nvidia", "amd", "amazon-web-services",
+  // "xilinx", "habana".
+  repeated string accelerator_manufacturers = 21;
+
+  // Specific accelerator models (e.g. "a100", "v100", "t4",
+  // "inferentia", "radeon-pro-v520").
+  repeated string accelerator_names = 22;
+
+  // Accelerator categories: "gpu", "fpga", "inference".
+  repeated string accelerator_types = 23;
+
+  // Total accelerator memory, in MiB.
+  AwsEcsClusterIntRange accelerator_total_memory_mib = 24;
+
+  option (buf.validate.message).cel = {
+    id: "allowed_xor_excluded_types"
+    message: "allowed_instance_types and excluded_instance_types are mutually exclusive"
+    expression: "size(this.allowed_instance_types) == 0 || size(this.excluded_instance_types) == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spot_price_protection_exclusive"
+    message: "spot_max_price_percentage_over_lowest_price and max_spot_price_as_percentage_of_optimal_on_demand_price are mutually exclusive"
+    expression: "this.spot_max_price_percentage_over_lowest_price == 0 || this.max_spot_price_as_percentage_of_optimal_on_demand_price == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "bare_metal_valid"
+    message: "bare_metal must be 'included', 'excluded', or 'required' when set"
+    expression: "this.bare_metal == '' || this.bare_metal in ['included', 'excluded', 'required']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "burstable_performance_valid"
+    message: "burstable_performance must be 'included', 'excluded', or 'required' when set"
+    expression: "this.burstable_performance == '' || this.burstable_performance in ['included', 'excluded', 'required']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "local_storage_valid"
+    message: "local_storage must be 'included', 'excluded', or 'required' when set"
+    expression: "this.local_storage == '' || this.local_storage in ['included', 'excluded', 'required']"
+  };
+}
+
+// AwsEcsClusterIntRange is an integer min/max pair for attribute-based
+// requirements. 0 means "unset" -- ranges here never legitimately start
+// at zero, so 0 doubles as "no bound" without an optional wrapper.
+message AwsEcsClusterIntRange {
+  // Lower bound, inclusive.
+  int32 min = 1;
+  // Upper bound, inclusive. 0 means no upper bound.
+  int32 max = 2;
+
+  option (buf.validate.message).cel = {
+    id: "int_range_ordered"
+    message: "max must be greater than or equal to min when both are set"
+    expression: "this.min == 0 || this.max == 0 || this.max >= this.min"
+  };
+}
+
+// AwsEcsClusterDoubleRange is a fractional min/max pair for
+// attribute-based requirements (ratios, Gbps). 0 means "unset".
+message AwsEcsClusterDoubleRange {
+  // Lower bound, inclusive.
+  double min = 1;
+  // Upper bound, inclusive. 0 means no upper bound.
+  double max = 2;
+
+  option (buf.validate.message).cel = {
+    id: "double_range_ordered"
+    message: "max must be greater than or equal to min when both are set"
+    expression: "this.min == 0.0 || this.max == 0.0 || this.max >= this.min"
   };
 }
 

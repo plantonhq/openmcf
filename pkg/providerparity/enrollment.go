@@ -2,26 +2,37 @@
 // +build !codegen
 
 // Enrollment: which catalog providers are under provider-parity accounting,
-// and against which GA schema each one is measured. The pairing is explicit
-// by design -- the same choice as the CLI's always-explicit --provider /
-// --ga-schema flags -- because the mapping is not derivable: a catalog
-// provider name ("gcp") and its parity-baseline schema name ("google") need
-// not match, and guessing the pairing is exactly the kind of cleverness a
-// parity instrument must refuse. Enrolling a provider is one reviewed line,
-// added when its schema artifact is committed and its catalog is ready to
-// be gated.
+// and against which GA schema each one is measured. Enrollment is FILE
+// PRESENCE: a provider is enrolled exactly when its generated parity page
+// (catalog/<provider>/terraform-parity.md) is committed, and the
+// provider-to-GA-schema pairing is read from the page's embedded generation
+// parameters -- the same machine-read line the public-report drift gate
+// already trusts. The pairing stays explicit and reviewed (a page is only
+// ever produced by --write-report with explicit --provider/--ga-schema
+// flags), but it lives in ONE committed artifact instead of a code table
+// that would drift from the pages.
 //
-// The enrollment table is also what makes the shared baseline SAFE to
-// write: baseline.yaml is one file for every provider, so any write must be
-// computed from ALL enrolled providers' findings. EnrolledAccountings +
-// MergeFindings are the single write-input path for both the CI gate's
-// regeneration mode and the CLI's --write-baseline -- one source of truth,
-// mirroring how Gate() is shared by the CI test and the CLI --check, so no
-// caller can truncate the baseline to a single provider's findings.
+// Onboarding a provider is therefore one reviewed change: generate its page
+// with explicit flags (generation never consults the enrollment set, so no
+// chicken-and-egg) and commit it alongside the schema artifact and the
+// dispositions ledger; the CI gate, every baseline write, and the drift
+// gate all follow from the committed page.
+//
+// The enrollment set is also what makes the shared baseline SAFE to touch:
+// baseline.yaml is one file for every provider, so any gate or write must
+// consume ALL enrolled providers' findings. EnrolledAccountings +
+// MergeFindings are the single input path for the CI gate test, its
+// regeneration mode, and the CLI's --check and --write-baseline -- one
+// source of truth, so no caller can gate the shared baseline against (or
+// truncate it to) a single provider's findings.
 
 package providerparity
 
 import (
+	"os"
+	"path/filepath"
+	"sort"
+
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
@@ -35,20 +46,56 @@ type Enrollment struct {
 	GASchema string
 }
 
-// Enrollments is every catalog provider under provider-parity accounting.
-// Order is stable (report/log order); append new providers at the end.
-var Enrollments = []Enrollment{
-	{Provider: cloudresourcekind.CloudResourceProvider_gcp, GASchema: "google"},
-	{Provider: cloudresourcekind.CloudResourceProvider_aws, GASchema: "aws"},
+// DiscoverEnrollments reads the enrolled provider set from the committed
+// parity pages under <repoRoot>/catalog/*/terraform-parity.md. Order is
+// stable (lexical by page path). A page whose parameters are unreadable or
+// whose embedded provider does not match its directory is a hard error --
+// a malformed page must fail loudly, never silently narrow the baseline's
+// gate and write scope.
+func DiscoverEnrollments(repoRoot string) ([]Enrollment, error) {
+	pages, err := filepath.Glob(filepath.Join(repoRoot, catalogRoot, "*", PublicReportFileName))
+	if err != nil {
+		return nil, errors.Wrap(err, "globbing committed parity pages")
+	}
+	sort.Strings(pages)
+	enrollments := make([]Enrollment, 0, len(pages))
+	for _, page := range pages {
+		raw, err := os.ReadFile(page)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading %s", page)
+		}
+		providerName, gaSchema, err := ParseReportParams(string(raw))
+		if err != nil {
+			return nil, errors.Wrapf(err, "%s", page)
+		}
+		if dir := filepath.Base(filepath.Dir(page)); dir != providerName {
+			return nil, errors.Errorf("%s: embedded provider %q does not match its directory %q", page, providerName, dir)
+		}
+		provider, err := providerFromName(providerName)
+		if err != nil {
+			return nil, errors.Wrapf(err, "%s", page)
+		}
+		enrollments = append(enrollments, Enrollment{Provider: provider, GASchema: gaSchema})
+	}
+	return enrollments, nil
 }
 
 // EnrolledAccountings runs the full accounting for every enrolled provider.
-// It is the input side of every baseline write and of the CI gate: gating or
-// writing from any subset would report the other providers' baseline entries
-// as stale (the gate) or silently drop them (the write).
+// It is the input side of every baseline gate and write: gating or writing
+// from any subset would report the other providers' baseline entries as
+// stale (the gate) or silently drop them (the write). Zero enrollments is
+// an error, not an empty result -- a vacuously passing gate is the failure
+// mode this package exists to prevent.
 func EnrolledAccountings(repoRoot string, schemas map[string]*Schema) ([]Accounting, error) {
-	accountings := make([]Accounting, 0, len(Enrollments))
-	for _, e := range Enrollments {
+	enrollments, err := DiscoverEnrollments(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	if len(enrollments) == 0 {
+		return nil, errors.New("no committed parity pages found -- the gate would vacuously pass (run from the repository root)")
+	}
+	accountings := make([]Accounting, 0, len(enrollments))
+	for _, e := range enrollments {
 		acc, err := BuildAccounting(repoRoot, e.Provider, schemas, e.GASchema, "")
 		if err != nil {
 			return nil, errors.Wrapf(err, "accounting %s catalog against GA schema %q", e.Provider, e.GASchema)

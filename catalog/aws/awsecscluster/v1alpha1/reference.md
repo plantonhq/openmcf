@@ -33,6 +33,26 @@ spec:
   capacityProviders:
     - FARGATE
     - FARGATE_SPOT
+  # ECS Managed Instances: ECS launches and retires the EC2 instances
+  # itself from these attribute-based requirements -- no auto-scaling
+  # group, AMI, or user data to manage.
+  managedInstancesCapacityProviders:
+    - name: mi-general
+      infrastructureRoleArn:
+        value: arn:aws:iam::123456789012:role/ecsMiInfrastructureRole
+      instanceLaunchTemplate:
+        ec2InstanceProfileArn:
+          value: arn:aws:iam::123456789012:instance-profile/ecsMiInstanceProfile
+        networkConfiguration:
+          subnets:
+            - value: subnet-0a1b2c3d4e5f60789
+            - value: subnet-0f9e8d7c6b5a43210
+        instanceRequirements:
+          memoryMib:
+            min: 2048
+          vcpuCount:
+            min: 1
+        monitoring: BASIC
   defaultCapacityProviderStrategy:
     - capacityProvider: FARGATE
       base: 1
@@ -78,6 +98,66 @@ spec:
 | `spec.managedStorageConfiguration.fargateEphemeralStorageKmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.managedStorageConfiguration.kmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.serviceConnectNamespaceArn` | `string` |  |  |  |
+| `spec.managedInstancesCapacityProviders` | `[]AwsEcsClusterManagedInstancesCapacityProvider` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].name` | `string` | yes |  |  |
+| `spec.managedInstancesCapacityProviders[].infrastructureRoleArn` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate` | `AwsEcsClusterManagedInstancesLaunchTemplate` | yes |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.ec2InstanceProfileArn` | `string \| valueFrom` | yes |  | AwsIamInstanceProfile (`status.outputs.instance_profile_arn`) |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration` | `AwsEcsClusterManagedInstancesNetworkConfiguration` | yes |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.subnets` | `[]string \| valueFrom` | yes |  | AwsSubnet (`status.outputs.subnet_id`) |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.securityGroups` | `[]string \| valueFrom` |  |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.capacityOptionType` | `string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.capacityReservations` | `AwsEcsClusterManagedInstancesCapacityReservations` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.capacityReservations.reservationPreference` | `string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.capacityReservations.reservationGroupArn` | `string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements` | `AwsEcsClusterManagedInstancesRequirements` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.memoryMib` | `AwsEcsClusterIntRange` | yes |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.memoryMib.min` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.memoryMib.max` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.vcpuCount` | `AwsEcsClusterIntRange` | yes |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.vcpuCount.min` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.vcpuCount.max` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.allowedInstanceTypes` | `[]string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.excludedInstanceTypes` | `[]string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.instanceGenerations` | `[]string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.cpuManufacturers` | `[]string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.bareMetal` | `string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.burstablePerformance` | `string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.requireHibernateSupport` | `bool` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.spotMaxPricePercentageOverLowestPrice` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.maxSpotPriceAsPercentageOfOptimalOnDemandPrice` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.onDemandMaxPricePercentageOverLowestPrice` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.localStorage` | `string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.localStorageTypes` | `[]string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.totalLocalStorageGb` | `AwsEcsClusterDoubleRange` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.totalLocalStorageGb.min` | `double` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.totalLocalStorageGb.max` | `double` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.memoryGibPerVcpu` | `AwsEcsClusterDoubleRange` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.memoryGibPerVcpu.min` | `double` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.memoryGibPerVcpu.max` | `double` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.networkInterfaceCount` | `AwsEcsClusterIntRange` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.networkInterfaceCount.min` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.networkInterfaceCount.max` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.networkBandwidthGbps` | `AwsEcsClusterDoubleRange` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.networkBandwidthGbps.min` | `double` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.networkBandwidthGbps.max` | `double` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.baselineEbsBandwidthMbps` | `AwsEcsClusterIntRange` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.baselineEbsBandwidthMbps.min` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.baselineEbsBandwidthMbps.max` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorCount` | `AwsEcsClusterIntRange` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorCount.min` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorCount.max` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorManufacturers` | `[]string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorNames` | `[]string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorTypes` | `[]string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorTotalMemoryMib` | `AwsEcsClusterIntRange` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorTotalMemoryMib.min` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorTotalMemoryMib.max` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.useLocalStorage` | `bool` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.monitoring` | `string` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.storageSizeGib` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].scaleInAfterSeconds` | `int32` |  |  |  |
+| `spec.managedInstancesCapacityProviders[].propagateTags` | `string` |  |  |  |
 
 ## Field Details
 
@@ -382,11 +462,318 @@ default for services in this cluster. Services can override it;
 setting it here is what lets a whole environment share one service
 mesh namespace without per-service wiring.
 
+### spec.managedInstancesCapacityProviders
+
+`[]AwsEcsClusterManagedInstancesCapacityProvider`
+
+- rule: capacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)
+- rule: propagate_tags must be 'CAPACITY_PROVIDER' or 'NONE' when set
+
+### spec.managedInstancesCapacityProviders[].name
+
+`string` · required
+
+- rule: {"required":true,"string":{"pattern":"^[a-zA-Z0-9_-]{1,255}$"}}
+
+### spec.managedInstancesCapacityProviders[].infrastructureRoleArn
+
+`string | valueFrom` · required
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate
+
+`AwsEcsClusterManagedInstancesLaunchTemplate` · required
+
+- rule: {"required":true}
+- rule: capacity_option_type must be 'ON_DEMAND', 'SPOT', or 'RESERVED' when set
+- rule: capacity_option_type 'RESERVED' requires capacity_reservations
+- rule: capacity_reservations is only legal when capacity_option_type is 'RESERVED'
+- rule: reservation_preference 'RESERVATIONS_ONLY' or 'RESERVATIONS_FIRST' requires instance_requirements
+- rule: monitoring must be 'BASIC' or 'DETAILED' when set
+- rule: storage_size_gib must be at least 1 when set
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.ec2InstanceProfileArn
+
+`string | valueFrom` · required
+
+- references: AwsIamInstanceProfile (`status.outputs.instance_profile_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamInstanceProfile, name: <that resource's name>, fieldPath: status.outputs.instance_profile_arn}} -- a bare string does not parse
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration
+
+`AwsEcsClusterManagedInstancesNetworkConfiguration` · required
+
+- rule: {"required":true}
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.subnets
+
+`[]string | valueFrom` · required
+
+- references: AwsSubnet (`status.outputs.subnet_id`)
+- rule: {"required":true,"repeated":{"minItems":"1"}}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSubnet, name: <that resource's name>, fieldPath: status.outputs.subnet_id}} -- a bare string does not parse
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.securityGroups
+
+`[]string | valueFrom`
+
+- references: AwsSecurityGroup (`status.outputs.security_group_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSecurityGroup, name: <that resource's name>, fieldPath: status.outputs.security_group_id}} -- a bare string does not parse
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.capacityOptionType
+
+`string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.capacityReservations
+
+`AwsEcsClusterManagedInstancesCapacityReservations`
+
+- rule: reservation_preference must be 'RESERVATIONS_ONLY', 'RESERVATIONS_FIRST', or 'RESERVATIONS_EXCLUDED' when set
+- rule: reservation_group_arn is only legal when reservation_preference is 'RESERVATIONS_ONLY'
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.capacityReservations.reservationPreference
+
+`string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.capacityReservations.reservationGroupArn
+
+`string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements
+
+`AwsEcsClusterManagedInstancesRequirements`
+
+- rule: allowed_instance_types and excluded_instance_types are mutually exclusive
+- rule: spot_max_price_percentage_over_lowest_price and max_spot_price_as_percentage_of_optimal_on_demand_price are mutually exclusive
+- rule: bare_metal must be 'included', 'excluded', or 'required' when set
+- rule: burstable_performance must be 'included', 'excluded', or 'required' when set
+- rule: local_storage must be 'included', 'excluded', or 'required' when set
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.memoryMib
+
+`AwsEcsClusterIntRange` · required
+
+- rule: {"required":true}
+- rule: max must be greater than or equal to min when both are set
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.memoryMib.min
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.memoryMib.max
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.vcpuCount
+
+`AwsEcsClusterIntRange` · required
+
+- rule: {"required":true}
+- rule: max must be greater than or equal to min when both are set
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.vcpuCount.min
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.vcpuCount.max
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.allowedInstanceTypes
+
+`[]string`
+
+- rule: {"repeated":{"maxItems":"400"}}
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.excludedInstanceTypes
+
+`[]string`
+
+- rule: {"repeated":{"maxItems":"400"}}
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.instanceGenerations
+
+`[]string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.cpuManufacturers
+
+`[]string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.bareMetal
+
+`string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.burstablePerformance
+
+`string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.requireHibernateSupport
+
+`bool`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.spotMaxPricePercentageOverLowestPrice
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.maxSpotPriceAsPercentageOfOptimalOnDemandPrice
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.onDemandMaxPricePercentageOverLowestPrice
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.localStorage
+
+`string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.localStorageTypes
+
+`[]string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.totalLocalStorageGb
+
+`AwsEcsClusterDoubleRange`
+
+- rule: max must be greater than or equal to min when both are set
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.totalLocalStorageGb.min
+
+`double`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.totalLocalStorageGb.max
+
+`double`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.memoryGibPerVcpu
+
+`AwsEcsClusterDoubleRange`
+
+- rule: max must be greater than or equal to min when both are set
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.memoryGibPerVcpu.min
+
+`double`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.memoryGibPerVcpu.max
+
+`double`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.networkInterfaceCount
+
+`AwsEcsClusterIntRange`
+
+- rule: max must be greater than or equal to min when both are set
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.networkInterfaceCount.min
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.networkInterfaceCount.max
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.networkBandwidthGbps
+
+`AwsEcsClusterDoubleRange`
+
+- rule: max must be greater than or equal to min when both are set
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.networkBandwidthGbps.min
+
+`double`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.networkBandwidthGbps.max
+
+`double`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.baselineEbsBandwidthMbps
+
+`AwsEcsClusterIntRange`
+
+- rule: max must be greater than or equal to min when both are set
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.baselineEbsBandwidthMbps.min
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.baselineEbsBandwidthMbps.max
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorCount
+
+`AwsEcsClusterIntRange`
+
+- rule: max must be greater than or equal to min when both are set
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorCount.min
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorCount.max
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorManufacturers
+
+`[]string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorNames
+
+`[]string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorTypes
+
+`[]string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorTotalMemoryMib
+
+`AwsEcsClusterIntRange`
+
+- rule: max must be greater than or equal to min when both are set
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorTotalMemoryMib.min
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.instanceRequirements.acceleratorTotalMemoryMib.max
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.useLocalStorage
+
+`bool` · optional (explicit presence)
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.monitoring
+
+`string`
+
+### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.storageSizeGib
+
+`int32`
+
+### spec.managedInstancesCapacityProviders[].scaleInAfterSeconds
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"lte":3600,"gte":-1}}
+
+### spec.managedInstancesCapacityProviders[].propagateTags
+
+`string`
+
 ## Validation Rules
 
-- `default_strategy_names_associated_providers`: every default_capacity_provider_strategy entry must name an associated provider -- a capacity_providers built-in (FARGATE/FARGATE_SPOT) or an ec2_capacity_providers entry
+- `default_strategy_names_associated_providers`: every default_capacity_provider_strategy entry must name an associated provider -- a capacity_providers built-in (FARGATE/FARGATE_SPOT), an ec2_capacity_providers entry, or a managed_instances_capacity_providers entry
 - `default_strategy_single_base`: only one default_capacity_provider_strategy entry may set a non-zero base
 - `ec2_capacity_provider_names_unique`: ec2_capacity_providers entries must have unique names
+- `managed_instances_capacity_provider_names_unique`: managed_instances_capacity_providers entries must have unique names
+- `capacity_provider_names_unique_across_types`: a managed_instances_capacity_providers entry may not reuse an ec2_capacity_providers name -- both lists share one provider namespace
 
 ## Outputs
 
@@ -409,6 +796,10 @@ Fields that can point at another resource's outputs:
 | `spec.executeCommandConfiguration.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.managedStorageConfiguration.fargateEphemeralStorageKmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.managedStorageConfiguration.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
+| `spec.managedInstancesCapacityProviders[].infrastructureRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.ec2InstanceProfileArn` | AwsIamInstanceProfile | `status.outputs.instance_profile_arn` |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.subnets` | AwsSubnet | `status.outputs.subnet_id` |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.securityGroups` | AwsSecurityGroup | `status.outputs.security_group_id` |
 
 ## Referenced By
 

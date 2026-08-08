@@ -16,3 +16,22 @@ spec:
   deploymentCircuitBreaker:
     enable: true
     rollback: true
+  # A per-deployment managed EBS volume backing the task definition's
+  # configure_at_launch volume of the same name.
+  volumeConfiguration:
+    name: data
+    managedEbsVolume:
+      roleArn:
+        value: arn:aws:iam::123456789012:role/ecsInfrastructureRoleEbs
+      sizeInGb: 20
+      volumeType: gp3
+      tagSpecifications:
+        - resourceType: volume
+          propagateTags: SERVICE
+  # Register the tasks into a VPC Lattice target group -- cross-VPC
+  # traffic without a load balancer in every VPC.
+  vpcLatticeConfigurations:
+    - roleArn:
+        value: arn:aws:iam::123456789012:role/ecsInfrastructureRoleLattice
+      targetGroupArn: arn:aws:vpc-lattice:us-west-2:123456789012:targetgroup/tg-0123456789abcdef0
+      portName: http

@@ -375,6 +375,7 @@ Fields on other kinds that can point at this resource:
 | AwsCodeBuildProject | `spec.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsDocumentDb | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsEc2Instance | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsEcsCluster | `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.securityGroups` | `status.outputs.security_group_id` |
 | AwsEcsService | `spec.network.securityGroups` | `status.outputs.security_group_id` |
 | AwsEksCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsEksNodeGroup | `spec.remoteAccess.sourceSecurityGroupIds` | `status.outputs.security_group_id` |

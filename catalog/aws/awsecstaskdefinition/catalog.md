@@ -93,6 +93,10 @@ These are the most important decisions when configuring a task definition. Explo
 
 **One log group per task** -- default logging creates `/ecs/<family>` and streams each container under its own name. Per-container `log_configuration` is the escape hatch to Splunk, Fluentd, or a FireLens sibling router.
 
+**Volumes span five backings** -- EFS for durable shared storage, `s3files` for S3 buckets mounted as file systems (read-heavy shared data without provisioning EFS), Docker volumes and host paths on EC2, and `configureAtLaunch` volumes that declare only a NAME here: the `AwsEcsService` running the task attaches a fresh managed-EBS volume per task under that name at deployment time.
+
+**EC2-only controls are validated, not silently ignored** -- `ipcMode`, `pidMode: host`, and task-level `placementConstraints` are rejected at validation for Fargate definitions (mirroring AWS's own registration rules) instead of failing at the provider.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -104,6 +108,7 @@ These are the most important decisions when configuring a task definition. Explo
 | `logging.logGroup` | AwsCloudwatchLogGroup | `status.outputs.log_group_name` |
 | `volumes[].efs.fileSystemId` | AwsElasticFileSystem | `status.outputs.file_system_id` |
 | `volumes[].efs.accessPointId` | AwsEfsAccessPoint | `status.outputs.access_point_id` |
+| `volumes[].s3files.fileSystemArn` | AwsS3Bucket | `status.outputs.bucket_arn` |
 
 ### What This Component Provides
 

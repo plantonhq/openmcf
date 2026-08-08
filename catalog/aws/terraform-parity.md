@@ -32,7 +32,7 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
 | Distinct provider resources consumed | 223 |
-| Spec fields authored across all kinds | 4012 |
+| Spec fields authored across all kinds | 4085 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**3 of 112 kinds are at total accounting; 90 proven live.**
+**6 of 112 kinds are at total accounting; 87 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -78,9 +78,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsDynamodb | 71 | 27 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
 | AwsEc2Instance | 92 | 39 | 0 | 0 | 94 | ❌ | ✅ pulumi, terraform |
 | AwsEcrRepo | 17 | 5 | 0 | 0 | 28 | ❌ | ✅ pulumi, terraform |
-| AwsEcsCluster | 80 | 7 | 0 | 0 | 93 | ❌ | ✅ pulumi, terraform |
-| AwsEcsService | 186 | 48 | 0 | 0 | 185 | ❌ | ✅ pulumi, terraform |
-| AwsEcsTaskDefinition | 56 | 10 | 0 | 0 | 104 | ❌ | ✅ pulumi, terraform |
+| AwsEcsCluster | 80 | 7 | 64 | 9 | 0 | ✅ | — |
+| AwsEcsService | 98 | 53 | 34 | 11 | 0 | ✅ | — |
+| AwsEcsTaskDefinition | 56 | 13 | 22 | 21 | 0 | ✅ | — |
 | AwsEfsAccessPoint | 11 | 9 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsEgressOnlyInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsEksAccessEntry | 14 | 9 | 0 | 0 | 8 | ❌ | ✅ pulumi, terraform |
@@ -742,11 +742,11 @@ rather than trusted.
 | `aws_ecr_registry_scanning_configuration` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
 | `aws_ecr_replication_configuration` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
 | `aws_ecr_repository_creation_template` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
-| `aws_ecs_account_setting_default` | ECS companion surface (task sets, daemons, express gateway services, account defaults); folds into the existing AwsEcsService/AwsEcsCluster kinds as their specs deepen |
-| `aws_ecs_daemon` | ECS companion surface (task sets, daemons, express gateway services, account defaults); folds into the existing AwsEcsService/AwsEcsCluster kinds as their specs deepen |
-| `aws_ecs_daemon_task_definition` | ECS companion surface (task sets, daemons, express gateway services, account defaults); folds into the existing AwsEcsService/AwsEcsCluster kinds as their specs deepen |
-| `aws_ecs_express_gateway_service` | ECS companion surface (task sets, daemons, express gateway services, account defaults); folds into the existing AwsEcsService/AwsEcsCluster kinds as their specs deepen |
-| `aws_ecs_task_set` | ECS companion surface (task sets, daemons, express gateway services, account defaults); folds into the existing AwsEcsService/AwsEcsCluster kinds as their specs deepen |
+| `aws_ecs_account_setting_default` | account-level ECS setting defaults (a per-account singleton, not per-cluster surface); planned as its own account-posture admission, not a fold into AwsEcsCluster |
+| `aws_ecs_daemon` | the ECS daemon workload paradigm (provider 6.50); planned alongside aws_ecs_daemon_task_definition as its own admission when daemon demand lands -- DAEMON-strategy services remain covered by AwsEcsService |
+| `aws_ecs_daemon_task_definition` | the ECS daemon workload paradigm (provider 6.50); planned alongside aws_ecs_daemon as its own admission when daemon demand lands |
+| `aws_ecs_express_gateway_service` | ECS Express -- a distinct gateway-fronted service paradigm with its own lifecycle; planned as its own kind admission, not a fold into AwsEcsService |
+| `aws_ecs_task_set` | task sets exist only under the EXTERNAL deployment controller; folds into AwsEcsService if the external-controller workflow is ever admitted (its native and blue/green controllers are fully modeled) |
 | `aws_eip_association` | EIP companion surface (associations, domain names); folds into the existing AwsElasticIp kind as its spec deepens |
 | `aws_eip_domain_name` | EIP companion surface (associations, domain names); folds into the existing AwsElasticIp kind as its spec deepens |
 | `aws_eks_capability` | EKS companion surface (pod identity associations, identity provider configs, capabilities); folds into the existing AwsEksCluster kind as its spec deepens |

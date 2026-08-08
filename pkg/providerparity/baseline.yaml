@@ -39,9 +39,6 @@ entries:
   - kind:AwsDynamodb
   - kind:AwsEc2Instance
   - kind:AwsEcrRepo
-  - kind:AwsEcsCluster
-  - kind:AwsEcsService
-  - kind:AwsEcsTaskDefinition
   - kind:AwsEfsAccessPoint
   - kind:AwsEgressOnlyInternetGateway
   - kind:AwsEksAccessEntry

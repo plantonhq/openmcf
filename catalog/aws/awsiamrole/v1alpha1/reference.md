@@ -332,10 +332,12 @@ Fields on other kinds that can point at this resource:
 | AwsCodePipeline | `spec.stages[].onFailure.condition.rules[].roleArn` | `status.outputs.role_arn` |
 | AwsCognitoUserPool | `spec.smsConfiguration.snsCallerArn` | `status.outputs.role_arn` |
 | AwsCognitoUserPoolClient | `spec.analyticsConfiguration.roleArn` | `status.outputs.role_arn` |
+| AwsEcsCluster | `spec.managedInstancesCapacityProviders[].infrastructureRoleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.loadBalancers[].advancedConfiguration.roleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.deploymentConfiguration.lifecycleHooks[].roleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.serviceConnect.services[].tls.roleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.volumeConfiguration.managedEbsVolume.roleArn` | `status.outputs.role_arn` |
+| AwsEcsService | `spec.vpcLatticeConfigurations[].roleArn` | `status.outputs.role_arn` |
 | AwsEcsTaskDefinition | `spec.executionRole` | `status.outputs.role_arn` |
 | AwsEcsTaskDefinition | `spec.taskRole` | `status.outputs.role_arn` |
 | AwsEksAccessEntry | `spec.principalArn` | `status.outputs.role_arn` |

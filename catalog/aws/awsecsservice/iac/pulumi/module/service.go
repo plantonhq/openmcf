@@ -199,6 +199,17 @@ func ecsService(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*e
 		if spec.ServiceConnect.LogConfiguration != nil {
 			serviceConnect.LogConfiguration = serviceConnectLogConfiguration(spec.ServiceConnect.LogConfiguration)
 		}
+		// Per-request access logs from the Service Connect proxy, emitted
+		// to the proxy's log destination configured above.
+		if accessLog := spec.ServiceConnect.AccessLogConfiguration; accessLog != nil {
+			accessLogArgs := &ecs.ServiceServiceConnectConfigurationAccessLogConfigurationArgs{
+				Format: pulumi.String(accessLog.Format),
+			}
+			if accessLog.IncludeQueryParameters != "" {
+				accessLogArgs.IncludeQueryParameters = pulumi.StringPtr(accessLog.IncludeQueryParameters)
+			}
+			serviceConnect.AccessLogConfiguration = accessLogArgs
+		}
 		if len(spec.ServiceConnect.Services) > 0 {
 			services := make(ecs.ServiceServiceConnectConfigurationServiceArray, 0, len(spec.ServiceConnect.Services))
 			for _, connectService := range spec.ServiceConnect.Services {
@@ -217,6 +228,24 @@ func ecsService(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*e
 					}
 					if connectService.ClientAlias.DnsName != "" {
 						alias.DnsName = pulumi.StringPtr(connectService.ClientAlias.DnsName)
+					}
+					// Requests carrying a matching header route to the TEST
+					// revision during a blue/green deployment.
+					if len(connectService.ClientAlias.TestTrafficRules) > 0 {
+						rules := make(ecs.ServiceServiceConnectConfigurationServiceClientAliasTestTrafficRuleArray, 0, len(connectService.ClientAlias.TestTrafficRules))
+						for _, rule := range connectService.ClientAlias.TestTrafficRules {
+							ruleArgs := &ecs.ServiceServiceConnectConfigurationServiceClientAliasTestTrafficRuleArgs{}
+							if rule.Header != nil {
+								ruleArgs.Header = &ecs.ServiceServiceConnectConfigurationServiceClientAliasTestTrafficRuleHeaderArgs{
+									Name: pulumi.String(rule.Header.Name),
+									Value: &ecs.ServiceServiceConnectConfigurationServiceClientAliasTestTrafficRuleHeaderValueArgs{
+										Exact: pulumi.String(rule.Header.Value.Exact),
+									},
+								}
+							}
+							rules = append(rules, ruleArgs)
+						}
+						alias.TestTrafficRules = rules
 					}
 					serviceArgs.ClientAlias = ecs.ServiceServiceConnectConfigurationServiceClientAliasArray{alias}
 				}
@@ -296,10 +325,47 @@ func ecsService(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*e
 		if volume.FileSystemType != "" {
 			managedEbs.FileSystemType = pulumi.StringPtr(volume.FileSystemType)
 		}
+		// Snapshot hydration speed; only meaningful with snapshot_id.
+		if volume.VolumeInitializationRate > 0 {
+			managedEbs.VolumeInitializationRate = pulumi.IntPtr(int(volume.VolumeInitializationRate))
+		}
+		// Creation-time tags on each per-task volume -- without these the
+		// volumes carry no cost-allocation tags at all.
+		if len(volume.TagSpecifications) > 0 {
+			tagSpecs := make(ecs.ServiceVolumeConfigurationManagedEbsVolumeTagSpecificationArray, 0, len(volume.TagSpecifications))
+			for _, tagSpec := range volume.TagSpecifications {
+				tagSpecArgs := &ecs.ServiceVolumeConfigurationManagedEbsVolumeTagSpecificationArgs{
+					ResourceType: pulumi.String(tagSpec.ResourceType),
+				}
+				if len(tagSpec.Tags) > 0 {
+					tagSpecArgs.Tags = pulumi.ToStringMap(tagSpec.Tags)
+				}
+				if tagSpec.PropagateTags != "" {
+					tagSpecArgs.PropagateTags = pulumi.StringPtr(tagSpec.PropagateTags)
+				}
+				tagSpecs = append(tagSpecs, tagSpecArgs)
+			}
+			managedEbs.TagSpecifications = tagSpecs
+		}
 		args.VolumeConfiguration = &ecs.ServiceVolumeConfigurationArgs{
 			Name:             pulumi.String(spec.VolumeConfiguration.Name),
 			ManagedEbsVolume: managedEbs,
 		}
+	}
+
+	// VPC Lattice target-group attachments: ECS registers each task's
+	// named port with the target group as tasks start and stop, assuming
+	// the infrastructure role to do it.
+	if len(spec.VpcLatticeConfigurations) > 0 {
+		latticeConfigurations := make(ecs.ServiceVpcLatticeConfigurationArray, 0, len(spec.VpcLatticeConfigurations))
+		for _, lattice := range spec.VpcLatticeConfigurations {
+			latticeConfigurations = append(latticeConfigurations, &ecs.ServiceVpcLatticeConfigurationArgs{
+				RoleArn:        pulumi.String(lattice.RoleArn.GetValue()),
+				TargetGroupArn: pulumi.String(lattice.TargetGroupArn),
+				PortName:       pulumi.String(lattice.PortName),
+			})
+		}
+		args.VpcLatticeConfigurations = latticeConfigurations
 	}
 
 	if len(spec.OrderedPlacementStrategy) > 0 {

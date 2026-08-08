@@ -44,11 +44,12 @@ message AwsEcsTaskDefinitionSpec {
   repeated AwsEcsTaskDefinitionContainer containers = 2 [(buf.validate.field).repeated.min_items = 1];
 
   // Launch types the task definition validates against: "FARGATE",
-  // "EC2", and/or "EXTERNAL" (ECS Anywhere). AWS registers the definition
-  // for those environments and rejects incompatible settings at
-  // registration time instead of at run time. When empty, both modules
-  // register for ["FARGATE"] -- the serverless launch type that needs no
-  // instance management.
+  // "EC2", "EXTERNAL" (ECS Anywhere), and/or "MANAGED_INSTANCES" (ECS
+  // Managed Instances capacity). AWS registers the definition for those
+  // environments and rejects incompatible settings at registration time
+  // instead of at run time. When empty, both modules register for
+  // ["FARGATE"] -- the serverless launch type that needs no instance
+  // management.
   repeated string requires_compatibilities = 3 [(buf.validate.field).repeated = {
     unique: true
     items: {
@@ -56,7 +57,8 @@ message AwsEcsTaskDefinitionSpec {
         in: [
           "FARGATE",
           "EC2",
-          "EXTERNAL"
+          "EXTERNAL",
+          "MANAGED_INSTANCES"
         ]
       }
     }
@@ -113,8 +115,11 @@ message AwsEcsTaskDefinitionSpec {
   int32 ephemeral_storage_gib = 10;
 
   // Named volumes containers mount via mount_points. Fargate supports EFS
-  // volumes (durable, shared across tasks) and the implicit ephemeral
-  // storage; host-path volumes are EC2-only.
+  // and S3-backed volumes (durable, shared across tasks) and the implicit
+  // ephemeral storage; host-path and Docker volumes are EC2-only. A
+  // configure_at_launch volume declares only the NAME here -- the
+  // AwsEcsService running the task supplies the backing (managed EBS) at
+  // deployment time through its volume_configuration.
   repeated AwsEcsTaskDefinitionVolume volumes = 11;
 
   // Default CloudWatch logging for every container that does not declare
@@ -130,6 +135,34 @@ message AwsEcsTaskDefinitionSpec {
   // consumers (a scheduled task, a manual RunTask) may still reference
   // older revisions.
   bool skip_destroy = 13;
+
+  // Enable AWS Fault Injection Service (FIS) actions against this task's
+  // containers -- the opt-in that lets chaos experiments (CPU stress,
+  // network latency, process kill) target the task. Off by default; only
+  // enable on definitions you deliberately run experiments against.
+  bool enable_fault_injection = 14;
+
+  // IPC namespace sharing for the task's containers: "host" (share the
+  // instance's IPC namespace -- weakest isolation), "task" (containers
+  // share one namespace within the task), or "none" (each container
+  // isolated). EC2 tasks only -- Fargate rejects it at registration.
+  // Unset keeps Docker's default (private namespace per container).
+  string ipc_mode = 15;
+
+  // Process namespace sharing: "host" (containers see the instance's
+  // processes -- weakest isolation) or "task" (containers within the task
+  // share one PID namespace -- what lets a sidecar observe the app's
+  // processes). On Fargate only "task" is supported (platform 1.4+).
+  // Unset keeps Docker's default (private namespace per container).
+  string pid_mode = 16;
+
+  // Task-level placement constraints, evaluated at RunTask/service
+  // scheduling time on EC2 container instances (at most 10). EC2 tasks
+  // only -- Fargate rejects them at registration. Service-level
+  // constraints live on the AwsEcsService; declare here only what is
+  // intrinsic to the task itself (e.g. an instance-attribute expression
+  // every consumer must honor).
+  repeated AwsEcsTaskDefinitionPlacementConstraint placement_constraints = 17 [(buf.validate.field).repeated.max_items = 10];
 
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
@@ -181,6 +214,59 @@ message AwsEcsTaskDefinitionSpec {
     message: "Fargate tasks using the awslogs driver (which the default logging wiring does) need an execution_role that can write logs -- reference an AwsIamRole carrying AmazonECSTaskExecutionRolePolicy, or disable logging"
     expression: "(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || has(this.execution_role) || !(((!has(this.logging) || !this.logging.disabled) && this.containers.exists(c, !has(c.log_configuration))) || this.containers.exists(c, has(c.log_configuration) && c.log_configuration.log_driver == 'awslogs'))"
   };
+
+  option (buf.validate.message).cel = {
+    id: "ipc_mode_valid"
+    message: "ipc_mode must be 'host', 'task', or 'none' when set"
+    expression: "this.ipc_mode == '' || this.ipc_mode in ['host', 'task', 'none']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "pid_mode_valid"
+    message: "pid_mode must be 'host' or 'task' when set"
+    expression: "this.pid_mode == '' || this.pid_mode in ['host', 'task']"
+  };
+
+  // AWS rejects registration for Fargate with an IPC namespace setting;
+  // empty requires_compatibilities means FARGATE (the module default).
+  option (buf.validate.message).cel = {
+    id: "fargate_forbids_ipc_mode"
+    message: "ipc_mode is EC2-only -- Fargate task definitions may not set it"
+    expression: "(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || this.ipc_mode == ''"
+  };
+
+  // Fargate supports process-namespace sharing only within the task.
+  option (buf.validate.message).cel = {
+    id: "fargate_pid_mode_task_only"
+    message: "on Fargate pid_mode may only be 'task' -- 'host' requires an EC2-only task definition"
+    expression: "(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || this.pid_mode == '' || this.pid_mode == 'task'"
+  };
+
+  // Task placement constraints only exist on EC2 container instances.
+  option (buf.validate.message).cel = {
+    id: "fargate_forbids_placement_constraints"
+    message: "placement_constraints are EC2-only -- Fargate task definitions may not declare them"
+    expression: "(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || size(this.placement_constraints) == 0"
+  };
+}
+
+// AwsEcsTaskDefinitionPlacementConstraint is one task-level placement rule
+// evaluated when tasks from this definition are scheduled onto EC2
+// container instances.
+message AwsEcsTaskDefinitionPlacementConstraint {
+  // The constraint type. "memberOf" (restrict placement to instances
+  // matching the expression) is the only type AWS supports at the task
+  // definition level.
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "memberOf"
+    ]
+  }];
+
+  // A cluster query language expression, e.g.
+  // "attribute:ecs.instance-type =~ t2.*" or
+  // "attribute:ecs.availability-zone in [us-west-2a, us-west-2b]".
+  string expression = 2 [(buf.validate.field).required = true];
 }
 
 // AwsEcsTaskDefinitionContainer describes one container of the task: its
@@ -441,9 +527,11 @@ message AwsEcsTaskDefinitionMountPoint {
 }
 
 // AwsEcsTaskDefinitionVolume declares one named volume tasks can mount.
-// Exactly one backing must be set: an EFS file system (durable, shared,
-// Fargate-supported) or a host path (EC2 only -- data lives and dies with
-// the instance).
+// At most one backing may be set: an EFS file system (durable, shared,
+// Fargate-supported), a host path (EC2 only -- data lives and dies with
+// the instance), a Docker volume (EC2 only), or an S3 bucket mounted as a
+// file system. A volume with configure_at_launch carries NO backing here
+// -- the service that runs the task supplies it at deployment time.
 message AwsEcsTaskDefinitionVolume {
   // The volume's name, referenced by containers' mount_points.
   string name = 1 [(buf.validate.field).required = true];
@@ -455,11 +543,101 @@ message AwsEcsTaskDefinitionVolume {
   // type only). Example: "/mnt/data".
   string host_path = 3;
 
+  // Defer the volume's configuration to launch time: the AwsEcsService
+  // running this task supplies the backing through its
+  // volume_configuration (managed EBS -- a fresh, service-owned EBS
+  // volume per task) under this same volume name. Set it true and leave
+  // every backing here unset; the service side names the volume in
+  // spec.volume_configuration.name.
+  bool configure_at_launch = 4;
+
+  // Back the volume with a Docker volume on the container instance (EC2
+  // launch type only) -- named Docker-managed storage, optionally via a
+  // volume driver plugin.
+  AwsEcsTaskDefinitionDockerVolume docker = 5;
+
+  // Back the volume with an S3 bucket mounted as a file system
+  // (Mountpoint for Amazon S3) -- read-heavy shared data (models,
+  // reference datasets) without provisioning EFS.
+  AwsEcsTaskDefinitionS3FilesVolume s3files = 6;
+
+  // A volume carries at most ONE backing; count the set ones.
   option (buf.validate.message).cel = {
-    id: "efs_xor_host_path"
-    message: "a volume is backed by either efs or host_path, not both"
-    expression: "!has(this.efs) || this.host_path == ''"
+    id: "at_most_one_backing"
+    message: "a volume is backed by at most one of: efs, host_path, docker, s3files"
+    expression: "((has(this.efs) ? 1 : 0) + (this.host_path == '' ? 0 : 1) + (has(this.docker) ? 1 : 0) + (has(this.s3files) ? 1 : 0)) <= 1"
   };
+
+  // A launch-time volume gets its backing from the consuming service.
+  option (buf.validate.message).cel = {
+    id: "configure_at_launch_forbids_backing"
+    message: "a configure_at_launch volume must not declare a backing here -- the AwsEcsService supplies it via volume_configuration"
+    expression: "!this.configure_at_launch || (!has(this.efs) && this.host_path == '' && !has(this.docker) && !has(this.s3files))"
+  };
+}
+
+// AwsEcsTaskDefinitionDockerVolume backs a task volume with a Docker
+// volume on the EC2 container instance -- Docker-managed named storage,
+// optionally through a volume driver plugin (e.g. rexray). EC2 launch
+// type only.
+message AwsEcsTaskDefinitionDockerVolume {
+  // Provision the volume automatically if it does not already exist.
+  // Only meaningful with scope "shared".
+  bool autoprovision = 1;
+
+  // The Docker volume driver. Default: "local". Must match a driver
+  // installed on the container instance.
+  string driver = 2;
+
+  // Driver-specific options passed at volume creation.
+  map<string, string> driver_opts = 3;
+
+  // Custom metadata labels applied to the volume.
+  map<string, string> labels = 4;
+
+  // The volume's lifetime: "task" (AWS default -- destroyed when the task
+  // stops) or "shared" (persists on the instance across tasks).
+  string scope = 5;
+
+  option (buf.validate.message).cel = {
+    id: "scope_valid"
+    message: "scope must be 'task' or 'shared' when set"
+    expression: "this.scope == '' || this.scope in ['task', 'shared']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "autoprovision_requires_shared_scope"
+    message: "autoprovision only applies to 'shared' scope volumes -- a task-scoped volume always exists exactly as long as its task"
+    expression: "!this.autoprovision || this.scope == 'shared'"
+  };
+}
+
+// AwsEcsTaskDefinitionS3FilesVolume backs a task volume with an S3 bucket
+// mounted as a file system (Mountpoint for Amazon S3) -- the pattern for
+// read-heavy shared data without provisioning a network file system.
+message AwsEcsTaskDefinitionS3FilesVolume {
+  // The S3 bucket (by ARN) mounted as the volume. Reference an
+  // AwsS3Bucket's bucket_arn output or pass a literal bucket ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef file_system_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_arn"
+  ];
+
+  // An S3 access point ARN to mount through instead of the bucket
+  // directly -- scopes the mount to the access point's policy.
+  string access_point_arn = 2;
+
+  // The path within the bucket mounted as the volume root. Default: "/".
+  string root_directory = 3;
+
+  // The port for encrypted transit between host and mount target.
+  // 0 (unset) lets AWS choose.
+  int32 transit_encryption_port = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 65535
+  }];
 }
 
 // AwsEcsTaskDefinitionEfsVolume backs a task volume with EFS. Transit
@@ -494,6 +672,14 @@ message AwsEcsTaskDefinitionEfsVolume {
   // must carry elasticfilesystem:ClientMount/ClientWrite). Requires
   // transit encryption, which the modules enable automatically.
   bool iam_authorization = 4;
+
+  // The port for the encrypted transit tunnel between host and EFS.
+  // 0 (unset) lets AWS choose an ephemeral port -- the right answer
+  // unless a host firewall requires a fixed one.
+  int32 transit_encryption_port = 5 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 65535
+  }];
 }
 
 // AwsEcsTaskDefinitionRuntimePlatform selects the CPU architecture and OS

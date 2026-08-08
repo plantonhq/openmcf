@@ -1574,24 +1574,27 @@ resources:
   - resource: aws_ecrpublic_repository_policy
     disposition: deferred
     reason: "public ECR gallery repositories; deferred pending demand"
+  # Re-judged at the ECS family's depth closure: each of these is a NEW
+  # consumed-resource-type decision (its own scoped wave with import-catalog
+  # coverage and live proof), not a field fold into the closed kinds.
   - resource: aws_ecs_account_setting_default
     disposition: model-planned
-    reason: "ECS companion surface (task sets, daemons, express gateway services, account defaults); folds into the existing AwsEcsService/AwsEcsCluster kinds as their specs deepen"
+    reason: "account-level ECS setting defaults (a per-account singleton, not per-cluster surface); planned as its own account-posture admission, not a fold into AwsEcsCluster"
   - resource: aws_ecs_daemon
     disposition: model-planned
-    reason: "ECS companion surface (task sets, daemons, express gateway services, account defaults); folds into the existing AwsEcsService/AwsEcsCluster kinds as their specs deepen"
+    reason: "the ECS daemon workload paradigm (provider 6.50); planned alongside aws_ecs_daemon_task_definition as its own admission when daemon demand lands -- DAEMON-strategy services remain covered by AwsEcsService"
   - resource: aws_ecs_daemon_task_definition
     disposition: model-planned
-    reason: "ECS companion surface (task sets, daemons, express gateway services, account defaults); folds into the existing AwsEcsService/AwsEcsCluster kinds as their specs deepen"
+    reason: "the ECS daemon workload paradigm (provider 6.50); planned alongside aws_ecs_daemon as its own admission when daemon demand lands"
   - resource: aws_ecs_express_gateway_service
     disposition: model-planned
-    reason: "ECS companion surface (task sets, daemons, express gateway services, account defaults); folds into the existing AwsEcsService/AwsEcsCluster kinds as their specs deepen"
+    reason: "ECS Express -- a distinct gateway-fronted service paradigm with its own lifecycle; planned as its own kind admission, not a fold into AwsEcsService"
   - resource: aws_ecs_tag
     disposition: deferred
     reason: "imperative state/tag helpers, not durable infrastructure"
   - resource: aws_ecs_task_set
     disposition: model-planned
-    reason: "ECS companion surface (task sets, daemons, express gateway services, account defaults); folds into the existing AwsEcsService/AwsEcsCluster kinds as their specs deepen"
+    reason: "task sets exist only under the EXTERNAL deployment controller; folds into AwsEcsService if the external-controller workflow is ever admitted (its native and blue/green controllers are fully modeled)"
   - resource: aws_eip_association
     disposition: model-planned
     reason: "EIP companion surface (associations, domain names); folds into the existing AwsElasticIp kind as its spec deepens"

@@ -8,6 +8,26 @@ spec:
   capacityProviders:
     - FARGATE
     - FARGATE_SPOT
+  # ECS Managed Instances: ECS launches and retires the EC2 instances
+  # itself from these attribute-based requirements -- no auto-scaling
+  # group, AMI, or user data to manage.
+  managedInstancesCapacityProviders:
+    - name: mi-general
+      infrastructureRoleArn:
+        value: arn:aws:iam::123456789012:role/ecsMiInfrastructureRole
+      instanceLaunchTemplate:
+        ec2InstanceProfileArn:
+          value: arn:aws:iam::123456789012:instance-profile/ecsMiInstanceProfile
+        networkConfiguration:
+          subnets:
+            - value: subnet-0a1b2c3d4e5f60789
+            - value: subnet-0f9e8d7c6b5a43210
+        instanceRequirements:
+          memoryMib:
+            min: 2048
+          vcpuCount:
+            min: 1
+        monitoring: BASIC
   defaultCapacityProviderStrategy:
     - capacityProvider: FARGATE
       base: 1

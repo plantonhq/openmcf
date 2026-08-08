@@ -16,10 +16,20 @@ spec:
   # Deliberately not in the live scenarios: Fargate managed-storage
   # KMS (needs a key-policy-prepared KMS fixture) and Service Connect
   # defaults (needs a Cloud Map namespace) -- both proven by CEL spec
-  # tests and the offline gate.
+  # tests and the offline gate. The ECS Managed Instances arm
+  # (managed_instances_capacity_providers) is likewise offline-proven for
+  # now: its live lane needs an infrastructure-role fixture (trusting
+  # ecs.amazonaws.com with the managed-instances policy) in the
+  # awsiamrole prerequisite profile, which is lane-locked in the proof
+  # queue -- add the fixture and a managed-instances scenario when that
+  # kind's folder unlocks.
+  #
+  # pending_proof: the spec surface deepened (the managed-instances
+  # capacity provider family) after the prior green run, so that proof no
+  # longer covers the current surface. Offline plans and previews passed
+  # on both engines, including the managed-instances arm; the live lanes
+  # re-earn the badge.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 25

@@ -1254,6 +1254,7 @@ Fields on other kinds that can point at this resource:
 | AwsCodePipeline | `spec.artifactStores[].location` | `status.outputs.bucket_id` |
 | AwsCognitoUserPool | `spec.logConfigurations[].s3BucketArn` | `status.outputs.bucket_arn` |
 | AwsDynamodb | `spec.importTable.s3Bucket` | `status.outputs.bucket_id` |
+| AwsEcsTaskDefinition | `spec.volumes[].s3files.fileSystemArn` | `status.outputs.bucket_arn` |
 | AwsGlobalAccelerator | `spec.flowLogs.s3Bucket` | `status.outputs.bucket_id` |
 | AwsKinesisFirehose | `spec.extendedS3.bucketArn` | `status.outputs.bucket_arn` |
 | AwsKinesisFirehose | `spec.extendedS3.s3Backup.bucketArn` | `status.outputs.bucket_arn` |

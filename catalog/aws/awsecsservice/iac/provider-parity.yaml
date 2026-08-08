@@ -1,0 +1,81 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_ecs_service:
+    mappings:
+      # The spec names references for what they carry (an ARN), and blocks
+      # for what they are (plural sets, the mesh nesting). Matching
+      # resumes exactly below each mapped subtree.
+      - arg: cluster
+        spec: spec.cluster_arn
+      - arg: deployment_controller.type
+        spec: spec.deployment_controller
+      - arg: deployment_configuration.lifecycle_hook
+        spec: spec.deployment_configuration.lifecycle_hooks
+      - arg: load_balancer
+        spec: spec.load_balancers
+      - arg: network_configuration
+        spec: spec.network
+      - arg: service_connect_configuration
+        spec: spec.service_connect
+      - arg: service_connect_configuration.service
+        spec: spec.service_connect.services
+      # The provider wraps the PCA authority in an issuer_cert_authority
+      # block; the spec carries it directly on tls.
+      - arg: service_connect_configuration.service.tls.issuer_cert_authority.aws_pca_authority_arn
+        spec: spec.service_connect.services.tls.aws_pca_authority_arn
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the component's name IS the service name
+      - arg: iam_role
+        reason: the legacy service-linked-role override for pre-awsvpc load balancing -- awsvpc networking (this catalog's default and Fargate's requirement) uses the AWS-managed service-linked role
+      - arg: load_balancer.elb_name
+        reason: Classic Load Balancer attachment -- superseded surface; the catalog models ALB/NLB target groups (target_group_arn)
+      # The Service Connect proxy's secret options are name -> ARN pairs;
+      # the spec models them as one map the module renders into the
+      # provider's list-of-objects shape.
+      - arg: service_connect_configuration.log_configuration.secret_option.name
+        reason: rendered from the spec.service_connect.log_configuration.secret_options map (name -> ARN pairs)
+      - arg: service_connect_configuration.log_configuration.secret_option.value_from
+        reason: rendered from the spec.service_connect.log_configuration.secret_options map (name -> ARN pairs)
+      # Apply-behavior knobs, not infrastructure: they shape how ONE
+      # terraform apply behaves and register nothing durable in AWS.
+      - arg: force_new_deployment
+        reason: IaC operational trigger (force a redeploy on apply), not durable infrastructure -- redeploys roll naturally off task-definition revisions
+      - arg: triggers
+        reason: IaC replacement-trigger map (arbitrary apply-time redeploy keys), not durable infrastructure
+      - arg: wait_for_steady_state
+        reason: IaC apply behavior (block until the service stabilizes), not durable infrastructure -- the platform's own verification owns readiness
+      - arg: sigint_rollback
+        reason: IaC apply behavior -- wires the provider's Ctrl-C/context-cancel handling to a deployment rollback routine during wait_for_steady_state; configures the apply process, not the service
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  # The folded target-tracking autoscaler: one scalable target plus up to
+  # three module-shaped policies (CPU, memory, request count) driven
+  # entirely from spec.autoscaling. The resources' wider surface
+  # (predictive scaling, step scaling, scheduled suspension, custom metric
+  # math) is deliberately not this kind's ambition -- richer application
+  # autoscaling is its own future kind; the fold exists so the common case
+  # ("keep CPU near 70%") is one spec block instead of three resources.
+  aws_appautoscaling_target:
+    internal: module-shaped plumbing driven from spec.autoscaling (min/max task bounds on this service's one scalable target); wider App Auto Scaling surface is deliberately out of this kind's scope
+  aws_appautoscaling_policy:
+    internal: module-shaped plumbing driven from spec.autoscaling (fixed target-tracking policies for CPU, memory, and request count); predictive/step scaling and custom metric math are deliberately out of this kind's scope
+
+specExclusions:
+  # Drives the internal aws_appautoscaling_target/policy pair above --
+  # min/max bounds and the three target-tracking policies. No aws_ecs_service
+  # argument corresponds; the judgment lives on the internal entries.
+  - field: spec.autoscaling
+    reason: drives the folded aws_appautoscaling_target/policy pair (module-shaped target tracking; judged on those resources' internal entries)
+  - field: spec.service_connect.log_configuration.secret_options
+    reason: renders the provider's secret_option name/value_from pair list (one map, two provider leaves)
