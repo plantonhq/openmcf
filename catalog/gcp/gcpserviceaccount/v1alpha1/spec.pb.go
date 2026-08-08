@@ -66,6 +66,13 @@ type GcpServiceAccountSpec struct {
 	// Useful as a kill switch during incident response or for staged decommissioning
 	// (disable first, observe breakage, then delete).
 	Disabled *bool `protobuf:"varint,5,opt,name=disabled,proto3,oneof" json:"disabled,omitempty"`
+	// Create a user-managed key for this service account. Omit for keyless
+	// (the recommended default — prefer Workload Identity, impersonation, or
+	// federation wherever the workload supports it). When present, a key is
+	// created with the configured algorithm and formats, and the private key
+	// (unless public_key_data supplies your own public key) is exported in
+	// stack outputs as `key_base64` — treat that output as a live credential.
+	UserManagedKey *GcpServiceAccountUserManagedKey `protobuf:"bytes,6,opt,name=user_managed_key,json=userManagedKey,proto3" json:"user_managed_key,omitempty"`
 	// IAM roles granted to this service account at the PROJECT scope, e.g.
 	// ["roles/logging.logWriter", "roles/storage.admin"]. Grants are additive
 	// (member-level): they never clobber other members' bindings on the same role.
@@ -81,18 +88,11 @@ type GcpServiceAccountSpec struct {
 	// additive (member-level). Org-scope grants affect every project under the
 	// organization — grant sparingly.
 	OrgIamRoles []string `protobuf:"bytes,9,rep,name=org_iam_roles,json=orgIamRoles,proto3" json:"org_iam_roles,omitempty"`
-	// Create a user-managed key for this service account. Omit for keyless
-	// (the recommended default — prefer Workload Identity, impersonation, or
-	// federation wherever the workload supports it). When present, a key is
-	// created with the configured algorithm and formats, and the private key
-	// (unless public_key_data supplies your own public key) is exported in
-	// stack outputs as `key_base64` — treat that output as a live credential.
-	UserManagedKey *GcpServiceAccountUserManagedKey `protobuf:"bytes,10,opt,name=user_managed_key,json=userManagedKey,proto3" json:"user_managed_key,omitempty"`
 	// If true, creating the service account succeeds (as a no-op adoption)
 	// when an account with the same email already exists, instead of
 	// failing. Useful for idempotent bootstrap flows that may race other
 	// provisioning paths onto well-known identity names.
-	CreateIgnoreAlreadyExists bool `protobuf:"varint,11,opt,name=create_ignore_already_exists,json=createIgnoreAlreadyExists,proto3" json:"create_ignore_already_exists,omitempty"`
+	CreateIgnoreAlreadyExists bool `protobuf:"varint,10,opt,name=create_ignore_already_exists,json=createIgnoreAlreadyExists,proto3" json:"create_ignore_already_exists,omitempty"`
 	// Deletion policy — what happens when this resource is destroyed:
 	//
 	//	""        -- same as "DELETE" (provider default)
@@ -101,7 +101,7 @@ type GcpServiceAccountSpec struct {
 	//	             deletion would invalidate IAM bindings fleet-wide
 	//
 	// Mutable in place.
-	DeletionPolicy string `protobuf:"bytes,12,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	DeletionPolicy string `protobuf:"bytes,11,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -171,6 +171,13 @@ func (x *GcpServiceAccountSpec) GetDisabled() bool {
 	return false
 }
 
+func (x *GcpServiceAccountSpec) GetUserManagedKey() *GcpServiceAccountUserManagedKey {
+	if x != nil {
+		return x.UserManagedKey
+	}
+	return nil
+}
+
 func (x *GcpServiceAccountSpec) GetProjectIamRoles() []string {
 	if x != nil {
 		return x.ProjectIamRoles
@@ -188,13 +195,6 @@ func (x *GcpServiceAccountSpec) GetOrgId() string {
 func (x *GcpServiceAccountSpec) GetOrgIamRoles() []string {
 	if x != nil {
 		return x.OrgIamRoles
-	}
-	return nil
-}
-
-func (x *GcpServiceAccountSpec) GetUserManagedKey() *GcpServiceAccountUserManagedKey {
-	if x != nil {
-		return x.UserManagedKey
 	}
 	return nil
 }
@@ -339,25 +339,24 @@ var File_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto protoreflect.FileDesc
 
 const file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/gcp/gcpserviceaccount/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpserviceaccount.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xcc\a\n" +
+	"1catalog/gcp/gcpserviceaccount/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpserviceaccount.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xba\a\n" +
 	"\x15GcpServiceAccountSpec\x12X\n" +
 	"\x12service_account_id\x18\x01 \x01(\tB*\xbaH'\xc8\x01\x01r\"\x10\x06\x18\x1e2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x10serviceAccountId\x12u\n" +
 	"\n" +
 	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12*\n" +
 	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription\x12*\n" +
-	"\bdisabled\x18\x05 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\bdisabled\x88\x01\x01\x12*\n" +
+	"\bdisabled\x18\x05 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\bdisabled\x88\x01\x01\x12u\n" +
+	"\x10user_managed_key\x18\x06 \x01(\v2K.dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountUserManagedKeyR\x0euserManagedKey\x12*\n" +
 	"\x11project_iam_roles\x18\a \x03(\tR\x0fprojectIamRoles\x12\x15\n" +
 	"\x06org_id\x18\b \x01(\tR\x05orgId\x12\"\n" +
-	"\rorg_iam_roles\x18\t \x03(\tR\vorgIamRoles\x12u\n" +
-	"\x10user_managed_key\x18\n" +
-	" \x01(\v2K.dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountUserManagedKeyR\x0euserManagedKey\x12?\n" +
-	"\x1ccreate_ignore_already_exists\x18\v \x01(\bR\x19createIgnoreAlreadyExists\x12\xa4\x01\n" +
-	"\x0fdeletion_policy\x18\f \x01(\tB{\xbaHx\xba\x01u\n" +
+	"\rorg_iam_roles\x18\t \x03(\tR\vorgIamRoles\x12?\n" +
+	"\x1ccreate_ignore_already_exists\x18\n" +
+	" \x01(\bR\x19createIgnoreAlreadyExists\x12\xa4\x01\n" +
+	"\x0fdeletion_policy\x18\v \x01(\tB{\xbaHx\xba\x01u\n" +
 	"\x15valid_deletion_policy\x12/deletion_policy must be one of: DELETE, PREVENT\x1a+this == '' || this in ['DELETE', 'PREVENT']R\x0edeletionPolicy:\x81\x01\xbaH~\x1a|\n" +
 	"\x18org_roles_require_org_id\x12,org_id is required when org_iam_roles is set\x1a2size(this.org_iam_roles) == 0 || this.org_id != ''B\v\n" +
-	"\t_disabledJ\x04\b\x06\x10\aR\n" +
-	"create_key\"\xb7\n" +
+	"\t_disabled\"\xb7\n" +
 	"\n" +
 	"\x1fGcpServiceAccountUserManagedKey\x12\xba\x01\n" +
 	"\talgorithm\x18\x01 \x01(\tB\x9b\x01\xbaH\x97\x01\xba\x01\x93\x01\n" +

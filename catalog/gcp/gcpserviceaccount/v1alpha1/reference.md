@@ -72,9 +72,6 @@ spec:
 | `spec.displayName` | `string` |  |  |  |
 | `spec.description` | `string` |  |  |  |
 | `spec.disabled` | `bool` |  | `false` |  |
-| `spec.projectIamRoles` | `[]string` |  |  |  |
-| `spec.orgId` | `string` |  |  |  |
-| `spec.orgIamRoles` | `[]string` |  |  |  |
 | `spec.userManagedKey` | `GcpServiceAccountUserManagedKey` |  |  |  |
 | `spec.userManagedKey.algorithm` | `string` |  |  |  |
 | `spec.userManagedKey.privateKeyType` | `string` |  |  |  |
@@ -82,6 +79,9 @@ spec:
 | `spec.userManagedKey.publicKeyData` | `string` |  |  |  |
 | `spec.userManagedKey.keepers` | `map<string, string>` |  |  |  |
 | `spec.userManagedKey.deletionPolicy` | `string` |  |  |  |
+| `spec.projectIamRoles` | `[]string` |  |  |  |
+| `spec.orgId` | `string` |  |  |  |
+| `spec.orgIamRoles` | `[]string` |  |  |  |
 | `spec.createIgnoreAlreadyExists` | `bool` |  |  |  |
 | `spec.deletionPolicy` | `string` |  |  |  |
 
@@ -143,33 +143,6 @@ Useful as a kill switch during incident response or for staged decommissioning
 
 - default: `false`
 
-### spec.projectIamRoles
-
-`[]string`
-
-IAM roles granted to this service account at the PROJECT scope, e.g.
-["roles/logging.logWriter", "roles/storage.admin"]. Grants are additive
-(member-level): they never clobber other members' bindings on the same role.
-For grants that should be first-class, referenceable nodes in the resource
-graph (visible dependencies, independent lifecycle), use GcpProjectIamMember
-instead of this list.
-
-### spec.orgId
-
-`string`
-
-The numeric organization ID (e.g. "123456789012") — required only when
-org_iam_roles is set, to identify which organization receives the grants.
-
-### spec.orgIamRoles
-
-`[]string`
-
-IAM roles granted to this service account at the ORGANIZATION scope, e.g.
-["roles/resourcemanager.organizationViewer"]. Requires org_id. Grants are
-additive (member-level). Org-scope grants affect every project under the
-organization — grant sparingly.
-
 ### spec.userManagedKey
 
 `GcpServiceAccountUserManagedKey`
@@ -207,6 +180,33 @@ organization — grant sparingly.
 `string`
 
 - rule: deletion_policy must be one of: DELETE, PREVENT
+
+### spec.projectIamRoles
+
+`[]string`
+
+IAM roles granted to this service account at the PROJECT scope, e.g.
+["roles/logging.logWriter", "roles/storage.admin"]. Grants are additive
+(member-level): they never clobber other members' bindings on the same role.
+For grants that should be first-class, referenceable nodes in the resource
+graph (visible dependencies, independent lifecycle), use GcpProjectIamMember
+instead of this list.
+
+### spec.orgId
+
+`string`
+
+The numeric organization ID (e.g. "123456789012") — required only when
+org_iam_roles is set, to identify which organization receives the grants.
+
+### spec.orgIamRoles
+
+`[]string`
+
+IAM roles granted to this service account at the ORGANIZATION scope, e.g.
+["roles/resourcemanager.organizationViewer"]. Requires org_id. Grants are
+additive (member-level). Org-scope grants affect every project under the
+organization — grant sparingly.
 
 ### spec.createIgnoreAlreadyExists
 

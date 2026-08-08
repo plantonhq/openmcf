@@ -60,10 +60,13 @@ message GcpServiceAccountSpec {
   // (disable first, observe breakage, then delete).
   optional bool disabled = 5 [(dev.planton.shared.options.default) = "false"];
 
-  // The former boolean key toggle; superseded by the user_managed_key
-  // message, which carries the full key configuration surface.
-  reserved 6;
-  reserved "create_key";
+  // Create a user-managed key for this service account. Omit for keyless
+  // (the recommended default — prefer Workload Identity, impersonation, or
+  // federation wherever the workload supports it). When present, a key is
+  // created with the configured algorithm and formats, and the private key
+  // (unless public_key_data supplies your own public key) is exported in
+  // stack outputs as `key_base64` — treat that output as a live credential.
+  GcpServiceAccountUserManagedKey user_managed_key = 6;
 
   // IAM roles granted to this service account at the PROJECT scope, e.g.
   // ["roles/logging.logWriter", "roles/storage.admin"]. Grants are additive
@@ -83,19 +86,11 @@ message GcpServiceAccountSpec {
   // organization — grant sparingly.
   repeated string org_iam_roles = 9;
 
-  // Create a user-managed key for this service account. Omit for keyless
-  // (the recommended default — prefer Workload Identity, impersonation, or
-  // federation wherever the workload supports it). When present, a key is
-  // created with the configured algorithm and formats, and the private key
-  // (unless public_key_data supplies your own public key) is exported in
-  // stack outputs as `key_base64` — treat that output as a live credential.
-  GcpServiceAccountUserManagedKey user_managed_key = 10;
-
   // If true, creating the service account succeeds (as a no-op adoption)
   // when an account with the same email already exists, instead of
   // failing. Useful for idempotent bootstrap flows that may race other
   // provisioning paths onto well-known identity names.
-  bool create_ignore_already_exists = 11;
+  bool create_ignore_already_exists = 10;
 
   // Deletion policy — what happens when this resource is destroyed:
   //   ""        -- same as "DELETE" (provider default)
@@ -103,7 +98,7 @@ message GcpServiceAccountSpec {
   //   "PREVENT" -- destroy FAILS; a guard rail for identities whose
   //                deletion would invalidate IAM bindings fleet-wide
   // Mutable in place.
-  string deletion_policy = 12 [(buf.validate.field).cel = {
+  string deletion_policy = 11 [(buf.validate.field).cel = {
     id: "valid_deletion_policy"
     expression: "this == '' || this in ['DELETE', 'PREVENT']"
     message: "deletion_policy must be one of: DELETE, PREVENT"
