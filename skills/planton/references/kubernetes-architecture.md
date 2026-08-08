@@ -61,9 +61,10 @@ by name, up front:
 - **The environment chart** (deployed once per environment — dev, prod, …):
   the app's namespace, its `KubernetesGateway`/`KubernetesHttpRoute` with the
   hostname as a param, and a **placeholder `KubernetesDeployment`** whose
-  image is a param. Scenario 2 — it consumes the shared cluster's connection;
-  `values.env` differentiates the deployments so one chart serves every
-  environment.
+  image is a param. Scenario 2 of `kubernetes-on-cluster.md` — it carries NO
+  connection wiring (the shared cluster's materialized connection is the
+  platform's default binding); `values.env` differentiates the deployments so
+  one chart serves every environment.
 
 **Placement doctrine — operators follow the cluster, never the app.**
 Cluster-scoped, shared-by-design components — the Gateway API CRDs, Istio,

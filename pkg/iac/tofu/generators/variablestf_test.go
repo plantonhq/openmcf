@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 
+	testkubernetesv1 "github.com/plantonhq/planton/catalog/_test/testcloudresourcekubernetes/v1alpha1"
 	awsecrrepov1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecrrepo/v1alpha1"
 	awsiamrolev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamrole/v1alpha1"
 	awsroute53zonev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53zone/v1alpha1"
@@ -73,20 +74,23 @@ func TestProtoToVariablesTF_CronJob_NamespaceIsString(t *testing.T) {
 	}
 }
 
-func TestProtoToVariablesTF_CronJob_VariablesIsMapString(t *testing.T) {
-	msg := &kubernetescronjobv1alpha1.KubernetesCronJob{}
+func TestProtoToVariablesTF_RefMapVariablesIsMapString(t *testing.T) {
+	// The _test torture kind carries ref_map (map<string, StringValueOrRef>)
+	// specifically to pin the map-value flatten rule; live catalog specs drop
+	// and rename their map fields over time, but this fixture cannot move.
+	msg := &testkubernetesv1.TestCloudResourceKubernetes{}
 
 	got, err := ProtoToVariablesTF(msg)
 	if err != nil {
 		t.Fatalf("ProtoToVariablesTF: %v", err)
 	}
 
-	// A map<string, StringValueOrRef> field (config_maps) flattens to map(string).
-	// Being optional, it is wrapped with a {} zero default so a pruned tfvars
-	// validates -- but the element type must remain map(string), never an object,
-	// and maps must never be mis-rendered as object({key, value}).
-	if !strings.Contains(got, "config_maps = optional(map(string), {})") {
-		t.Errorf("config_maps should be 'optional(map(string), {})', got:\n%s", got)
+	// A map<string, StringValueOrRef> field flattens to map(string). Being
+	// optional, it is wrapped with a {} zero default so a pruned tfvars
+	// validates -- but the element type must remain map(string), never an
+	// object, and maps must never be mis-rendered as object({key, value}).
+	if !strings.Contains(got, "ref_map = optional(map(string), {})") {
+		t.Errorf("ref_map should be 'optional(map(string), {})', got:\n%s", got)
 	}
 	if strings.Contains(got, "map(object(") {
 		t.Errorf("a map field must not be modeled as map(object(...)), got:\n%s", got)

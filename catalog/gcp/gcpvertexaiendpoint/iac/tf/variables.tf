@@ -42,8 +42,7 @@ variable "spec" {
     dedicated_endpoint_enabled = optional(bool, false)
 
     private_service_connect_config = optional(object({
-      project_allowlist                     = optional(list(string), [])
-      enable_secure_private_service_connect = optional(bool, false)
+      project_allowlist = optional(list(string), [])
     }), null)
 
     # User labels; merged beneath the platform attribution labels.

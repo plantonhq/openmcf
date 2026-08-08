@@ -24,12 +24,6 @@ resource "google_project_service" "compute_api" {
 # regional load balancers (required before a regional ALB exists in the VPC);
 # PRIVATE_SERVICE_CONNECT backs published PSC services.
 resource "google_compute_subnetwork" "main" {
-  # google-beta: allow_subnet_cidr_routes_overlap is beta-only on the released
-  # 6.x line (everything else here is GA and identical in beta). The Pulumi
-  # provider is beta-bridged by construction, so both engines expose the same
-  # surface.
-  provider = google-beta
-
   name          = var.spec.subnetwork_name
   project       = local.project_id
   region        = var.spec.region

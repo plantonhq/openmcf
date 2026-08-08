@@ -1,0 +1,523 @@
+//go:build !codegen
+// +build !codegen
+
+package providerparity
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
+)
+
+// accountingFixture exercises every accounting shape in one hermetic
+// catalog: exact matches, subtree and leaf mappings, exclusions, an
+// iam-member secondary resource under a specRoot, an internal plumbing
+// resource, machinery args, deprecated args, reverse drift, a manifest-less
+// kind with renames, and every breadth disposition class.
+func accountingFixture() (spec []KindCensus, modules []ModuleCensus, schemas map[string]*Schema, manifests map[string]*Manifest, ledger []LedgerEntry) {
+	schemas = map[string]*Schema{"google": {
+		Provider: "google",
+		Source:   "hashicorp/google",
+		Version:  "6.50.0",
+		Resources: map[string]*Block{
+			"google_widget": {
+				Attributes: map[string]*Attribute{
+					"name":     {Required: true},
+					"location": {Optional: true},
+					"id":       {Optional: true},                   // machinery: standing exclusion
+					"old_knob": {Optional: true, Deprecated: true}, // deprecated: outside accounting
+				},
+				Blocks: map[string]*NestedBlock{
+					"settings": {NestingMode: "single", Block: &Block{
+						Attributes: map[string]*Attribute{"enabled": {Optional: true}},
+					}},
+					"rules": {NestingMode: "list", Block: &Block{
+						Attributes: map[string]*Attribute{"mode": {Optional: true}},
+						Blocks: map[string]*NestedBlock{
+							"condition": {NestingMode: "single", Block: &Block{
+								Attributes: map[string]*Attribute{
+									"age":              {Optional: true},
+									"send_age_if_zero": {Optional: true},
+								},
+							}},
+						},
+					}},
+					"timeouts": {NestingMode: "single", Block: &Block{ // machinery
+						Attributes: map[string]*Attribute{"create": {Optional: true}},
+					}},
+				},
+			},
+			"google_widget_iam_member": {
+				Attributes: map[string]*Attribute{
+					"widget": {Required: true}, // module-wired linkage: manifest exclusion
+					"role":   {Required: true},
+					"member": {Required: true},
+				},
+				Blocks: map[string]*NestedBlock{
+					"condition": {NestingMode: "single", Block: &Block{
+						Attributes: map[string]*Attribute{"title": {Optional: true}},
+					}},
+				},
+			},
+			"google_project_service": {
+				Attributes: map[string]*Attribute{
+					"service":            {Required: true},
+					"disable_on_destroy": {Optional: true},
+				},
+			},
+			"google_plain": {
+				Attributes: map[string]*Attribute{"name": {Required: true}},
+			},
+			"google_widget_iam_policy": { // unconsumed iam triplet: pattern class
+				Attributes: map[string]*Attribute{"policy_data": {Required: true}},
+			},
+			"google_dead_thing": { // schema-flagged deprecation class
+				Deprecated: true,
+				Attributes: map[string]*Attribute{"name": {Required: true}},
+			},
+			"google_composed_thing": { // ledger class
+				Attributes: map[string]*Attribute{"name": {Required: true}},
+			},
+			"google_orphan_thing": { // no disposition anywhere: Finding
+				Attributes: map[string]*Attribute{"name": {Required: true}},
+			},
+		},
+	}}
+
+	spec = []KindCensus{
+		{Kind: "TestPlain", SpecFieldPaths: []string{"spec.plain_name"}},
+		{Kind: "TestWidget", SpecFieldPaths: []string{
+			"spec.widget_name",
+			"spec.location",
+			"spec.settings.enabled",
+			"spec.rule_list.mode",
+			"spec.rule_list.condition.age_days",
+			"spec.iam_members.role",
+			"spec.iam_members.member",
+			"spec.iam_members.condition.title",
+			"spec.platform_only",
+			"spec.drifted_field",
+		}},
+	}
+
+	modules = []ModuleCensus{
+		{Kind: "TestPlain", Resources: []string{"google_plain"}, Pins: map[string]string{"google": "~> 6.0"}},
+		{Kind: "TestWidget", Resources: []string{
+			"google_widget", "google_widget_iam_member", "google_project_service",
+		}, Pins: map[string]string{"google": "~> 6.0"}},
+	}
+
+	manifests = map[string]*Manifest{
+		"TestWidget": {
+			Resources: map[string]*ResourceManifest{
+				"google_widget": {
+					Mappings: []Mapping{
+						{Spec: "spec.widget_name", Arg: "name"},
+						// Subtree mapping: exact matching resumes below it...
+						{Spec: "spec.rule_list", Arg: "rules"},
+						// ...and a longer (leaf) mapping wins over the subtree.
+						{Spec: "spec.rule_list.condition.age_days", Arg: "rules.condition.age"},
+					},
+					Exclusions: []ArgExclusion{
+						{Arg: "rules.condition.send_age_if_zero", Reason: "proto3 optional presence covers zero-vs-unset"},
+					},
+				},
+				"google_widget_iam_member": {
+					SpecRoot: "spec.iam_members",
+					Exclusions: []ArgExclusion{
+						{Arg: "widget", Reason: "wired by the module to the enclosing widget"},
+					},
+				},
+				"google_project_service": {
+					Internal: "API enablement plumbing; arguments are module decisions",
+				},
+			},
+			SpecExclusions: []SpecExclusion{
+				{Field: "spec.platform_only", Reason: "platform concept with no provider counterpart"},
+			},
+		},
+	}
+
+	ledger = []LedgerEntry{
+		{Resource: "google_composed_thing", Disposition: DispositionComposed, Reason: "covered by TestWidget's composed_thing field"},
+		{Resource: "google_widget", Disposition: DispositionDeferred, Reason: "stale: the module consumes it now"},
+		{Resource: "google_gone_thing", Disposition: DispositionDeferred, Reason: "stale: removed at the pin"},
+	}
+	return
+}
+
+func kindByName(t *testing.T, acc Accounting, kind string) KindAccounting {
+	t.Helper()
+	for _, k := range acc.Kinds {
+		if k.Kind == kind {
+			return k
+		}
+	}
+	t.Fatalf("kind %s missing from accounting", kind)
+	return KindAccounting{}
+}
+
+func TestBuildAccounting_Hermetic(t *testing.T) {
+	spec, modules, schemas, manifests, ledger := accountingFixture()
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, ledger)
+
+	widget := kindByName(t, acc, "TestWidget")
+	// google_widget: name(mapped) location(matched) settings.enabled(matched)
+	// rules.mode(mapped via subtree) rules.condition.age(mapped via leaf)
+	// send_age_if_zero(excluded); id/timeouts.create machinery and old_knob
+	// deprecated -- all outside accounting.
+	// google_widget_iam_member: role/member/condition.title matched under
+	// specRoot, widget excluded. google_project_service: internal.
+	if widget.TotalArgs != 10 {
+		t.Errorf("TotalArgs = %d, want 10 (machinery and deprecated args must not count)", widget.TotalArgs)
+	}
+	if widget.MatchedArgs != 5 || widget.MappedArgs != 3 || widget.ExcludedArgs != 2 {
+		t.Errorf("matched/mapped/excluded = %d/%d/%d, want 5/3/2",
+			widget.MatchedArgs, widget.MappedArgs, widget.ExcludedArgs)
+	}
+	if !reflect.DeepEqual(widget.InternalResources, []string{"google_project_service"}) {
+		t.Errorf("InternalResources = %v", widget.InternalResources)
+	}
+	if len(widget.UnaccountedArgs) != 0 {
+		t.Errorf("UnaccountedArgs = %v, want none", widget.UnaccountedArgs)
+	}
+	// Reverse direction: the drifted field is caught; the platform field is
+	// covered by its recorded exclusion.
+	if !reflect.DeepEqual(widget.UncoveredSpecFields, []string{"spec.drifted_field"}) {
+		t.Errorf("UncoveredSpecFields = %v, want [spec.drifted_field]", widget.UncoveredSpecFields)
+	}
+	if widget.Accounted() {
+		t.Error("TestWidget carries reverse drift and must not count as accounted")
+	}
+
+	// A manifest-less kind is held to pure exact matching: google_plain's
+	// "name" does not match spec.plain_name in either direction.
+	plain := kindByName(t, acc, "TestPlain")
+	if plain.HasManifest {
+		t.Error("TestPlain has no manifest")
+	}
+	if !reflect.DeepEqual(plain.UnaccountedArgs, []string{"google_plain: name"}) {
+		t.Errorf("UnaccountedArgs = %v", plain.UnaccountedArgs)
+	}
+	if !reflect.DeepEqual(plain.UncoveredSpecFields, []string{"spec.plain_name"}) {
+		t.Errorf("UncoveredSpecFields = %v", plain.UncoveredSpecFields)
+	}
+
+	// Breadth: every fixture resource carries its class.
+	byResource := map[string]ResourceDisposition{}
+	for _, d := range acc.Dispositions {
+		byResource[d.Resource] = d
+	}
+	wantDispositions := map[string]string{
+		"google_widget":            DispositionModeled,
+		"google_widget_iam_member": DispositionModeled,
+		"google_project_service":   DispositionModeled,
+		"google_plain":             DispositionModeled,
+		"google_widget_iam_policy": DispositionIamCovered,
+		"google_dead_thing":        DispositionExcludedDeprecated,
+		"google_composed_thing":    DispositionComposed,
+		"google_orphan_thing":      "",
+	}
+	for res, want := range wantDispositions {
+		if got := byResource[res].Disposition; got != want {
+			t.Errorf("disposition[%s] = %q, want %q", res, got, want)
+		}
+	}
+	if byResource["google_widget"].Detail != "consumed by TestWidget" {
+		t.Errorf("modeled detail = %q", byResource["google_widget"].Detail)
+	}
+	if acc.DispositionTotals[DispositionModeled] != 4 || acc.DispositionTotals[""] != 1 {
+		t.Errorf("DispositionTotals = %v", acc.DispositionTotals)
+	}
+
+	// Findings: two kinds in debt, the orphan resource, the two stale
+	// ledger entries (consumed + removed-at-pin).
+	keys := map[string]int{}
+	for _, f := range acc.Findings {
+		keys[f.BaselineKey]++
+	}
+	want := map[string]int{
+		"kind:TestWidget":              1, // reverse drift
+		"kind:TestPlain":               2, // unaccounted arg + uncovered spec field
+		"resource:google_orphan_thing": 1,
+		"resource:google_widget":       1, // stale ledger: consumed
+		"resource:google_gone_thing":   1, // stale ledger: not at the pin
+	}
+	if !reflect.DeepEqual(keys, want) {
+		t.Errorf("finding keys = %v, want %v", keys, want)
+	}
+}
+
+// TestBuildAccounting_LedgerShadowsComputedClasses proves the computed
+// classes always win over the ledger AND that a shadowed entry is a
+// staleness finding: judgment duplicating what the instrument derives on
+// its own is judgment nobody re-evaluates.
+func TestBuildAccounting_LedgerShadowsComputedClasses(t *testing.T) {
+	spec, modules, schemas, manifests, _ := accountingFixture()
+	ledger := []LedgerEntry{
+		{Resource: "google_widget_iam_policy", Disposition: DispositionDeferred, Reason: "stale: the iam-covered class computes this"},
+		{Resource: "google_dead_thing", Disposition: DispositionExcludedDeprecated, Reason: "stale: the schema flag computes this"},
+	}
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, ledger)
+
+	byResource := map[string]ResourceDisposition{}
+	for _, d := range acc.Dispositions {
+		byResource[d.Resource] = d
+	}
+	if got := byResource["google_widget_iam_policy"].Disposition; got != DispositionIamCovered {
+		t.Errorf("iam triplet disposition = %q, want the computed %q", got, DispositionIamCovered)
+	}
+	if got := byResource["google_dead_thing"].Disposition; got != DispositionExcludedDeprecated {
+		t.Errorf("deprecated disposition = %q, want the computed %q", got, DispositionExcludedDeprecated)
+	}
+
+	wantStale := map[string]string{
+		"resource:google_widget_iam_policy": "iam-covered",
+		"resource:google_dead_thing":        "doc-level deprecations",
+	}
+	for key, fragment := range wantStale {
+		found := false
+		for _, f := range acc.Findings {
+			if f.BaselineKey == key && strings.Contains(f.Detail, "stale ledger entry") && strings.Contains(f.Detail, fragment) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("missing shadowing finding for %s (want detail mentioning %q); findings: %v", key, fragment, acc.Findings)
+		}
+	}
+}
+
+// TestBuildAccounting_MissingModule proves a kind with no Terraform module
+// directory surfaces as exactly one finding -- never a run-abort, never a
+// spec-field noise storm, never counted as accounted.
+func TestBuildAccounting_MissingModule(t *testing.T) {
+	spec, modules, schemas, manifests, _ := accountingFixture()
+	modules = append(modules, ModuleCensus{
+		Kind: "TestGhost", ModuleDir: "catalog/gcp/testghost/iac/tf", MissingModule: true,
+	})
+	spec = append(spec, KindCensus{Kind: "TestGhost", SpecFieldPaths: []string{"spec.a", "spec.b"}})
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+
+	ghost := kindByName(t, acc, "TestGhost")
+	if !ghost.MissingModule || ghost.Accounted() {
+		t.Errorf("ghost = %+v, want MissingModule and not accounted", ghost)
+	}
+	if len(ghost.UncoveredSpecFields) != 0 {
+		t.Errorf("missing-module kind must not accumulate spec-field noise, got %v", ghost.UncoveredSpecFields)
+	}
+	var ghostFindings []Finding
+	for _, f := range acc.Findings {
+		if f.BaselineKey == "kind:TestGhost" {
+			ghostFindings = append(ghostFindings, f)
+		}
+	}
+	if len(ghostFindings) != 1 || !strings.Contains(ghostFindings[0].Detail, "no Terraform module directory") {
+		t.Errorf("ghost findings = %v, want exactly the missing-module finding", ghostFindings)
+	}
+	// The other kinds' accounting is unaffected by the ghost.
+	if widget := kindByName(t, acc, "TestWidget"); widget.TotalArgs != 10 {
+		t.Errorf("TestWidget accounting disturbed by the missing-module kind: TotalArgs=%d", widget.TotalArgs)
+	}
+}
+
+// TestBuildAccounting_ManifestStaleness proves the ratchet: judgment
+// referencing surface that no longer exists fails, in every reference class.
+func TestBuildAccounting_ManifestStaleness(t *testing.T) {
+	spec, modules, schemas, _, _ := accountingFixture()
+	manifests := map[string]*Manifest{
+		"TestPlain": {
+			Resources: map[string]*ResourceManifest{
+				"google_plain": {
+					Mappings: []Mapping{
+						{Spec: "spec.plain_name", Arg: "name"},     // valid
+						{Spec: "spec.gone_field", Arg: "name2"},    // both sides stale
+						{Spec: "spec.plain_name", Arg: "gone_arg"}, // arg side stale
+					},
+					Exclusions: []ArgExclusion{
+						{Arg: "vanished", Reason: "stale exclusion"},
+					},
+				},
+				"google_never_consumed": {
+					Internal: "stale: the module no longer consumes this",
+				},
+			},
+			SpecExclusions: []SpecExclusion{
+				{Field: "spec.gone_platform_field", Reason: "stale spec exclusion"},
+			},
+		},
+	}
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+	plain := kindByName(t, acc, "TestPlain")
+
+	wantStale := []string{
+		"mapping arg gone_arg",
+		"mapping arg name2", // reported via its arg; its spec side is also stale
+		"mapping spec spec.gone_field",
+		"exclusion vanished",
+		"manifest judges resource google_never_consumed",
+		"specExclusions: spec.gone_platform_field",
+	}
+	for _, want := range wantStale {
+		found := false
+		for _, s := range plain.ManifestStale {
+			if strings.Contains(s, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("ManifestStale misses %q; got %v", want, plain.ManifestStale)
+		}
+	}
+	// The valid mapping still matched.
+	if plain.MappedArgs != 1 || len(plain.UnaccountedArgs) != 0 {
+		t.Errorf("mapped/unaccounted = %d/%v, want 1/none", plain.MappedArgs, plain.UnaccountedArgs)
+	}
+}
+
+func TestGateSemantics(t *testing.T) {
+	findings := []Finding{
+		{BaselineKey: "kind:TestPlain", Detail: "unaccounted provider argument"},
+		{BaselineKey: "resource:google_orphan_thing", Detail: "no recorded disposition"},
+	}
+	baseline := map[string]bool{
+		"kind:TestPlain":               true,
+		"resource:google_orphan_thing": true,
+	}
+	if res := Gate(findings, baseline); !res.OK() {
+		t.Errorf("baselined findings must pass, got %+v", res)
+	}
+
+	// A new finding fails.
+	novel := append(findings, Finding{BaselineKey: "kind:TestWidget", Detail: "new drift"})
+	res := Gate(novel, baseline)
+	if len(res.NewFindings) != 1 || res.NewFindings[0].BaselineKey != "kind:TestWidget" {
+		t.Errorf("NewFindings = %+v", res.NewFindings)
+	}
+
+	// A fixed-but-still-listed entry fails too: the ledger only shrinks
+	// truthfully.
+	res = Gate(findings[:1], baseline)
+	if len(res.StaleEntries) != 1 || res.StaleEntries[0] != "resource:google_orphan_thing" {
+		t.Errorf("StaleEntries = %v", res.StaleEntries)
+	}
+}
+
+func TestBaselineRoundTrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "baseline.yaml")
+	findings := []Finding{
+		{BaselineKey: "kind:B", Detail: "x"},
+		{BaselineKey: "kind:A", Detail: "y"},
+		{BaselineKey: "kind:A", Detail: "z"}, // duplicate key collapses to one entry
+	}
+	if err := WriteBaseline(path, findings); err != nil {
+		t.Fatal(err)
+	}
+	set, err := LoadBaseline(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(set) != 2 || !set["kind:A"] || !set["kind:B"] {
+		t.Errorf("round trip = %v", set)
+	}
+}
+
+func TestLoadLedger(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "google.yaml")
+
+	if entries, err := LoadLedger(path, "google"); err != nil || entries != nil {
+		t.Errorf("missing ledger must be empty, got %v / %v", entries, err)
+	}
+
+	valid := `provider: google
+resources:
+  - resource: google_composed_thing
+    disposition: composed
+    reason: covered by TestWidget
+`
+	if err := os.WriteFile(path, []byte(valid), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := LoadLedger(path, "google")
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("valid ledger: %v / %v", entries, err)
+	}
+
+	for name, bad := range map[string]string{
+		"wrong provider":     "provider: azurerm\nresources: []\n",
+		"computed class":     "provider: google\nresources:\n  - resource: r\n    disposition: modeled\n    reason: x\n",
+		"missing reason":     "provider: google\nresources:\n  - resource: r\n    disposition: deferred\n",
+		"duplicate resource": "provider: google\nresources:\n  - {resource: r, disposition: deferred, reason: a}\n  - {resource: r, disposition: composed, reason: b}\n",
+		"unknown field":      "provider: google\nresourcez: []\n",
+	} {
+		if err := os.WriteFile(path, []byte(bad), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := LoadLedger(path, "google"); err == nil {
+			t.Errorf("%s: want error, got nil", name)
+		}
+	}
+}
+
+// TestProviderParityGate is the live gate over the whole GCP catalog: the
+// accounting runs against the committed schemas, manifests, ledger, and
+// baseline, and any drift from the recorded state fails. This test IS the CI
+// lane (lint.provider-parity.yaml).
+func TestProviderParityGate(t *testing.T) {
+	root := repoRoot(t)
+	if _, err := os.Stat(filepath.Join(root, catalogRoot)); err != nil {
+		t.Skip("catalog source tree not present (bazel sandbox); runs under go test")
+	}
+	schemas, err := LoadSchemas("schemas")
+	if err != nil {
+		t.Fatalf("committed schemas: %v", err)
+	}
+	acc, err := BuildAccounting(root, cloudresourcekind.CloudResourceProvider_gcp, schemas, "google", "")
+	if err != nil {
+		t.Fatalf("accounting: %v", err)
+	}
+
+	accounted := 0
+	for _, k := range acc.Kinds {
+		if k.Accounted() {
+			accounted++
+		}
+	}
+	t.Logf("gcp depth accounting: %d/%d kinds at total accounting against %s@%s",
+		accounted, len(acc.Kinds), acc.GASchema, acc.GASchemaVersion)
+	t.Logf("gcp breadth dispositions: %v", acc.DispositionTotals)
+
+	if raw, err := json.MarshalIndent(acc, "", "  "); err == nil && os.Getenv("PLANTON_PROVIDERPARITY_DUMP") != "" {
+		path := filepath.Join(os.TempDir(), "providerparity-gcp-accounting.json")
+		if err := os.WriteFile(path, raw, 0o644); err == nil {
+			t.Logf("full accounting written to %s", path)
+		}
+	}
+
+	baselinePath := filepath.Join(root, DefaultBaselinePath)
+	if os.Getenv("PLANTON_REGEN_PROVIDERPARITY_BASELINE") == "1" {
+		if err := WriteBaseline(baselinePath, acc.Findings); err != nil {
+			t.Fatalf("regenerating baseline: %v", err)
+		}
+		t.Log("baseline regenerated -- review the diff before committing")
+	}
+	baseline, err := LoadBaseline(baselinePath)
+	if err != nil {
+		t.Fatalf("baseline: %v (regenerate with PLANTON_REGEN_PROVIDERPARITY_BASELINE=1)", err)
+	}
+	res := Gate(acc.Findings, baseline)
+	for _, f := range res.NewFindings {
+		t.Errorf("new parity gap [%s]: %s", f.BaselineKey, f.Detail)
+	}
+	for _, key := range res.StaleEntries {
+		t.Errorf("stale baseline entry (closed -- remove it): %s", key)
+	}
+}

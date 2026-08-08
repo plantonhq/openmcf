@@ -79,7 +79,6 @@ spec:
 | `spec.dedicatedEndpointEnabled` | `bool` |  |  |  |
 | `spec.privateServiceConnectConfig` | `GcpVertexAiEndpointPrivateServiceConnectConfig` |  |  |  |
 | `spec.privateServiceConnectConfig.projectAllowlist` | `[]string` |  |  |  |
-| `spec.privateServiceConnectConfig.enableSecurePrivateServiceConnect` | `bool` |  |  |  |
 | `spec.endpointName` | `string` |  |  |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
 | `spec.requestResponseLoggingConfig` | `GcpVertexAiEndpointRequestResponseLoggingConfig` |  |  |  |
@@ -174,15 +173,6 @@ Mutually exclusive with network and dedicated_endpoint_enabled.
 Projects allowed to create forwarding rules targeting this endpoint's
 service attachment. Each entry is a GCP project ID or project number.
 If empty, any project in the same organization can connect.
-
-### spec.privateServiceConnectConfig.enableSecurePrivateServiceConnect
-
-`bool`
-
-If true, PSC connections require IAM authorization (secure PSC) --
-callers must hold permission on the endpoint in addition to reaching
-its service attachment. Adds slight latency; leave false for
-network-boundary-only isolation.
 
 ### spec.endpointName
 

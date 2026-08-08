@@ -1,0 +1,52 @@
+# =============================================================================
+# Provider Parity Guard
+# =============================================================================
+# Fails the PR when the catalog's accounting against its pinned Terraform
+# provider drifts from the recorded state: a configurable argument with no
+# match, mapping, or recorded exclusion; a spec field the provider no longer
+# serves (reverse drift); a stale manifest or ledger entry; or a GA resource
+# with no recorded disposition -- for any kind/resource outside the accepted
+# baseline. Also fails on a stale baseline entry, so the burn-down list can
+# only shrink truthfully. Omission is a decision, never an accident.
+#
+# To fix a failure: record the judgment where it belongs (the kind's
+# iac/provider-parity.yaml, or pkg/providerparity/dispositions/), or -- for a
+# deliberate deferral -- regenerate the baseline with
+# PLANTON_REGEN_PROVIDERPARITY_BASELINE=1 and justify the growth in review.
+# After a provider pin bump, the failures ARE the migration work list.
+# See pkg/providerparity.
+# =============================================================================
+
+name: lint.provider-parity
+
+on:
+  pull_request:
+    paths:
+      - 'catalog/**'
+      - 'pkg/providerparity/**'
+      - '.github/workflows/lint.provider-parity.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'catalog/**'
+      - 'pkg/providerparity/**'
+      - '.github/workflows/lint.provider-parity.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  provider-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Run provider-parity gate
+        run: go test ./pkg/providerparity/...

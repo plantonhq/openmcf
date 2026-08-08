@@ -1,0 +1,91 @@
+# Provider-parity baseline -- the accepted backlog of parity gaps: kinds not
+# yet at total accounting against the pinned provider, and GA resources whose
+# breadth disposition is not recorded yet. This list trends to 0 and never
+# grows; the permanent record lives in each kind's iac/provider-parity.yaml
+# and in pkg/providerparity/dispositions/.
+#
+# The CI guardrail (go test ./pkg/providerparity/...) fails when:
+#   - a finding appears for a kind/resource NOT listed here (new gap shipped,
+#     or a pin bump surfaced migration work), or
+#   - a listed entry has no findings left (it was closed -- remove it here).
+#
+# Entry format: kind:<Kind> | resource:<terraform resource type>
+# Regenerate with:  PLANTON_REGEN_PROVIDERPARITY_BASELINE=1 go test ./pkg/providerparity/
+entries:
+  - kind:GcpAddress
+  - kind:GcpAlloydbCluster
+  - kind:GcpAlloydbInstance
+  - kind:GcpAlloydbUser
+  - kind:GcpArtifactRegistryRepo
+  - kind:GcpBackendBucket
+  - kind:GcpBackendService
+  - kind:GcpBigQueryDataset
+  - kind:GcpBigQueryTable
+  - kind:GcpBigtableInstance
+  - kind:GcpBigtableTable
+  - kind:GcpCertManagerCert
+  - kind:GcpCertManagerDnsAuthorization
+  - kind:GcpCloudArmorPolicy
+  - kind:GcpCloudComposerEnvironment
+  - kind:GcpCloudComposerUserWorkloadsConfigMap
+  - kind:GcpCloudComposerUserWorkloadsSecret
+  - kind:GcpCloudFunction
+  - kind:GcpCloudRun
+  - kind:GcpCloudRunJob
+  - kind:GcpCloudSchedulerJob
+  - kind:GcpCloudSql
+  - kind:GcpCloudSqlDatabase
+  - kind:GcpCloudSqlUser
+  - kind:GcpCloudTasksQueue
+  - kind:GcpComputeDisk
+  - kind:GcpComputeInstance
+  - kind:GcpDataprocAutoscalingPolicy
+  - kind:GcpDataprocCluster
+  - kind:GcpDnsRecord
+  - kind:GcpDnsZone
+  - kind:GcpFilestoreInstance
+  - kind:GcpFirestoreBackupSchedule
+  - kind:GcpFirestoreDatabase
+  - kind:GcpFirestoreIndex
+  - kind:GcpFirewallRule
+  - kind:GcpGcsBucket
+  - kind:GcpGkeCluster
+  - kind:GcpGkeNodePool
+  - kind:GcpGkeWorkloadIdentityBinding
+  - kind:GcpGlobalAddress
+  - kind:GcpGlobalForwardingRule
+  - kind:GcpHealthCheck
+  - kind:GcpIamCustomRole
+  - kind:GcpKmsKey
+  - kind:GcpKmsKeyRing
+  - kind:GcpManagedSslCertificate
+  - kind:GcpMemorystoreInstance
+  - kind:GcpProject
+  - kind:GcpProjectIamMember
+  - kind:GcpPubSubSchema
+  - kind:GcpPubSubSubscription
+  - kind:GcpPubSubTopic
+  - kind:GcpRedisInstance
+  - kind:GcpRegionNetworkEndpointGroup
+  - kind:GcpRouterNat
+  - kind:GcpServerlessVpcConnector
+  - kind:GcpServiceAccount
+  - kind:GcpServiceConnectionPolicy
+  - kind:GcpServiceNetworkingConnection
+  - kind:GcpSpannerBackupSchedule
+  - kind:GcpSpannerDatabase
+  - kind:GcpSpannerInstance
+  - kind:GcpSslCertificate
+  - kind:GcpSslPolicy
+  - kind:GcpSubnetwork
+  - kind:GcpTargetHttpProxy
+  - kind:GcpTargetHttpsProxy
+  - kind:GcpUrlMap
+  - kind:GcpVertexAiDeployedIndex
+  - kind:GcpVertexAiEndpoint
+  - kind:GcpVertexAiIndex
+  - kind:GcpVertexAiIndexEndpoint
+  - kind:GcpVertexAiNotebook
+  - kind:GcpVpcNetwork
+  - kind:GcpWorkloadIdentityPool
+  - kind:GcpWorkloadIdentityPoolProvider

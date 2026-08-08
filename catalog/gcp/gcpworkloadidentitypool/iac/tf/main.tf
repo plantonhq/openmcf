@@ -15,13 +15,6 @@
 # fails outright — so treat pool IDs as long-lived and prefer `disabled` for
 # temporary shutoffs.
 resource "google_iam_workload_identity_pool" "this" {
-  # google-beta: on the 6.x provider line, `mode` and the inline
-  # certificate-issuance/trust-config blocks exist only in the beta provider
-  # (they are GA in the API and in the provider's next major). The beta
-  # provider is a strict superset, so GA-only configurations behave
-  # identically here.
-  provider = google-beta
-
   workload_identity_pool_id = var.spec.workload_identity_pool_id
   project                   = local.project_id
   display_name              = var.spec.display_name

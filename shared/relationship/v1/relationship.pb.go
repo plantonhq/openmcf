@@ -11,7 +11,6 @@ import (
 	cloudresourcekind "github.com/plantonhq/planton/shared/cloudresourcekind"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	_ "google.golang.org/protobuf/types/descriptorpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -161,7 +160,7 @@ var File_shared_relationship_v1_relationship_proto protoreflect.FileDescriptor
 
 const file_shared_relationship_v1_relationship_proto_rawDesc = "" +
 	"\n" +
-	")shared/relationship/v1/relationship.proto\x12\"dev.planton.shared.relationship.v1\x1a\x1bbuf/validate/validate.proto\x1a google/protobuf/descriptor.proto\x1a2shared/cloudresourcekind/cloud_resource_kind.proto\"\xe6\x02\n" +
+	")shared/relationship/v1/relationship.proto\x12\"dev.planton.shared.relationship.v1\x1a\x1bbuf/validate/validate.proto\x1a2shared/cloudresourcekind/cloud_resource_kind.proto\"\xe6\x02\n" +
 	"\x19CloudResourceRelationship\x12S\n" +
 	"\x04kind\x18\x01 \x01(\x0e27.dev.planton.shared.cloudresourcekind.CloudResourceKindB\x06\xbaH\x03\xc8\x01\x01R\x04kind\x12\x10\n" +
 	"\x03env\x18\x02 \x01(\tR\x03env\x12\x1a\n" +

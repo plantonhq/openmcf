@@ -4,28 +4,31 @@ Every resource whose kind starts with `Kubernetes` (`KubernetesIstio`,
 `KubernetesCertManager`, `KubernetesDeployment`, `KubernetesGatewayApiCrds`,
 …) deploys INTO a cluster, and it reaches that cluster through a **Kubernetes
 provider connection** — a platform record carrying the cluster's endpoint and
-credentials. This is the single most-missed wiring in composed charts: a
-Kubernetes resource without a resolvable connection fails the moment its
-pipeline node starts, with no cloud call ever made.
+credentials.
 
 How a resource's connection resolves, in order:
 
 1. Explicit spec value (`spec.provider_info.connection`) — rarely used in charts.
-2. The `planton.dev/connection` **annotation** — the chart mechanism. Value is
-   the org-scoped connection slug.
+2. The `planton.dev/connection` **annotation** — the same-chart mechanism.
+   Value is the org-scoped connection slug.
 3. The environment's default Kubernetes connection.
 4. The organization's default Kubernetes connection.
 
-Fresh instances and new organizations usually have NO Kubernetes defaults, so
-in practice: **every Kubernetes-kind resource in a chart must carry the
-`planton.dev/connection` annotation.** Decide which of the two scenarios below
-applies before writing any Kubernetes manifest.
+The platform keeps the DEFAULT arm loaded: when a cluster deploys through
+Planton, its materialized connection is authorized org-wide and becomes the
+organization's default Kubernetes connection if none exists yet. The same
+happens when a user connects an existing cluster through the desktop. So the
+connection question has exactly one decision, made before writing any
+Kubernetes manifest: **is the cluster IN this chart, or not?**
 
 ## Scenario 1 — the chart creates the cluster too (one-run composition)
 
 The platform automatically creates ("materializes") a Kubernetes provider
 connection when a cluster resource (e.g. `AwsEksCluster`) finishes deploying —
-before any dependent node is released. The chart's job is to make the
+before any dependent node is released. Here the workloads DO annotate: the
+binding to the chart's own cluster must be deterministic, and the default
+binding cannot promise that (the organization may already run another cluster
+whose connection holds the default). The chart's job is to make the
 connection's name and the workloads' annotation agree, and the pattern that
 makes disagreement impossible is ONE values param used on BOTH ends:
 
@@ -79,29 +82,32 @@ Rules of the pattern:
 
 ## Scenario 2 — the cluster already exists
 
-When the user deploys onto a cluster that is NOT in this chart, no cluster
-resource and no `connection-name` annotation exist here. The workloads
-annotate the **existing** connection's slug, taken as a param so the user can
-point the chart at any cluster:
+When the user deploys onto a cluster that is NOT in this chart, **write no
+connection wiring at all** — no annotation, no connection param. The cluster's
+connection (materialized when it deployed through Planton, or created when the
+user connected it) is the organization's default Kubernetes binding, and the
+platform resolves it for every Kubernetes resource that carries no annotation.
+A `cluster_connection`-style param here is invented ceremony: it makes the
+user hand-carry a value the platform already knows — the exact failure class
+the references-before-params check exists to prevent, in connection form.
+
+In this scenario the workloads also need no `runs_on` relationship to a
+cluster — the cluster is not in this chart's graph.
+
+**The multi-cluster exception, by name.** The default binding points at ONE
+cluster. When the organization runs several and the user's words name a
+specific one that may not be the default ("deploy this to the staging
+cluster"), ground the intended cluster's connection slug with the CLI (list
+the org's Kubernetes provider connections) and annotate the workloads with
+that literal slug — an explicit, grounded choice, never a param the user must
+fill:
 
 ```yaml
-params:
-  - name: cluster_connection
-    description: Slug of the Kubernetes provider connection for the target cluster
-    value: ""
-
-# every Kubernetes workload:
+# only when the org runs multiple clusters AND the target is not the default:
 metadata:
   annotations:
-    planton.dev/connection: "{{ values.cluster_connection }}"
+    planton.dev/connection: staging-cluster   # grounded via the CLI, never guessed
 ```
-
-Ground the actual slug instead of guessing: if the cluster was deployed
-through Planton (e.g. by another chart), its connection exists at the name
-that chart declared — look it up (`planton` CLI: list the org's Kubernetes
-provider connections) and propose it as the param default. In this scenario
-the workloads need no `runs_on` relationship to a cluster — the cluster is
-not in this chart's graph.
 
 ## Ordering — a separate concern from credentials
 
@@ -131,13 +137,15 @@ users create; they never belong in templates.
 
 ## Self-check before finishing any chart with Kubernetes kinds
 
-1. Every `Kubernetes*` resource carries `planton.dev/connection`.
-2. Scenario 1: the cluster carries `planton.dev/connection-name`, and every
-   workload's annotation uses the same values expression.
+1. The cluster is IN this chart → every `Kubernetes*` resource carries
+   `planton.dev/connection`, the cluster carries `planton.dev/connection-name`,
+   and both ends use the same values expression.
+2. The cluster is NOT in this chart → no connection annotation and no
+   connection param anywhere (unless the multi-cluster exception applied, in
+   which case the annotation carries a CLI-grounded literal slug).
 3. Every workload has a `runs_on` relationship (node group when pods are
-   scheduled and one exists; cluster otherwise) — Scenario 1 only.
+   scheduled and one exists; cluster otherwise) — same-chart clusters only.
 4. Kubernetes resources are `depends_on`-chained in dependency order
    (CRDs → operators → instances).
-5. `planton chart build` is green — but note the build cannot verify the
-   annotation matches a connection that will exist at deploy time; the
-   self-check above is what protects the deploy.
+5. `planton chart build` is green — but note the build cannot verify
+   connection wiring at all; this self-check is what protects the deploy.

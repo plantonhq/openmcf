@@ -36,13 +36,8 @@ type GcpVertexAiEndpointPrivateServiceConnectConfig struct {
 	// service attachment. Each entry is a GCP project ID or project number.
 	// If empty, any project in the same organization can connect.
 	ProjectAllowlist []string `protobuf:"bytes,1,rep,name=project_allowlist,json=projectAllowlist,proto3" json:"project_allowlist,omitempty"`
-	// If true, PSC connections require IAM authorization (secure PSC) --
-	// callers must hold permission on the endpoint in addition to reaching
-	// its service attachment. Adds slight latency; leave false for
-	// network-boundary-only isolation.
-	EnableSecurePrivateServiceConnect bool `protobuf:"varint,2,opt,name=enable_secure_private_service_connect,json=enableSecurePrivateServiceConnect,proto3" json:"enable_secure_private_service_connect,omitempty"`
-	unknownFields                     protoimpl.UnknownFields
-	sizeCache                         protoimpl.SizeCache
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) Reset() {
@@ -80,13 +75,6 @@ func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) GetProjectAllowlist() [
 		return x.ProjectAllowlist
 	}
 	return nil
-}
-
-func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) GetEnableSecurePrivateServiceConnect() bool {
-	if x != nil {
-		return x.EnableSecurePrivateServiceConnect
-	}
-	return false
 }
 
 // GcpVertexAiEndpointRequestResponseLoggingConfig samples online
@@ -379,10 +367,9 @@ var File_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto protoreflect.FileDe
 
 const file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/gcp/gcpvertexaiendpoint/v1alpha1/spec.proto\x12,dev.planton.gcp.gcpvertexaiendpoint.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xaf\x01\n" +
+	"3catalog/gcp/gcpvertexaiendpoint/v1alpha1/spec.proto\x12,dev.planton.gcp.gcpvertexaiendpoint.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x8a\x01\n" +
 	".GcpVertexAiEndpointPrivateServiceConnectConfig\x12+\n" +
-	"\x11project_allowlist\x18\x01 \x03(\tR\x10projectAllowlist\x12P\n" +
-	"%enable_secure_private_service_connect\x18\x02 \x01(\bR!enableSecurePrivateServiceConnect\"\xa9\x02\n" +
+	"\x11project_allowlist\x18\x01 \x03(\tR\x10projectAllowlistJ\x04\b\x02\x10\x03R%enable_secure_private_service_connect\"\xa9\x02\n" +
 	"/GcpVertexAiEndpointRequestResponseLoggingConfig\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x97\x01\n" +
 	"\rsampling_rate\x18\x02 \x01(\x01Br\xbaHo\xba\x01l\n" +
