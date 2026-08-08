@@ -17,23 +17,34 @@ SCOPE
 - Do not modify other forge-generated files
 
 PROVIDER RANGES
-The cloud_resource_kind.proto uses the following numeric ranges:
+The cloud_resource_kind.proto uses 1,000-wide provider bands (the
+authoritative statement is the band comment table at the top of the enum
+itself -- read it if this list ever disagrees):
 - Test/dev/custom: 1-49
 - SaaS platforms: 50-199
-- AWS: 200-399
-- Azure: 400-599
-- GCP: 600-799
-- Kubernetes: 800-999
-- DigitalOcean: 1200-1499
-- Civo: 1500-1799
-- Cloudflare: 1800-2099
-- Auth0: 2100-2299
-- OpenFGA: 2300-2499
-- OpenStack: 2500-2799
-- Scaleway: 2800-2999
-- Alibaba Cloud: 3000-3299
-- OCI: 3300-3499
-- Hetzner Cloud: 3500-3699
+- AWS: 1000-1999
+- Azure: 2000-2999
+- GCP: 3000-3999
+- Kubernetes: 4000-4999
+- DigitalOcean: 5000-5999
+- Civo: 6000-6999
+- Cloudflare: 7000-7999
+- Auth0: 8000-8999
+- OpenFGA: 9000-9999
+- OpenStack: 10000-10999
+- Scaleway: 11000-11999
+- Alibaba Cloud: 12000-12999
+- OCI: 13000-13999
+- Hetzner Cloud: 14000-14999
+
+Providers organize their bands into FAMILY SUB-BANDS (see the `--- ... ---`
+comments inside each band). When a wave of related kinds is planned, its
+sub-band is allocated deliberately at wave start -- never grab numbers ad
+hoc inside someone else's family block. Enum numbers are pinned by the
+registry snapshot: after adding entries, regenerate
+`pkg/crkreflect/testdata/registry_numbers.txt` with
+`go test ./pkg/crkreflect/ -run TestRegistryNumberSnapshot -update` in the
+same change.
 
 ID PREFIX PATTERNS
 - AWS: typically "aws" prefix + 2-6 char abbreviation (e.g., "awsvpc", "ecr", "s3bkt")

@@ -82,6 +82,7 @@ var verifiers = map[string]Verifier{
 	"azurekeyvaultkey":                               &keyVaultKeyVerifier{},
 	"azurelinuxwebapp":                               &linuxWebAppVerifier{},
 	"azureloadbalancer":                              &loadBalancerVerifier{},
+	"azurelocalnetworkgateway":                       &localNetworkGatewayVerifier{},
 	"azureloganalyticsworkspace":                     &logAnalyticsWorkspaceVerifier{},
 	"azuremanageddisk":                               &managedDiskVerifier{},
 	"azuremanagedredis":                              &managedRedisVerifier{},
@@ -135,6 +136,8 @@ var verifiers = map[string]Verifier{
 	"azurevirtualmachine":                            &virtualMachineVerifier{},
 	"azurevirtualmachinescaleset":                    &virtualMachineScaleSetVerifier{},
 	"azurevirtualnetwork":                            &virtualNetworkVerifier{},
+	"azurevirtualnetworkgateway":                     &virtualNetworkGatewayVerifier{},
+	"azurevirtualnetworkgatewayconnection":           &virtualNetworkGatewayConnectionVerifier{},
 	"azurevirtualnetworkpeering":                     &virtualNetworkPeeringVerifier{},
 	"azurewebapplicationfirewallpolicy":              &webApplicationFirewallPolicyVerifier{},
 }

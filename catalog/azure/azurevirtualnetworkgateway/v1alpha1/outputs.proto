@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevirtualnetworkgateway.v1alpha1;
+
+// **AzureVirtualNetworkGatewayStackOutputs** captures the outputs of
+// provisioning a virtual network gateway.
+message AzureVirtualNetworkGatewayStackOutputs {
+  // The Azure Resource Manager ID of the gateway -- what connections
+  // reference as virtual_network_gateway_id.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworkGateways/{name}
+  string virtual_network_gateway_id = 1;
+
+  // The name of the gateway resource.
+  string virtual_network_gateway_name = 2;
+
+  // The ARM ids of the gateway's NAT rules, keyed by rule name --
+  // connections opt into rules via their egress/ingress NAT rule id
+  // lists. Empty when the spec defines no nat_rules. (The gateway's
+  // PUBLIC address is not an output here: it belongs to the referenced
+  // AzurePublicIp resource and surfaces through that kind's outputs.)
+  map<string, string> nat_rule_ids = 3;
+}

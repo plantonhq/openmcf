@@ -1524,6 +1524,9 @@ Allowed values (use exactly as shown):
 - `AzureFirewallPolicyRuleCollectionGroup` -- AzureFirewallPolicy is a prerequisite because a rule collection group is a child document of a referenced policy (the resource group chains transitively through the policy).
 - `AzureFirewall` -- AzureSubnet is a prerequisite because a VNet-deployed firewall's data path lives in a dedicated subnet that must be named exactly "AzureFirewallSubnet" (the virtual network and resource group chain transitively through the subnet). The E2E install profile publishes a fixture subnet with that exact name and a /26 prefix.
 - `AzureIpGroup`
+- `AzureVirtualNetworkGateway`
+- `AzureVirtualNetworkGatewayConnection`
+- `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -2303,6 +2306,9 @@ Allowed values (use exactly as shown):
 - `AzureFirewallPolicyRuleCollectionGroup` -- AzureFirewallPolicy is a prerequisite because a rule collection group is a child document of a referenced policy (the resource group chains transitively through the policy).
 - `AzureFirewall` -- AzureSubnet is a prerequisite because a VNet-deployed firewall's data path lives in a dedicated subnet that must be named exactly "AzureFirewallSubnet" (the virtual network and resource group chain transitively through the subnet). The E2E install profile publishes a fixture subnet with that exact name and a /26 prefix.
 - `AzureIpGroup`
+- `AzureVirtualNetworkGateway`
+- `AzureVirtualNetworkGatewayConnection`
+- `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -4235,6 +4241,9 @@ Allowed values (use exactly as shown):
 - `AzureFirewallPolicyRuleCollectionGroup` -- AzureFirewallPolicy is a prerequisite because a rule collection group is a child document of a referenced policy (the resource group chains transitively through the policy).
 - `AzureFirewall` -- AzureSubnet is a prerequisite because a VNet-deployed firewall's data path lives in a dedicated subnet that must be named exactly "AzureFirewallSubnet" (the virtual network and resource group chain transitively through the subnet). The E2E install profile publishes a fixture subnet with that exact name and a /26 prefix.
 - `AzureIpGroup`
+- `AzureVirtualNetworkGateway`
+- `AzureVirtualNetworkGatewayConnection`
+- `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -5014,6 +5023,9 @@ Allowed values (use exactly as shown):
 - `AzureFirewallPolicyRuleCollectionGroup` -- AzureFirewallPolicy is a prerequisite because a rule collection group is a child document of a referenced policy (the resource group chains transitively through the policy).
 - `AzureFirewall` -- AzureSubnet is a prerequisite because a VNet-deployed firewall's data path lives in a dedicated subnet that must be named exactly "AzureFirewallSubnet" (the virtual network and resource group chain transitively through the subnet). The E2E install profile publishes a fixture subnet with that exact name and a /26 prefix.
 - `AzureIpGroup`
+- `AzureVirtualNetworkGateway`
+- `AzureVirtualNetworkGatewayConnection`
+- `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -6982,6 +6994,9 @@ Allowed values (use exactly as shown):
 - `AzureFirewallPolicyRuleCollectionGroup` -- AzureFirewallPolicy is a prerequisite because a rule collection group is a child document of a referenced policy (the resource group chains transitively through the policy).
 - `AzureFirewall` -- AzureSubnet is a prerequisite because a VNet-deployed firewall's data path lives in a dedicated subnet that must be named exactly "AzureFirewallSubnet" (the virtual network and resource group chain transitively through the subnet). The E2E install profile publishes a fixture subnet with that exact name and a /26 prefix.
 - `AzureIpGroup`
+- `AzureVirtualNetworkGateway`
+- `AzureVirtualNetworkGatewayConnection`
+- `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -7761,6 +7776,9 @@ Allowed values (use exactly as shown):
 - `AzureFirewallPolicyRuleCollectionGroup` -- AzureFirewallPolicy is a prerequisite because a rule collection group is a child document of a referenced policy (the resource group chains transitively through the policy).
 - `AzureFirewall` -- AzureSubnet is a prerequisite because a VNet-deployed firewall's data path lives in a dedicated subnet that must be named exactly "AzureFirewallSubnet" (the virtual network and resource group chain transitively through the subnet). The E2E install profile publishes a fixture subnet with that exact name and a /26 prefix.
 - `AzureIpGroup`
+- `AzureVirtualNetworkGateway`
+- `AzureVirtualNetworkGatewayConnection`
+- `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`

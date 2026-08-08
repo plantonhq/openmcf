@@ -1,0 +1,98 @@
+locals {
+  resource_id = (
+    var.metadata.id != null && var.metadata.id != ""
+    ? var.metadata.id
+    : var.metadata.name
+  )
+
+  # PARITY-EXCEPTION: resource_kind here is the family-wide snake-case
+  # literal and resource_id falls back to metadata.name, while the Pulumi
+  # module emits the lowered CloudResourceKind enum string and omits
+  # resource_id when metadata.id is empty. Output-neutral (tags never feed
+  # stack outputs); aligning the two shapes is a family-wide convention
+  # change, not a per-kind fix.
+  base_tags = {
+    "resource"      = "true"
+    "resource_id"   = local.resource_id
+    "resource_kind" = "azure_virtual_network_gateway"
+    "resource_name" = var.metadata.name
+  }
+
+  org_tag = (
+    var.metadata.org != null && var.metadata.org != ""
+  ) ? { "organization" = var.metadata.org } : {}
+
+  env_tag = (
+    var.metadata.env != null && var.metadata.env != ""
+  ) ? { "environment" = var.metadata.env } : {}
+
+  # Metadata-derived tags first, then the user's spec tags merged over them:
+  # user tags deliberately win so an org's governance conventions (cost
+  # center, owner) can override the derived values where they collide.
+  final_tags = merge(local.base_tags, local.org_tag, local.env_tag, var.spec.tags)
+
+  # Enum wire maps. tfvars carries FULL proto enum value names; the maps
+  # translate them to azurerm's exact (case-sensitive) vocabulary. Absent
+  # type/vpn_type fall back to the site-to-site defaults, sent explicitly
+  # so both engines produce identical payloads.
+  type_wire = {
+    "VPN"           = "Vpn"
+    "EXPRESS_ROUTE" = "ExpressRoute"
+  }
+  gateway_type = lookup(local.type_wire, coalesce(var.spec.type, "VPN"), "Vpn")
+
+  vpn_type_wire = {
+    "ROUTE_BASED"  = "RouteBased"
+    "POLICY_BASED" = "PolicyBased"
+  }
+  vpn_type = lookup(local.vpn_type_wire, coalesce(var.spec.vpn_type, "ROUTE_BASED"), "RouteBased")
+
+  # The SKU is spec-required (never empty for a valid manifest).
+  sku_wire = {
+    "BASIC"             = "Basic"
+    "STANDARD"          = "Standard"
+    "HIGH_PERFORMANCE"  = "HighPerformance"
+    "ULTRA_PERFORMANCE" = "UltraPerformance"
+    "VPN_GW_1"          = "VpnGw1"
+    "VPN_GW_2"          = "VpnGw2"
+    "VPN_GW_3"          = "VpnGw3"
+    "VPN_GW_4"          = "VpnGw4"
+    "VPN_GW_5"          = "VpnGw5"
+    "VPN_GW_1_AZ"       = "VpnGw1AZ"
+    "VPN_GW_2_AZ"       = "VpnGw2AZ"
+    "VPN_GW_3_AZ"       = "VpnGw3AZ"
+    "VPN_GW_4_AZ"       = "VpnGw4AZ"
+    "VPN_GW_5_AZ"       = "VpnGw5AZ"
+    "ER_GW_1_AZ"        = "ErGw1AZ"
+    "ER_GW_2_AZ"        = "ErGw2AZ"
+    "ER_GW_3_AZ"        = "ErGw3AZ"
+    "ER_GW_SCALE"       = "ErGwScale"
+  }
+  sku = lookup(local.sku_wire, var.spec.sku, null)
+
+  # Sent only when specified -- the provider treats generation as
+  # Computed, so omission lets Azure pick the SKU's default.
+  generation_wire = {
+    "GENERATION1" = "Generation1"
+    "GENERATION2" = "Generation2"
+    "NONE"        = "None"
+  }
+  generation = (
+    var.spec.generation != null && var.spec.generation != ""
+  ) ? lookup(local.generation_wire, var.spec.generation, null) : null
+
+  allocation_wire = {
+    "DYNAMIC" = "Dynamic"
+    "STATIC"  = "Static"
+  }
+
+  nat_mode_wire = {
+    "EGRESS_SNAT"  = "EgressSnat"
+    "INGRESS_SNAT" = "IngressSnat"
+  }
+
+  nat_type_wire = {
+    "STATIC_NAT"  = "Static"
+    "DYNAMIC_NAT" = "Dynamic"
+  }
+}

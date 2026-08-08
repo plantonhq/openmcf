@@ -318,6 +318,7 @@ Fields on other kinds that can point at this resource:
 | AzureLoadBalancer | `spec.frontendIpConfigurations[].publicIpAddressId` | `status.outputs.public_ip_id` |
 | AzureNatGateway | `spec.publicIpIds` | `status.outputs.public_ip_id` |
 | AzureNetworkInterface | `spec.ipConfigurations[].publicIpAddressId` | `status.outputs.public_ip_id` |
+| AzureVirtualNetworkGateway | `spec.ipConfigurations[].publicIpAddressId` | `status.outputs.public_ip_id` |
 
 ## See Also
 

@@ -1,0 +1,13 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureLocalNetworkGateway
+metadata:
+  name: my-bgp-site
+spec:
+  region: <azure-region>
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: hq-datacenter-bgp
+  gatewayFqdn: "<your-device-fqdn>" # re-resolved periodically; use gatewayAddress for static IPs
+  bgpSettings:
+    asn: <your-onprem-asn> # must differ from the Azure gateway's; 65515-65520 are Azure-reserved
+    bgpPeeringAddress: "<your-device-tunnel-interface-ip>" # INSIDE the tunnel, never the public address

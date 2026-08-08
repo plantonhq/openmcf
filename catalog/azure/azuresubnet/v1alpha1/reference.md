@@ -407,6 +407,7 @@ Fields on other kinds that can point at this resource:
 | AzureServiceBusNamespace | `spec.networkRuleSet.networkRules[].subnetId` | `status.outputs.subnet_id` |
 | AzureStorageAccount | `spec.networkRules.virtualNetworkSubnetIds` | `status.outputs.subnet_id` |
 | AzureVirtualMachineScaleSet | `spec.networkInterfaces[].ipConfigurations[].subnetId` | `status.outputs.subnet_id` |
+| AzureVirtualNetworkGateway | `spec.ipConfigurations[].subnetId` | `status.outputs.subnet_id` |
 
 ## See Also
 

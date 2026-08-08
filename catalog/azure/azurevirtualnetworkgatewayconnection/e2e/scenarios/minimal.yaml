@@ -1,0 +1,55 @@
+# Minimal AzureVirtualNetworkGatewayConnection scenario: a site-to-site
+# (IPsec) tunnel joining the fixture VPN gateway to the fixture site
+# description, with a pinned IPsec/IKE proposal and DPD -- the flagship
+# proof of the complete site-to-site story: site (local network gateway)
+# + gateway + connection.
+#
+# PROVISIONED IS NOT CONNECTED: the fixture site's endpoint is a
+# documentation-range address with no real device behind it, so the
+# tunnel provisions in ARM but never reaches Connected -- the verifier
+# asserts ARM resource state, never tunnel-up. The lane's cost is
+# dominated by its prerequisite chain: the fixture VPN gateway's 25-45
+# minute create (plus 10-20 minute delete) runs INSIDE this lane.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualNetworkGatewayConnection
+metadata:
+  name: planton-oss-e2e-azurevirtualnetworkgatewayconnection-smoke
+  id: planton-oss-e2e-azurevirtualnetworkgatewayconnection-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevirtualnetworkgatewayconnection
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-vngc-smoke
+  type: IPSEC
+  virtualNetworkGatewayId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vng
+  localNetworkGatewayId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-lngw
+  # An e2e-only literal: real manifests reference a secret (or omit the
+  # key to let Azure generate one). No tunnel establishes against the
+  # fixture site, so the value proves only that ARM stores it.
+  sharedKey:
+    value: planton-oss-e2e-psk-3f9c1a
+  dpdTimeoutSeconds: 45
+  ipsecPolicy:
+    dhGroup: DHGroup14
+    ikeEncryption: AES256
+    ikeIntegrity: SHA256
+    ipsecEncryption: AES256
+    ipsecIntegrity: SHA256
+    pfsGroup: PFS2048
+  tags:
+    e2e-suite: azure
+    purpose: smoke

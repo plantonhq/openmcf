@@ -214,6 +214,7 @@ import (
 	azurekeyvaultkeyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurekeyvaultkey/v1alpha1"
 	azurelinuxwebappv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurelinuxwebapp/v1alpha1"
 	azureloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureloadbalancer/v1alpha1"
+	azurelocalnetworkgatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurelocalnetworkgateway/v1alpha1"
 	azureloganalyticsworkspacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureloganalyticsworkspace/v1alpha1"
 	azuremanageddiskv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremanageddisk/v1alpha1"
 	azuremanagedredisv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremanagedredis/v1alpha1"
@@ -267,6 +268,8 @@ import (
 	azurevirtualmachinev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualmachine/v1alpha1"
 	azurevirtualmachinescalesetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualmachinescaleset/v1alpha1"
 	azurevirtualnetworkv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualnetwork/v1alpha1"
+	azurevirtualnetworkgatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualnetworkgateway/v1alpha1"
+	azurevirtualnetworkgatewayconnectionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualnetworkgatewayconnection/v1alpha1"
 	azurevirtualnetworkpeeringv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualnetworkpeering/v1alpha1"
 	azurewebapplicationfirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurewebapplicationfirewallpolicy/v1alpha1"
 	civobucketv1alpha1 "github.com/plantonhq/planton/catalog/civo/civobucket/v1alpha1"
@@ -857,6 +860,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureKeyVaultKey:                               &azurekeyvaultkeyv1alpha1.AzureKeyVaultKey{},
 	cloudresourcekind.CloudResourceKind_AzureLinuxWebApp:                               &azurelinuxwebappv1alpha1.AzureLinuxWebApp{},
 	cloudresourcekind.CloudResourceKind_AzureLoadBalancer:                              &azureloadbalancerv1alpha1.AzureLoadBalancer{},
+	cloudresourcekind.CloudResourceKind_AzureLocalNetworkGateway:                       &azurelocalnetworkgatewayv1alpha1.AzureLocalNetworkGateway{},
 	cloudresourcekind.CloudResourceKind_AzureLogAnalyticsWorkspace:                     &azureloganalyticsworkspacev1alpha1.AzureLogAnalyticsWorkspace{},
 	cloudresourcekind.CloudResourceKind_AzureManagedDisk:                               &azuremanageddiskv1alpha1.AzureManagedDisk{},
 	cloudresourcekind.CloudResourceKind_AzureManagedRedis:                              &azuremanagedredisv1alpha1.AzureManagedRedis{},
@@ -910,6 +914,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureVirtualMachine:                            &azurevirtualmachinev1alpha1.AzureVirtualMachine{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualMachineScaleSet:                    &azurevirtualmachinescalesetv1alpha1.AzureVirtualMachineScaleSet{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetwork:                            &azurevirtualnetworkv1alpha1.AzureVirtualNetwork{},
+	cloudresourcekind.CloudResourceKind_AzureVirtualNetworkGateway:                     &azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGateway{},
+	cloudresourcekind.CloudResourceKind_AzureVirtualNetworkGatewayConnection:           &azurevirtualnetworkgatewayconnectionv1alpha1.AzureVirtualNetworkGatewayConnection{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetworkPeering:                     &azurevirtualnetworkpeeringv1alpha1.AzureVirtualNetworkPeering{},
 	cloudresourcekind.CloudResourceKind_AzureWebApplicationFirewallPolicy:              &azurewebapplicationfirewallpolicyv1alpha1.AzureWebApplicationFirewallPolicy{},
 }

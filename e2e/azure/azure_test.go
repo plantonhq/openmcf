@@ -259,6 +259,33 @@ func TestAzureVirtualNetworkPeering_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurevirtualnetworkpeering", "terraform")
 }
 
+// --- Azure Virtual Network Gateway (THE slow lane: fixture GatewaySubnet + dedicated PIP -> VpnGw1 gateway + NAT rule; 25-45 min create) ---
+
+func TestAzureVirtualNetworkGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualnetworkgateway", "pulumi")
+}
+func TestAzureVirtualNetworkGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualnetworkgateway", "terraform")
+}
+
+// --- Azure Local Network Gateway (pure ARM metadata: the on-premises site description; seconds) ---
+
+func TestAzureLocalNetworkGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurelocalnetworkgateway", "pulumi")
+}
+func TestAzureLocalNetworkGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurelocalnetworkgateway", "terraform")
+}
+
+// --- Azure Virtual Network Gateway Connection (composed: fixture gateway + fixture site -> IPsec tunnel; the fixture gateway's slow cycle runs INSIDE this lane) ---
+
+func TestAzureVirtualNetworkGatewayConnection_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualnetworkgatewayconnection", "pulumi")
+}
+func TestAzureVirtualNetworkGatewayConnection_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualnetworkgatewayconnection", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {

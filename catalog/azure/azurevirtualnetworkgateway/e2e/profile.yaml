@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurevirtualnetworkgateway
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, offline tofu plan green); live dual-engine proof has
+  # not yet run. A NEW slow class for the suite: VPN gateway creation
+  # runs 25-45 minutes and deletion 10-20, so a single engine lane
+  # (fixtures -> gateway + NAT rule -> verify -> destroy -> verify gone)
+  # budgets a full cycle -- the timeout leaves headroom for a slow region
+  # day. VpnGw1 keeps spend trivial (~$0.19/hour while the lane runs).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 90

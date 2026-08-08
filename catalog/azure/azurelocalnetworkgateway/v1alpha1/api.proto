@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurelocalnetworkgateway.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurelocalnetworkgateway/v1alpha1/outputs.proto";
+import "catalog/azure/azurelocalnetworkgateway/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureLocalNetworkGateway is the top-level API resource describing the
+// ON-PREMISES side of a site-to-site VPN: the VPN device's public
+// endpoint and the address space behind it. It deploys nothing
+// on-premises -- it is the address-book entry an
+// AzureVirtualNetworkGatewayConnection points at, one per site.
+message AzureLocalNetworkGateway {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureLocalNetworkGateway".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureLocalNetworkGateway'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Local network gateway specification.
+  AzureLocalNetworkGatewaySpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureLocalNetworkGatewayStatus status = 5;
+}
+
+// AzureLocalNetworkGatewayStatus holds the deployment outputs.
+message AzureLocalNetworkGatewayStatus {
+  // Stack outputs from the IaC deployment.
+  AzureLocalNetworkGatewayStackOutputs outputs = 1;
+}

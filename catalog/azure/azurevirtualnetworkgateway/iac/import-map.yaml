@@ -1,0 +1,23 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurevirtualnetworkgateway
+spec:
+  # A gateway's identity is its full ARM resource ID -- discoverable from a
+  # prior deploy's outputs or the portal, never derivable from the spec
+  # alone (the subscription id is not spec knowledge).
+  values:
+    - name: virtual_network_gateway_id
+      derivations:
+        - from_stack_output: virtual_network_gateway_id
+      where_to_find: >-
+        Portal -> Virtual network gateways -> the gateway -> Properties ->
+        Resource ID, or `az network vnet-gateway show -g <rg> -n <name>
+        --query id`.
+    - name: nat_rule_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The rule's name in the spec's natRules list (the module keys one
+        ARM child per rule name); `az network vnet-gateway nat-rule list`
+        shows what exists cloud-side.
