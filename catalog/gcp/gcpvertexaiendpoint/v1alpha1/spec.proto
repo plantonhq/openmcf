@@ -18,11 +18,11 @@ message GcpVertexAiEndpointPrivateServiceConnectConfig {
   // If empty, any project in the same organization can connect.
   repeated string project_allowlist = 1;
 
-  // If true, PSC connections require IAM authorization (secure PSC) --
-  // callers must hold permission on the endpoint in addition to reaching
-  // its service attachment. Adds slight latency; leave false for
-  // network-boundary-only isolation.
-  bool enable_secure_private_service_connect = 2;
+  // Secure PSC (IAM authorization on top of network reachability) is not
+  // modeled: the GA provider does not expose it (pre-release surface only),
+  // and GA is the catalog's parity baseline.
+  reserved 2;
+  reserved "enable_secure_private_service_connect";
 }
 
 // GcpVertexAiEndpointRequestResponseLoggingConfig samples online

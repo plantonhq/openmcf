@@ -23,9 +23,9 @@ resource "google_vertex_ai_endpoint" "this" {
   # provider config happens to carry one. The two fields are the same axis
   # for this regional API, so the module pins region to location and the
   # spec keeps a single honest field.
-  region       = local.location
-  project      = local.project_id
-  labels       = local.final_labels
+  region  = local.location
+  project = local.project_id
+  labels  = local.final_labels
 
   description                = var.spec.description != "" ? var.spec.description : null
   dedicated_endpoint_enabled = var.spec.dedicated_endpoint_enabled ? true : null
@@ -44,18 +44,14 @@ resource "google_vertex_ai_endpoint" "this" {
   }
 
   # Private Service Connect: the endpoint exposed via a service attachment.
-  # The secure flag adds IAM authorization on top of network reachability.
-  # PARITY/UPGRADE NOTE: enable_secure_private_service_connect is GA on the
-  # released 6.x line (verified via the installed 6.50.0 provider schema) but
-  # the provider's v7 upgrade guide removes it from GA (beta-only there). The
-  # catalog-wide major bump must either drop this field or move the module to
-  # google-beta; the beta-bridged Pulumi engine keeps it either way.
+  # Secure PSC (IAM authorization on top of network reachability) is not
+  # offered: the GA provider does not expose it, and GA is the catalog's
+  # parity baseline.
   dynamic "private_service_connect_config" {
     for_each = var.spec.private_service_connect_config != null ? [var.spec.private_service_connect_config] : []
     content {
-      enable_private_service_connect        = true
-      enable_secure_private_service_connect = private_service_connect_config.value.enable_secure_private_service_connect ? true : null
-      project_allowlist                     = length(private_service_connect_config.value.project_allowlist) > 0 ? private_service_connect_config.value.project_allowlist : null
+      enable_private_service_connect = true
+      project_allowlist              = length(private_service_connect_config.value.project_allowlist) > 0 ? private_service_connect_config.value.project_allowlist : null
     }
   }
 

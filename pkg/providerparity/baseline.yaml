@@ -48,6 +48,7 @@ entries:
   - kind:GcpFirestoreDatabase
   - kind:GcpFirestoreIndex
   - kind:GcpFirewallRule
+  - kind:GcpGcsBucket
   - kind:GcpGkeCluster
   - kind:GcpGkeNodePool
   - kind:GcpGkeWorkloadIdentityBinding

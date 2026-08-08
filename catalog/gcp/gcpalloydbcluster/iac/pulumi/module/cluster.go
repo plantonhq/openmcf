@@ -29,12 +29,10 @@ func cluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*a
 		ClusterId: pulumi.String(spec.ClusterName),
 		Location:  pulumi.String(spec.Location),
 		Labels:    pulumi.ToStringMap(locals.GcpLabels),
-		// The bridged provider carries the beta-only client-side
-		// deletion_protection flag, which defaults TRUE and blocks destroy.
-		// The released GA provider (the Terraform engine) has no such
-		// attribute, so it is explicitly disabled here to keep destroy
-		// semantics identical across engines; deletion safety belongs to
-		// the platform's lifecycle layer, not a provider-local flag.
+		// Explicitly false: the provider's client-side deletion_protection
+		// flag defaults TRUE and blocks destroy. Both engines disable it so
+		// destroy semantics stay identical; deletion safety belongs to the
+		// platform's lifecycle layer, not a provider-local flag.
 		DeletionProtection: pulumi.BoolPtr(false),
 	}
 

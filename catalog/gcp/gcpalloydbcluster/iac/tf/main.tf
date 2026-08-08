@@ -15,8 +15,13 @@ resource "google_alloydb_cluster" "cluster" {
   project    = local.project_id
   labels     = local.labels
 
-  # A deletion-protection attribute does not exist for AlloyDB on the
-  # released google provider line — protection is enforced at plan level.
+  # Explicitly false: the provider defaults deletion_protection to true,
+  # which would make every destroy fail until the flag is flipped —
+  # including the platform's own teardown flows. Lifecycle protection is
+  # a platform-level concern (plan review, IAM), not a module default; the
+  # spec deliberately does not model this flag.
+  deletion_protection = false
+
   skip_await_major_version_upgrade = var.spec.skip_await_major_version_upgrade
 
   dynamic "network_config" {
