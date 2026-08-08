@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpFirestoreIndexSpec defines a composite index on a Firestore
 database — the prerequisite for any query that filters or orders on
 multiple fields (Firestore rejects such queries outright until a
@@ -59,6 +61,17 @@ spec:
 | `spec.fields[].arrayConfig` | `string` |  |  |  |
 | `spec.fields[].vectorConfig` | `GcpFirestoreIndexVectorConfig` |  |  |  |
 | `spec.fields[].vectorConfig.dimension` | `int32` | yes |  |  |
+| `spec.fields[].searchConfig` | `GcpFirestoreIndexSearchConfig` |  |  |  |
+| `spec.fields[].searchConfig.textSpec` | `GcpFirestoreIndexTextSpec` |  |  |  |
+| `spec.fields[].searchConfig.textSpec.indexSpecs` | `[]GcpFirestoreIndexTextIndexSpec` | yes |  |  |
+| `spec.fields[].searchConfig.textSpec.indexSpecs[].indexType` | `string` |  |  |  |
+| `spec.fields[].searchConfig.textSpec.indexSpecs[].matchType` | `string` |  |  |  |
+| `spec.fields[].searchConfig.geoSpec` | `GcpFirestoreIndexGeoSpec` |  |  |  |
+| `spec.fields[].searchConfig.geoSpec.geoJsonIndexingDisabled` | `bool` |  |  |  |
+| `spec.multikey` | `bool` |  |  |  |
+| `spec.unique` | `bool` |  |  |  |
+| `spec.skipWait` | `bool` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -117,7 +130,7 @@ ANY_API: Firestore Native queries (the default).
 DATASTORE_MODE_API: Datastore Mode queries.
 
 - default: `ANY_API`
-- rule: api_scope must be ANY_API or DATASTORE_MODE_API
+- rule: api_scope must be ANY_API, DATASTORE_MODE_API, or MONGODB_COMPATIBLE_API
 
 ### spec.density
 
@@ -138,7 +151,7 @@ inequality/sort fields; a vector field, if any, last). At least one
 field. Firestore appends __name__ automatically.
 
 - rule: {"repeated":{"minItems":"1"}}
-- rule: each field declares exactly one of order, array_config, or vector_config
+- rule: each field declares exactly one of order, array_config, vector_config, or search_config
 
 ### spec.fields[].fieldPath
 
@@ -179,6 +192,60 @@ Dimension of the vectors indexed on this field (the embedding
 model's output size, e.g. 768).
 
 - rule: {"required":true,"int32":{"gte":1}}
+
+### spec.fields[].searchConfig
+
+`GcpFirestoreIndexSearchConfig`
+
+- rule: search_config must declare text_spec and/or geo_spec
+
+### spec.fields[].searchConfig.textSpec
+
+`GcpFirestoreIndexTextSpec`
+
+### spec.fields[].searchConfig.textSpec.indexSpecs
+
+`[]GcpFirestoreIndexTextIndexSpec` · required
+
+- rule: {"repeated":{"minItems":"1"}}
+
+### spec.fields[].searchConfig.textSpec.indexSpecs[].indexType
+
+`string`
+
+### spec.fields[].searchConfig.textSpec.indexSpecs[].matchType
+
+`string`
+
+### spec.fields[].searchConfig.geoSpec
+
+`GcpFirestoreIndexGeoSpec`
+
+### spec.fields[].searchConfig.geoSpec.geoJsonIndexingDisabled
+
+`bool`
+
+### spec.multikey
+
+`bool`
+
+### spec.unique
+
+`bool`
+
+### spec.skipWait
+
+`bool`
+
+### spec.deletionPolicy
+
+`string`
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
+## Validation Rules
+
+- `multikey_requires_mongodb_scope`: multikey indexes require api_scope MONGODB_COMPATIBLE_API
 
 ## Outputs
 

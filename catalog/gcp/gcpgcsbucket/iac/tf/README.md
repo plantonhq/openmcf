@@ -6,7 +6,7 @@ This Terraform/OpenTofu module provisions a Cloud Storage bucket (`google_storag
 
 The module enables the Cloud Storage API (`disable_on_destroy=false`) so a fresh project works first try and teardown never disables the API project-wide. User labels are merged beneath the platform attribution labels (`planton-ai_*`), identically to the Pulumi module.
 
-**Safety is the sharp edge**: `force_destroy` honors the spec (default false — destroying a non-empty bucket fails instead of erasing data); a locked retention policy is irreversible and blocks deletion until objects pass retention; the soft-delete block is sent only when the spec sets it, so unset specs follow GCP's server-side 7-day default without a perpetual diff. Numeric lifecycle conditions ride on presence — a set `0` is sent via the provider's send-zero flags, identically to the Pulumi module.
+**Safety is the sharp edge**: `force_destroy` honors the spec (default false — destroying a non-empty bucket fails instead of erasing data); `deletion_policy: PREVENT` fails the destroy outright (ABANDON unmanages without deleting); a locked retention policy is irreversible and blocks deletion until objects pass retention; the soft-delete block is sent only when the spec sets it, so unset specs follow GCP's server-side 7-day default without a perpetual diff. Numeric lifecycle conditions ride on presence — a set `0` is sent via the provider's send-zero flags, identically to the Pulumi module — and size bands (`size_above_bytes` / `size_below_bytes`) follow the same presence contract. One `encryption` block carries both the default CMEK key and the per-encryption-type enforcement for new objects (`NotRestricted` / `FullyRestricted` per GMEK/CMEK/CSEK).
 
 ## Usage with Planton CLI
 

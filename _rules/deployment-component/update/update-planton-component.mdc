@@ -888,9 +888,6 @@ After all updates, **execute validation commands in sequence**:
    If the provider has a committed parity page (`catalog/<provider>/terraform-parity.md`),
    regenerate it in the same change -- `make generate-provider-parity-report` -- the
    page's drift test fails CI when the accounting moved and the page did not.
-   Then regenerate the committed public parity page in the same change --
-   `make generate-provider-parity-report` -- its drift test fails CI whenever the
-   accounting moved and the page did not.
 8. **If any docs/catalog.md changed**: Run `yarn copy-docs && yarn generate-structure`
    in `site/` so the built catalog reflects the update (the copy script self-cleans
    provider directories; the site build does NOT pick up doc changes on its own)

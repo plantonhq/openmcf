@@ -132,6 +132,34 @@ var _ = Describe("GcpComputeDiskSpec validations", func() {
 			spec.SourceDisk = strVal("projects/p/zones/z/disks/d")
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 		})
+
+		It("accepts source_instant_snapshot alone (satisfies the size rule)", func() {
+			spec := makeValidSpec()
+			spec.SizeGb = 0
+			spec.SourceInstantSnapshot = "fast-restore-point"
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts source_storage_object alone (satisfies the size rule)", func() {
+			spec := makeValidSpec()
+			spec.SizeGb = 0
+			spec.SourceStorageObject = "https://storage.googleapis.com/imports/disk.vmdk"
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("rejects image together with source_instant_snapshot", func() {
+			spec := makeValidSpec()
+			spec.Image = "debian-cloud/debian-12"
+			spec.SourceInstantSnapshot = "fast-restore-point"
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects source_storage_object together with source_snapshot", func() {
+			spec := makeValidSpec()
+			spec.SourceStorageObject = "https://storage.googleapis.com/imports/disk.vmdk"
+			spec.SourceSnapshot = "snap"
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
 	})
 
 	Context("size bounds", func() {
@@ -170,6 +198,76 @@ var _ = Describe("GcpComputeDiskSpec validations", func() {
 			spec.EnableConfidentialCompute = true
 			spec.KmsKey = refVal("disk-key", "status.outputs.key_id")
 			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts CMEK with an explicit encryption service account", func() {
+			spec := makeValidSpec()
+			spec.KmsKey = refVal("disk-key", "status.outputs.key_id")
+			spec.KmsKeyServiceAccount = "kms-agent@prod-project.iam.gserviceaccount.com"
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts source_image_encryption together with image", func() {
+			spec := makeValidSpec()
+			spec.SizeGb = 0
+			spec.Image = "projects/p/global/images/encrypted-golden"
+			spec.SourceImageEncryption = &GcpComputeDiskSourceEncryption{
+				KmsKey: refVal("image-key", "status.outputs.key_id"),
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("rejects source_image_encryption without image (CEL)", func() {
+			spec := makeValidSpec()
+			spec.SourceImageEncryption = &GcpComputeDiskSourceEncryption{
+				KmsKey: refVal("image-key", "status.outputs.key_id"),
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects source_snapshot_encryption without source_snapshot (CEL)", func() {
+			spec := makeValidSpec()
+			spec.SourceSnapshotEncryption = &GcpComputeDiskSourceEncryption{
+				KmsKey: refVal("snap-key", "status.outputs.key_id"),
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects a source encryption block without its kms_key", func() {
+			spec := makeValidSpec()
+			spec.SizeGb = 0
+			spec.Image = "projects/p/global/images/encrypted-golden"
+			spec.SourceImageEncryption = &GcpComputeDiskSourceEncryption{}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+	})
+
+	Context("replication, guest features, and deletion policy", func() {
+		It("accepts an async replication secondary referencing its primary", func() {
+			spec := makeValidSpec()
+			spec.AsyncPrimaryDisk = refVal("primary-disk", "status.outputs.self_link")
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts guest OS features and licenses", func() {
+			spec := makeValidSpec()
+			spec.GuestOsFeatures = []string{"UEFI_COMPATIBLE", "GVNIC"}
+			spec.Licenses = []string{"https://www.googleapis.com/compute/v1/projects/windows-cloud/global/licenses/windows-server-core"}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts each valid deletion_policy value", func() {
+			for _, policy := range []string{"DELETE", "PREVENT", "ABANDON"} {
+				spec := makeValidSpec()
+				spec.DeletionPolicy = policy
+				Expect(protovalidate.Validate(spec)).To(BeNil())
+			}
+		})
+
+		It("rejects an invalid deletion_policy", func() {
+			spec := makeValidSpec()
+			spec.DeletionPolicy = "KEEP"
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 		})
 	})
 

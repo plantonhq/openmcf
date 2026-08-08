@@ -41,6 +41,12 @@ resource "google_storage_bucket" "this" {
   default_event_based_hold    = var.spec.default_event_based_hold
   rpo                         = local.rpo
 
+  # Destroy-time guard: PREVENT fails the destroy; ABANDON unmanages the
+  # bucket without deleting it. Null falls back to the provider default
+  # (DELETE). Orthogonal to force_destroy, which governs whether a
+  # permitted deletion may erase contained objects.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   # Create-time-only surfaces (ForceNew).
   enable_object_retention = var.spec.enable_object_retention ? true : null
 
@@ -95,6 +101,8 @@ resource "google_storage_bucket" "this" {
         days_since_custom_time                  = lifecycle_rule.value.condition.days_since_custom_time
         send_days_since_custom_time_if_zero     = lifecycle_rule.value.condition.days_since_custom_time == 0 ? true : null
         custom_time_before                      = lifecycle_rule.value.condition.custom_time_before != "" ? lifecycle_rule.value.condition.custom_time_before : null
+        size_above_bytes                        = lifecycle_rule.value.condition.size_above_bytes
+        size_below_bytes                        = lifecycle_rule.value.condition.size_below_bytes
       }
     }
   }
@@ -118,12 +126,36 @@ resource "google_storage_bucket" "this" {
     }
   }
 
+  # One provider block carries both the default CMEK key and the
+  # per-encryption-type enforcement for new objects, so the module emits
+  # it when either half is configured.
+  #
   # Default CMEK: the GCS service agent must hold
   # roles/cloudkms.cryptoKeyEncrypterDecrypter on this key before create.
+  # Enforcement changes apply to NEW objects only.
   dynamic "encryption" {
-    for_each = local.kms_key_name != null ? [local.kms_key_name] : []
+    for_each = (local.kms_key_name != null || var.spec.encryption_enforcement != null) ? [1] : []
     content {
-      default_kms_key_name = encryption.value
+      default_kms_key_name = local.kms_key_name
+
+      dynamic "google_managed_encryption_enforcement_config" {
+        for_each = try(var.spec.encryption_enforcement.google_managed_restriction_mode, "") != "" ? [var.spec.encryption_enforcement.google_managed_restriction_mode] : []
+        content {
+          restriction_mode = google_managed_encryption_enforcement_config.value
+        }
+      }
+      dynamic "customer_managed_encryption_enforcement_config" {
+        for_each = try(var.spec.encryption_enforcement.customer_managed_restriction_mode, "") != "" ? [var.spec.encryption_enforcement.customer_managed_restriction_mode] : []
+        content {
+          restriction_mode = customer_managed_encryption_enforcement_config.value
+        }
+      }
+      dynamic "customer_supplied_encryption_enforcement_config" {
+        for_each = try(var.spec.encryption_enforcement.customer_supplied_restriction_mode, "") != "" ? [var.spec.encryption_enforcement.customer_supplied_restriction_mode] : []
+        content {
+          restriction_mode = customer_supplied_encryption_enforcement_config.value
+        }
+      }
     }
   }
 

@@ -11,13 +11,17 @@ locals {
   # defaults (pd-standard family default type, Google-managed encryption,
   # READ_WRITE_SINGLE access) instead of receiving an empty string it
   # would reject.
-  type         = var.spec.type != "" ? var.spec.type : null
-  image        = var.spec.image != "" ? var.spec.image : null
-  snapshot     = var.spec.source_snapshot != "" ? var.spec.source_snapshot : null
-  source_disk  = var.spec.source_disk != "" ? var.spec.source_disk : null
-  access_mode  = var.spec.access_mode != "" ? var.spec.access_mode : null
-  architecture = var.spec.architecture != "" ? var.spec.architecture : null
-  storage_pool = var.spec.storage_pool != "" ? var.spec.storage_pool : null
+  type                    = var.spec.type != "" ? var.spec.type : null
+  image                   = var.spec.image != "" ? var.spec.image : null
+  snapshot                = var.spec.source_snapshot != "" ? var.spec.source_snapshot : null
+  source_instant_snapshot = var.spec.source_instant_snapshot != "" ? var.spec.source_instant_snapshot : null
+  source_storage_object   = var.spec.source_storage_object != "" ? var.spec.source_storage_object : null
+  source_disk             = var.spec.source_disk != "" ? var.spec.source_disk : null
+  access_mode             = var.spec.access_mode != "" ? var.spec.access_mode : null
+  architecture            = var.spec.architecture != "" ? var.spec.architecture : null
+  storage_pool            = var.spec.storage_pool != "" ? var.spec.storage_pool : null
+  deletion_policy         = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+  async_primary_disk      = var.spec.async_primary_disk != "" ? var.spec.async_primary_disk : null
 
   base_labels = {
     "planton-ai_resource" = "true"

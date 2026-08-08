@@ -173,6 +173,14 @@ func gcsBucket(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) e
 			if rule.Condition.CustomTimeBefore != "" {
 				conditionArgs.CustomTimeBefore = pulumi.StringPtr(rule.Condition.CustomTimeBefore)
 			}
+			// Size-band conditions: explicit presence, so a set 0 (matches
+			// every object) is distinguishable from unset.
+			if rule.Condition.SizeAboveBytes != nil {
+				conditionArgs.SizeAboveBytes = pulumi.IntPtr(int(*rule.Condition.SizeAboveBytes))
+			}
+			if rule.Condition.SizeBelowBytes != nil {
+				conditionArgs.SizeBelowBytes = pulumi.IntPtr(int(*rule.Condition.SizeBelowBytes))
+			}
 
 			rules = append(rules, &storage.BucketLifecycleRuleArgs{
 				Action:    actionArgs,
@@ -199,12 +207,36 @@ func gcsBucket(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) e
 		}
 	}
 
+	// One provider block carries both the default CMEK key and the
+	// per-encryption-type enforcement for new objects, so the module emits
+	// it when either half is configured.
+	//
 	// Default CMEK: the GCS service agent must hold
 	// roles/cloudkms.cryptoKeyEncrypterDecrypter on this key before create.
-	if spec.KmsKeyName.GetValue() != "" {
-		args.Encryption = &storage.BucketEncryptionArgs{
-			DefaultKmsKeyName: pulumi.String(spec.KmsKeyName.GetValue()),
+	// Enforcement changes apply to NEW objects only.
+	if spec.KmsKeyName.GetValue() != "" || spec.EncryptionEnforcement != nil {
+		encryptionArgs := &storage.BucketEncryptionArgs{}
+		if spec.KmsKeyName.GetValue() != "" {
+			encryptionArgs.DefaultKmsKeyName = pulumi.StringPtr(spec.KmsKeyName.GetValue())
 		}
+		if spec.EncryptionEnforcement != nil {
+			if spec.EncryptionEnforcement.GoogleManagedRestrictionMode != "" {
+				encryptionArgs.GoogleManagedEncryptionEnforcementConfig = &storage.BucketEncryptionGoogleManagedEncryptionEnforcementConfigArgs{
+					RestrictionMode: pulumi.String(spec.EncryptionEnforcement.GoogleManagedRestrictionMode),
+				}
+			}
+			if spec.EncryptionEnforcement.CustomerManagedRestrictionMode != "" {
+				encryptionArgs.CustomerManagedEncryptionEnforcementConfig = &storage.BucketEncryptionCustomerManagedEncryptionEnforcementConfigArgs{
+					RestrictionMode: pulumi.String(spec.EncryptionEnforcement.CustomerManagedRestrictionMode),
+				}
+			}
+			if spec.EncryptionEnforcement.CustomerSuppliedRestrictionMode != "" {
+				encryptionArgs.CustomerSuppliedEncryptionEnforcementConfig = &storage.BucketEncryptionCustomerSuppliedEncryptionEnforcementConfigArgs{
+					RestrictionMode: pulumi.String(spec.EncryptionEnforcement.CustomerSuppliedRestrictionMode),
+				}
+			}
+		}
+		args.Encryption = encryptionArgs
 	}
 
 	if spec.Website != nil {
@@ -256,6 +288,14 @@ func gcsBucket(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) e
 
 	if spec.Rpo != "" {
 		args.Rpo = pulumi.StringPtr(spec.Rpo)
+	}
+
+	// Destroy-time guard: PREVENT fails the destroy; ABANDON unmanages
+	// the bucket without deleting it. Unset falls back to the provider
+	// default (DELETE). Orthogonal to force_destroy, which governs
+	// whether a permitted deletion may erase contained objects.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	// Network-layer IP filtering: which CIDR ranges / VPC networks may

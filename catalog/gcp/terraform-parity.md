@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2279 |
-| Module pins on `google` | `~> 7.0` × 79 |
+| Spec fields authored across all kinds | 2310 |
+| Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
 secondary channel (for Google, the `google-beta` provider) enters per kind
@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**2 of 79 kinds are at total accounting; 75 proven live.**
+**6 of 79 kinds are at total accounting; 71 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -75,7 +75,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpCloudSqlDatabase | 6 | 3 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
 | GcpCloudSqlUser | 14 | 8 | 0 | 0 | 8 | ❌ | ✅ pulumi, terraform |
 | GcpCloudTasksQueue | 34 | 20 | 0 | 0 | 21 | ❌ | ✅ pulumi, terraform |
-| GcpComputeDisk | 41 | 14 | 0 | 0 | 34 | ❌ | ✅ pulumi, terraform |
+| GcpComputeDisk | 36 | 18 | 14 | 4 | 0 | ✅ | — |
 | GcpComputeInstance | 129 | 42 | 0 | 0 | 132 | ❌ | ✅ pulumi, terraform |
 | GcpDataprocAutoscalingPolicy | 21 | 14 | 0 | 0 | 8 | ❌ | ✅ pulumi, terraform |
 | GcpDataprocCluster | 153 | 64 | 0 | 0 | 137 | ❌ | ✅ pulumi, terraform |
@@ -84,9 +84,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpFilestoreInstance | 41 | 12 | 0 | 0 | 44 | ❌ | ✅ pulumi, terraform |
 | GcpFirestoreBackupSchedule | 10 | 3 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
 | GcpFirestoreDatabase | 20 | 7 | 0 | 0 | 16 | ❌ | ✅ pulumi, terraform |
-| GcpFirestoreIndex | 22 | 9 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
+| GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | — |
 | GcpFirewallRule | 20 | 12 | 0 | 0 | 13 | ❌ | — |
-| GcpGcsBucket | 64 | 29 | 24 | 5 | 6 | ❌ | ✅ pulumi, terraform |
+| GcpGcsBucket | 64 | 30 | 29 | 5 | 0 | ✅ | — |
 | GcpGkeCluster | 542 | 44 | 0 | 0 | 570 | ❌ | ✅ pulumi, terraform |
 | GcpGkeNodePool | 189 | 64 | 0 | 0 | 151 | ❌ | ✅ pulumi, terraform |
 | GcpGkeWorkloadIdentityBinding | 6 | 3 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
@@ -99,7 +99,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpKmsKeyRing | 8 | 1 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
 | GcpManagedSslCertificate | 11 | 1 | 0 | 0 | 13 | ❌ | ✅ pulumi, terraform |
 | GcpMemorystoreInstance | 43 | 25 | 0 | 0 | 24 | ❌ | ✅ pulumi, terraform |
-| GcpProject | 14 | 6 | 0 | 0 | 13 | ❌ | partial: pulumi, terraform |
+| GcpProject | 14 | 6 | 0 | 0 | 13 | ❌ | — |
 | GcpProjectIamMember | 6 | 5 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | GcpPubSubSchema | 10 | 2 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
 | GcpPubSubSubscription | 49 | 37 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
@@ -108,7 +108,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpRegionNetworkEndpointGroup | 23 | 15 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
 | GcpRouterNat | 59 | 24 | 0 | 0 | 45 | ❌ | ✅ pulumi, terraform |
 | GcpServerlessVpcConnector | 18 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
-| GcpServiceAccount | 26 | 5 | 0 | 0 | 25 | ❌ | ✅ pulumi, terraform |
+| GcpServiceAccount | 26 | 11 | 5 | 10 | 0 | ✅ | — |
 | GcpServiceAccountIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpServiceConnectionPolicy | 17 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
 | GcpServiceNetworkingConnection | 10 | 5 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |

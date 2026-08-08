@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpComputeDiskSpec defines the configuration for a zonal Google Compute
 Engine persistent disk — the durable block device behind stateful VMs:
 database volumes, shared read-only datasets, bootable golden images,
@@ -69,6 +71,19 @@ spec:
 | `spec.storagePool` | `string` |  |  |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
 | `spec.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.guestOsFeatures` | `[]string` |  |  |  |
+| `spec.licenses` | `[]string` |  |  |  |
+| `spec.sourceInstantSnapshot` | `string` |  |  |  |
+| `spec.sourceStorageObject` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
+| `spec.kmsKeyServiceAccount` | `string` |  |  |  |
+| `spec.sourceImageEncryption` | `GcpComputeDiskSourceEncryption` |  |  |  |
+| `spec.sourceImageEncryption.kmsKey` | `string \| valueFrom` | yes |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.sourceImageEncryption.kmsKeyServiceAccount` | `string` |  |  |  |
+| `spec.sourceSnapshotEncryption` | `GcpComputeDiskSourceEncryption` |  |  |  |
+| `spec.sourceSnapshotEncryption.kmsKey` | `string \| valueFrom` | yes |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.sourceSnapshotEncryption.kmsKeyServiceAccount` | `string` |  |  |  |
+| `spec.asyncPrimaryDisk` | `string \| valueFrom` |  |  | GcpComputeDisk (`status.outputs.self_link`) |
 
 ## Field Details
 
@@ -263,10 +278,77 @@ Resource Manager tags bound to the disk for org-policy and IAM
 conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
 Create-time only.
 
+### spec.guestOsFeatures
+
+`[]string`
+
+### spec.licenses
+
+`[]string`
+
+### spec.sourceInstantSnapshot
+
+`string`
+
+### spec.sourceStorageObject
+
+`string`
+
+### spec.deletionPolicy
+
+`string`
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
+### spec.kmsKeyServiceAccount
+
+`string`
+
+### spec.sourceImageEncryption
+
+`GcpComputeDiskSourceEncryption`
+
+### spec.sourceImageEncryption.kmsKey
+
+`string | valueFrom` · required
+
+- references: GcpKmsKey (`status.outputs.key_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.sourceImageEncryption.kmsKeyServiceAccount
+
+`string`
+
+### spec.sourceSnapshotEncryption
+
+`GcpComputeDiskSourceEncryption`
+
+### spec.sourceSnapshotEncryption.kmsKey
+
+`string | valueFrom` · required
+
+- references: GcpKmsKey (`status.outputs.key_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.sourceSnapshotEncryption.kmsKeyServiceAccount
+
+`string`
+
+### spec.asyncPrimaryDisk
+
+`string | valueFrom`
+
+- references: GcpComputeDisk (`status.outputs.self_link`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpComputeDisk, name: <that resource's name>, fieldPath: status.outputs.self_link}} -- a bare string does not parse
+
 ## Validation Rules
 
-- `disk_at_most_one_source`: at most one disk source may be set: image, source_snapshot, or source_disk — omit all three for an empty disk
+- `disk_at_most_one_source`: at most one disk source may be set: image, source_snapshot, source_instant_snapshot, source_storage_object, or source_disk — omit all for an empty disk
 - `empty_disk_requires_size`: an empty disk (no image, snapshot, or source disk) must declare size_gb
+- `image_encryption_requires_image`: source_image_encryption is only valid together with image
+- `snapshot_encryption_requires_snapshot`: source_snapshot_encryption is only valid together with source_snapshot
 - `confidential_compute_requires_kms_key`: confidential-compute disks require customer-managed encryption — set kms_key when enable_confidential_compute is true
 
 ## Outputs
@@ -291,6 +373,9 @@ Fields that can point at another resource's outputs:
 | `spec.projectId` | GcpProject | `status.outputs.project_id` |
 | `spec.sourceDisk` | GcpComputeDisk | `status.outputs.self_link` |
 | `spec.kmsKey` | GcpKmsKey | `status.outputs.key_id` |
+| `spec.sourceImageEncryption.kmsKey` | GcpKmsKey | `status.outputs.key_id` |
+| `spec.sourceSnapshotEncryption.kmsKey` | GcpKmsKey | `status.outputs.key_id` |
+| `spec.asyncPrimaryDisk` | GcpComputeDisk | `status.outputs.self_link` |
 
 ## Referenced By
 
@@ -299,6 +384,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | GcpComputeDisk | `spec.sourceDisk` | `status.outputs.self_link` |
+| GcpComputeDisk | `spec.asyncPrimaryDisk` | `status.outputs.self_link` |
 | GcpComputeInstance | `spec.bootDisk.sourceDisk` | `status.outputs.self_link` |
 | GcpComputeInstance | `spec.attachedDisks[].source` | `status.outputs.self_link` |
 

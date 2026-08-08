@@ -194,9 +194,27 @@ type GcpGcsBucketSpec struct {
 	// which VPC networks may reach the bucket at all, before IAM is even
 	// evaluated. Defense-in-depth for data-exfiltration control — IAM
 	// decides WHO, the IP filter decides FROM WHERE. Mutable in place.
-	IpFilter      *GcpGcsBucketIpFilter `protobuf:"bytes,25,opt,name=ip_filter,json=ipFilter,proto3" json:"ip_filter,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	IpFilter *GcpGcsBucketIpFilter `protobuf:"bytes,25,opt,name=ip_filter,json=ipFilter,proto3" json:"ip_filter,omitempty"`
+	// Encryption-type enforcement for NEW objects: restrict which encryption
+	// mechanisms (Google-managed, customer-managed KMS, customer-supplied)
+	// may be used when writing objects into this bucket. Applies to new
+	// objects only — existing objects keep their encryption. Mutable in
+	// place.
+	EncryptionEnforcement *GcpGcsBucketEncryptionEnforcement `protobuf:"bytes,26,opt,name=encryption_enforcement,json=encryptionEnforcement,proto3" json:"encryption_enforcement,omitempty"`
+	// Deletion policy — what happens when this resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the bucket is deleted (subject to force_destroy)
+	//	"PREVENT" -- destroy FAILS; a guard rail for buckets that must
+	//	             never be removed by automation
+	//	"ABANDON" -- the bucket is removed from management but left
+	//	             running in GCP (an orphan by design — reserve for
+	//	             deliberate hand-offs)
+	//
+	// Mutable in place.
+	DeletionPolicy string `protobuf:"bytes,27,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpGcsBucketSpec) Reset() {
@@ -404,6 +422,93 @@ func (x *GcpGcsBucketSpec) GetIpFilter() *GcpGcsBucketIpFilter {
 	return nil
 }
 
+func (x *GcpGcsBucketSpec) GetEncryptionEnforcement() *GcpGcsBucketEncryptionEnforcement {
+	if x != nil {
+		return x.EncryptionEnforcement
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
+// Per-encryption-type enforcement for new objects. Each restriction mode:
+//
+//	""                -- same as "NotRestricted" (that type is allowed)
+//	"NotRestricted"   -- new objects may use this encryption type
+//	"FullyRestricted" -- new objects must NOT use this encryption type
+//
+// Typical compliance shape: restrict Google-managed and customer-supplied,
+// leaving only customer-managed (CMEK) writable — pair with kms_key_name.
+type GcpGcsBucketEncryptionEnforcement struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Restriction for Google-managed encryption keys (GMEK) — the default
+	// encryption objects get when no KMS key applies.
+	GoogleManagedRestrictionMode string `protobuf:"bytes,1,opt,name=google_managed_restriction_mode,json=googleManagedRestrictionMode,proto3" json:"google_managed_restriction_mode,omitempty"`
+	// Restriction for customer-managed encryption keys (CMEK, Cloud KMS).
+	CustomerManagedRestrictionMode string `protobuf:"bytes,2,opt,name=customer_managed_restriction_mode,json=customerManagedRestrictionMode,proto3" json:"customer_managed_restriction_mode,omitempty"`
+	// Restriction for customer-supplied encryption keys (CSEK — raw keys
+	// provided per request).
+	CustomerSuppliedRestrictionMode string `protobuf:"bytes,3,opt,name=customer_supplied_restriction_mode,json=customerSuppliedRestrictionMode,proto3" json:"customer_supplied_restriction_mode,omitempty"`
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketEncryptionEnforcement) Reset() {
+	*x = GcpGcsBucketEncryptionEnforcement{}
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketEncryptionEnforcement) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketEncryptionEnforcement) ProtoMessage() {}
+
+func (x *GcpGcsBucketEncryptionEnforcement) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketEncryptionEnforcement.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketEncryptionEnforcement) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GcpGcsBucketEncryptionEnforcement) GetGoogleManagedRestrictionMode() string {
+	if x != nil {
+		return x.GoogleManagedRestrictionMode
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketEncryptionEnforcement) GetCustomerManagedRestrictionMode() string {
+	if x != nil {
+		return x.CustomerManagedRestrictionMode
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketEncryptionEnforcement) GetCustomerSuppliedRestrictionMode() string {
+	if x != nil {
+		return x.CustomerSuppliedRestrictionMode
+	}
+	return ""
+}
+
 // Autoclass configuration — automatic storage-class management per object.
 type GcpGcsBucketAutoclass struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -427,7 +532,7 @@ type GcpGcsBucketAutoclass struct {
 
 func (x *GcpGcsBucketAutoclass) Reset() {
 	*x = GcpGcsBucketAutoclass{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -439,7 +544,7 @@ func (x *GcpGcsBucketAutoclass) String() string {
 func (*GcpGcsBucketAutoclass) ProtoMessage() {}
 
 func (x *GcpGcsBucketAutoclass) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -452,7 +557,7 @@ func (x *GcpGcsBucketAutoclass) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGcsBucketAutoclass.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketAutoclass) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GcpGcsBucketAutoclass) GetEnabled() bool {
@@ -483,7 +588,7 @@ type GcpGcsBucketLifecycleRule struct {
 
 func (x *GcpGcsBucketLifecycleRule) Reset() {
 	*x = GcpGcsBucketLifecycleRule{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -495,7 +600,7 @@ func (x *GcpGcsBucketLifecycleRule) String() string {
 func (*GcpGcsBucketLifecycleRule) ProtoMessage() {}
 
 func (x *GcpGcsBucketLifecycleRule) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -508,7 +613,7 @@ func (x *GcpGcsBucketLifecycleRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGcsBucketLifecycleRule.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketLifecycleRule) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GcpGcsBucketLifecycleRule) GetAction() *GcpGcsBucketLifecycleAction {
@@ -546,7 +651,7 @@ type GcpGcsBucketLifecycleAction struct {
 
 func (x *GcpGcsBucketLifecycleAction) Reset() {
 	*x = GcpGcsBucketLifecycleAction{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -558,7 +663,7 @@ func (x *GcpGcsBucketLifecycleAction) String() string {
 func (*GcpGcsBucketLifecycleAction) ProtoMessage() {}
 
 func (x *GcpGcsBucketLifecycleAction) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -571,7 +676,7 @@ func (x *GcpGcsBucketLifecycleAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGcsBucketLifecycleAction.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketLifecycleAction) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GcpGcsBucketLifecycleAction) GetType() string {
@@ -629,13 +734,19 @@ type GcpGcsBucketLifecycleCondition struct {
 	// Match objects whose Custom-Time metadata is before this date
 	// (RFC 3339 date).
 	CustomTimeBefore string `protobuf:"bytes,11,opt,name=custom_time_before,json=customTimeBefore,proto3" json:"custom_time_before,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Match objects LARGER than this many bytes. Combine with
+	// size_below_bytes for a size band (e.g. transition only large
+	// artifacts to cold storage).
+	SizeAboveBytes *int64 `protobuf:"varint,12,opt,name=size_above_bytes,json=sizeAboveBytes,proto3,oneof" json:"size_above_bytes,omitempty"`
+	// Match objects SMALLER than this many bytes.
+	SizeBelowBytes *int64 `protobuf:"varint,13,opt,name=size_below_bytes,json=sizeBelowBytes,proto3,oneof" json:"size_below_bytes,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpGcsBucketLifecycleCondition) Reset() {
 	*x = GcpGcsBucketLifecycleCondition{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -647,7 +758,7 @@ func (x *GcpGcsBucketLifecycleCondition) String() string {
 func (*GcpGcsBucketLifecycleCondition) ProtoMessage() {}
 
 func (x *GcpGcsBucketLifecycleCondition) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -660,7 +771,7 @@ func (x *GcpGcsBucketLifecycleCondition) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGcsBucketLifecycleCondition.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketLifecycleCondition) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GcpGcsBucketLifecycleCondition) GetAgeDays() int32 {
@@ -740,6 +851,20 @@ func (x *GcpGcsBucketLifecycleCondition) GetCustomTimeBefore() string {
 	return ""
 }
 
+func (x *GcpGcsBucketLifecycleCondition) GetSizeAboveBytes() int64 {
+	if x != nil && x.SizeAboveBytes != nil {
+		return *x.SizeAboveBytes
+	}
+	return 0
+}
+
+func (x *GcpGcsBucketLifecycleCondition) GetSizeBelowBytes() int64 {
+	if x != nil && x.SizeBelowBytes != nil {
+		return *x.SizeBelowBytes
+	}
+	return 0
+}
+
 // Retention policy for WORM compliance.
 type GcpGcsBucketRetentionPolicy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -758,7 +883,7 @@ type GcpGcsBucketRetentionPolicy struct {
 
 func (x *GcpGcsBucketRetentionPolicy) Reset() {
 	*x = GcpGcsBucketRetentionPolicy{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -770,7 +895,7 @@ func (x *GcpGcsBucketRetentionPolicy) String() string {
 func (*GcpGcsBucketRetentionPolicy) ProtoMessage() {}
 
 func (x *GcpGcsBucketRetentionPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -783,7 +908,7 @@ func (x *GcpGcsBucketRetentionPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGcsBucketRetentionPolicy.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketRetentionPolicy) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GcpGcsBucketRetentionPolicy) GetRetentionPeriodSeconds() int64 {
@@ -814,7 +939,7 @@ type GcpGcsBucketSoftDeletePolicy struct {
 
 func (x *GcpGcsBucketSoftDeletePolicy) Reset() {
 	*x = GcpGcsBucketSoftDeletePolicy{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -826,7 +951,7 @@ func (x *GcpGcsBucketSoftDeletePolicy) String() string {
 func (*GcpGcsBucketSoftDeletePolicy) ProtoMessage() {}
 
 func (x *GcpGcsBucketSoftDeletePolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -839,7 +964,7 @@ func (x *GcpGcsBucketSoftDeletePolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGcsBucketSoftDeletePolicy.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketSoftDeletePolicy) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GcpGcsBucketSoftDeletePolicy) GetRetentionDurationSeconds() int64 {
@@ -862,7 +987,7 @@ type GcpGcsBucketWebsite struct {
 
 func (x *GcpGcsBucketWebsite) Reset() {
 	*x = GcpGcsBucketWebsite{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -874,7 +999,7 @@ func (x *GcpGcsBucketWebsite) String() string {
 func (*GcpGcsBucketWebsite) ProtoMessage() {}
 
 func (x *GcpGcsBucketWebsite) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -887,7 +1012,7 @@ func (x *GcpGcsBucketWebsite) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGcsBucketWebsite.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketWebsite) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GcpGcsBucketWebsite) GetMainPageSuffix() string {
@@ -922,7 +1047,7 @@ type GcpGcsBucketCorsRule struct {
 
 func (x *GcpGcsBucketCorsRule) Reset() {
 	*x = GcpGcsBucketCorsRule{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -934,7 +1059,7 @@ func (x *GcpGcsBucketCorsRule) String() string {
 func (*GcpGcsBucketCorsRule) ProtoMessage() {}
 
 func (x *GcpGcsBucketCorsRule) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -947,7 +1072,7 @@ func (x *GcpGcsBucketCorsRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGcsBucketCorsRule.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketCorsRule) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GcpGcsBucketCorsRule) GetOrigins() []string {
@@ -992,7 +1117,7 @@ type GcpGcsBucketLogging struct {
 
 func (x *GcpGcsBucketLogging) Reset() {
 	*x = GcpGcsBucketLogging{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1004,7 +1129,7 @@ func (x *GcpGcsBucketLogging) String() string {
 func (*GcpGcsBucketLogging) ProtoMessage() {}
 
 func (x *GcpGcsBucketLogging) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1017,7 +1142,7 @@ func (x *GcpGcsBucketLogging) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGcsBucketLogging.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketLogging) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GcpGcsBucketLogging) GetLogBucket() *v1.StringValueOrRef {
@@ -1047,7 +1172,7 @@ type GcpGcsBucketCustomPlacementConfig struct {
 
 func (x *GcpGcsBucketCustomPlacementConfig) Reset() {
 	*x = GcpGcsBucketCustomPlacementConfig{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1059,7 +1184,7 @@ func (x *GcpGcsBucketCustomPlacementConfig) String() string {
 func (*GcpGcsBucketCustomPlacementConfig) ProtoMessage() {}
 
 func (x *GcpGcsBucketCustomPlacementConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1072,7 +1197,7 @@ func (x *GcpGcsBucketCustomPlacementConfig) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GcpGcsBucketCustomPlacementConfig.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketCustomPlacementConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GcpGcsBucketCustomPlacementConfig) GetDataLocations() []string {
@@ -1109,7 +1234,7 @@ type GcpGcsBucketIpFilter struct {
 
 func (x *GcpGcsBucketIpFilter) Reset() {
 	*x = GcpGcsBucketIpFilter{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1121,7 +1246,7 @@ func (x *GcpGcsBucketIpFilter) String() string {
 func (*GcpGcsBucketIpFilter) ProtoMessage() {}
 
 func (x *GcpGcsBucketIpFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1134,7 +1259,7 @@ func (x *GcpGcsBucketIpFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGcsBucketIpFilter.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketIpFilter) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GcpGcsBucketIpFilter) GetMode() string {
@@ -1184,7 +1309,7 @@ type GcpGcsBucketIpFilterPublicNetworkSource struct {
 
 func (x *GcpGcsBucketIpFilterPublicNetworkSource) Reset() {
 	*x = GcpGcsBucketIpFilterPublicNetworkSource{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1196,7 +1321,7 @@ func (x *GcpGcsBucketIpFilterPublicNetworkSource) String() string {
 func (*GcpGcsBucketIpFilterPublicNetworkSource) ProtoMessage() {}
 
 func (x *GcpGcsBucketIpFilterPublicNetworkSource) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1209,7 +1334,7 @@ func (x *GcpGcsBucketIpFilterPublicNetworkSource) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use GcpGcsBucketIpFilterPublicNetworkSource.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketIpFilterPublicNetworkSource) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GcpGcsBucketIpFilterPublicNetworkSource) GetAllowedIpCidrRanges() []string {
@@ -1235,7 +1360,7 @@ type GcpGcsBucketIpFilterVpcNetworkSource struct {
 
 func (x *GcpGcsBucketIpFilterVpcNetworkSource) Reset() {
 	*x = GcpGcsBucketIpFilterVpcNetworkSource{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1247,7 +1372,7 @@ func (x *GcpGcsBucketIpFilterVpcNetworkSource) String() string {
 func (*GcpGcsBucketIpFilterVpcNetworkSource) ProtoMessage() {}
 
 func (x *GcpGcsBucketIpFilterVpcNetworkSource) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1260,7 +1385,7 @@ func (x *GcpGcsBucketIpFilterVpcNetworkSource) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use GcpGcsBucketIpFilterVpcNetworkSource.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketIpFilterVpcNetworkSource) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GcpGcsBucketIpFilterVpcNetworkSource) GetNetwork() *v1.StringValueOrRef {
@@ -1303,7 +1428,7 @@ type GcpGcsBucketIamMember struct {
 
 func (x *GcpGcsBucketIamMember) Reset() {
 	*x = GcpGcsBucketIamMember{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1315,7 +1440,7 @@ func (x *GcpGcsBucketIamMember) String() string {
 func (*GcpGcsBucketIamMember) ProtoMessage() {}
 
 func (x *GcpGcsBucketIamMember) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1328,7 +1453,7 @@ func (x *GcpGcsBucketIamMember) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGcsBucketIamMember.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketIamMember) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GcpGcsBucketIamMember) GetRole() string {
@@ -1370,7 +1495,7 @@ type GcpGcsBucketIamCondition struct {
 
 func (x *GcpGcsBucketIamCondition) Reset() {
 	*x = GcpGcsBucketIamCondition{}
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1382,7 +1507,7 @@ func (x *GcpGcsBucketIamCondition) String() string {
 func (*GcpGcsBucketIamCondition) ProtoMessage() {}
 
 func (x *GcpGcsBucketIamCondition) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1395,7 +1520,7 @@ func (x *GcpGcsBucketIamCondition) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpGcsBucketIamCondition.ProtoReflect.Descriptor instead.
 func (*GcpGcsBucketIamCondition) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GcpGcsBucketIamCondition) GetTitle() string {
@@ -1423,7 +1548,7 @@ var File_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto protoreflect.FileDescripto
 
 const file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	",catalog/gcp/gcpgcsbucket/v1alpha1/spec.proto\x12%dev.planton.gcp.gcpgcsbucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xb9\x14\n" +
+	",catalog/gcp/gcpgcsbucket/v1alpha1/spec.proto\x12%dev.planton.gcp.gcpgcsbucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xf8\x16\n" +
 	"\x10GcpGcsBucketSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12P\n" +
@@ -1457,11 +1582,21 @@ const file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\x06labels\x18\x17 \x03(\v2C.dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.LabelsEntryR\x06labels\x12]\n" +
 	"\viam_members\x18\x18 \x03(\v2<.dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMemberR\n" +
 	"iamMembers\x12X\n" +
-	"\tip_filter\x18\x19 \x01(\v2;.dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterR\bipFilter\x1a9\n" +
+	"\tip_filter\x18\x19 \x01(\v2;.dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterR\bipFilter\x12\x7f\n" +
+	"\x16encryption_enforcement\x18\x1a \x01(\v2H.dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketEncryptionEnforcementR\x15encryptionEnforcement\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x1b \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb7\x02\xbaH\xb3\x02\x1a\xb0\x02\n" +
-	"0autoclass_conflicts_with_lifecycle_storage_class\x12rautoclass and SetStorageClass lifecycle rules both manage storage classes — enable only one transition mechanism\x1a\x87\x01!has(this.autoclass) || !this.autoclass.enabled || !this.lifecycle_rules.exists(r, has(r.action) && r.action.type == 'SetStorageClass')\"\xfa\x01\n" +
+	"0autoclass_conflicts_with_lifecycle_storage_class\x12rautoclass and SetStorageClass lifecycle rules both manage storage classes — enable only one transition mechanism\x1a\x87\x01!has(this.autoclass) || !this.autoclass.enabled || !this.lifecycle_rules.exists(r, has(r.action) && r.action.type == 'SetStorageClass')\"\xa6\x06\n" +
+	"!GcpGcsBucketEncryptionEnforcement\x12\xf9\x01\n" +
+	"\x1fgoogle_managed_restriction_mode\x18\x01 \x01(\tB\xb1\x01\xbaH\xad\x01\xba\x01\xa9\x01\n" +
+	"\x1bvalid_gmek_restriction_mode\x12Ngoogle_managed_restriction_mode must be one of: NotRestricted, FullyRestricted\x1a:this == '' || this in ['NotRestricted', 'FullyRestricted']R\x1cgoogleManagedRestrictionMode\x12\xff\x01\n" +
+	"!customer_managed_restriction_mode\x18\x02 \x01(\tB\xb3\x01\xbaH\xaf\x01\xba\x01\xab\x01\n" +
+	"\x1bvalid_cmek_restriction_mode\x12Pcustomer_managed_restriction_mode must be one of: NotRestricted, FullyRestricted\x1a:this == '' || this in ['NotRestricted', 'FullyRestricted']R\x1ecustomerManagedRestrictionMode\x12\x82\x02\n" +
+	"\"customer_supplied_restriction_mode\x18\x03 \x01(\tB\xb4\x01\xbaH\xb0\x01\xba\x01\xac\x01\n" +
+	"\x1bvalid_csek_restriction_mode\x12Qcustomer_supplied_restriction_mode must be one of: NotRestricted, FullyRestricted\x1a:this == '' || this in ['NotRestricted', 'FullyRestricted']R\x1fcustomerSuppliedRestrictionMode\"\xfa\x01\n" +
 	"\x15GcpGcsBucketAutoclass\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\xc6\x01\n" +
 	"\x16terminal_storage_class\x18\x02 \x01(\tB\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
@@ -1474,7 +1609,7 @@ const file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\x11valid_action_type\x12Ltype must be one of: Delete, SetStorageClass, AbortIncompleteMultipartUpload\x1aGthis in ['Delete', 'SetStorageClass', 'AbortIncompleteMultipartUpload']\xc8\x01\x01R\x04type\x12#\n" +
 	"\rstorage_class\x18\x02 \x01(\tR\fstorageClass:\xc3\x02\xbaH\xbf\x02\x1a\x9b\x01\n" +
 	"!set_storage_class_requires_target\x12:SetStorageClass actions must name the target storage_class\x1a:this.type != 'SetStorageClass' || this.storage_class != ''\x1a\x9e\x01\n" +
-	"(storage_class_only_for_set_storage_class\x126storage_class is only valid on SetStorageClass actions\x1a:this.storage_class == '' || this.type == 'SetStorageClass'\"\x9b\x06\n" +
+	"(storage_class_only_for_set_storage_class\x126storage_class is only valid on SetStorageClass actions\x1a:this.storage_class == '' || this.type == 'SetStorageClass'\"\xb5\a\n" +
 	"\x1eGcpGcsBucketLifecycleCondition\x12'\n" +
 	"\bage_days\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\aageDays\x88\x01\x01\x12%\n" +
 	"\x0ecreated_before\x18\x02 \x01(\tR\rcreatedBefore\x12\x9a\x01\n" +
@@ -1489,11 +1624,15 @@ const file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\x16noncurrent_time_before\x18\t \x01(\tR\x14noncurrentTimeBefore\x12A\n" +
 	"\x16days_since_custom_time\x18\n" +
 	" \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x03R\x13daysSinceCustomTime\x88\x01\x01\x12,\n" +
-	"\x12custom_time_before\x18\v \x01(\tR\x10customTimeBeforeB\v\n" +
+	"\x12custom_time_before\x18\v \x01(\tR\x10customTimeBefore\x126\n" +
+	"\x10size_above_bytes\x18\f \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x04R\x0esizeAboveBytes\x88\x01\x01\x126\n" +
+	"\x10size_below_bytes\x18\r \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x05R\x0esizeBelowBytes\x88\x01\x01B\v\n" +
 	"\t_age_daysB\x15\n" +
 	"\x13_num_newer_versionsB\x1d\n" +
 	"\x1b_days_since_noncurrent_timeB\x19\n" +
-	"\x17_days_since_custom_time\"\x86\x01\n" +
+	"\x17_days_since_custom_timeB\x13\n" +
+	"\x11_size_above_bytesB\x13\n" +
+	"\x11_size_below_bytes\"\x86\x01\n" +
 	"\x1bGcpGcsBucketRetentionPolicy\x12J\n" +
 	"\x18retention_period_seconds\x18\x01 \x01(\x03B\x10\xbaH\r\xc8\x01\x01\"\b\x10\x80\xa7\xe4\xe0\v \x00R\x16retentionPeriodSeconds\x12\x1b\n" +
 	"\tis_locked\x18\x02 \x01(\bR\bisLocked\"\xbc\x02\n" +
@@ -1554,54 +1693,56 @@ func file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpGcsBucketSpec)(nil),                        // 0: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec
-	(*GcpGcsBucketAutoclass)(nil),                   // 1: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketAutoclass
-	(*GcpGcsBucketLifecycleRule)(nil),               // 2: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule
-	(*GcpGcsBucketLifecycleAction)(nil),             // 3: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleAction
-	(*GcpGcsBucketLifecycleCondition)(nil),          // 4: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleCondition
-	(*GcpGcsBucketRetentionPolicy)(nil),             // 5: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketRetentionPolicy
-	(*GcpGcsBucketSoftDeletePolicy)(nil),            // 6: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSoftDeletePolicy
-	(*GcpGcsBucketWebsite)(nil),                     // 7: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketWebsite
-	(*GcpGcsBucketCorsRule)(nil),                    // 8: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketCorsRule
-	(*GcpGcsBucketLogging)(nil),                     // 9: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLogging
-	(*GcpGcsBucketCustomPlacementConfig)(nil),       // 10: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketCustomPlacementConfig
-	(*GcpGcsBucketIpFilter)(nil),                    // 11: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter
-	(*GcpGcsBucketIpFilterPublicNetworkSource)(nil), // 12: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterPublicNetworkSource
-	(*GcpGcsBucketIpFilterVpcNetworkSource)(nil),    // 13: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterVpcNetworkSource
-	(*GcpGcsBucketIamMember)(nil),                   // 14: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember
-	(*GcpGcsBucketIamCondition)(nil),                // 15: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamCondition
-	nil,                                             // 16: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.LabelsEntry
-	(*v1.StringValueOrRef)(nil),                     // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpGcsBucketEncryptionEnforcement)(nil),       // 1: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketEncryptionEnforcement
+	(*GcpGcsBucketAutoclass)(nil),                   // 2: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketAutoclass
+	(*GcpGcsBucketLifecycleRule)(nil),               // 3: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule
+	(*GcpGcsBucketLifecycleAction)(nil),             // 4: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleAction
+	(*GcpGcsBucketLifecycleCondition)(nil),          // 5: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleCondition
+	(*GcpGcsBucketRetentionPolicy)(nil),             // 6: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketRetentionPolicy
+	(*GcpGcsBucketSoftDeletePolicy)(nil),            // 7: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSoftDeletePolicy
+	(*GcpGcsBucketWebsite)(nil),                     // 8: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketWebsite
+	(*GcpGcsBucketCorsRule)(nil),                    // 9: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketCorsRule
+	(*GcpGcsBucketLogging)(nil),                     // 10: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLogging
+	(*GcpGcsBucketCustomPlacementConfig)(nil),       // 11: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketCustomPlacementConfig
+	(*GcpGcsBucketIpFilter)(nil),                    // 12: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter
+	(*GcpGcsBucketIpFilterPublicNetworkSource)(nil), // 13: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterPublicNetworkSource
+	(*GcpGcsBucketIpFilterVpcNetworkSource)(nil),    // 14: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterVpcNetworkSource
+	(*GcpGcsBucketIamMember)(nil),                   // 15: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember
+	(*GcpGcsBucketIamCondition)(nil),                // 16: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamCondition
+	nil,                                             // 17: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),                     // 18: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_depIdxs = []int32{
-	17, // 0: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 1: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.autoclass:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketAutoclass
-	2,  // 2: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.lifecycle_rules:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule
-	5,  // 3: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.retention_policy:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketRetentionPolicy
-	6,  // 4: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.soft_delete_policy:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSoftDeletePolicy
-	17, // 5: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 6: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.website:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketWebsite
-	8,  // 7: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.cors_rules:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketCorsRule
-	9,  // 8: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.logging:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLogging
-	10, // 9: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.custom_placement_config:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketCustomPlacementConfig
-	16, // 10: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.labels:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.LabelsEntry
-	14, // 11: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.iam_members:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember
-	11, // 12: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.ip_filter:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter
-	3,  // 13: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule.action:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleAction
-	4,  // 14: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule.condition:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleCondition
-	17, // 15: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLogging.log_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 16: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter.public_network_source:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterPublicNetworkSource
-	13, // 17: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter.vpc_network_sources:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterVpcNetworkSource
-	17, // 18: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterVpcNetworkSource.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 19: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember.member:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	15, // 20: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember.condition:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamCondition
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	18, // 0: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 1: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.autoclass:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketAutoclass
+	3,  // 2: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.lifecycle_rules:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule
+	6,  // 3: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.retention_policy:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketRetentionPolicy
+	7,  // 4: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.soft_delete_policy:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSoftDeletePolicy
+	18, // 5: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 6: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.website:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketWebsite
+	9,  // 7: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.cors_rules:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketCorsRule
+	10, // 8: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.logging:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLogging
+	11, // 9: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.custom_placement_config:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketCustomPlacementConfig
+	17, // 10: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.labels:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.LabelsEntry
+	15, // 11: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.iam_members:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember
+	12, // 12: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.ip_filter:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter
+	1,  // 13: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.encryption_enforcement:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketEncryptionEnforcement
+	4,  // 14: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule.action:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleAction
+	5,  // 15: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule.condition:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleCondition
+	18, // 16: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLogging.log_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 17: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter.public_network_source:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterPublicNetworkSource
+	14, // 18: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter.vpc_network_sources:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterVpcNetworkSource
+	18, // 19: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterVpcNetworkSource.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 20: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember.member:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 21: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember.condition:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamCondition
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_init() }
@@ -1609,15 +1750,15 @@ func file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_init() {
 	if File_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto != nil {
 		return
 	}
-	file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[4].OneofWrappers = []any{}
-	file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[6].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[7].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

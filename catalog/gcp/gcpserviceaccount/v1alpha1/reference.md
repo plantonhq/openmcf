@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpServiceAccountSpec defines the configuration for a Google Cloud service account —
 the identity that workloads (GKE pods, Cloud Run services, Cloud Functions, Compute
 instances, CI/CD pipelines) authenticate as when calling Google Cloud APIs.
@@ -43,9 +45,12 @@ spec:
   # What this identity is for — surfaces in the console and gcloud describe
   description: Sample identity used to exercise the module locally
 
-  # Whether to create a JSON key for this service account
-  # Default: false (keyless is recommended for security)
-  createKey: false
+  # User-managed key: omit entirely for keyless (recommended). When present,
+  # the block's fields shape the key — e.g. keepers as the rotation trigger:
+  #   userManagedKey:
+  #     keepers:
+  #       rotation: "2026-08"
+  # This canonical example stays keyless.
 
   # Project-level IAM roles to grant to this service account (additive grants)
   projectIamRoles:
@@ -67,10 +72,18 @@ spec:
 | `spec.displayName` | `string` |  |  |  |
 | `spec.description` | `string` |  |  |  |
 | `spec.disabled` | `bool` |  | `false` |  |
-| `spec.createKey` | `bool` |  | `false` |  |
 | `spec.projectIamRoles` | `[]string` |  |  |  |
 | `spec.orgId` | `string` |  |  |  |
 | `spec.orgIamRoles` | `[]string` |  |  |  |
+| `spec.userManagedKey` | `GcpServiceAccountUserManagedKey` |  |  |  |
+| `spec.userManagedKey.algorithm` | `string` |  |  |  |
+| `spec.userManagedKey.privateKeyType` | `string` |  |  |  |
+| `spec.userManagedKey.publicKeyType` | `string` |  |  |  |
+| `spec.userManagedKey.publicKeyData` | `string` |  |  |  |
+| `spec.userManagedKey.keepers` | `map<string, string>` |  |  |  |
+| `spec.userManagedKey.deletionPolicy` | `string` |  |  |  |
+| `spec.createIgnoreAlreadyExists` | `bool` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -130,17 +143,6 @@ Useful as a kill switch during incident response or for staged decommissioning
 
 - default: `false`
 
-### spec.createKey
-
-`bool` · optional (explicit presence)
-
-Whether to create a user-managed JSON key for this service account.
-Default false (keyless). When true, the private key is exported in stack outputs
-as `key_base64` — treat that output as a live credential. Prefer Workload Identity
-or federation over keys wherever the workload supports it.
-
-- default: `false`
-
 ### spec.projectIamRoles
 
 `[]string`
@@ -167,6 +169,54 @@ IAM roles granted to this service account at the ORGANIZATION scope, e.g.
 ["roles/resourcemanager.organizationViewer"]. Requires org_id. Grants are
 additive (member-level). Org-scope grants affect every project under the
 organization — grant sparingly.
+
+### spec.userManagedKey
+
+`GcpServiceAccountUserManagedKey`
+
+- rule: public_key_data (upload flow) cannot be combined with private_key_type or public_key_type (generate flow)
+
+### spec.userManagedKey.algorithm
+
+`string`
+
+- rule: algorithm must be one of: KEY_ALG_RSA_2048, KEY_ALG_RSA_1024
+
+### spec.userManagedKey.privateKeyType
+
+`string`
+
+- rule: private_key_type must be one of: TYPE_GOOGLE_CREDENTIALS_FILE, TYPE_PKCS12_FILE
+
+### spec.userManagedKey.publicKeyType
+
+`string`
+
+- rule: public_key_type must be one of: TYPE_X509_PEM_FILE, TYPE_RAW_PUBLIC_KEY, TYPE_NONE
+
+### spec.userManagedKey.publicKeyData
+
+`string`
+
+### spec.userManagedKey.keepers
+
+`map<string, string>`
+
+### spec.userManagedKey.deletionPolicy
+
+`string`
+
+- rule: deletion_policy must be one of: DELETE, PREVENT
+
+### spec.createIgnoreAlreadyExists
+
+`bool`
+
+### spec.deletionPolicy
+
+`string`
+
+- rule: deletion_policy must be one of: DELETE, PREVENT
 
 ## Validation Rules
 

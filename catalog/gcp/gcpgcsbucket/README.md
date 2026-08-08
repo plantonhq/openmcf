@@ -54,7 +54,7 @@ This creates a private STANDARD bucket that no IAM grant can ever expose publicl
 | `publicAccessPrevention` | string | No | `inherited` (default) or `enforced` |
 | `versioningEnabled` | bool | No | Keep noncurrent versions on overwrite/delete |
 | `autoclass` | object | No | `enabled` + `terminalStorageClass` (`NEARLINE`/`ARCHIVE`) |
-| `lifecycleRules[]` | list | No | Action (`Delete`/`SetStorageClass`/`AbortIncompleteMultipartUpload`) + condition (age, dates, prefixes, versions; explicit 0 expressible) |
+| `lifecycleRules[]` | list | No | Action (`Delete`/`SetStorageClass`/`AbortIncompleteMultipartUpload`) + condition (age, dates, prefixes, versions, size bands via `sizeAboveBytes`/`sizeBelowBytes`; explicit 0 expressible) |
 | `retentionPolicy` | object | No | WORM: `retentionPeriodSeconds` + `isLocked` (irreversible) |
 | `softDeletePolicy` | object | No | Recovery window: 0 (off) or 7–90 days; omitted follows GCP's 7-day default |
 | `kmsKeyName` | StringValueOrRef | No | Default CMEK key (reference a `GcpKmsKey`) |
@@ -69,6 +69,9 @@ This creates a private STANDARD bucket that no IAM grant can ever expose publicl
 | `hierarchicalNamespaceEnabled` | bool | No | Real folder semantics. Create-time only |
 | `labels` | map | No | User labels, merged beneath platform labels |
 | `iamMembers[]` | list | No | Additive grants: `role` + `member` (+ optional IAM condition) |
+| `ipFilter` | object | No | Network-layer allowlist (public CIDRs and/or VPC networks) evaluated before IAM |
+| `encryptionEnforcement` | object | No | Restrict which encryption types NEW objects may use: `NotRestricted`/`FullyRestricted` per GMEK/CMEK/CSEK |
+| `deletionPolicy` | string | No | `PREVENT` fails destroys; `ABANDON` unmanages without deleting; default `DELETE` |
 
 ## Stack Outputs
 

@@ -667,4 +667,69 @@ var _ = ginkgo.Describe("GcpGcsBucketSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	// ──────────────── Size lifecycle conditions ────────────────
+
+	ginkgo.It("should accept a size-banded lifecycle condition (explicit zero legal)", func() {
+		msg := minimal()
+		msg.Spec.LifecycleRules = []*GcpGcsBucketLifecycleRule{{
+			Action: &GcpGcsBucketLifecycleAction{Type: "SetStorageClass", StorageClass: "COLDLINE"},
+			Condition: &GcpGcsBucketLifecycleCondition{
+				SizeAboveBytes: proto.Int64(0),
+				SizeBelowBytes: proto.Int64(1073741824),
+			},
+		}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a negative size_above_bytes", func() {
+		msg := minimal()
+		msg.Spec.LifecycleRules = []*GcpGcsBucketLifecycleRule{{
+			Action:    &GcpGcsBucketLifecycleAction{Type: "Delete"},
+			Condition: &GcpGcsBucketLifecycleCondition{SizeAboveBytes: proto.Int64(-1)},
+		}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Encryption enforcement ────────────────
+
+	ginkgo.It("should accept a CMEK-only enforcement posture", func() {
+		msg := minimal()
+		msg.Spec.KmsKeyName = literal("projects/p/locations/l/keyRings/r/cryptoKeys/k")
+		msg.Spec.EncryptionEnforcement = &GcpGcsBucketEncryptionEnforcement{
+			GoogleManagedRestrictionMode:    "FullyRestricted",
+			CustomerSuppliedRestrictionMode: "FullyRestricted",
+			CustomerManagedRestrictionMode:  "NotRestricted",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid restriction mode", func() {
+		msg := minimal()
+		msg.Spec.EncryptionEnforcement = &GcpGcsBucketEncryptionEnforcement{
+			GoogleManagedRestrictionMode: "Blocked",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Deletion policy ────────────────
+
+	ginkgo.It("should accept each valid deletion_policy value", func() {
+		for _, policy := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = policy
+			gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "KEEP"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
 })

@@ -6,9 +6,10 @@ spec:
   # Composed scenario: deploys the GcpFirestoreDatabase prerequisite, then
   # creates a simple composite index. Index build is asynchronous but the
   # resource creates quickly; the chain cost is the database (~1-2 minutes).
+  # The Enterprise surface (search_config, MONGODB_COMPATIBLE_API, multikey)
+  # needs an ENTERPRISE-edition database prerequisite — the proving session
+  # owns that arm's design (or its honest recorded deferral).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

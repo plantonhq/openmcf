@@ -8,10 +8,9 @@ spec:
   # so reruns must never collide with a slow-deleting predecessor. The
   # features scenario composes the GcpServiceAccount prerequisite live
   # (additive IAM member FK resolution proof) and exercises versioning,
-  # lifecycle explicit-zero semantics, and autoclass.
+  # lifecycle explicit-zero semantics, size-band conditions, CSEK
+  # write-restriction enforcement, deletion_policy, and autoclass.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

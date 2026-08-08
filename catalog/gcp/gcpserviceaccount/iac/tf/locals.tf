@@ -1,35 +1,4 @@
 locals {
-  # Derive a stable resource ID
-  resource_id = (
-    var.metadata.id != null && var.metadata.id != ""
-    ? var.metadata.id
-    : var.metadata.name
-  )
-
-  # Base labels for all resources
-  base_labels = {
-    "resource"      = "true"
-    "resource_id"   = local.resource_id
-    "resource_kind" = "gcp_service_account"
-  }
-
-  # Organization label only if var.metadata.org is non-empty
-  org_label = (
-    var.metadata.org != null && var.metadata.org != ""
-    ? { "organization" = var.metadata.org }
-    : {}
-  )
-
-  # Environment label only if var.metadata.env is non-empty
-  env_label = (
-    var.metadata.env != null && var.metadata.env != ""
-    ? { "environment" = var.metadata.env }
-    : {}
-  )
-
-  # Merge base, org, and environment labels
-  final_labels = merge(local.base_labels, local.org_label, local.env_label)
-
   # Honor the spec contract: an empty project_id falls back to the provider's
   # default project. Passing null (instead of "") lets the google provider
   # resolve its own project from configuration or the GOOGLE_PROJECT /
@@ -44,8 +13,9 @@ locals {
   # Computed service account email (used for IAM bindings)
   service_account_email = google_service_account.main.email
 
-  # Determine whether to create a key (defaults to false if not specified)
-  create_key = coalesce(var.spec.create_key, false)
+  # The user_managed_key message's PRESENCE is the decision to create a key;
+  # its fields default to GCP's own defaults ({} = 2048-bit RSA JSON key).
+  create_key = var.spec.user_managed_key != null
 
   # Whether the account starts disabled (defaults to false = enabled)
   disabled = coalesce(var.spec.disabled, false)

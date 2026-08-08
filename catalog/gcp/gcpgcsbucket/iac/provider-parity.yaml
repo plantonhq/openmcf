@@ -26,6 +26,15 @@ resources:
       # The one-field encryption block flattened to the key reference.
       - spec: spec.kms_key_name
         arg: encryption.default_kms_key_name
+      # Per-encryption-type enforcement: the provider nests one required
+      # restriction_mode inside a block per encryption type; the spec
+      # models the three modes directly.
+      - spec: spec.encryption_enforcement.google_managed_restriction_mode
+        arg: encryption.google_managed_encryption_enforcement_config.restriction_mode
+      - spec: spec.encryption_enforcement.customer_managed_restriction_mode
+        arg: encryption.customer_managed_encryption_enforcement_config.restriction_mode
+      - spec: spec.encryption_enforcement.customer_supplied_restriction_mode
+        arg: encryption.customer_supplied_encryption_enforcement_config.restriction_mode
       # Repeated-message fields are plural per proto style; provider blocks
       # are singular. Exact matching resumes below each subtree mapping.
       - spec: spec.lifecycle_rules

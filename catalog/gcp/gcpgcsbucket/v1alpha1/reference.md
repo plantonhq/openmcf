@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpGcsBucketSpec defines the configuration for a Google Cloud Storage
 bucket — the durable object store behind static sites, data lakes, build
 artifacts, backups, and every GCP service that stages data (Dataproc,
@@ -87,6 +89,8 @@ spec:
 | `spec.lifecycleRules[].condition.noncurrentTimeBefore` | `string` |  |  |  |
 | `spec.lifecycleRules[].condition.daysSinceCustomTime` | `int32` |  |  |  |
 | `spec.lifecycleRules[].condition.customTimeBefore` | `string` |  |  |  |
+| `spec.lifecycleRules[].condition.sizeAboveBytes` | `int64` |  |  |  |
+| `spec.lifecycleRules[].condition.sizeBelowBytes` | `int64` |  |  |  |
 | `spec.retentionPolicy` | `GcpGcsBucketRetentionPolicy` |  |  |  |
 | `spec.retentionPolicy.retentionPeriodSeconds` | `int64` | yes |  |  |
 | `spec.retentionPolicy.isLocked` | `bool` |  |  |  |
@@ -128,6 +132,11 @@ spec:
 | `spec.ipFilter.vpcNetworkSources[].allowedIpCidrRanges` | `[]string` | yes |  |  |
 | `spec.ipFilter.allowCrossOrgVpcs` | `bool` |  |  |  |
 | `spec.ipFilter.allowAllServiceAgentAccess` | `bool` |  |  |  |
+| `spec.encryptionEnforcement` | `GcpGcsBucketEncryptionEnforcement` |  |  |  |
+| `spec.encryptionEnforcement.googleManagedRestrictionMode` | `string` |  |  |  |
+| `spec.encryptionEnforcement.customerManagedRestrictionMode` | `string` |  |  |  |
+| `spec.encryptionEnforcement.customerSuppliedRestrictionMode` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -393,6 +402,18 @@ old. A set 0 matches any object with Custom-Time set.
 
 Match objects whose Custom-Time metadata is before this date
 (RFC 3339 date).
+
+### spec.lifecycleRules[].condition.sizeAboveBytes
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"0"}}
+
+### spec.lifecycleRules[].condition.sizeBelowBytes
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"0"}}
 
 ### spec.retentionPolicy
 
@@ -771,6 +792,34 @@ than the bucket.
 Exempt Google service agents (the identities GCP services act as —
 e.g. the Storage transfer agent) from the IP filter, so managed
 integrations keep working when the filter is Enabled.
+
+### spec.encryptionEnforcement
+
+`GcpGcsBucketEncryptionEnforcement`
+
+### spec.encryptionEnforcement.googleManagedRestrictionMode
+
+`string`
+
+- rule: google_managed_restriction_mode must be one of: NotRestricted, FullyRestricted
+
+### spec.encryptionEnforcement.customerManagedRestrictionMode
+
+`string`
+
+- rule: customer_managed_restriction_mode must be one of: NotRestricted, FullyRestricted
+
+### spec.encryptionEnforcement.customerSuppliedRestrictionMode
+
+`string`
+
+- rule: customer_supplied_restriction_mode must be one of: NotRestricted, FullyRestricted
+
+### spec.deletionPolicy
+
+`string`
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

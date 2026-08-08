@@ -70,6 +70,8 @@ variable "spec" {
         noncurrent_time_before     = optional(string, "")
         days_since_custom_time     = optional(number)
         custom_time_before         = optional(string, "")
+        size_above_bytes           = optional(number)
+        size_below_bytes           = optional(number)
       })
     })), [])
 
@@ -169,6 +171,18 @@ variable "spec" {
         allowed_ip_cidr_ranges = list(string)
       })), [])
     }), null)
+
+    # Encryption-type enforcement for NEW objects. Each mode is
+    # "" (NotRestricted) / "NotRestricted" / "FullyRestricted".
+    encryption_enforcement = optional(object({
+      google_managed_restriction_mode    = optional(string, "")
+      customer_managed_restriction_mode  = optional(string, "")
+      customer_supplied_restriction_mode = optional(string, "")
+    }), null)
+
+    # Destroy-time guard: "" / "DELETE" deletes, "PREVENT" fails the
+    # destroy, "ABANDON" unmanages without deleting.
+    deletion_policy = optional(string, "")
   })
 
   validation {
@@ -182,7 +196,7 @@ variable "spec" {
   }
 
   validation {
-    condition = can(regex("^[a-z0-9]([a-z0-9-._]*[a-z0-9])?$", var.spec.bucket_name)) && length(var.spec.bucket_name) >= 3 && length(var.spec.bucket_name) <= 63
+    condition     = can(regex("^[a-z0-9]([a-z0-9-._]*[a-z0-9])?$", var.spec.bucket_name)) && length(var.spec.bucket_name) >= 3 && length(var.spec.bucket_name) <= 63
     error_message = "bucket_name must be 3-63 characters of lowercase letters, numbers, hyphens, or dots, starting and ending with a letter or number."
   }
 }

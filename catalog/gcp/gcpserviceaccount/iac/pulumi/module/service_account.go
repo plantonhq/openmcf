@@ -51,6 +51,18 @@ func serviceAccount(
 		accountArgs.Project = pulumi.String(spec.ProjectId.GetValue())
 	}
 
+	// Adopt an existing account with the same email instead of failing —
+	// idempotent bootstrap flows that may race other provisioning paths.
+	if spec.CreateIgnoreAlreadyExists {
+		accountArgs.CreateIgnoreAlreadyExists = pulumi.Bool(true)
+	}
+
+	// Destroy-time guard: PREVENT fails any destroy while set. Unset falls
+	// back to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		accountArgs.DeletionPolicy = pulumi.String(spec.DeletionPolicy)
+	}
+
 	createdServiceAccount, err := serviceaccount.NewAccount(
 		ctx,
 		locals.GcpServiceAccount.Metadata.Name,
@@ -61,18 +73,49 @@ func serviceAccount(
 		return nil, nil, errors.Wrap(err, "failed to create service account")
 	}
 
-	// Optional user-managed JSON key. Created only when spec.create_key is true —
-	// keyless patterns (Workload Identity, impersonation, federation) are the
-	// recommended default. The private key is returned once at creation and is
-	// marked secret in state by the engine.
+	// Optional user-managed key. Created only when spec.user_managed_key is
+	// present — keyless patterns (Workload Identity, impersonation,
+	// federation) are the recommended default. In the generate flow the
+	// private key is returned once at creation and marked secret in state by
+	// the engine; in the upload flow (public_key_data set) GCP never sees a
+	// private key at all.
 	var createdKey *serviceaccount.Key
-	if spec.GetCreateKey() {
+	if spec.UserManagedKey != nil {
+		keyArgs := &serviceaccount.KeyArgs{
+			ServiceAccountId: createdServiceAccount.Name,
+		}
+
+		// Generate-flow shape. Unset fields fall back to GCP defaults
+		// (2048-bit RSA, JSON credentials file, X.509 PEM public key).
+		if spec.UserManagedKey.Algorithm != "" {
+			keyArgs.KeyAlgorithm = pulumi.String(spec.UserManagedKey.Algorithm)
+		}
+		if spec.UserManagedKey.PrivateKeyType != "" {
+			keyArgs.PrivateKeyType = pulumi.String(spec.UserManagedKey.PrivateKeyType)
+		}
+		if spec.UserManagedKey.PublicKeyType != "" {
+			keyArgs.PublicKeyType = pulumi.String(spec.UserManagedKey.PublicKeyType)
+		}
+
+		// Upload-flow shape: the caller's own public key (base64 X.509 PEM);
+		// mutually exclusive with the *_type args above (spec CEL enforces it).
+		if spec.UserManagedKey.PublicKeyData != "" {
+			keyArgs.PublicKeyData = pulumi.String(spec.UserManagedKey.PublicKeyData)
+		}
+
+		// Rotation trigger: any change to this map replaces the key.
+		if len(spec.UserManagedKey.Keepers) > 0 {
+			keyArgs.Keepers = pulumi.ToStringMap(spec.UserManagedKey.Keepers)
+		}
+
+		if spec.UserManagedKey.DeletionPolicy != "" {
+			keyArgs.DeletionPolicy = pulumi.String(spec.UserManagedKey.DeletionPolicy)
+		}
+
 		createdKey, err = serviceaccount.NewKey(
 			ctx,
 			fmt.Sprintf("%s-key", locals.GcpServiceAccount.Metadata.Name),
-			&serviceaccount.KeyArgs{
-				ServiceAccountId: createdServiceAccount.Name,
-			},
+			keyArgs,
 			pulumi.Provider(gcpProvider),
 			pulumi.DependsOn([]pulumi.Resource{createdServiceAccount}),
 		)

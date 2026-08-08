@@ -74,8 +74,9 @@ func (x *GcpFirestoreIndexVectorConfig) GetDimension() int32 {
 }
 
 // GcpFirestoreIndexField declares one field's role in a composite
-// index. Exactly one of order, array_config, or vector_config per
-// field. Vector-configured fields must come last in the index.
+// index. Exactly one of order, array_config, vector_config, or
+// search_config per field. Vector-configured fields must come last in
+// the index.
 type GcpFirestoreIndexField struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Dot-separated field path in the document (e.g. "user.age").
@@ -86,7 +87,13 @@ type GcpFirestoreIndexField struct {
 	// array-contains queries).
 	ArrayConfig string `protobuf:"bytes,3,opt,name=array_config,json=arrayConfig,proto3" json:"array_config,omitempty"`
 	// Vector index configuration for nearest-neighbor queries.
-	VectorConfig  *GcpFirestoreIndexVectorConfig `protobuf:"bytes,4,opt,name=vector_config,json=vectorConfig,proto3" json:"vector_config,omitempty"`
+	VectorConfig *GcpFirestoreIndexVectorConfig `protobuf:"bytes,4,opt,name=vector_config,json=vectorConfig,proto3" json:"vector_config,omitempty"`
+	// Text or geo search index configuration for the field — the
+	// Firestore Enterprise search surface. Requires an ENTERPRISE-edition
+	// database (GcpFirestoreDatabase database_edition: ENTERPRISE); text
+	// search additionally pairs with api_scope MONGODB_COMPATIBLE_API,
+	// while geo search works under the default scope.
+	SearchConfig  *GcpFirestoreIndexSearchConfig `protobuf:"bytes,5,opt,name=search_config,json=searchConfig,proto3" json:"search_config,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -149,6 +156,221 @@ func (x *GcpFirestoreIndexField) GetVectorConfig() *GcpFirestoreIndexVectorConfi
 	return nil
 }
 
+func (x *GcpFirestoreIndexField) GetSearchConfig() *GcpFirestoreIndexSearchConfig {
+	if x != nil {
+		return x.SearchConfig
+	}
+	return nil
+}
+
+// Search-index configuration for one field: a text spec, a geo spec, or
+// both.
+type GcpFirestoreIndexSearchConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Text search index specification for the field.
+	TextSpec *GcpFirestoreIndexTextSpec `protobuf:"bytes,1,opt,name=text_spec,json=textSpec,proto3" json:"text_spec,omitempty"`
+	// Geo search index specification for the field.
+	GeoSpec       *GcpFirestoreIndexGeoSpec `protobuf:"bytes,2,opt,name=geo_spec,json=geoSpec,proto3" json:"geo_spec,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpFirestoreIndexSearchConfig) Reset() {
+	*x = GcpFirestoreIndexSearchConfig{}
+	mi := &file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpFirestoreIndexSearchConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpFirestoreIndexSearchConfig) ProtoMessage() {}
+
+func (x *GcpFirestoreIndexSearchConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpFirestoreIndexSearchConfig.ProtoReflect.Descriptor instead.
+func (*GcpFirestoreIndexSearchConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GcpFirestoreIndexSearchConfig) GetTextSpec() *GcpFirestoreIndexTextSpec {
+	if x != nil {
+		return x.TextSpec
+	}
+	return nil
+}
+
+func (x *GcpFirestoreIndexSearchConfig) GetGeoSpec() *GcpFirestoreIndexGeoSpec {
+	if x != nil {
+		return x.GeoSpec
+	}
+	return nil
+}
+
+// How a text field is indexed for search. Repeated specs let the same
+// field be indexed multiple ways (e.g. different match types).
+type GcpFirestoreIndexTextSpec struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Index specifications; at least one.
+	IndexSpecs    []*GcpFirestoreIndexTextIndexSpec `protobuf:"bytes,1,rep,name=index_specs,json=indexSpecs,proto3" json:"index_specs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpFirestoreIndexTextSpec) Reset() {
+	*x = GcpFirestoreIndexTextSpec{}
+	mi := &file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpFirestoreIndexTextSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpFirestoreIndexTextSpec) ProtoMessage() {}
+
+func (x *GcpFirestoreIndexTextSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpFirestoreIndexTextSpec.ProtoReflect.Descriptor instead.
+func (*GcpFirestoreIndexTextSpec) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GcpFirestoreIndexTextSpec) GetIndexSpecs() []*GcpFirestoreIndexTextIndexSpec {
+	if x != nil {
+		return x.IndexSpecs
+	}
+	return nil
+}
+
+// One way of indexing a text field's value. The provider passes both
+// values through to the Firestore Admin API unvalidated, so this spec
+// stays equally permissive — consult the API's current
+// Index.IndexField.SearchConfig documentation for the accepted values.
+type GcpFirestoreIndexTextIndexSpec struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How the text field value is indexed (e.g. "TOKENIZED").
+	IndexType string `protobuf:"bytes,1,opt,name=index_type,json=indexType,proto3" json:"index_type,omitempty"`
+	// How the text field value is matched (e.g. "MATCH_GLOBALLY").
+	MatchType     string `protobuf:"bytes,2,opt,name=match_type,json=matchType,proto3" json:"match_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpFirestoreIndexTextIndexSpec) Reset() {
+	*x = GcpFirestoreIndexTextIndexSpec{}
+	mi := &file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpFirestoreIndexTextIndexSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpFirestoreIndexTextIndexSpec) ProtoMessage() {}
+
+func (x *GcpFirestoreIndexTextIndexSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpFirestoreIndexTextIndexSpec.ProtoReflect.Descriptor instead.
+func (*GcpFirestoreIndexTextIndexSpec) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GcpFirestoreIndexTextIndexSpec) GetIndexType() string {
+	if x != nil {
+		return x.IndexType
+	}
+	return ""
+}
+
+func (x *GcpFirestoreIndexTextIndexSpec) GetMatchType() string {
+	if x != nil {
+		return x.MatchType
+	}
+	return ""
+}
+
+// Geo search index specification.
+type GcpFirestoreIndexGeoSpec struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// If true, disables GeoJSON indexing for the field (GeoJSON points are
+	// indexed by default). Firestore GeoPoints are indexed regardless.
+	GeoJsonIndexingDisabled bool `protobuf:"varint,1,opt,name=geo_json_indexing_disabled,json=geoJsonIndexingDisabled,proto3" json:"geo_json_indexing_disabled,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *GcpFirestoreIndexGeoSpec) Reset() {
+	*x = GcpFirestoreIndexGeoSpec{}
+	mi := &file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpFirestoreIndexGeoSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpFirestoreIndexGeoSpec) ProtoMessage() {}
+
+func (x *GcpFirestoreIndexGeoSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpFirestoreIndexGeoSpec.ProtoReflect.Descriptor instead.
+func (*GcpFirestoreIndexGeoSpec) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GcpFirestoreIndexGeoSpec) GetGeoJsonIndexingDisabled() bool {
+	if x != nil {
+		return x.GeoJsonIndexingDisabled
+	}
+	return false
+}
+
 // GcpFirestoreIndexSpec defines a composite index on a Firestore
 // database — the prerequisite for any query that filters or orders on
 // multiple fields (Firestore rejects such queries outright until a
@@ -189,6 +411,10 @@ type GcpFirestoreIndexSpec struct {
 	// Which API surface the index serves.
 	// ANY_API: Firestore Native queries (the default).
 	// DATASTORE_MODE_API: Datastore Mode queries.
+	// MONGODB_COMPATIBLE_API: Firestore Enterprise (MongoDB-compatible)
+	//
+	//	queries — required for multikey and search-config indexes, and
+	//	only valid on an ENTERPRISE-edition database.
 	ApiScope *string `protobuf:"bytes,5,opt,name=api_scope,json=apiScope,proto3,oneof" json:"api_scope,omitempty"`
 	// Index density. Leave empty for GCP's default (SPARSE_ALL).
 	// DENSE indexes also include documents missing the indexed fields —
@@ -197,14 +423,36 @@ type GcpFirestoreIndexSpec struct {
 	// The indexed fields, in query order (equality filters first, then
 	// inequality/sort fields; a vector field, if any, last). At least one
 	// field. Firestore appends __name__ automatically.
-	Fields        []*GcpFirestoreIndexField `protobuf:"bytes,7,rep,name=fields,proto3" json:"fields,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Fields []*GcpFirestoreIndexField `protobuf:"bytes,7,rep,name=fields,proto3" json:"fields,omitempty"`
+	// Whether the index is multikey: at most one indexed path may reach or
+	// traverse an array (MongoDB-style array indexing). Only valid with
+	// api_scope MONGODB_COMPATIBLE_API. Immutable after creation.
+	Multikey bool `protobuf:"varint,8,opt,name=multikey,proto3" json:"multikey,omitempty"`
+	// Whether the index enforces uniqueness: all values of the indexed
+	// field(s) must be unique across documents. Immutable after creation.
+	Unique bool `protobuf:"varint,9,opt,name=unique,proto3" json:"unique,omitempty"`
+	// If true, the deploy returns as soon as index creation is REQUESTED
+	// instead of waiting for the (potentially long) background build to
+	// finish. The index serves queries only once the build completes —
+	// use when orchestrating many indexes and the caller polls readiness
+	// itself.
+	SkipWait bool `protobuf:"varint,10,opt,name=skip_wait,json=skipWait,proto3" json:"skip_wait,omitempty"`
+	// Deletion policy — what happens when this resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the index is deleted
+	//	"PREVENT" -- destroy FAILS; protects indexes whose rebuild would
+	//	             be expensive on a large collection
+	//	"ABANDON" -- the index is removed from management but kept
+	//	             serving queries in GCP
+	DeletionPolicy string `protobuf:"bytes,11,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpFirestoreIndexSpec) Reset() {
 	*x = GcpFirestoreIndexSpec{}
-	mi := &file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -216,7 +464,7 @@ func (x *GcpFirestoreIndexSpec) String() string {
 func (*GcpFirestoreIndexSpec) ProtoMessage() {}
 
 func (x *GcpFirestoreIndexSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -229,7 +477,7 @@ func (x *GcpFirestoreIndexSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpFirestoreIndexSpec.ProtoReflect.Descriptor instead.
 func (*GcpFirestoreIndexSpec) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GcpFirestoreIndexSpec) GetProjectId() *v1.StringValueOrRef {
@@ -281,6 +529,34 @@ func (x *GcpFirestoreIndexSpec) GetFields() []*GcpFirestoreIndexField {
 	return nil
 }
 
+func (x *GcpFirestoreIndexSpec) GetMultikey() bool {
+	if x != nil {
+		return x.Multikey
+	}
+	return false
+}
+
+func (x *GcpFirestoreIndexSpec) GetUnique() bool {
+	if x != nil {
+		return x.Unique
+	}
+	return false
+}
+
+func (x *GcpFirestoreIndexSpec) GetSkipWait() bool {
+	if x != nil {
+		return x.SkipWait
+	}
+	return false
+}
+
+func (x *GcpFirestoreIndexSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDesc = "" +
@@ -288,7 +564,7 @@ const file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDesc = "" +
 	"1catalog/gcp/gcpfirestoreindex/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpfirestoreindex.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"I\n" +
 	"\x1dGcpFirestoreIndexVectorConfig\x12(\n" +
 	"\tdimension\x18\x01 \x01(\x05B\n" +
-	"\xbaH\a\xc8\x01\x01\x1a\x02(\x01R\tdimension\"\x97\x05\n" +
+	"\xbaH\a\xc8\x01\x01\x1a\x02(\x01R\tdimension\"\xbb\x06\n" +
 	"\x16GcpFirestoreIndexField\x12%\n" +
 	"\n" +
 	"field_path\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tfieldPath\x12\x89\x01\n" +
@@ -296,8 +572,23 @@ const file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDesc = "" +
 	"\x11order_valid_value\x12%order must be ASCENDING or DESCENDING\x1a1this == '' || this in ['ASCENDING', 'DESCENDING']R\x05order\x12\x84\x01\n" +
 	"\farray_config\x18\x03 \x01(\tBa\xbaH^\xba\x01[\n" +
 	"\x18array_config_valid_value\x12\x1darray_config must be CONTAINS\x1a this == '' || this == 'CONTAINS'R\varrayConfig\x12n\n" +
-	"\rvector_config\x18\x04 \x01(\v2I.dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexVectorConfigR\fvectorConfig:\xd2\x01\xbaH\xce\x01\x1a\xcb\x01\n" +
-	"\x16exactly_one_field_role\x12Heach field declares exactly one of order, array_config, or vector_config\x1ag(this.order != '' ? 1 : 0) + (this.array_config != '' ? 1 : 0) + (has(this.vector_config) ? 1 : 0) == 1\"\x8b\b\n" +
+	"\rvector_config\x18\x04 \x01(\v2I.dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexVectorConfigR\fvectorConfig\x12n\n" +
+	"\rsearch_config\x18\x05 \x01(\v2I.dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSearchConfigR\fsearchConfig:\x86\x02\xbaH\x82\x02\x1a\xff\x01\n" +
+	"\x16exactly_one_field_role\x12Weach field declares exactly one of order, array_config, vector_config, or search_config\x1a\x8b\x01(this.order != '' ? 1 : 0) + (this.array_config != '' ? 1 : 0) + (has(this.vector_config) ? 1 : 0) + (has(this.search_config) ? 1 : 0) == 1\"\xe5\x02\n" +
+	"\x1dGcpFirestoreIndexSearchConfig\x12b\n" +
+	"\ttext_spec\x18\x01 \x01(\v2E.dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexTextSpecR\btextSpec\x12_\n" +
+	"\bgeo_spec\x18\x02 \x01(\v2D.dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexGeoSpecR\ageoSpec:\x7f\xbaH|\x1az\n" +
+	"\x17search_config_not_empty\x124search_config must declare text_spec and/or geo_spec\x1a)has(this.text_spec) || has(this.geo_spec)\"\x92\x01\n" +
+	"\x19GcpFirestoreIndexTextSpec\x12u\n" +
+	"\vindex_specs\x18\x01 \x03(\v2J.dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexTextIndexSpecB\b\xbaH\x05\x92\x01\x02\b\x01R\n" +
+	"indexSpecs\"^\n" +
+	"\x1eGcpFirestoreIndexTextIndexSpec\x12\x1d\n" +
+	"\n" +
+	"index_type\x18\x01 \x01(\tR\tindexType\x12\x1d\n" +
+	"\n" +
+	"match_type\x18\x02 \x01(\tR\tmatchType\"W\n" +
+	"\x18GcpFirestoreIndexGeoSpec\x12;\n" +
+	"\x1ageo_json_indexing_disabled\x18\x01 \x01(\bR\x17geoJsonIndexingDisabled\"\xf1\v\n" +
 	"\x15GcpFirestoreIndexSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12u\n" +
@@ -308,12 +599,19 @@ const file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDesc = "" +
 	"\vquery_scope\x18\x04 \x01(\tB\xcc\x01\xbaH\xba\x01\xba\x01\xb6\x01\n" +
 	"\x17query_scope_valid_value\x12Iquery_scope must be COLLECTION, COLLECTION_GROUP, or COLLECTION_RECURSIVE\x1aPthis == '' || this in ['COLLECTION', 'COLLECTION_GROUP', 'COLLECTION_RECURSIVE']\x8a\xa6\x1d\n" +
 	"COLLECTIONH\x00R\n" +
-	"queryScope\x88\x01\x01\x12\xb7\x01\n" +
-	"\tapi_scope\x18\x05 \x01(\tB\x94\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +
-	"\x15api_scope_valid_value\x12/api_scope must be ANY_API or DATASTORE_MODE_API\x1a7this == '' || this in ['ANY_API', 'DATASTORE_MODE_API']\x8a\xa6\x1d\aANY_APIH\x01R\bapiScope\x88\x01\x01\x12\xa7\x01\n" +
+	"queryScope\x88\x01\x01\x12\xea\x01\n" +
+	"\tapi_scope\x18\x05 \x01(\tB\xc7\x01\xbaH\xb8\x01\xba\x01\xb4\x01\n" +
+	"\x15api_scope_valid_value\x12Hapi_scope must be ANY_API, DATASTORE_MODE_API, or MONGODB_COMPATIBLE_API\x1aQthis == '' || this in ['ANY_API', 'DATASTORE_MODE_API', 'MONGODB_COMPATIBLE_API']\x8a\xa6\x1d\aANY_APIH\x01R\bapiScope\x88\x01\x01\x12\xa7\x01\n" +
 	"\adensity\x18\x06 \x01(\tB\x8c\x01\xbaH\x88\x01\xba\x01\x84\x01\n" +
 	"\x13density_valid_value\x120density must be SPARSE_ALL, SPARSE_ANY, or DENSE\x1a;this == '' || this in ['SPARSE_ALL', 'SPARSE_ANY', 'DENSE']R\adensity\x12d\n" +
-	"\x06fields\x18\a \x03(\v2B.dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexFieldB\b\xbaH\x05\x92\x01\x02\b\x01R\x06fieldsB\x0e\n" +
+	"\x06fields\x18\a \x03(\v2B.dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexFieldB\b\xbaH\x05\x92\x01\x02\b\x01R\x06fields\x12\x1a\n" +
+	"\bmultikey\x18\b \x01(\bR\bmultikey\x12\x16\n" +
+	"\x06unique\x18\t \x01(\bR\x06unique\x12\x1b\n" +
+	"\tskip_wait\x18\n" +
+	" \x01(\bR\bskipWait\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\v \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy:\xa1\x01\xbaH\x9d\x01\x1a\x9a\x01\n" +
+	"\x1fmultikey_requires_mongodb_scope\x129multikey indexes require api_scope MONGODB_COMPATIBLE_API\x1a<!this.multikey || this.api_scope == 'MONGODB_COMPATIBLE_API'B\x0e\n" +
 	"\f_query_scopeB\f\n" +
 	"\n" +
 	"_api_scopeB\xe7\x02\n" +
@@ -331,23 +629,31 @@ func file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDescGZIP() []byte
 	return file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_goTypes = []any{
-	(*GcpFirestoreIndexVectorConfig)(nil), // 0: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexVectorConfig
-	(*GcpFirestoreIndexField)(nil),        // 1: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexField
-	(*GcpFirestoreIndexSpec)(nil),         // 2: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSpec
-	(*v1.StringValueOrRef)(nil),           // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpFirestoreIndexVectorConfig)(nil),  // 0: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexVectorConfig
+	(*GcpFirestoreIndexField)(nil),         // 1: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexField
+	(*GcpFirestoreIndexSearchConfig)(nil),  // 2: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSearchConfig
+	(*GcpFirestoreIndexTextSpec)(nil),      // 3: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexTextSpec
+	(*GcpFirestoreIndexTextIndexSpec)(nil), // 4: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexTextIndexSpec
+	(*GcpFirestoreIndexGeoSpec)(nil),       // 5: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexGeoSpec
+	(*GcpFirestoreIndexSpec)(nil),          // 6: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSpec
+	(*v1.StringValueOrRef)(nil),            // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_depIdxs = []int32{
 	0, // 0: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexField.vector_config:type_name -> dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexVectorConfig
-	3, // 1: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSpec.database:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 3: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSpec.fields:type_name -> dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexField
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	2, // 1: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexField.search_config:type_name -> dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSearchConfig
+	3, // 2: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSearchConfig.text_spec:type_name -> dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexTextSpec
+	5, // 3: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSearchConfig.geo_spec:type_name -> dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexGeoSpec
+	4, // 4: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexTextSpec.index_specs:type_name -> dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexTextIndexSpec
+	7, // 5: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7, // 6: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSpec.database:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 7: dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexSpec.fields:type_name -> dev.planton.gcp.gcpfirestoreindex.v1alpha1.GcpFirestoreIndexField
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_init() }
@@ -355,14 +661,14 @@ func file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_init() {
 	if File_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto != nil {
 		return
 	}
-	file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

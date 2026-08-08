@@ -11,7 +11,7 @@ This preset creates the service account as a pure identity node with no inline r
 ## Key Configuration Choices
 
 - **No `projectIamRoles`/`orgIamRoles`** — deliberate; the grant nodes carry all access
-- **Keyless** — `createKey` stays at its default (false); pair with Workload Identity or federation
+- **Keyless** — no `userManagedKey` block; pair with Workload Identity or federation
 - **`description` names the pattern** — the auditor who finds this identity sees immediately where its access is defined
 
 ## Placeholders to Replace
