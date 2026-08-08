@@ -63,6 +63,7 @@ var verifiers = map[string]Verifier{
 	"azureeventhubschemagroup":                       &eventHubResourceVerifier{component: "azureeventhubschemagroup", idOutputKey: "schema_group_id"},
 	"azureexpressroutecircuit":                       &expressRouteCircuitVerifier{},
 	"azureexpressroutecircuitpeering":                &expressRouteCircuitPeeringVerifier{},
+	"azureexpressrouteport":                          &expressRoutePortVerifier{},
 	"azurefederatedidentitycredential":               &federatedIdentityCredentialVerifier{},
 	"azurefirewall":                                  &firewallVerifier{},
 	"azurefirewallpolicy":                            &firewallPolicyVerifier{},
@@ -142,6 +143,7 @@ var verifiers = map[string]Verifier{
 	"azurevirtualnetworkgateway":                     &virtualNetworkGatewayVerifier{},
 	"azurevirtualnetworkgatewayconnection":           &virtualNetworkGatewayConnectionVerifier{},
 	"azurevirtualnetworkpeering":                     &virtualNetworkPeeringVerifier{},
+	"azurevirtualwan":                                &virtualWanVerifier{},
 	"azurewebapplicationfirewallpolicy":              &webApplicationFirewallPolicyVerifier{},
 }
 

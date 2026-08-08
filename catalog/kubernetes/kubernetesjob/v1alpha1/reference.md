@@ -1416,9 +1416,11 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGateway` -- AzureSubnet is a prerequisite because every virtual network gateway lives in a dedicated subnet named exactly "GatewaySubnet" (the virtual network and resource group chain transitively through the subnet); the subnet install profile publishes a fixture instance with that exact ARM name. AzurePublicIp is a prerequisite because a VPN-type gateway (the default shape) requires a public IP per ip configuration; the address install profile publishes a dedicated no-zone instance (a gateway binds its address exclusively).
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
-- `AzurePrivateLinkService`
+- `AzurePrivateLinkService` -- AzureSubnet is the sole prerequisite: every NAT ip configuration draws its address from a subnet with private-link-service network policies disabled (the subnet install profile publishes a fixture instance with that flag off). The Standard load balancer whose frontend the service typically fronts is NOT a registry prerequisite -- the spec's destination is an exactly-one-of (load balancer frontend OR fixed destination IP), so scenarios that use the load-balancer shape declare it via the planton.dev/e2e-prerequisites annotation instead.
 - `AzureExpressRouteCircuit`
-- `AzureExpressRouteCircuitPeering`
+- `AzureExpressRouteCircuitPeering` -- The circuit is the prerequisite: a peering is an ARM child of the circuit, addressed by the circuit's name (the resource group chains transitively through the circuit).
+- `AzureExpressRoutePort`
+- `AzureVirtualWan`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -2201,9 +2203,11 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGateway` -- AzureSubnet is a prerequisite because every virtual network gateway lives in a dedicated subnet named exactly "GatewaySubnet" (the virtual network and resource group chain transitively through the subnet); the subnet install profile publishes a fixture instance with that exact ARM name. AzurePublicIp is a prerequisite because a VPN-type gateway (the default shape) requires a public IP per ip configuration; the address install profile publishes a dedicated no-zone instance (a gateway binds its address exclusively).
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
-- `AzurePrivateLinkService`
+- `AzurePrivateLinkService` -- AzureSubnet is the sole prerequisite: every NAT ip configuration draws its address from a subnet with private-link-service network policies disabled (the subnet install profile publishes a fixture instance with that flag off). The Standard load balancer whose frontend the service typically fronts is NOT a registry prerequisite -- the spec's destination is an exactly-one-of (load balancer frontend OR fixed destination IP), so scenarios that use the load-balancer shape declare it via the planton.dev/e2e-prerequisites annotation instead.
 - `AzureExpressRouteCircuit`
-- `AzureExpressRouteCircuitPeering`
+- `AzureExpressRouteCircuitPeering` -- The circuit is the prerequisite: a peering is an ARM child of the circuit, addressed by the circuit's name (the resource group chains transitively through the circuit).
+- `AzureExpressRoutePort`
+- `AzureVirtualWan`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -4137,9 +4141,11 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGateway` -- AzureSubnet is a prerequisite because every virtual network gateway lives in a dedicated subnet named exactly "GatewaySubnet" (the virtual network and resource group chain transitively through the subnet); the subnet install profile publishes a fixture instance with that exact ARM name. AzurePublicIp is a prerequisite because a VPN-type gateway (the default shape) requires a public IP per ip configuration; the address install profile publishes a dedicated no-zone instance (a gateway binds its address exclusively).
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
-- `AzurePrivateLinkService`
+- `AzurePrivateLinkService` -- AzureSubnet is the sole prerequisite: every NAT ip configuration draws its address from a subnet with private-link-service network policies disabled (the subnet install profile publishes a fixture instance with that flag off). The Standard load balancer whose frontend the service typically fronts is NOT a registry prerequisite -- the spec's destination is an exactly-one-of (load balancer frontend OR fixed destination IP), so scenarios that use the load-balancer shape declare it via the planton.dev/e2e-prerequisites annotation instead.
 - `AzureExpressRouteCircuit`
-- `AzureExpressRouteCircuitPeering`
+- `AzureExpressRouteCircuitPeering` -- The circuit is the prerequisite: a peering is an ARM child of the circuit, addressed by the circuit's name (the resource group chains transitively through the circuit).
+- `AzureExpressRoutePort`
+- `AzureVirtualWan`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -4922,9 +4928,11 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGateway` -- AzureSubnet is a prerequisite because every virtual network gateway lives in a dedicated subnet named exactly "GatewaySubnet" (the virtual network and resource group chain transitively through the subnet); the subnet install profile publishes a fixture instance with that exact ARM name. AzurePublicIp is a prerequisite because a VPN-type gateway (the default shape) requires a public IP per ip configuration; the address install profile publishes a dedicated no-zone instance (a gateway binds its address exclusively).
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
-- `AzurePrivateLinkService`
+- `AzurePrivateLinkService` -- AzureSubnet is the sole prerequisite: every NAT ip configuration draws its address from a subnet with private-link-service network policies disabled (the subnet install profile publishes a fixture instance with that flag off). The Standard load balancer whose frontend the service typically fronts is NOT a registry prerequisite -- the spec's destination is an exactly-one-of (load balancer frontend OR fixed destination IP), so scenarios that use the load-balancer shape declare it via the planton.dev/e2e-prerequisites annotation instead.
 - `AzureExpressRouteCircuit`
-- `AzureExpressRouteCircuitPeering`
+- `AzureExpressRouteCircuitPeering` -- The circuit is the prerequisite: a peering is an ARM child of the circuit, addressed by the circuit's name (the resource group chains transitively through the circuit).
+- `AzureExpressRoutePort`
+- `AzureVirtualWan`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -6896,9 +6904,11 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGateway` -- AzureSubnet is a prerequisite because every virtual network gateway lives in a dedicated subnet named exactly "GatewaySubnet" (the virtual network and resource group chain transitively through the subnet); the subnet install profile publishes a fixture instance with that exact ARM name. AzurePublicIp is a prerequisite because a VPN-type gateway (the default shape) requires a public IP per ip configuration; the address install profile publishes a dedicated no-zone instance (a gateway binds its address exclusively).
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
-- `AzurePrivateLinkService`
+- `AzurePrivateLinkService` -- AzureSubnet is the sole prerequisite: every NAT ip configuration draws its address from a subnet with private-link-service network policies disabled (the subnet install profile publishes a fixture instance with that flag off). The Standard load balancer whose frontend the service typically fronts is NOT a registry prerequisite -- the spec's destination is an exactly-one-of (load balancer frontend OR fixed destination IP), so scenarios that use the load-balancer shape declare it via the planton.dev/e2e-prerequisites annotation instead.
 - `AzureExpressRouteCircuit`
-- `AzureExpressRouteCircuitPeering`
+- `AzureExpressRouteCircuitPeering` -- The circuit is the prerequisite: a peering is an ARM child of the circuit, addressed by the circuit's name (the resource group chains transitively through the circuit).
+- `AzureExpressRoutePort`
+- `AzureVirtualWan`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -7681,9 +7691,11 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGateway` -- AzureSubnet is a prerequisite because every virtual network gateway lives in a dedicated subnet named exactly "GatewaySubnet" (the virtual network and resource group chain transitively through the subnet); the subnet install profile publishes a fixture instance with that exact ARM name. AzurePublicIp is a prerequisite because a VPN-type gateway (the default shape) requires a public IP per ip configuration; the address install profile publishes a dedicated no-zone instance (a gateway binds its address exclusively).
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
-- `AzurePrivateLinkService`
+- `AzurePrivateLinkService` -- AzureSubnet is the sole prerequisite: every NAT ip configuration draws its address from a subnet with private-link-service network policies disabled (the subnet install profile publishes a fixture instance with that flag off). The Standard load balancer whose frontend the service typically fronts is NOT a registry prerequisite -- the spec's destination is an exactly-one-of (load balancer frontend OR fixed destination IP), so scenarios that use the load-balancer shape declare it via the planton.dev/e2e-prerequisites annotation instead.
 - `AzureExpressRouteCircuit`
-- `AzureExpressRouteCircuitPeering`
+- `AzureExpressRouteCircuitPeering` -- The circuit is the prerequisite: a peering is an ARM child of the circuit, addressed by the circuit's name (the resource group chains transitively through the circuit).
+- `AzureExpressRoutePort`
+- `AzureVirtualWan`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`

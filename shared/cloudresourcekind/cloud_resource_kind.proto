@@ -2136,6 +2136,30 @@ enum CloudResourceKind {
     prerequisites: [AzureExpressRouteCircuit]
   }];
 
+  // 2146 is allocated to AzureExpressRouteGateway (registered when that
+  // kind is forged -- an ExpressRoute Gateway requires a Virtual Hub, so
+  // it ships with the Virtual WAN hub family).
+
+  // ExpressRoute Port: your own physical port pair on a Microsoft edge
+  // router (ExpressRoute Direct), from whose bandwidth circuits are
+  // carved. Self-contained -- only the resource group is required.
+  AzureExpressRoutePort = 2147 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azerpt"
+    prerequisites: [AzureResourceGroup]
+  }];
+
+  // Virtual WAN: the umbrella of Azure's managed hub-and-spoke
+  // networking, under which virtual hubs and their gateways are
+  // created. Self-contained -- only the resource group is required.
+  AzureVirtualWan = 2148 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azvwan"
+    prerequisites: [AzureResourceGroup]
+  }];
+
   // 3000–3999: GCP resources
   GcpArtifactRegistryRepo = 3000 [(kind_meta) = {
     provider: gcp

@@ -1,0 +1,295 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureexpressrouteport.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureExpressRoutePortSpec** defines an ExpressRoute Port -- your own
+// pair of physical ports on a Microsoft Enterprise Edge router at a
+// peering location (ExpressRoute Direct). Where an ordinary ExpressRoute
+// circuit rents capacity through a connectivity provider, a port IS the
+// capacity: you order 10 or 100 Gbps of dual physical links, receive the
+// facility facts (router, interface, patch panel, rack) in this
+// component's outputs, arrange the cross-connects with the facility, and
+// then carve circuits (AzureExpressRouteCircuit in Direct mode) from the
+// port's bandwidth.
+//
+// **Billing and enrollment**: the port bills its full monthly rate from
+// creation, whether or not any cross-connect exists -- this is one of the
+// most expensive single objects in Azure networking, so create ports
+// deliberately. Subscriptions may also need Microsoft enrollment for
+// ExpressRoute Direct before ARM accepts the create.
+//
+// **Links come as a fixed pair**: ARM always creates exactly two links
+// (the physical port pair) -- link1 and link2 here configure the existing
+// pair (admin state, MACsec); they never add or remove links. Links
+// start administratively DISABLED; enable them when the facility
+// completes the cross-connect.
+//
+// **ForceNew fields**: `name`, `region`, `resource_group`,
+// `peering_location`, `bandwidth_in_gbps`, and `encapsulation` are all
+// fixed at creation -- changing any of them replaces the port (and every
+// circuit riding on it).
+message AzureExpressRoutePortSpec {
+  // The Azure region the port object lives in, e.g. "eastus". This is
+  // the ARM metadata location -- the physical site is peering_location.
+  // Changing the region replaces the port.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the port is created in. Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's name
+  // output. Changing it replaces the port.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The port's name, unique within the resource group: 1-80 characters,
+  // starting with a letter or number, containing only letters, numbers,
+  // underscores, periods, and hyphens, and not ending in a period or
+  // hyphen (ARM's rule, enforced here so a bad name fails in seconds
+  // rather than at deploy). Changing the name replaces the port.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[^\\W_]([\\w.-]{0,78}[\\w])?$"
+  ];
+
+  // The ExpressRoute Direct peering location -- the colocation facility
+  // where the physical port pair is provisioned (e.g.
+  // "Equinix-Ashburn-DC2"). This is the ExpressRoute DIRECT vocabulary
+  // (`az network express-route port location list`), which is narrower
+  // than the provider-circuit peering locations. Fixed at creation.
+  string peering_location = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The port pair's total bandwidth in Gbps. ARM offers exactly 10 or
+  // 100 at real peering locations (the API accepts any positive value,
+  // so the vocabulary is documented rather than validated -- new sizes
+  // appear without a provider release). Circuits carved from the port
+  // may oversubscribe it (up to 2x on aggregate provisioned bandwidth).
+  // Fixed at creation.
+  int32 bandwidth_in_gbps = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // The Ethernet encapsulation of the physical links. DOT1Q carries one
+  // VLAN tag per circuit (the common choice); QINQ stacks an outer
+  // Azure-managed S-Tag over your C-Tags, letting overlapping customer
+  // VLAN ranges share the port. Fixed at creation.
+  AzureExpressRoutePortEncapsulation encapsulation = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // How the port is billed. Unspecified applies METERED_DATA (ARM's
+  // default): the port fee plus per-GB outbound charges on its circuits.
+  // UNLIMITED_DATA is a higher flat fee with no egress metering --
+  // economical at sustained high utilization.
+  optional AzureExpressRoutePortBillingType billing_type = 7 [
+    (buf.validate.field).enum.defined_only = true,
+    (dev.planton.shared.options.default) = "METERED_DATA"
+  ];
+
+  // The port's managed identity. Required for MACsec (the identity reads
+  // the CAK/CKN secrets from Key Vault at provisioning time -- grant it
+  // Key Vault secret GET before enabling MACsec). Leave unset for ports
+  // that need no identity.
+  AzureExpressRoutePortIdentity identity = 8;
+
+  // Configuration of the FIRST physical link of the pair. Links always
+  // exist (ARM creates the pair with the port); this block only
+  // manipulates the existing link. Leave unset to keep the link
+  // administratively disabled with no MACsec.
+  AzureExpressRoutePortLink link1 = 9;
+
+  // Configuration of the SECOND physical link of the pair -- same
+  // semantics as link1.
+  AzureExpressRoutePortLink link2 = 10;
+
+  // Authorizations ISSUED by this port: each entry creates a named
+  // authorization whose generated key lets a circuit in ANOTHER
+  // subscription be built on this port's capacity. The generated keys
+  // surface (marked sensitive) in the port's authorization_keys output,
+  // keyed by name. Deleting an entry revokes the authorization.
+  repeated AzureExpressRoutePortAuthorization authorizations = 11;
+
+  // Free-form tags applied to the port, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag
+  // with the same key wins.
+  map<string, string> tags = 12;
+
+  // The encapsulation choice is explicit -- it is fixed at creation and
+  // decides how circuits share the port.
+  option (buf.validate.message).cel = {
+    id: "encapsulation_required"
+    message: "Choose the link encapsulation explicitly -- DOT1Q (one VLAN tag per circuit, the common choice) or QINQ (stacked tags for overlapping VLAN ranges)"
+    expression: "this.encapsulation != 0"
+  };
+  // MACsec key access happens through the port's managed identity -- ARM
+  // rejects MACsec configuration on a port that has no user-assigned
+  // identity to read the Key Vault secrets with.
+  option (buf.validate.message).cel = {
+    id: "macsec_requires_user_assigned_identity"
+    message: "MACsec needs a USER_ASSIGNED (or SYSTEM_AND_USER_ASSIGNED) identity on the port -- the identity reads the CAK/CKN secrets from Key Vault"
+    expression: "((has(this.link1) && this.link1.macsec_ckn_keyvault_secret_id != '') || (has(this.link2) && this.link2.macsec_ckn_keyvault_secret_id != '')) ? (has(this.identity) && (this.identity.type == 2 || this.identity.type == 3)) : true"
+  };
+  option (buf.validate.message).cel = {
+    id: "authorization_names_unique"
+    message: "Authorization names must be unique on the port"
+    expression: "this.authorizations.all(a, this.authorizations.filter(o, o.name == a.name).size() == 1)"
+  };
+}
+
+// The Ethernet encapsulation of the port's physical links.
+enum AzureExpressRoutePortEncapsulation {
+  // Not specified -- invalid: the encapsulation choice is explicit (see
+  // the encapsulation_required contract).
+  azure_express_route_port_encapsulation_unspecified = 0;
+
+  // One VLAN tag per circuit (802.1Q). The common choice when your VLAN
+  // ranges do not overlap.
+  DOT1Q = 1;
+
+  // Stacked tags (802.1ad): Azure manages an outer S-Tag per circuit so
+  // overlapping customer VLAN ranges can share the port.
+  QINQ = 2;
+}
+
+// How the port is billed.
+enum AzureExpressRoutePortBillingType {
+  // Not specified -- METERED_DATA (ARM's default) applies.
+  azure_express_route_port_billing_type_unspecified = 0;
+
+  // Port fee plus per-GB outbound data charges on the circuits riding
+  // it.
+  METERED_DATA = 1;
+
+  // Higher flat port fee with unlimited data transfer on its circuits.
+  UNLIMITED_DATA = 2;
+}
+
+// The port's managed identity.
+message AzureExpressRoutePortIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the port; USER_ASSIGNED brings identities you manage (what
+  // MACsec requires -- the identity must be grantable Key Vault access
+  // BEFORE the port provisions its links); SYSTEM_AND_USER_ASSIGNED
+  // carries both.
+  AzureExpressRoutePortIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the port, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so Key Vault grants (MACsec CAK/
+  // CKN secret GET) can be composed before the port is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The port's managed-identity flavor.
+enum AzureExpressRoutePortIdentityType {
+  // Not specified: the port has no managed identity.
+  azure_express_route_port_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the port.
+  SYSTEM_ASSIGNED = 1;
+
+  // Bring-your-own user-assigned identities (set identity_ids). What
+  // MACsec requires.
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned identity and the listed user-assigned ones.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// Configuration of one physical link of the port pair. The link itself
+// always exists (ARM creates the pair with the port) -- this only
+// manipulates it.
+message AzureExpressRoutePortLink {
+  // Administratively enable the link. Links start DISABLED; enable them
+  // once the facility completes the physical cross-connect. ARM applies
+  // link configuration in a second call after the port exists, so a
+  // fresh port briefly reports links disabled even when this is true.
+  bool admin_enabled = 1;
+
+  // The MACsec cipher suite used when MACsec is configured. Unspecified
+  // applies GCM_AES_128 (ARM's default). The XPN variants (extended
+  // packet numbering) are for sustained rates above ~40 Gbps where the
+  // 32-bit packet number would wrap too quickly.
+  optional AzureExpressRoutePortMacsecCipher macsec_cipher = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (dev.planton.shared.options.default) = "GCM_AES_128"
+  ];
+
+  // The Key Vault SECRET IDENTIFIER (a versioned https URL, not the
+  // secret itself) holding the MACsec CKN -- the connectivity key name,
+  // a hex string shared with the facility side. Travels together with
+  // the CAK; the port's user-assigned identity must be able to GET both
+  // secrets.
+  string macsec_ckn_keyvault_secret_id = 3;
+
+  // The Key Vault SECRET IDENTIFIER (a versioned https URL, not the
+  // secret itself) holding the MACsec CAK -- the connectivity
+  // association key, the actual encryption key material. Travels
+  // together with the CKN.
+  string macsec_cak_keyvault_secret_id = 4;
+
+  // Enable MACsec SCI (secure channel identifier) tagging. Both sides
+  // of the link must agree on this setting; leave it off unless the
+  // facility side requires SCI.
+  bool macsec_sci_enabled = 5;
+
+  // ARM rejects a MACsec configuration with only one of the two keys --
+  // the CKN names the key the CAK provides.
+  option (buf.validate.message).cel = {
+    id: "macsec_keys_travel_together"
+    message: "MACsec needs both keys or neither -- set macsec_ckn_keyvault_secret_id and macsec_cak_keyvault_secret_id together"
+    expression: "(this.macsec_ckn_keyvault_secret_id == '') == (this.macsec_cak_keyvault_secret_id == '')"
+  };
+}
+
+// The MACsec cipher suite.
+enum AzureExpressRoutePortMacsecCipher {
+  // Not specified -- GCM_AES_128 (ARM's default) applies.
+  azure_express_route_port_macsec_cipher_unspecified = 0;
+
+  // AES-GCM with a 128-bit key.
+  GCM_AES_128 = 1;
+
+  // AES-GCM with a 256-bit key.
+  GCM_AES_256 = 2;
+
+  // AES-GCM 128-bit with extended (64-bit) packet numbering -- for
+  // sustained rates where a 32-bit packet number wraps too quickly.
+  GCM_AES_XPN_128 = 3;
+
+  // AES-GCM 256-bit with extended packet numbering.
+  GCM_AES_XPN_256 = 4;
+}
+
+// One authorization issued by the port. Creating it makes ARM generate
+// an authorization key (surfaced, marked sensitive, in the port's
+// authorization_keys output under this name); a circuit in another
+// subscription redeems the key to be built on this port's capacity.
+message AzureExpressRoutePortAuthorization {
+  // The authorization's name, unique on the port -- the key's lookup
+  // name in the authorization_keys output. Renaming revokes the old
+  // authorization and issues a new key.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}

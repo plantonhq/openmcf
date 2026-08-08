@@ -195,6 +195,7 @@ import (
 	azureeventhubschemagroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventhubschemagroup/v1alpha1"
 	azureexpressroutecircuitv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressroutecircuit/v1alpha1"
 	azureexpressroutecircuitpeeringv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressroutecircuitpeering/v1alpha1"
+	azureexpressrouteportv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressrouteport/v1alpha1"
 	azurefederatedidentitycredentialv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefederatedidentitycredential/v1alpha1"
 	azurefirewallv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefirewall/v1alpha1"
 	azurefirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefirewallpolicy/v1alpha1"
@@ -274,6 +275,7 @@ import (
 	azurevirtualnetworkgatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualnetworkgateway/v1alpha1"
 	azurevirtualnetworkgatewayconnectionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualnetworkgatewayconnection/v1alpha1"
 	azurevirtualnetworkpeeringv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualnetworkpeering/v1alpha1"
+	azurevirtualwanv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualwan/v1alpha1"
 	azurewebapplicationfirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurewebapplicationfirewallpolicy/v1alpha1"
 	civobucketv1alpha1 "github.com/plantonhq/planton/catalog/civo/civobucket/v1alpha1"
 	civocertificatev1alpha1 "github.com/plantonhq/planton/catalog/civo/civocertificate/v1alpha1"
@@ -844,6 +846,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureEventHubSchemaGroup:                       &azureeventhubschemagroupv1alpha1.AzureEventHubSchemaGroup{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRouteCircuit:                       &azureexpressroutecircuitv1alpha1.AzureExpressRouteCircuit{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRouteCircuitPeering:                &azureexpressroutecircuitpeeringv1alpha1.AzureExpressRouteCircuitPeering{},
+	cloudresourcekind.CloudResourceKind_AzureExpressRoutePort:                          &azureexpressrouteportv1alpha1.AzureExpressRoutePort{},
 	cloudresourcekind.CloudResourceKind_AzureFederatedIdentityCredential:               &azurefederatedidentitycredentialv1alpha1.AzureFederatedIdentityCredential{},
 	cloudresourcekind.CloudResourceKind_AzureFirewall:                                  &azurefirewallv1alpha1.AzureFirewall{},
 	cloudresourcekind.CloudResourceKind_AzureFirewallPolicy:                            &azurefirewallpolicyv1alpha1.AzureFirewallPolicy{},
@@ -923,6 +926,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetworkGateway:                     &azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGateway{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetworkGatewayConnection:           &azurevirtualnetworkgatewayconnectionv1alpha1.AzureVirtualNetworkGatewayConnection{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetworkPeering:                     &azurevirtualnetworkpeeringv1alpha1.AzureVirtualNetworkPeering{},
+	cloudresourcekind.CloudResourceKind_AzureVirtualWan:                                &azurevirtualwanv1alpha1.AzureVirtualWan{},
 	cloudresourcekind.CloudResourceKind_AzureWebApplicationFirewallPolicy:              &azurewebapplicationfirewallpolicyv1alpha1.AzureWebApplicationFirewallPolicy{},
 }
 

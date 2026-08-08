@@ -1,0 +1,14 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurevirtualwan
+spec:
+  # The WAN's identity is its full ARM resource ID -- the single
+  # resource this module deploys.
+  values:
+    - name: virtual_wan_id
+      derivations:
+        - from_stack_output: virtual_wan_id
+      where_to_find: >-
+        Portal -> Virtual WANs -> the WAN -> Properties -> Resource ID,
+        or `az network vwan show -g <rg> -n <name> --query id`.

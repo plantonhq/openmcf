@@ -1,0 +1,15 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurevirtualwan
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, offline tofu plan green); live dual-engine proof has
+  # not yet run. The WAN is a free policy object that provisions in
+  # minutes; verifiers assert the ARM object and its transit-policy
+  # properties. It is also the fixture root of the Virtual WAN family --
+  # hub-family lanes chain through this kind's install profile.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

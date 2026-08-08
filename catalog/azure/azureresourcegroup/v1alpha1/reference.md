@@ -97,6 +97,7 @@ Fields on other kinds that can point at this resource:
 | AzureEventHubNamespace | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureExpressRouteCircuit | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureExpressRouteCircuitPeering | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureExpressRoutePort | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFirewall | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFirewallPolicy | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFrontDoorFirewallPolicy | `spec.resourceGroup` | `status.outputs.resource_group_name` |
@@ -140,6 +141,7 @@ Fields on other kinds that can point at this resource:
 | AzureVirtualNetwork | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVirtualNetworkGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVirtualNetworkGatewayConnection | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureVirtualWan | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureWebApplicationFirewallPolicy | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 
 ## See Also

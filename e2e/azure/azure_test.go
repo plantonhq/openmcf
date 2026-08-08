@@ -313,6 +313,24 @@ func TestAzureExpressRouteCircuitPeering_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureexpressroutecircuitpeering", "terraform")
 }
 
+// --- Azure ExpressRoute Port (fixture RG -> a 10 Gbps Dot1Q port + one authorization; bills its full monthly rate from creation -- pro-rated cents-to-dollars for a lane-length life -- and the create may reject on subscriptions not enrolled for ExpressRoute Direct: that outcome IS the lane's proof point, never a module defect) ---
+
+func TestAzureExpressRoutePort_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressrouteport", "pulumi")
+}
+func TestAzureExpressRoutePort_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressrouteport", "terraform")
+}
+
+// --- Azure Virtual WAN (fixture RG -> a free Standard WAN policy object; minutes) ---
+
+func TestAzureVirtualWan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualwan", "pulumi")
+}
+func TestAzureVirtualWan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualwan", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {
