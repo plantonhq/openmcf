@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // accountingFixture exercises every accounting shape in one hermetic
@@ -467,10 +466,13 @@ resources:
 	}
 }
 
-// TestProviderParityGate is the live gate over the whole GCP catalog: the
-// accounting runs against the committed schemas, manifests, ledger, and
-// baseline, and any drift from the recorded state fails. This test IS the CI
-// lane (lint.provider-parity.yaml).
+// TestProviderParityGate is the live gate over every enrolled catalog: each
+// provider's accounting runs against the committed schemas, manifests,
+// ledger, and the ONE shared baseline, and any drift from the recorded state
+// fails. Gating and regenerating always use the merged findings of all
+// enrollments -- a single provider's findings against the shared baseline
+// would misreport every other provider's entries as stale. This test IS the
+// CI lane (lint.provider-parity.yaml).
 func TestProviderParityGate(t *testing.T) {
 	root := repoRoot(t)
 	if _, err := os.Stat(filepath.Join(root, catalogRoot)); err != nil {
@@ -480,31 +482,34 @@ func TestProviderParityGate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("committed schemas: %v", err)
 	}
-	acc, err := BuildAccounting(root, cloudresourcekind.CloudResourceProvider_gcp, schemas, "google", "")
+	accountings, err := EnrolledAccountings(root, schemas)
 	if err != nil {
 		t.Fatalf("accounting: %v", err)
 	}
 
-	accounted := 0
-	for _, k := range acc.Kinds {
-		if k.Accounted() {
-			accounted++
+	for _, acc := range accountings {
+		accounted := 0
+		for _, k := range acc.Kinds {
+			if k.Accounted() {
+				accounted++
+			}
+		}
+		t.Logf("%s depth accounting: %d/%d kinds at total accounting against %s@%s",
+			acc.CloudProvider, accounted, len(acc.Kinds), acc.GASchema, acc.GASchemaVersion)
+		t.Logf("%s breadth dispositions: %v", acc.CloudProvider, acc.DispositionTotals)
+
+		if raw, err := json.MarshalIndent(acc, "", "  "); err == nil && os.Getenv("PLANTON_PROVIDERPARITY_DUMP") != "" {
+			path := filepath.Join(os.TempDir(), "providerparity-"+acc.CloudProvider+"-accounting.json")
+			if err := os.WriteFile(path, raw, 0o644); err == nil {
+				t.Logf("full accounting written to %s", path)
+			}
 		}
 	}
-	t.Logf("gcp depth accounting: %d/%d kinds at total accounting against %s@%s",
-		accounted, len(acc.Kinds), acc.GASchema, acc.GASchemaVersion)
-	t.Logf("gcp breadth dispositions: %v", acc.DispositionTotals)
 
-	if raw, err := json.MarshalIndent(acc, "", "  "); err == nil && os.Getenv("PLANTON_PROVIDERPARITY_DUMP") != "" {
-		path := filepath.Join(os.TempDir(), "providerparity-gcp-accounting.json")
-		if err := os.WriteFile(path, raw, 0o644); err == nil {
-			t.Logf("full accounting written to %s", path)
-		}
-	}
-
+	findings := MergeFindings(accountings)
 	baselinePath := filepath.Join(root, DefaultBaselinePath)
 	if os.Getenv("PLANTON_REGEN_PROVIDERPARITY_BASELINE") == "1" {
-		if err := WriteBaseline(baselinePath, acc.Findings); err != nil {
+		if err := WriteBaseline(baselinePath, findings); err != nil {
 			t.Fatalf("regenerating baseline: %v", err)
 		}
 		t.Log("baseline regenerated -- review the diff before committing")
@@ -513,7 +518,7 @@ func TestProviderParityGate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("baseline: %v (regenerate with PLANTON_REGEN_PROVIDERPARITY_BASELINE=1)", err)
 	}
-	res := Gate(acc.Findings, baseline)
+	res := Gate(findings, baseline)
 	for _, f := range res.NewFindings {
 		t.Errorf("new parity gap [%s]: %s", f.BaselineKey, f.Detail)
 	}

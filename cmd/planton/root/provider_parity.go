@@ -55,7 +55,7 @@ func init() {
 	ProviderParity.Flags().String("provider", "", "cloud provider whose catalog to account (e.g. gcp)")
 	ProviderParity.Flags().String("ga-schema", "", "the parity-baseline Terraform provider schema (e.g. google)")
 	ProviderParity.Flags().Bool("check", false, "exit non-zero if the parity gate fails (for CI)")
-	ProviderParity.Flags().Bool("write-baseline", false, "regenerate the accepted-gap baseline file")
+	ProviderParity.Flags().Bool("write-baseline", false, "regenerate the accepted-gap baseline file (always from every enrolled provider's findings)")
 	ProviderParity.Flags().Bool("write-report", false, "render the public parity page from the accounting")
 	ProviderParity.Flags().String("report-path", "", "public parity page path (default catalog/<provider>/terraform-parity.md)")
 	ProviderParity.Flags().String("baseline", providerparity.DefaultBaselinePath, "path to the baseline file")
@@ -92,11 +92,20 @@ func providerParityHandler(cmd *cobra.Command, _ []string) {
 	}
 
 	if write, _ := cmd.Flags().GetBool("write-baseline"); write {
-		if err := providerparity.WriteBaseline(baselinePath, acc.Findings); err != nil {
+		// The baseline is ONE file for every enrolled provider, so a write
+		// is always computed from all enrollments' merged findings -- writing
+		// this run's single-provider findings would silently drop every
+		// other provider's entries.
+		accountings, err := providerparity.EnrolledAccountings(".", schemas)
+		if err != nil {
+			cliprint.PrintError(fmt.Sprintf("failed to account enrolled providers: %v", err))
+			os.Exit(1)
+		}
+		if err := providerparity.WriteBaseline(baselinePath, providerparity.MergeFindings(accountings)); err != nil {
 			cliprint.PrintError(fmt.Sprintf("failed to write baseline: %v", err))
 			os.Exit(1)
 		}
-		cliprint.PrintSuccess(fmt.Sprintf("baseline written to %s -- review the diff before committing", baselinePath))
+		cliprint.PrintSuccess(fmt.Sprintf("baseline written to %s from all enrolled providers -- review the diff before committing", baselinePath))
 		return
 	}
 
