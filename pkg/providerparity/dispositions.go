@@ -6,8 +6,9 @@
 // modeled (the module census proves consumption) and iam-covered (the
 // *_iam_* pattern) -- plus schema-flagged deprecations. The ledger records
 // only what requires judgment: composed (covered by an existing kind's
-// fields), model-planned (deserves a kind not built yet), deferred (with
-// the reason), and doc-level deprecations the schema flag misses.
+// fields), model-planned (covered by a planned kind not built yet -- its
+// own or one it composes into), deferred (with the reason), and doc-level
+// deprecations the schema flag misses.
 //
 // One ledger file per GA schema (dispositions/<schema>.yaml), loaded from
 // the repo tree like the schema artifacts. A missing file is an empty

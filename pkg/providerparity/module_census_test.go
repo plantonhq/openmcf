@@ -81,7 +81,8 @@ func repoRoot(t *testing.T) string {
 
 // TestModuleCensusGcp is the live-catalog smoke test: every implemented GCP
 // kind has a scannable module that declares at least one resource and at
-// least one provider pin.
+// least one provider pin. GCP is anatomy-clean, so a missing module here is
+// a hard failure, not a finding to baseline.
 func TestModuleCensusGcp(t *testing.T) {
 	root := repoRoot(t)
 	if _, err := os.Stat(filepath.Join(root, catalogRoot)); err != nil {
@@ -95,11 +96,52 @@ func TestModuleCensusGcp(t *testing.T) {
 		t.Fatal("GCP module census is empty -- the registry walk is broken")
 	}
 	for _, m := range census {
+		if m.MissingModule {
+			t.Errorf("%s: no Terraform module directory -- GCP holds zero anatomy debt", m.Kind)
+			continue
+		}
 		if len(m.Resources) == 0 {
 			t.Errorf("%s: module declares no resources", m.Kind)
 		}
 		if len(m.Pins) == 0 {
 			t.Errorf("%s: module declares no provider pins", m.Kind)
 		}
+	}
+}
+
+// TestModuleCensusIsProviderAgnostic is the guard the sibling cloud catalogs
+// rely on: the census must RUN over every major provider's catalog -- kinds
+// with recorded anatomy debt (a missing iac/tf) surface as MissingModule
+// census rows, never as an error that hides the rest of the catalog.
+func TestModuleCensusIsProviderAgnostic(t *testing.T) {
+	root := repoRoot(t)
+	if _, err := os.Stat(filepath.Join(root, catalogRoot)); err != nil {
+		t.Skip("catalog source tree not present (bazel sandbox); runs under go test")
+	}
+	for _, provider := range []cloudresourcekind.CloudResourceProvider{
+		cloudresourcekind.CloudResourceProvider_azure,
+		cloudresourcekind.CloudResourceProvider_aws,
+	} {
+		census, err := ModuleCensusForProvider(root, provider)
+		if err != nil {
+			t.Errorf("%s: census must run over anatomy-baselined trees, got: %v", provider, err)
+			continue
+		}
+		if len(census) == 0 {
+			t.Errorf("%s: census is empty -- the registry walk is broken", provider)
+			continue
+		}
+		missing := 0
+		for _, m := range census {
+			if m.MissingModule {
+				missing++
+			}
+		}
+		spec := SpecCensus(provider)
+		if len(spec) == 0 {
+			t.Errorf("%s: spec census is empty -- the descriptor walk is broken", provider)
+		}
+		t.Logf("%s: %d kinds censused (%d spec-censused), %d missing modules (anatomy-baselined debt)",
+			provider, len(census), len(spec), missing)
 	}
 }

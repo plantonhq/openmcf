@@ -65,8 +65,11 @@ const (
 	// than a kind of its own (ledger-recorded, with the covering kind
 	// named in the reason).
 	DispositionComposed = "composed"
-	// DispositionModelPlanned: judged to deserve a kind of its own that is
-	// not built yet (ledger-recorded, with the tier in the reason).
+	// DispositionModelPlanned: judged to be covered by a planned kind that
+	// is not built yet -- a kind of its own, or a planned kind it composes
+	// into (ledger-recorded, with the planned kind named in the reason).
+	// When the kind ships, the entry flips to modeled (computed) or
+	// composed, and the staleness findings force the cleanup.
 	DispositionModelPlanned = "model-planned"
 	// DispositionDeferred: deliberately not offered, with the reason
 	// recorded (ledger-recorded).
@@ -97,6 +100,11 @@ type Finding struct {
 type KindAccounting struct {
 	Kind        string `json:"kind"`
 	HasManifest bool   `json:"hasManifest"`
+	// MissingModule marks a kind with no Terraform module directory: its
+	// depth cannot be measured at all, which is itself the finding -- the
+	// per-argument walk is skipped so the one real gap is not buried under
+	// a spec-field noise storm.
+	MissingModule bool `json:"missingModule,omitempty"`
 	// TotalArgs is the surface under accounting: non-deprecated,
 	// non-machinery configurable arguments across the kind's consumed
 	// resources (internal-dispositioned resources excluded).
@@ -123,7 +131,8 @@ type KindAccounting struct {
 
 // Accounted reports whether the kind is at total accounting.
 func (k KindAccounting) Accounted() bool {
-	return len(k.UnaccountedArgs) == 0 && len(k.UncoveredSpecFields) == 0 && len(k.ManifestStale) == 0
+	return !k.MissingModule &&
+		len(k.UnaccountedArgs) == 0 && len(k.UncoveredSpecFields) == 0 && len(k.ManifestStale) == 0
 }
 
 // ResourceDisposition is one GA resource's recorded breadth judgment.
@@ -221,6 +230,12 @@ func buildAccounting(cloudProvider string, spec []KindCensus, modules []ModuleCe
 	}
 
 	for _, m := range modules {
+		if m.MissingModule {
+			acc.Kinds = append(acc.Kinds, KindAccounting{Kind: m.Kind, MissingModule: true})
+			acc.Findings = append(acc.Findings, Finding{"kind:" + m.Kind,
+				fmt.Sprintf("no Terraform module directory at %s -- forge the module, or record the debt in the anatomy baseline and here", m.ModuleDir)})
+			continue
+		}
 		manifest := manifests[m.Kind]
 		if manifest == nil {
 			manifest = &Manifest{}
@@ -252,6 +267,11 @@ func buildAccounting(cloudProvider string, spec []KindCensus, modules []ModuleCe
 		gaNames = append(gaNames, name)
 	}
 	sort.Strings(gaNames)
+	// Computed classes always win over the ledger, and a ledger entry
+	// shadowed by a computed class is a staleness finding: recorded judgment
+	// that duplicates what the instrument derives on its own is judgment
+	// nobody re-evaluates -- exactly the rot class this package exists to
+	// eliminate.
 	for _, name := range gaNames {
 		d := ResourceDisposition{Resource: name}
 		entry, inLedger := ledgerByResource[name]
@@ -265,15 +285,23 @@ func buildAccounting(cloudProvider string, spec []KindCensus, modules []ModuleCe
 				acc.Findings = append(acc.Findings, Finding{"resource:" + name,
 					"stale ledger entry: the resource is consumed by a module (modeled) -- remove it from the ledger"})
 			}
-		case inLedger:
-			d.Disposition = entry.Disposition
-			d.Detail = entry.Reason
 		case iamResourceRe.MatchString(name):
 			d.Disposition = DispositionIamCovered
 			d.Detail = "per-resource IAM triplet, covered by the owning kind's additive iam_members field"
+			if inLedger {
+				acc.Findings = append(acc.Findings, Finding{"resource:" + name,
+					"stale ledger entry: the IAM triplet is covered by the computed iam-covered class -- remove it from the ledger"})
+			}
 		case ga.Resources[name].Deprecated:
 			d.Disposition = DispositionExcludedDeprecated
 			d.Detail = "deprecated in the provider schema"
+			if inLedger {
+				acc.Findings = append(acc.Findings, Finding{"resource:" + name,
+					"stale ledger entry: the schema already flags the resource deprecated (computed) -- the ledger's excluded-deprecated is only for doc-level deprecations; remove it"})
+			}
+		case inLedger:
+			d.Disposition = entry.Disposition
+			d.Detail = entry.Reason
 		default:
 			acc.Findings = append(acc.Findings, Finding{"resource:" + name,
 				"GA resource has no recorded disposition -- consume it, or record composed/model-planned/deferred/excluded-deprecated in the dispositions ledger"})

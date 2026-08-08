@@ -41,4 +41,11 @@
 // guessed. Gaps gate through the burn-down baseline (baseline.go) in the
 // pkg/anatomy / pkg/secretcoverage grain, surfaced by the `planton
 // provider-parity` developer command and the lint.provider-parity CI lane.
+//
+// The accounting also renders the PUBLIC parity report (publicreport.go +
+// e2eproof.go): a committed, drift-tested markdown page per provider at
+// catalog/<provider>/terraform-parity.md, carried onto the docs site by the
+// site build. Generated, never hand-authored -- the page and the CI gate
+// render from the same accounting, so the published numbers can never
+// disagree with the check.
 package providerparity

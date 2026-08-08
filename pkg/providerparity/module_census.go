@@ -46,6 +46,12 @@ type ModuleCensus struct {
 	Kind string
 	// ModuleDir is the repo-root-relative Terraform module directory.
 	ModuleDir string
+	// MissingModule marks a registered, implemented kind with no Terraform
+	// module directory at all -- an anatomy-baselined gap in some catalogs.
+	// Recorded here (and surfaced as an accounting Finding) rather than
+	// aborting the census, so one kind's debt never hides every other
+	// kind's numbers.
+	MissingModule bool
 	// Resources is the sorted distinct resource types the module declares.
 	Resources []string
 	// Pins maps each declared provider's local name to its version
@@ -55,9 +61,11 @@ type ModuleCensus struct {
 
 // ModuleCensusForProvider scans the Terraform module of every registered kind
 // of one cloud provider, sorted by kind. A registered kind whose module
-// directory is missing is an error, not a skip: the anatomy gate guarantees
-// the directory exists, so absence means the census is being run against a
-// broken tree and its numbers would be wrong.
+// directory is missing is a per-kind FINDING, never a silent skip and never
+// a run-abort: the finding gates through the burn-down baseline, so an
+// anatomy-clean catalog (zero baseline entries) still fails CI on the first
+// missing module, while a catalog carrying recorded anatomy debt can be
+// measured without that debt hiding every other kind's numbers.
 func ModuleCensusForProvider(repoRoot string, provider cloudresourcekind.CloudResourceProvider) ([]ModuleCensus, error) {
 	var out []ModuleCensus
 	for _, kind := range crkreflect.KindsList() {
@@ -68,7 +76,12 @@ func ModuleCensusForProvider(repoRoot string, provider cloudresourcekind.CloudRe
 			continue // enum value exists but the kind is not implemented yet
 		}
 		moduleRel := filepath.Join(catalogRoot, provider.String(), strings.ToLower(kind.String()), "iac", "tf")
-		census, err := ScanModule(filepath.Join(repoRoot, moduleRel))
+		moduleAbs := filepath.Join(repoRoot, moduleRel)
+		if _, err := os.Stat(moduleAbs); os.IsNotExist(err) {
+			out = append(out, ModuleCensus{Kind: kind.String(), ModuleDir: moduleRel, MissingModule: true})
+			continue
+		}
+		census, err := ScanModule(moduleAbs)
 		if err != nil {
 			return nil, errors.Wrapf(err, "kind %s", kind.String())
 		}

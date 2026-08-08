@@ -253,6 +253,14 @@ generate-provider-schemas:
 		--provider 'google=hashicorp/google@~> 6.0' \
 		--provider 'google-beta=hashicorp/google-beta@~> 6.0'
 
+# Regenerate every committed public parity page (catalog/<provider>/terraform-parity.md)
+# from the accounting. Each page embeds its own generation parameters, so this
+# target needs no per-provider configuration; a provider enrolls its first page
+# with `planton provider-parity --provider <p> --ga-schema <s> --write-report`.
+.PHONY: generate-provider-parity-report
+generate-provider-parity-report:
+	PLANTON_REGEN_PROVIDERPARITY_REPORT=1 go test -count=1 ./pkg/providerparity/ -run TestPublicReportDrift
+
 # Regenerates the committed catalog reference: per-kind reference.md files
 # (co-located with each kind's protos) plus the catalog-level indexes,
 # foreign-key graph, and commons page, all from the compiled-in descriptors

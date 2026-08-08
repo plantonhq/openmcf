@@ -97,7 +97,10 @@ covered by the owning kinds' additive `iam_members` fields) — plus
 schema-flagged deprecations. The rest is recorded judgment in the
 dispositions ledger (`dispositions/<schema>.yaml`): `composed`,
 `model-planned`, `deferred`, and doc-level `excluded-deprecated`, reason
-mandatory.
+mandatory. Computed classes always win: a ledger entry shadowed by one
+(the resource became consumed, matches the IAM pattern, or is
+schema-flagged deprecated) is a staleness finding — recorded judgment that
+duplicates derived judgment is judgment nobody re-evaluates.
 
 **The gate.** Findings group by kind/resource into the burn-down baseline
 (`baseline.yaml`, the `pkg/anatomy` / `pkg/secretcoverage` shape): new
@@ -105,6 +108,29 @@ findings fail, fixed-but-still-listed entries fail, the list only ever
 shrinks truthfully. The baseline holds only what has not been judged YET —
 the permanent record lives in the manifests and the ledger. CI lane:
 `.github/workflows/lint.provider-parity.yaml`.
+
+## The public parity report
+
+The same accounting renders the published parity page — the artifact that
+makes the coverage claim verifiable instead of trusted:
+
+- **Home:** `catalog/<provider>/terraform-parity.md`, a COMMITTED generated
+  file (the `reference-index.md` grain). The site build's copy script
+  carries it to the docs site and links it from the provider index.
+- **Content:** the measurement baseline (pinned schema versions, pin
+  distribution), the per-kind depth accounting with live-proof status, the
+  breadth disposition totals, and the full enumerated per-resource record.
+  Deterministic markdown — no timestamps; freshness is the named pin.
+- **PROVEN** is joined mechanically from the component E2E profiles
+  (`e2eproof.go`): a kind is proven when its profile is green with BOTH
+  provisioners validated. Claim language stays "built for 100% Terraform
+  parity" — the page never asserts achieved parity; it shows the measured
+  state.
+- **Drift gate:** each page embeds its generation parameters, and the drift
+  test regenerates every committed page and requires byte-identical output —
+  a hand edit or a stale page fails CI. Regenerate with
+  `make generate-provider-parity-report`. A provider enrolls by generating
+  its page once with `--write-report`; file presence is enrollment.
 
 ## Layout notes
 
@@ -125,6 +151,7 @@ the permanent record lives in the manifests and the ledger. CI lane:
 ```bash
 go test ./pkg/providerparity/          # gates + hermetic fixtures + live measurement
 make generate-provider-schemas        # refresh schemas/ after a pin change
+make generate-provider-parity-report  # regenerate the committed parity page(s)
 
 # The developer CLI (from the repo root; registered in the standalone
 # binary beside e2e -- never in the embedded engine set, because it reads
@@ -133,4 +160,5 @@ planton provider-parity --provider gcp --ga-schema google              # summary
 planton provider-parity --provider gcp --ga-schema google --kind GcpGcsBucket
 planton provider-parity --provider gcp --ga-schema google --check     # the CI gate
 planton provider-parity --provider gcp --ga-schema google --output json
+planton provider-parity --provider gcp --ga-schema google --write-report
 ```

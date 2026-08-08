@@ -253,6 +253,80 @@ func TestBuildAccounting_Hermetic(t *testing.T) {
 	}
 }
 
+// TestBuildAccounting_LedgerShadowsComputedClasses proves the computed
+// classes always win over the ledger AND that a shadowed entry is a
+// staleness finding: judgment duplicating what the instrument derives on
+// its own is judgment nobody re-evaluates.
+func TestBuildAccounting_LedgerShadowsComputedClasses(t *testing.T) {
+	spec, modules, schemas, manifests, _ := accountingFixture()
+	ledger := []LedgerEntry{
+		{Resource: "google_widget_iam_policy", Disposition: DispositionDeferred, Reason: "stale: the iam-covered class computes this"},
+		{Resource: "google_dead_thing", Disposition: DispositionExcludedDeprecated, Reason: "stale: the schema flag computes this"},
+	}
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, ledger)
+
+	byResource := map[string]ResourceDisposition{}
+	for _, d := range acc.Dispositions {
+		byResource[d.Resource] = d
+	}
+	if got := byResource["google_widget_iam_policy"].Disposition; got != DispositionIamCovered {
+		t.Errorf("iam triplet disposition = %q, want the computed %q", got, DispositionIamCovered)
+	}
+	if got := byResource["google_dead_thing"].Disposition; got != DispositionExcludedDeprecated {
+		t.Errorf("deprecated disposition = %q, want the computed %q", got, DispositionExcludedDeprecated)
+	}
+
+	wantStale := map[string]string{
+		"resource:google_widget_iam_policy": "iam-covered",
+		"resource:google_dead_thing":        "doc-level deprecations",
+	}
+	for key, fragment := range wantStale {
+		found := false
+		for _, f := range acc.Findings {
+			if f.BaselineKey == key && strings.Contains(f.Detail, "stale ledger entry") && strings.Contains(f.Detail, fragment) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("missing shadowing finding for %s (want detail mentioning %q); findings: %v", key, fragment, acc.Findings)
+		}
+	}
+}
+
+// TestBuildAccounting_MissingModule proves a kind with no Terraform module
+// directory surfaces as exactly one finding -- never a run-abort, never a
+// spec-field noise storm, never counted as accounted.
+func TestBuildAccounting_MissingModule(t *testing.T) {
+	spec, modules, schemas, manifests, _ := accountingFixture()
+	modules = append(modules, ModuleCensus{
+		Kind: "TestGhost", ModuleDir: "catalog/gcp/testghost/iac/tf", MissingModule: true,
+	})
+	spec = append(spec, KindCensus{Kind: "TestGhost", SpecFieldPaths: []string{"spec.a", "spec.b"}})
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+
+	ghost := kindByName(t, acc, "TestGhost")
+	if !ghost.MissingModule || ghost.Accounted() {
+		t.Errorf("ghost = %+v, want MissingModule and not accounted", ghost)
+	}
+	if len(ghost.UncoveredSpecFields) != 0 {
+		t.Errorf("missing-module kind must not accumulate spec-field noise, got %v", ghost.UncoveredSpecFields)
+	}
+	var ghostFindings []Finding
+	for _, f := range acc.Findings {
+		if f.BaselineKey == "kind:TestGhost" {
+			ghostFindings = append(ghostFindings, f)
+		}
+	}
+	if len(ghostFindings) != 1 || !strings.Contains(ghostFindings[0].Detail, "no Terraform module directory") {
+		t.Errorf("ghost findings = %v, want exactly the missing-module finding", ghostFindings)
+	}
+	// The other kinds' accounting is unaffected by the ghost.
+	if widget := kindByName(t, acc, "TestWidget"); widget.TotalArgs != 10 {
+		t.Errorf("TestWidget accounting disturbed by the missing-module kind: TotalArgs=%d", widget.TotalArgs)
+	}
+}
+
 // TestBuildAccounting_ManifestStaleness proves the ratchet: judgment
 // referencing surface that no longer exists fails, in every reference class.
 func TestBuildAccounting_ManifestStaleness(t *testing.T) {

@@ -41,10 +41,13 @@ Run from the repository root. Default output is a per-kind accounting
 summary; --kind details one kind (what the component audit invokes);
 --output json emits the full accounting (what the public parity report
 renders from); --check gates against the burn-down baseline for CI;
---write-baseline regenerates the baseline after judged work.`,
+--write-baseline regenerates the baseline after judged work;
+--write-report renders the provider's public parity page to
+catalog/<provider>/terraform-parity.md (drift-gated by CI once committed).`,
 	Example: `  planton provider-parity --provider gcp --ga-schema google
   planton provider-parity --provider gcp --ga-schema google --kind GcpGcsBucket
-  planton provider-parity --provider gcp --ga-schema google --check`,
+  planton provider-parity --provider gcp --ga-schema google --check
+  planton provider-parity --provider gcp --ga-schema google --write-report`,
 	Run: providerParityHandler,
 }
 
@@ -53,6 +56,8 @@ func init() {
 	ProviderParity.Flags().String("ga-schema", "", "the parity-baseline Terraform provider schema (e.g. google)")
 	ProviderParity.Flags().Bool("check", false, "exit non-zero if the parity gate fails (for CI)")
 	ProviderParity.Flags().Bool("write-baseline", false, "regenerate the accepted-gap baseline file")
+	ProviderParity.Flags().Bool("write-report", false, "render the public parity page from the accounting")
+	ProviderParity.Flags().String("report-path", "", "public parity page path (default catalog/<provider>/terraform-parity.md)")
 	ProviderParity.Flags().String("baseline", providerparity.DefaultBaselinePath, "path to the baseline file")
 	ProviderParity.Flags().String("schema-dir", providerparity.DefaultSchemaDir, "directory of committed provider schema artifacts")
 	ProviderParity.Flags().String("dispositions", "", "path to the dispositions ledger (default <dispositions dir>/<ga-schema>.yaml)")
@@ -92,6 +97,25 @@ func providerParityHandler(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		cliprint.PrintSuccess(fmt.Sprintf("baseline written to %s -- review the diff before committing", baselinePath))
+		return
+	}
+
+	if write, _ := cmd.Flags().GetBool("write-report"); write {
+		reportPath, _ := cmd.Flags().GetString("report-path")
+		if reportPath == "" {
+			reportPath = providerparity.PublicReportPath(cloudresourcekind.CloudResourceProvider(providerValue))
+		}
+		page, err := providerparity.GeneratePublicReport(".",
+			cloudresourcekind.CloudResourceProvider(providerValue), schemas, gaSchema, dispositionsPath)
+		if err != nil {
+			cliprint.PrintError(fmt.Sprintf("failed to render the parity page: %v", err))
+			os.Exit(1)
+		}
+		if err := os.WriteFile(reportPath, []byte(page), 0o644); err != nil {
+			cliprint.PrintError(fmt.Sprintf("failed to write the parity page: %v", err))
+			os.Exit(1)
+		}
+		cliprint.PrintSuccess(fmt.Sprintf("parity page written to %s -- drift-gated by CI once committed", reportPath))
 		return
 	}
 

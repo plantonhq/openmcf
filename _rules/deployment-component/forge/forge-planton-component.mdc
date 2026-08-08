@@ -383,6 +383,13 @@ retrofitting it later means re-deriving every naming decision:
    `pkg/providerparity/baseline.yaml` (a new kind never ships pre-baselined
    debt). File presence IS enrollment -- the `lint.provider-parity` CI lane
    holds the kind to the manifest from this commit on.
+4. The new kind changes the accounting, so regenerate the committed public
+   parity page in the same change: `make generate-provider-parity-report`
+   (its drift test fails CI whenever the accounting moved and the page did
+   not). Also record the kind's breadth effect: if the dispositions ledger
+   (`pkg/providerparity/dispositions/`) carried the consumed resources as
+   planned or deferred, the accounting now flags those entries stale --
+   remove them.
 
 For a provider without schema artifacts, skip silently -- the gate reports
 NOT INSTRUMENTED there.
