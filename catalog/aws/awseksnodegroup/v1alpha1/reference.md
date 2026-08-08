@@ -59,6 +59,13 @@ spec:
   updateConfig:
     maxUnavailable: 1
     updateStrategy: MINIMAL
+  # Pre-initialized nodes that cut scale-out from minutes to seconds.
+  # STOPPED pooled instances cost only their EBS storage.
+  warmPoolConfig:
+    poolState: STOPPED
+    minSize: 1
+    maxGroupPreparedCapacity: 2
+    reuseOnScaleIn: true
 ```
 
 ## Spec Fields
@@ -106,6 +113,11 @@ spec:
 | `spec.version` | `string` |  |  |  |
 | `spec.releaseVersion` | `string` |  |  |  |
 | `spec.forceUpdateVersion` | `bool` |  |  |  |
+| `spec.warmPoolConfig` | `AwsEksNodeGroupWarmPoolConfig` |  |  |  |
+| `spec.warmPoolConfig.poolState` | `string` |  |  |  |
+| `spec.warmPoolConfig.minSize` | `int32` |  |  |  |
+| `spec.warmPoolConfig.maxGroupPreparedCapacity` | `int32` |  |  |  |
+| `spec.warmPoolConfig.reuseOnScaleIn` | `bool` |  |  |  |
 
 ## Field Details
 
@@ -509,6 +521,32 @@ rolls the group.
 Force a version update even if pods cannot be drained within their
 disruption budgets (otherwise the update fails and rolls back). Only
 consulted while version/release_version/launch_template change.
+
+### spec.warmPoolConfig
+
+`AwsEksNodeGroupWarmPoolConfig`
+
+- rule: pool_state must be 'STOPPED', 'RUNNING', or 'HIBERNATED' when set
+
+### spec.warmPoolConfig.poolState
+
+`string`
+
+### spec.warmPoolConfig.minSize
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.warmPoolConfig.maxGroupPreparedCapacity
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"gte":0}}
+
+### spec.warmPoolConfig.reuseOnScaleIn
+
+`bool`
 
 ## Validation Rules
 

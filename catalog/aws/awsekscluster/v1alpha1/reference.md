@@ -45,6 +45,16 @@ spec:
     - audit
     - authenticator
   upgradeSupportType: STANDARD
+  # Provisioned control-plane capacity for large/bursty clusters (billed
+  # hourly on top of the cluster fee; "standard" is the free default).
+  controlPlaneScalingTier: tier-xl
+  # EKS Hybrid Nodes: the on-premises node/pod ranges allowed to join over
+  # VPN/Direct Connect. Declaring ranges is free.
+  remoteNetworks:
+    nodeCidrs:
+      - 10.80.0.0/16
+    podCidrs:
+      - 10.85.0.0/16
 ```
 
 ## Spec Fields
@@ -76,6 +86,10 @@ spec:
 | `spec.deletionProtection` | `bool` |  |  |  |
 | `spec.bootstrapSelfManagedAddons` | `bool` |  |  |  |
 | `spec.forceUpdateVersion` | `bool` |  |  |  |
+| `spec.controlPlaneScalingTier` | `string` |  |  |  |
+| `spec.remoteNetworks` | `AwsEksClusterRemoteNetworks` |  |  |  |
+| `spec.remoteNetworks.nodeCidrs` | `[]string` |  |  |  |
+| `spec.remoteNetworks.podCidrs` | `[]string` |  |  |  |
 
 ## Field Details
 
@@ -346,6 +360,30 @@ Force the Kubernetes version update even if pods cannot be safely
 drained onto the new version (pod disruption budgets that can never be
 satisfied). Only consulted while `version` changes.
 
+### spec.controlPlaneScalingTier
+
+`string`
+
+### spec.remoteNetworks
+
+`AwsEksClusterRemoteNetworks`
+
+- rule: remote_networks requires at least one of node_cidrs or pod_cidrs
+- rule: each node CIDR must be within 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, or 100.64.0.0/10
+- rule: each pod CIDR must be within 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, or 100.64.0.0/10
+
+### spec.remoteNetworks.nodeCidrs
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"pattern":"^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$"}}}}
+
+### spec.remoteNetworks.podCidrs
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"pattern":"^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$"}}}}
+
 ## Validation Rules
 
 - `version_format`: version must be a Kubernetes minor version of 1.24 or later, e.g. '1.31'
@@ -355,6 +393,7 @@ satisfied). Only consulted while `version` changes.
 - `service_ipv4_cidr_ipv4_only`: service_ipv4_cidr only applies when ip_family is 'ipv4'
 - `log_types_valid`: each log type must be one of: api, audit, authenticator, controllerManager, scheduler
 - `upgrade_support_type_valid`: upgrade_support_type must be 'STANDARD' or 'EXTENDED' when set
+- `control_plane_scaling_tier_valid`: control_plane_scaling_tier must be 'standard', 'tier-xl', 'tier-2xl', 'tier-4xl', or 'tier-8xl' when set
 
 ## Outputs
 

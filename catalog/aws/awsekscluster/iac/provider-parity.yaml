@@ -1,0 +1,84 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_eks_cluster:
+    mappings:
+      # The role is the CLUSTER's role in the spec's vocabulary.
+      - spec: spec.cluster_role_arn
+        arg: role_arn
+      # The spec flattens the provider's vpc_config wrapper: networking
+      # exposure fields live at the spec root.
+      - spec: spec.subnet_ids
+        arg: vpc_config.subnet_ids
+      - spec: spec.security_group_ids
+        arg: vpc_config.security_group_ids
+      - spec: spec.endpoint_public_access
+        arg: vpc_config.endpoint_public_access
+      - spec: spec.endpoint_private_access
+        arg: vpc_config.endpoint_private_access
+      - spec: spec.public_access_cidrs
+        arg: vpc_config.public_access_cidrs
+      - spec: spec.control_plane_egress_mode
+        arg: vpc_config.control_plane_egress_mode
+      # Address-family settings flattened from kubernetes_network_config.
+      - spec: spec.ip_family
+        arg: kubernetes_network_config.ip_family
+      - spec: spec.service_ipv4_cidr
+        arg: kubernetes_network_config.service_ipv4_cidr
+      # EKS Auto Mode is all-or-nothing across three provider blocks (the
+      # provider's own CustomizeDiff enforces enabled-together), so the
+      # spec models ONE toggle block. compute_config matches it as a
+      # subtree; the other two blocks' enabled flags map to the same
+      # toggle.
+      - spec: spec.auto_mode
+        arg: compute_config
+      - spec: spec.auto_mode.enabled
+        arg: storage_config.block_storage.enabled
+      - spec: spec.auto_mode.enabled
+        arg: kubernetes_network_config.elastic_load_balancing.enabled
+      # One-leaf provider blocks flattened to their single value.
+      - spec: spec.upgrade_support_type
+        arg: upgrade_policy.support_type
+      - spec: spec.zonal_shift_enabled
+        arg: zonal_shift_config.enabled
+      - spec: spec.control_plane_scaling_tier
+        arg: control_plane_scaling_config.tier
+      # Envelope encryption: the spec models the one real decision (the
+      # key); the block structure is provider shape.
+      - spec: spec.kms_key_arn
+        arg: encryption_config.provider.key_arn
+      # Hybrid-node networks: two nested single-list blocks flattened to
+      # two CIDR lists.
+      - spec: spec.remote_networks.node_cidrs
+        arg: remote_network_config.remote_node_networks.cidrs
+      - spec: spec.remote_networks.pod_cidrs
+        arg: remote_network_config.remote_pod_networks.cidrs
+    exclusions:
+      - arg: name
+        reason: derived from metadata.name -- never free-form user surface
+      - arg: encryption_config.resources
+        reason: wired by the module to ["secrets"] -- the only resource type the EKS API accepts, so there is no configuration decision to surface
+      # Hardware-tied surface (the recorded Outposts exclusion class).
+      - arg: outpost_config.control_plane_instance_type
+        reason: EKS-on-Outposts local clusters require a physical Outposts rack -- hardware-tied, unverifiable live; deliberately unmodeled
+      - arg: outpost_config.control_plane_placement.group_name
+        reason: Outposts-only surface (see outpost_config.control_plane_instance_type)
+      - arg: outpost_config.control_plane_placement.spread_level
+        reason: Outposts-only surface (see outpost_config.control_plane_instance_type)
+      - arg: outpost_config.etcd_instance_type
+        reason: Outposts-only surface (see outpost_config.control_plane_instance_type)
+      - arg: outpost_config.etcd_placement.spread_level
+        reason: Outposts-only surface (see outpost_config.control_plane_instance_type)
+      - arg: outpost_config.outpost_arns
+        reason: Outposts-only surface (see outpost_config.control_plane_instance_type)
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

@@ -1603,13 +1603,13 @@ resources:
     reason: "EIP companion surface (associations, domain names); folds into the existing AwsElasticIp kind as its spec deepens"
   - resource: aws_eks_capability
     disposition: model-planned
-    reason: "EKS companion surface (pod identity associations, identity provider configs, capabilities); folds into the existing AwsEksCluster kind as its spec deepens"
+    reason: "EKS managed capabilities (ACK, KRO, Argo CD; provider 6.25.0) with their own configuration tree (IAM Identity Center wiring, RBAC role mappings, network access); a cluster-scoped companion with independent lifecycle -- its own kind (AwsEksCapability) on the EKS family's composition pattern (addon/fargate-profile/access-entry precedent), not a cluster fold-in"
   - resource: aws_eks_identity_provider_config
     disposition: model-planned
-    reason: "EKS companion surface (pod identity associations, identity provider configs, capabilities); folds into the existing AwsEksCluster kind as its spec deepens"
+    reason: "associates an external OIDC identity provider with a cluster for user authentication; an associable cluster companion with independent (create-only) lifecycle -- its own kind (AwsEksIdentityProviderConfig) on the EKS family's composition pattern, not a cluster fold-in"
   - resource: aws_eks_pod_identity_association
     disposition: model-planned
-    reason: "EKS companion surface (pod identity associations, identity provider configs, capabilities); folds into the existing AwsEksCluster kind as its spec deepens"
+    reason: "maps any Kubernetes service account to an IAM role via EKS Pod Identity; the per-ADDON arm is already modeled on AwsEksAddon (pod_identity_associations), and the standalone workload-scoped association is its own kind (AwsEksPodIdentityAssociation) -- per-workload IAM identity is chart-wiring surface, not cluster or addon configuration"
   - resource: aws_elastic_beanstalk_application
     disposition: deferred
     reason: "Elastic Beanstalk is strategically displaced by App Runner and ECS kinds; not deprecated by AWS, deliberately not offered"

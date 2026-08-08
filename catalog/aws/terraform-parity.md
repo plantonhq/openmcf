@@ -32,7 +32,7 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
 | Distinct provider resources consumed | 223 |
-| Spec fields authored across all kinds | 4161 |
+| Spec fields authored across all kinds | 4168 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**8 of 112 kinds are at total accounting; 87 proven live.**
+**13 of 112 kinds are at total accounting; 85 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -57,7 +57,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsAppRunnerService | 48 | 5 | 0 | 0 | 74 | ❌ | ✅ pulumi, terraform |
 | AwsAppRunnerVpcConnector | 6 | 1 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
 | AwsAthenaWorkgroup | 37 | 4 | 0 | 0 | 59 | ❌ | ✅ pulumi, terraform |
-| AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | — |
 | AwsBatchComputeEnvironment | 33 | 20 | 0 | 0 | 19 | ❌ | ✅ pulumi, terraform |
 | AwsBatchJobDefinition | 67 | 12 | 0 | 0 | 98 | ❌ | ✅ pulumi, terraform |
 | AwsBatchJobQueue | 12 | 5 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
@@ -83,11 +83,11 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsEcsTaskDefinition | 56 | 13 | 22 | 21 | 0 | ✅ | — |
 | AwsEfsAccessPoint | 11 | 9 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsEgressOnlyInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
-| AwsEksAccessEntry | 14 | 9 | 0 | 0 | 8 | ❌ | ✅ pulumi, terraform |
-| AwsEksAddon | 14 | 10 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
-| AwsEksCluster | 38 | 8 | 0 | 0 | 45 | ❌ | ✅ pulumi, terraform |
-| AwsEksFargateProfile | 9 | 4 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
-| AwsEksNodeGroup | 43 | 22 | 0 | 0 | 33 | ❌ | ✅ pulumi, terraform |
+| AwsEksAccessEntry | 14 | 9 | 0 | 5 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEksAddon | 14 | 10 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEksCluster | 38 | 8 | 20 | 10 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEksFargateProfile | 9 | 4 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEksNodeGroup | 43 | 26 | 12 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsElasticFileSystem | 34 | 12 | 0 | 0 | 40 | ❌ | ✅ pulumi, terraform |
 | AwsElasticIp | 12 | 4 | 0 | 0 | 8 | ❌ | — |
 | AwsElasticacheUser | 13 | 6 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
@@ -118,7 +118,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsKmsKey | 19 | 9 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
 | AwsLambda | 103 | 28 | 0 | 0 | 118 | ❌ | ✅ pulumi, terraform |
 | AwsLambdaEventSourceMapping | 45 | 11 | 0 | 0 | 58 | ❌ | ✅ pulumi, terraform |
-| AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | — |
 | AwsLbListener | 76 | 14 | 0 | 0 | 121 | ❌ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 0 | 0 | 113 | ❌ | ✅ pulumi, terraform |
 | AwsLbTargetGroup | 48 | 31 | 0 | 0 | 26 | ❌ | ✅ pulumi, terraform |
@@ -748,9 +748,9 @@ rather than trusted.
 | `aws_ecs_task_set` | task sets exist only under the EXTERNAL deployment controller; folds into AwsEcsService if the external-controller workflow is ever admitted (its native and blue/green controllers are fully modeled) |
 | `aws_eip_association` | EIP companion surface (associations, domain names); folds into the existing AwsElasticIp kind as its spec deepens |
 | `aws_eip_domain_name` | EIP companion surface (associations, domain names); folds into the existing AwsElasticIp kind as its spec deepens |
-| `aws_eks_capability` | EKS companion surface (pod identity associations, identity provider configs, capabilities); folds into the existing AwsEksCluster kind as its spec deepens |
-| `aws_eks_identity_provider_config` | EKS companion surface (pod identity associations, identity provider configs, capabilities); folds into the existing AwsEksCluster kind as its spec deepens |
-| `aws_eks_pod_identity_association` | EKS companion surface (pod identity associations, identity provider configs, capabilities); folds into the existing AwsEksCluster kind as its spec deepens |
+| `aws_eks_capability` | EKS managed capabilities (ACK, KRO, Argo CD; provider 6.25.0) with their own configuration tree (IAM Identity Center wiring, RBAC role mappings, network access); a cluster-scoped companion with independent lifecycle -- its own kind (AwsEksCapability) on the EKS family's composition pattern (addon/fargate-profile/access-entry precedent), not a cluster fold-in |
+| `aws_eks_identity_provider_config` | associates an external OIDC identity provider with a cluster for user authentication; an associable cluster companion with independent (create-only) lifecycle -- its own kind (AwsEksIdentityProviderConfig) on the EKS family's composition pattern, not a cluster fold-in |
+| `aws_eks_pod_identity_association` | maps any Kubernetes service account to an IAM role via EKS Pod Identity; the per-ADDON arm is already modeled on AwsEksAddon (pod_identity_associations), and the standalone workload-scoped association is its own kind (AwsEksPodIdentityAssociation) -- per-workload IAM identity is chart-wiring surface, not cluster or addon configuration |
 | `aws_elasticache_global_replication_group` | ElastiCache companion surface; folds into the existing AwsRedisElasticache kind family as its spec deepens |
 | `aws_elasticache_user_group_association` | ElastiCache companion surface; folds into the existing AwsRedisElasticache kind family as its spec deepens |
 | `aws_emr_block_public_access_configuration` | judged as a planned AwsEmrCluster kind (clusters, instance groups/fleets, managed scaling, security configs, block-public-access) |

@@ -150,8 +150,21 @@ type AwsEksClusterSpec struct {
 	// drained onto the new version (pod disruption budgets that can never be
 	// satisfied). Only consulted while `version` changes.
 	ForceUpdateVersion bool `protobuf:"varint,20,opt,name=force_update_version,json=forceUpdateVersion,proto3" json:"force_update_version,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// EKS Provisioned Control Plane: pre-provisions control-plane capacity
+	// for very large or bursty clusters instead of relying on EKS's
+	// reactive scaling (which can lag sudden API-server load, e.g. mass
+	// node joins or operator storms). "standard" (AWS default -- reactive
+	// scaling, no surcharge) or a provisioned tier of increasing capacity:
+	// "tier-xl", "tier-2xl", "tier-4xl", "tier-8xl" -- each billed hourly
+	// ON TOP of the cluster fee. Updates in place; empty keeps standard.
+	ControlPlaneScalingTier string `protobuf:"bytes,21,opt,name=control_plane_scaling_tier,json=controlPlaneScalingTier,proto3" json:"control_plane_scaling_tier,omitempty"`
+	// EKS Hybrid Nodes: the on-premises/edge networks whose nodes and pods
+	// join this cluster over your VPN or Direct Connect. Declaring the
+	// ranges is free -- billing starts only when hybrid nodes register.
+	// Updates in place on a live cluster.
+	RemoteNetworks *AwsEksClusterRemoteNetworks `protobuf:"bytes,22,opt,name=remote_networks,json=remoteNetworks,proto3" json:"remote_networks,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AwsEksClusterSpec) Reset() {
@@ -324,6 +337,20 @@ func (x *AwsEksClusterSpec) GetForceUpdateVersion() bool {
 	return false
 }
 
+func (x *AwsEksClusterSpec) GetControlPlaneScalingTier() string {
+	if x != nil {
+		return x.ControlPlaneScalingTier
+	}
+	return ""
+}
+
+func (x *AwsEksClusterSpec) GetRemoteNetworks() *AwsEksClusterRemoteNetworks {
+	if x != nil {
+		return x.RemoteNetworks
+	}
+	return nil
+}
+
 // AwsEksClusterAccessConfig controls how AWS identities are granted access
 // to the Kubernetes API.
 type AwsEksClusterAccessConfig struct {
@@ -469,11 +496,79 @@ func (x *AwsEksClusterAutoMode) GetNodeRoleArn() *v1.StringValueOrRef {
 	return nil
 }
 
+// AwsEksClusterRemoteNetworks declares the on-premises networks EKS Hybrid
+// Nodes join from. AWS models this as two nested single-list blocks
+// (remote node networks and remote pod networks); this message flattens
+// them to the two CIDR lists. Every CIDR must be an IPv4 NETWORK address
+// (host bits zero) inside the private ranges AWS accepts here: 10.0.0.0/8,
+// 172.16.0.0/12, 192.168.0.0/16, or carrier-grade NAT 100.64.0.0/10.
+// The ranges must be reachable from the VPC (VPN or Direct Connect) and
+// must not overlap the VPC, the service CIDR, or each other.
+type AwsEksClusterRemoteNetworks struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// CIDR blocks of the on-premises network the hybrid NODES have their
+	// addresses in. This is the range the control plane accepts kubelet
+	// registrations from -- without a node's address inside one of these
+	// blocks, it cannot join.
+	NodeCidrs []string `protobuf:"bytes,1,rep,name=node_cidrs,json=nodeCidrs,proto3" json:"node_cidrs,omitempty"`
+	// CIDR blocks the on-premises PODS have their addresses in (the CNI's
+	// pod network on the hybrid nodes). Optional: needed when pods must be
+	// directly routable from the cluster (e.g. webhooks running on hybrid
+	// nodes); node-only setups can omit it.
+	PodCidrs      []string `protobuf:"bytes,2,rep,name=pod_cidrs,json=podCidrs,proto3" json:"pod_cidrs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEksClusterRemoteNetworks) Reset() {
+	*x = AwsEksClusterRemoteNetworks{}
+	mi := &file_catalog_aws_awsekscluster_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEksClusterRemoteNetworks) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEksClusterRemoteNetworks) ProtoMessage() {}
+
+func (x *AwsEksClusterRemoteNetworks) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsekscluster_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEksClusterRemoteNetworks.ProtoReflect.Descriptor instead.
+func (*AwsEksClusterRemoteNetworks) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsekscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsEksClusterRemoteNetworks) GetNodeCidrs() []string {
+	if x != nil {
+		return x.NodeCidrs
+	}
+	return nil
+}
+
+func (x *AwsEksClusterRemoteNetworks) GetPodCidrs() []string {
+	if x != nil {
+		return x.PodCidrs
+	}
+	return nil
+}
+
 var File_catalog_aws_awsekscluster_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsekscluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-catalog/aws/awsekscluster/v1alpha1/spec.proto\x12&dev.planton.aws.awsekscluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xfb\x17\n" +
+	"-catalog/aws/awsekscluster/v1alpha1/spec.proto\x12&dev.planton.aws.awsekscluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xbf\x1b\n" +
 	"\x11AwsEksClusterSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x90\x01\n" +
 	"\n" +
@@ -496,16 +591,17 @@ const file_catalog_aws_awsekscluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x13zonal_shift_enabled\x18\x11 \x01(\bR\x11zonalShiftEnabled\x12/\n" +
 	"\x13deletion_protection\x18\x12 \x01(\bR\x12deletionProtection\x12F\n" +
 	"\x1dbootstrap_self_managed_addons\x18\x13 \x01(\bH\x01R\x1abootstrapSelfManagedAddons\x88\x01\x01\x120\n" +
-	"\x14force_update_version\x18\x14 \x01(\bR\x12forceUpdateVersion:\xee\n" +
-	"\xbaH\xea\n" +
-	"\x1a\xa3\x01\n" +
+	"\x14force_update_version\x18\x14 \x01(\bR\x12forceUpdateVersion\x12;\n" +
+	"\x1acontrol_plane_scaling_tier\x18\x15 \x01(\tR\x17controlPlaneScalingTier\x12l\n" +
+	"\x0fremote_networks\x18\x16 \x01(\v2C.dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterRemoteNetworksR\x0eremoteNetworks:\x87\r\xbaH\x83\r\x1a\xa3\x01\n" +
 	"\x0eversion_format\x12Hversion must be a Kubernetes minor version of 1.24 or later, e.g. '1.31'\x1aGthis.version == '' || this.version.matches('^1\\\\.(2[4-9]|[3-9][0-9])$')\x1a\x8a\x02\n" +
 	"\x1fcontrol_plane_egress_mode_valid\x12ccontrol_plane_egress_mode must be 'AWS_MANAGED', 'CUSTOMER_ROUTED', or 'CUSTOMER_ISOLATED' when set\x1a\x81\x01this.control_plane_egress_mode == '' || this.control_plane_egress_mode in ['AWS_MANAGED', 'CUSTOMER_ROUTED', 'CUSTOMER_ISOLATED']\x1az\n" +
 	"\x0fip_family_valid\x12+ip_family must be 'ipv4' or 'ipv6' when set\x1a:this.ip_family == '' || this.ip_family in ['ipv4', 'ipv6']\x1a\x90\x02\n" +
 	"\x18service_ipv4_cidr_format\x12?service_ipv4_cidr must be an IPv4 CIDR with a /12 to /24 prefix\x1a\xb2\x01this.service_ipv4_cidr == '' || this.service_ipv4_cidr.matches('^(?:25[0-5]|2[0-4][0-9]|[0-1]?[0-9]?[0-9])(?:\\\\.(?:25[0-5]|2[0-4][0-9]|[0-1]?[0-9]?[0-9])){3}/(?:1[2-9]|2[0-4])$')\x1a\x90\x01\n" +
 	"\x1bservice_ipv4_cidr_ipv4_only\x127service_ipv4_cidr only applies when ip_family is 'ipv4'\x1a8this.service_ipv4_cidr == '' || this.ip_family != 'ipv6'\x1a\xd9\x01\n" +
 	"\x0flog_types_valid\x12Ueach log type must be one of: api, audit, authenticator, controllerManager, scheduler\x1aothis.enabled_cluster_log_types.all(t, t in ['api', 'audit', 'authenticator', 'controllerManager', 'scheduler'])\x1a\xb6\x01\n" +
-	"\x1aupgrade_support_type_valid\x12>upgrade_support_type must be 'STANDARD' or 'EXTENDED' when set\x1aXthis.upgrade_support_type == '' || this.upgrade_support_type in ['STANDARD', 'EXTENDED']B\x19\n" +
+	"\x1aupgrade_support_type_valid\x12>upgrade_support_type must be 'STANDARD' or 'EXTENDED' when set\x1aXthis.upgrade_support_type == '' || this.upgrade_support_type in ['STANDARD', 'EXTENDED']\x1a\x96\x02\n" +
+	" control_plane_scaling_tier_valid\x12hcontrol_plane_scaling_tier must be 'standard', 'tier-xl', 'tier-2xl', 'tier-4xl', or 'tier-8xl' when set\x1a\x87\x01this.control_plane_scaling_tier == '' || this.control_plane_scaling_tier in ['standard', 'tier-xl', 'tier-2xl', 'tier-4xl', 'tier-8xl']B\x19\n" +
 	"\x17_endpoint_public_accessB \n" +
 	"\x1e_bootstrap_self_managed_addons\"\xc2\x03\n" +
 	"\x19AwsEksClusterAccessConfig\x12/\n" +
@@ -520,7 +616,14 @@ const file_catalog_aws_awsekscluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\rnode_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\vnodeRoleArn:\x94\x03\xbaH\x90\x03\x1a\x84\x01\n" +
 	"\x10node_pools_valid\x124each node pool must be 'general-purpose' or 'system'\x1a:this.node_pools.all(p, p in ['general-purpose', 'system'])\x1a{\n" +
 	"\x1anode_pools_require_enabled\x121node_pools only applies when auto mode is enabled\x1a*this.enabled || size(this.node_pools) == 0\x1a\x89\x01\n" +
-	"\x18node_role_requires_pools\x126node_role_arn is required when node_pools is non-empty\x1a5size(this.node_pools) == 0 || has(this.node_role_arn)B\xcb\x02\n" +
+	"\x18node_role_requires_pools\x126node_role_arn is required when node_pools is non-empty\x1a5size(this.node_pools) == 0 || has(this.node_role_arn)\"\xcd\a\n" +
+	"\x1bAwsEksClusterRemoteNetworks\x12\x8e\x01\n" +
+	"\n" +
+	"node_cidrs\x18\x01 \x03(\tBo\xbaHl\x92\x01i\"gre2c^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$R\tnodeCidrs\x12\x8c\x01\n" +
+	"\tpod_cidrs\x18\x02 \x03(\tBo\xbaHl\x92\x01i\"gre2c^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$R\bpodCidrs:\x8d\x05\xbaH\x89\x05\x1a\x8f\x01\n" +
+	"\x14at_least_one_network\x12@remote_networks requires at least one of node_cidrs or pod_cidrs\x1a5size(this.node_cidrs) > 0 || size(this.pod_cidrs) > 0\x1a\xfa\x01\n" +
+	"\x18node_cidrs_private_range\x12Yeach node CIDR must be within 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, or 100.64.0.0/10\x1a\x82\x01this.node_cidrs.all(c, c.matches('^(10|172\\\\.(1[6-9]|2[0-9]|3[0-1])|192\\\\.168|100\\\\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7]))\\\\.'))\x1a\xf7\x01\n" +
+	"\x17pod_cidrs_private_range\x12Xeach pod CIDR must be within 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, or 100.64.0.0/10\x1a\x81\x01this.pod_cidrs.all(c, c.matches('^(10|172\\\\.(1[6-9]|2[0-9]|3[0-1])|192\\\\.168|100\\\\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7]))\\\\.'))B\xcb\x02\n" +
 	"*com.dev.planton.aws.awsekscluster.v1alpha1B\tSpecProtoP\x01ZUgithub.com/plantonhq/planton/catalog/aws/awsekscluster/v1alpha1;awseksclusterv1alpha1\xa2\x02\x04DPAA\xaa\x02&Dev.Planton.Aws.Awsekscluster.V1alpha1\xca\x02&Dev\\Planton\\Aws\\Awsekscluster\\V1alpha1\xe2\x022Dev\\Planton\\Aws\\Awsekscluster\\V1alpha1\\GPBMetadata\xea\x02*Dev::Planton::Aws::Awsekscluster::V1alpha1b\x06proto3"
 
 var (
@@ -535,26 +638,28 @@ func file_catalog_aws_awsekscluster_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awsekscluster_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsekscluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_aws_awsekscluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_aws_awsekscluster_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsEksClusterSpec)(nil),         // 0: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec
-	(*AwsEksClusterAccessConfig)(nil), // 1: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterAccessConfig
-	(*AwsEksClusterAutoMode)(nil),     // 2: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterAutoMode
-	(*v1.StringValueOrRef)(nil),       // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsEksClusterSpec)(nil),           // 0: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec
+	(*AwsEksClusterAccessConfig)(nil),   // 1: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterAccessConfig
+	(*AwsEksClusterAutoMode)(nil),       // 2: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterAutoMode
+	(*AwsEksClusterRemoteNetworks)(nil), // 3: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterRemoteNetworks
+	(*v1.StringValueOrRef)(nil),         // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsekscluster_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec.cluster_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 3: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 0: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 1: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec.cluster_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 2: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 3: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 4: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec.access_config:type_name -> dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterAccessConfig
 	2, // 5: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec.auto_mode:type_name -> dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterAutoMode
-	3, // 6: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterAutoMode.node_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	3, // 6: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterSpec.remote_networks:type_name -> dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterRemoteNetworks
+	4, // 7: dev.planton.aws.awsekscluster.v1alpha1.AwsEksClusterAutoMode.node_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsekscluster_v1alpha1_spec_proto_init() }
@@ -570,7 +675,7 @@ func file_catalog_aws_awsekscluster_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsekscluster_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsekscluster_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

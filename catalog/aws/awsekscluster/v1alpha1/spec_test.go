@@ -103,6 +103,32 @@ var _ = ginkgo.Describe("AwsEksClusterSpec Validation Tests", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
+
+			ginkgo.It("should accept a provisioned control-plane scaling tier", func() {
+				input := minimalValidCluster()
+				input.Spec.ControlPlaneScalingTier = "tier-2xl"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept hybrid-node remote networks in every private range", func() {
+				input := minimalValidCluster()
+				input.Spec.RemoteNetworks = &AwsEksClusterRemoteNetworks{
+					NodeCidrs: []string{"10.80.0.0/16", "172.16.10.0/24", "192.168.4.0/22"},
+					PodCidrs:  []string{"100.64.10.0/24"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept node-only remote networks", func() {
+				input := minimalValidCluster()
+				input.Spec.RemoteNetworks = &AwsEksClusterRemoteNetworks{
+					NodeCidrs: []string{"10.80.0.0/16"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
 		})
 	})
 
@@ -220,6 +246,48 @@ var _ = ginkgo.Describe("AwsEksClusterSpec Validation Tests", func() {
 				input.Spec.AutoMode = &AwsEksClusterAutoMode{
 					Enabled:   true,
 					NodePools: []string{"general-purpose"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject an unknown control-plane scaling tier", func() {
+				input := minimalValidCluster()
+				input.Spec.ControlPlaneScalingTier = "tier-16xl"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject an empty remote-networks block", func() {
+				input := minimalValidCluster()
+				input.Spec.RemoteNetworks = &AwsEksClusterRemoteNetworks{}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject a malformed remote node CIDR", func() {
+				input := minimalValidCluster()
+				input.Spec.RemoteNetworks = &AwsEksClusterRemoteNetworks{
+					NodeCidrs: []string{"not-a-cidr"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject a public-range remote node CIDR", func() {
+				input := minimalValidCluster()
+				input.Spec.RemoteNetworks = &AwsEksClusterRemoteNetworks{
+					NodeCidrs: []string{"203.0.113.0/24"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject a public-range remote pod CIDR", func() {
+				input := minimalValidCluster()
+				input.Spec.RemoteNetworks = &AwsEksClusterRemoteNetworks{
+					NodeCidrs: []string{"10.80.0.0/16"},
+					PodCidrs:  []string{"198.51.100.0/24"},
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())

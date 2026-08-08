@@ -33,9 +33,6 @@ resource "aws_eks_cluster" "this" {
 
     # Sent only when set so AWS's default (AWS_MANAGED) keeps applying.
     # Reverting CUSTOMER_ROUTED to AWS_MANAGED forces cluster replacement.
-    # PARITY-EXCEPTION: pulumi-aws (v7.35.0) does not yet model
-    # control_plane_egress_mode, so only this engine implements it. Revisit
-    # on the next pulumi-aws upgrade. Stack outputs are unaffected.
     control_plane_egress_mode = var.spec.control_plane_egress_mode != "" ? var.spec.control_plane_egress_mode : null
   }
 
@@ -118,6 +115,38 @@ resource "aws_eks_cluster" "this" {
     for_each = var.spec.zonal_shift_enabled ? [1] : []
     content {
       enabled = true
+    }
+  }
+
+  # Provisioned control-plane capacity (billed hourly on top of the
+  # cluster fee). Sent only when set so AWS's default (standard) keeps
+  # applying; tier changes update in place.
+  dynamic "control_plane_scaling_config" {
+    for_each = var.spec.control_plane_scaling_tier != "" ? [var.spec.control_plane_scaling_tier] : []
+    content {
+      tier = control_plane_scaling_config.value
+    }
+  }
+
+  # EKS Hybrid Nodes: the on-premises node/pod CIDR ranges allowed to
+  # join. Updatable in place on a live cluster; each nested block is sent
+  # only when its list is non-empty (spec validation guarantees at least
+  # one list carries a range).
+  dynamic "remote_network_config" {
+    for_each = var.spec.remote_networks != null ? [var.spec.remote_networks] : []
+    content {
+      dynamic "remote_node_networks" {
+        for_each = length(remote_network_config.value.node_cidrs) > 0 ? [1] : []
+        content {
+          cidrs = remote_network_config.value.node_cidrs
+        }
+      }
+      dynamic "remote_pod_networks" {
+        for_each = length(remote_network_config.value.pod_cidrs) > 0 ? [1] : []
+        content {
+          cidrs = remote_network_config.value.pod_cidrs
+        }
+      }
     }
   }
 
