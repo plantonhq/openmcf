@@ -21,7 +21,7 @@ output "cidr_block" {
 output "route_table_id" {
   description = "The route table associated with this subnet (inline-created, externally referenced, or empty when on the VPC main route table)"
   value = (
-    length(var.spec.routes) > 0
+    local.owns_route_table
     ? aws_route_table.this[0].id
     : var.spec.route_table_id
   )

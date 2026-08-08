@@ -115,6 +115,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | AwsNatGateway | `spec.allocationId` | `status.outputs.allocation_id` |
 | AwsNatGateway | `spec.secondaryAllocationIds` | `status.outputs.allocation_id` |
+| AwsNatGateway | `spec.availabilityZoneAddresses[].allocationIds` | `status.outputs.allocation_id` |
 | AwsNlb | `spec.subnetMappings[].allocationId` | `status.outputs.allocation_id` |
 | AwsRedshiftCluster | `spec.elasticIp` | `status.outputs.public_ip` |
 

@@ -41,6 +41,15 @@ const (
 //     transit/VPN/peering path) while keeping instances unreachable from those
 //     networks.
 //
+// Orthogonally, availability_mode selects the placement model:
+//   - zonal (default, the classic form): one gateway in one subnet
+//     (subnet_id), one AZ. Zone-resilient architectures deploy one per AZ.
+//   - regional: one gateway spanning every AZ of a VPC (vpc_id), managed by
+//     AWS as a single unit. AWS either picks the zones automatically (leave
+//     availability_zone_addresses empty) or follows the explicit per-AZ
+//     layout given there. Creating a regional gateway additionally requires
+//     the ec2:DescribeAvailabilityZones permission on the deploying role.
+//
 // A NAT gateway does not, by itself, route anything: a private subnet becomes
 // NAT-egressed only when its route table sends a default route
 // (target_type = nat_gateway) to this gateway. The Elastic IP is composed by
@@ -66,17 +75,21 @@ type AwsNatGatewaySpec struct {
 	// engines never need to invent a default. ForceNew: changing it replaces the
 	// gateway.
 	ConnectivityType string `protobuf:"bytes,2,opt,name=connectivity_type,json=connectivityType,proto3" json:"connectivity_type,omitempty"`
-	// The subnet the NAT gateway is created in. Supply a literal subnet-id or
-	// reference an AwsSubnet and the platform resolves its subnet_id output. For a
-	// public gateway this must be a PUBLIC subnet (one whose route table reaches an
-	// internet gateway); for a private gateway any subnet works. Immutable:
-	// changing the subnet replaces the gateway.
+	// The subnet the NAT gateway is created in (zonal mode only -- required
+	// there, forbidden for a regional gateway, which spans the whole VPC).
+	// Supply a literal subnet-id or reference an AwsSubnet and the platform
+	// resolves its subnet_id output. For a public gateway this must be a PUBLIC
+	// subnet (one whose route table reaches an internet gateway); for a private
+	// gateway any subnet works. Immutable: changing the subnet replaces the
+	// gateway.
 	SubnetId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
-	// The Elastic IP allocation that gives a public gateway its stable outbound
-	// address. Supply a literal eipalloc-id or reference an AwsElasticIp and the
-	// platform resolves its allocation_id output. Required when
-	// connectivity_type is public; must be empty when it is private. ForceNew:
-	// changing it replaces the gateway.
+	// The Elastic IP allocation that gives a zonal public gateway its stable
+	// outbound address. Supply a literal eipalloc-id or reference an
+	// AwsElasticIp and the platform resolves its allocation_id output. Required
+	// for a zonal public gateway; must be empty when connectivity_type is
+	// private, and empty for a regional gateway (regional addressing lives in
+	// availability_zone_addresses or is AWS-managed). ForceNew: changing it
+	// replaces the gateway.
 	AllocationId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=allocation_id,json=allocationId,proto3" json:"allocation_id,omitempty"`
 	// The private IPv4 address to assign to a private gateway from the subnet's
 	// range. Only valid when connectivity_type is private; leave empty to let AWS
@@ -96,8 +109,24 @@ type AwsNatGatewaySpec struct {
 	// connectivity_type is private. Mutually exclusive with
 	// secondary_private_ip_addresses.
 	SecondaryPrivateIpAddressCount int32 `protobuf:"varint,8,opt,name=secondary_private_ip_address_count,json=secondaryPrivateIpAddressCount,proto3" json:"secondary_private_ip_address_count,omitempty"`
-	unknownFields                  protoimpl.UnknownFields
-	sizeCache                      protoimpl.SizeCache
+	// Placement model: "zonal" (default -- the classic single-subnet,
+	// single-AZ gateway) or "regional" (one AWS-managed gateway spanning every
+	// AZ of the VPC). Leave empty for zonal. ForceNew: changing the mode
+	// replaces the gateway.
+	AvailabilityMode string `protobuf:"bytes,9,opt,name=availability_mode,json=availabilityMode,proto3" json:"availability_mode,omitempty"`
+	// The VPC a REGIONAL gateway spans (required for regional mode, forbidden
+	// for zonal, where the subnet implies the VPC). Supply a literal vpc-id or
+	// reference an AwsVpc and the platform resolves its vpc_id output.
+	// Immutable: changing the VPC replaces the gateway.
+	VpcId *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
+	// Explicit per-AZ layout for a regional gateway. Leave empty to let AWS
+	// choose the zones and manage addresses automatically (auto mode); list
+	// entries to pin the zones -- and, for a public regional gateway, the
+	// Elastic IPs -- yourself (manual mode). Switching a regional gateway
+	// between auto and manual replaces it (verified provider behavior).
+	AvailabilityZoneAddresses []*AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress `protobuf:"bytes,11,rep,name=availability_zone_addresses,json=availabilityZoneAddresses,proto3" json:"availability_zone_addresses,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *AwsNatGatewaySpec) Reset() {
@@ -186,25 +215,132 @@ func (x *AwsNatGatewaySpec) GetSecondaryPrivateIpAddressCount() int32 {
 	return 0
 }
 
+func (x *AwsNatGatewaySpec) GetAvailabilityMode() string {
+	if x != nil {
+		return x.AvailabilityMode
+	}
+	return ""
+}
+
+func (x *AwsNatGatewaySpec) GetVpcId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.VpcId
+	}
+	return nil
+}
+
+func (x *AwsNatGatewaySpec) GetAvailabilityZoneAddresses() []*AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress {
+	if x != nil {
+		return x.AvailabilityZoneAddresses
+	}
+	return nil
+}
+
+// AwsNatGatewayAvailabilityZoneAddress pins one availability zone of a
+// regional NAT gateway, optionally with the Elastic IP allocations serving
+// that zone.
+type AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The availability zone, by name (e.g. "us-west-2a"). At least one of
+	// availability_zone or availability_zone_id is required per entry; both
+	// may be set (AWS reports both).
+	AvailabilityZone string `protobuf:"bytes,1,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
+	// The availability zone, by ID (e.g. "usw2-az1") -- stable across AWS
+	// accounts, unlike zone names. At least one of availability_zone or
+	// availability_zone_id is required per entry.
+	AvailabilityZoneId string `protobuf:"bytes,2,opt,name=availability_zone_id,json=availabilityZoneId,proto3" json:"availability_zone_id,omitempty"`
+	// Elastic IP allocations serving this zone (public regional gateways
+	// only -- a private gateway carries no Elastic IPs). Each entry is a
+	// literal eipalloc-id or a reference to an AwsElasticIp.
+	AllocationIds []*v1.StringValueOrRef `protobuf:"bytes,3,rep,name=allocation_ids,json=allocationIds,proto3" json:"allocation_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress) Reset() {
+	*x = AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress{}
+	mi := &file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress) ProtoMessage() {}
+
+func (x *AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress.ProtoReflect.Descriptor instead.
+func (*AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_rawDescGZIP(), []int{0, 0}
+}
+
+func (x *AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress) GetAvailabilityZone() string {
+	if x != nil {
+		return x.AvailabilityZone
+	}
+	return ""
+}
+
+func (x *AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress) GetAvailabilityZoneId() string {
+	if x != nil {
+		return x.AvailabilityZoneId
+	}
+	return ""
+}
+
+func (x *AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress) GetAllocationIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.AllocationIds
+	}
+	return nil
+}
+
 var File_catalog_aws_awsnatgateway_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-catalog/aws/awsnatgateway/v1alpha1/spec.proto\x12&dev.planton.aws.awsnatgateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xbb\x0e\n" +
+	"-catalog/aws/awsnatgateway/v1alpha1/spec.proto\x12&dev.planton.aws.awsnatgateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x8a\x1f\n" +
 	"\x11AwsNatGatewaySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\xa8\x01\n" +
 	"\x11connectivity_type\x18\x02 \x01(\tB{\xbaHn\xba\x01k\n" +
-	"\x17connectivity_type_valid\x121connectivity_type must be one of: public, private\x1a\x1dthis in ['public', 'private']\x92\xa6\x1d\x06publicR\x10connectivityType\x12\x85\x01\n" +
-	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\tin subnet\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x8c\x01\n" +
+	"\x17connectivity_type_valid\x121connectivity_type must be one of: public, private\x1a\x1dthis in ['public', 'private']\x92\xa6\x1d\x06publicR\x10connectivityType\x12\x7f\n" +
+	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xb2\xa6\x1d\tin subnet\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x8c\x01\n" +
 	"\rallocation_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xb2\xa6\x1d\n" +
 	"elastic ip\x88\xd4a\xb9\b\x92\xd4a\x1cstatus.outputs.allocation_idR\fallocationId\x12\x1d\n" +
 	"\n" +
 	"private_ip\x18\x05 \x01(\tR\tprivateIp\x12\xac\x01\n" +
 	"\x18secondary_allocation_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB>\xb2\xa6\x1d\x15secondary elastic ips\x88\xd4a\xb9\b\x92\xd4a\x1cstatus.outputs.allocation_idR\x16secondaryAllocationIds\x12C\n" +
 	"\x1esecondary_private_ip_addresses\x18\a \x03(\tR\x1bsecondaryPrivateIpAddresses\x12J\n" +
-	"\"secondary_private_ip_address_count\x18\b \x01(\x05R\x1esecondaryPrivateIpAddressCount:\xe3\a\xbaH\xdf\a\x1a\xc5\x01\n" +
-	"\x1dpublic_requires_allocation_id\x12eallocation_id is required when connectivity_type is public (a public NAT gateway needs an Elastic IP)\x1a=this.connectivity_type != 'public' || has(this.allocation_id)\x1a\xe3\x01\n" +
-	"\x13private_forbids_eip\x12\\allocation_id and secondary_allocation_ids are not allowed when connectivity_type is private\x1anthis.connectivity_type != 'private' || (!has(this.allocation_id) && this.secondary_allocation_ids.size() == 0)\x1a\xcc\x02\n" +
+	"\"secondary_private_ip_address_count\x18\b \x01(\x05R\x1esecondaryPrivateIpAddressCount\x12\xb6\x01\n" +
+	"\x11availability_mode\x18\t \x01(\tB\x88\x01\xbaH|\xba\x01y\n" +
+	"\x17availability_mode_valid\x121availability_mode must be one of: zonal, regional\x1a+this == '' || this in ['zonal', 'regional']\x92\xa6\x1d\x05zonalR\x10availabilityMode\x12s\n" +
+	"\x06vpc_id\x18\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xb2\xa6\x1d\x06in vpc\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x9e\x01\n" +
+	"\x1bavailability_zone_addresses\x18\v \x03(\v2^.dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec.AwsNatGatewayAvailabilityZoneAddressR\x19availabilityZoneAddresses\x1a\xd9\x03\n" +
+	"$AwsNatGatewayAvailabilityZoneAddress\x12+\n" +
+	"\x11availability_zone\x18\x01 \x01(\tR\x10availabilityZone\x120\n" +
+	"\x14availability_zone_id\x18\x02 \x01(\tR\x12availabilityZoneId\x12\x94\x01\n" +
+	"\x0eallocation_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x10zone elastic ips\x88\xd4a\xb9\b\x92\xd4a\x1cstatus.outputs.allocation_idR\rallocationIds:\xba\x01\xbaH\xb6\x01\x1a\xb3\x01\n" +
+	"\x18az_address_zone_required\x12Veach availability_zone_addresses entry needs availability_zone or availability_zone_id\x1a?this.availability_zone != '' || this.availability_zone_id != '':\x8e\x11\xbaH\x8a\x11\x1a\xa8\x01\n" +
+	"\x15zonal_requires_subnet\x12Rsubnet_id is required for a zonal NAT gateway (availability_mode empty or 'zonal')\x1a;this.availability_mode == 'regional' || has(this.subnet_id)\x1a\xae\x01\n" +
+	"\x15regional_requires_vpc\x12Aa regional NAT gateway requires vpc_id and must not set subnet_id\x1aRthis.availability_mode != 'regional' || (has(this.vpc_id) && !has(this.subnet_id))\x1a\xe9\x01\n" +
+	"\x1ezonal_forbids_regional_surface\x12Zvpc_id and availability_zone_addresses are only valid when availability_mode is 'regional'\x1akthis.availability_mode == 'regional' || (!has(this.vpc_id) && this.availability_zone_addresses.size() == 0)\x1a\xb8\x03\n" +
+	"!regional_forbids_zonal_addressing\x12\xa4\x01allocation_id, secondary_allocation_ids, private_ip, and the secondary private IP fields are zonal-mode surface; a regional gateway uses availability_zone_addresses\x1a\xeb\x01this.availability_mode != 'regional' || (!has(this.allocation_id) && this.secondary_allocation_ids.size() == 0 && this.private_ip == '' && this.secondary_private_ip_addresses.size() == 0 && this.secondary_private_ip_address_count == 0)\x1a\xf3\x01\n" +
+	"\x1dpublic_requires_allocation_id\x12kallocation_id is required when connectivity_type is public (a zonal public NAT gateway needs an Elastic IP)\x1aethis.connectivity_type != 'public' || this.availability_mode == 'regional' || has(this.allocation_id)\x1a\xdd\x02\n" +
+	"\x13private_forbids_eip\x12\x8b\x01allocation_id, secondary_allocation_ids, and availability_zone_addresses[].allocation_ids are not allowed when connectivity_type is private\x1a\xb7\x01this.connectivity_type != 'private' || (!has(this.allocation_id) && this.secondary_allocation_ids.size() == 0 && this.availability_zone_addresses.all(a, a.allocation_ids.size() == 0))\x1a\xcc\x02\n" +
 	"!public_forbids_private_addressing\x12\x83\x01private_ip, secondary_private_ip_addresses, and secondary_private_ip_address_count are only valid when connectivity_type is private\x1a\xa0\x01this.connectivity_type != 'public' || (this.private_ip == '' && this.secondary_private_ip_addresses.size() == 0 && this.secondary_private_ip_address_count == 0)\x1a\xdf\x01\n" +
 	"\x1esecondary_private_ip_exclusive\x12\\secondary_private_ip_addresses and secondary_private_ip_address_count are mutually exclusive\x1a_this.secondary_private_ip_addresses.size() == 0 || this.secondary_private_ip_address_count == 0B\xcb\x02\n" +
 	"*com.dev.planton.aws.awsnatgateway.v1alpha1B\tSpecProtoP\x01ZUgithub.com/plantonhq/planton/catalog/aws/awsnatgateway/v1alpha1;awsnatgatewayv1alpha1\xa2\x02\x04DPAA\xaa\x02&Dev.Planton.Aws.Awsnatgateway.V1alpha1\xca\x02&Dev\\Planton\\Aws\\Awsnatgateway\\V1alpha1\xe2\x022Dev\\Planton\\Aws\\Awsnatgateway\\V1alpha1\\GPBMetadata\xea\x02*Dev::Planton::Aws::Awsnatgateway::V1alpha1b\x06proto3"
@@ -221,20 +357,24 @@ func file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsNatGatewaySpec)(nil),   // 0: dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec
-	(*v1.StringValueOrRef)(nil), // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsNatGatewaySpec)(nil),                                      // 0: dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec
+	(*AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress)(nil), // 1: dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec.AwsNatGatewayAvailabilityZoneAddress
+	(*v1.StringValueOrRef)(nil),                                    // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec.allocation_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec.secondary_allocation_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	2, // 0: dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 1: dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec.allocation_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 2: dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec.secondary_allocation_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 3: dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 4: dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec.availability_zone_addresses:type_name -> dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec.AwsNatGatewayAvailabilityZoneAddress
+	2, // 5: dev.planton.aws.awsnatgateway.v1alpha1.AwsNatGatewaySpec.AwsNatGatewayAvailabilityZoneAddress.allocation_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_init() }
@@ -248,7 +388,7 @@ func file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsnatgateway_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

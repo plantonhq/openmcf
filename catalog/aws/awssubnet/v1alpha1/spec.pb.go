@@ -24,7 +24,10 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// RouteTargetType enumerates the AWS route target kinds.
+// RouteTargetType enumerates the AWS route target kinds -- the complete
+// set the provider's route block accepts. For core_network and
+// odb_network the target_id carries an ARN (the provider validates ARN
+// syntax); every other kind carries a resource id.
 type AwsSubnetSpec_AwsSubnetRoute_RouteTargetType int32
 
 const (
@@ -36,19 +39,37 @@ const (
 	AwsSubnetSpec_AwsSubnetRoute_vpc_endpoint                 AwsSubnetSpec_AwsSubnetRoute_RouteTargetType = 5
 	AwsSubnetSpec_AwsSubnetRoute_network_interface            AwsSubnetSpec_AwsSubnetRoute_RouteTargetType = 6
 	AwsSubnetSpec_AwsSubnetRoute_egress_only_internet_gateway AwsSubnetSpec_AwsSubnetRoute_RouteTargetType = 7
+	// Wavelength Zone carrier gateway (cagw-...), for routing subnet
+	// traffic to the telecom carrier network.
+	AwsSubnetSpec_AwsSubnetRoute_carrier_gateway AwsSubnetSpec_AwsSubnetRoute_RouteTargetType = 8
+	// AWS Cloud WAN core network ARN
+	// (arn:aws:networkmanager::...:core-network/...).
+	AwsSubnetSpec_AwsSubnetRoute_core_network AwsSubnetSpec_AwsSubnetRoute_RouteTargetType = 9
+	// Outposts local gateway (lgw-...), for routing to an on-premises
+	// network through an Outpost.
+	AwsSubnetSpec_AwsSubnetRoute_local_gateway AwsSubnetSpec_AwsSubnetRoute_RouteTargetType = 10
+	// Oracle Database@AWS network ARN (arn:aws:odb:...:odb-network/...).
+	// Verified provider quirk: AWS returns a gateway id alongside ODB
+	// routes, which older providers surfaced as perpetual drift -- fixed in
+	// provider 6.53.0; the modules rely on the pinned provider for this.
+	AwsSubnetSpec_AwsSubnetRoute_odb_network AwsSubnetSpec_AwsSubnetRoute_RouteTargetType = 11
 )
 
 // Enum value maps for AwsSubnetSpec_AwsSubnetRoute_RouteTargetType.
 var (
 	AwsSubnetSpec_AwsSubnetRoute_RouteTargetType_name = map[int32]string{
-		0: "unspecified",
-		1: "internet_gateway",
-		2: "nat_gateway",
-		3: "transit_gateway",
-		4: "vpc_peering_connection",
-		5: "vpc_endpoint",
-		6: "network_interface",
-		7: "egress_only_internet_gateway",
+		0:  "unspecified",
+		1:  "internet_gateway",
+		2:  "nat_gateway",
+		3:  "transit_gateway",
+		4:  "vpc_peering_connection",
+		5:  "vpc_endpoint",
+		6:  "network_interface",
+		7:  "egress_only_internet_gateway",
+		8:  "carrier_gateway",
+		9:  "core_network",
+		10: "local_gateway",
+		11: "odb_network",
 	}
 	AwsSubnetSpec_AwsSubnetRoute_RouteTargetType_value = map[string]int32{
 		"unspecified":                  0,
@@ -59,6 +80,10 @@ var (
 		"vpc_endpoint":                 5,
 		"network_interface":            6,
 		"egress_only_internet_gateway": 7,
+		"carrier_gateway":              8,
+		"core_network":                 9,
+		"local_gateway":                10,
+		"odb_network":                  11,
 	}
 )
 
@@ -99,8 +124,9 @@ func (AwsSubnetSpec_AwsSubnetRoute_RouteTargetType) EnumDescriptor() ([]byte, []
 // private. Routing is therefore folded into this spec.
 //
 // Two mutually exclusive ways to attach a route table are supported:
-//   - routes: inline rules from which a dedicated route table is created and
-//     owned by this subnet.
+//   - routes (and/or propagating_vgws): a dedicated route table is created,
+//     owned by this subnet, populated with the inline rules and any VGW
+//     route propagations.
 //   - route_table_id: an existing, externally-managed route table to associate.
 //
 // If neither is set, the subnet uses the VPC's main route table. The
@@ -117,14 +143,20 @@ type AwsSubnetSpec struct {
 	// AwsVpc and the platform resolves its vpc_id output. Immutable: changing the
 	// VPC replaces the subnet.
 	VpcId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
-	// The availability zone the subnet lives in (e.g. "us-west-2a"). AWS subnets
-	// are single-AZ; to span AZs, create one AwsSubnet per zone. Immutable:
+	// The availability zone the subnet lives in, by NAME (e.g. "us-west-2a").
+	// AWS subnets are single-AZ; to span AZs, create one AwsSubnet per zone.
+	// Exactly one of availability_zone or availability_zone_id must be set --
+	// explicit placement is mandatory (AWS would otherwise pick a zone at
+	// random, which is never what declarative infrastructure wants). Immutable:
 	// changing the AZ replaces the subnet.
 	AvailabilityZone string `protobuf:"bytes,3,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
 	// IPv4 CIDR block for the subnet (e.g. "10.0.1.0/24"). Must fall within the
 	// VPC's CIDR and not overlap any sibling subnet. Note that AWS reserves the
 	// first four and the last IP address in every subnet, so a /28 yields 11
-	// usable addresses. Immutable: changing the CIDR replaces the subnet.
+	// usable addresses. Exactly one IPv4 addressing method is required unless
+	// ipv6_native is true: either this CIDR or an IPAM allocation
+	// (ipv4_ipam_pool_id + ipv4_netmask_length). Immutable: changing the CIDR
+	// replaces the subnet.
 	CidrBlock string `protobuf:"bytes,4,opt,name=cidr_block,json=cidrBlock,proto3" json:"cidr_block,omitempty"`
 	// When true, instances launched into this subnet receive a public IPv4
 	// address by default. This is a convenience for public subnets; it does NOT
@@ -162,9 +194,49 @@ type AwsSubnetSpec struct {
 	// Inline route rules. When present, a dedicated route table is created, owned
 	// by this subnet, populated with these rules, and associated with the subnet.
 	// Mutually exclusive with route_table_id.
-	Routes        []*AwsSubnetSpec_AwsSubnetRoute `protobuf:"bytes,13,rep,name=routes,proto3" json:"routes,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Routes []*AwsSubnetSpec_AwsSubnetRoute `protobuf:"bytes,13,rep,name=routes,proto3" json:"routes,omitempty"`
+	// The availability zone the subnet lives in, by ID (e.g. "usw2-az1"). AZ IDs
+	// are stable across AWS accounts, unlike AZ names which are shuffled
+	// per-account -- use the ID form when coordinating subnet placement across
+	// accounts. Exactly one of availability_zone or availability_zone_id must be
+	// set. Immutable: changing it replaces the subnet.
+	AvailabilityZoneId string `protobuf:"bytes,14,opt,name=availability_zone_id,json=availabilityZoneId,proto3" json:"availability_zone_id,omitempty"`
+	// The IPAM pool to allocate the subnet's IPv4 CIDR from, as an alternative
+	// to declaring cidr_block explicitly. Requires ipv4_netmask_length. Supply a
+	// literal ipam-pool-id; there is no IPAM pool catalog kind yet. Immutable:
+	// changing it replaces the subnet.
+	Ipv4IpamPoolId *v1.StringValueOrRef `protobuf:"bytes,15,opt,name=ipv4_ipam_pool_id,json=ipv4IpamPoolId,proto3" json:"ipv4_ipam_pool_id,omitempty"`
+	// Netmask length for the IPv4 CIDR allocated from ipv4_ipam_pool_id
+	// (e.g. 24 for a /24). Valid range 16-28 (the AWS subnet netmask bounds).
+	// Requires ipv4_ipam_pool_id; mutually exclusive with cidr_block.
+	Ipv4NetmaskLength *int32 `protobuf:"varint,16,opt,name=ipv4_netmask_length,json=ipv4NetmaskLength,proto3,oneof" json:"ipv4_netmask_length,omitempty"`
+	// The IPAM pool to allocate the subnet's IPv6 CIDR from, as an alternative
+	// to declaring ipv6_cidr_block explicitly. Requires ipv6_netmask_length.
+	// Supply a literal ipam-pool-id; there is no IPAM pool catalog kind yet.
+	// Immutable: changing it replaces the subnet.
+	Ipv6IpamPoolId *v1.StringValueOrRef `protobuf:"bytes,17,opt,name=ipv6_ipam_pool_id,json=ipv6IpamPoolId,proto3" json:"ipv6_ipam_pool_id,omitempty"`
+	// Netmask length for the IPv6 CIDR allocated from ipv6_ipam_pool_id. AWS
+	// subnets accept /44, /48, /52, /56, /60, or /64 (a /64 is the norm --
+	// anything shorter is for subnets that will be further subdivided by
+	// longest-prefix-match routing). Requires ipv6_ipam_pool_id; mutually
+	// exclusive with ipv6_cidr_block.
+	Ipv6NetmaskLength *int32 `protobuf:"varint,18,opt,name=ipv6_netmask_length,json=ipv6NetmaskLength,proto3,oneof" json:"ipv6_netmask_length,omitempty"`
+	// When true, creates an IPv6-only subnet: no IPv4 addressing at all
+	// (cidr_block and ipv4_ipam_pool_id must both be empty), and an IPv6 CIDR
+	// (ipv6_cidr_block or the IPv6 IPAM pair) is required. Instances in an
+	// IPv6-only subnet need private_dns_hostname_type_on_launch =
+	// "resource-name" and can reach IPv4-only destinations via DNS64 + NAT64
+	// (see enable_dns64). Immutable: changing it replaces the subnet.
+	Ipv6Native bool `protobuf:"varint,19,opt,name=ipv6_native,json=ipv6Native,proto3" json:"ipv6_native,omitempty"`
+	// Virtual private gateway IDs (vgw-...) whose routes propagate into the
+	// subnet-owned route table -- the mechanism that pulls Site-to-Site VPN /
+	// Direct Connect routes in automatically instead of declaring them one by
+	// one. Only valid when this subnet OWNS its route table (inline routes
+	// mode, or propagation-only with no inline routes); not allowed with an
+	// external route_table_id, whose owner controls its own propagation.
+	PropagatingVgws []string `protobuf:"bytes,20,rep,name=propagating_vgws,json=propagatingVgws,proto3" json:"propagating_vgws,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *AwsSubnetSpec) Reset() {
@@ -288,6 +360,55 @@ func (x *AwsSubnetSpec) GetRoutes() []*AwsSubnetSpec_AwsSubnetRoute {
 	return nil
 }
 
+func (x *AwsSubnetSpec) GetAvailabilityZoneId() string {
+	if x != nil {
+		return x.AvailabilityZoneId
+	}
+	return ""
+}
+
+func (x *AwsSubnetSpec) GetIpv4IpamPoolId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Ipv4IpamPoolId
+	}
+	return nil
+}
+
+func (x *AwsSubnetSpec) GetIpv4NetmaskLength() int32 {
+	if x != nil && x.Ipv4NetmaskLength != nil {
+		return *x.Ipv4NetmaskLength
+	}
+	return 0
+}
+
+func (x *AwsSubnetSpec) GetIpv6IpamPoolId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Ipv6IpamPoolId
+	}
+	return nil
+}
+
+func (x *AwsSubnetSpec) GetIpv6NetmaskLength() int32 {
+	if x != nil && x.Ipv6NetmaskLength != nil {
+		return *x.Ipv6NetmaskLength
+	}
+	return 0
+}
+
+func (x *AwsSubnetSpec) GetIpv6Native() bool {
+	if x != nil {
+		return x.Ipv6Native
+	}
+	return false
+}
+
+func (x *AwsSubnetSpec) GetPropagatingVgws() []string {
+	if x != nil {
+		return x.PropagatingVgws
+	}
+	return nil
+}
+
 // AwsSubnetRoute is one entry in the subnet-owned route table: a destination
 // and the network entity that traffic to that destination is sent to.
 type AwsSubnetSpec_AwsSubnetRoute struct {
@@ -382,13 +503,14 @@ var File_catalog_aws_awssubnet_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awssubnet_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	")catalog/aws/awssubnet/v1alpha1/spec.proto\x12\"dev.planton.aws.awssubnet.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xc2\x11\n" +
+	")catalog/aws/awssubnet/v1alpha1/spec.proto\x12\"dev.planton.aws.awssubnet.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd4 \n" +
 	"\rAwsSubnetSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12y\n" +
-	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x06in vpc\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x124\n" +
-	"\x11availability_zone\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x10availabilityZone\x12Q\n" +
+	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x06in vpc\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12+\n" +
+	"\x11availability_zone\x18\x03 \x01(\tR\x10availabilityZone\x12\xb6\x01\n" +
 	"\n" +
-	"cidr_block\x18\x04 \x01(\tB2\xbaH/\xc8\x01\x01r*2(^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$R\tcidrBlock\x124\n" +
+	"cidr_block\x18\x04 \x01(\tB\x96\x01\xbaH\x92\x01\xba\x01\x8e\x01\n" +
+	"\x11cidr_block_format\x120cidr_block must be an IPv4 CIDR like 10.0.1.0/24\x1aGthis == '' || this.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/[0-9]{1,2}$')R\tcidrBlock\x124\n" +
 	"\x17map_public_ip_on_launch\x18\x05 \x01(\bR\x13mapPublicIpOnLaunch\x12D\n" +
 	"\x1fassign_ipv6_address_on_creation\x18\x06 \x01(\bR\x1bassignIpv6AddressOnCreation\x12&\n" +
 	"\x0fipv6_cidr_block\x18\a \x01(\tR\ripv6CidrBlock\x12!\n" +
@@ -399,14 +521,22 @@ const file_catalog_aws_awssubnet_v1alpha1_spec_proto_rawDesc = "" +
 	"#private_dns_hostname_type_on_launch\x18\v \x01(\tB\xb3\x01\xbaH\xaf\x01\xba\x01\xab\x01\n" +
 	")private_dns_hostname_type_on_launch_valid\x12Jprivate_dns_hostname_type_on_launch must be one of: ip-name, resource-name\x1a2this == '' || this in ['ip-name', 'resource-name']H\x00R\x1eprivateDnsHostnameTypeOnLaunch\x88\x01\x01\x12X\n" +
 	"\x0eroute_table_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\frouteTableId\x12X\n" +
-	"\x06routes\x18\r \x03(\v2@.dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.AwsSubnetRouteR\x06routes\x1a\xf9\x06\n" +
+	"\x06routes\x18\r \x03(\v2@.dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.AwsSubnetRouteR\x06routes\x120\n" +
+	"\x14availability_zone_id\x18\x0e \x01(\tR\x12availabilityZoneId\x12]\n" +
+	"\x11ipv4_ipam_pool_id\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x0eipv4IpamPoolId\x12>\n" +
+	"\x13ipv4_netmask_length\x18\x10 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x1c(\x10H\x01R\x11ipv4NetmaskLength\x88\x01\x01\x12]\n" +
+	"\x11ipv6_ipam_pool_id\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x0eipv6IpamPoolId\x12F\n" +
+	"\x13ipv6_netmask_length\x18\x12 \x01(\x05B\x11\xbaH\x0e\x1a\f0,0004080<0@H\x02R\x11ipv6NetmaskLength\x88\x01\x01\x12\x1f\n" +
+	"\vipv6_native\x18\x13 \x01(\bR\n" +
+	"ipv6Native\x12)\n" +
+	"\x10propagating_vgws\x18\x14 \x03(\tR\x0fpropagatingVgws\x1a\xc4\a\n" +
 	"\x0eAwsSubnetRoute\x124\n" +
 	"\x16destination_cidr_block\x18\x01 \x01(\tR\x14destinationCidrBlock\x12=\n" +
 	"\x1bdestination_ipv6_cidr_block\x18\x02 \x01(\tR\x18destinationIpv6CidrBlock\x12;\n" +
 	"\x1adestination_prefix_list_id\x18\x03 \x01(\tR\x17destinationPrefixListId\x12{\n" +
 	"\vtarget_type\x18\x04 \x01(\x0e2P.dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.AwsSubnetRoute.RouteTargetTypeB\b\xbaH\x05\x82\x01\x02 \x00R\n" +
 	"targetType\x12W\n" +
-	"\ttarget_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\btargetId\"\xc5\x01\n" +
+	"\ttarget_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\btargetId\"\x90\x02\n" +
 	"\x0fRouteTargetType\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12\x14\n" +
 	"\x10internet_gateway\x10\x01\x12\x0f\n" +
@@ -415,10 +545,24 @@ const file_catalog_aws_awssubnet_v1alpha1_spec_proto_rawDesc = "" +
 	"\x16vpc_peering_connection\x10\x04\x12\x10\n" +
 	"\fvpc_endpoint\x10\x05\x12\x15\n" +
 	"\x11network_interface\x10\x06\x12 \n" +
-	"\x1cegress_only_internet_gateway\x10\a:\x96\x02\xbaH\x92\x02\x1a\x8f\x02\n" +
-	"\x1droute_destination_exactly_one\x12mexactly one of destination_cidr_block, destination_ipv6_cidr_block, or destination_prefix_list_id must be set\x1a\x7f[this.destination_cidr_block, this.destination_ipv6_cidr_block, this.destination_prefix_list_id].filter(d, d != '').size() == 1:\xa7\x01\xbaH\xa3\x01\x1a\xa0\x01\n" +
-	"\x1eroute_table_mutual_exclusivity\x12Hroute_table_id and routes are mutually exclusive; provide one or neither\x1a4!has(this.route_table_id) || this.routes.size() == 0B&\n" +
-	"$_private_dns_hostname_type_on_launchB\xaf\x02\n" +
+	"\x1cegress_only_internet_gateway\x10\a\x12\x13\n" +
+	"\x0fcarrier_gateway\x10\b\x12\x10\n" +
+	"\fcore_network\x10\t\x12\x11\n" +
+	"\rlocal_gateway\x10\n" +
+	"\x12\x0f\n" +
+	"\vodb_network\x10\v:\x96\x02\xbaH\x92\x02\x1a\x8f\x02\n" +
+	"\x1droute_destination_exactly_one\x12mexactly one of destination_cidr_block, destination_ipv6_cidr_block, or destination_prefix_list_id must be set\x1a\x7f[this.destination_cidr_block, this.destination_ipv6_cidr_block, this.destination_prefix_list_id].filter(d, d != '').size() == 1:\x9d\v\xbaH\x99\v\x1a\xa0\x01\n" +
+	"\x1eroute_table_mutual_exclusivity\x12Hroute_table_id and routes are mutually exclusive; provide one or neither\x1a4!has(this.route_table_id) || this.routes.size() == 0\x1a\xb9\x01\n" +
+	"\x1davailability_zone_exactly_one\x12Dexactly one of availability_zone or availability_zone_id must be set\x1aR[this.availability_zone, this.availability_zone_id].filter(z, z != '').size() == 1\x1a\x92\x02\n" +
+	"\x1bipv4_addressing_exactly_one\x12Uset exactly one of cidr_block or ipv4_ipam_pool_id (neither when ipv6_native is true)\x1a\x9b\x01this.ipv6_native ? (this.cidr_block == '' && !has(this.ipv4_ipam_pool_id)) : ((this.cidr_block != '' ? 1 : 0) + (has(this.ipv4_ipam_pool_id) ? 1 : 0) == 1)\x1a\x8b\x01\n" +
+	"\x1aipv4_netmask_requires_pool\x12.ipv4_netmask_length requires ipv4_ipam_pool_id\x1a=!has(this.ipv4_netmask_length) || has(this.ipv4_ipam_pool_id)\x1a\x8b\x01\n" +
+	"\x1aipv6_netmask_requires_pool\x12.ipv6_netmask_length requires ipv6_ipam_pool_id\x1a=!has(this.ipv6_netmask_length) || has(this.ipv6_ipam_pool_id)\x1a\x97\x01\n" +
+	"\x1bipv6_addressing_at_most_one\x12<ipv6_cidr_block and ipv6_ipam_pool_id are mutually exclusive\x1a:this.ipv6_cidr_block == '' || !has(this.ipv6_ipam_pool_id)\x1a\xa6\x01\n" +
+	"\x19ipv6_native_requires_ipv6\x129ipv6_native requires ipv6_cidr_block or ipv6_ipam_pool_id\x1aN!this.ipv6_native || this.ipv6_cidr_block != '' || has(this.ipv6_ipam_pool_id)\x1a\xc3\x01\n" +
+	"!propagating_vgws_owned_table_only\x12^propagating_vgws is not allowed with route_table_id (propagation belongs to the table's owner)\x1a>this.propagating_vgws.size() == 0 || !has(this.route_table_id)B&\n" +
+	"$_private_dns_hostname_type_on_launchB\x16\n" +
+	"\x14_ipv4_netmask_lengthB\x16\n" +
+	"\x14_ipv6_netmask_lengthB\xaf\x02\n" +
 	"&com.dev.planton.aws.awssubnet.v1alpha1B\tSpecProtoP\x01ZMgithub.com/plantonhq/planton/catalog/aws/awssubnet/v1alpha1;awssubnetv1alpha1\xa2\x02\x04DPAA\xaa\x02\"Dev.Planton.Aws.Awssubnet.V1alpha1\xca\x02\"Dev\\Planton\\Aws\\Awssubnet\\V1alpha1\xe2\x02.Dev\\Planton\\Aws\\Awssubnet\\V1alpha1\\GPBMetadata\xea\x02&Dev::Planton::Aws::Awssubnet::V1alpha1b\x06proto3"
 
 var (
@@ -445,13 +589,15 @@ var file_catalog_aws_awssubnet_v1alpha1_spec_proto_depIdxs = []int32{
 	3, // 0: dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3, // 1: dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.route_table_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	2, // 2: dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.routes:type_name -> dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.AwsSubnetRoute
-	0, // 3: dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.AwsSubnetRoute.target_type:type_name -> dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.AwsSubnetRoute.RouteTargetType
-	3, // 4: dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.AwsSubnetRoute.target_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	3, // 3: dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.ipv4_ipam_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 4: dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.ipv6_ipam_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0, // 5: dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.AwsSubnetRoute.target_type:type_name -> dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.AwsSubnetRoute.RouteTargetType
+	3, // 6: dev.planton.aws.awssubnet.v1alpha1.AwsSubnetSpec.AwsSubnetRoute.target_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awssubnet_v1alpha1_spec_proto_init() }

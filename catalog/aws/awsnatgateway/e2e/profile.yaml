@@ -9,11 +9,16 @@ spec:
   # subnet_id and allocation_id from the subnet/EIP outputs, then runs deploy ->
   # DescribeNatGateways verify -> destroy -> verify-destroyed on both provisioners
   # against the AWS test account via keyless SSO/OIDC credentials.
+  # pending_proof: the spec surface deepened (the regional NAT gateway family
+  # -- availability_mode, vpc_id, availability_zone_addresses -- with a new
+  # regional scenario that has never run live) after the prior green run, so
+  # that proof no longer covers the current surface. Offline plans and
+  # previews passed on both engines for the zonal AND regional arms; the live
+  # lanes re-earn the badge. The regional lane additionally needs
+  # ec2:DescribeAvailabilityZones on the harness role.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   # NAT gateways are slow to create and especially to delete (the AWS provider
   # uses a 30-minute delete timeout), so the per-scenario budget is generous.
   timeout_minutes: 20

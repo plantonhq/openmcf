@@ -179,6 +179,8 @@ const (
 	// AwsInternetGateway is a prerequisite because a public NAT gateway can only
 	// become available once the VPC it sits in has an internet gateway attached
 	// (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+	// AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode
+	// = regional) references the VPC directly instead of a subnet.
 	CloudResourceKind_AwsNatGateway                CloudResourceKind = 1086
 	CloudResourceKind_AwsEgressOnlyInternetGateway CloudResourceKind = 1087
 	// AwsSubnet and AwsSecurityGroup are prerequisites because mount targets
@@ -2754,7 +2756,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf6\x91\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf8\x91\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -2824,8 +2826,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x11AwsTransitGateway\x10\xba\b\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awstgw\x122\n" +
 	"\x14AwsGlobalAccelerator\x10\xbb\b\x1a\x17\xa2\xf7\x04\x13\b\f\x12\bv1alpha1\"\x05awsga\x12-\n" +
 	"\tAwsSubnet\x10\xbc\b\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\x05awssn0\x01:\x02\xf8\a\x125\n" +
-	"\x12AwsInternetGateway\x10\xbd\b\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsigw:\x02\xf8\a\x124\n" +
-	"\rAwsNatGateway\x10\xbe\b\x1a \xa2\xf7\x04\x1c\b\f\x12\bv1alpha1\"\x06awsnat:\x06\xbc\b\xb9\b\xbd\b\x12@\n" +
+	"\x12AwsInternetGateway\x10\xbd\b\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsigw:\x02\xf8\a\x126\n" +
+	"\rAwsNatGateway\x10\xbe\b\x1a\"\xa2\xf7\x04\x1e\b\f\x12\bv1alpha1\"\x06awsnat:\b\xf8\a\xbc\b\xb9\b\xbd\b\x12@\n" +
 	"\x1cAwsEgressOnlyInternetGateway\x10\xbf\b\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawseigw:\x02\xf8\a\x12;\n" +
 	"\x14AwsElasticFileSystem\x10\xc2\b\x1a \xa2\xf7\x04\x1c\b\f\x12\bv1alpha1\"\x06awsefs0\x01:\x04\xbc\b\xf7\a\x126\n" +
 	"\x11AwsEfsAccessPoint\x10\x88\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawsefsap:\x02\xc2\b\x12;\n" +

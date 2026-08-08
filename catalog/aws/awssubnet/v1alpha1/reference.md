@@ -50,8 +50,8 @@ spec:
 |---|---|---|---|---|
 | `spec.region` | `string` | yes |  |  |
 | `spec.vpcId` | `string \| valueFrom` | yes |  | AwsVpc (`status.outputs.vpc_id`) |
-| `spec.availabilityZone` | `string` | yes |  |  |
-| `spec.cidrBlock` | `string` | yes |  |  |
+| `spec.availabilityZone` | `string` |  |  |  |
+| `spec.cidrBlock` | `string` |  |  |  |
 | `spec.mapPublicIpOnLaunch` | `bool` |  |  |  |
 | `spec.assignIpv6AddressOnCreation` | `bool` |  |  |  |
 | `spec.ipv6CidrBlock` | `string` |  |  |  |
@@ -66,6 +66,13 @@ spec:
 | `spec.routes[].destinationPrefixListId` | `string` |  |  |  |
 | `spec.routes[].targetType` | `enum` |  |  |  |
 | `spec.routes[].targetId` | `string \| valueFrom` | yes |  |  |
+| `spec.availabilityZoneId` | `string` |  |  |  |
+| `spec.ipv4IpamPoolId` | `string \| valueFrom` |  |  |  |
+| `spec.ipv4NetmaskLength` | `int32` |  |  |  |
+| `spec.ipv6IpamPoolId` | `string \| valueFrom` |  |  |  |
+| `spec.ipv6NetmaskLength` | `int32` |  |  |  |
+| `spec.ipv6Native` | `bool` |  |  |  |
+| `spec.propagatingVgws` | `[]string` |  |  |  |
 
 ## Field Details
 
@@ -94,24 +101,22 @@ VPC replaces the subnet.
 
 ### spec.availabilityZone
 
-`string` · required
+`string`
 
 The availability zone the subnet lives in (e.g. "us-west-2a"). AWS subnets
 are single-AZ; to span AZs, create one AwsSubnet per zone. Immutable:
 changing the AZ replaces the subnet.
 
-- rule: {"string":{"minLen":"1"}}
-
 ### spec.cidrBlock
 
-`string` · required
+`string`
 
 IPv4 CIDR block for the subnet (e.g. "10.0.1.0/24"). Must fall within the
 VPC's CIDR and not overlap any sibling subnet. Note that AWS reserves the
 first four and the last IP address in every subnet, so a /28 yields 11
 usable addresses. Immutable: changing the CIDR replaces the subnet.
 
-- rule: {"required":true,"string":{"pattern":"^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$"}}
+- rule: cidr_block must be an IPv4 CIDR like 10.0.1.0/24
 
 ### spec.mapPublicIpOnLaunch
 
@@ -230,6 +235,10 @@ Allowed values (use exactly as shown):
 - `vpc_endpoint`
 - `network_interface`
 - `egress_only_internet_gateway`
+- `carrier_gateway`
+- `core_network`
+- `local_gateway`
+- `odb_network`
 
 ### spec.routes[].targetId
 
@@ -245,9 +254,52 @@ producing resource is referenced explicitly via value_from.
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
+### spec.availabilityZoneId
+
+`string`
+
+### spec.ipv4IpamPoolId
+
+`string | valueFrom`
+
+- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+
+### spec.ipv4NetmaskLength
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"lte":28,"gte":16}}
+
+### spec.ipv6IpamPoolId
+
+`string | valueFrom`
+
+- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+
+### spec.ipv6NetmaskLength
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"in":[44,48,52,56,60,64]}}
+
+### spec.ipv6Native
+
+`bool`
+
+### spec.propagatingVgws
+
+`[]string`
+
 ## Validation Rules
 
 - `route_table_mutual_exclusivity`: route_table_id and routes are mutually exclusive; provide one or neither
+- `availability_zone_exactly_one`: exactly one of availability_zone or availability_zone_id must be set
+- `ipv4_addressing_exactly_one`: set exactly one of cidr_block or ipv4_ipam_pool_id (neither when ipv6_native is true)
+- `ipv4_netmask_requires_pool`: ipv4_netmask_length requires ipv4_ipam_pool_id
+- `ipv6_netmask_requires_pool`: ipv6_netmask_length requires ipv6_ipam_pool_id
+- `ipv6_addressing_at_most_one`: ipv6_cidr_block and ipv6_ipam_pool_id are mutually exclusive
+- `ipv6_native_requires_ipv6`: ipv6_native requires ipv6_cidr_block or ipv6_ipam_pool_id
+- `propagating_vgws_owned_table_only`: propagating_vgws is not allowed with route_table_id (propagation belongs to the table's owner)
 
 ## Outputs
 

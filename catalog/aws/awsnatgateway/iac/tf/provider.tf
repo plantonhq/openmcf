@@ -7,6 +7,11 @@ terraform {
       # a deliberate catalog-wide decision, and floor-at-latest-released-minor
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor 6.24.0: the regional NAT gateway family
+      # (availability_mode, vpc_id, availability_zone_address) landed there,
+      # which is also where subnet_id became optional. The zonal surface
+      # (connectivity_type, secondary allocations/addresses) predates 6.0.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

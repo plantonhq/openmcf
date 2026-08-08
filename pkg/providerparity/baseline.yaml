@@ -90,9 +90,7 @@ entries:
   - kind:AwsMskCluster
   - kind:AwsMskServerlessCluster
   - kind:AwsMwaaEnvironment
-  - kind:AwsNatGateway
   - kind:AwsNeptuneCluster
-  - kind:AwsNlb
   - kind:AwsOpenSearchDomain
   - kind:AwsPlantonRunner
   - kind:AwsRdsCluster
@@ -115,7 +113,6 @@ entries:
   - kind:AwsSnsTopic
   - kind:AwsSqsQueue
   - kind:AwsStepFunction
-  - kind:AwsSubnet
   - kind:AwsTransitGateway
   - kind:AwsTransitGatewayRouteTable
   - kind:AwsTransitGatewayVpcAttachment

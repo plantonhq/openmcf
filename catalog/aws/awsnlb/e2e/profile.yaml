@@ -9,15 +9,19 @@ spec:
   # provisioners. NLB creation takes 2-3 minutes and deletion similar; the
   # timeout budgets for both plus the prerequisite chain.
   #
-  # deferred: the shared test account rejects CreateLoadBalancer for the
-  # NETWORK type with "OperationNotPermitted: This AWS account currently does
-  # not support creating load balancers" (application-type creates succeed in
-  # the same account), which only AWS Support can lift. Both engines reach
-  # the AWS API cleanly through the full prerequisite chain; flip to green
-  # once the account restriction is removed.
+  # pending_proof: the spec surface deepened (capacity reservation, secondary
+  # IPs per subnet, prefix-based IPv6 source NAT, per-node ipv6_address)
+  # after the last live attempt. Offline plans and previews passed on both
+  # engines, including the dualstack arm.
+  #
+  # Known live blocker carried from the prior deferral: the shared test
+  # account rejects CreateLoadBalancer for the NETWORK type with
+  # "OperationNotPermitted: This AWS account currently does not support
+  # creating load balancers" (application-type creates succeed in the same
+  # account), which only AWS Support can lift. Both engines reach the AWS API
+  # cleanly through the full prerequisite chain; if the restriction still
+  # stands when the proof lane runs, re-record the deferral with this reason.
   tier: 1
-  status: deferred
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

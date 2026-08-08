@@ -16,11 +16,18 @@ variable "spec" {
   type = object({
     region = string
     connectivity_type = optional(string, "")
-    subnet_id = string
+    subnet_id = optional(string, "")
     allocation_id = optional(string, "")
     private_ip = optional(string, "")
     secondary_allocation_ids = optional(list(string), [])
     secondary_private_ip_addresses = optional(list(string), [])
     secondary_private_ip_address_count = optional(number, 0)
+    availability_mode = optional(string, "")
+    vpc_id = optional(string, "")
+    availability_zone_addresses = optional(list(object({
+      availability_zone = optional(string, "")
+      availability_zone_id = optional(string, "")
+      allocation_ids = optional(list(string), [])
+    })), [])
   })
 }

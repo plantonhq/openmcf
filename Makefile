@@ -120,13 +120,13 @@ proto-tools: $(PROTOC_STAMP) $(GRPC_JAVA_STAMP) $(PROTOC_GEN_GO_STAMP) $(PROTOC_
 
 .PHONY: buf-fmt
 buf-fmt:
-	buf format -w
+	buf format -w --disable-symlinks
 
 .PHONY: protos
 protos: buf-lint buf-fmt proto-tools
 	rm -rf generated/stubs
 	mkdir -p generated/stubs
-	buf generate
+	buf generate --disable-symlinks
 	cp -R generated/stubs/go/github.com/plantonhq/planton/. .
 	rm -rf generated/stubs/go
 	# Generate a BUILD.bazel for the Java stubs so Bazel can compile them.
@@ -145,7 +145,10 @@ build-optional-linter-plugin:
 
 .PHONY: buf-lint
 buf-lint: build-optional-linter-plugin
-	buf lint
+	# --disable-symlinks keeps local runs immune to the bazel-* convenience
+	# symlinks (bazel run //:gazelle recreates them), whose tree duplication
+	# otherwise fails the module compile with duplicate-symbol errors.
+	buf lint --disable-symlinks
 
 .PHONY: buf-breaking
 # Compares the module's protos against the main branch, classified by the

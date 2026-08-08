@@ -9,6 +9,11 @@ terraform {
       # a deliberate catalog-wide decision, and floor-at-latest-released-minor
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor 6.48.0: enable_prefix_for_ipv6_source_nat landed there
+      # (under its final name). secondary_ips_auto_assigned_per_subnet needs
+      # 6.11.0; minimum_load_balancer_capacity and subnet_mapping.ipv6_address
+      # predate 6.0.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

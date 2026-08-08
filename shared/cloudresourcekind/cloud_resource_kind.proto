@@ -600,11 +600,14 @@ enum CloudResourceKind {
   // AwsInternetGateway is a prerequisite because a public NAT gateway can only
   // become available once the VPC it sits in has an internet gateway attached
   // (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+  // AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode
+  // = regional) references the VPC directly instead of a subnet.
   AwsNatGateway = 1086 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
     id_prefix: "awsnat"
     prerequisites: [
+      AwsVpc,
       AwsSubnet,
       AwsElasticIp,
       AwsInternetGateway

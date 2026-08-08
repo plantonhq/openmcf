@@ -2469,8 +2469,8 @@ resources:
     disposition: model-planned
     reason: "judged as a planned AwsMskConnect kind (connectors, custom plugins, worker configurations)"
   - resource: aws_nat_gateway_eip_association
-    disposition: model-planned
-    reason: "NAT gateway EIP associations fold into the existing AwsNatGateway kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway"
   - resource: aws_neptune_cluster_endpoint
     disposition: model-planned
     reason: "Neptune companion surface (endpoints, event subscriptions, parameter groups, global clusters); folds into the existing AwsNeptuneCluster kind as its spec deepens"

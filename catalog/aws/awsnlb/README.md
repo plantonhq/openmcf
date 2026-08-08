@@ -29,12 +29,13 @@ and the Elastic IPs partners have allowlisted -- stays put.
 
 - **Subnet mappings**: each mapping pins one NLB node to a subnet, optionally
   with an Elastic IP (`allocationId`, typically an `AwsElasticIp` reference)
-  for internet-facing NLBs or a fixed `privateIpv4Address` for internal ones.
+  for internet-facing NLBs, a fixed `privateIpv4Address` for internal ones,
+  or a fixed `ipv6Address` for dualstack nodes.
 - **Static public IPs are the headline NLB feature**: they survive scaling
   events and maintenance, so partners, firewalls, and legacy systems can
-  allowlist them permanently.
+  allowlist them permanently -- on IPv4 and IPv6 alike.
 
-### Traffic Distribution
+### Traffic Distribution and Capacity
 
 - **Cross-zone toggle**: off by AWS default (unlike ALB) because inter-AZ
   data transfer is billed; enable it when target distribution across AZs is
@@ -44,6 +45,15 @@ and the Elastic IPs partners have allowlisted -- stays put.
   trades latency and cross-zone cost against spillover capacity.
 - **Zonal shift**: allows Amazon Application Recovery Controller to drain an
   impaired Availability Zone.
+- **Capacity reservation**: `minimumLoadBalancerCapacityUnits` pre-provisions
+  LCUs for a known traffic level (launches, failover targets) instead of
+  waiting for organic scaling; reserved capacity bills whether used or not.
+- **Source-port headroom**: `secondaryIpsAutoAssignedPerSubnet` (0-7) widens
+  the per-node source-port budget for very high connection counts to a
+  single target; decreasing it later replaces the load balancer.
+- **IPv6 prefix source NAT**: `enablePrefixForIpv6SourceNat` switches
+  dualstack nodes to a /80 prefix per AZ for source NAT -- required for UDP
+  listeners on a dualstack NLB.
 
 ### Security
 

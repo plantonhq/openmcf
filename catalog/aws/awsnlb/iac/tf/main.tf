@@ -24,15 +24,38 @@ resource "aws_lb" "this" {
 
   enforce_security_group_inbound_rules_on_private_link_traffic = var.spec.enforce_security_group_inbound_rules_on_private_link_traffic != "" ? var.spec.enforce_security_group_inbound_rules_on_private_link_traffic : null
 
+  # Prefix-based IPv6 source NAT (dualstack only; required for UDP listeners
+  # on a dualstack NLB). "on"/"off" strings mirror the provider's enum.
+  enable_prefix_for_ipv6_source_nat = var.spec.enable_prefix_for_ipv6_source_nat != "" ? var.spec.enable_prefix_for_ipv6_source_nat : null
+
+  # Secondary private IPv4 addresses AWS auto-assigns per subnet (0-7),
+  # raising the source-port budget for very high connection counts.
+  # Provider-verified: DECREASING this on a live NLB forces replacement (AWS
+  # cannot release secondary IPs in place).
+  secondary_ips_auto_assigned_per_subnet = var.spec.secondary_ips_auto_assigned_per_subnet
+
+  # Reserved capacity (LCU reservation). Sent only when the spec asks for a
+  # reservation; unset keeps normal on-demand scaling and no reservation
+  # billing.
+  dynamic "minimum_load_balancer_capacity" {
+    for_each = var.spec.minimum_load_balancer_capacity_units != null ? [var.spec.minimum_load_balancer_capacity_units] : []
+    content {
+      capacity_units = minimum_load_balancer_capacity.value
+    }
+  }
+
   # Each mapping pins one NLB node to a subnet, optionally with a static
-  # Elastic IP (internet-facing) or a fixed private address (internal) --
-  # the static-IP story that differentiates NLB from ALB.
+  # Elastic IP (internet-facing), a fixed private IPv4 address (internal),
+  # or a fixed IPv6 address (dualstack) -- the static-IP story that
+  # differentiates NLB from ALB. Provider-verified: modifying an EXISTING
+  # mapping replaces the load balancer; pure additions do not.
   dynamic "subnet_mapping" {
     for_each = var.spec.subnet_mappings
     content {
       subnet_id            = subnet_mapping.value.subnet_id
       allocation_id        = subnet_mapping.value.allocation_id != "" ? subnet_mapping.value.allocation_id : null
       private_ipv4_address = subnet_mapping.value.private_ipv4_address != "" ? subnet_mapping.value.private_ipv4_address : null
+      ipv6_address         = subnet_mapping.value.ipv6_address != "" ? subnet_mapping.value.ipv6_address : null
     }
   }
 

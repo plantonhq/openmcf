@@ -1,0 +1,153 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# aws_lb serves three load balancer types behind one schema. This kind IS
+# the network type, so every application-only argument below is excluded
+# with that reason -- the surface is modeled where it functions, on AwsAlb.
+# Type applicability is read from the provider source at the pin (the
+# create/update paths gate these attributes on the application type), never
+# from documentation memory.
+
+resources:
+  aws_lb:
+    mappings:
+      # The spec says what each flag IS; the provider prefixes verbs.
+      - spec: spec.delete_protection_enabled
+        arg: enable_deletion_protection
+      - spec: spec.cross_zone_load_balancing_enabled
+        arg: enable_cross_zone_load_balancing
+      - spec: spec.zonal_shift_enabled
+        arg: enable_zonal_shift
+      # The one-field capacity-reservation block flattened to its unit count.
+      - spec: spec.minimum_load_balancer_capacity_units
+        arg: minimum_load_balancer_capacity.capacity_units
+      # Repeated-message fields are plural per proto style; provider blocks
+      # are singular. Exact matching resumes below (subnet_id,
+      # allocation_id, private_ipv4_address, ipv6_address all match).
+      - spec: spec.subnet_mappings
+        arg: subnet_mapping
+    exclusions:
+      # Identity and type are the kind's own contract.
+      - arg: load_balancer_type
+        reason: fixed to "network" -- this kind IS the network load balancer
+      - arg: name
+        reason: derived from metadata.name (truncated deterministically to AWS's 32-char limit) -- never free-form user surface
+      - arg: name_prefix
+        reason: alternative naming form; names always derive from metadata.name
+      - arg: subnets
+        reason: alternative form to subnet_mapping (provider ExactlyOneOf); the spec models explicit per-AZ mappings, which subsume plain subnet lists
+      # Block-presence semantics.
+      - arg: access_logs.enabled
+        reason: derived by the module from the access_logs block's presence -- a declared block is an enabled block
+      # Application-type-only surface (modeled on AwsAlb).
+      - arg: client_keep_alive
+        reason: application-type only (HTTP keep-alive) -- modeled on AwsAlb
+      - arg: connection_logs.bucket
+        reason: application-type only (connection logs) -- modeled on AwsAlb
+      - arg: connection_logs.enabled
+        reason: application-type only (connection logs) -- modeled on AwsAlb
+      - arg: connection_logs.prefix
+        reason: application-type only (connection logs) -- modeled on AwsAlb
+      - arg: health_check_logs.bucket
+        reason: application-type only at the pin (the provider wires the health-check-logs attribute solely for application load balancers -- verified in its create/update paths)
+      - arg: health_check_logs.enabled
+        reason: application-type only at the pin (see health_check_logs.bucket)
+      - arg: health_check_logs.prefix
+        reason: application-type only at the pin (see health_check_logs.bucket)
+      - arg: desync_mitigation_mode
+        reason: application-type only (HTTP desync protection) -- modeled on AwsAlb
+      - arg: drop_invalid_header_fields
+        reason: application-type only (HTTP headers) -- modeled on AwsAlb
+      - arg: enable_http2
+        reason: application-type only (HTTP/2) -- modeled on AwsAlb
+      - arg: enable_tls_version_and_cipher_suite_headers
+        reason: application-type only (TLS negotiation headers) -- modeled on AwsAlb
+      - arg: enable_waf_fail_open
+        reason: application-type only (WAF integration) -- modeled on AwsAlb
+      - arg: enable_xff_client_port
+        reason: application-type only (X-Forwarded-For) -- modeled on AwsAlb
+      - arg: xff_header_processing_mode
+        reason: application-type only (X-Forwarded-For) -- modeled on AwsAlb
+      - arg: preserve_host_header
+        reason: application-type only (HTTP Host header) -- modeled on AwsAlb
+      - arg: idle_timeout
+        reason: application-type only (NLB connection idle behavior is protocol-fixed) -- modeled on AwsAlb
+      - arg: ipam_pools.ipv4_ipam_pool_id
+        reason: application-type only (IPAM-assigned ALB addresses) -- modeled on AwsAlb
+      # Hardware-tied surface.
+      - arg: customer_owned_ipv4_pool
+        reason: Outposts-only surface -- requires a physical Outposts rack; deliberately unmodeled
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_route53_record:
+    # Instantiated per spec.dns.hostnames entry: a deliberately narrow
+    # alias-A convenience helper pointing hostnames at the NLB. The full
+    # Route53 record surface (routing policies, TTLs, record values) is
+    # modeled by the AwsRoute53DnsRecord kind -- this helper stays narrow on
+    # purpose.
+    specRoot: spec.dns
+    mappings:
+      - spec: spec.dns.route53_zone_id
+        arg: zone_id
+      - spec: spec.dns.hostnames
+        arg: name
+    exclusions:
+      - arg: type
+        reason: fixed to "A" -- the helper creates alias A records only
+      - arg: alias.name
+        reason: wired by the module to the NLB's dns_name -- never user surface
+      - arg: alias.zone_id
+        reason: wired by the module to the NLB's canonical hosted zone id -- never user surface
+      - arg: alias.evaluate_target_health
+        reason: fixed false -- health evaluation only changes behavior under failover/weighted policies, which this helper deliberately omits
+      - arg: allow_overwrite
+        reason: fixed true -- the module owns the alias record and adopts one left by a prior partial apply instead of failing the create
+      - arg: ttl
+        reason: alias records carry no TTL (Route53 derives it from the target) -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: records
+        reason: alias records carry no record values -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: health_check_id
+        reason: routing-policy surface -- the helper is a plain alias; full record surface belongs to AwsRoute53DnsRecord
+      - arg: set_identifier
+        reason: routing-policy surface -- the helper is a plain alias; full record surface belongs to AwsRoute53DnsRecord
+      - arg: multivalue_answer_routing_policy
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: failover_routing_policy.type
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: latency_routing_policy.region
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: weighted_routing_policy.weight
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: cidr_routing_policy.collection_id
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: cidr_routing_policy.location_name
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: geolocation_routing_policy.continent
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: geolocation_routing_policy.country
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: geolocation_routing_policy.subdivision
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: geoproximity_routing_policy.aws_region
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: geoproximity_routing_policy.bias
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: geoproximity_routing_policy.local_zone_group
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: geoproximity_routing_policy.coordinates.latitude
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+      - arg: geoproximity_routing_policy.coordinates.longitude
+        reason: routing-policy surface -- full record surface belongs to AwsRoute53DnsRecord
+
+specExclusions:
+  - field: spec.dns.enabled
+    reason: gates whether the alias records are created at all -- a module switch, not a provider argument

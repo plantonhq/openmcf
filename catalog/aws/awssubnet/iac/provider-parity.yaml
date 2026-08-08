@@ -1,0 +1,69 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_subnet:
+    exclusions:
+      # The Outposts family is deliberately unmodeled: all four arguments
+      # only function on an AWS Outposts rack (customer-owned IP pools exist
+      # solely there, and the provider requires the CoIP pair and outpost_arn
+      # together), which no shared-cloud deployment can use or live-verify.
+      - arg: outpost_arn
+        reason: Outposts-only surface -- requires a physical Outposts rack; deliberately unmodeled
+      - arg: customer_owned_ipv4_pool
+        reason: Outposts-only surface (CoIP pools exist only on Outposts; provider requires outpost_arn alongside); deliberately unmodeled
+      - arg: map_customer_owned_ip_on_launch
+        reason: Outposts-only surface (the CoIP auto-assign flag of customer_owned_ipv4_pool); deliberately unmodeled
+      - arg: enable_lni_at_device_index
+        reason: Outposts-only surface (local network interfaces exist only on Outposts servers); deliberately unmodeled
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_route_table:
+    # Created per spec.routes / spec.propagating_vgws (the subnet-owned
+    # route table); vpc_id and propagating_vgws exact-match spec fields.
+    exclusions:
+      # NOT an omission: the provider declares route with
+      # SchemaConfigModeAttr, so the pinned schema records it as ONE opaque
+      # set-typed attribute (no nested leaves a field mapping could bind).
+      # The module renders it fully from spec.routes; each route field's
+      # judgment is recorded under specExclusions below.
+      - arg: route
+        reason: fully rendered from spec.routes (opaque set attribute at the pin -- per-field judgment under specExclusions)
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_route_table_association:
+    exclusions:
+      - arg: subnet_id
+        reason: wired by the module to the subnet it creates -- never user surface
+      - arg: gateway_id
+        reason: edge associations (attaching a route table to an internet/virtual-private gateway) are a different topology than subnet routing -- out of this kind's scope; deliberately unmodeled
+
+specExclusions:
+  # The pinned schema records aws_route_table.route as one opaque set-typed
+  # attribute (SchemaConfigModeAttr), so each route entry's fields carry
+  # their judgment here instead of under nested argument paths. The module
+  # renders every entry onto the provider's route set: the three destination
+  # fields fill cidr_block / ipv6_cidr_block / destination_prefix_list_id,
+  # and the typed-target pair fans out to the provider's eleven
+  # mutually-exclusive target arguments (see the RouteTargetType enum).
+  - field: spec.routes.destination_cidr_block
+    reason: fills the route entry's cidr_block (route is one opaque set attribute at the pin)
+  - field: spec.routes.destination_ipv6_cidr_block
+    reason: fills the route entry's ipv6_cidr_block (route is one opaque set attribute at the pin)
+  - field: spec.routes.destination_prefix_list_id
+    reason: fills the route entry's destination_prefix_list_id (route is one opaque set attribute at the pin)
+  - field: spec.routes.target_type
+    reason: selects which of the provider's eleven route target arguments routes.target_id fills
+  - field: spec.routes.target_id
+    reason: carries the id/ARN for the target argument selected by routes.target_type

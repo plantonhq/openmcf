@@ -32,7 +32,7 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
 | Distinct provider resources consumed | 223 |
-| Spec fields authored across all kinds | 3996 |
+| Spec fields authored across all kinds | 4012 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**0 of 112 kinds are at total accounting; 92 proven live.**
+**3 of 112 kinds are at total accounting; 90 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -129,9 +129,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsMskCluster | 50 | 9 | 0 | 0 | 74 | ❌ | partial: pulumi, terraform |
 | AwsMskServerlessCluster | 7 | 1 | 0 | 0 | 8 | ❌ | partial: pulumi, terraform |
 | AwsMwaaEnvironment | 38 | 32 | 0 | 0 | 9 | ❌ | partial: pulumi, terraform |
-| AwsNatGateway | 15 | 8 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
+| AwsNatGateway | 15 | 10 | 3 | 2 | 0 | ✅ | — |
 | AwsNeptuneCluster | 70 | 34 | 0 | 0 | 52 | ❌ | ✅ pulumi, terraform |
-| AwsNlb | 68 | 8 | 0 | 0 | 69 | ❌ | partial: pulumi, terraform |
+| AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | — |
 | AwsOpenSearchDomain | 77 | 50 | 0 | 0 | 53 | ❌ | partial: pulumi, terraform |
 | AwsPlantonRunner | 216 | 9 | 0 | 0 | 216 | ❌ | ✅ pulumi, terraform |
 | AwsRdsCluster | 126 | 69 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
@@ -154,7 +154,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsSnsTopic | 33 | 9 | 0 | 0 | 52 | ❌ | ✅ pulumi, terraform |
 | AwsSqsQueue | 20 | 11 | 0 | 0 | 19 | ❌ | ✅ pulumi, terraform |
 | AwsStepFunction | 16 | 4 | 0 | 0 | 22 | ❌ | ✅ pulumi, terraform |
-| AwsSubnet | 33 | 15 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
+| AwsSubnet | 33 | 22 | 0 | 11 | 0 | ✅ | — |
 | AwsTransitGateway | 14 | 12 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsTransitGatewayRouteTable | 21 | 6 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
 | AwsTransitGatewayVpcAttachment | 12 | 8 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
@@ -172,8 +172,8 @@ All resources of `aws@6.58.0` land in exactly one class:
 |---|---|---|
 | Modeled | 223 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 0 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 825 | judged to be covered by a planned kind or planned composition, not built yet |
+| Composed | 1 | capability covered through an existing kind's surface rather than a kind of its own |
+| Planned | 824 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 515 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 128 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -411,7 +411,13 @@ rather than trusted.
 | `aws_wafv2_web_acl_association` | consumed by AwsAlb, AwsAppRunnerService |
 | `aws_wafv2_web_acl_logging_configuration` | consumed by AwsWafWebAcl |
 
-### Planned (825)
+### Composed (1)
+
+| Resource | Recorded reason |
+|---|---|
+| `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
+
+### Planned (824)
 
 | Resource | Recorded reason |
 |---|---|
@@ -885,7 +891,6 @@ rather than trusted.
 | `aws_mskconnect_connector` | judged as a planned AwsMskConnect kind (connectors, custom plugins, worker configurations) |
 | `aws_mskconnect_custom_plugin` | judged as a planned AwsMskConnect kind (connectors, custom plugins, worker configurations) |
 | `aws_mskconnect_worker_configuration` | judged as a planned AwsMskConnect kind (connectors, custom plugins, worker configurations) |
-| `aws_nat_gateway_eip_association` | NAT gateway EIP associations fold into the existing AwsNatGateway kind as its spec deepens |
 | `aws_neptune_cluster_endpoint` | Neptune companion surface (endpoints, event subscriptions, parameter groups, global clusters); folds into the existing AwsNeptuneCluster kind as its spec deepens |
 | `aws_neptune_event_subscription` | Neptune companion surface (endpoints, event subscriptions, parameter groups, global clusters); folds into the existing AwsNeptuneCluster kind as its spec deepens |
 | `aws_neptune_global_cluster` | Neptune companion surface (endpoints, event subscriptions, parameter groups, global clusters); folds into the existing AwsNeptuneCluster kind as its spec deepens |
