@@ -3,14 +3,19 @@ kind: ComponentE2EProfile
 metadata:
   name: gcpurlmap
 spec:
-  # Composed scenario: the harness deploys GcpBackendService (and its
-  # GcpHealthCheck prerequisite) via the kind registry, resolves the URL
-  # map's default_service reference from the backend service outputs, then
-  # runs deploy -> compute urlMaps.get verify -> destroy -> verify 404, on
-  # both provisioners.
+  # Composed scenarios: the harness deploys GcpBackendService (and its
+  # GcpHealthCheck prerequisite) via the kind registry; the features
+  # scenario additionally composes two EXTERNAL_MANAGED backend fixtures
+  # through its e2e-prerequisites annotation to exercise the full
+  # per-route traffic-management surface (weighted header attribution,
+  # timeouts/retries, mirroring, CORS, route-scoped CDN caching, fault
+  # injection). Deploy -> compute urlMaps.get verify -> destroy -> verify
+  # 404, on both provisioners.
+  #
+  # pending_proof: the spec and both modules were expanded to the full
+  # provider surface; the prior green proof predates the redesign and no
+  # longer vouches for it. Proof rides the program's E2E lane.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
-  timeout_minutes: 15
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

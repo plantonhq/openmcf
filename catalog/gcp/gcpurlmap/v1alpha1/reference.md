@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpUrlMapSpec defines a global Compute Engine URL map — the L7 routing brain
 of a global external Application Load Balancer (and of Traffic Director /
 cross-region internal ALBs). A URL map matches each request's host and path
@@ -102,10 +104,83 @@ spec:
 | `spec.defaultRouteAction.weightedBackendServices` | `[]GcpUrlMapWeightedBackendService` |  |  |  |
 | `spec.defaultRouteAction.weightedBackendServices[].backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
 | `spec.defaultRouteAction.weightedBackendServices[].weight` | `int32` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction` | `GcpUrlMapHeaderAction` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToRemove` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToRemove` | `[]string` |  |  |  |
 | `spec.defaultRouteAction.urlRewrite` | `GcpUrlMapUrlRewrite` |  |  |  |
 | `spec.defaultRouteAction.urlRewrite.hostRewrite` | `string` |  |  |  |
 | `spec.defaultRouteAction.urlRewrite.pathPrefixRewrite` | `string` |  |  |  |
 | `spec.defaultRouteAction.urlRewrite.pathTemplateRewrite` | `string` |  |  |  |
+| `spec.defaultRouteAction.timeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.timeout.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.timeout.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.retryPolicy` | `GcpUrlMapRetryPolicy` |  |  |  |
+| `spec.defaultRouteAction.retryPolicy.numRetries` | `int32` |  |  |  |
+| `spec.defaultRouteAction.retryPolicy.retryConditions` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.retryPolicy.perTryTimeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.retryPolicy.perTryTimeout.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.retryPolicy.perTryTimeout.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.requestMirrorPolicy` | `GcpUrlMapRequestMirrorPolicy` |  |  |  |
+| `spec.defaultRouteAction.requestMirrorPolicy.backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
+| `spec.defaultRouteAction.corsPolicy` | `GcpUrlMapCorsPolicy` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.allowCredentials` | `bool` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.allowHeaders` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.allowMethods` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.allowOriginRegexes` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.allowOrigins` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.disabled` | `bool` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.exposeHeaders` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.maxAge` | `int32` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy` | `GcpUrlMapFaultInjectionPolicy` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.abort` | `GcpUrlMapFaultAbort` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.abort.httpStatus` | `int32` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.abort.percentage` | `double` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.delay` | `GcpUrlMapFaultDelay` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.delay.percentage` | `double` |  |  |  |
+| `spec.defaultRouteAction.maxStreamDuration` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.maxStreamDuration.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.maxStreamDuration.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy` | `GcpUrlMapCachePolicy` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheMode` | `string` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheBypassRequestHeaderNames` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.negativeCaching` | `bool` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.requestCoalescing` | `bool` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy` | `GcpUrlMapCacheKeyPolicy` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeHost` | `bool` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeProtocol` | `bool` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeQueryString` | `bool` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedCookieNames` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedHeaderNames` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedQueryParameters` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.clientTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.clientTtl.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.clientTtl.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.defaultTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.defaultTtl.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.defaultTtl.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.maxTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.maxTtl.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.maxTtl.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.serveWhileStale` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.serveWhileStale.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.serveWhileStale.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.negativeCachingPolicy` | `[]GcpUrlMapNegativeCachingPolicy` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].code` | `int32` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.nanos` | `int32` |  |  |  |
 | `spec.defaultCustomErrorResponsePolicy` | `GcpUrlMapCustomErrorResponsePolicy` |  |  |  |
 | `spec.defaultCustomErrorResponsePolicy.errorService` | `string \| valueFrom` |  |  | GcpBackendBucket (`status.outputs.self_link`) |
 | `spec.defaultCustomErrorResponsePolicy.errorResponseRules` | `[]GcpUrlMapCustomErrorResponseRule` |  |  |  |
@@ -141,10 +216,83 @@ spec:
 | `spec.pathMatchers[].defaultRouteAction.weightedBackendServices` | `[]GcpUrlMapWeightedBackendService` |  |  |  |
 | `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
 | `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].weight` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction` | `GcpUrlMapHeaderAction` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToRemove` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToRemove` | `[]string` |  |  |  |
 | `spec.pathMatchers[].defaultRouteAction.urlRewrite` | `GcpUrlMapUrlRewrite` |  |  |  |
 | `spec.pathMatchers[].defaultRouteAction.urlRewrite.hostRewrite` | `string` |  |  |  |
 | `spec.pathMatchers[].defaultRouteAction.urlRewrite.pathPrefixRewrite` | `string` |  |  |  |
 | `spec.pathMatchers[].defaultRouteAction.urlRewrite.pathTemplateRewrite` | `string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.timeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.timeout.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.timeout.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.retryPolicy` | `GcpUrlMapRetryPolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.retryPolicy.numRetries` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.retryPolicy.retryConditions` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy` | `GcpUrlMapRequestMirrorPolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy.backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy` | `GcpUrlMapCorsPolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.allowCredentials` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.allowHeaders` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.allowMethods` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.allowOriginRegexes` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.allowOrigins` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.disabled` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.exposeHeaders` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.maxAge` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy` | `GcpUrlMapFaultInjectionPolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort` | `GcpUrlMapFaultAbort` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort.httpStatus` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort.percentage` | `double` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay` | `GcpUrlMapFaultDelay` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.percentage` | `double` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.maxStreamDuration` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.maxStreamDuration.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.maxStreamDuration.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy` | `GcpUrlMapCachePolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheMode` | `string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheBypassRequestHeaderNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCaching` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.requestCoalescing` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy` | `GcpUrlMapCacheKeyPolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeHost` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeProtocol` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeQueryString` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedCookieNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedHeaderNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedQueryParameters` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy` | `[]GcpUrlMapNegativeCachingPolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].code` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.nanos` | `int32` |  |  |  |
 | `spec.pathMatchers[].defaultCustomErrorResponsePolicy` | `GcpUrlMapCustomErrorResponsePolicy` |  |  |  |
 | `spec.pathMatchers[].defaultCustomErrorResponsePolicy.errorService` | `string \| valueFrom` |  |  | GcpBackendBucket (`status.outputs.self_link`) |
 | `spec.pathMatchers[].defaultCustomErrorResponsePolicy.errorResponseRules` | `[]GcpUrlMapCustomErrorResponseRule` |  |  |  |
@@ -170,10 +318,83 @@ spec:
 | `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices` | `[]GcpUrlMapWeightedBackendService` |  |  |  |
 | `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
 | `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].weight` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction` | `GcpUrlMapHeaderAction` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToRemove` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToRemove` | `[]string` |  |  |  |
 | `spec.pathMatchers[].pathRules[].routeAction.urlRewrite` | `GcpUrlMapUrlRewrite` |  |  |  |
 | `spec.pathMatchers[].pathRules[].routeAction.urlRewrite.hostRewrite` | `string` |  |  |  |
 | `spec.pathMatchers[].pathRules[].routeAction.urlRewrite.pathPrefixRewrite` | `string` |  |  |  |
 | `spec.pathMatchers[].pathRules[].routeAction.urlRewrite.pathTemplateRewrite` | `string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.timeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.timeout.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.timeout.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.retryPolicy` | `GcpUrlMapRetryPolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.retryPolicy.numRetries` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.retryPolicy.retryConditions` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy` | `GcpUrlMapRequestMirrorPolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy.backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy` | `GcpUrlMapCorsPolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowCredentials` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowHeaders` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowMethods` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowOriginRegexes` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowOrigins` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.disabled` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.exposeHeaders` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.maxAge` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy` | `GcpUrlMapFaultInjectionPolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort` | `GcpUrlMapFaultAbort` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort.httpStatus` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort.percentage` | `double` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay` | `GcpUrlMapFaultDelay` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.percentage` | `double` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy` | `GcpUrlMapCachePolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheMode` | `string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheBypassRequestHeaderNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCaching` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.requestCoalescing` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy` | `GcpUrlMapCacheKeyPolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeHost` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeProtocol` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeQueryString` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedCookieNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedHeaderNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedQueryParameters` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy` | `[]GcpUrlMapNegativeCachingPolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].code` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.nanos` | `int32` |  |  |  |
 | `spec.pathMatchers[].pathRules[].urlRedirect` | `GcpUrlMapUrlRedirect` |  |  |  |
 | `spec.pathMatchers[].pathRules[].urlRedirect.hostRedirect` | `string` |  |  |  |
 | `spec.pathMatchers[].pathRules[].urlRedirect.httpsRedirect` | `bool` |  |  |  |
@@ -221,10 +442,83 @@ spec:
 | `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices` | `[]GcpUrlMapWeightedBackendService` |  |  |  |
 | `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
 | `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].weight` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction` | `GcpUrlMapHeaderAction` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToRemove` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToRemove` | `[]string` |  |  |  |
 | `spec.pathMatchers[].routeRules[].routeAction.urlRewrite` | `GcpUrlMapUrlRewrite` |  |  |  |
 | `spec.pathMatchers[].routeRules[].routeAction.urlRewrite.hostRewrite` | `string` |  |  |  |
 | `spec.pathMatchers[].routeRules[].routeAction.urlRewrite.pathPrefixRewrite` | `string` |  |  |  |
 | `spec.pathMatchers[].routeRules[].routeAction.urlRewrite.pathTemplateRewrite` | `string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.timeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.timeout.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.timeout.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.retryPolicy` | `GcpUrlMapRetryPolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.retryPolicy.numRetries` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.retryPolicy.retryConditions` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy` | `GcpUrlMapRequestMirrorPolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy.backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy` | `GcpUrlMapCorsPolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowCredentials` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowHeaders` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowMethods` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowOriginRegexes` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowOrigins` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.disabled` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.exposeHeaders` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.maxAge` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy` | `GcpUrlMapFaultInjectionPolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort` | `GcpUrlMapFaultAbort` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort.httpStatus` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort.percentage` | `double` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay` | `GcpUrlMapFaultDelay` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.percentage` | `double` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy` | `GcpUrlMapCachePolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheMode` | `string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheBypassRequestHeaderNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCaching` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.requestCoalescing` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy` | `GcpUrlMapCacheKeyPolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeHost` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeProtocol` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeQueryString` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedCookieNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedHeaderNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedQueryParameters` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy` | `[]GcpUrlMapNegativeCachingPolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].code` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.nanos` | `int32` |  |  |  |
 | `spec.pathMatchers[].routeRules[].urlRedirect` | `GcpUrlMapUrlRedirect` |  |  |  |
 | `spec.pathMatchers[].routeRules[].urlRedirect.hostRedirect` | `string` |  |  |  |
 | `spec.pathMatchers[].routeRules[].urlRedirect.httpsRedirect` | `bool` |  |  |  |
@@ -259,6 +553,7 @@ spec:
 | `spec.tests[].headers` | `[]GcpUrlMapTestHeader` |  |  |  |
 | `spec.tests[].headers[].name` | `string` | yes |  |  |
 | `spec.tests[].headers[].value` | `string` | yes |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -403,6 +698,84 @@ of all weights in the split; 0 drains this backend from the split.
 
 - rule: {"int32":{"lte":1000,"gte":0}}
 
+### spec.defaultRouteAction.weightedBackendServices[].headerAction
+
+`GcpUrlMapHeaderAction`
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the request before it reaches the backend.
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToRemove
+
+`[]string`
+
+Header names to strip from the request before it reaches the backend.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the response before it returns to the client.
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToRemove
+
+`[]string`
+
+Header names to strip from the response before it returns to the client.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
 ### spec.defaultRouteAction.urlRewrite
 
 `GcpUrlMapUrlRewrite`
@@ -439,6 +812,334 @@ default and path-rule route actions. Mutually exclusive with
 path_prefix_rewrite.
 
 - rule: {"string":{"maxLen":"1024"}}
+
+### spec.defaultRouteAction.timeout
+
+`GcpUrlMapDuration`
+
+### spec.defaultRouteAction.timeout.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.timeout.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.retryPolicy
+
+`GcpUrlMapRetryPolicy`
+
+### spec.defaultRouteAction.retryPolicy.numRetries
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.defaultRouteAction.retryPolicy.retryConditions
+
+`[]string`
+
+- rule: each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable
+
+### spec.defaultRouteAction.retryPolicy.perTryTimeout
+
+`GcpUrlMapDuration`
+
+### spec.defaultRouteAction.retryPolicy.perTryTimeout.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.retryPolicy.perTryTimeout.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.requestMirrorPolicy
+
+`GcpUrlMapRequestMirrorPolicy`
+
+### spec.defaultRouteAction.requestMirrorPolicy.backendService
+
+`string | valueFrom` · required
+
+- references: GcpBackendService (`status.outputs.self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpBackendService, name: <that resource's name>, fieldPath: status.outputs.self_link}} -- a bare string does not parse
+
+### spec.defaultRouteAction.corsPolicy
+
+`GcpUrlMapCorsPolicy`
+
+### spec.defaultRouteAction.corsPolicy.allowCredentials
+
+`bool`
+
+### spec.defaultRouteAction.corsPolicy.allowHeaders
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.corsPolicy.allowMethods
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.corsPolicy.allowOriginRegexes
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.corsPolicy.allowOrigins
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.corsPolicy.disabled
+
+`bool`
+
+### spec.defaultRouteAction.corsPolicy.exposeHeaders
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.corsPolicy.maxAge
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.defaultRouteAction.faultInjectionPolicy
+
+`GcpUrlMapFaultInjectionPolicy`
+
+### spec.defaultRouteAction.faultInjectionPolicy.abort
+
+`GcpUrlMapFaultAbort`
+
+### spec.defaultRouteAction.faultInjectionPolicy.abort.httpStatus
+
+`int32`
+
+- rule: http_status must be between 200 and 599
+
+### spec.defaultRouteAction.faultInjectionPolicy.abort.percentage
+
+`double`
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.defaultRouteAction.faultInjectionPolicy.delay
+
+`GcpUrlMapFaultDelay`
+
+### spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay
+
+`GcpUrlMapDuration`
+
+### spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.faultInjectionPolicy.delay.percentage
+
+`double`
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.defaultRouteAction.maxStreamDuration
+
+`GcpUrlMapDuration`
+
+### spec.defaultRouteAction.maxStreamDuration.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.maxStreamDuration.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.cachePolicy
+
+`GcpUrlMapCachePolicy`
+
+- rule: with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)
+
+### spec.defaultRouteAction.cachePolicy.cacheMode
+
+`string`
+
+- rule: cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL
+
+### spec.defaultRouteAction.cachePolicy.cacheBypassRequestHeaderNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.cachePolicy.negativeCaching
+
+`bool`
+
+### spec.defaultRouteAction.cachePolicy.requestCoalescing
+
+`bool`
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy
+
+`GcpUrlMapCacheKeyPolicy`
+
+- rule: included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeHost
+
+`bool`
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeProtocol
+
+`bool`
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeQueryString
+
+`bool`
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedCookieNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedHeaderNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedQueryParameters
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.cachePolicy.clientTtl
+
+`GcpUrlMapDuration`
+
+### spec.defaultRouteAction.cachePolicy.clientTtl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.cachePolicy.clientTtl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.cachePolicy.defaultTtl
+
+`GcpUrlMapDuration`
+
+### spec.defaultRouteAction.cachePolicy.defaultTtl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.cachePolicy.defaultTtl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.cachePolicy.maxTtl
+
+`GcpUrlMapDuration`
+
+### spec.defaultRouteAction.cachePolicy.maxTtl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.cachePolicy.maxTtl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.cachePolicy.serveWhileStale
+
+`GcpUrlMapDuration`
+
+### spec.defaultRouteAction.cachePolicy.serveWhileStale.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.cachePolicy.serveWhileStale.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy
+
+`[]GcpUrlMapNegativeCachingPolicy`
+
+### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].code
+
+`int32`
+
+- rule: code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501
+
+### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl
+
+`GcpUrlMapDuration`
+
+### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.defaultCustomErrorResponsePolicy
 
@@ -613,7 +1314,9 @@ table later.
 The named path matchers host rules point at — each owns the path-level
 routing (path_rules, route_rules, and its own default). Mutable.
 
-- rule: a path matcher may set at most one of default_service, default_url_redirect, or default_route_action
+- rule: a path matcher may set at most one default target: default_service, default_url_redirect, or default_route_action with weighted_backend_services (a route action carrying only sub-policies may accompany default_service)
+- rule: default_route_action and default_url_redirect are mutually exclusive — a redirect never reaches a backend
+- rule: path_template_rewrite is honored only inside a route rule's route_action — GCP rejects it in a path matcher's default route action
 - rule: a path matcher uses either path_rules or route_rules, not both
 
 ### spec.pathMatchers[].name
@@ -727,6 +1430,84 @@ of all weights in the split; 0 drains this backend from the split.
 
 - rule: {"int32":{"lte":1000,"gte":0}}
 
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction
+
+`GcpUrlMapHeaderAction`
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the request before it reaches the backend.
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToRemove
+
+`[]string`
+
+Header names to strip from the request before it reaches the backend.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the response before it returns to the client.
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToRemove
+
+`[]string`
+
+Header names to strip from the response before it returns to the client.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
 ### spec.pathMatchers[].defaultRouteAction.urlRewrite
 
 `GcpUrlMapUrlRewrite`
@@ -763,6 +1544,334 @@ default and path-rule route actions. Mutually exclusive with
 path_prefix_rewrite.
 
 - rule: {"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].defaultRouteAction.timeout
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].defaultRouteAction.timeout.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.timeout.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.retryPolicy
+
+`GcpUrlMapRetryPolicy`
+
+### spec.pathMatchers[].defaultRouteAction.retryPolicy.numRetries
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.retryPolicy.retryConditions
+
+`[]string`
+
+- rule: each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable
+
+### spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy
+
+`GcpUrlMapRequestMirrorPolicy`
+
+### spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy.backendService
+
+`string | valueFrom` · required
+
+- references: GcpBackendService (`status.outputs.self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpBackendService, name: <that resource's name>, fieldPath: status.outputs.self_link}} -- a bare string does not parse
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy
+
+`GcpUrlMapCorsPolicy`
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowCredentials
+
+`bool`
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowHeaders
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowMethods
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowOriginRegexes
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowOrigins
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.disabled
+
+`bool`
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.exposeHeaders
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.maxAge
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy
+
+`GcpUrlMapFaultInjectionPolicy`
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort
+
+`GcpUrlMapFaultAbort`
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort.httpStatus
+
+`int32`
+
+- rule: http_status must be between 200 and 599
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort.percentage
+
+`double`
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay
+
+`GcpUrlMapFaultDelay`
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.percentage
+
+`double`
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.maxStreamDuration
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].defaultRouteAction.maxStreamDuration.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.maxStreamDuration.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy
+
+`GcpUrlMapCachePolicy`
+
+- rule: with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheMode
+
+`string`
+
+- rule: cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheBypassRequestHeaderNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCaching
+
+`bool`
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.requestCoalescing
+
+`bool`
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy
+
+`GcpUrlMapCacheKeyPolicy`
+
+- rule: included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeHost
+
+`bool`
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeProtocol
+
+`bool`
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeQueryString
+
+`bool`
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedCookieNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedHeaderNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedQueryParameters
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy
+
+`[]GcpUrlMapNegativeCachingPolicy`
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].code
+
+`int32`
+
+- rule: code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].defaultCustomErrorResponsePolicy
 
@@ -910,7 +2019,9 @@ Header names to strip from the response before it returns to the client.
 Longest-prefix path rules: each maps a set of path patterns to a service,
 redirect, or route action. Evaluated after route_rules.
 
-- rule: a path rule must set exactly one of service, url_redirect, or route_action
+- rule: a path rule must have exactly one target: service, url_redirect, or route_action with weighted_backend_services (a route action carrying only sub-policies may accompany service)
+- rule: route_action and url_redirect are mutually exclusive — a redirect never reaches a backend
+- rule: path_template_rewrite is honored only inside a route rule's route_action — GCP rejects it in a path rule's route action
 
 ### spec.pathMatchers[].pathRules[].paths
 
@@ -965,6 +2076,84 @@ of all weights in the split; 0 drains this backend from the split.
 
 - rule: {"int32":{"lte":1000,"gte":0}}
 
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction
+
+`GcpUrlMapHeaderAction`
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the request before it reaches the backend.
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToRemove
+
+`[]string`
+
+Header names to strip from the request before it reaches the backend.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the response before it returns to the client.
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToRemove
+
+`[]string`
+
+Header names to strip from the response before it returns to the client.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
 ### spec.pathMatchers[].pathRules[].routeAction.urlRewrite
 
 `GcpUrlMapUrlRewrite`
@@ -1001,6 +2190,334 @@ default and path-rule route actions. Mutually exclusive with
 path_prefix_rewrite.
 
 - rule: {"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.timeout
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].pathRules[].routeAction.timeout.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.timeout.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.retryPolicy
+
+`GcpUrlMapRetryPolicy`
+
+### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.numRetries
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.retryConditions
+
+`[]string`
+
+- rule: each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable
+
+### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy
+
+`GcpUrlMapRequestMirrorPolicy`
+
+### spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy.backendService
+
+`string | valueFrom` · required
+
+- references: GcpBackendService (`status.outputs.self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpBackendService, name: <that resource's name>, fieldPath: status.outputs.self_link}} -- a bare string does not parse
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy
+
+`GcpUrlMapCorsPolicy`
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowCredentials
+
+`bool`
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowHeaders
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowMethods
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowOriginRegexes
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowOrigins
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.disabled
+
+`bool`
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.exposeHeaders
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.maxAge
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy
+
+`GcpUrlMapFaultInjectionPolicy`
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort
+
+`GcpUrlMapFaultAbort`
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort.httpStatus
+
+`int32`
+
+- rule: http_status must be between 200 and 599
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort.percentage
+
+`double`
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay
+
+`GcpUrlMapFaultDelay`
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.percentage
+
+`double`
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy
+
+`GcpUrlMapCachePolicy`
+
+- rule: with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheMode
+
+`string`
+
+- rule: cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheBypassRequestHeaderNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCaching
+
+`bool`
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.requestCoalescing
+
+`bool`
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy
+
+`GcpUrlMapCacheKeyPolicy`
+
+- rule: included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeHost
+
+`bool`
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeProtocol
+
+`bool`
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeQueryString
+
+`bool`
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedCookieNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedHeaderNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedQueryParameters
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy
+
+`[]GcpUrlMapNegativeCachingPolicy`
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].code
+
+`int32`
+
+- rule: code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].pathRules[].urlRedirect
 
@@ -1118,7 +2635,8 @@ Priority-ordered route rules with rich header/query/path matching.
 Evaluated before path_rules. A path matcher uses either path_rules or
 route_rules, not both.
 
-- rule: a route rule must set exactly one of service, url_redirect, or route_action
+- rule: a route rule must have exactly one target: service, url_redirect, or route_action with weighted_backend_services (a route action carrying only sub-policies may accompany service)
+- rule: route_action and url_redirect are mutually exclusive — a redirect never reaches a backend
 
 ### spec.pathMatchers[].routeRules[].priority
 
@@ -1371,6 +2889,84 @@ of all weights in the split; 0 drains this backend from the split.
 
 - rule: {"int32":{"lte":1000,"gte":0}}
 
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction
+
+`GcpUrlMapHeaderAction`
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the request before it reaches the backend.
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToRemove
+
+`[]string`
+
+Header names to strip from the request before it reaches the backend.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the response before it returns to the client.
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToRemove
+
+`[]string`
+
+Header names to strip from the response before it returns to the client.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
 ### spec.pathMatchers[].routeRules[].routeAction.urlRewrite
 
 `GcpUrlMapUrlRewrite`
@@ -1407,6 +3003,334 @@ default and path-rule route actions. Mutually exclusive with
 path_prefix_rewrite.
 
 - rule: {"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.timeout
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].routeRules[].routeAction.timeout.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.timeout.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.retryPolicy
+
+`GcpUrlMapRetryPolicy`
+
+### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.numRetries
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.retryConditions
+
+`[]string`
+
+- rule: each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable
+
+### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy
+
+`GcpUrlMapRequestMirrorPolicy`
+
+### spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy.backendService
+
+`string | valueFrom` · required
+
+- references: GcpBackendService (`status.outputs.self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpBackendService, name: <that resource's name>, fieldPath: status.outputs.self_link}} -- a bare string does not parse
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy
+
+`GcpUrlMapCorsPolicy`
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowCredentials
+
+`bool`
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowHeaders
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowMethods
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowOriginRegexes
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowOrigins
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.disabled
+
+`bool`
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.exposeHeaders
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.maxAge
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy
+
+`GcpUrlMapFaultInjectionPolicy`
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort
+
+`GcpUrlMapFaultAbort`
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort.httpStatus
+
+`int32`
+
+- rule: http_status must be between 200 and 599
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort.percentage
+
+`double`
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay
+
+`GcpUrlMapFaultDelay`
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.percentage
+
+`double`
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy
+
+`GcpUrlMapCachePolicy`
+
+- rule: with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheMode
+
+`string`
+
+- rule: cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheBypassRequestHeaderNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCaching
+
+`bool`
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.requestCoalescing
+
+`bool`
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy
+
+`GcpUrlMapCacheKeyPolicy`
+
+- rule: included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeHost
+
+`bool`
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeProtocol
+
+`bool`
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeQueryString
+
+`bool`
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedCookieNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedHeaderNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedQueryParameters
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy
+
+`[]GcpUrlMapNegativeCachingPolicy`
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].code
+
+`int32`
+
+- rule: code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl
+
+`GcpUrlMapDuration`
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.seconds
+
+`int64`
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.nanos
+
+`int32`
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].routeRules[].urlRedirect
 
@@ -1680,10 +3604,17 @@ Header value.
 
 - rule: {"required":true}
 
+### spec.deletionPolicy
+
+`string`
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `exactly_one_default_target`: set exactly one default target: default_service, default_url_redirect, or default_route_action (with weighted_backend_services)
 - `default_route_action_conflicts_redirect`: default_route_action and default_url_redirect are mutually exclusive
+- `default_no_path_template_rewrite`: path_template_rewrite is honored only inside a route rule's route_action — GCP rejects it in the URL map's default route action
 
 ## Outputs
 
@@ -1704,13 +3635,17 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.projectId` | GcpProject | `status.outputs.project_id` |
 | `spec.defaultRouteAction.weightedBackendServices[].backendService` | GcpBackendService | `status.outputs.self_link` |
+| `spec.defaultRouteAction.requestMirrorPolicy.backendService` | GcpBackendService | `status.outputs.self_link` |
 | `spec.defaultCustomErrorResponsePolicy.errorService` | GcpBackendBucket | `status.outputs.self_link` |
 | `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].backendService` | GcpBackendService | `status.outputs.self_link` |
+| `spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy.backendService` | GcpBackendService | `status.outputs.self_link` |
 | `spec.pathMatchers[].defaultCustomErrorResponsePolicy.errorService` | GcpBackendBucket | `status.outputs.self_link` |
 | `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].backendService` | GcpBackendService | `status.outputs.self_link` |
+| `spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy.backendService` | GcpBackendService | `status.outputs.self_link` |
 | `spec.pathMatchers[].pathRules[].customErrorResponsePolicy.errorService` | GcpBackendBucket | `status.outputs.self_link` |
 | `spec.pathMatchers[].routeRules[].service` | GcpBackendService | `status.outputs.self_link` |
 | `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].backendService` | GcpBackendService | `status.outputs.self_link` |
+| `spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy.backendService` | GcpBackendService | `status.outputs.self_link` |
 | `spec.pathMatchers[].routeRules[].customErrorResponsePolicy.errorService` | GcpBackendBucket | `status.outputs.self_link` |
 
 ## Referenced By

@@ -125,6 +125,9 @@ var _ = ginkgo.Describe("GcpUrlMapSpec", func() {
 					{
 						Priority: 1,
 						RouteAction: &GcpUrlMapRouteAction{
+							WeightedBackendServices: []*GcpUrlMapWeightedBackendService{
+								{BackendService: backendSelfLink(), Weight: 1000},
+							},
 							UrlRewrite: &GcpUrlMapUrlRewrite{
 								PathTemplateRewrite: "/v2/{country}",
 							},
@@ -136,6 +139,124 @@ var _ = ginkgo.Describe("GcpUrlMapSpec", func() {
 				},
 			},
 		}
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept service plus a sub-policy-only route_action on a path rule", func() {
+		target := minimal()
+		target.Spec.PathMatchers = []*GcpUrlMapPathMatcher{
+			{
+				Name: "resilient",
+				PathRules: []*GcpUrlMapPathRule{
+					{
+						Paths:   []string{"/api/*"},
+						Service: backendSelfLink(),
+						RouteAction: &GcpUrlMapRouteAction{
+							Timeout: &GcpUrlMapDuration{Seconds: 30},
+							RetryPolicy: &GcpUrlMapRetryPolicy{
+								NumRetries:      3,
+								RetryConditions: []string{"5xx", "connect-failure"},
+								PerTryTimeout:   &GcpUrlMapDuration{Seconds: 5},
+							},
+						},
+					},
+				},
+			},
+		}
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept default_service plus a sub-policy-only default_route_action", func() {
+		target := minimal()
+		target.Spec.DefaultRouteAction = &GcpUrlMapRouteAction{
+			CorsPolicy: &GcpUrlMapCorsPolicy{
+				AllowOrigins: []string{"https://app.example.com"},
+				AllowMethods: []string{"GET", "POST"},
+				MaxAge:       3600,
+			},
+			MaxStreamDuration: &GcpUrlMapDuration{Seconds: 60},
+		}
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept the full traffic-management surface on a route rule", func() {
+		target := minimal()
+		target.Spec.PathMatchers = []*GcpUrlMapPathMatcher{
+			{
+				Name: "full",
+				RouteRules: []*GcpUrlMapRouteRule{
+					{
+						Priority: 1,
+						RouteAction: &GcpUrlMapRouteAction{
+							WeightedBackendServices: []*GcpUrlMapWeightedBackendService{
+								{
+									BackendService: backendSelfLink(),
+									Weight:         900,
+									HeaderAction: &GcpUrlMapHeaderAction{
+										ResponseHeadersToAdd: []*GcpUrlMapHeaderValue{
+											{HeaderName: "X-Arm", HeaderValue: "stable", Replace: true},
+										},
+									},
+								},
+								{BackendService: backendSelfLink(), Weight: 100},
+							},
+							Timeout: &GcpUrlMapDuration{Seconds: 15},
+							RequestMirrorPolicy: &GcpUrlMapRequestMirrorPolicy{
+								BackendService: backendSelfLink(),
+							},
+							FaultInjectionPolicy: &GcpUrlMapFaultInjectionPolicy{
+								Abort: &GcpUrlMapFaultAbort{HttpStatus: 503, Percentage: 0.5},
+								Delay: &GcpUrlMapFaultDelay{
+									FixedDelay: &GcpUrlMapDuration{Nanos: 250000000},
+									Percentage: 1,
+								},
+							},
+						},
+						MatchRules: []*GcpUrlMapRouteRuleMatchRule{{PrefixMatch: "/"}},
+					},
+				},
+			},
+		}
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept a CDN cache policy with key policy and negative caching", func() {
+		target := minimal()
+		target.Spec.PathMatchers = []*GcpUrlMapPathMatcher{
+			{
+				Name: "cdn",
+				PathRules: []*GcpUrlMapPathRule{
+					{
+						Paths:   []string{"/static/*"},
+						Service: backendSelfLink(),
+						RouteAction: &GcpUrlMapRouteAction{
+							CachePolicy: &GcpUrlMapCachePolicy{
+								CacheMode:       "CACHE_ALL_STATIC",
+								DefaultTtl:      &GcpUrlMapDuration{Seconds: 3600},
+								MaxTtl:          &GcpUrlMapDuration{Seconds: 86400},
+								ClientTtl:       &GcpUrlMapDuration{Seconds: 600},
+								ServeWhileStale: &GcpUrlMapDuration{Seconds: 86400},
+								NegativeCaching: true,
+								NegativeCachingPolicy: []*GcpUrlMapNegativeCachingPolicy{
+									{Code: 404, Ttl: &GcpUrlMapDuration{Seconds: 120}},
+								},
+								CacheKeyPolicy: &GcpUrlMapCacheKeyPolicy{
+									IncludeHost:             true,
+									IncludeProtocol:         true,
+									IncludedQueryParameters: []string{"version"},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept deletion_policy PREVENT", func() {
+		target := minimal()
+		target.Spec.DeletionPolicy = "PREVENT"
 		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
 	})
 
@@ -496,6 +617,178 @@ var _ = ginkgo.Describe("GcpUrlMapSpec", func() {
 				Name: "no-match",
 				RouteRules: []*GcpUrlMapRouteRule{
 					{Priority: 1, Service: backendSelfLink()},
+				},
+			},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		target := minimal()
+		target.Spec.DeletionPolicy = "KEEP"
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "DELETE, PREVENT, ABANDON")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should reject an unknown retry condition", func() {
+		target := minimal()
+		target.Spec.DefaultRouteAction = &GcpUrlMapRouteAction{
+			RetryPolicy: &GcpUrlMapRetryPolicy{
+				RetryConditions: []string{"5xx", "timeout"},
+			},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "retry condition")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should reject an invalid cache_mode", func() {
+		target := minimal()
+		target.Spec.DefaultRouteAction = &GcpUrlMapRouteAction{
+			CachePolicy: &GcpUrlMapCachePolicy{CacheMode: "CACHE_EVERYTHING"},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject TTLs with cache_mode USE_ORIGIN_HEADERS", func() {
+		target := minimal()
+		target.Spec.DefaultRouteAction = &GcpUrlMapRouteAction{
+			CachePolicy: &GcpUrlMapCachePolicy{
+				CacheMode:  "USE_ORIGIN_HEADERS",
+				DefaultTtl: &GcpUrlMapDuration{Seconds: 3600},
+			},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "USE_ORIGIN_HEADERS")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should reject a negative caching code GCP does not accept", func() {
+		target := minimal()
+		target.Spec.DefaultRouteAction = &GcpUrlMapRouteAction{
+			CachePolicy: &GcpUrlMapCachePolicy{
+				NegativeCaching: true,
+				NegativeCachingPolicy: []*GcpUrlMapNegativeCachingPolicy{
+					{Code: 418, Ttl: &GcpUrlMapDuration{Seconds: 60}},
+				},
+			},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject both included and excluded cache key query parameters", func() {
+		target := minimal()
+		target.Spec.DefaultRouteAction = &GcpUrlMapRouteAction{
+			CachePolicy: &GcpUrlMapCachePolicy{
+				CacheKeyPolicy: &GcpUrlMapCacheKeyPolicy{
+					IncludedQueryParameters: []string{"a"},
+					ExcludedQueryParameters: []string{"b"},
+				},
+			},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject fault abort percentage above 100", func() {
+		target := minimal()
+		target.Spec.DefaultRouteAction = &GcpUrlMapRouteAction{
+			FaultInjectionPolicy: &GcpUrlMapFaultInjectionPolicy{
+				Abort: &GcpUrlMapFaultAbort{HttpStatus: 503, Percentage: 150},
+			},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject fault abort http_status below 200", func() {
+		target := minimal()
+		target.Spec.DefaultRouteAction = &GcpUrlMapRouteAction{
+			FaultInjectionPolicy: &GcpUrlMapFaultInjectionPolicy{
+				Abort: &GcpUrlMapFaultAbort{HttpStatus: 199, Percentage: 1},
+			},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject duration nanos above the nanosecond bound", func() {
+		target := minimal()
+		target.Spec.DefaultRouteAction = &GcpUrlMapRouteAction{
+			Timeout: &GcpUrlMapDuration{Seconds: 1, Nanos: 1000000000},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject path_template_rewrite in the top-level default route action", func() {
+		target := minimal()
+		target.Spec.DefaultService = nil
+		target.Spec.DefaultRouteAction = &GcpUrlMapRouteAction{
+			WeightedBackendServices: []*GcpUrlMapWeightedBackendService{
+				{BackendService: backendSelfLink(), Weight: 1000},
+			},
+			UrlRewrite: &GcpUrlMapUrlRewrite{PathTemplateRewrite: "/v2/{id}"},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "route rule")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should reject path_template_rewrite in a path rule route action", func() {
+		target := minimal()
+		target.Spec.PathMatchers = []*GcpUrlMapPathMatcher{
+			{
+				Name: "bad-tmpl",
+				PathRules: []*GcpUrlMapPathRule{
+					{
+						Paths:   []string{"/x/*"},
+						Service: backendSelfLink(),
+						RouteAction: &GcpUrlMapRouteAction{
+							UrlRewrite: &GcpUrlMapUrlRewrite{PathTemplateRewrite: "/y/{id}"},
+						},
+					},
+				},
+			},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject path_template_rewrite in a path matcher default route action", func() {
+		target := minimal()
+		target.Spec.PathMatchers = []*GcpUrlMapPathMatcher{
+			{
+				Name:           "bad-matcher-tmpl",
+				DefaultService: backendSelfLink(),
+				DefaultRouteAction: &GcpUrlMapRouteAction{
+					UrlRewrite: &GcpUrlMapUrlRewrite{PathTemplateRewrite: "/v2/{id}"},
+				},
+			},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "route rule")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should reject a route rule combining route_action and url_redirect", func() {
+		target := minimal()
+		target.Spec.PathMatchers = []*GcpUrlMapPathMatcher{
+			{
+				Name: "conflict",
+				RouteRules: []*GcpUrlMapRouteRule{
+					{
+						Priority:    1,
+						UrlRedirect: &GcpUrlMapUrlRedirect{HttpsRedirect: true, StripQuery: false},
+						RouteAction: &GcpUrlMapRouteAction{
+							Timeout: &GcpUrlMapDuration{Seconds: 5},
+						},
+						MatchRules: []*GcpUrlMapRouteRuleMatchRule{{PrefixMatch: "/"}},
+					},
 				},
 			},
 		}

@@ -28,10 +28,9 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `google@7.43.0` |
-| Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2310 |
+| Spec fields authored across all kinds | 2519 |
 | Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -46,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**6 of 79 kinds are at total accounting; 71 proven live.**
+**7 of 79 kinds are at total accounting; 70 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -120,7 +119,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpSubnetwork | 34 | 17 | 0 | 0 | 22 | ❌ | ✅ pulumi, terraform |
 | GcpTargetHttpProxy | 12 | 4 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
 | GcpTargetHttpsProxy | 19 | 11 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
-| GcpUrlMap | 338 | 21 | 0 | 0 | 423 | ❌ | ✅ pulumi, terraform |
+| GcpUrlMap | 333 | 74 | 259 | 0 | 0 | ✅ | — |
 | GcpVertexAiDeployedIndex | 16 | 11 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
 | GcpVertexAiEndpoint | 24 | 7 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
 | GcpVertexAiIndex | 22 | 4 | 0 | 0 | 29 | ❌ | ✅ pulumi, terraform |

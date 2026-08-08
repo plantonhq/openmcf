@@ -92,9 +92,16 @@ type GcpUrlMapSpec struct {
 	// that a given host+path resolves to an expected service or redirect. A
 	// failing test blocks the update — a guard against a routing change that
 	// silently breaks a path. Mutable.
-	Tests         []*GcpUrlMapTest `protobuf:"bytes,11,rep,name=tests,proto3" json:"tests,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Tests []*GcpUrlMapTest `protobuf:"bytes,11,rep,name=tests,proto3" json:"tests,omitempty"`
+	// What `terraform destroy` (or a stack teardown) may do to the URL map.
+	// DELETE (the default when empty) allows deletion; PREVENT fails the
+	// destroy outright — the URL map and anything orchestrating its teardown
+	// stop there; ABANDON removes it from state without deleting it in GCP
+	// (the map keeps serving, unmanaged). Client-side only — never sent to
+	// the GCP API.
+	DeletionPolicy string `protobuf:"bytes,12,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpUrlMapSpec) Reset() {
@@ -202,6 +209,13 @@ func (x *GcpUrlMapSpec) GetTests() []*GcpUrlMapTest {
 		return x.Tests
 	}
 	return nil
+}
+
+func (x *GcpUrlMapSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 // A redirect action. Set host and/or path components; GCP returns the chosen
@@ -441,21 +455,18 @@ func (x *GcpUrlMapHeaderValue) GetReplace() bool {
 	return false
 }
 
-// A routing action: weight traffic across backends and/or rewrite the request
-// before forwarding. Used as the default action and inside path rules and
-// route rules.
+// A routing action: the full per-route traffic-management surface. Weight
+// traffic across backends, rewrite the request, bound its time budget, retry
+// failures, mirror it, answer CORS preflights, inject faults for resilience
+// testing, and control CDN caching — all scoped to the routes that use this
+// action. Used as the URL map's default action, a path matcher's default
+// action, and inside path rules and route rules.
 //
-// NOTE: the provider's route_action also carries advanced per-route
-// traffic-management sub-policies — timeout, retry_policy,
-// request_mirror_policy, cors_policy, fault_injection_policy, and
-// max_stream_duration. These are Traffic Director / mesh-advanced controls that
-// overlap the backend service's own resilience settings (circuit breakers,
-// outlier detection, timeouts) and are rarely used on a standard external
-// Application Load Balancer. They are a deliberate, documented coverage
-// boundary: this kind models the routing-defining parts of route_action
-// (weighted splits and rewrites) and leaves the mesh-advanced sub-policies for
-// a focused follow-up. Adding them is purely additive (new nested messages),
-// so no consumer breaks when they land.
+// A route action is a valid TARGET only through weighted_backend_services;
+// the other sub-policies may accompany a plain service target (e.g. a
+// path rule with `service` plus a route_action carrying only retry_policy
+// and timeout). Route-scoped policies here override the backend service's
+// own resilience/CDN settings for matching traffic only.
 type GcpUrlMapRouteAction struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Split traffic across multiple backend services by weight — the mechanism
@@ -463,7 +474,40 @@ type GcpUrlMapRouteAction struct {
 	// backend's share is its weight over the sum of weights.
 	WeightedBackendServices []*GcpUrlMapWeightedBackendService `protobuf:"bytes,1,rep,name=weighted_backend_services,json=weightedBackendServices,proto3" json:"weighted_backend_services,omitempty"`
 	// Rewrite the host and/or path before forwarding to the backend.
-	UrlRewrite    *GcpUrlMapUrlRewrite `protobuf:"bytes,2,opt,name=url_rewrite,json=urlRewrite,proto3" json:"url_rewrite,omitempty"`
+	UrlRewrite *GcpUrlMapUrlRewrite `protobuf:"bytes,2,opt,name=url_rewrite,json=urlRewrite,proto3" json:"url_rewrite,omitempty"`
+	// Total time budget for the request, INCLUDING all retries (from the
+	// first byte of the request to the last byte of the response). Pair with
+	// retry_policy.per_try_timeout: per-try bounds one attempt, this bounds
+	// the whole exchange. Unset uses the backend service's own timeout.
+	// Not permitted when the route targets a redirect.
+	Timeout *GcpUrlMapDuration `protobuf:"bytes,3,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	// Retry failed requests to the backend. Which failures count is chosen
+	// by retry_conditions; how long each attempt may run by per_try_timeout.
+	// Retries consume the overall timeout's budget — they never extend it.
+	RetryPolicy *GcpUrlMapRetryPolicy `protobuf:"bytes,4,opt,name=retry_policy,json=retryPolicy,proto3" json:"retry_policy,omitempty"`
+	// Mirror every matched request to a second backend service, fire-and-
+	// forget (responses from the mirror are discarded; the client sees only
+	// the primary's response). Useful for shadow-testing a new stack with
+	// production traffic — the mirror backend must be sized for the full
+	// mirrored load.
+	RequestMirrorPolicy *GcpUrlMapRequestMirrorPolicy `protobuf:"bytes,5,opt,name=request_mirror_policy,json=requestMirrorPolicy,proto3" json:"request_mirror_policy,omitempty"`
+	// Answer cross-origin (CORS) preflights and stamp CORS headers at the
+	// load balancer, before requests reach the backend.
+	CorsPolicy *GcpUrlMapCorsPolicy `protobuf:"bytes,6,opt,name=cors_policy,json=corsPolicy,proto3" json:"cors_policy,omitempty"`
+	// Deliberately inject failures (aborts with a chosen status, fixed
+	// delays) into a percentage of matched requests — chaos/resilience
+	// testing of the CLIENTS of this route. Never leave enabled on a
+	// production default route: the injected failures are real to callers.
+	FaultInjectionPolicy *GcpUrlMapFaultInjectionPolicy `protobuf:"bytes,7,opt,name=fault_injection_policy,json=faultInjectionPolicy,proto3" json:"fault_injection_policy,omitempty"`
+	// Upper bound on how long a STREAM on this route may stay open
+	// (gRPC/long-poll streams — distinct from timeout, which bounds a
+	// request/response exchange).
+	MaxStreamDuration *GcpUrlMapDuration `protobuf:"bytes,8,opt,name=max_stream_duration,json=maxStreamDuration,proto3" json:"max_stream_duration,omitempty"`
+	// Cloud CDN caching for the routes using this action — overrides the
+	// backend service's cdn_policy for matching traffic only. Takes effect
+	// only when the target backend service (or bucket) has CDN enabled;
+	// GCP ignores it otherwise.
+	CachePolicy   *GcpUrlMapCachePolicy `protobuf:"bytes,9,opt,name=cache_policy,json=cachePolicy,proto3" json:"cache_policy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -512,6 +556,55 @@ func (x *GcpUrlMapRouteAction) GetUrlRewrite() *GcpUrlMapUrlRewrite {
 	return nil
 }
 
+func (x *GcpUrlMapRouteAction) GetTimeout() *GcpUrlMapDuration {
+	if x != nil {
+		return x.Timeout
+	}
+	return nil
+}
+
+func (x *GcpUrlMapRouteAction) GetRetryPolicy() *GcpUrlMapRetryPolicy {
+	if x != nil {
+		return x.RetryPolicy
+	}
+	return nil
+}
+
+func (x *GcpUrlMapRouteAction) GetRequestMirrorPolicy() *GcpUrlMapRequestMirrorPolicy {
+	if x != nil {
+		return x.RequestMirrorPolicy
+	}
+	return nil
+}
+
+func (x *GcpUrlMapRouteAction) GetCorsPolicy() *GcpUrlMapCorsPolicy {
+	if x != nil {
+		return x.CorsPolicy
+	}
+	return nil
+}
+
+func (x *GcpUrlMapRouteAction) GetFaultInjectionPolicy() *GcpUrlMapFaultInjectionPolicy {
+	if x != nil {
+		return x.FaultInjectionPolicy
+	}
+	return nil
+}
+
+func (x *GcpUrlMapRouteAction) GetMaxStreamDuration() *GcpUrlMapDuration {
+	if x != nil {
+		return x.MaxStreamDuration
+	}
+	return nil
+}
+
+func (x *GcpUrlMapRouteAction) GetCachePolicy() *GcpUrlMapCachePolicy {
+	if x != nil {
+		return x.CachePolicy
+	}
+	return nil
+}
+
 // One weighted backend in a traffic split.
 type GcpUrlMapWeightedBackendService struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -520,7 +613,12 @@ type GcpUrlMapWeightedBackendService struct {
 	BackendService *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=backend_service,json=backendService,proto3" json:"backend_service,omitempty"`
 	// Relative weight of this backend (0-1000). Its share is weight over the sum
 	// of all weights in the split; 0 drains this backend from the split.
-	Weight        int32 `protobuf:"varint,2,opt,name=weight,proto3" json:"weight,omitempty"`
+	Weight int32 `protobuf:"varint,2,opt,name=weight,proto3" json:"weight,omitempty"`
+	// Header mutations applied ONLY to the share of traffic sent to this
+	// backend — e.g. tag canary responses with an identifying header so
+	// clients and dashboards can tell which arm served them. Applied after
+	// the URL-map-level and route-level header actions.
+	HeaderAction  *GcpUrlMapHeaderAction `protobuf:"bytes,3,opt,name=header_action,json=headerAction,proto3" json:"header_action,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -567,6 +665,13 @@ func (x *GcpUrlMapWeightedBackendService) GetWeight() int32 {
 		return x.Weight
 	}
 	return 0
+}
+
+func (x *GcpUrlMapWeightedBackendService) GetHeaderAction() *GcpUrlMapHeaderAction {
+	if x != nil {
+		return x.HeaderAction
+	}
+	return nil
 }
 
 // URL rewrite before forwarding to the backend.
@@ -638,6 +743,774 @@ func (x *GcpUrlMapUrlRewrite) GetPathTemplateRewrite() string {
 	return ""
 }
 
+// A span of time at nanosecond resolution — GCP's Duration shape, used for
+// route timeouts, retry budgets, stream limits, and CDN cache lifetimes.
+type GcpUrlMapDuration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+	Seconds int64 `protobuf:"varint,1,opt,name=seconds,proto3" json:"seconds,omitempty"`
+	// Fraction of a second at nanosecond resolution (0 to 999,999,999).
+	// Durations under one second use seconds = 0 and a positive nanos.
+	Nanos         int32 `protobuf:"varint,2,opt,name=nanos,proto3" json:"nanos,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpUrlMapDuration) Reset() {
+	*x = GcpUrlMapDuration{}
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpUrlMapDuration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpUrlMapDuration) ProtoMessage() {}
+
+func (x *GcpUrlMapDuration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpUrlMapDuration.ProtoReflect.Descriptor instead.
+func (*GcpUrlMapDuration) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GcpUrlMapDuration) GetSeconds() int64 {
+	if x != nil {
+		return x.Seconds
+	}
+	return 0
+}
+
+func (x *GcpUrlMapDuration) GetNanos() int32 {
+	if x != nil {
+		return x.Nanos
+	}
+	return 0
+}
+
+// Retry policy for a route: which failures are retried, how many times, and
+// how long each attempt may run.
+type GcpUrlMapRetryPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Number of allowed retries (GCP defaults to 1 when unset/0). Each retry
+	// still spends the route's overall timeout budget.
+	NumRetries int32 `protobuf:"varint,1,opt,name=num_retries,json=numRetries,proto3" json:"num_retries,omitempty"`
+	// Which failures trigger a retry. 5xx (any 5xx or no response at all),
+	// gateway-error (502/503/504 only), connect-failure, retriable-4xx
+	// (currently only 409), refused-stream, and the gRPC status conditions
+	// cancelled, deadline-exceeded, resource-exhausted, unavailable.
+	RetryConditions []string `protobuf:"bytes,2,rep,name=retry_conditions,json=retryConditions,proto3" json:"retry_conditions,omitempty"`
+	// Time budget for EACH retry attempt (the route's timeout bounds the
+	// whole exchange across attempts). Unset uses the overall timeout for
+	// every attempt.
+	PerTryTimeout *GcpUrlMapDuration `protobuf:"bytes,3,opt,name=per_try_timeout,json=perTryTimeout,proto3" json:"per_try_timeout,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpUrlMapRetryPolicy) Reset() {
+	*x = GcpUrlMapRetryPolicy{}
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpUrlMapRetryPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpUrlMapRetryPolicy) ProtoMessage() {}
+
+func (x *GcpUrlMapRetryPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpUrlMapRetryPolicy.ProtoReflect.Descriptor instead.
+func (*GcpUrlMapRetryPolicy) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GcpUrlMapRetryPolicy) GetNumRetries() int32 {
+	if x != nil {
+		return x.NumRetries
+	}
+	return 0
+}
+
+func (x *GcpUrlMapRetryPolicy) GetRetryConditions() []string {
+	if x != nil {
+		return x.RetryConditions
+	}
+	return nil
+}
+
+func (x *GcpUrlMapRetryPolicy) GetPerTryTimeout() *GcpUrlMapDuration {
+	if x != nil {
+		return x.PerTryTimeout
+	}
+	return nil
+}
+
+// Mirror matched requests to a second backend service, fire-and-forget.
+type GcpUrlMapRequestMirrorPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The backend service receiving the mirrored copy of every matched
+	// request. Reference a GcpBackendService or provide a self-link
+	// directly. Responses from this backend are discarded.
+	BackendService *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=backend_service,json=backendService,proto3" json:"backend_service,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GcpUrlMapRequestMirrorPolicy) Reset() {
+	*x = GcpUrlMapRequestMirrorPolicy{}
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpUrlMapRequestMirrorPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpUrlMapRequestMirrorPolicy) ProtoMessage() {}
+
+func (x *GcpUrlMapRequestMirrorPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpUrlMapRequestMirrorPolicy.ProtoReflect.Descriptor instead.
+func (*GcpUrlMapRequestMirrorPolicy) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GcpUrlMapRequestMirrorPolicy) GetBackendService() *v1.StringValueOrRef {
+	if x != nil {
+		return x.BackendService
+	}
+	return nil
+}
+
+// Cross-origin resource sharing (CORS) handled at the load balancer: the
+// browser's preflight is answered and response headers are stamped without
+// the request reaching the backend.
+type GcpUrlMapCorsPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Sets Access-Control-Allow-Credentials: allow requests carrying
+	// credentials (cookies, authorization headers). Default false.
+	AllowCredentials bool `protobuf:"varint,1,opt,name=allow_credentials,json=allowCredentials,proto3" json:"allow_credentials,omitempty"`
+	// Headers the client may send (Access-Control-Allow-Headers).
+	AllowHeaders []string `protobuf:"bytes,2,rep,name=allow_headers,json=allowHeaders,proto3" json:"allow_headers,omitempty"`
+	// Methods the client may use (Access-Control-Allow-Methods), e.g.
+	// ["GET", "POST", "OPTIONS"].
+	AllowMethods []string `protobuf:"bytes,3,rep,name=allow_methods,json=allowMethods,proto3" json:"allow_methods,omitempty"`
+	// Regular expressions matching allowed origins; a request origin is
+	// allowed when it matches any listed regex or exact allow_origins entry.
+	AllowOriginRegexes []string `protobuf:"bytes,4,rep,name=allow_origin_regexes,json=allowOriginRegexes,proto3" json:"allow_origin_regexes,omitempty"`
+	// Exact origins allowed, e.g. "https://app.example.com".
+	AllowOrigins []string `protobuf:"bytes,5,rep,name=allow_origins,json=allowOrigins,proto3" json:"allow_origins,omitempty"`
+	// Disable this CORS policy without deleting its configuration (true
+	// turns the policy off). Default false — the policy is in effect.
+	Disabled bool `protobuf:"varint,6,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	// Headers the browser may read from the response
+	// (Access-Control-Expose-Headers).
+	ExposeHeaders []string `protobuf:"bytes,7,rep,name=expose_headers,json=exposeHeaders,proto3" json:"expose_headers,omitempty"`
+	// Seconds a browser may cache the preflight response
+	// (Access-Control-Max-Age).
+	MaxAge        int32 `protobuf:"varint,8,opt,name=max_age,json=maxAge,proto3" json:"max_age,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpUrlMapCorsPolicy) Reset() {
+	*x = GcpUrlMapCorsPolicy{}
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpUrlMapCorsPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpUrlMapCorsPolicy) ProtoMessage() {}
+
+func (x *GcpUrlMapCorsPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpUrlMapCorsPolicy.ProtoReflect.Descriptor instead.
+func (*GcpUrlMapCorsPolicy) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GcpUrlMapCorsPolicy) GetAllowCredentials() bool {
+	if x != nil {
+		return x.AllowCredentials
+	}
+	return false
+}
+
+func (x *GcpUrlMapCorsPolicy) GetAllowHeaders() []string {
+	if x != nil {
+		return x.AllowHeaders
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCorsPolicy) GetAllowMethods() []string {
+	if x != nil {
+		return x.AllowMethods
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCorsPolicy) GetAllowOriginRegexes() []string {
+	if x != nil {
+		return x.AllowOriginRegexes
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCorsPolicy) GetAllowOrigins() []string {
+	if x != nil {
+		return x.AllowOrigins
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCorsPolicy) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
+func (x *GcpUrlMapCorsPolicy) GetExposeHeaders() []string {
+	if x != nil {
+		return x.ExposeHeaders
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCorsPolicy) GetMaxAge() int32 {
+	if x != nil {
+		return x.MaxAge
+	}
+	return 0
+}
+
+// Deliberate failure injection for resilience testing of this route's
+// clients. Percentages are evaluated per request; both arms may be active
+// at once (delay first, then abort decision).
+type GcpUrlMapFaultInjectionPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Abort a percentage of requests with a fixed HTTP status, before they
+	// reach the backend.
+	Abort *GcpUrlMapFaultAbort `protobuf:"bytes,1,opt,name=abort,proto3" json:"abort,omitempty"`
+	// Delay a percentage of requests by a fixed duration before forwarding.
+	Delay         *GcpUrlMapFaultDelay `protobuf:"bytes,2,opt,name=delay,proto3" json:"delay,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpUrlMapFaultInjectionPolicy) Reset() {
+	*x = GcpUrlMapFaultInjectionPolicy{}
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpUrlMapFaultInjectionPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpUrlMapFaultInjectionPolicy) ProtoMessage() {}
+
+func (x *GcpUrlMapFaultInjectionPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpUrlMapFaultInjectionPolicy.ProtoReflect.Descriptor instead.
+func (*GcpUrlMapFaultInjectionPolicy) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GcpUrlMapFaultInjectionPolicy) GetAbort() *GcpUrlMapFaultAbort {
+	if x != nil {
+		return x.Abort
+	}
+	return nil
+}
+
+func (x *GcpUrlMapFaultInjectionPolicy) GetDelay() *GcpUrlMapFaultDelay {
+	if x != nil {
+		return x.Delay
+	}
+	return nil
+}
+
+// The abort arm of fault injection.
+type GcpUrlMapFaultAbort struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// HTTP status returned to aborted requests (200-599).
+	HttpStatus int32 `protobuf:"varint,1,opt,name=http_status,json=httpStatus,proto3" json:"http_status,omitempty"`
+	// Percentage of requests aborted (0.0-100.0).
+	Percentage    float64 `protobuf:"fixed64,2,opt,name=percentage,proto3" json:"percentage,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpUrlMapFaultAbort) Reset() {
+	*x = GcpUrlMapFaultAbort{}
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpUrlMapFaultAbort) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpUrlMapFaultAbort) ProtoMessage() {}
+
+func (x *GcpUrlMapFaultAbort) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpUrlMapFaultAbort.ProtoReflect.Descriptor instead.
+func (*GcpUrlMapFaultAbort) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GcpUrlMapFaultAbort) GetHttpStatus() int32 {
+	if x != nil {
+		return x.HttpStatus
+	}
+	return 0
+}
+
+func (x *GcpUrlMapFaultAbort) GetPercentage() float64 {
+	if x != nil {
+		return x.Percentage
+	}
+	return 0
+}
+
+// The delay arm of fault injection.
+type GcpUrlMapFaultDelay struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How long delayed requests are held before forwarding.
+	FixedDelay *GcpUrlMapDuration `protobuf:"bytes,1,opt,name=fixed_delay,json=fixedDelay,proto3" json:"fixed_delay,omitempty"`
+	// Percentage of requests delayed (0.0-100.0).
+	Percentage    float64 `protobuf:"fixed64,2,opt,name=percentage,proto3" json:"percentage,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpUrlMapFaultDelay) Reset() {
+	*x = GcpUrlMapFaultDelay{}
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpUrlMapFaultDelay) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpUrlMapFaultDelay) ProtoMessage() {}
+
+func (x *GcpUrlMapFaultDelay) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpUrlMapFaultDelay.ProtoReflect.Descriptor instead.
+func (*GcpUrlMapFaultDelay) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GcpUrlMapFaultDelay) GetFixedDelay() *GcpUrlMapDuration {
+	if x != nil {
+		return x.FixedDelay
+	}
+	return nil
+}
+
+func (x *GcpUrlMapFaultDelay) GetPercentage() float64 {
+	if x != nil {
+		return x.Percentage
+	}
+	return 0
+}
+
+// Cloud CDN cache behavior for the routes using this action. TTLs are only
+// respected in cache modes that use them; GCP applies its own defaults for
+// any field left unset (cache_mode CACHE_ALL_STATIC, client/default TTL
+// 3600s, max TTL 86400s). Takes effect only when the target backend has
+// CDN enabled.
+type GcpUrlMapCachePolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What gets cached. CACHE_ALL_STATIC (the GCP default) caches static
+	// content types and honors origin cache headers for the rest;
+	// USE_ORIGIN_HEADERS caches only what the backends explicitly mark
+	// cacheable (TTL fields must be unset — the origin controls lifetimes);
+	// FORCE_CACHE_ALL caches everything, ignoring origin headers (never
+	// combine with private or per-user content).
+	CacheMode string `protobuf:"bytes,1,opt,name=cache_mode,json=cacheMode,proto3" json:"cache_mode,omitempty"`
+	// Requests carrying any of these headers bypass the cache and go
+	// straight to the origin (e.g. a debug or authorization header).
+	CacheBypassRequestHeaderNames []string `protobuf:"bytes,2,rep,name=cache_bypass_request_header_names,json=cacheBypassRequestHeaderNames,proto3" json:"cache_bypass_request_header_names,omitempty"`
+	// Cache negative responses (404, 410, ...) so repeated misses do not
+	// hammer the backends. Pair with negative_caching_policy to set
+	// per-status TTLs.
+	NegativeCaching bool `protobuf:"varint,3,opt,name=negative_caching,json=negativeCaching,proto3" json:"negative_caching,omitempty"`
+	// Collapse concurrent cache-fill requests for the same key into one
+	// origin fetch. Default true on GCP's side.
+	RequestCoalescing bool `protobuf:"varint,4,opt,name=request_coalescing,json=requestCoalescing,proto3" json:"request_coalescing,omitempty"`
+	// What forms the cache key — trim protocol, host, query string, or
+	// select specific query parameters, headers, and cookies.
+	CacheKeyPolicy *GcpUrlMapCacheKeyPolicy `protobuf:"bytes,5,opt,name=cache_key_policy,json=cacheKeyPolicy,proto3" json:"cache_key_policy,omitempty"`
+	// Max lifetime in browsers and downstream caches (sets the max-age
+	// clients see). Not respected with cache_mode USE_ORIGIN_HEADERS.
+	ClientTtl *GcpUrlMapDuration `protobuf:"bytes,6,opt,name=client_ttl,json=clientTtl,proto3" json:"client_ttl,omitempty"`
+	// Edge-cache lifetime for responses without their own cache headers.
+	// Not respected with cache_mode USE_ORIGIN_HEADERS.
+	DefaultTtl *GcpUrlMapDuration `protobuf:"bytes,7,opt,name=default_ttl,json=defaultTtl,proto3" json:"default_ttl,omitempty"`
+	// Upper bound on any edge-cache lifetime, capping even origin-supplied
+	// max-age. Not respected with cache_mode USE_ORIGIN_HEADERS or
+	// FORCE_CACHE_ALL.
+	MaxTtl *GcpUrlMapDuration `protobuf:"bytes,8,opt,name=max_ttl,json=maxTtl,proto3" json:"max_ttl,omitempty"`
+	// How long stale content may still be served while revalidating in the
+	// background (up to 1 day).
+	ServeWhileStale *GcpUrlMapDuration `protobuf:"bytes,9,opt,name=serve_while_stale,json=serveWhileStale,proto3" json:"serve_while_stale,omitempty"`
+	// Per-status TTLs for cached negative responses; only meaningful with
+	// negative_caching enabled.
+	NegativeCachingPolicy []*GcpUrlMapNegativeCachingPolicy `protobuf:"bytes,10,rep,name=negative_caching_policy,json=negativeCachingPolicy,proto3" json:"negative_caching_policy,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *GcpUrlMapCachePolicy) Reset() {
+	*x = GcpUrlMapCachePolicy{}
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpUrlMapCachePolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpUrlMapCachePolicy) ProtoMessage() {}
+
+func (x *GcpUrlMapCachePolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpUrlMapCachePolicy.ProtoReflect.Descriptor instead.
+func (*GcpUrlMapCachePolicy) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GcpUrlMapCachePolicy) GetCacheMode() string {
+	if x != nil {
+		return x.CacheMode
+	}
+	return ""
+}
+
+func (x *GcpUrlMapCachePolicy) GetCacheBypassRequestHeaderNames() []string {
+	if x != nil {
+		return x.CacheBypassRequestHeaderNames
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCachePolicy) GetNegativeCaching() bool {
+	if x != nil {
+		return x.NegativeCaching
+	}
+	return false
+}
+
+func (x *GcpUrlMapCachePolicy) GetRequestCoalescing() bool {
+	if x != nil {
+		return x.RequestCoalescing
+	}
+	return false
+}
+
+func (x *GcpUrlMapCachePolicy) GetCacheKeyPolicy() *GcpUrlMapCacheKeyPolicy {
+	if x != nil {
+		return x.CacheKeyPolicy
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCachePolicy) GetClientTtl() *GcpUrlMapDuration {
+	if x != nil {
+		return x.ClientTtl
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCachePolicy) GetDefaultTtl() *GcpUrlMapDuration {
+	if x != nil {
+		return x.DefaultTtl
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCachePolicy) GetMaxTtl() *GcpUrlMapDuration {
+	if x != nil {
+		return x.MaxTtl
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCachePolicy) GetServeWhileStale() *GcpUrlMapDuration {
+	if x != nil {
+		return x.ServeWhileStale
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCachePolicy) GetNegativeCachingPolicy() []*GcpUrlMapNegativeCachingPolicy {
+	if x != nil {
+		return x.NegativeCachingPolicy
+	}
+	return nil
+}
+
+// What forms the CDN cache key for routes using this cache policy.
+type GcpUrlMapCacheKeyPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Query parameters EXCLUDED from the cache key (everything else is
+	// included). Mutually exclusive with included_query_parameters.
+	ExcludedQueryParameters []string `protobuf:"bytes,1,rep,name=excluded_query_parameters,json=excludedQueryParameters,proto3" json:"excluded_query_parameters,omitempty"`
+	// Include the request host in the cache key (distinct hosts cache
+	// separately).
+	IncludeHost bool `protobuf:"varint,2,opt,name=include_host,json=includeHost,proto3" json:"include_host,omitempty"`
+	// Include the protocol (http/https) in the cache key.
+	IncludeProtocol bool `protobuf:"varint,3,opt,name=include_protocol,json=includeProtocol,proto3" json:"include_protocol,omitempty"`
+	// Include the entire query string in the cache key. When false, the
+	// included/excluded parameter lists refine what participates.
+	IncludeQueryString bool `protobuf:"varint,4,opt,name=include_query_string,json=includeQueryString,proto3" json:"include_query_string,omitempty"`
+	// Cookie names whose values join the cache key.
+	IncludedCookieNames []string `protobuf:"bytes,5,rep,name=included_cookie_names,json=includedCookieNames,proto3" json:"included_cookie_names,omitempty"`
+	// Header names whose values join the cache key.
+	IncludedHeaderNames []string `protobuf:"bytes,6,rep,name=included_header_names,json=includedHeaderNames,proto3" json:"included_header_names,omitempty"`
+	// Query parameters INCLUDED in the cache key (everything else is
+	// ignored). Mutually exclusive with excluded_query_parameters.
+	IncludedQueryParameters []string `protobuf:"bytes,7,rep,name=included_query_parameters,json=includedQueryParameters,proto3" json:"included_query_parameters,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *GcpUrlMapCacheKeyPolicy) Reset() {
+	*x = GcpUrlMapCacheKeyPolicy{}
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpUrlMapCacheKeyPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpUrlMapCacheKeyPolicy) ProtoMessage() {}
+
+func (x *GcpUrlMapCacheKeyPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpUrlMapCacheKeyPolicy.ProtoReflect.Descriptor instead.
+func (*GcpUrlMapCacheKeyPolicy) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GcpUrlMapCacheKeyPolicy) GetExcludedQueryParameters() []string {
+	if x != nil {
+		return x.ExcludedQueryParameters
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCacheKeyPolicy) GetIncludeHost() bool {
+	if x != nil {
+		return x.IncludeHost
+	}
+	return false
+}
+
+func (x *GcpUrlMapCacheKeyPolicy) GetIncludeProtocol() bool {
+	if x != nil {
+		return x.IncludeProtocol
+	}
+	return false
+}
+
+func (x *GcpUrlMapCacheKeyPolicy) GetIncludeQueryString() bool {
+	if x != nil {
+		return x.IncludeQueryString
+	}
+	return false
+}
+
+func (x *GcpUrlMapCacheKeyPolicy) GetIncludedCookieNames() []string {
+	if x != nil {
+		return x.IncludedCookieNames
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCacheKeyPolicy) GetIncludedHeaderNames() []string {
+	if x != nil {
+		return x.IncludedHeaderNames
+	}
+	return nil
+}
+
+func (x *GcpUrlMapCacheKeyPolicy) GetIncludedQueryParameters() []string {
+	if x != nil {
+		return x.IncludedQueryParameters
+	}
+	return nil
+}
+
+// Cache lifetime for one negative (error) response status.
+type GcpUrlMapNegativeCachingPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The HTTP status code this TTL applies to. GCP accepts only 300, 301,
+	// 302, 307, 308, 404, 405, 410, 421, 451, and 501, each at most once.
+	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	// How long responses with this status are cached.
+	Ttl           *GcpUrlMapDuration `protobuf:"bytes,2,opt,name=ttl,proto3" json:"ttl,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpUrlMapNegativeCachingPolicy) Reset() {
+	*x = GcpUrlMapNegativeCachingPolicy{}
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpUrlMapNegativeCachingPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpUrlMapNegativeCachingPolicy) ProtoMessage() {}
+
+func (x *GcpUrlMapNegativeCachingPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpUrlMapNegativeCachingPolicy.ProtoReflect.Descriptor instead.
+func (*GcpUrlMapNegativeCachingPolicy) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GcpUrlMapNegativeCachingPolicy) GetCode() int32 {
+	if x != nil {
+		return x.Code
+	}
+	return 0
+}
+
+func (x *GcpUrlMapNegativeCachingPolicy) GetTtl() *GcpUrlMapDuration {
+	if x != nil {
+		return x.Ttl
+	}
+	return nil
+}
+
 // A custom error response policy: serve error pages from a backend bucket for
 // chosen response codes. Global external Application Load Balancers only.
 type GcpUrlMapCustomErrorResponsePolicy struct {
@@ -654,7 +1527,7 @@ type GcpUrlMapCustomErrorResponsePolicy struct {
 
 func (x *GcpUrlMapCustomErrorResponsePolicy) Reset() {
 	*x = GcpUrlMapCustomErrorResponsePolicy{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -666,7 +1539,7 @@ func (x *GcpUrlMapCustomErrorResponsePolicy) String() string {
 func (*GcpUrlMapCustomErrorResponsePolicy) ProtoMessage() {}
 
 func (x *GcpUrlMapCustomErrorResponsePolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -679,7 +1552,7 @@ func (x *GcpUrlMapCustomErrorResponsePolicy) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GcpUrlMapCustomErrorResponsePolicy.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapCustomErrorResponsePolicy) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GcpUrlMapCustomErrorResponsePolicy) GetErrorService() *v1.StringValueOrRef {
@@ -714,7 +1587,7 @@ type GcpUrlMapCustomErrorResponseRule struct {
 
 func (x *GcpUrlMapCustomErrorResponseRule) Reset() {
 	*x = GcpUrlMapCustomErrorResponseRule{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -726,7 +1599,7 @@ func (x *GcpUrlMapCustomErrorResponseRule) String() string {
 func (*GcpUrlMapCustomErrorResponseRule) ProtoMessage() {}
 
 func (x *GcpUrlMapCustomErrorResponseRule) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -739,7 +1612,7 @@ func (x *GcpUrlMapCustomErrorResponseRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapCustomErrorResponseRule.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapCustomErrorResponseRule) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GcpUrlMapCustomErrorResponseRule) GetMatchResponseCodes() []string {
@@ -780,7 +1653,7 @@ type GcpUrlMapHostRule struct {
 
 func (x *GcpUrlMapHostRule) Reset() {
 	*x = GcpUrlMapHostRule{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -792,7 +1665,7 @@ func (x *GcpUrlMapHostRule) String() string {
 func (*GcpUrlMapHostRule) ProtoMessage() {}
 
 func (x *GcpUrlMapHostRule) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -805,7 +1678,7 @@ func (x *GcpUrlMapHostRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapHostRule.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapHostRule) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GcpUrlMapHostRule) GetHosts() []string {
@@ -863,7 +1736,7 @@ type GcpUrlMapPathMatcher struct {
 
 func (x *GcpUrlMapPathMatcher) Reset() {
 	*x = GcpUrlMapPathMatcher{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -875,7 +1748,7 @@ func (x *GcpUrlMapPathMatcher) String() string {
 func (*GcpUrlMapPathMatcher) ProtoMessage() {}
 
 func (x *GcpUrlMapPathMatcher) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -888,7 +1761,7 @@ func (x *GcpUrlMapPathMatcher) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapPathMatcher.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapPathMatcher) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GcpUrlMapPathMatcher) GetName() string {
@@ -976,7 +1849,7 @@ type GcpUrlMapPathRule struct {
 
 func (x *GcpUrlMapPathRule) Reset() {
 	*x = GcpUrlMapPathRule{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -988,7 +1861,7 @@ func (x *GcpUrlMapPathRule) String() string {
 func (*GcpUrlMapPathRule) ProtoMessage() {}
 
 func (x *GcpUrlMapPathRule) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1001,7 +1874,7 @@ func (x *GcpUrlMapPathRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapPathRule.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapPathRule) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GcpUrlMapPathRule) GetPaths() []string {
@@ -1069,7 +1942,7 @@ type GcpUrlMapRouteRule struct {
 
 func (x *GcpUrlMapRouteRule) Reset() {
 	*x = GcpUrlMapRouteRule{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1081,7 +1954,7 @@ func (x *GcpUrlMapRouteRule) String() string {
 func (*GcpUrlMapRouteRule) ProtoMessage() {}
 
 func (x *GcpUrlMapRouteRule) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1094,7 +1967,7 @@ func (x *GcpUrlMapRouteRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapRouteRule.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapRouteRule) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *GcpUrlMapRouteRule) GetPriority() int32 {
@@ -1176,7 +2049,7 @@ type GcpUrlMapRouteRuleMatchRule struct {
 
 func (x *GcpUrlMapRouteRuleMatchRule) Reset() {
 	*x = GcpUrlMapRouteRuleMatchRule{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1188,7 +2061,7 @@ func (x *GcpUrlMapRouteRuleMatchRule) String() string {
 func (*GcpUrlMapRouteRuleMatchRule) ProtoMessage() {}
 
 func (x *GcpUrlMapRouteRuleMatchRule) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1201,7 +2074,7 @@ func (x *GcpUrlMapRouteRuleMatchRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapRouteRuleMatchRule.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapRouteRuleMatchRule) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GcpUrlMapRouteRuleMatchRule) GetPrefixMatch() string {
@@ -1286,7 +2159,7 @@ type GcpUrlMapHeaderMatch struct {
 
 func (x *GcpUrlMapHeaderMatch) Reset() {
 	*x = GcpUrlMapHeaderMatch{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1298,7 +2171,7 @@ func (x *GcpUrlMapHeaderMatch) String() string {
 func (*GcpUrlMapHeaderMatch) ProtoMessage() {}
 
 func (x *GcpUrlMapHeaderMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1311,7 +2184,7 @@ func (x *GcpUrlMapHeaderMatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapHeaderMatch.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapHeaderMatch) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GcpUrlMapHeaderMatch) GetHeaderName() string {
@@ -1383,7 +2256,7 @@ type GcpUrlMapHeaderMatchRange struct {
 
 func (x *GcpUrlMapHeaderMatchRange) Reset() {
 	*x = GcpUrlMapHeaderMatchRange{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1395,7 +2268,7 @@ func (x *GcpUrlMapHeaderMatchRange) String() string {
 func (*GcpUrlMapHeaderMatchRange) ProtoMessage() {}
 
 func (x *GcpUrlMapHeaderMatchRange) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1408,7 +2281,7 @@ func (x *GcpUrlMapHeaderMatchRange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapHeaderMatchRange.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapHeaderMatchRange) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GcpUrlMapHeaderMatchRange) GetRangeStart() int64 {
@@ -1442,7 +2315,7 @@ type GcpUrlMapQueryParameterMatch struct {
 
 func (x *GcpUrlMapQueryParameterMatch) Reset() {
 	*x = GcpUrlMapQueryParameterMatch{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[16]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1454,7 +2327,7 @@ func (x *GcpUrlMapQueryParameterMatch) String() string {
 func (*GcpUrlMapQueryParameterMatch) ProtoMessage() {}
 
 func (x *GcpUrlMapQueryParameterMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[16]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1467,7 +2340,7 @@ func (x *GcpUrlMapQueryParameterMatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapQueryParameterMatch.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapQueryParameterMatch) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GcpUrlMapQueryParameterMatch) GetName() string {
@@ -1512,7 +2385,7 @@ type GcpUrlMapMetadataFilter struct {
 
 func (x *GcpUrlMapMetadataFilter) Reset() {
 	*x = GcpUrlMapMetadataFilter{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[17]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1524,7 +2397,7 @@ func (x *GcpUrlMapMetadataFilter) String() string {
 func (*GcpUrlMapMetadataFilter) ProtoMessage() {}
 
 func (x *GcpUrlMapMetadataFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[17]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1537,7 +2410,7 @@ func (x *GcpUrlMapMetadataFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapMetadataFilter.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapMetadataFilter) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GcpUrlMapMetadataFilter) GetFilterMatchCriteria() string {
@@ -1567,7 +2440,7 @@ type GcpUrlMapMetadataFilterLabel struct {
 
 func (x *GcpUrlMapMetadataFilterLabel) Reset() {
 	*x = GcpUrlMapMetadataFilterLabel{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[18]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1579,7 +2452,7 @@ func (x *GcpUrlMapMetadataFilterLabel) String() string {
 func (*GcpUrlMapMetadataFilterLabel) ProtoMessage() {}
 
 func (x *GcpUrlMapMetadataFilterLabel) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[18]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1592,7 +2465,7 @@ func (x *GcpUrlMapMetadataFilterLabel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapMetadataFilterLabel.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapMetadataFilterLabel) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GcpUrlMapMetadataFilterLabel) GetName() string {
@@ -1637,7 +2510,7 @@ type GcpUrlMapTest struct {
 
 func (x *GcpUrlMapTest) Reset() {
 	*x = GcpUrlMapTest{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1649,7 +2522,7 @@ func (x *GcpUrlMapTest) String() string {
 func (*GcpUrlMapTest) ProtoMessage() {}
 
 func (x *GcpUrlMapTest) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1662,7 +2535,7 @@ func (x *GcpUrlMapTest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapTest.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapTest) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GcpUrlMapTest) GetHost() string {
@@ -1727,7 +2600,7 @@ type GcpUrlMapTestHeader struct {
 
 func (x *GcpUrlMapTestHeader) Reset() {
 	*x = GcpUrlMapTestHeader{}
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1739,7 +2612,7 @@ func (x *GcpUrlMapTestHeader) String() string {
 func (*GcpUrlMapTestHeader) ProtoMessage() {}
 
 func (x *GcpUrlMapTestHeader) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1752,7 +2625,7 @@ func (x *GcpUrlMapTestHeader) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpUrlMapTestHeader.ProtoReflect.Descriptor instead.
 func (*GcpUrlMapTestHeader) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GcpUrlMapTestHeader) GetName() string {
@@ -1773,7 +2646,7 @@ var File_catalog_gcp_gcpurlmap_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	")catalog/gcp/gcpurlmap/v1alpha1/spec.proto\x12\"dev.planton.gcp.gcpurlmap.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x8f\x0e\n" +
+	")catalog/gcp/gcpurlmap/v1alpha1/spec.proto\x12\"dev.planton.gcp.gcpurlmap.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x8c\x12\n" +
 	"\rGcpUrlMapSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x8e\x02\n" +
@@ -1790,9 +2663,12 @@ const file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDesc = "" +
 	"host_rules\x18\t \x03(\v25.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHostRuleR\thostRules\x12]\n" +
 	"\rpath_matchers\x18\n" +
 	" \x03(\v28.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcherR\fpathMatchers\x12G\n" +
-	"\x05tests\x18\v \x03(\v21.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTestR\x05tests:\x9d\x04\xbaH\x99\x04\x1a\xdf\x02\n" +
+	"\x05tests\x18\v \x03(\v21.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTestR\x05tests\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\f \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy:\xdc\x06\xbaH\xd8\x06\x1a\xdf\x02\n" +
 	"\x1aexactly_one_default_target\x12\x7fset exactly one default target: default_service, default_url_redirect, or default_route_action (with weighted_backend_services)\x1a\xbf\x01(has(this.default_service) ? 1 : 0) + (has(this.default_url_redirect) ? 1 : 0) + (has(this.default_route_action) && size(this.default_route_action.weighted_backend_services) > 0 ? 1 : 0) == 1\x1a\xb4\x01\n" +
-	"'default_route_action_conflicts_redirect\x12Ddefault_route_action and default_url_redirect are mutually exclusive\x1aC!(has(this.default_route_action) && has(this.default_url_redirect))\"\xf7\x05\n" +
+	"'default_route_action_conflicts_redirect\x12Ddefault_route_action and default_url_redirect are mutually exclusive\x1aC!(has(this.default_route_action) && has(this.default_url_redirect))\x1a\xbc\x02\n" +
+	" default_no_path_template_rewrite\x12\x81\x01path_template_rewrite is honored only inside a route rule's route_action — GCP rejects it in the URL map's default route action\x1a\x93\x01!has(this.default_route_action) || !has(this.default_route_action.url_rewrite) || this.default_route_action.url_rewrite.path_template_rewrite == ''\"\xf7\x05\n" +
 	"\x14GcpUrlMapUrlRedirect\x12-\n" +
 	"\rhost_redirect\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\fhostRedirect\x12%\n" +
 	"\x0ehttps_redirect\x18\x02 \x01(\bR\rhttpsRedirect\x12-\n" +
@@ -1812,20 +2688,97 @@ const file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDesc = "" +
 	"\vheader_name\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x80\bR\n" +
 	"headerName\x12.\n" +
 	"\fheader_value\x18\x02 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x80\bR\vheaderValue\x12\x18\n" +
-	"\areplace\x18\x03 \x01(\bR\areplace\"\xf1\x01\n" +
+	"\areplace\x18\x03 \x01(\bR\areplace\"\xac\a\n" +
 	"\x14GcpUrlMapRouteAction\x12\x7f\n" +
 	"\x19weighted_backend_services\x18\x01 \x03(\v2C.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapWeightedBackendServiceR\x17weightedBackendServices\x12X\n" +
 	"\vurl_rewrite\x18\x02 \x01(\v27.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRewriteR\n" +
-	"urlRewrite\"\xcc\x01\n" +
+	"urlRewrite\x12O\n" +
+	"\atimeout\x18\x03 \x01(\v25.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDurationR\atimeout\x12[\n" +
+	"\fretry_policy\x18\x04 \x01(\v28.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRetryPolicyR\vretryPolicy\x12t\n" +
+	"\x15request_mirror_policy\x18\x05 \x01(\v2@.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRequestMirrorPolicyR\x13requestMirrorPolicy\x12X\n" +
+	"\vcors_policy\x18\x06 \x01(\v27.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCorsPolicyR\n" +
+	"corsPolicy\x12w\n" +
+	"\x16fault_injection_policy\x18\a \x01(\v2A.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapFaultInjectionPolicyR\x14faultInjectionPolicy\x12e\n" +
+	"\x13max_stream_duration\x18\b \x01(\v25.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDurationR\x11maxStreamDuration\x12[\n" +
+	"\fcache_policy\x18\t \x01(\v28.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCachePolicyR\vcachePolicy\"\xac\x02\n" +
 	"\x1fGcpUrlMapWeightedBackendService\x12\x84\x01\n" +
 	"\x0fbackend_service\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x17\x92\xd4a\x18status.outputs.self_linkR\x0ebackendService\x12\"\n" +
 	"\x06weight\x18\x02 \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xe8\a(\x00R\x06weight\"\x88\x03\n" +
+	"\xbaH\a\x1a\x05\x18\xe8\a(\x00R\x06weight\x12^\n" +
+	"\rheader_action\x18\x03 \x01(\v29.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderActionR\fheaderAction\"\x88\x03\n" +
 	"\x13GcpUrlMapUrlRewrite\x12+\n" +
 	"\fhost_rewrite\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\vhostRewrite\x128\n" +
 	"\x13path_prefix_rewrite\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x11pathPrefixRewrite\x12<\n" +
 	"\x15path_template_rewrite\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x13pathTemplateRewrite:\xcb\x01\xbaH\xc7\x01\x1a\xc4\x01\n" +
-	"$rewrite_prefix_or_template_exclusive\x12Xpath_prefix_rewrite and path_template_rewrite are mutually exclusive — set at most one\x1aBthis.path_prefix_rewrite == '' || this.path_template_rewrite == ''\"\x98\x02\n" +
+	"$rewrite_prefix_or_template_exclusive\x12Xpath_prefix_rewrite and path_template_rewrite are mutually exclusive — set at most one\x1aBthis.path_prefix_rewrite == '' || this.path_template_rewrite == ''\"b\n" +
+	"\x11GcpUrlMapDuration\x12(\n" +
+	"\aseconds\x18\x01 \x01(\x03B\x0e\xbaH\v\"\t\x18\x80\xbc\xaeΗ\t(\x00R\aseconds\x12#\n" +
+	"\x05nanos\x18\x02 \x01(\x05B\r\xbaH\n" +
+	"\x1a\b\x18\xff\x93\xeb\xdc\x03(\x00R\x05nanos\"\xc1\x04\n" +
+	"\x14GcpUrlMapRetryPolicy\x12(\n" +
+	"\vnum_retries\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\n" +
+	"numRetries\x12\x9f\x03\n" +
+	"\x10retry_conditions\x18\x02 \x03(\tB\xf3\x02\xbaH\xef\x02\xba\x01\xeb\x02\n" +
+	"\x16valid_retry_conditions\x12\xa6\x01each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable\x1a\xa7\x01this.all(c, c in ['5xx', 'gateway-error', 'connect-failure', 'retriable-4xx', 'refused-stream', 'cancelled', 'deadline-exceeded', 'resource-exhausted', 'unavailable'])R\x0fretryConditions\x12]\n" +
+	"\x0fper_try_timeout\x18\x03 \x01(\v25.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDurationR\rperTryTimeout\"\xa5\x01\n" +
+	"\x1cGcpUrlMapRequestMirrorPolicy\x12\x84\x01\n" +
+	"\x0fbackend_service\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x17\x92\xd4a\x18status.outputs.self_linkR\x0ebackendService\"\x8e\x03\n" +
+	"\x13GcpUrlMapCorsPolicy\x12+\n" +
+	"\x11allow_credentials\x18\x01 \x01(\bR\x10allowCredentials\x121\n" +
+	"\rallow_headers\x18\x02 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\fallowHeaders\x121\n" +
+	"\rallow_methods\x18\x03 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\fallowMethods\x12>\n" +
+	"\x14allow_origin_regexes\x18\x04 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x12allowOriginRegexes\x121\n" +
+	"\rallow_origins\x18\x05 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\fallowOrigins\x12\x1a\n" +
+	"\bdisabled\x18\x06 \x01(\bR\bdisabled\x123\n" +
+	"\x0eexpose_headers\x18\a \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\rexposeHeaders\x12 \n" +
+	"\amax_age\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x06maxAge\"\xbd\x01\n" +
+	"\x1dGcpUrlMapFaultInjectionPolicy\x12M\n" +
+	"\x05abort\x18\x01 \x01(\v27.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapFaultAbortR\x05abort\x12M\n" +
+	"\x05delay\x18\x02 \x01(\v27.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapFaultDelayR\x05delay\"\xe5\x01\n" +
+	"\x13GcpUrlMapFaultAbort\x12\x94\x01\n" +
+	"\vhttp_status\x18\x01 \x01(\x05Bs\xbaHp\xba\x01m\n" +
+	"\x17valid_fault_http_status\x12'http_status must be between 200 and 599\x1a)this == 0 || (this >= 200 && this <= 599)R\n" +
+	"httpStatus\x127\n" +
+	"\n" +
+	"percentage\x18\x02 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00Y@)\x00\x00\x00\x00\x00\x00\x00\x00R\n" +
+	"percentage\"\xa6\x01\n" +
+	"\x13GcpUrlMapFaultDelay\x12V\n" +
+	"\vfixed_delay\x18\x01 \x01(\v25.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDurationR\n" +
+	"fixedDelay\x127\n" +
+	"\n" +
+	"percentage\x18\x02 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00Y@)\x00\x00\x00\x00\x00\x00\x00\x00R\n" +
+	"percentage\"\xa5\n" +
+	"\n" +
+	"\x14GcpUrlMapCachePolicy\x12\xdc\x01\n" +
+	"\n" +
+	"cache_mode\x18\x01 \x01(\tB\xbc\x01\xbaH\xb8\x01\xba\x01\xb4\x01\n" +
+	"\x10valid_cache_mode\x12Kcache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL\x1aSthis == '' || this in ['CACHE_ALL_STATIC', 'USE_ORIGIN_HEADERS', 'FORCE_CACHE_ALL']R\tcacheMode\x12V\n" +
+	"!cache_bypass_request_header_names\x18\x02 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x1dcacheBypassRequestHeaderNames\x12)\n" +
+	"\x10negative_caching\x18\x03 \x01(\bR\x0fnegativeCaching\x12-\n" +
+	"\x12request_coalescing\x18\x04 \x01(\bR\x11requestCoalescing\x12e\n" +
+	"\x10cache_key_policy\x18\x05 \x01(\v2;.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCacheKeyPolicyR\x0ecacheKeyPolicy\x12T\n" +
+	"\n" +
+	"client_ttl\x18\x06 \x01(\v25.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDurationR\tclientTtl\x12V\n" +
+	"\vdefault_ttl\x18\a \x01(\v25.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDurationR\n" +
+	"defaultTtl\x12N\n" +
+	"\amax_ttl\x18\b \x01(\v25.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDurationR\x06maxTtl\x12a\n" +
+	"\x11serve_while_stale\x18\t \x01(\v25.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDurationR\x0fserveWhileStale\x12z\n" +
+	"\x17negative_caching_policy\x18\n" +
+	" \x03(\v2B.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapNegativeCachingPolicyR\x15negativeCachingPolicy:\xb7\x02\xbaH\xb3\x02\x1a\xb0\x02\n" +
+	"\x1dorigin_headers_mode_owns_ttls\x12\x9a\x01with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)\x1arthis.cache_mode != 'USE_ORIGIN_HEADERS' || (!has(this.client_ttl) && !has(this.default_ttl) && !has(this.max_ttl))\"\x9d\x05\n" +
+	"\x17GcpUrlMapCacheKeyPolicy\x12H\n" +
+	"\x19excluded_query_parameters\x18\x01 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x17excludedQueryParameters\x12!\n" +
+	"\finclude_host\x18\x02 \x01(\bR\vincludeHost\x12)\n" +
+	"\x10include_protocol\x18\x03 \x01(\bR\x0fincludeProtocol\x120\n" +
+	"\x14include_query_string\x18\x04 \x01(\bR\x12includeQueryString\x12@\n" +
+	"\x15included_cookie_names\x18\x05 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x13includedCookieNames\x12@\n" +
+	"\x15included_header_names\x18\x06 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x13includedHeaderNames\x12H\n" +
+	"\x19included_query_parameters\x18\a \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x17includedQueryParameters:\xe9\x01\xbaH\xe5\x01\x1a\xe2\x01\n" +
+	"\x1fquery_params_include_or_exclude\x12gincluded_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list\x1aVsize(this.included_query_parameters) == 0 || size(this.excluded_query_parameters) == 0\"\xbf\x02\n" +
+	"\x1eGcpUrlMapNegativeCachingPolicy\x12\xd3\x01\n" +
+	"\x04code\x18\x01 \x01(\x05B\xbe\x01\xbaH\xba\x01\xba\x01\xb6\x01\n" +
+	"\x1bvalid_negative_caching_code\x12Icode must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501\x1aLthis == 0 || this in [300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501]R\x04code\x12G\n" +
+	"\x03ttl\x18\x02 \x01(\v25.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDurationR\x03ttl\"\x98\x02\n" +
 	"\"GcpUrlMapCustomErrorResponsePolicy\x12z\n" +
 	"\rerror_service\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd0\x17\x92\xd4a\x18status.outputs.self_linkR\ferrorService\x12v\n" +
 	"\x14error_response_rules\x18\x02 \x03(\v2D.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponseRuleR\x12errorResponseRules\"\xc5\x02\n" +
@@ -1839,7 +2792,7 @@ const file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDesc = "" +
 	"\x05hosts\x18\x01 \x03(\tB\x0e\xbaH\v\x92\x01\b\b\x01\"\x04r\x02\x10\x01R\x05hosts\x12-\n" +
 	"\fpath_matcher\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vpathMatcher\x12*\n" +
-	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\"\xf6\t\n" +
+	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\"\xd9\x0f\n" +
 	"\x14GcpUrlMapPathMatcher\x12 \n" +
 	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18?R\x04name\x12[\n" +
 	"\x0fdefault_service\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x0edefaultService\x12j\n" +
@@ -1851,16 +2804,21 @@ const file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
 	"path_rules\x18\b \x03(\v25.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRuleR\tpathRules\x12W\n" +
 	"\vroute_rules\x18\t \x03(\v26.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRuleR\n" +
-	"routeRules:\xb2\x03\xbaH\xae\x03\x1a\x8f\x02\n" +
-	"'path_matcher_default_target_at_most_one\x12da path matcher may set at most one of default_service, default_url_redirect, or default_route_action\x1a~(has(this.default_service) ? 1 : 0) + (has(this.default_url_redirect) ? 1 : 0) + (has(this.default_route_action) ? 1 : 0) <= 1\x1a\x99\x01\n" +
-	"\x1cpath_matcher_rules_exclusive\x12>a path matcher uses either path_rules or route_rules, not both\x1a9size(this.path_rules) == 0 || size(this.route_rules) == 0\"\xa7\x05\n" +
+	"routeRules:\x95\t\xbaH\x91\t\x1a\xc8\x03\n" +
+	"'path_matcher_default_target_at_most_one\x12\xda\x01a path matcher may set at most one default target: default_service, default_url_redirect, or default_route_action with weighted_backend_services (a route action carrying only sub-policies may accompany default_service)\x1a\xbf\x01(has(this.default_service) ? 1 : 0) + (has(this.default_url_redirect) ? 1 : 0) + (has(this.default_route_action) && size(this.default_route_action.weighted_backend_services) > 0 ? 1 : 0) <= 1\x1a\xe0\x01\n" +
+	",path_matcher_route_action_conflicts_redirect\x12kdefault_route_action and default_url_redirect are mutually exclusive — a redirect never reaches a backend\x1aC!(has(this.default_route_action) && has(this.default_url_redirect))\x1a\xc4\x02\n" +
+	"%path_matcher_no_path_template_rewrite\x12\x84\x01path_template_rewrite is honored only inside a route rule's route_action — GCP rejects it in a path matcher's default route action\x1a\x93\x01!has(this.default_route_action) || !has(this.default_route_action.url_rewrite) || this.default_route_action.url_rewrite.path_template_rewrite == ''\x1a\x99\x01\n" +
+	"\x1cpath_matcher_rules_exclusive\x12>a path matcher uses either path_rules or route_rules, not both\x1a9size(this.path_rules) == 0 || size(this.route_rules) == 0\"\xa8\n" +
+	"\n" +
 	"\x11GcpUrlMapPathRule\x12$\n" +
 	"\x05paths\x18\x01 \x03(\tB\x0e\xbaH\v\x92\x01\b\b\x01\"\x04r\x02\x10\x01R\x05paths\x12L\n" +
 	"\aservice\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\aservice\x12[\n" +
 	"\froute_action\x18\x03 \x01(\v28.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteActionR\vrouteAction\x12[\n" +
 	"\furl_redirect\x18\x04 \x01(\v28.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRedirectR\vurlRedirect\x12\x87\x01\n" +
-	"\x1ccustom_error_response_policy\x18\x05 \x01(\v2F.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicyR\x19customErrorResponsePolicy:\xd9\x01\xbaH\xd5\x01\x1a\xd2\x01\n" +
-	"\x1cpath_rule_target_exactly_one\x12Ja path rule must set exactly one of service, url_redirect, or route_action\x1af(has(this.service) ? 1 : 0) + (has(this.url_redirect) ? 1 : 0) + (has(this.route_action) ? 1 : 0) == 1\"\x98\a\n" +
+	"\x1ccustom_error_response_policy\x18\x05 \x01(\v2F.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicyR\x19customErrorResponsePolicy:\xda\x06\xbaH\xd6\x06\x1a\xf4\x02\n" +
+	"\x1cpath_rule_target_exactly_one\x12\xb1\x01a path rule must have exactly one target: service, url_redirect, or route_action with weighted_backend_services (a route action carrying only sub-policies may accompany service)\x1a\x9f\x01(has(this.service) ? 1 : 0) + (has(this.url_redirect) ? 1 : 0) + (has(this.route_action) && size(this.route_action.weighted_backend_services) > 0 ? 1 : 0) == 1\x1a\xbd\x01\n" +
+	")path_rule_route_action_conflicts_redirect\x12[route_action and url_redirect are mutually exclusive — a redirect never reaches a backend\x1a3!(has(this.route_action) && has(this.url_redirect))\x1a\x9c\x02\n" +
+	"\"path_rule_no_path_template_rewrite\x12ypath_template_rewrite is honored only inside a route rule's route_action — GCP rejects it in a path rule's route action\x1a{!has(this.route_action) || !has(this.route_action.url_rewrite) || this.route_action.url_rewrite.path_template_rewrite == ''\"\xfb\t\n" +
 	"\x12GcpUrlMapRouteRule\x12#\n" +
 	"\bpriority\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\bpriority\x12o\n" +
 	"\aservice\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd1\x17\x92\xd4a\x18status.outputs.self_linkR\aservice\x12j\n" +
@@ -1869,8 +2827,9 @@ const file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDesc = "" +
 	"\froute_action\x18\x04 \x01(\v28.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteActionR\vrouteAction\x12[\n" +
 	"\furl_redirect\x18\x05 \x01(\v28.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRedirectR\vurlRedirect\x12^\n" +
 	"\rheader_action\x18\x06 \x01(\v29.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderActionR\fheaderAction\x12\x87\x01\n" +
-	"\x1ccustom_error_response_policy\x18\a \x01(\v2F.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicyR\x19customErrorResponsePolicy:\xdb\x01\xbaH\xd7\x01\x1a\xd4\x01\n" +
-	"\x1droute_rule_target_exactly_one\x12Ka route rule must set exactly one of service, url_redirect, or route_action\x1af(has(this.service) ? 1 : 0) + (has(this.url_redirect) ? 1 : 0) + (has(this.route_action) ? 1 : 0) == 1\"\xef\x06\n" +
+	"\x1ccustom_error_response_policy\x18\a \x01(\v2F.dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicyR\x19customErrorResponsePolicy:\xbe\x04\xbaH\xba\x04\x1a\xf6\x02\n" +
+	"\x1droute_rule_target_exactly_one\x12\xb2\x01a route rule must have exactly one target: service, url_redirect, or route_action with weighted_backend_services (a route action carrying only sub-policies may accompany service)\x1a\x9f\x01(has(this.service) ? 1 : 0) + (has(this.url_redirect) ? 1 : 0) + (has(this.route_action) && size(this.route_action.weighted_backend_services) > 0 ? 1 : 0) == 1\x1a\xbe\x01\n" +
+	"*route_rule_route_action_conflicts_redirect\x12[route_action and url_redirect are mutually exclusive — a redirect never reaches a backend\x1a3!(has(this.route_action) && has(this.url_redirect))\"\xef\x06\n" +
 	"\x1bGcpUrlMapRouteRuleMatchRule\x12+\n" +
 	"\fprefix_match\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vprefixMatch\x120\n" +
 	"\x0ffull_path_match\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\rfullPathMatch\x12)\n" +
@@ -1947,7 +2906,7 @@ func file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
 var file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpUrlMapSpec)(nil),                      // 0: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec
 	(*GcpUrlMapUrlRedirect)(nil),               // 1: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRedirect
@@ -1956,68 +2915,98 @@ var file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpUrlMapRouteAction)(nil),               // 4: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction
 	(*GcpUrlMapWeightedBackendService)(nil),    // 5: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapWeightedBackendService
 	(*GcpUrlMapUrlRewrite)(nil),                // 6: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRewrite
-	(*GcpUrlMapCustomErrorResponsePolicy)(nil), // 7: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy
-	(*GcpUrlMapCustomErrorResponseRule)(nil),   // 8: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponseRule
-	(*GcpUrlMapHostRule)(nil),                  // 9: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHostRule
-	(*GcpUrlMapPathMatcher)(nil),               // 10: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher
-	(*GcpUrlMapPathRule)(nil),                  // 11: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRule
-	(*GcpUrlMapRouteRule)(nil),                 // 12: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule
-	(*GcpUrlMapRouteRuleMatchRule)(nil),        // 13: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRuleMatchRule
-	(*GcpUrlMapHeaderMatch)(nil),               // 14: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderMatch
-	(*GcpUrlMapHeaderMatchRange)(nil),          // 15: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderMatchRange
-	(*GcpUrlMapQueryParameterMatch)(nil),       // 16: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapQueryParameterMatch
-	(*GcpUrlMapMetadataFilter)(nil),            // 17: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapMetadataFilter
-	(*GcpUrlMapMetadataFilterLabel)(nil),       // 18: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapMetadataFilterLabel
-	(*GcpUrlMapTest)(nil),                      // 19: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTest
-	(*GcpUrlMapTestHeader)(nil),                // 20: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTestHeader
-	(*v1.StringValueOrRef)(nil),                // 21: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpUrlMapDuration)(nil),                  // 7: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDuration
+	(*GcpUrlMapRetryPolicy)(nil),               // 8: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRetryPolicy
+	(*GcpUrlMapRequestMirrorPolicy)(nil),       // 9: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRequestMirrorPolicy
+	(*GcpUrlMapCorsPolicy)(nil),                // 10: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCorsPolicy
+	(*GcpUrlMapFaultInjectionPolicy)(nil),      // 11: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapFaultInjectionPolicy
+	(*GcpUrlMapFaultAbort)(nil),                // 12: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapFaultAbort
+	(*GcpUrlMapFaultDelay)(nil),                // 13: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapFaultDelay
+	(*GcpUrlMapCachePolicy)(nil),               // 14: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCachePolicy
+	(*GcpUrlMapCacheKeyPolicy)(nil),            // 15: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCacheKeyPolicy
+	(*GcpUrlMapNegativeCachingPolicy)(nil),     // 16: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapNegativeCachingPolicy
+	(*GcpUrlMapCustomErrorResponsePolicy)(nil), // 17: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy
+	(*GcpUrlMapCustomErrorResponseRule)(nil),   // 18: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponseRule
+	(*GcpUrlMapHostRule)(nil),                  // 19: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHostRule
+	(*GcpUrlMapPathMatcher)(nil),               // 20: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher
+	(*GcpUrlMapPathRule)(nil),                  // 21: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRule
+	(*GcpUrlMapRouteRule)(nil),                 // 22: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule
+	(*GcpUrlMapRouteRuleMatchRule)(nil),        // 23: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRuleMatchRule
+	(*GcpUrlMapHeaderMatch)(nil),               // 24: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderMatch
+	(*GcpUrlMapHeaderMatchRange)(nil),          // 25: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderMatchRange
+	(*GcpUrlMapQueryParameterMatch)(nil),       // 26: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapQueryParameterMatch
+	(*GcpUrlMapMetadataFilter)(nil),            // 27: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapMetadataFilter
+	(*GcpUrlMapMetadataFilterLabel)(nil),       // 28: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapMetadataFilterLabel
+	(*GcpUrlMapTest)(nil),                      // 29: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTest
+	(*GcpUrlMapTestHeader)(nil),                // 30: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTestHeader
+	(*v1.StringValueOrRef)(nil),                // 31: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_depIdxs = []int32{
-	21, // 0: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 1: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.default_service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	31, // 0: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	31, // 1: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.default_service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 2: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.default_url_redirect:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRedirect
 	4,  // 3: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.default_route_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction
-	7,  // 4: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.default_custom_error_response_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy
+	17, // 4: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.default_custom_error_response_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy
 	2,  // 5: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.header_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderAction
-	9,  // 6: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.host_rules:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHostRule
-	10, // 7: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.path_matchers:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher
-	19, // 8: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.tests:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTest
+	19, // 6: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.host_rules:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHostRule
+	20, // 7: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.path_matchers:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher
+	29, // 8: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapSpec.tests:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTest
 	3,  // 9: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderAction.request_headers_to_add:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderValue
 	3,  // 10: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderAction.response_headers_to_add:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderValue
 	5,  // 11: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction.weighted_backend_services:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapWeightedBackendService
 	6,  // 12: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction.url_rewrite:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRewrite
-	21, // 13: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapWeightedBackendService.backend_service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 14: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy.error_service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 15: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy.error_response_rules:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponseRule
-	21, // 16: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.default_service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 17: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.default_url_redirect:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRedirect
-	4,  // 18: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.default_route_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction
-	7,  // 19: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.default_custom_error_response_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy
-	2,  // 20: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.header_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderAction
-	11, // 21: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.path_rules:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRule
-	12, // 22: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.route_rules:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule
-	21, // 23: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRule.service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 24: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRule.route_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction
-	1,  // 25: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRule.url_redirect:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRedirect
-	7,  // 26: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRule.custom_error_response_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy
-	21, // 27: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule.service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 28: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule.match_rules:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRuleMatchRule
-	4,  // 29: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule.route_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction
-	1,  // 30: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule.url_redirect:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRedirect
-	2,  // 31: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule.header_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderAction
-	7,  // 32: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule.custom_error_response_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy
-	14, // 33: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRuleMatchRule.header_matches:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderMatch
-	16, // 34: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRuleMatchRule.query_parameter_matches:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapQueryParameterMatch
-	17, // 35: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRuleMatchRule.metadata_filters:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapMetadataFilter
-	15, // 36: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderMatch.range_match:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderMatchRange
-	18, // 37: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapMetadataFilter.filter_labels:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapMetadataFilterLabel
-	21, // 38: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTest.service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	20, // 39: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTest.headers:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTestHeader
-	40, // [40:40] is the sub-list for method output_type
-	40, // [40:40] is the sub-list for method input_type
-	40, // [40:40] is the sub-list for extension type_name
-	40, // [40:40] is the sub-list for extension extendee
-	0,  // [0:40] is the sub-list for field type_name
+	7,  // 13: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction.timeout:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDuration
+	8,  // 14: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction.retry_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRetryPolicy
+	9,  // 15: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction.request_mirror_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRequestMirrorPolicy
+	10, // 16: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction.cors_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCorsPolicy
+	11, // 17: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction.fault_injection_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapFaultInjectionPolicy
+	7,  // 18: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction.max_stream_duration:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDuration
+	14, // 19: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction.cache_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCachePolicy
+	31, // 20: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapWeightedBackendService.backend_service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 21: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapWeightedBackendService.header_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderAction
+	7,  // 22: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRetryPolicy.per_try_timeout:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDuration
+	31, // 23: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRequestMirrorPolicy.backend_service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 24: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapFaultInjectionPolicy.abort:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapFaultAbort
+	13, // 25: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapFaultInjectionPolicy.delay:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapFaultDelay
+	7,  // 26: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapFaultDelay.fixed_delay:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDuration
+	15, // 27: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCachePolicy.cache_key_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCacheKeyPolicy
+	7,  // 28: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCachePolicy.client_ttl:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDuration
+	7,  // 29: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCachePolicy.default_ttl:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDuration
+	7,  // 30: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCachePolicy.max_ttl:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDuration
+	7,  // 31: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCachePolicy.serve_while_stale:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDuration
+	16, // 32: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCachePolicy.negative_caching_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapNegativeCachingPolicy
+	7,  // 33: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapNegativeCachingPolicy.ttl:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapDuration
+	31, // 34: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy.error_service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 35: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy.error_response_rules:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponseRule
+	31, // 36: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.default_service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 37: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.default_url_redirect:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRedirect
+	4,  // 38: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.default_route_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction
+	17, // 39: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.default_custom_error_response_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy
+	2,  // 40: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.header_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderAction
+	21, // 41: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.path_rules:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRule
+	22, // 42: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathMatcher.route_rules:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule
+	31, // 43: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRule.service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 44: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRule.route_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction
+	1,  // 45: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRule.url_redirect:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRedirect
+	17, // 46: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapPathRule.custom_error_response_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy
+	31, // 47: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule.service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	23, // 48: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule.match_rules:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRuleMatchRule
+	4,  // 49: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule.route_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteAction
+	1,  // 50: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule.url_redirect:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapUrlRedirect
+	2,  // 51: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule.header_action:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderAction
+	17, // 52: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRule.custom_error_response_policy:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapCustomErrorResponsePolicy
+	24, // 53: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRuleMatchRule.header_matches:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderMatch
+	26, // 54: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRuleMatchRule.query_parameter_matches:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapQueryParameterMatch
+	27, // 55: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapRouteRuleMatchRule.metadata_filters:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapMetadataFilter
+	25, // 56: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderMatch.range_match:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapHeaderMatchRange
+	28, // 57: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapMetadataFilter.filter_labels:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapMetadataFilterLabel
+	31, // 58: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTest.service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	30, // 59: dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTest.headers:type_name -> dev.planton.gcp.gcpurlmap.v1alpha1.GcpUrlMapTestHeader
+	60, // [60:60] is the sub-list for method output_type
+	60, // [60:60] is the sub-list for method input_type
+	60, // [60:60] is the sub-list for extension type_name
+	60, // [60:60] is the sub-list for extension extendee
+	0,  // [0:60] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_init() }
@@ -2031,7 +3020,7 @@ func file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpurlmap_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

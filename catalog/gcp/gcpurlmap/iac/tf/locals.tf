@@ -33,17 +33,29 @@ locals {
     strip_query            = var.spec.default_url_redirect.strip_query
   }
 
+  # Route-action sub-policies (timeout, retry, mirror, CORS, fault
+  # injection, stream duration, CDN cache) pass through as typed objects;
+  # empty-vs-null conversion for their leaves happens at render time in
+  # main.tf, keeping this file to the string/name normalization concern.
   default_route_action = var.spec.default_route_action == null ? null : {
     weighted_backend_services = [
       for w in var.spec.default_route_action.weighted_backend_services : {
         backend_service = w.backend_service
         weight          = w.weight
+        header_action   = w.header_action
       }
     ]
     url_rewrite = var.spec.default_route_action.url_rewrite == null ? null : {
       host_rewrite        = try(var.spec.default_route_action.url_rewrite.host_rewrite, "") != "" ? var.spec.default_route_action.url_rewrite.host_rewrite : null
       path_prefix_rewrite = try(var.spec.default_route_action.url_rewrite.path_prefix_rewrite, "") != "" ? var.spec.default_route_action.url_rewrite.path_prefix_rewrite : null
     }
+    timeout                = var.spec.default_route_action.timeout
+    retry_policy           = var.spec.default_route_action.retry_policy
+    request_mirror_policy  = var.spec.default_route_action.request_mirror_policy
+    cors_policy            = var.spec.default_route_action.cors_policy
+    fault_injection_policy = var.spec.default_route_action.fault_injection_policy
+    max_stream_duration    = var.spec.default_route_action.max_stream_duration
+    cache_policy           = var.spec.default_route_action.cache_policy
   }
 
   default_custom_error_response_policy = var.spec.default_custom_error_response_policy == null ? null : {
@@ -102,12 +114,20 @@ locals {
           for w in matcher.default_route_action.weighted_backend_services : {
             backend_service = w.backend_service
             weight          = w.weight
+            header_action   = w.header_action
           }
         ]
         url_rewrite = matcher.default_route_action.url_rewrite == null ? null : {
           host_rewrite        = try(matcher.default_route_action.url_rewrite.host_rewrite, "") != "" ? matcher.default_route_action.url_rewrite.host_rewrite : null
           path_prefix_rewrite = try(matcher.default_route_action.url_rewrite.path_prefix_rewrite, "") != "" ? matcher.default_route_action.url_rewrite.path_prefix_rewrite : null
         }
+        timeout                = matcher.default_route_action.timeout
+        retry_policy           = matcher.default_route_action.retry_policy
+        request_mirror_policy  = matcher.default_route_action.request_mirror_policy
+        cors_policy            = matcher.default_route_action.cors_policy
+        fault_injection_policy = matcher.default_route_action.fault_injection_policy
+        max_stream_duration    = matcher.default_route_action.max_stream_duration
+        cache_policy           = matcher.default_route_action.cache_policy
       }
       default_custom_error_response_policy = matcher.default_custom_error_response_policy == null ? null : {
         error_service = try(matcher.default_custom_error_response_policy.error_service, "") != "" ? matcher.default_custom_error_response_policy.error_service : null
@@ -154,12 +174,20 @@ locals {
               for w in rule.route_action.weighted_backend_services : {
                 backend_service = w.backend_service
                 weight          = w.weight
+                header_action   = w.header_action
               }
             ]
             url_rewrite = rule.route_action.url_rewrite == null ? null : {
               host_rewrite        = try(rule.route_action.url_rewrite.host_rewrite, "") != "" ? rule.route_action.url_rewrite.host_rewrite : null
               path_prefix_rewrite = try(rule.route_action.url_rewrite.path_prefix_rewrite, "") != "" ? rule.route_action.url_rewrite.path_prefix_rewrite : null
             }
+            timeout                = rule.route_action.timeout
+            retry_policy           = rule.route_action.retry_policy
+            request_mirror_policy  = rule.route_action.request_mirror_policy
+            cors_policy            = rule.route_action.cors_policy
+            fault_injection_policy = rule.route_action.fault_injection_policy
+            max_stream_duration    = rule.route_action.max_stream_duration
+            cache_policy           = rule.route_action.cache_policy
           }
           custom_error_response_policy = rule.custom_error_response_policy == null ? null : {
             error_service = try(rule.custom_error_response_policy.error_service, "") != "" ? rule.custom_error_response_policy.error_service : null
@@ -190,6 +218,7 @@ locals {
               for w in rule.route_action.weighted_backend_services : {
                 backend_service = w.backend_service
                 weight          = w.weight
+                header_action   = w.header_action
               }
             ]
             url_rewrite = rule.route_action.url_rewrite == null ? null : {
@@ -197,6 +226,13 @@ locals {
               path_prefix_rewrite   = try(rule.route_action.url_rewrite.path_prefix_rewrite, "") != "" ? rule.route_action.url_rewrite.path_prefix_rewrite : null
               path_template_rewrite = try(rule.route_action.url_rewrite.path_template_rewrite, "") != "" ? rule.route_action.url_rewrite.path_template_rewrite : null
             }
+            timeout                = rule.route_action.timeout
+            retry_policy           = rule.route_action.retry_policy
+            request_mirror_policy  = rule.route_action.request_mirror_policy
+            cors_policy            = rule.route_action.cors_policy
+            fault_injection_policy = rule.route_action.fault_injection_policy
+            max_stream_duration    = rule.route_action.max_stream_duration
+            cache_policy           = rule.route_action.cache_policy
           }
           header_action = rule.header_action == null ? null : {
             request_headers_to_add = [

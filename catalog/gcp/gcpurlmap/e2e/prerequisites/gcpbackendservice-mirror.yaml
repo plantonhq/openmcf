@@ -1,0 +1,28 @@
+# Extra-instance GcpBackendService fixture composed by the URL map's
+# features scenario: the request-mirror target. A mirror backend must be a
+# distinct service from the primary weighted arm, on the same
+# EXTERNAL_MANAGED scheme; no CDN — it only absorbs the fire-and-forget
+# mirrored copies.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpBackendService
+metadata:
+  name: planton-oss-e2e-gcpbs-mirror
+  id: planton-oss-e2e-gcpbs-mirror
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpbackendservice
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral EXTERNAL_MANAGED mirror-target backend for the URL map features E2E scenario; safe to delete
+  protocol: HTTP
+  loadBalancingScheme: EXTERNAL_MANAGED
+  healthCheck:
+    valueFrom:
+      kind: GcpHealthCheck
+      name: planton-oss-e2e-gcphc-prereq
+      fieldPath: status.outputs.self_link

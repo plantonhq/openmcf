@@ -76,7 +76,6 @@ entries:
   - kind:GcpSubnetwork
   - kind:GcpTargetHttpProxy
   - kind:GcpTargetHttpsProxy
-  - kind:GcpUrlMap
   - kind:GcpVertexAiDeployedIndex
   - kind:GcpVertexAiEndpoint
   - kind:GcpVertexAiIndex
