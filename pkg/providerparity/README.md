@@ -86,11 +86,16 @@ specExclusions:                     # spec fields with no provider counterpart
 ```
 
 Spec references use the census's `spec.`-rooted proto-name dot paths (the
-same path grammar as `pkg/secretcoverage`). Manifest entries referencing
-surface that no longer exists (after a pin bump or spec change) are
-findings, not warnings — after a pin bump those failures ARE the migration
-work list. Malformed manifests fail hard at load: judgment half-read is
-worse than judgment absent.
+same path grammar as `pkg/secretcoverage`). Mappings are many-to-many in
+both directions: one spec map field may be realized by several arguments
+(the name/value idiom — record one mapping per argument), and one
+map-typed argument may realize several spec fields (the FAN-IN idiom —
+record one mapping per spec field on the same arg; the argument counts
+once, every mapped field is covered in reverse). Manifest entries
+referencing surface that no longer exists (after a pin bump or spec
+change) are findings, not warnings — after a pin bump those failures ARE
+the migration work list. Malformed manifests fail hard at load: judgment
+half-read is worse than judgment absent.
 
 **Breadth (per GA resource).** Every GA resource carries exactly one
 disposition. Two classes are computed — `modeled` (the module census proves

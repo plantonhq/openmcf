@@ -1,6 +1,6 @@
 # GCP Cloud Run Job
 
-Deploys a Cloud Run job — a run-to-completion container workload that executes a fixed number of parallel tasks and exits. Unlike [GcpCloudRun](/docs/catalog/gcp/gcpcloudrun) (request-serving, traffic splitting, probes), a job is batch-shaped: define the task template once, then each execution stamps out `taskCount` tasks with up to `parallelism` running concurrently.
+Deploys a Cloud Run job — a run-to-completion container workload that executes a fixed number of parallel tasks and exits. Unlike [GcpCloudRun](/docs/catalog/gcp/gcpcloudrun) (request-serving, traffic splitting, liveness/readiness probes), a job is batch-shaped: define the task template once, then each execution stamps out `taskCount` tasks with up to `parallelism` running concurrently. A startup probe (HTTP/TCP/gRPC) is supported — it gates task start, and a container that never passes is shut down and retried per `maxRetries`.
 
 ## What Gets Created
 
@@ -68,9 +68,12 @@ gcloud run jobs execute my-etl --region us-central1
 |-------|------|---------|-------------|
 | `projectId` | `StringValueOrRef` | provider default | GCP project. Can reference GcpProject. |
 | `jobName` | `string` | `metadata.name` | Job name in GCP (1–63 chars). Immutable. |
-| `labels` | `map` | — | User labels; merged beneath platform attribution. |
-| `annotations` | `map` | — | Unstructured metadata for external tools. |
+| `labels` | `map` | — | User labels on the job object; merged beneath platform attribution. |
+| `annotations` | `map` | — | Unstructured metadata for external tools, on the job object. |
+| `executionLabels` | `map` | — | Labels stamped on every execution the job creates. |
+| `executionAnnotations` | `map` | — | Annotations stamped on every execution. |
 | `deletionProtection` | `bool` | `true` | Destroy fails until explicitly set false. |
+| `deletionPolicy` | `string` | `DELETE` | Destroy stance: `PREVENT` fails destroys; `ABANDON` unmanages without deleting. |
 
 ### Execution Controls
 
@@ -81,13 +84,15 @@ gcloud run jobs execute my-etl --region us-central1
 | `launchStage` | `string` | GA | ALPHA/BETA for preview features. |
 | `gpuZonalRedundancyDisabled` | `bool` | false | Single-zone GPU (requires `template.nodeSelector`). |
 | `binaryAuthorization` | object | — | Image attestation deploy gate. |
+| `startExecutionToken` | `string` | — | Run-on-deploy: a unique suffix triggers an execution on create/update; job READY when it starts. Mutually exclusive with `runExecutionToken`. |
+| `runExecutionToken` | `string` | — | Run-on-deploy with deploy-and-verify semantics: job READY only when the triggered execution completes. |
 
 ### Task Template (`template`)
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `containers[]` | list | — | Worker and sidecar containers per task. |
-| `volumes[]` | list | — | Cloud SQL, Secret, emptyDir, GCS, NFS. |
+| `containers[]` | list | — | Worker and sidecar containers per task; each may declare `ports` and a `startupProbe` (HTTP/TCP/gRPC, 240-second startup window), plus `volumeMounts` with `subPath`. |
+| `volumes[]` | list | — | Cloud SQL, Secret, emptyDir, GCS (with gcsfuse `mountOptions`), NFS. |
 | `serviceAccount` | `StringValueOrRef` | Compute default SA | Runtime identity per task. |
 | `executionEnvironment` | enum | GEN2 | GEN1 (fast) vs GEN2 (full Linux, GCS/NFS). |
 | `encryptionKey` | `StringValueOrRef` | — | CMEK for container images (GcpKmsKey ref). |
@@ -104,6 +109,16 @@ gcloud run jobs execute my-etl --region us-central1
 | `location` | Deployment region |
 | `uid` | Server-assigned unique ID |
 | `latestCreatedExecution` | Most recent execution name (empty until first run) |
+
+## Deliberately not modeled (recorded reasons)
+
+Everything the pinned GA provider can configure on `google_cloud_run_v2_job` is representable through this component, except the entries below — each a recorded decision (the machine-checked record lives in `iac/provider-parity.yaml`):
+
+| Excluded Feature | Why |
+|---|---|
+| `tags` (resource-manager tags) | GA at the pin but not yet bridged by the pinned Pulumi SDK; modeling it only in Terraform would break cross-engine parity. Re-evaluate at the next pulumi-gcp bump. |
+| `client` / `client_version` | API-client telemetry strings with no user-facing behavior. |
+| Job IAM (`google_cloud_run_v2_job_iam_*`) | Jobs have no public-serving toggle (nothing to invoke over HTTP); fine-grained execution grants to specific identities are IAM-family territory. |
 
 ## Related Components
 

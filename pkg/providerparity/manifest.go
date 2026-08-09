@@ -169,7 +169,15 @@ func (m *Manifest) validate() error {
 		if rm.SpecRoot != "" && !isSpecPath(rm.SpecRoot) {
 			return errors.Errorf("resource %s: specRoot %q must be spec-rooted (e.g. spec.iam_members)", resource, rm.SpecRoot)
 		}
+		// An argument may carry SEVERAL mappings — the fan-in dual of one
+		// spec field mapping onto several arguments (the name/value pair
+		// gathered into one spec map). The idiom: a map-typed argument
+		// (e.g. a container resources.limits map) realizing several
+		// honest spec fields. Only the identical (spec, arg) pair
+		// repeated is a recording error; a mapped arg still can never
+		// also be excluded.
 		seenArgs := map[string]bool{}
+		seenPairs := map[string]bool{}
 		for _, mp := range rm.Mappings {
 			if mp.Arg == "" {
 				return errors.Errorf("resource %s: mapping for spec %q names no arg", resource, mp.Spec)
@@ -177,9 +185,11 @@ func (m *Manifest) validate() error {
 			if !isSpecPath(mp.Spec) {
 				return errors.Errorf("resource %s: mapping for arg %q must be spec-rooted, got %q", resource, mp.Arg, mp.Spec)
 			}
-			if seenArgs[mp.Arg] {
-				return errors.Errorf("resource %s: arg %q is judged twice", resource, mp.Arg)
+			pair := mp.Spec + " -> " + mp.Arg
+			if seenPairs[pair] {
+				return errors.Errorf("resource %s: mapping %q is recorded twice", resource, pair)
 			}
+			seenPairs[pair] = true
 			seenArgs[mp.Arg] = true
 		}
 		for _, ex := range rm.Exclusions {

@@ -28,8 +28,10 @@ public IPv4 reachable only through the Cloud SQL Auth Proxy / connectors
 
 ```yaml
 # Exercises the deep instance surface offline: engine/version/tier, disk,
-# explicit connectivity with an authorized network, HA with backups + PITR,
-# maintenance scheduling, Query Insights, flags, and both delete guards.
+# explicit connectivity with an authorized network, HA with backups + PITR
+# (with an explicit retention unit), a final backup on delete, maintenance
+# scheduling, Query Insights, flags, the ExecuteSql API posture, both
+# delete guards, and the teardown policy.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
@@ -60,6 +62,12 @@ spec:
     pointInTimeRecoveryEnabled: true
     transactionLogRetentionDays: 7
     retainedBackups: 14
+    retentionUnit: COUNT
+  finalBackup:
+    enabled: true
+    retentionDays: 7
+    description: decommission snapshot
+  dataApiAccess: DISALLOW_DATA_API
   maintenanceWindow:
     day: 7
     hour: 3
@@ -71,6 +79,7 @@ spec:
     max_connections: "200"
   deletionProtection: false
   deletionProtectionEnabled: false
+  deletionPolicy: DELETE
   rootPassword: HackPassword123!
 ```
 

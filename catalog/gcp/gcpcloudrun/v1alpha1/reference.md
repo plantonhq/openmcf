@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCloudRunSpec defines a Cloud Run service (`google_cloud_run_v2_service`) —
 a fully managed, request-serving container deployment that scales from zero
 to thousands of instances.
@@ -33,8 +35,10 @@ GcpDnsRecord.
 
 ```yaml
 # Development manifest for GcpCloudRun — exercises a broad slice of the spec
-# (sidecar with startup ordering, secret env, Cloud SQL volume, probes,
-# scaling, traffic split, direct VPC egress) for offline plan verification.
+# (sidecar with startup ordering, secret env, Cloud SQL volume, all three
+# probe types, scaling with the service-wide max, traffic split, direct VPC
+# egress, annotations at both object levels, sub_path mounts, and the
+# teardown policy) for offline plan verification.
 #
 # Usage: planton tofu plan --manifest catalog/gcp/gcpcloudrun/e2e/manifest.yaml
 apiVersion: gcp.planton.dev/v1alpha1
@@ -51,6 +55,12 @@ spec:
   description: Development service exercising the full template surface
   labels:
     team: platform
+  annotations:
+    external-tool/owner: platform-team
+  revisionLabels:
+    cost-center: "1234"
+  revisionAnnotations:
+    external-tool/trace: enabled
   containers:
     - name: app
       image: us-docker.pkg.dev/cloudrun/container/hello:latest
@@ -70,11 +80,19 @@ spec:
       volumeMounts:
         - name: cloudsql
           mountPath: /cloudsql
+        - name: assets
+          mountPath: /media
+          subPath: static
       startupProbe:
         periodSeconds: 5
         httpGet:
           path: /
       livenessProbe:
+        httpGet:
+          path: /
+      readinessProbe:
+        periodSeconds: 10
+        successThreshold: 2
         httpGet:
           path: /
       dependsOn:
@@ -86,9 +104,19 @@ spec:
       cloudSqlInstance:
         instances:
           - value: my-project:us-central1:hack-db
+    - name: assets
+      gcs:
+        bucket:
+          value: hack-assets-bucket
+        readOnly: true
+        mountOptions:
+          - implicit-dirs
+          - only-dir=media
   scaling:
     minInstanceCount: 0
     maxInstanceCount: 10
+  serviceScaling:
+    maxInstanceCount: 20
   maxInstanceRequestConcurrency: 80
   timeoutSeconds: 300
   executionEnvironment: EXECUTION_ENVIRONMENT_GEN2
@@ -108,6 +136,7 @@ spec:
     - type: TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST
       percent: 100
   deletionProtection: false
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -141,8 +170,9 @@ spec:
 | `spec.containers[].volumeMounts` | `[]GcpCloudRunVolumeMount` |  |  |  |
 | `spec.containers[].volumeMounts[].name` | `string` | yes |  |  |
 | `spec.containers[].volumeMounts[].mountPath` | `string` | yes |  |  |
+| `spec.containers[].volumeMounts[].subPath` | `string` |  |  |  |
 | `spec.containers[].workingDir` | `string` |  |  |  |
-| `spec.containers[].startupProbe` | `GcpCloudRunProbe` |  |  |  |
+| `spec.containers[].startupProbe` | `GcpCloudRunStartupProbe` |  |  |  |
 | `spec.containers[].startupProbe.initialDelaySeconds` | `int32` |  |  |  |
 | `spec.containers[].startupProbe.timeoutSeconds` | `int32` |  |  |  |
 | `spec.containers[].startupProbe.periodSeconds` | `int32` |  |  |  |
@@ -158,7 +188,7 @@ spec:
 | `spec.containers[].startupProbe.grpc` | `GcpCloudRunGrpcAction` |  |  |  |
 | `spec.containers[].startupProbe.grpc.port` | `int32` |  |  |  |
 | `spec.containers[].startupProbe.grpc.service` | `string` |  |  |  |
-| `spec.containers[].livenessProbe` | `GcpCloudRunProbe` |  |  |  |
+| `spec.containers[].livenessProbe` | `GcpCloudRunLivenessProbe` |  |  |  |
 | `spec.containers[].livenessProbe.initialDelaySeconds` | `int32` |  |  |  |
 | `spec.containers[].livenessProbe.timeoutSeconds` | `int32` |  |  |  |
 | `spec.containers[].livenessProbe.periodSeconds` | `int32` |  |  |  |
@@ -169,12 +199,22 @@ spec:
 | `spec.containers[].livenessProbe.httpGet.httpHeaders` | `[]GcpCloudRunHttpHeader` |  |  |  |
 | `spec.containers[].livenessProbe.httpGet.httpHeaders[].name` | `string` | yes |  |  |
 | `spec.containers[].livenessProbe.httpGet.httpHeaders[].value` | `string` |  |  |  |
-| `spec.containers[].livenessProbe.tcpSocket` | `GcpCloudRunTcpSocketAction` |  |  |  |
-| `spec.containers[].livenessProbe.tcpSocket.port` | `int32` |  |  |  |
 | `spec.containers[].livenessProbe.grpc` | `GcpCloudRunGrpcAction` |  |  |  |
 | `spec.containers[].livenessProbe.grpc.port` | `int32` |  |  |  |
 | `spec.containers[].livenessProbe.grpc.service` | `string` |  |  |  |
 | `spec.containers[].dependsOn` | `[]string` |  |  |  |
+| `spec.containers[].baseImageUri` | `string` |  |  |  |
+| `spec.containers[].readinessProbe` | `GcpCloudRunReadinessProbe` |  |  |  |
+| `spec.containers[].readinessProbe.timeoutSeconds` | `int32` |  |  |  |
+| `spec.containers[].readinessProbe.periodSeconds` | `int32` |  |  |  |
+| `spec.containers[].readinessProbe.successThreshold` | `int32` |  |  |  |
+| `spec.containers[].readinessProbe.failureThreshold` | `int32` |  |  |  |
+| `spec.containers[].readinessProbe.httpGet` | `GcpCloudRunReadinessHttpGetAction` |  |  |  |
+| `spec.containers[].readinessProbe.httpGet.path` | `string` |  |  |  |
+| `spec.containers[].readinessProbe.httpGet.port` | `int32` |  |  |  |
+| `spec.containers[].readinessProbe.grpc` | `GcpCloudRunGrpcAction` |  |  |  |
+| `spec.containers[].readinessProbe.grpc.port` | `int32` |  |  |  |
+| `spec.containers[].readinessProbe.grpc.service` | `string` |  |  |  |
 | `spec.volumes` | `[]GcpCloudRunVolume` |  |  |  |
 | `spec.volumes[].name` | `string` | yes |  |  |
 | `spec.volumes[].cloudSqlInstance` | `GcpCloudRunVolumeCloudSql` |  |  |  |
@@ -192,6 +232,7 @@ spec:
 | `spec.volumes[].gcs` | `GcpCloudRunVolumeGcs` |  |  |  |
 | `spec.volumes[].gcs.bucket` | `string \| valueFrom` | yes |  | GcpGcsBucket (`status.outputs.bucket_id`) |
 | `spec.volumes[].gcs.readOnly` | `bool` |  |  |  |
+| `spec.volumes[].gcs.mountOptions` | `[]string` |  |  |  |
 | `spec.volumes[].nfs` | `GcpCloudRunVolumeNfs` |  |  |  |
 | `spec.volumes[].nfs.server` | `string` | yes |  |  |
 | `spec.volumes[].nfs.path` | `string` | yes |  |  |
@@ -204,6 +245,7 @@ spec:
 | `spec.serviceScaling.scalingMode` | `string` |  |  |  |
 | `spec.serviceScaling.manualInstanceCount` | `int32` |  |  |  |
 | `spec.serviceScaling.minInstanceCount` | `int32` |  |  |  |
+| `spec.serviceScaling.maxInstanceCount` | `int32` |  |  |  |
 | `spec.maxInstanceRequestConcurrency` | `int32` |  |  |  |
 | `spec.timeoutSeconds` | `int32` |  |  |  |
 | `spec.executionEnvironment` | `enum` |  | `EXECUTION_ENVIRONMENT_GEN2` |  |
@@ -235,6 +277,24 @@ spec:
 | `spec.binaryAuthorization.policy` | `string` |  |  |  |
 | `spec.binaryAuthorization.breakglassJustification` | `string` |  |  |  |
 | `spec.deletionProtection` | `bool` |  | `true` |  |
+| `spec.annotations` | `map<string, string>` |  |  |  |
+| `spec.revisionLabels` | `map<string, string>` |  |  |  |
+| `spec.revisionAnnotations` | `map<string, string>` |  |  |  |
+| `spec.buildConfig` | `GcpCloudRunBuildConfig` |  |  |  |
+| `spec.buildConfig.sourceLocation` | `string` |  |  |  |
+| `spec.buildConfig.functionTarget` | `string` |  |  |  |
+| `spec.buildConfig.imageUri` | `string` |  |  |  |
+| `spec.buildConfig.baseImage` | `string` |  |  |  |
+| `spec.buildConfig.enableAutomaticUpdates` | `bool` |  |  |  |
+| `spec.buildConfig.environmentVariables` | `map<string, string>` |  |  |  |
+| `spec.buildConfig.workerPool` | `string` |  |  |  |
+| `spec.buildConfig.serviceAccount` | `string` |  |  |  |
+| `spec.iapEnabled` | `bool` |  |  |  |
+| `spec.defaultUriDisabled` | `bool` |  |  |  |
+| `spec.healthCheckDisabled` | `bool` |  |  |  |
+| `spec.multiRegionSettings` | `GcpCloudRunMultiRegionSettings` |  |  |  |
+| `spec.multiRegionSettings.regions` | `[]string` | yes |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -257,7 +317,7 @@ Region the service is deployed in, e.g. "us-central1". Immutable.
 Cloud Run is regional: multi-region serving is achieved by deploying
 one service per region behind a global load balancer.
 
-- rule: {"required":true,"string":{"pattern":"^[a-z]+-[a-z]+[0-9]+$"}}
+- rule: {"required":true,"string":{"pattern":"^([a-z]+-[a-z]+[0-9]+|global)$"}}
 
 ### spec.serviceName
 
@@ -298,7 +358,6 @@ instance's network namespace (localhost) and volumes. Exactly one
 container may expose a port. Use depends_on for startup ordering.
 
 - rule: {"repeated":{"minItems":"1"}}
-- rule: Cloud Run liveness probes support HTTP and gRPC only — TCP is valid on startup probes
 
 ### spec.containers[].name
 
@@ -478,6 +537,10 @@ mount at "/cloudsql".
 
 - rule: {"required":true,"string":{"pattern":"^/.*$"}}
 
+### spec.containers[].volumeMounts[].subPath
+
+`string`
+
 ### spec.containers[].workingDir
 
 `string`
@@ -487,7 +550,7 @@ is used.
 
 ### spec.containers[].startupProbe
 
-`GcpCloudRunProbe`
+`GcpCloudRunStartupProbe`
 
 Probe that gates instance start: the container receives no traffic
 (and depends_on waiters stay blocked) until this succeeds. Supports
@@ -495,12 +558,11 @@ HTTP, TCP, and gRPC checks. If omitted, Cloud Run performs a default
 TCP check on the container port.
 
 - rule: probe timeout_seconds cannot exceed period_seconds
+- rule: the startup window (failure_threshold × period_seconds, defaults 3 × 10) cannot exceed 240 seconds
 
 ### spec.containers[].startupProbe.initialDelaySeconds
 
 `int32` · optional (explicit presence)
-
-Seconds to wait after container start before the first probe (0-240).
 
 - rule: {"int32":{"lte":240,"gte":0}}
 
@@ -508,16 +570,11 @@ Seconds to wait after container start before the first probe (0-240).
 
 `int32` · optional (explicit presence)
 
-Seconds after which a single probe attempt times out (1-240; GCP
-default 1). Must not exceed period_seconds.
-
 - rule: {"int32":{"lte":240,"gte":1}}
 
 ### spec.containers[].startupProbe.periodSeconds
 
 `int32` · optional (explicit presence)
-
-Seconds between probe attempts (1-240; GCP default 10).
 
 - rule: {"int32":{"lte":240,"gte":1}}
 
@@ -525,17 +582,11 @@ Seconds between probe attempts (1-240; GCP default 10).
 
 `int32` · optional (explicit presence)
 
-Consecutive failures after which the probe is considered failed (GCP
-default 3). For startup probes the instance is killed; for liveness
-probes the container is restarted.
-
 - rule: {"int32":{"gte":1}}
 
 ### spec.containers[].startupProbe.httpGet
 
 `GcpCloudRunHttpGetAction`
-
-HTTP GET against a path on the container; 2xx is success.
 
 ### spec.containers[].startupProbe.httpGet.path
 
@@ -578,9 +629,6 @@ Header value.
 
 `GcpCloudRunTcpSocketAction`
 
-TCP connect to a port; a successful connection is success.
-Startup probes only — Cloud Run rejects TCP liveness probes.
-
 ### spec.containers[].startupProbe.tcpSocket.port
 
 `int32` · optional (explicit presence)
@@ -592,8 +640,6 @@ Port to connect to. If unset, the container's serving port is used.
 ### spec.containers[].startupProbe.grpc
 
 `GcpCloudRunGrpcAction`
-
-Standard gRPC health-check protocol (grpc.health.v1.Health/Check).
 
 ### spec.containers[].startupProbe.grpc.port
 
@@ -613,7 +659,7 @@ per-service health. If empty, overall server health is checked.
 
 ### spec.containers[].livenessProbe
 
-`GcpCloudRunProbe`
+`GcpCloudRunLivenessProbe`
 
 Probe that monitors a running instance: on failure_threshold
 consecutive failures the container is restarted. Supports HTTP and
@@ -626,42 +672,29 @@ health-restarted.
 
 `int32` · optional (explicit presence)
 
-Seconds to wait after container start before the first probe (0-240).
-
-- rule: {"int32":{"lte":240,"gte":0}}
+- rule: {"int32":{"lte":3600,"gte":0}}
 
 ### spec.containers[].livenessProbe.timeoutSeconds
 
 `int32` · optional (explicit presence)
 
-Seconds after which a single probe attempt times out (1-240; GCP
-default 1). Must not exceed period_seconds.
-
-- rule: {"int32":{"lte":240,"gte":1}}
+- rule: {"int32":{"lte":3600,"gte":1}}
 
 ### spec.containers[].livenessProbe.periodSeconds
 
 `int32` · optional (explicit presence)
 
-Seconds between probe attempts (1-240; GCP default 10).
-
-- rule: {"int32":{"lte":240,"gte":1}}
+- rule: {"int32":{"lte":3600,"gte":1}}
 
 ### spec.containers[].livenessProbe.failureThreshold
 
 `int32` · optional (explicit presence)
-
-Consecutive failures after which the probe is considered failed (GCP
-default 3). For startup probes the instance is killed; for liveness
-probes the container is restarted.
 
 - rule: {"int32":{"gte":1}}
 
 ### spec.containers[].livenessProbe.httpGet
 
 `GcpCloudRunHttpGetAction`
-
-HTTP GET against a path on the container; 2xx is success.
 
 ### spec.containers[].livenessProbe.httpGet.path
 
@@ -700,26 +733,9 @@ Header name.
 
 Header value.
 
-### spec.containers[].livenessProbe.tcpSocket
-
-`GcpCloudRunTcpSocketAction`
-
-TCP connect to a port; a successful connection is success.
-Startup probes only — Cloud Run rejects TCP liveness probes.
-
-### spec.containers[].livenessProbe.tcpSocket.port
-
-`int32` · optional (explicit presence)
-
-Port to connect to. If unset, the container's serving port is used.
-
-- rule: {"int32":{"lte":65535,"gte":1}}
-
 ### spec.containers[].livenessProbe.grpc
 
 `GcpCloudRunGrpcAction`
-
-Standard gRPC health-check protocol (grpc.health.v1.Health/Check).
 
 ### spec.containers[].livenessProbe.grpc.port
 
@@ -747,6 +763,76 @@ that makes proxy/collector sidecars start before (and stop after) the
 serving container.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
+
+### spec.containers[].baseImageUri
+
+`string`
+
+### spec.containers[].readinessProbe
+
+`GcpCloudRunReadinessProbe`
+
+- rule: probe timeout_seconds cannot exceed period_seconds
+
+### spec.containers[].readinessProbe.timeoutSeconds
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"lte":3600,"gte":1}}
+
+### spec.containers[].readinessProbe.periodSeconds
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"lte":3600,"gte":1}}
+
+### spec.containers[].readinessProbe.successThreshold
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"gte":1}}
+
+### spec.containers[].readinessProbe.failureThreshold
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"gte":1}}
+
+### spec.containers[].readinessProbe.httpGet
+
+`GcpCloudRunReadinessHttpGetAction`
+
+### spec.containers[].readinessProbe.httpGet.path
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^/.*$"}}
+
+### spec.containers[].readinessProbe.httpGet.port
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"lte":65535,"gte":1}}
+
+### spec.containers[].readinessProbe.grpc
+
+`GcpCloudRunGrpcAction`
+
+### spec.containers[].readinessProbe.grpc.port
+
+`int32` · optional (explicit presence)
+
+Port the gRPC health service listens on. If unset, the container's
+serving port is used.
+
+- rule: {"int32":{"lte":65535,"gte":1}}
+
+### spec.containers[].readinessProbe.grpc.service
+
+`string`
+
+Service name passed to the health check, letting one server report
+per-service health. If empty, overall server health is checked.
 
 ### spec.volumes
 
@@ -892,6 +978,12 @@ GcpGcsBucket resource.
 Mount read-only. Recommended unless the service genuinely writes —
 concurrent writers through FUSE are easy to get wrong.
 
+### spec.volumes[].gcs.mountOptions
+
+`[]string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
+
 ### spec.volumes[].nfs
 
 `GcpCloudRunVolumeNfs`
@@ -1002,6 +1094,12 @@ Service-level minimum instances, distributed across serving revisions
 during gradual rollouts so warm capacity follows the traffic split.
 
 - rule: {"int32":{"gte":0}}
+
+### spec.serviceScaling.maxInstanceCount
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"gte":1}}
 
 ### spec.maxInstanceRequestConcurrency
 
@@ -1326,10 +1424,87 @@ revision; keep this on for anything real.
 
 - default: `true`
 
+### spec.annotations
+
+`map<string, string>`
+
+### spec.revisionLabels
+
+`map<string, string>`
+
+### spec.revisionAnnotations
+
+`map<string, string>`
+
+### spec.buildConfig
+
+`GcpCloudRunBuildConfig`
+
+### spec.buildConfig.sourceLocation
+
+`string`
+
+### spec.buildConfig.functionTarget
+
+`string`
+
+### spec.buildConfig.imageUri
+
+`string`
+
+### spec.buildConfig.baseImage
+
+`string`
+
+### spec.buildConfig.enableAutomaticUpdates
+
+`bool`
+
+### spec.buildConfig.environmentVariables
+
+`map<string, string>`
+
+### spec.buildConfig.workerPool
+
+`string`
+
+### spec.buildConfig.serviceAccount
+
+`string`
+
+### spec.iapEnabled
+
+`bool`
+
+### spec.defaultUriDisabled
+
+`bool`
+
+### spec.healthCheckDisabled
+
+`bool`
+
+### spec.multiRegionSettings
+
+`GcpCloudRunMultiRegionSettings`
+
+### spec.multiRegionSettings.regions
+
+`[]string` · required
+
+- rule: {"repeated":{"minItems":"1","unique":true,"items":{"string":{"pattern":"^[a-z]+-[a-z]+[0-9]+$"}}}}
+
+### spec.deletionPolicy
+
+`string`
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `auth.allow_unauthenticated_xor_invoker_disabled`: allow_unauthenticated grants public access through IAM; invoker_iam_disabled turns the IAM check off entirely — set at most one
 - `gpu.redundancy_requires_accelerator`: gpu_zonal_redundancy_disabled only applies to GPU services — set node_selector.accelerator
+- `multi_region.requires_global_region`: multi-region services deploy through the global endpoint — set region to "global" when using multi_region_settings
 
 ## Outputs
 

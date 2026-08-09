@@ -69,6 +69,7 @@ variable "spec" {
       volume_mounts = optional(list(object({
         name       = string
         mount_path = string
+        sub_path   = optional(string, "")
       })), [])
 
       working_dir = optional(string, "")
@@ -119,6 +120,26 @@ variable "spec" {
 
       # Names of containers this one waits for (startup ordering).
       depends_on = optional(list(string), [])
+
+      # Base image for automatic base-image updates on source deploys.
+      base_image_uri = optional(string, "")
+
+      # Readiness probe: gates traffic without restarting. HTTP/gRPC only,
+      # no initial delay, plus a success threshold for re-admission.
+      readiness_probe = optional(object({
+        timeout_seconds   = optional(number, null)
+        period_seconds    = optional(number, null)
+        success_threshold = optional(number, null)
+        failure_threshold = optional(number, null)
+        http_get = optional(object({
+          path = optional(string, "")
+          port = optional(number, null)
+        }), null)
+        grpc = optional(object({
+          port    = optional(number, null)
+          service = optional(string, "")
+        }), null)
+      }), null)
     }))
 
     # Named volumes; each carries exactly one source arm (proto oneof).
@@ -144,8 +165,9 @@ variable "spec" {
       }), null)
       gcs = optional(object({
         # Bucket name — plain string after ref resolution.
-        bucket    = string
-        read_only = optional(bool, false)
+        bucket        = string
+        read_only     = optional(bool, false)
+        mount_options = optional(list(string), [])
       }), null)
       nfs = optional(object({
         server    = string
@@ -169,6 +191,7 @@ variable "spec" {
       scaling_mode          = optional(string, "")
       manual_instance_count = optional(number, null)
       min_instance_count    = optional(number, null)
+      max_instance_count    = optional(number, null)
     }), null)
 
     # Per-instance request concurrency (1-1000); null lets GCP default.
@@ -244,5 +267,42 @@ variable "spec" {
 
     # Deletion guard; defaults to true (a destroy fails until disabled).
     deletion_protection = optional(bool, true)
+
+    # Service-object annotations for external tools (system namespaces
+    # rejected by the API).
+    annotations = optional(map(string), {})
+
+    # Labels / annotations stamped on every revision the template creates.
+    revision_labels      = optional(map(string), {})
+    revision_annotations = optional(map(string), {})
+
+    # Deploy-from-source build configuration (Cloud Run functions path).
+    build_config = optional(object({
+      source_location          = optional(string, "")
+      function_target          = optional(string, "")
+      image_uri                = optional(string, "")
+      base_image               = optional(string, "")
+      enable_automatic_updates = optional(bool, false)
+      environment_variables    = optional(map(string), {})
+      worker_pool              = optional(string, "")
+      service_account          = optional(string, "")
+    }), null)
+
+    # Identity-Aware Proxy in front of the service.
+    iap_enabled = optional(bool, false)
+
+    # Disables the default *.run.app URL.
+    default_uri_disabled = optional(bool, false)
+
+    # Disables ALL health checking (startup and liveness probes).
+    health_check_disabled = optional(bool, false)
+
+    # Multi-region service (requires region = "global").
+    multi_region_settings = optional(object({
+      regions = list(string)
+    }), null)
+
+    # Destroy stance: "", DELETE (default), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
   })
 }

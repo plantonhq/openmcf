@@ -52,6 +52,7 @@ spec:
   region: us-central1
   clusterName: test-spark-cluster
   gracefulDecommissionTimeout: "600s"
+  deletionPolicy: DELETE
   labels:
     team: data-eng
     workload: spark-etl
@@ -79,9 +80,17 @@ spec:
       machineType: n2-standard-4
       diskConfig:
         bootDiskSizeGb: 200
-        bootDiskType: pd-balanced
+        bootDiskType: hyperdisk-balanced
+        bootDiskProvisionedIops: 3060
+        bootDiskProvisionedThroughput: 155
         numLocalSsds: 1
         localSsdInterface: nvme
+      instanceFlexibilityPolicy:
+        instanceSelectionList:
+          - machineTypes:
+              - n2-standard-4
+              - n2d-standard-4
+            rank: 1
     secondaryWorkerConfig:
       numInstances: 4
       preemptibility: SPOT
@@ -113,6 +122,7 @@ spec:
       enableHttpPortAccess: true
     lifecycleConfig:
       idleDeleteTtl: "1800s"
+      idleStopTtl: "900s"
     dataprocMetricConfig:
       metrics:
         - metricSource: SPARK
@@ -596,7 +606,7 @@ If not specified, GCP defaults to 500 GB for master and worker nodes.
 Boot disk type. Valid values: "pd-standard", "pd-ssd", "pd-balanced".
 If not specified, GCP defaults to "pd-standard".
 
-- rule: boot_disk_type must be pd-standard, pd-ssd, or pd-balanced
+- rule: boot_disk_type must be pd-standard, pd-ssd, pd-balanced, or hyperdisk-balanced
 
 ### spec.clusterConfig.masterConfig.diskConfig.numLocalSsds
 
@@ -767,7 +777,7 @@ If not specified, GCP defaults to 500 GB for master and worker nodes.
 Boot disk type. Valid values: "pd-standard", "pd-ssd", "pd-balanced".
 If not specified, GCP defaults to "pd-standard".
 
-- rule: boot_disk_type must be pd-standard, pd-ssd, or pd-balanced
+- rule: boot_disk_type must be pd-standard, pd-ssd, pd-balanced, or hyperdisk-balanced
 
 ### spec.clusterConfig.workerConfig.diskConfig.numLocalSsds
 
@@ -947,7 +957,7 @@ If not specified, GCP defaults to 500 GB for master and worker nodes.
 Boot disk type. Valid values: "pd-standard", "pd-ssd", "pd-balanced".
 If not specified, GCP defaults to "pd-standard".
 
-- rule: boot_disk_type must be pd-standard, pd-ssd, or pd-balanced
+- rule: boot_disk_type must be pd-standard, pd-ssd, pd-balanced, or hyperdisk-balanced
 
 ### spec.clusterConfig.secondaryWorkerConfig.diskConfig.numLocalSsds
 
@@ -1408,7 +1418,7 @@ If not specified, GCP defaults to 500 GB for master and worker nodes.
 Boot disk type. Valid values: "pd-standard", "pd-ssd", "pd-balanced".
 If not specified, GCP defaults to "pd-standard".
 
-- rule: boot_disk_type must be pd-standard, pd-ssd, or pd-balanced
+- rule: boot_disk_type must be pd-standard, pd-ssd, pd-balanced, or hyperdisk-balanced
 
 ### spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.diskConfig.numLocalSsds
 

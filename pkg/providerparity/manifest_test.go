@@ -86,6 +86,10 @@ func TestLoadManifest_Rejections(t *testing.T) {
 			yaml:    "resources:\n  google_widget:\n    mappings:\n      - spec: spec.a\n        arg: name\n    exclusions:\n      - arg: name\n        reason: r\n",
 			wantErr: "judged twice",
 		},
+		"identical mapping recorded twice": {
+			yaml:    "resources:\n  google_widget:\n    mappings:\n      - spec: spec.a\n        arg: name\n      - spec: spec.a\n        arg: name\n",
+			wantErr: "recorded twice",
+		},
 		"empty resource entry": {
 			yaml:    "resources:\n  google_widget: {}\n",
 			wantErr: "records nothing",
@@ -102,6 +106,22 @@ func TestLoadManifest_Rejections(t *testing.T) {
 				t.Errorf("err = %v, want it to contain %q", err, tc.wantErr)
 			}
 		})
+	}
+}
+
+// TestLoadManifest_FanInMappings proves the dual of the name/value idiom
+// parses: one map-typed argument may be recorded by several mappings, each
+// covering one honest spec field.
+func TestLoadManifest_FanInMappings(t *testing.T) {
+	m, err := LoadManifest(writeManifest(t,
+		"resources:\n  google_widget:\n    mappings:\n"+
+			"      - spec: spec.resources.cpu\n        arg: resources.limits\n"+
+			"      - spec: spec.resources.memory\n        arg: resources.limits\n"))
+	if err != nil {
+		t.Fatalf("fan-in mappings must parse, got err %v", err)
+	}
+	if got := len(m.Resources["google_widget"].Mappings); got != 2 {
+		t.Fatalf("mappings = %d, want 2", got)
 	}
 }
 

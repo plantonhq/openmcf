@@ -30,8 +30,6 @@ entries:
   - kind:GcpCloudComposerUserWorkloadsConfigMap
   - kind:GcpCloudComposerUserWorkloadsSecret
   - kind:GcpCloudFunction
-  - kind:GcpCloudRun
-  - kind:GcpCloudRunJob
   - kind:GcpCloudSchedulerJob
   - kind:GcpCloudTasksQueue
   - kind:GcpComputeInstance

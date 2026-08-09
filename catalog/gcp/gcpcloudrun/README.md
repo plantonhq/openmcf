@@ -18,16 +18,19 @@ Custom domains compose rather than embed: a serverless network endpoint group (`
 
 ## Key Features
 
-- **Containers**: multiple containers per instance with `depends_on` startup ordering, command/args overrides, working dir, single serving port with `h2c` (end-to-end HTTP/2 for gRPC), CPU/memory limits with `cpu_idle` and `startup_cpu_boost`
+- **Containers**: multiple containers per instance with `depends_on` startup ordering, command/args overrides, working dir, single serving port with `h2c` (end-to-end HTTP/2 for gRPC), CPU/memory limits with `cpu_idle` and `startup_cpu_boost`, `base_image_uri` for managed base-image patching
 - **Environment**: literal values and Secret Manager references (secret + version) per variable
-- **Probes**: startup (HTTP/TCP/gRPC) and liveness (HTTP/gRPC) with delays, periods, timeouts, thresholds, and custom headers
-- **Volumes**: Cloud SQL Unix sockets (by `GcpCloudSql` reference), Secret Manager files with per-item paths/modes, in-memory or disk `empty_dir`, GCS FUSE buckets (by `GcpGcsBucket` reference), NFS shares
-- **Scaling**: per-revision min/max instances (scale-to-zero), service-level scaling across revisions including MANUAL mode with a pinned instance count, per-instance request concurrency
+- **Probes**: startup (HTTP/TCP/gRPC), liveness (HTTP/gRPC), and readiness (HTTP/gRPC, traffic-gating without restart) with delays, periods, timeouts, thresholds, and custom headers — each probe type modeled with exactly the shape the API accepts
+- **Volumes**: Cloud SQL Unix sockets (by `GcpCloudSql` reference), Secret Manager files with per-item paths/modes, in-memory or disk `empty_dir`, GCS FUSE buckets (by `GcpGcsBucket` reference) with gcsfuse `mount_options`, NFS shares; `sub_path` mounts into any volume
+- **Scaling**: per-revision min/max instances (scale-to-zero), service-level scaling across revisions including MANUAL mode with a pinned instance count and a service-wide max, per-instance request concurrency
 - **Traffic**: percent splits and tagged preview URLs across latest/named revisions; deterministic revision naming for declarative blue/green
-- **Networking**: direct VPC egress (network/subnetwork references + firewall tags) or a Serverless VPC Access connector; `ALL_TRAFFIC` vs `PRIVATE_RANGES_ONLY` egress; ingress posture down to internal-plus-load-balancer
-- **Security**: runtime identity by `GcpServiceAccount` reference, public access via additive IAM grant XOR invoker-check-off, custom token audiences, Binary Authorization, CMEK image encryption by `GcpKmsKey` reference
+- **Networking**: direct VPC egress (network/subnetwork references + firewall tags) or a Serverless VPC Access connector; `ALL_TRAFFIC` vs `PRIVATE_RANGES_ONLY` egress; ingress posture down to internal-plus-load-balancer; `default_uri_disabled` to remove the *.run.app front door
+- **Security**: runtime identity by `GcpServiceAccount` reference, public access via additive IAM grant XOR invoker-check-off, Identity-Aware Proxy (`iap_enabled`), custom token audiences, Binary Authorization, CMEK image encryption by `GcpKmsKey` reference
+- **Deploy from source**: `build_config` runs the Cloud Run functions build path (Cloud Storage source, function target, build-time env, private worker pools, build identity) with automatic base-image updates
+- **Multi-region**: one service identity serving from several regions (`multi_region_settings` with `region: global`)
+- **Metadata**: service and revision `annotations`, revision `labels` — external-tool and billing-facing metadata on both object levels
 - **GPU**: one accelerator per instance (`node_selector`), zonal-redundancy opt-out for cheaper capacity
-- **Safety**: `deletion_protection` defaults to true — a destroy fails until the manifest opts out
+- **Safety**: `deletion_protection` defaults to true — a destroy fails until the manifest opts out; `deletion_policy` records the destroy stance (PREVENT / ABANDON)
 
 ## Stack Outputs
 
@@ -42,14 +45,16 @@ Custom domains compose rather than embed: a serverless network endpoint group (`
 
 ## Deliberately not modeled (recorded reasons)
 
+Everything the pinned GA provider can configure on `google_cloud_run_v2_service` is representable through this component, except the entries below — each a recorded decision (the machine-checked record lives in `iac/provider-parity.yaml`):
+
 | Excluded Feature | Why |
 |---|---|
-| `readiness_probe`, `iap_enabled`, `default_uri_disabled`, `deletion_policy`, `multi_region_settings`, `health_check_disabled`, `gcs.mount_options`, `empty_dir` size semantics beyond the released surface | Exist only on the provider's unreleased main line, not on the released 6.x major the GCP modules pin. Revisit on the next provider major. |
-| `mesh` (Cloud Service Mesh) | Beta-only on the released line; returns when it reaches the GA surface. |
-| `build_config`, `base_image_uri`, `build_info` | Source-based deploys (`gcloud run deploy --source`) — build pipelines own image production; this component models image-based revisions, the shape every CI/CD integration produces. |
-| Domain mapping (`google_cloud_run_domain_mapping`) | A separate resource with its own lifecycle, deliberately not folded in as a toggle. The production-grade custom-domain path is the composed load-balancer family (serverless NEG → backend service → URL map → HTTPS proxy → forwarding rule) with `GcpDnsRecord`. |
+| TCP liveness probes | The provider schema exposes the arm only because the API proto shares one Probe message across probe types; Cloud Run itself rejects TCP liveness probes (liveness supports HTTP and gRPC only). The spec encodes the API truth: the liveness message has no TCP arm. |
+| `tags` (resource-manager tags) | GA at the pin but not yet bridged by the pinned Pulumi SDK; modeling it only in Terraform would break cross-engine parity. Re-evaluate at the next pulumi-gcp bump. |
+| `sandbox_launcher` | Same Pulumi-SDK gap as `tags`; re-evaluate at the next pulumi-gcp bump. |
 | `client` / `client_version` | API-client telemetry strings with no user-facing behavior. |
-| `annotations` (service and revision) | External-tool metadata passthrough; returns on concrete integration pull. |
+| `mesh` (Cloud Service Mesh) | Beta-only; returns when it reaches the GA surface. |
+| Domain mapping (`google_cloud_run_domain_mapping`) | A separate resource with its own lifecycle, deliberately not folded in as a toggle. The production-grade custom-domain path is the composed load-balancer family (serverless NEG → backend service → URL map → HTTPS proxy → forwarding rule) with `GcpDnsRecord`. |
 | Service IAM beyond the public-invoker grant | Fine-grained invoker grants to specific identities are IAM-family territory; the modeled toggle covers the public/authenticated split every service decides. |
 
 ## Related Components

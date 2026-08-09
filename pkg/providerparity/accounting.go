@@ -365,18 +365,31 @@ func (m argMatcher) excluded(argPath string) bool {
 	return false
 }
 
-// derive returns the spec path an argument must match, and whether a
-// recorded mapping produced it.
-func (m argMatcher) derive(argPath string) (string, bool) {
-	for _, mp := range m.mappings {
-		if argPath == mp.Arg {
-			return mp.Spec, true
+// derive returns the spec path(s) an argument must match, and whether a
+// recorded mapping produced them. An argument normally derives to exactly
+// one path; a FAN-IN argument (several mappings recording the same arg —
+// e.g. a map-typed limits argument realizing several honest spec fields)
+// derives to every mapped path. Only the longest matching arg prefix
+// contributes, preserving the longest-mapping-wins contract.
+func (m argMatcher) derive(argPath string) ([]string, bool) {
+	var specs []string
+	matchLen := -1
+	for _, mp := range m.mappings { // sorted by arg length, longest first
+		if matchLen >= 0 && len(mp.Arg) < matchLen {
+			break
 		}
-		if strings.HasPrefix(argPath, mp.Arg+".") {
-			return mp.Spec + argPath[len(mp.Arg):], true
+		if argPath == mp.Arg {
+			specs = append(specs, mp.Spec)
+			matchLen = len(mp.Arg)
+		} else if strings.HasPrefix(argPath, mp.Arg+".") {
+			specs = append(specs, mp.Spec+argPath[len(mp.Arg):])
+			matchLen = len(mp.Arg)
 		}
 	}
-	return m.specRoot + "." + argPath, false
+	if len(specs) > 0 {
+		return specs, true
+	}
+	return []string{m.specRoot + "." + argPath}, false
 }
 
 // accountKind runs both accounting directions for one kind.
@@ -430,8 +443,17 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 				continue
 			}
 			derived, mapped := matcher.derive(arg.Path)
-			if specSet[derived] {
-				coveredSpec[derived] = true
+			// A fan-in argument covers every mapped spec field that
+			// exists; per-entry manifest hygiene below still flags any
+			// mapping whose spec side has gone stale.
+			matchedAny := false
+			for _, d := range derived {
+				if specSet[d] {
+					coveredSpec[d] = true
+					matchedAny = true
+				}
+			}
+			if matchedAny {
 				if mapped {
 					ka.MappedArgs++
 				} else {

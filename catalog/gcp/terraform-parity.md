@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2762 |
+| Spec fields authored across all kinds | 2809 |
 | Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**15 of 79 kinds are at total accounting; 63 proven live.**
+**17 of 79 kinds are at total accounting; 61 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -67,8 +67,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpCloudComposerUserWorkloadsConfigMap | 6 | 3 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
 | GcpCloudComposerUserWorkloadsSecret | 6 | 3 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
 | GcpCloudFunction | 70 | 38 | 0 | 0 | 49 | ❌ | ✅ pulumi, terraform |
-| GcpCloudRun | 134 | 16 | 0 | 0 | 193 | ❌ | ✅ pulumi, terraform |
-| GcpCloudRunJob | 79 | 7 | 0 | 0 | 117 | ❌ | ✅ pulumi, terraform |
+| GcpCloudRun | 129 | 27 | 90 | 12 | 0 | ✅ | — |
+| GcpCloudRunJob | 74 | 10 | 61 | 3 | 0 | ✅ | — |
 | GcpCloudSchedulerJob | 37 | 28 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
 | GcpCloudSql | 147 | 40 | 97 | 10 | 0 | ✅ | — |
 | GcpCloudSqlDatabase | 6 | 4 | 2 | 0 | 0 | ✅ | — |

@@ -1,0 +1,141 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_cloud_run_v2_service:
+    mappings:
+      # Renames: the spec says what the field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.service_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.region
+        arg: location
+
+      # The spec flattens the provider's revision-template wrapper: the
+      # serving surface reads as one level, organized by what it
+      # configures instead of where the API nests it. Exact matching
+      # resumes below each subtree mapping.
+      - spec: spec.containers
+        arg: template.containers
+      - spec: spec.volumes
+        arg: template.volumes
+      - spec: spec.vpc_access
+        arg: template.vpc_access
+      - spec: spec.node_selector
+        arg: template.node_selector
+      - spec: spec.scaling
+        arg: template.scaling
+      - spec: spec.revision
+        arg: template.revision
+      - spec: spec.revision_labels
+        arg: template.labels
+      - spec: spec.revision_annotations
+        arg: template.annotations
+      - spec: spec.service_account
+        arg: template.service_account
+      - spec: spec.execution_environment
+        arg: template.execution_environment
+      - spec: spec.max_instance_request_concurrency
+        arg: template.max_instance_request_concurrency
+      - spec: spec.timeout_seconds
+        arg: template.timeout
+      - spec: spec.session_affinity
+        arg: template.session_affinity
+      - spec: spec.encryption_key
+        arg: template.encryption_key
+      - spec: spec.gpu_zonal_redundancy_disabled
+        arg: template.gpu_zonal_redundancy_disabled
+      - spec: spec.health_check_disabled
+        arg: template.health_check_disabled
+
+      # The service-level scaling block (across ALL revisions) is the root
+      # `scaling` argument -- distinct from the per-revision
+      # template.scaling above.
+      - spec: spec.service_scaling
+        arg: scaling
+
+      # The env oneof's secret arm names what it does; the provider nests
+      # the same shape one level deeper.
+      - spec: spec.containers.env.value_from_secret
+        arg: template.containers.env.value_source.secret_key_ref
+
+      # The provider models CPU/memory as one limits map; the spec keeps
+      # the two honest fields -- both argument sides land on the map.
+      - spec: spec.containers.resources.cpu
+        arg: template.containers.resources.limits
+      - spec: spec.containers.resources.memory
+        arg: template.containers.resources.limits
+    exclusions:
+      # The provider schema mirrors the API's shared Probe message, but
+      # Cloud Run itself rejects TCP liveness probes (liveness supports
+      # HTTP and gRPC only) -- the spec deliberately has no TCP arm on
+      # liveness, encoding the API truth the schema misses.
+      - arg: template.containers.liveness_probe.tcp_socket.port
+        reason: >-
+          Cloud Run rejects TCP liveness probes (liveness supports HTTP
+          and gRPC only); the schema exposes the arm only because the API
+          proto shares one Probe message across probe types
+
+      # Not yet bridged by the pinned Pulumi SDK (pulumi-gcp v9.29.0):
+      # modeling these only in Terraform would break cross-engine parity
+      # -- a spec field one engine silently drops. Re-evaluate at the
+      # next SDK bump.
+      - arg: tags
+        reason: >-
+          resource-manager tags, GA at the pin but not yet bridged by the
+          pinned Pulumi SDK; modeling it would break cross-engine parity.
+          Re-evaluate at the next pulumi-gcp bump.
+      - arg: template.containers.sandbox_launcher
+        reason: >-
+          sandbox-supervisor flag, GA at the pin but not yet bridged by
+          the pinned Pulumi SDK; modeling it would break cross-engine
+          parity. Re-evaluate at the next pulumi-gcp bump.
+
+      # API-client telemetry strings with no user-facing behavior.
+      - arg: client
+        reason: >-
+          API-client telemetry label (which tool created the resource);
+          no user-facing behavior
+      - arg: client_version
+        reason: >-
+          API-client telemetry version accompanying client; no
+          user-facing behavior
+
+  google_cloud_run_v2_service_iam_member:
+    # Instantiated by the allow_unauthenticated toggle: the boolean IS the
+    # allUsers invoker grant -- every argument is wired by the module.
+    mappings:
+      - spec: spec.allow_unauthenticated
+        arg: member
+    exclusions:
+      - arg: role
+        reason: >-
+          fixed to roles/run.invoker -- the public-serving semantics of
+          the allow_unauthenticated toggle, never user surface
+      - arg: name
+        reason: wired by the module to the service it creates -- never user surface
+      - arg: location
+        reason: wired by the module to the service it creates -- never user surface
+      - arg: project
+        reason: wired by the module to the service it creates -- never user surface
+      - arg: condition.title
+        reason: >-
+          the public grant is unconditioned by design; conditioned
+          invoker grants to specific identities are IAM-family territory
+      - arg: condition.expression
+        reason: the public grant is unconditioned by design; see condition.title
+      - arg: condition.description
+        reason: the public grant is unconditioned by design; see condition.title
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables run.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      service never disables the API project-wide); not spec surface.

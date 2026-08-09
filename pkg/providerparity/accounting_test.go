@@ -267,6 +267,62 @@ func TestBuildAccounting_Hermetic(t *testing.T) {
 	}
 }
 
+// TestBuildAccounting_FanInMappings proves the dual of the name/value
+// idiom: several mappings recording ONE map-typed argument each cover
+// their own spec field — the argument counts as mapped once, and BOTH
+// spec fields are covered in the reverse direction. The shape: a
+// provider packing several honest dials (cpu, memory) into one limits
+// map.
+func TestBuildAccounting_FanInMappings(t *testing.T) {
+	schemas := map[string]*Schema{"google": {
+		Provider: "google",
+		Source:   "hashicorp/google",
+		Version:  "7.43.0",
+		Resources: map[string]*Block{
+			"google_box": {
+				Attributes: map[string]*Attribute{
+					"name":   {Required: true},
+					"limits": {Optional: true},
+				},
+			},
+		},
+	}}
+	spec := []KindCensus{{Kind: "TestBox", SpecFieldPaths: []string{
+		"spec.box_name",
+		"spec.resources.cpu",
+		"spec.resources.memory",
+	}}}
+	modules := []ModuleCensus{{Kind: "TestBox", Resources: []string{"google_box"},
+		Pins: map[string]string{"google": "~> 7.43"}}}
+	manifests := map[string]*Manifest{"TestBox": {
+		Resources: map[string]*ResourceManifest{
+			"google_box": {
+				Mappings: []Mapping{
+					{Spec: "spec.box_name", Arg: "name"},
+					{Spec: "spec.resources.cpu", Arg: "limits"},
+					{Spec: "spec.resources.memory", Arg: "limits"},
+				},
+			},
+		},
+	}}
+
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+	box := kindByName(t, acc, "TestBox")
+	if box.TotalArgs != 2 || box.MappedArgs != 2 || box.MatchedArgs != 0 {
+		t.Errorf("total/mapped/matched = %d/%d/%d, want 2/2/0 (the fan-in arg counts once)",
+			box.TotalArgs, box.MappedArgs, box.MatchedArgs)
+	}
+	if len(box.UnaccountedArgs) != 0 {
+		t.Errorf("UnaccountedArgs = %v, want none", box.UnaccountedArgs)
+	}
+	if len(box.UncoveredSpecFields) != 0 {
+		t.Errorf("UncoveredSpecFields = %v, want none (both map-realized fields are covered)", box.UncoveredSpecFields)
+	}
+	if !box.Accounted() {
+		t.Error("TestBox must be at total accounting")
+	}
+}
+
 // TestBuildAccounting_LedgerShadowsComputedClasses proves the computed
 // classes always win over the ledger AND that a shadowed entry is a
 // staleness finding: judgment duplicating what the instrument derives on
