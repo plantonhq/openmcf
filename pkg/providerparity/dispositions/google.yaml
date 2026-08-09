@@ -535,7 +535,7 @@ resources:
     reason: "quota preferences are rarely IaC-managed; deferred"
   - resource: google_cloud_run_domain_mapping
     disposition: model-planned
-    reason: "planned composition into the existing GcpCloudRun kind (custom-domain mapping)"
+    reason: "planned kind GcpCloudRunDomainMapping (Cloud Run custom domains with managed certificates — the scale-appropriate path below a full global HTTPS load balancer; a separate lifecycle from the service, never a toggle on it)"
   - resource: google_cloud_run_service
     disposition: excluded-deprecated
     reason: "first-generation Knative-serving Cloud Run resource, superseded by the v2 API (modeled by GcpCloudRun)"
@@ -636,14 +636,14 @@ resources:
     disposition: deferred
     reason: "firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand"
   - resource: google_compute_forwarding_rule
-    disposition: model-planned
-    reason: "planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources)"
+    disposition: deferred
+    reason: "regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources"
   - resource: google_compute_global_network_endpoint
-    disposition: model-planned
-    reason: "composes into the planned load-balancer facade kinds (GcpHttpsLoadBalancer, GcpRegionalLoadBalancer) as backend endpoint-group blocks"
+    disposition: deferred
+    reason: "network-endpoint-group surface for VM and hybrid backends; deferred pending demand — the serverless path is modeled by GcpRegionNetworkEndpointGroup, and the productized HTTPS-to-Cloud-Run composition ships as an infra chart over the modeled kinds rather than a facade kind"
   - resource: google_compute_global_network_endpoint_group
-    disposition: model-planned
-    reason: "composes into the planned load-balancer facade kinds (GcpHttpsLoadBalancer, GcpRegionalLoadBalancer) as backend endpoint-group blocks"
+    disposition: deferred
+    reason: "network-endpoint-group surface for VM and hybrid backends; deferred pending demand — the serverless path is modeled by GcpRegionNetworkEndpointGroup, and the productized HTTPS-to-Cloud-Run composition ships as an infra chart over the modeled kinds rather than a facade kind"
   - resource: google_compute_global_vm_extension_policy
     disposition: deferred
     reason: "VM extension policies are emerging fleet tooling; deferred pending demand"
@@ -699,14 +699,14 @@ resources:
     disposition: deferred
     reason: "judged to fold into the existing GcpVpcNetwork kind's spec (static routes and network attachments); the composition is not built"
   - resource: google_compute_network_endpoint
-    disposition: model-planned
-    reason: "composes into the planned load-balancer facade kinds (GcpHttpsLoadBalancer, GcpRegionalLoadBalancer) as backend endpoint-group blocks"
+    disposition: deferred
+    reason: "network-endpoint-group surface for VM and hybrid backends; deferred pending demand — the serverless path is modeled by GcpRegionNetworkEndpointGroup, and the productized HTTPS-to-Cloud-Run composition ships as an infra chart over the modeled kinds rather than a facade kind"
   - resource: google_compute_network_endpoint_group
-    disposition: model-planned
-    reason: "composes into the planned load-balancer facade kinds (GcpHttpsLoadBalancer, GcpRegionalLoadBalancer) as backend endpoint-group blocks"
+    disposition: deferred
+    reason: "network-endpoint-group surface for VM and hybrid backends; deferred pending demand — the serverless path is modeled by GcpRegionNetworkEndpointGroup, and the productized HTTPS-to-Cloud-Run composition ships as an infra chart over the modeled kinds rather than a facade kind"
   - resource: google_compute_network_endpoints
-    disposition: model-planned
-    reason: "composes into the planned load-balancer facade kinds (GcpHttpsLoadBalancer, GcpRegionalLoadBalancer) as backend endpoint-group blocks"
+    disposition: deferred
+    reason: "network-endpoint-group surface for VM and hybrid backends; deferred pending demand — the serverless path is modeled by GcpRegionNetworkEndpointGroup, and the productized HTTPS-to-Cloud-Run composition ships as an infra chart over the modeled kinds rather than a facade kind"
   - resource: google_compute_network_firewall_policy
     disposition: deferred
     reason: "firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand"
@@ -771,8 +771,8 @@ resources:
     disposition: model-planned
     reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
   - resource: google_compute_region_backend_service
-    disposition: model-planned
-    reason: "planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources)"
+    disposition: deferred
+    reason: "regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources"
   - resource: google_compute_region_commitment
     disposition: deferred
     reason: "physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred"
@@ -801,8 +801,8 @@ resources:
     disposition: deferred
     reason: "judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built"
   - resource: google_compute_region_network_endpoint
-    disposition: model-planned
-    reason: "planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources)"
+    disposition: deferred
+    reason: "regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources"
   - resource: google_compute_region_network_firewall_policy
     disposition: deferred
     reason: "firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand"
@@ -828,17 +828,17 @@ resources:
     disposition: deferred
     reason: "judged to fold into the existing GcpCloudArmorPolicy kind's spec (standalone and regional rules); the composition is not built"
   - resource: google_compute_region_target_http_proxy
-    disposition: model-planned
-    reason: "planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources)"
+    disposition: deferred
+    reason: "regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources"
   - resource: google_compute_region_target_https_proxy
-    disposition: model-planned
-    reason: "planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources)"
+    disposition: deferred
+    reason: "regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources"
   - resource: google_compute_region_target_tcp_proxy
-    disposition: model-planned
-    reason: "planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources)"
+    disposition: deferred
+    reason: "regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources"
   - resource: google_compute_region_url_map
-    disposition: model-planned
-    reason: "planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources)"
+    disposition: deferred
+    reason: "regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources"
   - resource: google_compute_reservation
     disposition: deferred
     reason: "physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred"
@@ -894,8 +894,8 @@ resources:
     disposition: deferred
     reason: "judged to deserve a Hyperdisk storage-pool kind; deferred pending demand"
   - resource: google_compute_target_grpc_proxy
-    disposition: model-planned
-    reason: "planned kind GcpHttpsLoadBalancer (global load-balancer facade; TCP/SSL/gRPC proxy variants)"
+    disposition: deferred
+    reason: "TCP/SSL/gRPC proxy-based load-balancer variants; deferred pending demand — the HTTP(S) proxy path is modeled by the target-proxy kinds, and non-HTTP proxy load balancers carry no recorded ask"
   - resource: google_compute_target_instance
     disposition: deferred
     reason: "physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred"
@@ -903,11 +903,11 @@ resources:
     disposition: excluded-deprecated
     reason: "legacy network load-balancing target pools, superseded by regional backend services"
   - resource: google_compute_target_ssl_proxy
-    disposition: model-planned
-    reason: "planned kind GcpHttpsLoadBalancer (global load-balancer facade; TCP/SSL/gRPC proxy variants)"
+    disposition: deferred
+    reason: "TCP/SSL/gRPC proxy-based load-balancer variants; deferred pending demand — the HTTP(S) proxy path is modeled by the target-proxy kinds, and non-HTTP proxy load balancers carry no recorded ask"
   - resource: google_compute_target_tcp_proxy
-    disposition: model-planned
-    reason: "planned kind GcpHttpsLoadBalancer (global load-balancer facade; TCP/SSL/gRPC proxy variants)"
+    disposition: deferred
+    reason: "TCP/SSL/gRPC proxy-based load-balancer variants; deferred pending demand — the HTTP(S) proxy path is modeled by the target-proxy kinds, and non-HTTP proxy load balancers carry no recorded ask"
   - resource: google_compute_vpn_gateway
     disposition: excluded-deprecated
     reason: "Classic VPN gateway, superseded by HA VPN"
@@ -1509,8 +1509,8 @@ resources:
     disposition: excluded-deprecated
     reason: "superseded by principal access boundary policies (google_iam_principal_access_boundary_policy)"
   - resource: google_iam_deny_policy
-    disposition: deferred
-    reason: "judged to deserve a GcpIamDenyPolicy kind (core enterprise governance); deferred pending demand"
+    disposition: model-planned
+    reason: "planned kind GcpIamDenyPolicy (deny rules that block permissions for every principal regardless of allow bindings, with break-glass exceptions; creating them requires org-level iam.denyAdmin, so live proof carries the org-credential deferral)"
   - resource: google_iam_folders_policy_binding
     disposition: deferred
     reason: "judged to deserve a GcpPrincipalAccessBoundaryPolicy kind (scope bindings composed); deferred pending demand"
@@ -1551,11 +1551,11 @@ resources:
     disposition: deferred
     reason: "judged to fold into the existing GcpWorkloadIdentityPool kind's spec (namespaces and managed identities); the composition is not built"
   - resource: google_iap_settings
-    disposition: model-planned
-    reason: "composes into the planned GcpIapOauth kind (Identity-Aware Proxy configuration)"
+    disposition: deferred
+    reason: "per-resource IAP tuning; deferred pending demand — IAP on load balancers is enabled through the backend-service kinds' iap block, and the IAP OAuth Admin surface that once anchored a dedicated kind was shut down by Google (the brand/client resources are provider-deprecated)"
   - resource: google_iap_tunnel_dest_group
-    disposition: model-planned
-    reason: "composes into the planned GcpIapOauth kind (Identity-Aware Proxy configuration)"
+    disposition: deferred
+    reason: "IAP TCP tunneling destination groups; deferred pending demand — no recorded ask, and the IAP OAuth Admin surface that once anchored a dedicated kind was shut down by Google"
   - resource: google_identity_platform_config
     disposition: model-planned
     reason: "planned kind GcpIdentityPlatformConfig"

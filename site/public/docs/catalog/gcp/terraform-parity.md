@@ -138,8 +138,8 @@ All resources of `google@7.43.0` land in exactly one class:
 | Modeled | 92 | consumed by a kind's Terraform module today |
 | IAM-covered | 409 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 2 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 89 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 665 | deliberately not offered, each with the recorded reason |
+| Planned | 73 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 681 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 76 | deprecated or superseded provider surface |
 | **Total** | **1333** | |
 
@@ -666,7 +666,7 @@ rather than trusted.
 | `google_bigquery_dataset_access` | the GcpBigQueryDataset spec models dataset access entries directly on the dataset, which is this standalone resource's entire surface |
 | `google_project_iam_member_remove` | declarative member removal is inherent to the additive iam_members reconciliation on the IAM member kinds (GcpProjectIamMember); a dedicated removal escape hatch is redundant |
 
-### Planned (89)
+### Planned (73)
 
 | Resource | Recorded reason |
 |---|---|
@@ -674,36 +674,21 @@ rather than trusted.
 | `google_certificate_manager_certificate_map` | planned kind GcpCertificateMap |
 | `google_certificate_manager_certificate_map_entry` | composes into the planned GcpCertificateMap kind |
 | `google_certificate_manager_trust_config` | planned composition into the existing GcpCertManagerCert kind (trust and issuance configuration) |
-| `google_cloud_run_domain_mapping` | planned composition into the existing GcpCloudRun kind (custom-domain mapping) |
+| `google_cloud_run_domain_mapping` | planned kind GcpCloudRunDomainMapping (Cloud Run custom domains with managed certificates — the scale-appropriate path below a full global HTTPS load balancer; a separate lifecycle from the service, never a toggle on it) |
 | `google_compute_autoscaler` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
 | `google_compute_bulk_per_instance_config` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
-| `google_compute_forwarding_rule` | planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources) |
-| `google_compute_global_network_endpoint` | composes into the planned load-balancer facade kinds (GcpHttpsLoadBalancer, GcpRegionalLoadBalancer) as backend endpoint-group blocks |
-| `google_compute_global_network_endpoint_group` | composes into the planned load-balancer facade kinds (GcpHttpsLoadBalancer, GcpRegionalLoadBalancer) as backend endpoint-group blocks |
 | `google_compute_instance_group` | composes into the planned load-balancer facade kinds (unmanaged instance groups as backends) |
 | `google_compute_instance_group_manager` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
 | `google_compute_instance_group_membership` | composes into the planned load-balancer facade kinds (unmanaged instance groups as backends) |
 | `google_compute_instance_group_named_port` | composes into the planned load-balancer facade kinds (unmanaged instance groups as backends) |
 | `google_compute_instance_template` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
-| `google_compute_network_endpoint` | composes into the planned load-balancer facade kinds (GcpHttpsLoadBalancer, GcpRegionalLoadBalancer) as backend endpoint-group blocks |
-| `google_compute_network_endpoint_group` | composes into the planned load-balancer facade kinds (GcpHttpsLoadBalancer, GcpRegionalLoadBalancer) as backend endpoint-group blocks |
-| `google_compute_network_endpoints` | composes into the planned load-balancer facade kinds (GcpHttpsLoadBalancer, GcpRegionalLoadBalancer) as backend endpoint-group blocks |
 | `google_compute_per_instance_config` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
 | `google_compute_region_autoscaler` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
-| `google_compute_region_backend_service` | planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources) |
 | `google_compute_region_instance_group_manager` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
 | `google_compute_region_instance_template` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
-| `google_compute_region_network_endpoint` | planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources) |
 | `google_compute_region_per_instance_config` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
 | `google_compute_region_resize_request` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
-| `google_compute_region_target_http_proxy` | planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources) |
-| `google_compute_region_target_https_proxy` | planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources) |
-| `google_compute_region_target_tcp_proxy` | planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources) |
-| `google_compute_region_url_map` | planned kind GcpRegionalLoadBalancer (internal/regional load-balancer facade; the global path is modeled by the consumed global LB resources) |
 | `google_compute_resize_request` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
-| `google_compute_target_grpc_proxy` | planned kind GcpHttpsLoadBalancer (global load-balancer facade; TCP/SSL/gRPC proxy variants) |
-| `google_compute_target_ssl_proxy` | planned kind GcpHttpsLoadBalancer (global load-balancer facade; TCP/SSL/gRPC proxy variants) |
-| `google_compute_target_tcp_proxy` | planned kind GcpHttpsLoadBalancer (global load-balancer facade; TCP/SSL/gRPC proxy variants) |
 | `google_eventarc_channel` | composes into the planned GcpEventarcTrigger kind |
 | `google_eventarc_enrollment` | composes into the planned GcpEventarcMessageBus kind (Eventarc Advanced) |
 | `google_eventarc_google_api_source` | composes into the planned GcpEventarcMessageBus kind (Eventarc Advanced) |
@@ -711,10 +696,9 @@ rather than trusted.
 | `google_eventarc_message_bus` | planned kind GcpEventarcMessageBus (Eventarc Advanced) |
 | `google_eventarc_pipeline` | composes into the planned GcpEventarcMessageBus kind (Eventarc Advanced) |
 | `google_eventarc_trigger` | planned kind GcpEventarcTrigger |
+| `google_iam_deny_policy` | planned kind GcpIamDenyPolicy (deny rules that block permissions for every principal regardless of allow bindings, with break-glass exceptions; creating them requires org-level iam.denyAdmin, so live proof carries the org-credential deferral) |
 | `google_iam_oauth_client` | planned kind GcpIamOauthClient |
 | `google_iam_oauth_client_credential` | composes into the planned GcpIamOauthClient kind |
-| `google_iap_settings` | composes into the planned GcpIapOauth kind (Identity-Aware Proxy configuration) |
-| `google_iap_tunnel_dest_group` | composes into the planned GcpIapOauth kind (Identity-Aware Proxy configuration) |
 | `google_identity_platform_config` | planned kind GcpIdentityPlatformConfig |
 | `google_identity_platform_default_supported_idp_config` | composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration) |
 | `google_identity_platform_inbound_saml_config` | composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration) |
@@ -760,7 +744,7 @@ rather than trusted.
 | `google_storage_notification` | planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications) |
 | `google_workflows_workflow` | planned kind GcpWorkflow |
 
-### Deferred (665)
+### Deferred (681)
 
 | Resource | Recorded reason |
 |---|---|
@@ -948,6 +932,9 @@ rather than trusted.
 | `google_compute_firewall_policy_association` | firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand |
 | `google_compute_firewall_policy_rule` | firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand |
 | `google_compute_firewall_policy_with_rules` | firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand |
+| `google_compute_forwarding_rule` | regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources |
+| `google_compute_global_network_endpoint` | network-endpoint-group surface for VM and hybrid backends; deferred pending demand — the serverless path is modeled by GcpRegionNetworkEndpointGroup, and the productized HTTPS-to-Cloud-Run composition ships as an infra chart over the modeled kinds rather than a facade kind |
+| `google_compute_global_network_endpoint_group` | network-endpoint-group surface for VM and hybrid backends; deferred pending demand — the serverless path is modeled by GcpRegionNetworkEndpointGroup, and the productized HTTPS-to-Cloud-Run composition ships as an infra chart over the modeled kinds rather than a facade kind |
 | `google_compute_global_vm_extension_policy` | VM extension policies are emerging fleet tooling; deferred pending demand |
 | `google_compute_ha_vpn_gateway` | HA VPN judged as one kind (HA gateway, external gateway, and tunnels composed); deferred pending demand |
 | `google_compute_image` | judged to deserve a compute-image kind (golden images); deferred pending demand |
@@ -959,6 +946,9 @@ rather than trusted.
 | `google_compute_interconnect_attachment_group` | physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred |
 | `google_compute_interconnect_group` | physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred |
 | `google_compute_network_attachment` | judged to fold into the existing GcpVpcNetwork kind's spec (static routes and network attachments); the composition is not built |
+| `google_compute_network_endpoint` | network-endpoint-group surface for VM and hybrid backends; deferred pending demand — the serverless path is modeled by GcpRegionNetworkEndpointGroup, and the productized HTTPS-to-Cloud-Run composition ships as an infra chart over the modeled kinds rather than a facade kind |
+| `google_compute_network_endpoint_group` | network-endpoint-group surface for VM and hybrid backends; deferred pending demand — the serverless path is modeled by GcpRegionNetworkEndpointGroup, and the productized HTTPS-to-Cloud-Run composition ships as an infra chart over the modeled kinds rather than a facade kind |
+| `google_compute_network_endpoints` | network-endpoint-group surface for VM and hybrid backends; deferred pending demand — the serverless path is modeled by GcpRegionNetworkEndpointGroup, and the productized HTTPS-to-Cloud-Run composition ships as an infra chart over the modeled kinds rather than a facade kind |
 | `google_compute_network_firewall_policy` | firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand |
 | `google_compute_network_firewall_policy_association` | firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand |
 | `google_compute_network_firewall_policy_rule` | firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand |
@@ -978,6 +968,7 @@ rather than trusted.
 | `google_compute_project_metadata_item` | judged to fold into the existing GcpProject kind's spec (project-level compute defaults and metadata); the composition is not built |
 | `google_compute_public_advertised_prefix` | physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred |
 | `google_compute_public_delegated_prefix` | physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred |
+| `google_compute_region_backend_service` | regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources |
 | `google_compute_region_commitment` | physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred |
 | `google_compute_region_composite_health_check` | composite health-check aggregation is emerging load-balancing surface; deferred pending demand |
 | `google_compute_region_disk` | judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built |
@@ -985,12 +976,17 @@ rather than trusted.
 | `google_compute_region_health_aggregation_policy` | composite health-check aggregation is emerging load-balancing surface; deferred pending demand |
 | `google_compute_region_health_source` | composite health-check aggregation is emerging load-balancing surface; deferred pending demand |
 | `google_compute_region_instant_snapshot` | judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built |
+| `google_compute_region_network_endpoint` | regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources |
 | `google_compute_region_network_firewall_policy` | firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand |
 | `google_compute_region_network_firewall_policy_association` | firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand |
 | `google_compute_region_network_firewall_policy_rule` | firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand |
 | `google_compute_region_network_firewall_policy_with_rules` | firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand |
 | `google_compute_region_security_policy` | judged to fold into the existing GcpCloudArmorPolicy kind's spec (standalone and regional rules); the composition is not built |
 | `google_compute_region_security_policy_rule` | judged to fold into the existing GcpCloudArmorPolicy kind's spec (standalone and regional rules); the composition is not built |
+| `google_compute_region_target_http_proxy` | regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources |
+| `google_compute_region_target_https_proxy` | regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources |
+| `google_compute_region_target_tcp_proxy` | regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources |
+| `google_compute_region_url_map` | regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources |
 | `google_compute_reservation` | physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred |
 | `google_compute_resource_policy` | judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built |
 | `google_compute_resource_policy_attachment` | judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built |
@@ -1008,7 +1004,10 @@ rather than trusted.
 | `google_compute_snapshot` | judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built |
 | `google_compute_snapshot_settings` | judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built |
 | `google_compute_storage_pool` | judged to deserve a Hyperdisk storage-pool kind; deferred pending demand |
+| `google_compute_target_grpc_proxy` | TCP/SSL/gRPC proxy-based load-balancer variants; deferred pending demand — the HTTP(S) proxy path is modeled by the target-proxy kinds, and non-HTTP proxy load balancers carry no recorded ask |
 | `google_compute_target_instance` | physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred |
+| `google_compute_target_ssl_proxy` | TCP/SSL/gRPC proxy-based load-balancer variants; deferred pending demand — the HTTP(S) proxy path is modeled by the target-proxy kinds, and non-HTTP proxy load balancers carry no recorded ask |
+| `google_compute_target_tcp_proxy` | TCP/SSL/gRPC proxy-based load-balancer variants; deferred pending demand — the HTTP(S) proxy path is modeled by the target-proxy kinds, and non-HTTP proxy load balancers carry no recorded ask |
 | `google_compute_vpn_tunnel` | HA VPN judged as one kind (HA gateway, external gateway, and tunnels composed); deferred pending demand |
 | `google_compute_wire_group` | Cross-Site Interconnect (cross-site networks, wire groups) is specialty networking; deferred pending demand |
 | `google_compute_zone_vm_extension_policy` | VM extension policies are emerging fleet tooling; deferred pending demand |
@@ -1183,7 +1182,6 @@ rather than trusted.
 | `google_healthcare_pipeline_job` | Cloud Healthcare (FHIR/DICOM/HL7) is an industry vertical (an eventual ~5 kind family); deferred pending demand |
 | `google_healthcare_workspace` | Cloud Healthcare (FHIR/DICOM/HL7) is an industry vertical (an eventual ~5 kind family); deferred pending demand |
 | `google_hypercomputecluster_cluster` | Hypercompute Cluster AI-supercomputing is a specialty; deferred pending demand |
-| `google_iam_deny_policy` | judged to deserve a GcpIamDenyPolicy kind (core enterprise governance); deferred pending demand |
 | `google_iam_folders_policy_binding` | judged to deserve a GcpPrincipalAccessBoundaryPolicy kind (scope bindings composed); deferred pending demand |
 | `google_iam_organizations_policy_binding` | judged to deserve a GcpPrincipalAccessBoundaryPolicy kind (scope bindings composed); deferred pending demand |
 | `google_iam_principal_access_boundary_policy` | judged to deserve a GcpPrincipalAccessBoundaryPolicy kind (scope bindings composed); deferred pending demand |
@@ -1195,6 +1193,8 @@ rather than trusted.
 | `google_iam_workforce_pool_provider_scim_token` | workforce identity federation judged as workforce-pool and provider kinds (provider keys composed); deferred pending demand |
 | `google_iam_workload_identity_pool_managed_identity` | judged to fold into the existing GcpWorkloadIdentityPool kind's spec (namespaces and managed identities); the composition is not built |
 | `google_iam_workload_identity_pool_namespace` | judged to fold into the existing GcpWorkloadIdentityPool kind's spec (namespaces and managed identities); the composition is not built |
+| `google_iap_settings` | per-resource IAP tuning; deferred pending demand — IAP on load balancers is enabled through the backend-service kinds' iap block, and the IAP OAuth Admin surface that once anchored a dedicated kind was shut down by Google (the brand/client resources are provider-deprecated) |
+| `google_iap_tunnel_dest_group` | IAP TCP tunneling destination groups; deferred pending demand — no recorded ask, and the IAP OAuth Admin surface that once anchored a dedicated kind was shut down by Google |
 | `google_integration_connectors_connection` | Application Integration is a niche; deferred |
 | `google_integration_connectors_endpoint_attachment` | Application Integration is a niche; deferred |
 | `google_integration_connectors_managed_zone` | Application Integration is a niche; deferred |
