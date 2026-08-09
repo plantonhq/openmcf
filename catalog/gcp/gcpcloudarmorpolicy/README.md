@@ -24,8 +24,10 @@ This component provisions a single Google Cloud Armor security policy with inlin
 - **Header injection** — Add custom headers to matching requests before forwarding to backends
 - **Preconfigured WAF exclusions** — Carve out false positives (e.g., SQL in search params, HTML in rich text) via exclusions per rule set
 - **Adaptive Protection** — Enable Layer 7 DDoS anomaly detection and auto-mitigation
-- **JSON parsing** — Inspect JSON and GraphQL request bodies for WAF rules
+- **JSON parsing** — Inspect JSON and GraphQL request bodies for WAF rules, with `requestBodyInspectionSize` controlling how much of each body the WAF reads (8KB default, up to 64KB)
 - **Preview mode** — Log matched traffic without enforcing actions to test rules safely
+- **Labels** — User labels merged with the platform attribution labels (platform wins on key conflicts)
+- **Deletion policy** — `DELETE` (default), `PREVENT` (destroy refuses), or `ABANDON` (the policy keeps enforcing but leaves management)
 
 ## Policy Types
 

@@ -56,6 +56,8 @@ spec:
     - CREATE TABLE orders (order_id STRING(36) NOT NULL, created_at TIMESTAMP NOT NULL) PRIMARY KEY (order_id)
   # Allow hack-loop teardown; production manifests keep the default (true).
   deletionProtection: false
+  # Explicit DELETE (the provider default) proves the round-trip.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields

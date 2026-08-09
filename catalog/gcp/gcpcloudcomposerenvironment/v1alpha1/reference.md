@@ -100,6 +100,10 @@ spec:
   labels:
     team: data-platform
     purpose: smoke-test
+
+  # Explicit DELETE (the provider default) proves the round-trip; the
+  # auto-created DAG bucket survives the destroy either way.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields

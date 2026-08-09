@@ -39,7 +39,14 @@ resource "google_compute_address" "this" {
   network_tier       = local.network_tier
   ipv6_endpoint_type = local.ipv6_endpoint_type
 
+  # BYOIP: reserve out of a customer-owned PublicDelegatedPrefix.
+  ip_collection = local.ip_collection
+
   labels = local.final_labels
+
+  # What destroy does to the reservation: DELETE (default), PREVENT
+  # (refuse), or ABANDON (drop from state, keep the IP reserved).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   depends_on = [google_project_service.compute_api]
 }

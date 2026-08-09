@@ -78,6 +78,19 @@ resource "google_compute_backend_bucket" "this" {
     }
   }
 
+  # Create-time Resource Manager tags; the provider nests them in a params
+  # block that must be omitted entirely when no tags are set.
+  dynamic "params" {
+    for_each = length(var.spec.resource_manager_tags) > 0 ? [1] : []
+    content {
+      resource_manager_tags = var.spec.resource_manager_tags
+    }
+  }
+
+  # What destroy does to the CDN origin: DELETE (default), PREVENT
+  # (refuse), or ABANDON (drop from state, keep serving).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.compute_api]
 }
 
@@ -94,4 +107,8 @@ resource "google_compute_backend_bucket_signed_url_key" "this" {
   key_value      = each.value.key_value # secret material; never surfaced in outputs
   backend_bucket = google_compute_backend_bucket.this.name
   project        = local.project_id
+
+  # The kind-level deletion_policy fans out to every key — the keys have no
+  # life apart from the bucket, so one switch governs both objects.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 }

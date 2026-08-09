@@ -101,5 +101,9 @@ variable "spec" {
 
       health_check = optional(string, "")
     }), null)
+
+    # DELETE (default), PREVENT, or ABANDON — what destroy does to the
+    # record set.
+    deletion_policy = optional(string, "")
   })
 }

@@ -31,3 +31,6 @@ spec:
           fieldPath: status.outputs.self_link
       # Serverless NEG backends must omit balancing_mode and capacity dials —
       # GCP rejects RATE/UTILIZATION/CONNECTION for serverless NEGs.
+
+  # Ephemeral test fixture: fully delete on destroy.
+  deletionPolicy: DELETE

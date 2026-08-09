@@ -35,3 +35,6 @@ spec:
   loadBalancingScheme: EXTERNAL
   labels:
     managed-by: planton-e2e
+
+  # Ephemeral test fixture: fully delete on destroy.
+  deletionPolicy: DELETE

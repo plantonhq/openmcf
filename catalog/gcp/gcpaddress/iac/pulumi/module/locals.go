@@ -20,11 +20,15 @@ type Locals struct {
 func initializeLocals(_ *pulumi.Context, stackInput *gcpaddressv1alpha1.GcpAddressStackInput) *Locals {
 	locals := &Locals{}
 	locals.GcpAddress = stackInput.Target
-	locals.GcpLabels = map[string]string{
-		gcplabelkeys.Resource:     strconv.FormatBool(true),
-		gcplabelkeys.ResourceName: locals.GcpAddress.Spec.AddressName,
-		gcplabelkeys.ResourceKind: strings.ToLower(cloudresourcekind.CloudResourceKind_GcpAddress.String()),
+	// User labels first so platform attribution labels win on key
+	// conflicts — identical merge order to the Terraform module.
+	locals.GcpLabels = map[string]string{}
+	for key, value := range locals.GcpAddress.Spec.Labels {
+		locals.GcpLabels[key] = value
 	}
+	locals.GcpLabels[gcplabelkeys.Resource] = strconv.FormatBool(true)
+	locals.GcpLabels[gcplabelkeys.ResourceName] = locals.GcpAddress.Spec.AddressName
+	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpAddress.String())
 
 	if locals.GcpAddress.Metadata.Org != "" {
 		locals.GcpLabels[gcplabelkeys.Organization] = locals.GcpAddress.Metadata.Org

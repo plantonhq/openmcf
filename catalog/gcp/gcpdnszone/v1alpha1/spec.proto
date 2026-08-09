@@ -101,8 +101,14 @@ message GcpDnsZonePrivateVisibilityConfig {
 message GcpDnsZoneForwardingTargetNameServer {
   option (buf.validate.message).cel = {
     id: "target_has_address"
-    message: "each target_name_server requires ipv4_address or domain_name"
-    expression: "this.ipv4_address != '' || this.domain_name != ''"
+    message: "each target_name_server requires ipv4_address, ipv6_address, or domain_name"
+    expression: "this.ipv4_address != '' || this.ipv6_address != '' || this.domain_name != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "target_single_ip_family"
+    message: "a target_name_server accepts ipv4_address or ipv6_address, never both"
+    expression: "!(this.ipv4_address != '' && this.ipv6_address != '')"
   };
 
   // IPv4 address of the upstream resolver.
@@ -117,6 +123,10 @@ message GcpDnsZoneForwardingTargetNameServer {
     message: "forwarding_path must be default or private"
     expression: "this == '' || this in ['default', 'private']"
   }];
+
+  // IPv6 address of the upstream resolver. A target carries one address
+  // family — the provider rejects a target with both IPv4 and IPv6 set.
+  string ipv6_address = 4;
 }
 
 // GcpDnsZoneForwardingConfig turns the zone into an outbound forwarding zone
@@ -217,4 +227,21 @@ message GcpDnsZoneSpec {
 
   // Additional GCP labels merged with platform labels.
   map<string, string> labels = 11;
+
+  // Deletion policy for the managed zone — the second of this kind's two
+  // destroy levers (force_destroy empties the records first; this decides
+  // the zone shell itself):
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the zone is deleted (GCP refuses while non-default
+  //                record sets remain unless force_destroy is true); its
+  //                delegated name servers stop answering
+  //   "PREVENT" -- destroy FAILS; protects a zone that registrars and
+  //                parent zones delegate to
+  //   "ABANDON" -- the zone is removed from management but keeps serving
+  //                DNS in GCP
+  string deletion_policy = 12 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

@@ -85,6 +85,17 @@ func regionalAddress(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 		args.Ipv6EndpointType = pulumi.StringPtr(spec.Ipv6EndpointType)
 	}
 
+	// BYOIP: reserve out of a customer-owned PublicDelegatedPrefix.
+	if spec.IpCollection != "" {
+		args.IpCollection = pulumi.StringPtr(spec.IpCollection)
+	}
+
+	// What destroy does to the reservation: DELETE (default), PREVENT
+	// (refuse), or ABANDON (drop from state, keep the IP reserved).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdAddress, err := compute.NewAddress(ctx, "regional-address", args,
 		pulumi.Provider(gcpProvider), pulumi.DependsOn([]pulumi.Resource{createdProjectService}))
 	if err != nil {

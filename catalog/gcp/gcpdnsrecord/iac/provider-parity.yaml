@@ -1,0 +1,32 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_dns_record_set:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terse RFC/API names (rrdatas, ttl).
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.values
+        arg: rrdatas
+      - spec: spec.ttl_seconds
+        arg: ttl
+      # The same rrdatas rename inside each routing-policy arm.
+      - spec: spec.routing_policy.wrr.values
+        arg: routing_policy.wrr.rrdatas
+      - spec: spec.routing_policy.geo.values
+        arg: routing_policy.geo.rrdatas
+      - spec: spec.routing_policy.primary_backup.backup_geo.values
+        arg: routing_policy.primary_backup.backup_geo.rrdatas
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables dns.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      record set never disables the API project-wide); not spec surface.

@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpDnsRecordSpec creates one DNS record set inside an existing Cloud DNS
 managed zone. A record set is the unit Cloud DNS manages: one (name, type)
 pair holding either a static list of values (round-robin) or exactly one
@@ -34,6 +36,9 @@ spec:
   values:
     - value: 192.0.2.1
   ttlSeconds: 300
+
+  # Ephemeral test fixture: delete the record set on destroy.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -101,6 +106,7 @@ spec:
 | `spec.routingPolicy.primaryBackup.trickleRatio` | `double` |  |  |  |
 | `spec.routingPolicy.primaryBackup.enableGeoFencingForBackups` | `bool` |  |  |  |
 | `spec.routingPolicy.healthCheck` | `string \| valueFrom` |  |  | GcpHealthCheck (`status.outputs.self_link`) |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -683,6 +689,21 @@ health checking and do not need this.
 
 - references: GcpHealthCheck (`status.outputs.self_link`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpHealthCheck, name: <that resource's name>, fieldPath: status.outputs.self_link}} -- a bare string does not parse
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the record set — what happens on destroy:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the record set is deleted; resolvers stop getting
+               answers for this name/type as caches expire
+  "PREVENT" -- destroy FAILS; protects a name other systems resolve
+               (mail routing, domain verification, service discovery)
+  "ABANDON" -- the record set is removed from management but keeps
+               answering queries in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

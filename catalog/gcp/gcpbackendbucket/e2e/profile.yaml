@@ -10,8 +10,6 @@ spec:
   # backendBuckets.get verify (incl. origin wiring) -> destroy -> verify 404,
   # on both provisioners.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

@@ -12,24 +12,16 @@
 # Entry format: kind:<Kind> | resource:<terraform resource type>
 # Regenerate with:  PLANTON_REGEN_PROVIDERPARITY_BASELINE=1 go test ./pkg/providerparity/
 entries:
-  - kind:GcpAddress
   - kind:GcpAlloydbCluster
   - kind:GcpAlloydbInstance
   - kind:GcpAlloydbUser
   - kind:GcpArtifactRegistryRepo
-  - kind:GcpBackendBucket
-  - kind:GcpBackendService
   - kind:GcpBigQueryDataset
   - kind:GcpBigQueryTable
-  - kind:GcpCloudArmorPolicy
   - kind:GcpCloudFunction
   - kind:GcpCloudSchedulerJob
   - kind:GcpCloudTasksQueue
-  - kind:GcpDnsRecord
-  - kind:GcpDnsZone
   - kind:GcpFirewallRule
-  - kind:GcpGlobalAddress
-  - kind:GcpGlobalForwardingRule
   - kind:GcpHealthCheck
   - kind:GcpIamCustomRole
   - kind:GcpKmsKey

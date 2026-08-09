@@ -23,6 +23,10 @@ resource "google_dns_record_set" "record" {
   # ExactlyOneOf sees the attribute as absent when routing_policy is used.
   rrdatas = length(var.spec.values) > 0 ? var.spec.values : null
 
+  # What destroy does to the record set: DELETE (default), PREVENT
+  # (refuse), or ABANDON (drop from state, keep answering queries).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.dns_api]
 
   dynamic "routing_policy" {

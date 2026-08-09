@@ -360,8 +360,11 @@ type GcpDnsZoneForwardingTargetNameServer struct {
 	DomainName string `protobuf:"bytes,2,opt,name=domain_name,json=domainName,proto3" json:"domain_name,omitempty"`
 	// Query path: default (RFC1918 via VPC, else internet) or private (always VPC).
 	ForwardingPath string `protobuf:"bytes,3,opt,name=forwarding_path,json=forwardingPath,proto3" json:"forwarding_path,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// IPv6 address of the upstream resolver. A target carries one address
+	// family — the provider rejects a target with both IPv4 and IPv6 set.
+	Ipv6Address   string `protobuf:"bytes,4,opt,name=ipv6_address,json=ipv6Address,proto3" json:"ipv6_address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpDnsZoneForwardingTargetNameServer) Reset() {
@@ -411,6 +414,13 @@ func (x *GcpDnsZoneForwardingTargetNameServer) GetDomainName() string {
 func (x *GcpDnsZoneForwardingTargetNameServer) GetForwardingPath() string {
 	if x != nil {
 		return x.ForwardingPath
+	}
+	return ""
+}
+
+func (x *GcpDnsZoneForwardingTargetNameServer) GetIpv6Address() string {
+	if x != nil {
+		return x.Ipv6Address
 	}
 	return ""
 }
@@ -540,9 +550,22 @@ type GcpDnsZoneSpec struct {
 	// When true, delete all record sets in the zone on destroy. Default false.
 	ForceDestroy *bool `protobuf:"varint,10,opt,name=force_destroy,json=forceDestroy,proto3,oneof" json:"force_destroy,omitempty"`
 	// Additional GCP labels merged with platform labels.
-	Labels        map[string]string `protobuf:"bytes,11,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Labels map[string]string `protobuf:"bytes,11,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the managed zone — the second of this kind's two
+	// destroy levers (force_destroy empties the records first; this decides
+	// the zone shell itself):
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the zone is deleted (GCP refuses while non-default
+	//	             record sets remain unless force_destroy is true); its
+	//	             delegated name servers stop answering
+	//	"PREVENT" -- destroy FAILS; protects a zone that registrars and
+	//	             parent zones delegate to
+	//	"ABANDON" -- the zone is removed from management but keeps serving
+	//	             DNS in GCP
+	DeletionPolicy string `protobuf:"bytes,12,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpDnsZoneSpec) Reset() {
@@ -652,6 +675,13 @@ func (x *GcpDnsZoneSpec) GetLabels() map[string]string {
 	return nil
 }
 
+func (x *GcpDnsZoneSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpdnszone_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpdnszone_v1alpha1_spec_proto_rawDesc = "" +
@@ -681,18 +711,20 @@ const file_catalog_gcp_gcpdnszone_v1alpha1_spec_proto_rawDesc = "" +
 	"!GcpDnsZonePrivateVisibilityConfig\x12c\n" +
 	"\bnetworks\x18\x01 \x03(\v2G.dev.planton.gcp.gcpdnszone.v1alpha1.GcpDnsZonePrivateVisibilityNetworkR\bnetworks\x12m\n" +
 	"\fgke_clusters\x18\x02 \x03(\v2J.dev.planton.gcp.gcpdnszone.v1alpha1.GcpDnsZonePrivateVisibilityGkeClusterR\vgkeClusters:\xa8\x01\xbaH\xa4\x01\x1a\xa1\x01\n" +
-	"\x1fprivate_visibility_needs_target\x12Fprivate_visibility_config requires at least one network or gke_cluster\x1a6size(this.networks) > 0 || size(this.gke_clusters) > 0\"\x9c\x03\n" +
+	"\x1fprivate_visibility_needs_target\x12Fprivate_visibility_config requires at least one network or gke_cluster\x1a6size(this.networks) > 0 || size(this.gke_clusters) > 0\"\x83\x05\n" +
 	"$GcpDnsZoneForwardingTargetNameServer\x12!\n" +
 	"\fipv4_address\x18\x01 \x01(\tR\vipv4Address\x12\x1f\n" +
 	"\vdomain_name\x18\x02 \x01(\tR\n" +
 	"domainName\x12\xa0\x01\n" +
 	"\x0fforwarding_path\x18\x03 \x01(\tBw\xbaHt\xba\x01q\n" +
-	"\x15forwarding_path_valid\x12*forwarding_path must be default or private\x1a,this == '' || this in ['default', 'private']R\x0eforwardingPath:\x8c\x01\xbaH\x88\x01\x1a\x85\x01\n" +
-	"\x12target_has_address\x12<each target_name_server requires ipv4_address or domain_name\x1a1this.ipv4_address != '' || this.domain_name != ''\"\xa2\x01\n" +
+	"\x15forwarding_path_valid\x12*forwarding_path must be default or private\x1a,this == '' || this in ['default', 'private']R\x0eforwardingPath\x12!\n" +
+	"\fipv6_address\x18\x04 \x01(\tR\vipv6Address:\xd0\x02\xbaH\xcc\x02\x1a\xaf\x01\n" +
+	"\x12target_has_address\x12Keach target_name_server requires ipv4_address, ipv6_address, or domain_name\x1aLthis.ipv4_address != '' || this.ipv6_address != '' || this.domain_name != ''\x1a\x97\x01\n" +
+	"\x17target_single_ip_family\x12Ea target_name_server accepts ipv4_address or ipv6_address, never both\x1a5!(this.ipv4_address != '' && this.ipv6_address != '')\"\xa2\x01\n" +
 	"\x1aGcpDnsZoneForwardingConfig\x12\x83\x01\n" +
 	"\x13target_name_servers\x18\x01 \x03(\v2I.dev.planton.gcp.gcpdnszone.v1alpha1.GcpDnsZoneForwardingTargetNameServerB\b\xbaH\x05\x92\x01\x02\b\x01R\x11targetNameServers\"\xaa\x01\n" +
 	"\x17GcpDnsZonePeeringConfig\x12\x8e\x01\n" +
-	"\x0etarget_network\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\rtargetNetwork\"\xa6\x10\n" +
+	"\x0etarget_network\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\rtargetNetwork\"\xe4\x11\n" +
 	"\x0eGcpDnsZoneSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x81\x02\n" +
@@ -710,7 +742,9 @@ const file_catalog_gcp_gcpdnszone_v1alpha1_spec_proto_rawDesc = "" +
 	"\x14cloud_logging_config\x18\t \x01(\v2A.dev.planton.gcp.gcpdnszone.v1alpha1.GcpDnsZoneCloudLoggingConfigR\x12cloudLoggingConfig\x123\n" +
 	"\rforce_destroy\x18\n" +
 	" \x01(\bB\t\x8a\xa6\x1d\x05falseH\x01R\fforceDestroy\x88\x01\x01\x12W\n" +
-	"\x06labels\x18\v \x03(\v2?.dev.planton.gcp.gcpdnszone.v1alpha1.GcpDnsZoneSpec.LabelsEntryR\x06labels\x1a9\n" +
+	"\x06labels\x18\v \x03(\v2?.dev.planton.gcp.gcpdnszone.v1alpha1.GcpDnsZoneSpec.LabelsEntryR\x06labels\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\f \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xce\x05\xbaH\xca\x05\x1a\xc3\x01\n" +

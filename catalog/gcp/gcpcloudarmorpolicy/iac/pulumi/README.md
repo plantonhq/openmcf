@@ -30,12 +30,12 @@ Creating with NO rules lets the API add a default "allow all" rule
 automatically; providing ANY rules requires the set to include that default
 explicitly — the spec enforces this before the module ever runs.
 
-## Deliberately Unmodeled (parity with Terraform)
+## Labels and Destroy Behavior (parity with Terraform)
 
-- **Labels** — `google_compute_security_policy` has no labels attribute on
-  the released `google ~> 6.0` line the Terraform module pins. The bridged
-  Pulumi provider would accept them, but that would be intent only one
-  engine honors — so neither engine sends labels (PARITY comment in
-  `security_policy.go`).
-- **`request_body_inspection_size`** — absent from the released provider
-  line (a newer-major-only surface); not modeled on either engine.
+- **Labels** — user labels from `spec.labels` are merged with the platform
+  attribution labels (platform wins on key conflicts), the identical merge
+  order the Terraform module uses.
+- **`deletion_policy`** — DELETE (default), PREVENT, or ABANDON decides
+  what a destroy does to the policy; sent only when set on both engines.
+- **`advanced_options_config.request_body_inspection_size`** — how much of
+  each request body the WAF inspects (8KB default, up to 64KB).

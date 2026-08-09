@@ -49,6 +49,9 @@ variable "spec" {
       json_custom_config = optional(object({
         content_types = list(string)
       }), null)
+      # 8KB (provider default), 16KB, 32KB, 48KB, or 64KB of each request
+      # body the WAF inspects.
+      request_body_inspection_size = optional(string, "")
     }), null)
 
     recaptcha_options_config = optional(object({
@@ -130,5 +133,13 @@ variable "spec" {
         }))
       }), null)
     })), [])
+
+    # User labels merged with the platform labels (platform wins on key
+    # conflicts). Mutable.
+    labels = optional(map(string), {})
+
+    # DELETE (default), PREVENT, or ABANDON — what destroy does to the
+    # security policy.
+    deletion_policy = optional(string, "")
   })
 }

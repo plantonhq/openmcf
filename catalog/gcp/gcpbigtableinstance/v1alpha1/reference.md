@@ -53,6 +53,11 @@ spec:
   displayName: Test Bigtable Instance
   deletionProtection: false
   forceDestroy: true
+  # ENTERPRISE is the provider default; ENTERPRISE_PLUS unlocks
+  # multi-location automated-backup placement on tables.
+  edition: ENTERPRISE
+  # Explicit DELETE (the provider default) proves the round-trip.
+  deletionPolicy: DELETE
   clusters:
     - clusterId: test-cluster-c1
       zone: us-central1-a

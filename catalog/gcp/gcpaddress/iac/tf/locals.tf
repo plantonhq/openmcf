@@ -14,13 +14,14 @@ locals {
 
   address_name = var.spec.address_name
 
-  address     = var.spec.address != "" ? var.spec.address : null
-  description = var.spec.description != "" ? var.spec.description : null
-  network     = var.spec.network != "" ? var.spec.network : null
-  subnetwork  = var.spec.subnetwork != "" ? var.spec.subnetwork : null
-  purpose     = var.spec.purpose != "" ? var.spec.purpose : null
-  network_tier = var.spec.network_tier != "" ? var.spec.network_tier : null
+  address            = var.spec.address != "" ? var.spec.address : null
+  description        = var.spec.description != "" ? var.spec.description : null
+  network            = var.spec.network != "" ? var.spec.network : null
+  subnetwork         = var.spec.subnetwork != "" ? var.spec.subnetwork : null
+  purpose            = var.spec.purpose != "" ? var.spec.purpose : null
+  network_tier       = var.spec.network_tier != "" ? var.spec.network_tier : null
   ipv6_endpoint_type = var.spec.ipv6_endpoint_type != "" ? var.spec.ipv6_endpoint_type : null
+  ip_collection      = var.spec.ip_collection != "" ? var.spec.ip_collection : null
 
   # The same planton-ai_* label set the Pulumi module applies, so a resource
   # is attributable to its Planton object regardless of the engine that
@@ -44,5 +45,6 @@ locals {
     var.metadata.id != null && var.metadata.id != ""
   ) ? { "planton-ai_id" = var.metadata.id } : {}
 
-  final_labels = merge(local.base_labels, local.org_label, local.env_label, local.id_label)
+  # User labels first: the platform labels win on key conflicts.
+  final_labels = merge(var.spec.labels, local.base_labels, local.org_label, local.env_label, local.id_label)
 }

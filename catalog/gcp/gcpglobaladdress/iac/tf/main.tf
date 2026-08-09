@@ -35,5 +35,9 @@ resource "google_compute_global_address" "this" {
 
   labels = local.final_labels
 
+  # What destroy does to the reservation: DELETE (default), PREVENT
+  # (refuse), or ABANDON (drop from state, keep the IP reserved).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.compute_api]
 }

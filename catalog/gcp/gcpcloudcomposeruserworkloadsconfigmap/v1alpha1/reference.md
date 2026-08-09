@@ -52,6 +52,9 @@ spec:
     api_endpoint: https://api.example.com/v2
     batch_size: "500"
     enable_new_flow: "true"
+
+  # Explicit DELETE (the provider default) proves the round-trip.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields

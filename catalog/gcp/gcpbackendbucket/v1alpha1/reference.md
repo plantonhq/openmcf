@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpBackendBucketSpec defines a Compute Engine backend bucket — the piece
 that serves a Cloud Storage bucket's objects through an external HTTP(S)
 load balancer, optionally cached at Google's edge by Cloud CDN. It is the
@@ -64,6 +66,10 @@ spec:
   # Surface the CDN verdict for debugging.
   customResponseHeaders:
     - "X-Cache-Status: {cdn_cache_status}"
+
+  # Ephemeral test fixture: delete the backend bucket (and any signed-URL
+  # keys) on destroy.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -99,6 +105,8 @@ spec:
 | `spec.signedUrlKeys` | `[]GcpBackendBucketSignedUrlKey` |  |  |  |
 | `spec.signedUrlKeys[].name` | `string` | yes |  |  |
 | `spec.signedUrlKeys[].keyValue` | `string` (sensitive) | yes |  |  |
+| `spec.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -411,6 +419,32 @@ Immutable per key name: rotating means adding a new key and removing
 the old.
 
 - rule: {"required":true,"string":{"pattern":"^[A-Za-z0-9_-]{22}(==)?$"}}
+
+### spec.resourceManagerTags
+
+`map<string, string>`
+
+Resource Manager tags bound to the backend bucket for org-policy and
+IAM conditions. Keys in the form "tagKeys/{id}", values
+"tagValues/{id}". Create-time only: changing them later replaces the
+backend bucket.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the backend bucket AND its signed-URL keys — one
+switch governs both objects this kind manages:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- both are deleted (GCP refuses to delete the backend
+               bucket while a URL map still references it); the GCS
+               bucket behind it is untouched — it belongs to its own
+               kind
+  "PREVENT" -- destroy FAILS; protects a CDN origin that URL maps may
+               still route to
+  "ABANDON" -- both are removed from management but keep serving in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

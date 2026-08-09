@@ -34,3 +34,6 @@ spec:
       - code: 404
         ttl: 30
   compressionMode: AUTOMATIC
+
+  # Ephemeral test fixture: fully delete on destroy.
+  deletionPolicy: DELETE
