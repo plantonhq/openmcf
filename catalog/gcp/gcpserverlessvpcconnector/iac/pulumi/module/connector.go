@@ -83,6 +83,10 @@ func connector(
 	if spec.MaxInstances != nil {
 		args.MaxInstances = pulumi.Int(int(spec.GetMaxInstances()))
 	}
+	// Empty defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
 
 	createdConnector, err := vpcaccess.NewConnector(ctx,
 		locals.GcpServerlessVpcConnector.Metadata.Name,

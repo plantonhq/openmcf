@@ -60,6 +60,10 @@ variable "spec" {
       version  = optional(string, "")
       url_mask = optional(string, "")
     }))
+
+    # DELETE (default) / PREVENT / ABANDON; empty falls through to the
+    # provider default (DELETE).
+    deletion_policy = optional(string, "")
   })
 
   # NOTE: never guard optional strings with coalesce() here — HCL's coalesce

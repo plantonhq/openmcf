@@ -27,3 +27,7 @@ spec:
     subnetworks:
       - value: projects/my-gcp-project-123/regions/us-central1/subnetworks/my-subnet
     limit: 10
+
+  # DELETE keeps destroys real; PREVENT belongs on policies live managed
+  # instances depend on.
+  deletionPolicy: DELETE

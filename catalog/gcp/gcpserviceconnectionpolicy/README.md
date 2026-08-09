@@ -63,6 +63,7 @@ Once the policy exists, PSC-first managed services of that class can be created 
 | `pscConfig.limit` | `int32` | GCP default | Max PSC connections under this policy. Mutable. |
 | `pscConfig.producerInstanceLocation` | `string` | GCP default | Producer authorization mode; `CUSTOM_RESOURCE_HIERARCHY_LEVELS` activates the allowlist. |
 | `pscConfig.allowedGoogleProducersResourceHierarchyLevels` | `string[]` | — | `projects/…`, `folders/…`, `organizations/…` entries producers may live in. |
+| `deletionPolicy` | `string` | `DELETE` | What destroy does: `DELETE` removes the policy (stranding existing PSC endpoints), `PREVENT` fails the destroy to protect managed-instance connectivity, `ABANDON` leaves it authorizing unmanaged. |
 
 ## Stack Outputs
 
@@ -90,10 +91,6 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 - **Address formats are normalized**: the Service Connectivity API requires relative resource paths; both engines strip `https://` self-link prefixes from `network` and `subnetworks`, so references and literals work in either form.
 - **Regular subnets work**: service connection policies draw endpoint IPs from ordinary subnets — no special PSC purpose is required.
 - **The immutables**: `location`, `network`, `serviceClass`, and the policy name are ForceNew; the `pscConfig` contents, description, and labels update in place — so subnet growth and limit raises never recreate the policy.
-
-### Deliberately not modeled (recorded reasons)
-
-- **`deletion_policy`** — a client-side Terraform lever (ABANDON removes the policy from state without deleting it) that conflicts with Planton-managed destroy (catalog-wide decision).
 
 ## Related Components
 

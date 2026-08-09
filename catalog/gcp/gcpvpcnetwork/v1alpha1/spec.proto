@@ -106,4 +106,24 @@ message GcpVpcNetworkSpec {
   // When true, default routes (0.0.0.0/0) are not created automatically.
   // Immutable.
   bool delete_default_routes_on_create = 12;
+
+  // Resource Manager tags bound to the network for org-policy and IAM
+  // conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
+  // Create-time only: changing them later replaces the network.
+  map<string, string> resource_manager_tags = 13;
+
+  // Deletion policy for the VPC network — what happens when this resource
+  // is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the network is deleted (GCP refuses while subnets,
+  //                peerings, or attached resources remain in it)
+  //   "PREVENT" -- destroy FAILS; protects the network every subnet,
+  //                route, and peering in it depends on
+  //   "ABANDON" -- the network is removed from management but left
+  //                serving in GCP
+  string deletion_policy = 14 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

@@ -1,3 +1,16 @@
-# GcpVpcNetwork E2E profile — leaf scenarios for the deep-rebuilt VPC kind.
-component: gcpvpcnetwork
-provider: gcp
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpvpcnetwork
+spec:
+  # One leaf scenario: VPC networks are free and create in seconds.
+  # deploy -> compute networks get verify -> destroy -> verify gone, on
+  # both provisioners. (The kind also serves as a prerequisite fixture for
+  # many other kinds' proofs — this profile covers its own leaf scenario.)
+  tier: 1
+  # Never proven as a leaf at the current spec shape (BGP best-path
+  # selection with explicit MED send, resource-manager tags,
+  # deletion_policy) — awaits live proof.
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

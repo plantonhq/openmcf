@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpVpcNetworkSpec defines configuration for a Google Cloud VPC (Virtual Private Cloud).
 
 Private services access (Cloud SQL / AlloyDB / Memorystore private IP) is NOT
@@ -26,6 +28,17 @@ spec:
   autoCreateSubnetworks: false
   routingMode: REGIONAL
   description: Application VPC with custom subnets
+
+  # BGP best-path selection: STANDARD unlocks MED comparison across
+  # neighbor ASNs and inter-region cost biasing — the multi-site levers.
+  bgpBestPathSelection:
+    mode: STANDARD
+    alwaysCompareMed: true
+    interRegionCost: ADD_COST_TO_MED
+
+  # DELETE keeps destroys real; PREVENT belongs on the network everything
+  # else depends on.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -47,6 +60,8 @@ spec:
 | `spec.bgpBestPathSelection.alwaysCompareMed` | `bool` |  |  |  |
 | `spec.bgpBestPathSelection.interRegionCost` | `string` |  |  |  |
 | `spec.deleteDefaultRoutesOnCreate` | `bool` |  |  |  |
+| `spec.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -180,6 +195,30 @@ algorithm: DEFAULT or ADD_COST_TO_MED.
 
 When true, default routes (0.0.0.0/0) are not created automatically.
 Immutable.
+
+### spec.resourceManagerTags
+
+`map<string, string>`
+
+Resource Manager tags bound to the network for org-policy and IAM
+conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
+Create-time only: changing them later replaces the network.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the VPC network — what happens when this resource
+is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the network is deleted (GCP refuses while subnets,
+               peerings, or attached resources remain in it)
+  "PREVENT" -- destroy FAILS; protects the network every subnet,
+               route, and peering in it depends on
+  "ABANDON" -- the network is removed from management but left
+               serving in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

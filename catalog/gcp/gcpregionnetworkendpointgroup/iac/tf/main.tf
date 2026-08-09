@@ -72,5 +72,7 @@ resource "google_compute_region_network_endpoint_group" "this" {
     }
   }
 
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.compute_api]
 }

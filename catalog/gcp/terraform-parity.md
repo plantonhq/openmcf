@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2856 |
+| Spec fields authored across all kinds | 2865 |
 | Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**26 of 79 kinds are at total accounting; 52 proven live.**
+**34 of 79 kinds are at total accounting; 45 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -104,30 +104,30 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpPubSubSubscription | 49 | 37 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
 | GcpPubSubTopic | 49 | 35 | 0 | 0 | 16 | ❌ | ✅ pulumi, terraform |
 | GcpRedisInstance | 37 | 21 | 0 | 0 | 21 | ❌ | ✅ pulumi, terraform |
-| GcpRegionNetworkEndpointGroup | 23 | 15 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
+| GcpRegionNetworkEndpointGroup | 18 | 16 | 2 | 0 | 0 | ✅ | — |
 | GcpRouterNat | 54 | 28 | 21 | 5 | 0 | ✅ | — |
-| GcpServerlessVpcConnector | 18 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
+| GcpServerlessVpcConnector | 13 | 9 | 2 | 2 | 0 | ✅ | — |
 | GcpServiceAccount | 26 | 11 | 5 | 10 | 0 | ✅ | — |
 | GcpServiceAccountIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpServiceConnectionPolicy | 17 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
-| GcpServiceNetworkingConnection | 10 | 5 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
+| GcpServiceConnectionPolicy | 12 | 9 | 3 | 0 | 0 | ✅ | — |
+| GcpServiceNetworkingConnection | 5 | 5 | 0 | 0 | 0 | ✅ | — |
 | GcpSpannerBackupSchedule | 15 | 6 | 0 | 0 | 13 | ❌ | ✅ pulumi, terraform |
 | GcpSpannerDatabase | 17 | 9 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
 | GcpSpannerInstance | 33 | 15 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
 | GcpSslCertificate | 19 | 9 | 4 | 6 | 0 | ✅ | — |
 | GcpSslPolicy | 17 | 13 | 4 | 0 | 0 | ✅ | — |
 | GcpSubnetwork | 34 | 17 | 0 | 0 | 22 | ❌ | ✅ pulumi, terraform |
-| GcpTargetHttpProxy | 12 | 4 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
-| GcpTargetHttpsProxy | 19 | 11 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
+| GcpTargetHttpProxy | 7 | 5 | 2 | 0 | 0 | ✅ | — |
+| GcpTargetHttpsProxy | 14 | 12 | 2 | 0 | 0 | ✅ | — |
 | GcpUrlMap | 333 | 74 | 259 | 0 | 0 | ✅ | — |
 | GcpVertexAiDeployedIndex | 16 | 11 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
 | GcpVertexAiEndpoint | 24 | 7 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
 | GcpVertexAiIndex | 22 | 4 | 0 | 0 | 29 | ❌ | ✅ pulumi, terraform |
 | GcpVertexAiIndexEndpoint | 18 | 7 | 0 | 0 | 13 | ❌ | ✅ pulumi, terraform |
 | GcpVertexAiNotebook | 51 | 7 | 0 | 0 | 76 | ❌ | ✅ pulumi, terraform |
-| GcpVpcNetwork | 22 | 9 | 0 | 0 | 18 | ❌ | — |
+| GcpVpcNetwork | 17 | 10 | 6 | 1 | 0 | ✅ | — |
 | GcpWorkloadIdentityPool | 16 | 11 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
-| GcpWorkloadIdentityPoolProvider | 16 | 14 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
+| GcpWorkloadIdentityPoolProvider | 16 | 15 | 1 | 0 | 0 | ✅ | — |
 
 ## Breadth: every GA resource, one disposition
 

@@ -18,3 +18,7 @@ spec:
   cloudRun:
     service:
       value: my-cloud-run-service
+
+  # DELETE keeps destroys real; PREVENT belongs on NEGs a production
+  # backend service routes through.
+  deletionPolicy: DELETE

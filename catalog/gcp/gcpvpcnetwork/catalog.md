@@ -32,7 +32,7 @@ Open the deployment store, find **GCP VPC Network**, and click **Deploy**. The c
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVpcNetwork
 metadata:
   name: prod-vpc

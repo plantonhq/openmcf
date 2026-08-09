@@ -48,15 +48,24 @@ variable "spec" {
     # Full or partial network profile URL. Immutable.
     network_profile = optional(string, "")
 
-    # BGP best-path selection block; all fields mutable.
+    # BGP best-path selection block; all fields mutable. No object default:
+    # absence must stay distinguishable from an all-default block, because
+    # always_compare_med is only sent when the block is present.
     bgp_best_path_selection = optional(object({
       mode               = optional(string, "")
       always_compare_med = optional(bool, false)
       inter_region_cost  = optional(string, "")
-    }), {})
+    }))
 
     # Suppress automatic 0.0.0.0/0 routes at creation. Immutable.
     delete_default_routes_on_create = optional(bool, false)
+
+    # Create-time Resource Manager tag bindings (tagKeys/{id} => tagValues/{id}).
+    resource_manager_tags = optional(map(string), {})
+
+    # DELETE (default) / PREVENT / ABANDON; empty falls through to the
+    # provider default (DELETE).
+    deletion_policy = optional(string, "")
   })
 
   validation {

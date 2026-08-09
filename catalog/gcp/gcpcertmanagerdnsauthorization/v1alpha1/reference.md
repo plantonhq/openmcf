@@ -35,6 +35,8 @@ spec:
   projectId:
     value: test-gcp-project
   domain: example.com
+  # What a destroy does: DELETE (default), PREVENT, or ABANDON.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields

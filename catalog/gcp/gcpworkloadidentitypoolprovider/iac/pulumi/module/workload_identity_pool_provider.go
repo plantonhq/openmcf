@@ -128,6 +128,11 @@ func workloadIdentityPoolProvider(ctx *pulumi.Context, locals *Locals, gcpProvid
 		return errors.New("exactly one issuer (aws, oidc, saml, or x509) must be configured")
 	}
 
+	// Empty defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdProvider, err := iam.NewWorkloadIdentityPoolProvider(ctx, "workload-identity-pool-provider", args, pulumi.Provider(gcpProvider))
 	if err != nil {
 		return errors.Wrap(err, "failed to create workload identity pool provider")

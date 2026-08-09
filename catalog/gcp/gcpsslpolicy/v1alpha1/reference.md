@@ -43,12 +43,20 @@ spec:
   # Why this policy exists — shown in the GCP console.
   description: TLS 1.2 floor with MODERN ciphers for production frontends
 
-  # Cipher-suite profile: COMPATIBLE (default), MODERN, RESTRICTED, or CUSTOM.
+  # Cipher-suite profile: COMPATIBLE (default), MODERN, RESTRICTED, CUSTOM,
+  # or FIPS_202205 (requires minTlsVersion TLS_1_2).
   profile: MODERN
 
   # Minimum TLS version clients may negotiate: TLS_1_0 (default), TLS_1_1,
-  # or TLS_1_2.
+  # TLS_1_2, or TLS_1_3 (requires the RESTRICTED profile).
   minTlsVersion: TLS_1_2
+
+  # Post-quantum key exchange rollout stance: DEFAULT (follow GCP's
+  # timeline), ENABLED, or DEFERRED.
+  postQuantumKeyExchange: ENABLED
+
+  # What a destroy does: DELETE (default), PREVENT, or ABANDON.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields

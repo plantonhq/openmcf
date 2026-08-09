@@ -396,7 +396,7 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 6.19.0"  # Pin to specific version
+      version = "~> 7.43"  # Pin to specific version
     }
   }
 }

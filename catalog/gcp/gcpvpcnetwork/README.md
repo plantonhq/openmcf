@@ -63,6 +63,8 @@ spec:
 | `network_profile` | string | No | - | Full or partial network profile URL, applied at creation (immutable) |
 | `bgp_best_path_selection` | object | No | - | BGP best-path selection block: `mode` (LEGACY/STANDARD), `always_compare_med`, `inter_region_cost` |
 | `delete_default_routes_on_create` | bool | No | `false` | Suppress the automatic 0.0.0.0/0 routes at creation (immutable) |
+| `resource_manager_tags` | map<string,string> | No | - | Create-time Resource Manager tag bindings (`tagKeys/{id}` → `tagValues/{id}`) for org policy and IAM conditions |
+| `deletion_policy` | string | No | `DELETE` | What destroy does: `DELETE` removes the network, `PREVENT` fails the destroy to protect everything in it, `ABANDON` leaves it serving unmanaged |
 
 ### GcpVpcNetworkRoutingMode Enum
 
@@ -231,9 +233,8 @@ This separation provides better modularity and reusability.
 ### Advanced Configuration Not Exposed
 
 The following GCP surfaces are deliberately not exposed (recorded skips):
-- `params.resource_manager_tags` (catalog-wide skip)
+- `delete_bgp_always_compare_med` — Terraform state plumbing, not configuration: it exists to null the API's `alwaysCompareMed` field instead of setting it. The module sends `alwaysCompareMed` explicitly (true or false) whenever the BGP block is set, which produces the flag's only observable outcome.
 - `numeric_id` (provider-deprecated output)
-- `deletion_policy` (catalog-wide skip)
 
 Private services access is composed from `GcpGlobalAddress` (VPC_PEERING range) + `GcpServiceNetworkingConnection` rather than bundled into this kind.
 

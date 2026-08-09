@@ -48,6 +48,9 @@ spec:
   # Domains the certificate is valid for (no wildcards).
   domains:
     - app.example.com
+
+  # What a destroy does: DELETE (default), PREVENT, or ABANDON.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields

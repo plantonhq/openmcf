@@ -47,6 +47,8 @@ spec:
       - example.com
     dnsAuthorizations:
       - value: projects/test-gcp-project/locations/global/dnsAuthorizations/example-com-auth
+  # What a destroy does: DELETE (default), PREVENT, or ABANDON.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
