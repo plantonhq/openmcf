@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesStorageClass** is a Planton deployment component that creates and manages Kubernetes StorageClasses — the cluster's storage menu — as first-class, declaratively managed resources. A StorageClass names a provisioner (the CSI driver that creates volumes), the provisioner-specific parameters (disk type, IOPS, encryption, filesystem), and the lifecycle policies for the volumes it provisions (reclaim, binding timing, expandability). PersistentVolumeClaims then request the class by name.
+**KubernetesStorageClass** is a Planton component that creates and manages Kubernetes StorageClasses — the cluster's storage menu — as first-class, declaratively managed resources. A StorageClass names a provisioner (the CSI driver that creates volumes), the provisioner-specific parameters (disk type, IOPS, encryption, filesystem), and the lifecycle policies for the volumes it provisions (reclaim, binding timing, expandability). PersistentVolumeClaims then request the class by name.
 
 The component covers the complete `storage.k8s.io/v1` StorageClass surface: provisioner, parameters, reclaim policy, volume binding mode, volume expansion, mount options, topology restrictions, and the default-class marker. There is nothing an upstream StorageClass can express that this spec cannot.
 

@@ -1,12 +1,12 @@
 ---
-description: Action rule to write a GUIDE.md for a Planton deployment component. Produces grounded operational judgment -- the authored wisdom layer beside the generated reference page.
+description: Action rule to write a GUIDE.md for a Planton component. Produces grounded operational judgment -- the authored wisdom layer beside the generated reference page.
 globs: []
 alwaysApply: false
 ---
 
 # Rule: Write Component Guide
 
-**Purpose**: Guide an AI agent through writing a `GUIDE.md` file for a deployment component. The output is the component's authored wisdom: judgment, conventions, and trade-offs that the generated `reference.md` (schema facts) cannot carry.
+**Purpose**: Guide an AI agent through writing a `GUIDE.md` file for a component. The output is the component's authored wisdom: judgment, conventions, and trade-offs that the generated `reference.md` (schema facts) cannot carry.
 
 **Trigger**: User references this rule or asks to write/create a guide for a component.
 

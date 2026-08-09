@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesService** is a Planton deployment component that creates and manages a standalone Kubernetes Service — the stable network identity in front of a set of pods. A Service gives its backends one durable virtual IP and DNS name while the pods behind it come and go, and it is the unit every other networking construct composes on: Ingress backends point at a Service, NetworkPolicies allow traffic to the pods a Service selects, and sibling workloads connect to its in-cluster DNS name.
+**KubernetesService** is a Planton component that creates and manages a standalone Kubernetes Service — the stable network identity in front of a set of pods. A Service gives its backends one durable virtual IP and DNS name while the pods behind it come and go, and it is the unit every other networking construct composes on: Ingress backends point at a Service, NetworkPolicies allow traffic to the pods a Service selects, and sibling workloads connect to its in-cluster DNS name.
 
 The component covers the complete core/v1 ServiceSpec surface: all four service types, headless services, static cluster IPs, external IPs, traffic policies, topology-aware routing, session affinity, LoadBalancer tuning knobs, dual-stack addressing, and per-port protocol/appProtocol detail. The single deliberate omission is the deprecated `loadBalancerIP` field — upstream deprecated it as under-specified and non-portable; every cloud expresses a pinned LB address through provider-specific annotations instead (set them in `spec.annotations`).
 

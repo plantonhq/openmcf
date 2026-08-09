@@ -1,0 +1,306 @@
+package catalogbundle
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"unicode"
+
+	"sigs.k8s.io/yaml"
+
+	"github.com/plantonhq/planton/pkg/crkreflect"
+)
+
+// Catalog entries are the bundle's display-and-deploy-coordinates cargo: one
+// document per user-facing kind (entries/<provider>/<kind>.yaml) carrying the
+// component's title, description, URL slug, logo, contract links, and the
+// official IaC module directories the release ships for it. Every field is a
+// projection of the release's own tree -- the catalog page's H1 and intro,
+// the iac/ directories that actually exist -- authored once beside the
+// component and never restated by hand, so consumers render and deploy the
+// catalog from data without re-deriving any of it.
+//
+// Entries carry only facts the release owns. Anything a consuming surface
+// layers on top (which provider badge to show, how to compose a detail page)
+// stays with that surface.
+
+const (
+	ossRepoURL  = "https://github.com/plantonhq/planton"
+	ossRawURL   = "https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main"
+	bsrDocsURL  = "https://buf.build/planton/planton/docs/main"
+	logoBaseURL = "https://downloads.planton.dev/catalog/logos"
+
+	// entriesPrefix keys entry documents inside the zip, beside conversions/
+	// and presets/.
+	entriesPrefix = "entries/"
+
+	// testProviderName is the provider whose kinds exist only to exercise the
+	// versioning machinery. They never ship to users, so they never get an
+	// entry.
+	testProviderName = "_test"
+)
+
+// CatalogEntry is one kind's catalog metadata as the bundle carries it.
+type CatalogEntry struct {
+	// Kind is the PascalCase kind name -- the entry's identity, unique across
+	// the catalog and constant across the kind's versions.
+	Kind string `json:"kind"`
+	// Title is the component's display name, authored as its catalog page's H1.
+	Title string `json:"title"`
+	// Description is the first sentence of the catalog page's intro paragraph.
+	Description string `json:"description"`
+	// Slug is the kebab-case URL segment consoles address the component by
+	// (AwsS3Bucket -> aws-s3-bucket). Derived uniformly from the kind name
+	// with the provider kept atomic; unique across the catalog.
+	Slug string `json:"slug"`
+	// LogoUrl is the component's own logo at the versionless key the release
+	// lane publishes it to.
+	LogoUrl string `json:"logoUrl"`
+	// WebLinks point at the component's versioned API contract.
+	WebLinks CatalogEntryWebLinks `json:"webLinks"`
+	// IacModules names the official module directories the release ships.
+	IacModules CatalogEntryIacModules `json:"iacModules"`
+}
+
+// CatalogEntryWebLinks point at the component's API contract, as source and
+// as rendered documentation.
+type CatalogEntryWebLinks struct {
+	SourceCode    CatalogEntryContractLinks `json:"sourceCode"`
+	Documentation CatalogEntryContractLinks `json:"documentation"`
+}
+
+// CatalogEntryContractLinks address the contract's parts: the version
+// directory as a whole plus the spec, stack-input, and stack-outputs protos.
+type CatalogEntryContractLinks struct {
+	Root         string `json:"root"`
+	Spec         string `json:"spec"`
+	StackInput   string `json:"stackInput"`
+	StackOutputs string `json:"stackOutputs"`
+}
+
+// CatalogEntryIacModules names the official module directories the release
+// ships for a component. An engine whose directory is absent from the tree
+// stays empty here, and deploy paths refuse that engine for the kind --
+// presence is truth from the release's own tree, never an assumption (some
+// components ship one engine only).
+type CatalogEntryIacModules struct {
+	// TerraformModuleDir is the repository-relative directory of the
+	// terraform-authored module (also executed by OpenTofu). Example:
+	// catalog/aws/awsalb/iac/tf
+	TerraformModuleDir string `json:"terraformModuleDir,omitempty"`
+	// PulumiModuleDir is the repository-relative directory of the pulumi
+	// module (Go). Example: catalog/aws/awsalb/iac/pulumi
+	PulumiModuleDir string `json:"pulumiModuleDir,omitempty"`
+}
+
+// projectEntries derives every user-facing kind's entry from the catalog
+// tree plus the compiled kind registry. The projection is total and proven:
+// a registry kind without a component directory, an iac/ directory without
+// its engine's entry point, or a tree yielding zero entries fails the build
+// with the exact list -- stale or guessed deploy coordinates are unshippable
+// by construction.
+func projectEntries(catalogDir string) (map[string][]byte, error) {
+	entries := map[string][]byte{}
+	var missing, liveness []string
+
+	for _, kind := range crkreflect.KindsList() {
+		provider := crkreflect.GetProvider(kind)
+		if provider.String() == testProviderName {
+			continue
+		}
+		providerDir := strings.ReplaceAll(provider.String(), "_", "")
+		kindName := crkreflect.ExtractKindNameByKind(kind)
+		kindDir := strings.ToLower(kindName)
+		componentDir := filepath.Join(catalogDir, providerDir, kindDir)
+		if _, err := os.Stat(componentDir); err != nil {
+			missing = append(missing, fmt.Sprintf("%s/%s (kind %s)", providerDir, kindDir, kindName))
+			continue
+		}
+		versionDir, err := crkreflect.KindVersion(kind)
+		if err != nil {
+			missing = append(missing, fmt.Sprintf("%s/%s: no version in registry", providerDir, kindDir))
+			continue
+		}
+
+		title, description := readCatalogPage(filepath.Join(componentDir, "catalog.md"), kindName)
+		entry := buildCatalogEntry(kindName, providerDir, kindDir, versionDir, title, description)
+
+		for _, engine := range []struct {
+			dir, entryGlob, label string
+			target                *string
+		}{
+			// Every pulumi module builds from main.go (the runner executes a
+			// prebuilt binary and writes its own Pulumi.yaml); a terraform
+			// module is any directory of .tf files.
+			{"pulumi", "main.go", "Pulumi", &entry.IacModules.PulumiModuleDir},
+			{"tf", "*.tf", "Terraform", &entry.IacModules.TerraformModuleDir},
+		} {
+			engineDir := filepath.Join(componentDir, "iac", engine.dir)
+			if _, err := os.Stat(engineDir); err != nil {
+				continue
+			}
+			if matches, _ := filepath.Glob(filepath.Join(engineDir, engine.entryGlob)); len(matches) == 0 {
+				liveness = append(liveness, fmt.Sprintf(
+					"%s/%s/iac/%s exists without its %s entry point (%s)",
+					providerDir, kindDir, engine.dir, engine.label, engine.entryGlob))
+				continue
+			}
+			*engine.target = fmt.Sprintf("catalog/%s/%s/iac/%s", providerDir, kindDir, engine.dir)
+		}
+
+		raw, err := yaml.Marshal(entry)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling the %s catalog entry: %w", kindName, err)
+		}
+		entries[entriesPrefix+providerDir+"/"+kindDir+".yaml"] = raw
+	}
+
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		return nil, fmt.Errorf(
+			"%d registry kind(s) have no component directory in the catalog tree -- the registry and the tree must agree:\n  %s",
+			len(missing), strings.Join(missing, "\n  "))
+	}
+	if len(liveness) > 0 {
+		sort.Strings(liveness)
+		return nil, fmt.Errorf(
+			"%d module path(s) fail the liveness check:\n  %s",
+			len(liveness), strings.Join(liveness, "\n  "))
+	}
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("the catalog tree under %s yielded zero entries -- refusing to build a bundle without its catalog-entry cargo", catalogDir)
+	}
+	return entries, nil
+}
+
+func buildCatalogEntry(kindName, providerDir, kindDir, versionDir, title, description string) CatalogEntry {
+	entry := CatalogEntry{
+		Kind:        kindName,
+		Title:       title,
+		Description: description,
+		Slug:        entrySlug(kindName, providerDir),
+		LogoUrl:     fmt.Sprintf("%s/%s/%s/logo.svg", logoBaseURL, providerDir, kindDir),
+	}
+
+	contractBase := fmt.Sprintf("catalog/%s/%s/%s", providerDir, kindDir, versionDir)
+	// The proto package carries the version segment
+	// (dev.planton.aws.awss3bucket.v1alpha1); BSR symbol anchors are full
+	// names, so the package appears in both the page path and the fragment.
+	pkg := fmt.Sprintf("dev.planton.%s.%s.%s", providerDir, kindDir, versionDir)
+	entry.WebLinks.SourceCode = CatalogEntryContractLinks{
+		Root:         fmt.Sprintf("%s/tree/main/%s", ossRepoURL, contractBase),
+		Spec:         fmt.Sprintf("%s/%s/spec.proto", ossRawURL, contractBase),
+		StackInput:   fmt.Sprintf("%s/%s/input.proto", ossRawURL, contractBase),
+		StackOutputs: fmt.Sprintf("%s/%s/outputs.proto", ossRawURL, contractBase),
+	}
+	entry.WebLinks.Documentation = CatalogEntryContractLinks{
+		Root:         fmt.Sprintf("%s:%s", bsrDocsURL, pkg),
+		Spec:         fmt.Sprintf("%s:%s#%s.%sSpec", bsrDocsURL, pkg, pkg, kindName),
+		StackInput:   fmt.Sprintf("%s:%s#%s.%sStackInput", bsrDocsURL, pkg, pkg, kindName),
+		StackOutputs: fmt.Sprintf("%s:%s#%s.%sStackOutputs", bsrDocsURL, pkg, pkg, kindName),
+	}
+	return entry
+}
+
+// readCatalogPage extracts the component's canonical display name (the H1)
+// and its one-line description (the first sentence of the intro paragraph)
+// from the kind-root catalog page. A component without a page falls back to
+// its kind name -- the anatomy lint owns page presence, not the bundle.
+func readCatalogPage(path, kindName string) (title, description string) {
+	title = kindName
+	description = "Deploy " + kindName
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return title, description
+	}
+	lines := strings.Split(string(data), "\n")
+	i := 0
+	for ; i < len(lines); i++ {
+		if strings.HasPrefix(lines[i], "# ") {
+			title = strings.TrimSpace(strings.TrimPrefix(lines[i], "# "))
+			description = "Deploy " + title
+			i++
+			break
+		}
+	}
+	for ; i < len(lines); i++ {
+		text := strings.TrimSpace(lines[i])
+		if text == "" || strings.HasPrefix(text, "#") {
+			continue
+		}
+		if idx := strings.Index(text, ". "); idx > 0 {
+			text = text[:idx+1]
+		}
+		description = text
+		break
+	}
+	return title, description
+}
+
+// entrySlug derives a component's URL slug: the provider directory name kept
+// as one atomic word, then the kind name's remaining words kebab-cased
+// (HetznerCloudServer -> hetznercloud-server, AwsS3Bucket -> aws-s3-bucket).
+// A kind whose name does not start with its provider kebabs whole. One rule
+// for every kind -- uniqueness is gated at conformance.
+func entrySlug(kindName, providerDir string) string {
+	if rest, ok := strings.CutPrefix(strings.ToLower(kindName), providerDir); ok && rest != "" {
+		return providerDir + "-" + kebabCase(kindName[len(kindName)-len(rest):])
+	}
+	return kebabCase(kindName)
+}
+
+// kebabCase converts a CamelCase name (S3Bucket) to kebab (s3-bucket): a
+// hyphen lands before every uppercase rune that starts a new word -- after a
+// lowercase or digit, or before an Upper->lower transition inside an acronym
+// run.
+func kebabCase(kindName string) string {
+	runes := []rune(kindName)
+	var b strings.Builder
+	for i, r := range runes {
+		if i > 0 && unicode.IsUpper(r) {
+			prev := runes[i-1]
+			nextLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+			if unicode.IsLower(prev) || unicode.IsDigit(prev) || (unicode.IsUpper(prev) && nextLower) {
+				b.WriteRune('-')
+			}
+		}
+		b.WriteRune(unicode.ToLower(r))
+	}
+	return b.String()
+}
+
+// parseCatalogEntries decodes and shape-checks every entry document in the
+// bundle. Strict decoding plus identity checks here mirror the checksum
+// posture: a bundle carrying a malformed entry is refused whole. Agreement
+// with the kind registry (and slug uniqueness across entries) is the
+// conformance gate's job -- loading stays registry-free by design.
+func parseCatalogEntries(entries map[string][]byte) ([]CatalogEntry, error) {
+	names := make([]string, 0, len(entries))
+	for name := range entries {
+		if strings.HasPrefix(name, entriesPrefix) {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+
+	parsed := make([]CatalogEntry, 0, len(names))
+	for _, name := range names {
+		var entry CatalogEntry
+		if err := yaml.UnmarshalStrict(entries[name], &entry); err != nil {
+			return nil, fmt.Errorf("bundle entry %s is not a valid catalog entry: %w", name, err)
+		}
+		if entry.Kind == "" || entry.Title == "" || entry.Slug == "" {
+			return nil, fmt.Errorf("bundle entry %s is missing its identity (kind, title, and slug are required)", name)
+		}
+		wantSuffix := "/" + strings.ToLower(entry.Kind) + ".yaml"
+		if !strings.HasSuffix(name, wantSuffix) {
+			return nil, fmt.Errorf("bundle entry %s declares kind %s but is not keyed by it -- the bundle was mis-built", name, entry.Kind)
+		}
+		parsed = append(parsed, entry)
+	}
+
+	sort.Slice(parsed, func(i, j int) bool { return parsed[i].Kind < parsed[j].Kind })
+	return parsed, nil
+}

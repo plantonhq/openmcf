@@ -1,7 +1,7 @@
 # AzureRedisCacheAccessPolicyAssignment - Pulumi Module
 
 Pulumi implementation for the AzureRedisCacheAccessPolicyAssignment
-deployment component.
+component.
 
 ## Architecture
 

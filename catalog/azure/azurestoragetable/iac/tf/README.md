@@ -1,6 +1,6 @@
 # AzureStorageTable - Terraform Module
 
-Terraform implementation for the AzureStorageTable deployment component.
+Terraform implementation for the AzureStorageTable component.
 
 ## Resources Created
 

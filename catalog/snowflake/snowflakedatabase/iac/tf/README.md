@@ -366,7 +366,7 @@ Some parameters have specific valid values (e.g., `log_level`, `trace_level`). R
 - [Snowflake CREATE DATABASE Documentation](https://docs.snowflake.com/en/sql-reference/sql/create-database)
 - [Snowflake Time Travel Documentation](https://docs.snowflake.com/en/user-guide/data-time-travel)
 - [Snowflake Terraform Provider](https://registry.terraform.io/providers/Snowflake-Labs/snowflake/latest/docs/resources/database)
-- [Planton Architecture](../../../../../architecture/deployment-component.md)
+- [Planton Architecture](../../../../../architecture/component.md)
 
 ## License
 

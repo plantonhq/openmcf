@@ -16,7 +16,10 @@ import (
 //
 //  1. the kind's api message resolves in the bundle,
 //  2. the kind's Spec exposes the identical top-level JSON field set,
-//  3. the served version recorded in the bundle's kind registry matches.
+//  3. the served version recorded in the bundle's kind registry matches,
+//  4. the catalog entries name exactly the registry's user-facing kinds
+//     (both directions), with unique slugs and at least one official IaC
+//     module directory each.
 //
 // This is the gate between "we built a zip" and "a runtime may trust this
 // zip instead of its compiled classes". It runs in CI against the buf-built
@@ -67,6 +70,8 @@ func CheckConformance(bundle *Bundle) error {
 		checked++
 	}
 
+	problems = append(problems, entryProblems(bundle)...)
+
 	if checked == 0 {
 		return fmt.Errorf("conformance checked zero kinds -- the walk is broken")
 	}
@@ -76,6 +81,53 @@ func CheckConformance(bundle *Bundle) error {
 			len(problems), strings.Join(problems, "\n  "))
 	}
 	return nil
+}
+
+// entryProblems checks the bundle's catalog entries against the compiled
+// registry: every user-facing kind has its entry, every entry names a
+// registered kind, slugs are unique, and every entry carries at least one
+// official module directory (a component with no deployable module has no
+// business in the catalog).
+func entryProblems(bundle *Bundle) []string {
+	var problems []string
+
+	entryByKind := map[string]CatalogEntry{}
+	slugOwners := map[string]string{}
+	for _, entry := range bundle.CatalogEntries() {
+		entryByKind[entry.Kind] = entry
+		if owner, taken := slugOwners[entry.Slug]; taken {
+			problems = append(problems, fmt.Sprintf(
+				"catalog entries %s and %s share the slug %q -- slugs must be unique", owner, entry.Kind, entry.Slug))
+			continue
+		}
+		slugOwners[entry.Slug] = entry.Kind
+	}
+
+	userFacing := map[string]bool{}
+	for _, kind := range crkreflect.KindsList() {
+		if crkreflect.GetProvider(kind).String() == testProviderName {
+			continue
+		}
+		kindName := crkreflect.ExtractKindNameByKind(kind)
+		userFacing[kindName] = true
+		entry, ok := entryByKind[kindName]
+		if !ok {
+			problems = append(problems, fmt.Sprintf(
+				"%s: the registry serves this kind but the bundle carries no catalog entry for it", kindName))
+			continue
+		}
+		if entry.IacModules.TerraformModuleDir == "" && entry.IacModules.PulumiModuleDir == "" {
+			problems = append(problems, fmt.Sprintf(
+				"%s: its catalog entry names no official IaC module directory for any engine", kindName))
+		}
+	}
+	for kindName := range entryByKind {
+		if !userFacing[kindName] {
+			problems = append(problems, fmt.Sprintf(
+				"%s: the bundle carries a catalog entry but the registry does not serve this kind", kindName))
+		}
+	}
+	return problems
 }
 
 // specFieldSet renders a message's `spec` field's top-level JSON field names

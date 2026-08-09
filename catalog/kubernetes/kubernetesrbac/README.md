@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesRbac** is a Planton deployment component that models a complete RBAC grant: *"give these subjects these permissions in this scope."* One resource bundles the role definition and its binding — the unit in which RBAC is actually reasoned about — instead of splitting Role, RoleBinding, ClusterRole, and ClusterRoleBinding into four coordinating resources.
+**KubernetesRbac** is a Planton component that models a complete RBAC grant: *"give these subjects these permissions in this scope."* One resource bundles the role definition and its binding — the unit in which RBAC is actually reasoned about — instead of splitting Role, RoleBinding, ClusterRole, and ClusterRoleBinding into four coordinating resources.
 
 ## The Grant Model
 

@@ -1,6 +1,6 @@
 # AzureMssqlDatabase - Terraform Module
 
-Terraform implementation for the AzureMssqlDatabase deployment component.
+Terraform implementation for the AzureMssqlDatabase component.
 
 ## Resources Created
 

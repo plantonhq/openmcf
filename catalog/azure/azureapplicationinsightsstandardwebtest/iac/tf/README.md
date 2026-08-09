@@ -1,7 +1,7 @@
 # AzureApplicationInsightsStandardWebTest - Terraform Module
 
 Terraform implementation for the AzureApplicationInsightsStandardWebTest
-deployment component.
+component.
 
 ## Resources Created
 

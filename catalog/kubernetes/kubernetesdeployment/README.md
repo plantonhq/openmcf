@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesDeployment** is a Planton deployment component that runs a long-running, stateless application on a Kubernetes cluster as an apps/v1 Deployment, fronted by a ClusterIP Service. It is the workhorse workload kind: replicas are interchangeable, updates roll out gradually, and scaling is horizontal. For workloads needing stable identity or per-replica storage use **KubernetesStatefulSet**; for run-to-completion work use **KubernetesJob** / **KubernetesCronJob**; for one-pod-per-node agents use **KubernetesDaemonSet**.
+**KubernetesDeployment** is a Planton component that runs a long-running, stateless application on a Kubernetes cluster as an apps/v1 Deployment, fronted by a ClusterIP Service. It is the workhorse workload kind: replicas are interchangeable, updates roll out gradually, and scaling is horizontal. For workloads needing stable identity or per-replica storage use **KubernetesStatefulSet**; for run-to-completion work use **KubernetesJob** / **KubernetesCronJob**; for one-pod-per-node agents use **KubernetesDaemonSet**.
 
 A single manifest produces:
 

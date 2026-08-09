@@ -48,7 +48,7 @@ The `apiVersion` value is enforced as a constant in the component's Protocol Buf
 
 ### kind
 
-The `kind` identifies which deployment component this manifest represents. It is the exact name from the `CloudResourceKind` enum -- for example, `KubernetesPostgres`, `AwsS3Bucket`, `GcpCloudSql`, or `AwsRdsInstance`.
+The `kind` identifies which component this manifest represents. It is the exact name from the `CloudResourceKind` enum -- for example, `KubernetesPostgres`, `AwsS3Bucket`, `GcpCloudSql`, or `AwsRdsInstance`.
 
 Like `apiVersion`, the `kind` value is enforced as a constant in the protobuf definition:
 
@@ -56,7 +56,7 @@ Like `apiVersion`, the `kind` value is enforced as a constant in the protobuf de
 string kind = 2 [(buf.validate.field).string.const = 'KubernetesPostgres'];
 ```
 
-The combination of `apiVersion` and `kind` uniquely identifies the deployment component. The CLI uses these two fields to resolve the correct IaC module, load the right validation rules, and construct the stack input.
+The combination of `apiVersion` and `kind` uniquely identifies the component. The CLI uses these two fields to resolve the correct IaC module, load the right validation rules, and construct the stack input.
 
 ### metadata
 
@@ -271,7 +271,7 @@ This is particularly useful in CI/CD pipelines where environment-specific values
 
 ## What's Next
 
-- **[Deployment Components](deployment-components)** -- The anatomy of what manifests target
+- **[Components](components)** -- The anatomy of what manifests target
 - **[Cloud Resource Kinds](cloud-resource-kinds)** -- The full taxonomy of valid `kind` values
 - **[Validation](validation)** -- How manifests are validated before deployment
 - **[State Management](state-management)** -- How manifest labels configure state backends

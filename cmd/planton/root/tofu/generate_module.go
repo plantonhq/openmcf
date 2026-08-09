@@ -13,11 +13,11 @@ import (
 )
 
 var GenerateModule = &cobra.Command{
-	Use:   "generate-module <deployment-component>",
+	Use:   "generate-module <component>",
 	Short: "Generate the full thin Terraform module for a Kubernetes-CRD-projection kind",
 	Long: `The "generate-module" command emits the complete iac/tf Terraform module
 (variables.tf, backend.tf, locals.tf, main.tf, provider.tf, outputs.tf) for a
-deployment component whose spec is a direct projection of a single Kubernetes
+component whose spec is a direct projection of a single Kubernetes
 custom resource -- i.e. a kind annotated with kubernetes_manifest_projection in
 CloudResourceKindMeta (Istio, Gateway API, etc.).
 

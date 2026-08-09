@@ -1,6 +1,6 @@
 # AzureStorageQueue - Pulumi Module
 
-Pulumi implementation for the AzureStorageQueue deployment component.
+Pulumi implementation for the AzureStorageQueue component.
 
 ## Architecture
 

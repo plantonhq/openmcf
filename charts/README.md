@@ -43,7 +43,7 @@ The tree is provider-rooted, with one home rule:
 
 ## The mental model
 
-Planton's [deployment components](../catalog) are LEGO blocks:
+Planton's [components](../catalog) are LEGO blocks:
 each one is a single cloud resource (a VPC, a database, a cluster) with its own
 schema and IaC module. **An Infra Chart is a LEGO kit** — a curated set of those
 blocks that fit together to build something complete.

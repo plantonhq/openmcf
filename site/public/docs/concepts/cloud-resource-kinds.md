@@ -1,15 +1,15 @@
 ---
 title: "Cloud Resource Kinds"
-description: "The taxonomy of deployment components in Planton: 360+ resource kinds across 17 cloud providers, each with a unique kind name, provider mapping, and API version"
+description: "The taxonomy of components in Planton: 360+ resource kinds across 17 cloud providers, each with a unique kind name, provider mapping, and API version"
 icon: "database"
 order: 30
 ---
 
 # Cloud Resource Kinds
 
-Every deployment component in Planton has a unique kind name -- `AwsS3Bucket`, `KubernetesPostgres`, `GcpCloudSql`. These kind names are not arbitrary strings. They are entries in the `CloudResourceKind` enum, a Protocol Buffer enum that serves as the canonical registry of everything Planton can deploy.
+Every component in Planton has a unique kind name -- `AwsS3Bucket`, `KubernetesPostgres`, `GcpCloudSql`. These kind names are not arbitrary strings. They are entries in the `CloudResourceKind` enum, a Protocol Buffer enum that serves as the canonical registry of everything Planton can deploy.
 
-<!-- AI-AGENT NOTE: The deployment component count below MUST be verified against the authoritative source:
+<!-- AI-AGENT NOTE: The component count below MUST be verified against the authoritative source:
      shared/cloudresourcekind/cloud_resource_kind.proto
      Count only non-test, non-unspecified enum values in the CloudResourceKind enum. -->
 
@@ -130,11 +130,11 @@ string kind = 2 [(buf.validate.field).string.const = 'KubernetesPostgres'];
 
 ## Browsing Available Components
 
-The [Component Catalog](/docs/catalog) provides detailed documentation for every deployment component, organized by provider. Each catalog page includes the component's configuration fields, deployment behavior, and usage examples.
+The [Component Catalog](/docs/catalog) provides detailed documentation for every component, organized by provider. Each catalog page includes the component's configuration fields, deployment behavior, and usage examples.
 
 ## What's Next
 
-- **[Deployment Components](deployment-components)** -- The anatomy of what each kind maps to
+- **[Components](components)** -- The anatomy of what each kind maps to
 - **[Manifests](manifests)** -- How to write manifests using these kind names
 - **[Validation](validation)** -- How kind and apiVersion values are validated
 - **[Component Catalog](/docs/catalog)** -- Browse documentation for all 360+ components

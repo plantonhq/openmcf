@@ -104,7 +104,7 @@ These flags control where the manifest is loaded from. When multiple source flag
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--manifest` | `-f` | | Path to the deployment-component manifest file |
+| `--manifest` | `-f` | | Path to the component manifest file |
 | `--clipboard` | `-c` | `false` | Read manifest from system clipboard |
 | `--stack-input` | `-i` | | Path to YAML file containing stack input (extracts manifest from `target` field) |
 | `--input-dir` | | | Directory containing `target.yaml` and credential YAML files |
@@ -189,7 +189,7 @@ When using `planton tofu` or `planton terraform` directly (not unified commands)
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--manifest` | | Path to the deployment-component manifest file |
+| `--manifest` | | Path to the component manifest file |
 | `--input-dir` | | Directory containing `target.yaml` and credential YAML files |
 | `--kustomize-dir` | | Directory containing kustomize configuration |
 | `--overlay` | | Kustomize overlay |

@@ -201,11 +201,11 @@ If the Pulumi stack already exists with the same stack name and the underlying m
 
 ## What If My Resource Has No Planton Component?
 
-Planton currently supports 360+ deployment components across 17 providers. If the specific resource you need is not available as an Planton component:
+Planton currently supports 360+ components across 17 providers. If the specific resource you need is not available as an Planton component:
 
 - **Continue using raw Terraform or Pulumi** for that resource. Planton does not require all-or-nothing adoption.
 - **Check the catalog** periodically — new components are added regularly.
-- **Contribute a component** if you want to add support. See the contributing guide for how to add new deployment components.
+- **Contribute a component** if you want to add support. See the contributing guide for how to add new components.
 
 Planton is designed for incremental adoption. You can start with one resource, prove the workflow, and expand at your own pace.
 
@@ -214,5 +214,5 @@ Planton is designed for incremental adoption. You can start with one resource, p
 - [Writing Manifests](./manifests) — How to write and validate manifests
 - [Credentials](./credentials) — Configure cloud provider authentication
 - [State Backends](./state-backends) — Configure state storage
-- [Deployment Components](../concepts/deployment-components) — Anatomy of an Planton component
+- [Components](../concepts/components) — Anatomy of an Planton component
 - [Dual IaC Engines](../concepts/dual-iac-engines) — How Pulumi and OpenTofu/Terraform coexist

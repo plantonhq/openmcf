@@ -60,7 +60,7 @@ YYYY-MM-DD-HHMMSS.{area}.{type}.{slug}.md
 - Ensures chronological sorting when multiple issues created on same day
 
 **Area** (simple identifier):
-- `deployment-component` - Deployment component changes
+- `component` - Component changes
 - `cli` - CLI changes
 - `pkg` - Package/library changes
 - `apis` - API/protobuf changes
@@ -69,7 +69,7 @@ YYYY-MM-DD-HHMMSS.{area}.{type}.{slug}.md
 - `ops` - Operations/infrastructure
 - `tooling` - Build tools, scripts
 - `site` - Planton website
-- `forge` - Deployment component forge system
+- `forge` - Component forge system
 
 **Type** (issue category):
 - `feat` - New feature or capability
@@ -89,7 +89,7 @@ YYYY-MM-DD-HHMMSS.{area}.{type}.{slug}.md
 ### Examples
 
 ```
-2025-12-26-143022.deployment-component.bug.postgres-spec-validation.md
+2025-12-26-143022.component.bug.postgres-spec-validation.md
 2025-12-26-150815.cli.feat.manifest-validation-command.md
 2025-12-26-162430.forge.bug.pulumi-code-generation.md
 2025-12-26-091205.pkg.refactor.kubernetes-client-helpers.md
@@ -104,7 +104,7 @@ Determine the area from conversation context using these guidelines:
 
 When file paths are mentioned in the conversation, map them to simple areas:
 
-- **`catalog/**`** → `deployment-component`
+- **`catalog/**`** → `component`
 - **`cmd/planton/**`** → `cli`
 - **`pkg/**`** → `pkg`
 - **`internal/**`** → `cli`
@@ -114,13 +114,13 @@ When file paths are mentioned in the conversation, map them to simple areas:
 - **`docker/**`, `docker-compose.yml`** → `ops`
 - **`tools/**`, `hack/**`, `build/**`** → `tooling`
 - **`site/**`** → `site`
-- **`_rules/deployment-component/forge/**`** → `forge`
+- **`_rules/component/forge/**`** → `forge`
 
 ### Keyword Detection
 
 Look for these keywords in the conversation:
 
-- "deployment component", "IaC", "Pulumi", "Terraform", "cloud resource" → `deployment-component`
+- "component", "IaC", "Pulumi", "Terraform", "cloud resource" → `component`
 - "CLI", "command line", "terminal", "planton" (the binary) → `cli`
 - "package", "library", "pkg/", "helper", "utility" → `pkg`
 - "protobuf", "proto", "API definition", "stubs", "buf" → `apis`
@@ -138,8 +138,8 @@ When the issue spans multiple areas:
 ### Example Detection
 
 ```
-Conversation: "The Postgres deployment component spec validation is broken..."
-→ Area: deployment-component
+Conversation: "The Postgres component spec validation is broken..."
+→ Area: component
 
 Conversation: "The CLI manifest validation command needs improvement..."
 → Area: cli
@@ -202,7 +202,7 @@ For straightforward issues, write naturally:
 **Example:**
 
 ```markdown
-The Postgres deployment component's spec validation currently doesn't check for 
+The Postgres component's spec validation currently doesn't check for 
 conflicting port configurations. When users specify both default and custom ports, 
 the validation passes but Pulumi deployment fails with a cryptic error.
 
@@ -306,7 +306,7 @@ Create new filenames following this pattern:
 **Examples:**
 
 Original: `screenshot-1.png`
-→ Renamed: `2025-12-26-143022.deployment-component.bug.postgres-spec-validation.error-output.png`
+→ Renamed: `2025-12-26-143022.component.bug.postgres-spec-validation.error-output.png`
 
 Original: `error.jpg`
 → Renamed: `2025-12-26-143022.cli.bug.manifest-validation.missing-field-log.jpg`
@@ -320,7 +320,7 @@ Original: `before.png`, `after.png`
 Add markdown image references in the issue content pointing to the `images/` directory:
 
 ```markdown
-![Error output](images/2025-12-26-143022.deployment-component.bug.postgres-spec-validation.error-output.png)
+![Error output](images/2025-12-26-143022.component.bug.postgres-spec-validation.error-output.png)
 ```
 
 **Guidelines:**
@@ -337,11 +337,11 @@ Add markdown image references in the issue content pointing to the `images/` dir
 The validation passes with conflicting port configurations, but Pulumi 
 deployment fails:
 
-![Pulumi error output](images/2025-12-26-143022.deployment-component.bug.postgres-spec-validation.error-output.png)
+![Pulumi error output](images/2025-12-26-143022.component.bug.postgres-spec-validation.error-output.png)
 
 Additionally, the CLI doesn't provide a helpful error message:
 
-![CLI error message](images/2025-12-26-143022.deployment-component.bug.postgres-spec-validation.cli-error.png)
+![CLI error message](images/2025-12-26-143022.component.bug.postgres-spec-validation.cli-error.png)
 ```
 
 ### Step 6: Copy Images to Images Directory
@@ -478,9 +478,9 @@ Write the file to `_issues/{filename}.md` with the generated content.
 Provide feedback to user:
 
 ```
-✅ Issue file created: _issues/2025-12-26-143022.deployment-component.bug.postgres-spec-validation.md
+✅ Issue file created: _issues/2025-12-26-143022.component.bug.postgres-spec-validation.md
 
-Area: deployment-component
+Area: component
 Type: bug
 Summary: [Brief one-line summary]
 
@@ -497,13 +497,13 @@ User: "I noticed the Postgres component validation is broken. @create-planton-is
 
 Agent: 
 - Gets timestamp: 2025-12-26-143022
-- Detects area: deployment-component (Postgres component)
+- Detects area: component (Postgres component)
 - Determines type: bug
 - Creates slug: postgres-spec-validation
 - Asks about images: "Do you have images in workspace?"
 - User: "Yes"
 - Analyzes images, renames, copies, references
-- Creates: _issues/2025-12-26-143022.deployment-component.bug.postgres-spec-validation.md
+- Creates: _issues/2025-12-26-143022.component.bug.postgres-spec-validation.md
 ```
 
 ### Feature Request
@@ -551,7 +551,7 @@ Agent:
 ### Example 1: Simple Bug (Freeform)
 
 ```markdown
-The Postgres deployment component's spec validation currently doesn't check for 
+The Postgres component's spec validation currently doesn't check for 
 conflicting port configurations. When users specify both default and custom ports, 
 the validation passes but Pulumi deployment fails with a cryptic error message.
 
@@ -614,7 +614,7 @@ Similar validation commands:
 ## Problem
 
 The forge system's Pulumi code generation produces incorrect import paths for 
-deployment components that use nested proto packages. This causes compilation 
+components that use nested proto packages. This causes compilation 
 errors in the generated code.
 
 ## Current Behavior
@@ -636,7 +636,7 @@ import (
 
 ## Impact
 
-- **Users**: Anyone creating new deployment components
+- **Users**: Anyone creating new components
 - **Severity**: High - blocks component development
 - **Workaround**: Manual import path fixes after generation
 
@@ -645,8 +645,8 @@ import (
 The issue appears to be in the import path template used by the forge system.
 
 Affected files:
-- `_rules/deployment-component/forge/_scripts/pulumi_entrypoint_write.py`
-- `_rules/deployment-component/forge/flow/010-pulumi-entrypoint.mdc`
+- `_rules/component/forge/_scripts/pulumi_entrypoint_write.py`
+- `_rules/component/forge/flow/010-pulumi-entrypoint.mdc`
 ```
 
 ## Writing Guidelines Summary

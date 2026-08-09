@@ -9,10 +9,10 @@
 - [What is Planton?](#what-is-planton)
 - [Core Architecture](#core-architecture)
   - [The Three Pillars](#the-three-pillars)
-  - [The Deployment Component Concept](#the-deployment-component-concept)
+  - [The Component Concept](#the-component-concept)
 - [Repository Structure](#repository-structure)
 - [Technology Stack](#technology-stack)
-- [Deployment Component Lifecycle](#deployment-component-lifecycle)
+- [Component Lifecycle](#component-lifecycle)
 - [API Design Philosophy](#api-design-philosophy)
 - [IaC Module Design](#iac-module-design)
 - [CLI Architecture](#cli-architecture)
@@ -79,7 +79,7 @@ Planton is built on three foundational components that work together seamlessly:
         │               │               │
         ▼               ▼               ▼
 ┌────────────────────────────────────────────────┐
-│        Deployment Components (100+)            │
+│        Components (100+)            │
 │  PostgresKubernetes | AwsRdsInstance | etc.   │
 └────────────────────────────────────────────────┘
 ```
@@ -89,7 +89,7 @@ Planton is built on three foundational components that work together seamlessly:
 **Technology:** Protocol Buffers  
 **Inspiration:** Kubernetes Resource Model
 
-Every deployment component follows the same structure:
+Every component follows the same structure:
 
 ```yaml
 apiVersion: <provider>.planton.dev/<version>
@@ -129,7 +129,7 @@ The `planton validate` command checks these rules **before** calling any cloud A
 **Technology:** Pulumi and Terraform/OpenTofu  
 **Approach:** Provider-specific, deliberately simple
 
-Every deployment component has **both** a Pulumi module and a Terraform module. You choose which IaC engine to use.
+Every component has **both** a Pulumi module and a Terraform module. You choose which IaC engine to use.
 
 **Why Both Pulumi and Terraform?**
 
@@ -192,13 +192,13 @@ planton pulumi update \
 
 ---
 
-### The Deployment Component Concept
+### The Component Concept
 
-A **deployment component** is a complete, production-ready package for deploying a specific type of infrastructure or application. Think of it as a "recipe" that includes everything needed to deploy that resource.
+A **component** is a complete, production-ready package for deploying a specific type of infrastructure or application. Think of it as a "recipe" that includes everything needed to deploy that resource.
 
-#### What's in a Deployment Component?
+#### What's in a Component?
 
-Every deployment component contains:
+Every component contains:
 
 ```
 <provider>/<component>/v1/
@@ -226,7 +226,7 @@ Every deployment component contains:
         └── manifest.yaml        # Test manifest for local development
 ```
 
-#### Categories of Deployment Components
+#### Categories of Components
 
 **1. Kubernetes Components**
 
@@ -284,10 +284,10 @@ planton/
 │                       └── ...
 ├── architecture/                # Architecture documentation
 │   ├── README.md               # This file
-│   └── deployment-component.md # Deployment component ideal state
+│   └── component.md # Component ideal state
 ├── .cursor/                     # Cursor AI rules
 │   └── rules/
-│       └── deployment-component/
+│       └── component/
 │           ├── forge/          # Create new components
 │           ├── audit/          # Assess completeness
 │           ├── update/         # Enhance existing
@@ -315,11 +315,11 @@ All Protocol Buffer definitions organized by provider. Each component directory 
 
 High-level architecture documentation:
 - **README.md** (this file): Complete architecture overview
-- **deployment-component.md**: Ideal state definition for components
+- **component.md**: Ideal state definition for components
 
-#### `/_rules/deployment-component`
+#### `/_rules/component`
 
-Cursor AI rules for managing deployment components:
+Cursor AI rules for managing components:
 - **forge**: Create new components from scratch (21-step workflow)
 - **audit**: Assess component completeness (9-category scoring)
 - **update**: Enhance existing components (6 scenarios)
@@ -412,15 +412,15 @@ make install       # Install CLI locally
 
 ---
 
-## Deployment Component Lifecycle
+## Component Lifecycle
 
-Planton provides a sophisticated lifecycle management system for deployment components. This system ensures that all components are consistently high-quality, well-documented, and production-ready.
+Planton provides a sophisticated lifecycle management system for components. This system ensures that all components are consistently high-quality, well-documented, and production-ready.
 
 ### The Six Operations
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│               Deployment Component Lifecycle                │
+│               Component Lifecycle                │
 └─────────────────────────────────────────────────────────────┘
          │
          ├─► 🔨 FORGE      Create new component (95-100% complete)
@@ -438,7 +438,7 @@ Planton provides a sophisticated lifecycle management system for deployment comp
 
 ### 1. Forge: Create New Components
 
-**Purpose:** Bootstrap complete, production-ready deployment components from scratch.
+**Purpose:** Bootstrap complete, production-ready components from scratch.
 
 **What It Creates:**
 - ✅ Proto API definitions (4 files with validations)
@@ -581,7 +581,7 @@ Planton provides a sophisticated lifecycle management system for deployment comp
 
 ### 6. Delete: Safe Component Removal
 
-**Purpose:** Completely remove deployment components with safety features to prevent accidents.
+**Purpose:** Completely remove components with safety features to prevent accidents.
 
 **Safety Features:**
 - 🔍 Dry-run mode (preview deletion)
@@ -606,7 +606,7 @@ Planton provides a sophisticated lifecycle management system for deployment comp
 
 ### Ideal State Definition
 
-All lifecycle operations reference a single source of truth: **`architecture/deployment-component.md`**
+All lifecycle operations reference a single source of truth: **`architecture/component.md`**
 
 This document defines:
 - Complete checklist of required artifacts
@@ -694,7 +694,7 @@ planton validate-manifest config.yaml
 
 **Coverage is the provider's full configurable surface, never a trimmed subset.**
 
-Every deployment component models 100% of the configurable arguments of the provider resources it maps to, at the pinned provider version. Partial coverage is not a design choice: where something is not covered, that is an explicitly recorded decision with a reason (deprecated or superseded surface only), never a silent omission.
+Every component models 100% of the configurable arguments of the provider resources it maps to, at the pinned provider version. Partial coverage is not a design choice: where something is not covered, that is an explicitly recorded decision with a reason (deprecated or superseded surface only), never a silent omission.
 
 **Example: PostgreSQL on Kubernetes**
 
@@ -721,7 +721,7 @@ Every deployment component models 100% of the configurable arguments of the prov
 
 **Example: Postgres Deployment**
 
-Three different deployment components:
+Three different components:
 - `PostgresKubernetes` - Deploy to any K8s cluster (uses CloudNativePG operator)
 - `AwsRdsInstance` - Deploy to AWS RDS (managed service)
 - `GcpCloudSql` - Deploy to GCP Cloud SQL (managed service)
@@ -749,7 +749,7 @@ This preserves cloud-specific power while providing experience consistency.
 
 ### Dual IaC Engine Support
 
-Every deployment component has **both** Pulumi and Terraform implementations with **feature parity**.
+Every component has **both** Pulumi and Terraform implementations with **feature parity**.
 
 **Why both?**
 
@@ -1057,7 +1057,7 @@ func validateManifest(manifestYaml string) error {
 
 ## Development Workflows
 
-### Adding a New Deployment Component
+### Adding a New Component
 
 **High-Level Process:**
 
@@ -1116,7 +1116,7 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 7. **Commit**
    ```bash
    git add -A
-   git commit -m "feat(atlas): add MongodbAtlas deployment component"
+   git commit -m "feat(atlas): add MongodbAtlas component"
    git push origin main
    ```
 
@@ -1444,7 +1444,7 @@ whose variables match the component's generated `variables.tf` works with
 
 ### Ways to Contribute
 
-**1. Add New Deployment Components**
+**1. Add New Components**
 
 Use the Forge workflow to create new cloud resources:
 ```bash
@@ -1501,7 +1501,7 @@ Submit PRs with:
 **Commit Messages:**
 Follow Conventional Commits:
 ```
-feat(aws): add AwsLambdaFunction deployment component
+feat(aws): add AwsLambdaFunction component
 fix(gcp): correct validation rule for GcpStorageBucket
 docs(kubernetes): update PostgresKubernetes examples
 chore: improve component completeness to 95%+
@@ -1586,8 +1586,8 @@ planton pulumi destroy --manifest test.yaml --stack test
 
 **Documentation:**
 - Architecture overview (this file)
-- Deployment component ideal state (`architecture/deployment-component.md`)
-- Lifecycle operation READMEs (`_rules/deployment-component/*/README.md`)
+- Component ideal state (`architecture/component.md`)
+- Lifecycle operation READMEs (`_rules/component/*/README.md`)
 
 **Examples:**
 - Browse complete components (`catalog/`)
@@ -1612,7 +1612,7 @@ Planton is a multi-cloud deployment framework that provides **consistency withou
 - ✅ Provider-specific power (no artificial abstraction)
 - ✅ Dual IaC support (Pulumi and Terraform)
 - ✅ Language-neutral APIs (Protocol Buffers)
-- ✅ 100+ deployment components (AWS, GCP, Azure, K8s, SaaS)
+- ✅ 100+ components (AWS, GCP, Azure, K8s, SaaS)
 
 **Architecture:**
 1. **APIs** - Proto definitions with validations (buf.build)
@@ -1647,12 +1647,12 @@ planton version
 ```
 
 **Next Steps:**
-- Browse deployment components in `catalog/`
-- Read lifecycle management guides in `_rules/deployment-component/`
+- Browse components in `catalog/`
+- Read lifecycle management guides in `_rules/component/`
 - Try deploying a component locally
 - Contribute new components or improvements
 
 ---
 
-**Ready to contribute?** Start with the Forge workflow to create a new deployment component, or use Complete to improve an existing one to 100% quality!
+**Ready to contribute?** Start with the Forge workflow to create a new component, or use Complete to improve an existing one to 100% quality!
 

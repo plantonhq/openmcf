@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesServiceAccount** is a Planton deployment component that creates and manages Kubernetes ServiceAccounts — the in-cluster identity that pods run as. Every pod runs as exactly one ServiceAccount (the namespace's `default` one unless told otherwise), and that identity is the anchor for three distinct concerns:
+**KubernetesServiceAccount** is a Planton component that creates and manages Kubernetes ServiceAccounts — the in-cluster identity that pods run as. Every pod runs as exactly one ServiceAccount (the namespace's `default` one unless told otherwise), and that identity is the anchor for three distinct concerns:
 
 1. **API authentication (RBAC anchor)** — pods authenticate to the kube-apiserver as the ServiceAccount, and RBAC grants (KubernetesRbac) attach permissions to it. Its fully-qualified RBAC name is `system:serviceaccount:<namespace>:<name>`.
 2. **Registry authentication** — `imagePullSecrets` attach docker-registry credentials that the kubelet presents when pulling images for pods running as this identity, freeing every pod spec from repeating `imagePullSecrets`.

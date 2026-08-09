@@ -21,7 +21,7 @@ For hands-on auditing and fixing of the system infrastructure, see the companion
 
 ## What the Catalog System Is
 
-The catalog system transforms hand-written `catalog.md` files co-located with each deployment component into the public documentation site at `/docs/catalog/`. It handles:
+The catalog system transforms hand-written `catalog.md` files co-located with each component into the public documentation site at `/docs/catalog/`. It handles:
 
 - Copying source markdown from the API directory tree to the site's public directory
 - Extracting titles from H1 headings and stripping provider prefixes for sidebar labels

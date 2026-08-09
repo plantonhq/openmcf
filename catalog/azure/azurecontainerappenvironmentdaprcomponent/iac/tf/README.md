@@ -1,7 +1,7 @@
 # AzureContainerAppEnvironmentDaprComponent - Terraform Module
 
 Terraform implementation for the AzureContainerAppEnvironmentDaprComponent
-deployment component.
+component.
 
 ## Resources Created
 

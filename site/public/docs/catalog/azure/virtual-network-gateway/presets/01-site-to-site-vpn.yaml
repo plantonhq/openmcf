@@ -1,0 +1,20 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualNetworkGateway
+metadata:
+  name: my-vpn-gateway
+spec:
+  region: <azure-region>
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: hub-vpn-gateway
+  sku: VPN_GW_1 # the production entry point; resize within the VpnGw family is in-place
+  ipConfigurations:
+    - subnetId:
+        valueFrom:
+          name: <your-gateway-subnet-resource-name>
+      publicIpAddressId:
+        valueFrom:
+          name: <your-public-ip-resource-name>
+  bgpEnabled: true
+  bgpSettings:
+    asn: 65515 # Azure's default gateway ASN

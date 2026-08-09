@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesPodDisruptionBudget** is a Planton deployment component that creates and manages Kubernetes PodDisruptionBudgets — the availability floor for voluntary disruptions — as first-class, declaratively managed resources. A PodDisruptionBudget selects a set of pods with `selector` and declares how many of them may be taken down at once during node drains, cluster upgrades, and autoscaler consolidation.
+**KubernetesPodDisruptionBudget** is a Planton component that creates and manages Kubernetes PodDisruptionBudgets — the availability floor for voluntary disruptions — as first-class, declaratively managed resources. A PodDisruptionBudget selects a set of pods with `selector` and declares how many of them may be taken down at once during node drains, cluster upgrades, and autoscaler consolidation.
 
 The component covers the complete `policy/v1` PodDisruptionBudgetSpec surface: exact-match and set-based label selectors, absolute and percentage availability bounds (`min_available` / `max_unavailable`), and the unhealthy-pod eviction policy. There is nothing an upstream PodDisruptionBudget can express that this spec cannot.
 

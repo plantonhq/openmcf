@@ -1,7 +1,7 @@
 # AzureContainerAppEnvironmentManagedCertificate - Pulumi Module
 
 Pulumi implementation for the
-AzureContainerAppEnvironmentManagedCertificate deployment component.
+AzureContainerAppEnvironmentManagedCertificate component.
 
 ## Architecture
 

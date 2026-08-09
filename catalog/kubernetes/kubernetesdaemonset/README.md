@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesDaemonSet** is a Planton deployment component that deploys a node agent to a Kubernetes cluster as an apps/v1 DaemonSet: exactly one pod runs on every node that matches the pod's scheduling rules, and pods are added or garbage-collected as nodes join and leave. This is the kind for log shippers, node monitors, storage daemons, and CNI components.
+**KubernetesDaemonSet** is a Planton component that deploys a node agent to a Kubernetes cluster as an apps/v1 DaemonSet: exactly one pod runs on every node that matches the pod's scheduling rules, and pods are added or garbage-collected as nodes join and leave. This is the kind for log shippers, node monitors, storage daemons, and CNI components.
 
 There is no replica count — node membership IS the replica count — and no Service or ingress: clients that must reach an agent do so on its node via per-container `hostPort` or `pod.hostNetwork`. For stateless services use **KubernetesDeployment**; for stateful members use **KubernetesStatefulSet**; for run-to-completion work use **KubernetesJob** / **KubernetesCronJob**.
 

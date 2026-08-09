@@ -1,6 +1,6 @@
 # AzureStorageShare - Terraform Module
 
-Terraform implementation for the AzureStorageShare deployment component.
+Terraform implementation for the AzureStorageShare component.
 
 ## Resources Created
 

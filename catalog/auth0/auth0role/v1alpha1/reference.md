@@ -32,7 +32,7 @@ https://www.pulumi.com/registry/packages/auth0/api-docs/role/
 
 ```yaml
 # Auth0 Role Test Manifest
-# This file is used for testing the Auth0Role deployment component
+# This file is used for testing the Auth0Role component
 #
 # Prerequisites:
 # 1. Set the following environment variables:

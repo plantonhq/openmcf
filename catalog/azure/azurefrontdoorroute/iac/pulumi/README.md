@@ -1,6 +1,6 @@
 # AzureFrontDoorRoute - Pulumi Module
 
-Pulumi implementation for the AzureFrontDoorRoute deployment component.
+Pulumi implementation for the AzureFrontDoorRoute component.
 
 ## Architecture
 

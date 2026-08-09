@@ -37,7 +37,7 @@ flowchart TD
 
 ## Component Anatomy
 
-Every deployment component is a self-contained package at a fixed path. The Protocol Buffer definitions define the contract. The IaC modules implement it.
+Every component is a self-contained package at a fixed path. The Protocol Buffer definitions define the contract. The IaC modules implement it.
 
 ```text
 catalog/{provider}/{component}/
@@ -76,7 +76,7 @@ catalog/{provider}/{component}/
 \-- catalog.md                <- Public catalog page for the docs site
 ```
 
-**Deep dive**: [Deployment Components](deployment-components)
+**Deep dive**: [Components](components)
 
 ## The Three Layers
 
@@ -131,7 +131,7 @@ These SDKs enable teams to build custom tools that work with Planton manifests p
 
 ## What's Next
 
-- **[Deployment Components](deployment-components)** -- Deep dive into the component structure
+- **[Components](components)** -- Deep dive into the component structure
 - **[Manifests](manifests)** -- The KRM manifest model
 - **[Validation](validation)** -- The three-layer validation architecture
-- **[Component Catalog](/docs/catalog)** -- Browse all 360+ deployment components
+- **[Component Catalog](/docs/catalog)** -- Browse all 360+ components

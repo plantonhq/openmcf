@@ -7,7 +7,7 @@ order: 90
 
 # Azure Provider Setup
 
-This guide covers everything you need to authenticate Planton with Microsoft Azure. It applies to all Azure deployment components: `AzureAksCluster`, `AzureResourceGroup`, and others.
+This guide covers everything you need to authenticate Planton with Microsoft Azure. It applies to all Azure components: `AzureAksCluster`, `AzureResourceGroup`, and others.
 
 For a quick reference of all provider credentials, see [Credentials](./credentials).
 

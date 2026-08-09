@@ -1,6 +1,6 @@
 # OpenStackSecurityGroup
 
-An Planton deployment component for managing OpenStack Neutron security groups with optional inline rules.
+An Planton component for managing OpenStack Neutron security groups with optional inline rules.
 
 ## Overview
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesNetworkPolicy** is a Planton deployment component that creates and manages Kubernetes NetworkPolicies — the in-cluster firewall — as first-class, declaratively managed resources. A NetworkPolicy selects a set of pods with `pod_selector` and declares which network traffic is allowed to (`ingress_rules`) and from (`egress_rules`) those pods.
+**KubernetesNetworkPolicy** is a Planton component that creates and manages Kubernetes NetworkPolicies — the in-cluster firewall — as first-class, declaratively managed resources. A NetworkPolicy selects a set of pods with `pod_selector` and declares which network traffic is allowed to (`ingress_rules`) and from (`egress_rules`) those pods.
 
 The component covers the complete `networking/v1` NetworkPolicySpec surface: pod and namespace label selectors (exact-match and set-based expressions), IP blocks with exceptions, TCP/UDP/SCTP ports, named ports, and port ranges. There is nothing an upstream NetworkPolicy can express that this spec cannot.
 

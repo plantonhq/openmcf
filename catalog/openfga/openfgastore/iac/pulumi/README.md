@@ -14,7 +14,7 @@ planton apply --manifest openfga-store.yaml \
 
 ## Why This Module Exists
 
-This module exists only to maintain consistency with the Planton deployment component structure. All deployment components have both Pulumi and Terraform modules, but OpenFGA only has a Terraform provider.
+This module exists only to maintain consistency with the Planton component structure. All components have both Pulumi and Terraform modules, but OpenFGA only has a Terraform provider.
 
 When this module is executed:
 1. It logs a warning that no Pulumi provider is available

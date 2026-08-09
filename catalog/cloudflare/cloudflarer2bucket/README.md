@@ -2,7 +2,7 @@
 
 # Cloudflare R2 Bucket
 
-A Planton deployment component for deploying and managing Cloudflare R2 buckets - S3-compatible object storage with **zero egress fees**, strong consistency, and global performance powered by Cloudflare's network.
+A Planton component for deploying and managing Cloudflare R2 buckets - S3-compatible object storage with **zero egress fees**, strong consistency, and global performance powered by Cloudflare's network.
 
 ## Overview
 

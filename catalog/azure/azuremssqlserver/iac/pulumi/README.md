@@ -1,6 +1,6 @@
 # AzureMssqlServer - Pulumi Module
 
-Pulumi implementation for the AzureMssqlServer deployment component.
+Pulumi implementation for the AzureMssqlServer component.
 
 ## Architecture
 

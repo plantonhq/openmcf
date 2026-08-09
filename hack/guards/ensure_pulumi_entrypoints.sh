@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Guard: every Pulumi deployment component must have a buildable entrypoint at the
+# Guard: every Pulumi component must have a buildable entrypoint at the
 # `iac/pulumi/` ROOT (a `package main` file directly in that directory), and must NOT
 # place the entrypoint in a `main/` or `entrypoint/` subdirectory.
 #

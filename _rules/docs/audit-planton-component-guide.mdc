@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Rule: Audit Component Guide
 
-**Purpose**: Guide an AI agent through auditing an existing `GUIDE.md` for a deployment component. Verifies that the authored wisdom is grounded, current against the schemas, compliant with the five laws of guide content, and correctly wired into the generated layer.
+**Purpose**: Guide an AI agent through auditing an existing `GUIDE.md` for a component. Verifies that the authored wisdom is grounded, current against the schemas, compliant with the five laws of guide content, and correctly wired into the generated layer.
 
 **Trigger**: User references this rule or asks to audit/verify/review a component guide.
 

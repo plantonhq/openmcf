@@ -1,7 +1,7 @@
 # AzureManagedRedisAccessPolicyAssignment - Pulumi Module
 
 Pulumi implementation for the AzureManagedRedisAccessPolicyAssignment
-deployment component.
+component.
 
 ## Architecture
 

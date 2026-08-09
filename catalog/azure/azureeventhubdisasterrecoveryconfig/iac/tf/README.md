@@ -1,7 +1,7 @@
 # AzureEventHubDisasterRecoveryConfig - Terraform Module
 
 OpenTofu/Terraform implementation for the
-AzureEventHubDisasterRecoveryConfig deployment component, at 100%
+AzureEventHubDisasterRecoveryConfig component, at 100%
 behavioral parity with the Pulumi module.
 
 ## Resources Created

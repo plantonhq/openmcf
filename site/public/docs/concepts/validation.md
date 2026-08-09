@@ -13,7 +13,7 @@ Infrastructure misconfigurations that reach cloud provider APIs are expensive --
 
 ### Layer 1: Schema-Level Validation (Protobuf + buf-validate)
 
-Every deployment component's API is defined in Protocol Buffers with validation rules embedded directly in the schema. These rules are defined using `buf.validate` annotations and are enforced at the protobuf level, before any application logic runs.
+Every component's API is defined in Protocol Buffers with validation rules embedded directly in the schema. These rules are defined using `buf.validate` annotations and are enforced at the protobuf level, before any application logic runs.
 
 **Constant enforcement** on `apiVersion` and `kind`:
 
@@ -192,6 +192,6 @@ The first two layers eliminate an entire class of deployment failures before a s
 
 ## What's Next
 
-- **[Deployment Components](deployment-components)** -- How validation rules are defined in each component's protobuf
+- **[Components](components)** -- How validation rules are defined in each component's protobuf
 - **[Manifests](manifests)** -- The manifest structure that validation operates on
 - **[Dual IaC Engines](dual-iac-engines)** -- What happens after validation passes
