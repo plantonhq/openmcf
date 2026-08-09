@@ -367,9 +367,9 @@ var File_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto protoreflect.FileDe
 
 const file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/gcp/gcpvertexaiendpoint/v1alpha1/spec.proto\x12,dev.planton.gcp.gcpvertexaiendpoint.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x8a\x01\n" +
+	"3catalog/gcp/gcpvertexaiendpoint/v1alpha1/spec.proto\x12,dev.planton.gcp.gcpvertexaiendpoint.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"]\n" +
 	".GcpVertexAiEndpointPrivateServiceConnectConfig\x12+\n" +
-	"\x11project_allowlist\x18\x01 \x03(\tR\x10projectAllowlistJ\x04\b\x02\x10\x03R%enable_secure_private_service_connect\"\xa9\x02\n" +
+	"\x11project_allowlist\x18\x01 \x03(\tR\x10projectAllowlist\"\xa9\x02\n" +
 	"/GcpVertexAiEndpointRequestResponseLoggingConfig\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x97\x01\n" +
 	"\rsampling_rate\x18\x02 \x01(\x01Br\xbaHo\xba\x01l\n" +

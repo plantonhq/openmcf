@@ -683,6 +683,16 @@ with Application Default Credentials.
 E2E_GCP_PROJECT=planton-e2e go test -tags=e2e -timeout=120m -v ./e2e/gcp/...
 ```
 
+**ADC preflight must assert a NON-EMPTY token, not just exit code 0:** with a
+stale-but-present ADC file, `gcloud auth application-default print-access-token`
+can exit 0 while printing an EMPTY token (observed live on a credential file
+whose refresh token had aged out) — so `print-access-token >/dev/null && echo OK`
+false-passes and the failure surfaces minutes later inside a lane. A machine
+preflight should capture the token, assert it is non-empty, and make one live
+API call with it (e.g. GET the test project via Cloud Resource Manager). The
+harness `Setup` itself fail-fasts correctly — this trap only bites pre-session
+checks that trust the exit code.
+
 **Backend contract:** every scenario's test context must carry the run-scoped
 Pulumi file backend URL — even Terraform scenarios, because dependency
 prerequisites always deploy via Pulumi. An empty backend URL silently falls

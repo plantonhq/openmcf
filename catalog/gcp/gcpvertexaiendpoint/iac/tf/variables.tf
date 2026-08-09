@@ -65,11 +65,3 @@ variable "spec" {
     error_message = "display_name is required."
   }
 }
-
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = optional(string, "")
-  })
-  default = { service_account_key = "" }
-}

@@ -7,7 +7,8 @@ spec:
   # network), resolves the subnet's network reference from its outputs, then
   # runs deploy -> compute subnetworks.get verify (incl. primary-range check)
   # -> destroy -> verify 404, on both provisioners. The scenario carries
-  # secondary ranges and flow logs so the deepened surface is exercised live.
+  # secondary ranges, flow logs, and the formerly-beta CIDR-routes-overlap
+  # flag (GA on the 7.x line) so the deepened surface is exercised live.
   tier: 1
   status: green
   validated_provisioners:

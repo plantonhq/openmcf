@@ -1,0 +1,44 @@
+# Minimal GcpFirewallRule scenario: the flagship ALLOW-ingress shape — web
+# traffic from the internet to tagged instances. The VPC fixture is declared
+# via the e2e-prerequisites annotation (the kind has no registry
+# prerequisites) and the network reference resolves against the fixture's
+# PUBLISHED install profile, so the referenced metadata.name must match the
+# name that profile declares. project_id is deliberately omitted: the module
+# falls back to the provider's default project, which the E2E harness exports
+# as GOOGLE_PROJECT from the resolved test project. Firewall rule names are
+# project-scoped with no deleted-name reservation, so the name stays fixed.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpFirewallRule
+metadata:
+  name: planton-oss-e2e-gcpfwr-smoke
+  id: planton-oss-e2e-gcpfwr-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpfirewallrule
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "GcpVpcNetwork"
+  tags:
+    - planton-e2e
+spec:
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
+      fieldPath: status.outputs.network_self_link
+  ruleName: planton-oss-e2e-fwr-allow-web
+  direction: INGRESS
+  action: ALLOW
+  rules:
+    - protocol: tcp
+      ports:
+        - "80"
+        - "443"
+  priority: 1000
+  description: Ephemeral allow-ingress rule created by the Planton E2E harness; safe to delete
+  sourceRanges:
+    - "0.0.0.0/0"
+  targetTags:
+    - web-server

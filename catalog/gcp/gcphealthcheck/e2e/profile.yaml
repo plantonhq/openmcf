@@ -3,8 +3,9 @@ kind: ComponentE2EProfile
 metadata:
   name: gcphealthcheck
 spec:
-  # Two leaf scenarios exercising BOTH provider resources behind the one
-  # kind: minimal (global health check) and regional (region health check).
+  # Three leaf scenarios exercising BOTH provider resources behind the one
+  # kind: minimal (global HTTP), regional (region TCP), and grpc-tls (global
+  # gRPC-with-TLS — the formerly-beta protocol arm, GA on the 7.x line).
   # Health checks are free, instant to create/destroy, and have no
   # dependencies — deploy -> compute healthChecks/regionHealthChecks get
   # verify -> destroy -> verify 404, on both provisioners.

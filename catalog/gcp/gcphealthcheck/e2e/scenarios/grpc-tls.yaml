@@ -1,0 +1,25 @@
+# gRPC-with-TLS GcpHealthCheck scenario: exercises the grpc_tls protocol arm
+# — formerly beta-only, GA on the 7.x provider line — on the global resource
+# with a fixed port and an empty grpc_service_name (probes the server's
+# OVERALL health). Health checks are free, standalone objects; the probe
+# never needs a live backend to exist. project_id is deliberately omitted
+# and rides the harness-exported GOOGLE_PROJECT; the name stays fixed
+# (no deleted-name reservation on health checks).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpHealthCheck
+metadata:
+  name: planton-oss-e2e-gcphc-grpctls
+  id: planton-oss-e2e-gcphc-grpctls
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcphealthcheck
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral gRPC-TLS health check created by the Planton E2E harness; safe to delete
+  grpcTls:
+    port: 8443

@@ -163,6 +163,15 @@ func TestGcpSubnetwork_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpsubnetwork", "terraform")
 }
 
+// --- GCP Firewall Rule (composed traffic policy: deploys a GcpVpcNetwork fixture via the scenario annotation) ---
+
+func TestGcpFirewallRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpfirewallrule", "pulumi")
+}
+func TestGcpFirewallRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpfirewallrule", "terraform")
+}
+
 // --- GCP Region Network Endpoint Group (serverless NEG bridge) ---
 
 func TestGcpRegionNetworkEndpointGroup_Pulumi(t *testing.T) {

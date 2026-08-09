@@ -21,8 +21,6 @@ message GcpVertexAiEndpointPrivateServiceConnectConfig {
   // Secure PSC (IAM authorization on top of network reachability) is not
   // modeled: the GA provider does not expose it (pre-release surface only),
   // and GA is the catalog's parity baseline.
-  reserved 2;
-  reserved "enable_secure_private_service_connect";
 }
 
 // GcpVertexAiEndpointRequestResponseLoggingConfig samples online

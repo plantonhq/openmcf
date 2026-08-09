@@ -28,7 +28,6 @@ default project.
 |------|------|----------|-------------|
 | metadata | object | yes | Planton resource metadata |
 | spec | object | yes | GcpVertexAiEndpoint specification |
-| provider_config | object | no | GCP provider configuration |
 
 ## Outputs
 
