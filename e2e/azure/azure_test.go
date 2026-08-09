@@ -385,6 +385,24 @@ func TestAzureVpnGatewayConnection_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurevpngatewayconnection", "terraform")
 }
 
+// --- Azure VPN Server Configuration (fixture RG -> a free certificate-auth policy + one composed policy group; seconds -- the flagship is the name-keyed policy_group_ids output) ---
+
+func TestAzureVpnServerConfiguration_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpnserverconfiguration", "pulumi")
+}
+func TestAzureVpnServerConfiguration_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpnserverconfiguration", "terraform")
+}
+
+// --- Azure Point-to-Site VPN Gateway (composed: fixture hub + fixture server configuration -> a one-scale-unit gateway with one client pool; 30-45 minute create billing from creation -- no client ever connects: the fixture root's private key does not exist) ---
+
+func TestAzurePointToSiteVpnGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurepointtositevpngateway", "pulumi")
+}
+func TestAzurePointToSiteVpnGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurepointtositevpngateway", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {

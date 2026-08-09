@@ -122,6 +122,7 @@ Fields on other kinds that can point at this resource:
 | AzureNatGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureNetworkInterface | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureNetworkSecurityGroup | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzurePointToSiteVpnGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePostgresqlFlexibleServer | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePrivateDnsZone | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePrivateEndpoint | `spec.resourceGroup` | `status.outputs.resource_group_name` |
@@ -145,6 +146,7 @@ Fields on other kinds that can point at this resource:
 | AzureVirtualNetworkGatewayConnection | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVirtualWan | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVpnGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureVpnServerConfiguration | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVpnSite | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureWebApplicationFirewallPolicy | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 

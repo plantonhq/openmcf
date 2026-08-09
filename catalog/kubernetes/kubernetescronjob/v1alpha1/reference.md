@@ -1535,9 +1535,11 @@ Allowed values (use exactly as shown):
 - `AzureVirtualWan` -- Virtual WAN: the umbrella of Azure's managed hub-and-spoke networking, under which virtual hubs and their gateways are created. Self-contained -- only the resource group is required.
 - `AzureVirtualHub` -- The WAN is the prerequisite: this kind models the Virtual WAN hub (virtual_wan_id is required; standalone hubs are the legacy Route Server construction, which has its own ARM surface). The resource group chains transitively through the WAN.
 - `AzureVirtualHubConnection` -- Both sides of the attachment are prerequisites: the hub being joined and the spoke virtual network being attached.
-- `AzureVpnGateway`
-- `AzureVpnGatewayConnection`
-- `AzureVpnSite`
+- `AzureVpnGateway` -- The hub is the prerequisite: ARM deploys a Virtual WAN VPN gateway INTO a virtual hub (virtual_hub_id is required and immutable; the WAN and resource group chain transitively through the hub). ARM allows one VPN gateway per hub.
+- `AzureVpnGatewayConnection` -- Both ends of the tunnel are prerequisites: a connection is an ARM child of the VPN gateway and pins each of its links to a specific link of the remote VPN site (the hub, WAN, and resource group chain transitively through the gateway).
+- `AzureVpnSite` -- The WAN is the prerequisite: a VPN site is the Virtual WAN world's address-book entry for one branch location (virtual_wan_id is required; the classic-world sibling without a WAN is AzureLocalNetworkGateway). The resource group chains transitively through the WAN.
+- `AzurePointToSiteVpnGateway` -- The hub and the server configuration are both prerequisites: a point-to-site VPN gateway deploys INTO a virtual hub (one P2S gateway per hub, a slot separate from the hub's site-to-site VPN gateway) and is born pointing at the VPN server configuration that defines how its users authenticate -- both ARM-required and fixed at creation. The WAN and resource group chain transitively through the hub.
+- `AzureVpnServerConfiguration` -- Self-contained -- only the resource group is required: a VPN server configuration is the reusable "who may connect and how" authentication policy (Entra ID / certificate / RADIUS) that point-to-site VPN gateways attach to; it references no other Azure resource.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -2328,9 +2330,11 @@ Allowed values (use exactly as shown):
 - `AzureVirtualWan` -- Virtual WAN: the umbrella of Azure's managed hub-and-spoke networking, under which virtual hubs and their gateways are created. Self-contained -- only the resource group is required.
 - `AzureVirtualHub` -- The WAN is the prerequisite: this kind models the Virtual WAN hub (virtual_wan_id is required; standalone hubs are the legacy Route Server construction, which has its own ARM surface). The resource group chains transitively through the WAN.
 - `AzureVirtualHubConnection` -- Both sides of the attachment are prerequisites: the hub being joined and the spoke virtual network being attached.
-- `AzureVpnGateway`
-- `AzureVpnGatewayConnection`
-- `AzureVpnSite`
+- `AzureVpnGateway` -- The hub is the prerequisite: ARM deploys a Virtual WAN VPN gateway INTO a virtual hub (virtual_hub_id is required and immutable; the WAN and resource group chain transitively through the hub). ARM allows one VPN gateway per hub.
+- `AzureVpnGatewayConnection` -- Both ends of the tunnel are prerequisites: a connection is an ARM child of the VPN gateway and pins each of its links to a specific link of the remote VPN site (the hub, WAN, and resource group chain transitively through the gateway).
+- `AzureVpnSite` -- The WAN is the prerequisite: a VPN site is the Virtual WAN world's address-book entry for one branch location (virtual_wan_id is required; the classic-world sibling without a WAN is AzureLocalNetworkGateway). The resource group chains transitively through the WAN.
+- `AzurePointToSiteVpnGateway` -- The hub and the server configuration are both prerequisites: a point-to-site VPN gateway deploys INTO a virtual hub (one P2S gateway per hub, a slot separate from the hub's site-to-site VPN gateway) and is born pointing at the VPN server configuration that defines how its users authenticate -- both ARM-required and fixed at creation. The WAN and resource group chain transitively through the hub.
+- `AzureVpnServerConfiguration` -- Self-contained -- only the resource group is required: a VPN server configuration is the reusable "who may connect and how" authentication policy (Entra ID / certificate / RADIUS) that point-to-site VPN gateways attach to; it references no other Azure resource.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -4274,9 +4278,11 @@ Allowed values (use exactly as shown):
 - `AzureVirtualWan` -- Virtual WAN: the umbrella of Azure's managed hub-and-spoke networking, under which virtual hubs and their gateways are created. Self-contained -- only the resource group is required.
 - `AzureVirtualHub` -- The WAN is the prerequisite: this kind models the Virtual WAN hub (virtual_wan_id is required; standalone hubs are the legacy Route Server construction, which has its own ARM surface). The resource group chains transitively through the WAN.
 - `AzureVirtualHubConnection` -- Both sides of the attachment are prerequisites: the hub being joined and the spoke virtual network being attached.
-- `AzureVpnGateway`
-- `AzureVpnGatewayConnection`
-- `AzureVpnSite`
+- `AzureVpnGateway` -- The hub is the prerequisite: ARM deploys a Virtual WAN VPN gateway INTO a virtual hub (virtual_hub_id is required and immutable; the WAN and resource group chain transitively through the hub). ARM allows one VPN gateway per hub.
+- `AzureVpnGatewayConnection` -- Both ends of the tunnel are prerequisites: a connection is an ARM child of the VPN gateway and pins each of its links to a specific link of the remote VPN site (the hub, WAN, and resource group chain transitively through the gateway).
+- `AzureVpnSite` -- The WAN is the prerequisite: a VPN site is the Virtual WAN world's address-book entry for one branch location (virtual_wan_id is required; the classic-world sibling without a WAN is AzureLocalNetworkGateway). The resource group chains transitively through the WAN.
+- `AzurePointToSiteVpnGateway` -- The hub and the server configuration are both prerequisites: a point-to-site VPN gateway deploys INTO a virtual hub (one P2S gateway per hub, a slot separate from the hub's site-to-site VPN gateway) and is born pointing at the VPN server configuration that defines how its users authenticate -- both ARM-required and fixed at creation. The WAN and resource group chain transitively through the hub.
+- `AzureVpnServerConfiguration` -- Self-contained -- only the resource group is required: a VPN server configuration is the reusable "who may connect and how" authentication policy (Entra ID / certificate / RADIUS) that point-to-site VPN gateways attach to; it references no other Azure resource.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -5067,9 +5073,11 @@ Allowed values (use exactly as shown):
 - `AzureVirtualWan` -- Virtual WAN: the umbrella of Azure's managed hub-and-spoke networking, under which virtual hubs and their gateways are created. Self-contained -- only the resource group is required.
 - `AzureVirtualHub` -- The WAN is the prerequisite: this kind models the Virtual WAN hub (virtual_wan_id is required; standalone hubs are the legacy Route Server construction, which has its own ARM surface). The resource group chains transitively through the WAN.
 - `AzureVirtualHubConnection` -- Both sides of the attachment are prerequisites: the hub being joined and the spoke virtual network being attached.
-- `AzureVpnGateway`
-- `AzureVpnGatewayConnection`
-- `AzureVpnSite`
+- `AzureVpnGateway` -- The hub is the prerequisite: ARM deploys a Virtual WAN VPN gateway INTO a virtual hub (virtual_hub_id is required and immutable; the WAN and resource group chain transitively through the hub). ARM allows one VPN gateway per hub.
+- `AzureVpnGatewayConnection` -- Both ends of the tunnel are prerequisites: a connection is an ARM child of the VPN gateway and pins each of its links to a specific link of the remote VPN site (the hub, WAN, and resource group chain transitively through the gateway).
+- `AzureVpnSite` -- The WAN is the prerequisite: a VPN site is the Virtual WAN world's address-book entry for one branch location (virtual_wan_id is required; the classic-world sibling without a WAN is AzureLocalNetworkGateway). The resource group chains transitively through the WAN.
+- `AzurePointToSiteVpnGateway` -- The hub and the server configuration are both prerequisites: a point-to-site VPN gateway deploys INTO a virtual hub (one P2S gateway per hub, a slot separate from the hub's site-to-site VPN gateway) and is born pointing at the VPN server configuration that defines how its users authenticate -- both ARM-required and fixed at creation. The WAN and resource group chain transitively through the hub.
+- `AzureVpnServerConfiguration` -- Self-contained -- only the resource group is required: a VPN server configuration is the reusable "who may connect and how" authentication policy (Entra ID / certificate / RADIUS) that point-to-site VPN gateways attach to; it references no other Azure resource.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -7049,9 +7057,11 @@ Allowed values (use exactly as shown):
 - `AzureVirtualWan` -- Virtual WAN: the umbrella of Azure's managed hub-and-spoke networking, under which virtual hubs and their gateways are created. Self-contained -- only the resource group is required.
 - `AzureVirtualHub` -- The WAN is the prerequisite: this kind models the Virtual WAN hub (virtual_wan_id is required; standalone hubs are the legacy Route Server construction, which has its own ARM surface). The resource group chains transitively through the WAN.
 - `AzureVirtualHubConnection` -- Both sides of the attachment are prerequisites: the hub being joined and the spoke virtual network being attached.
-- `AzureVpnGateway`
-- `AzureVpnGatewayConnection`
-- `AzureVpnSite`
+- `AzureVpnGateway` -- The hub is the prerequisite: ARM deploys a Virtual WAN VPN gateway INTO a virtual hub (virtual_hub_id is required and immutable; the WAN and resource group chain transitively through the hub). ARM allows one VPN gateway per hub.
+- `AzureVpnGatewayConnection` -- Both ends of the tunnel are prerequisites: a connection is an ARM child of the VPN gateway and pins each of its links to a specific link of the remote VPN site (the hub, WAN, and resource group chain transitively through the gateway).
+- `AzureVpnSite` -- The WAN is the prerequisite: a VPN site is the Virtual WAN world's address-book entry for one branch location (virtual_wan_id is required; the classic-world sibling without a WAN is AzureLocalNetworkGateway). The resource group chains transitively through the WAN.
+- `AzurePointToSiteVpnGateway` -- The hub and the server configuration are both prerequisites: a point-to-site VPN gateway deploys INTO a virtual hub (one P2S gateway per hub, a slot separate from the hub's site-to-site VPN gateway) and is born pointing at the VPN server configuration that defines how its users authenticate -- both ARM-required and fixed at creation. The WAN and resource group chain transitively through the hub.
+- `AzureVpnServerConfiguration` -- Self-contained -- only the resource group is required: a VPN server configuration is the reusable "who may connect and how" authentication policy (Entra ID / certificate / RADIUS) that point-to-site VPN gateways attach to; it references no other Azure resource.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -7842,9 +7852,11 @@ Allowed values (use exactly as shown):
 - `AzureVirtualWan` -- Virtual WAN: the umbrella of Azure's managed hub-and-spoke networking, under which virtual hubs and their gateways are created. Self-contained -- only the resource group is required.
 - `AzureVirtualHub` -- The WAN is the prerequisite: this kind models the Virtual WAN hub (virtual_wan_id is required; standalone hubs are the legacy Route Server construction, which has its own ARM surface). The resource group chains transitively through the WAN.
 - `AzureVirtualHubConnection` -- Both sides of the attachment are prerequisites: the hub being joined and the spoke virtual network being attached.
-- `AzureVpnGateway`
-- `AzureVpnGatewayConnection`
-- `AzureVpnSite`
+- `AzureVpnGateway` -- The hub is the prerequisite: ARM deploys a Virtual WAN VPN gateway INTO a virtual hub (virtual_hub_id is required and immutable; the WAN and resource group chain transitively through the hub). ARM allows one VPN gateway per hub.
+- `AzureVpnGatewayConnection` -- Both ends of the tunnel are prerequisites: a connection is an ARM child of the VPN gateway and pins each of its links to a specific link of the remote VPN site (the hub, WAN, and resource group chain transitively through the gateway).
+- `AzureVpnSite` -- The WAN is the prerequisite: a VPN site is the Virtual WAN world's address-book entry for one branch location (virtual_wan_id is required; the classic-world sibling without a WAN is AzureLocalNetworkGateway). The resource group chains transitively through the WAN.
+- `AzurePointToSiteVpnGateway` -- The hub and the server configuration are both prerequisites: a point-to-site VPN gateway deploys INTO a virtual hub (one P2S gateway per hub, a slot separate from the hub's site-to-site VPN gateway) and is born pointing at the VPN server configuration that defines how its users authenticate -- both ARM-required and fixed at creation. The WAN and resource group chain transitively through the hub.
+- `AzureVpnServerConfiguration` -- Self-contained -- only the resource group is required: a VPN server configuration is the reusable "who may connect and how" authentication policy (Entra ID / certificate / RADIUS) that point-to-site VPN gateways attach to; it references no other Azure resource.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`

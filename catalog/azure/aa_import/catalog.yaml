@@ -136,3 +136,20 @@ spec:
     - terraform_type: azurerm_vpn_gateway_connection
       pulumi_type: azure:network/vpnGatewayConnection:VpnGatewayConnection
       id_format: "{connection_id}"
+    - terraform_type: azurerm_point_to_site_vpn_gateway
+      # The classic SDK's token is misnamed ("PointToPoint") -- a
+      # legacy artifact; it creates the same ARM p2sVpnGateways object.
+      pulumi_type: azure:network/pointToPointVpnGateway:PointToPointVpnGateway
+      id_format: "{point_to_site_vpn_gateway_id}"
+    - terraform_type: azurerm_vpn_server_configuration
+      pulumi_type: azure:network/vpnServerConfiguration:VpnServerConfiguration
+      id_format: "{vpn_server_configuration_id}"
+      # ARM never returns the RADIUS server secret (the provider reads
+      # it back from config) -- an imported configuration carrying one
+      # legitimately plans an in-place update on exactly that sub-path.
+      write_normalized_attributes: [radius.server.secret]
+    - terraform_type: azurerm_vpn_server_configuration_policy_group
+      pulumi_type: azure:network/vpnServerConfigurationPolicyGroup:VpnServerConfigurationPolicyGroup
+      id_format: "{vpn_server_configuration_id}/configurationPolicyGroups/{policy_group_name}"
+      # The module deploys one group per spec entry, keyed by name --
+      # the address's instance key supplies {policy_group_name}.

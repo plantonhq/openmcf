@@ -105,6 +105,7 @@ var verifiers = map[string]Verifier{
 	"azurenatgateway":                                &natGatewayVerifier{},
 	"azurenetworkinterface":                          &networkInterfaceVerifier{},
 	"azurenetworksecuritygroup":                      &networkSecurityGroupVerifier{},
+	"azurepointtositevpngateway":                     &pointToSiteVpnGatewayVerifier{},
 	"azurepostgresqlflexibleserver":                  &postgresqlFlexibleServerVerifier{},
 	"azureprivatednszone":                            &privateDnsZoneVerifier{},
 	"azureprivatednszonevirtualnetworklink":          &privateDnsZoneVirtualNetworkLinkVerifier{},
@@ -149,6 +150,7 @@ var verifiers = map[string]Verifier{
 	"azurevirtualwan":                                &virtualWanVerifier{},
 	"azurevpngateway":                                &vpnGatewayVerifier{},
 	"azurevpngatewayconnection":                      &vpnGatewayConnectionVerifier{},
+	"azurevpnserverconfiguration":                    &vpnServerConfigurationVerifier{},
 	"azurevpnsite":                                   &vpnSiteVerifier{},
 	"azurewebapplicationfirewallpolicy":              &webApplicationFirewallPolicyVerifier{},
 }

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurepointtositevpngateway.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurepointtositevpngateway/v1alpha1/outputs.proto";
+import "catalog/azure/azurepointtositevpngateway/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzurePointToSiteVpnGateway is the top-level API resource describing
+// a point-to-site VPN gateway -- the managed receiver inside a virtual
+// hub that individual devices dial into, authenticated per the VPN
+// server configuration it points at.
+message AzurePointToSiteVpnGateway {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzurePointToSiteVpnGateway".
+  string kind = 2 [(buf.validate.field).string.const = 'AzurePointToSiteVpnGateway'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Point-to-site VPN gateway specification.
+  AzurePointToSiteVpnGatewaySpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzurePointToSiteVpnGatewayStatus status = 5;
+}
+
+// AzurePointToSiteVpnGatewayStatus holds the deployment outputs.
+message AzurePointToSiteVpnGatewayStatus {
+  // Stack outputs from the IaC deployment.
+  AzurePointToSiteVpnGatewayStackOutputs outputs = 1;
+}

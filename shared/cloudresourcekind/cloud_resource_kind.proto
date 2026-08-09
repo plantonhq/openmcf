@@ -2226,6 +2226,35 @@ enum CloudResourceKind {
     prerequisites: [AzureVirtualWan]
   }];
 
+  // The hub and the server configuration are both prerequisites: a
+  // point-to-site VPN gateway deploys INTO a virtual hub (one P2S
+  // gateway per hub, a slot separate from the hub's site-to-site VPN
+  // gateway) and is born pointing at the VPN server configuration
+  // that defines how its users authenticate -- both ARM-required and
+  // fixed at creation. The WAN and resource group chain transitively
+  // through the hub.
+  AzurePointToSiteVpnGateway = 2154 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azp2sgw"
+    prerequisites: [
+      AzureVirtualHub,
+      AzureVpnServerConfiguration
+    ]
+  }];
+
+  // Self-contained -- only the resource group is required: a VPN
+  // server configuration is the reusable "who may connect and how"
+  // authentication policy (Entra ID / certificate / RADIUS) that
+  // point-to-site VPN gateways attach to; it references no other
+  // Azure resource.
+  AzureVpnServerConfiguration = 2155 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azvpnsc"
+    prerequisites: [AzureResourceGroup]
+  }];
+
   // 3000–3999: GCP resources
   GcpArtifactRegistryRepo = 3000 [(kind_meta) = {
     provider: gcp

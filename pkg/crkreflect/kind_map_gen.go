@@ -237,6 +237,7 @@ import (
 	azurenatgatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenatgateway/v1alpha1"
 	azurenetworkinterfacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworkinterface/v1alpha1"
 	azurenetworksecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworksecuritygroup/v1alpha1"
+	azurepointtositevpngatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepointtositevpngateway/v1alpha1"
 	azurepostgresqlflexibleserverv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepostgresqlflexibleserver/v1alpha1"
 	azureprivatednszonev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednszone/v1alpha1"
 	azureprivatednszonevirtualnetworklinkv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednszonevirtualnetworklink/v1alpha1"
@@ -281,6 +282,7 @@ import (
 	azurevirtualwanv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualwan/v1alpha1"
 	azurevpngatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpngateway/v1alpha1"
 	azurevpngatewayconnectionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpngatewayconnection/v1alpha1"
+	azurevpnserverconfigurationv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnserverconfiguration/v1alpha1"
 	azurevpnsitev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnsite/v1alpha1"
 	azurewebapplicationfirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurewebapplicationfirewallpolicy/v1alpha1"
 	civobucketv1alpha1 "github.com/plantonhq/planton/catalog/civo/civobucket/v1alpha1"
@@ -894,6 +896,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureNatGateway:                                &azurenatgatewayv1alpha1.AzureNatGateway{},
 	cloudresourcekind.CloudResourceKind_AzureNetworkInterface:                          &azurenetworkinterfacev1alpha1.AzureNetworkInterface{},
 	cloudresourcekind.CloudResourceKind_AzureNetworkSecurityGroup:                      &azurenetworksecuritygroupv1alpha1.AzureNetworkSecurityGroup{},
+	cloudresourcekind.CloudResourceKind_AzurePointToSiteVpnGateway:                     &azurepointtositevpngatewayv1alpha1.AzurePointToSiteVpnGateway{},
 	cloudresourcekind.CloudResourceKind_AzurePostgresqlFlexibleServer:                  &azurepostgresqlflexibleserverv1alpha1.AzurePostgresqlFlexibleServer{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsZone:                            &azureprivatednszonev1alpha1.AzurePrivateDnsZone{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsZoneVirtualNetworkLink:          &azureprivatednszonevirtualnetworklinkv1alpha1.AzurePrivateDnsZoneVirtualNetworkLink{},
@@ -938,6 +941,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureVirtualWan:                                &azurevirtualwanv1alpha1.AzureVirtualWan{},
 	cloudresourcekind.CloudResourceKind_AzureVpnGateway:                                &azurevpngatewayv1alpha1.AzureVpnGateway{},
 	cloudresourcekind.CloudResourceKind_AzureVpnGatewayConnection:                      &azurevpngatewayconnectionv1alpha1.AzureVpnGatewayConnection{},
+	cloudresourcekind.CloudResourceKind_AzureVpnServerConfiguration:                    &azurevpnserverconfigurationv1alpha1.AzureVpnServerConfiguration{},
 	cloudresourcekind.CloudResourceKind_AzureVpnSite:                                   &azurevpnsitev1alpha1.AzureVpnSite{},
 	cloudresourcekind.CloudResourceKind_AzureWebApplicationFirewallPolicy:              &azurewebapplicationfirewallpolicyv1alpha1.AzureWebApplicationFirewallPolicy{},
 }

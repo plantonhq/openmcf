@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevpnserverconfiguration.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurevpnserverconfiguration/v1alpha1/outputs.proto";
+import "catalog/azure/azurevpnserverconfiguration/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureVpnServerConfiguration is the top-level API resource describing
+// a VPN server configuration -- the reusable point-to-site
+// authentication policy (Entra ID / certificate / RADIUS, trusted
+// certificates, tunnel protocols, policy groups) that point-to-site
+// VPN gateways attach to.
+message AzureVpnServerConfiguration {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureVpnServerConfiguration".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureVpnServerConfiguration'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // VPN server configuration specification.
+  AzureVpnServerConfigurationSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureVpnServerConfigurationStatus status = 5;
+}
+
+// AzureVpnServerConfigurationStatus holds the deployment outputs.
+message AzureVpnServerConfigurationStatus {
+  // Stack outputs from the IaC deployment.
+  AzureVpnServerConfigurationStackOutputs outputs = 1;
+}

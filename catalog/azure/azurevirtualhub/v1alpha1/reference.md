@@ -689,6 +689,11 @@ Fields on other kinds that can point at this resource:
 | AzureExpressRouteGateway | `spec.connections[].routing.inboundRouteMapId` | `status.outputs.route_map_ids` |
 | AzureExpressRouteGateway | `spec.connections[].routing.outboundRouteMapId` | `status.outputs.route_map_ids` |
 | AzureExpressRouteGateway | `spec.connections[].routing.propagatedRouteTable.routeTableIds` | `status.outputs.default_route_table_id` |
+| AzurePointToSiteVpnGateway | `spec.virtualHubId` | `status.outputs.virtual_hub_id` |
+| AzurePointToSiteVpnGateway | `spec.connectionConfigurations[].route.associatedRouteTableId` | `status.outputs.default_route_table_id` |
+| AzurePointToSiteVpnGateway | `spec.connectionConfigurations[].route.inboundRouteMapId` | `status.outputs.route_map_ids` |
+| AzurePointToSiteVpnGateway | `spec.connectionConfigurations[].route.outboundRouteMapId` | `status.outputs.route_map_ids` |
+| AzurePointToSiteVpnGateway | `spec.connectionConfigurations[].route.propagatedRouteTable.routeTableIds` | `status.outputs.default_route_table_id` |
 | AzureVirtualHubConnection | `spec.virtualHubId` | `status.outputs.virtual_hub_id` |
 | AzureVirtualHubConnection | `spec.routing.associatedRouteTableId` | `status.outputs.default_route_table_id` |
 | AzureVirtualHubConnection | `spec.routing.inboundRouteMapId` | `status.outputs.route_map_ids` |
