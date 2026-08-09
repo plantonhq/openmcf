@@ -33,6 +33,14 @@ This component provisions a single Vector Search index. Loading vectors (beyond 
 
 `contentsDeltaUri` points at a Cloud Storage DIRECTORY of vector files. It may be omitted at creation (the norm for streaming indexes) and set later. Two provider quirks are documented on the field: changes travel in their own single-field update, and GCP never reports the value back on read.
 
+### Encryption (immutable)
+
+`kmsKeyName` (reference a `GcpKmsKey`) turns on customer-managed encryption (CMEK) for the index data; the Vertex AI service agent needs `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key. Empty means Google-managed keys.
+
+### Destroy behavior
+
+`deletionPolicy` is the client-side lever: empty/`DELETE` deletes the index and every vector in it, `PREVENT` makes destroy fail (a guard for a corpus that took hours to build), `ABANDON` removes it from management but keeps it standing (and billing).
+
 ### Labels
 
 User-defined `labels` organize the index for cost attribution and ownership; they merge beneath the platform's attribution labels identically on both engines.

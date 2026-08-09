@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2887 |
+| Spec fields authored across all kinds | 2904 |
 | Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**39 of 79 kinds are at total accounting; 40 proven live.**
+**44 of 79 kinds are at total accounting; 35 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -80,7 +80,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpDataprocCluster | 148 | 77 | 52 | 19 | 0 | ✅ | — |
 | GcpDnsRecord | 54 | 42 | 0 | 0 | 18 | ❌ | ✅ pulumi, terraform |
 | GcpDnsZone | 28 | 16 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
-| GcpFilestoreInstance | 41 | 12 | 0 | 0 | 44 | ❌ | ✅ pulumi, terraform |
+| GcpFilestoreInstance | 36 | 14 | 22 | 0 | 0 | ✅ | — |
 | GcpFirestoreBackupSchedule | 5 | 4 | 1 | 0 | 0 | ✅ | — |
 | GcpFirestoreDatabase | 15 | 11 | 4 | 0 | 0 | ✅ | — |
 | GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | — |
@@ -120,11 +120,11 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpTargetHttpProxy | 7 | 5 | 2 | 0 | 0 | ✅ | — |
 | GcpTargetHttpsProxy | 14 | 12 | 2 | 0 | 0 | ✅ | — |
 | GcpUrlMap | 333 | 74 | 259 | 0 | 0 | ✅ | — |
-| GcpVertexAiDeployedIndex | 16 | 11 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
+| GcpVertexAiDeployedIndex | 16 | 12 | 4 | 0 | 0 | ✅ | — |
 | GcpVertexAiEndpoint | 24 | 7 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
-| GcpVertexAiIndex | 22 | 4 | 0 | 0 | 29 | ❌ | ✅ pulumi, terraform |
-| GcpVertexAiIndexEndpoint | 18 | 7 | 0 | 0 | 13 | ❌ | ✅ pulumi, terraform |
-| GcpVertexAiNotebook | 51 | 7 | 0 | 0 | 76 | ❌ | ✅ pulumi, terraform |
+| GcpVertexAiIndex | 17 | 5 | 12 | 0 | 0 | ✅ | — |
+| GcpVertexAiIndexEndpoint | 13 | 10 | 3 | 0 | 0 | ✅ | — |
+| GcpVertexAiNotebook | 46 | 8 | 34 | 4 | 0 | ✅ | — |
 | GcpVpcNetwork | 17 | 10 | 6 | 1 | 0 | ✅ | — |
 | GcpWorkloadIdentityPool | 16 | 11 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
 | GcpWorkloadIdentityPoolProvider | 16 | 15 | 1 | 0 | 0 | ✅ | — |

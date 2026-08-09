@@ -310,6 +310,8 @@ Fields on other kinds that can point at this resource:
 | GcpSpannerDatabase | `spec.encryptionConfig.kmsKeyName` | `status.outputs.key_id` |
 | GcpSpannerDatabase | `spec.encryptionConfig.kmsKeyNames` | `status.outputs.key_id` |
 | GcpVertexAiEndpoint | `spec.kmsKeyName` | `status.outputs.key_id` |
+| GcpVertexAiIndex | `spec.kmsKeyName` | `status.outputs.key_id` |
+| GcpVertexAiIndexEndpoint | `spec.kmsKeyName` | `status.outputs.key_id` |
 | GcpVertexAiNotebook | `spec.bootDisk.kmsKey` | `status.outputs.key_id` |
 | GcpVertexAiNotebook | `spec.dataDisk.kmsKey` | `status.outputs.key_id` |
 | KubernetesOpenBao | `spec.autoUnseal.gcpKms.cryptoKey` | `status.outputs.key_name` |

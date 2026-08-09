@@ -102,17 +102,29 @@ func vectorIndex(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider)
 		Region:      pulumi.StringPtr(spec.Location),
 		Labels:      pulumi.ToStringMap(locals.GcpLabels),
 		Metadata:    metadataArgs,
-
-		// PARITY: the bridged provider carries a client-side deletion_policy
-		// flag the released 6.x Terraform line does not have. Pinned to
-		// DELETE so destroy really deletes the index on both engines.
-		DeletionPolicy: pulumi.StringPtr("DELETE"),
 	}
 	if spec.ProjectId.GetValue() != "" {
 		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
 	}
 	if spec.Description != "" {
 		args.Description = pulumi.StringPtr(spec.Description)
+	}
+
+	// Client-side destroy behavior (DELETE deletes the corpus; PREVENT
+	// refuses; ABANDON drops from state but keeps the index standing).
+	// Empty follows the provider default (DELETE) — mirrored
+	// zero-vs-omit with Terraform.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
+	// CMEK: the key must be in the index's region and the Vertex AI
+	// service agent needs cryptoKeyEncrypterDecrypter on it. Omitted
+	// means Google-managed encryption. Immutable.
+	if spec.KmsKeyName.GetValue() != "" {
+		args.EncryptionSpec = &vertex.AiIndexEncryptionSpecArgs{
+			KmsKeyName: pulumi.String(spec.KmsKeyName.GetValue()),
+		}
 	}
 	// Empty means "let GCP default" (BATCH_UPDATE). Sent only when set so
 	// the preview diff stays honest about who chose the value.

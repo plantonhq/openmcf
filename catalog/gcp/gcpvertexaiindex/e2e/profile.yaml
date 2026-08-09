@@ -9,8 +9,9 @@ spec:
   # the timing probe for the deployed-index chain: keep the batch
   # go test -timeout at >=240m for both engines.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # The prior green predates the current spec shape (CMEK encryption_spec,
+  # deletion_policy modeled from the spec instead of the Pulumi-side
+  # DELETE pin) — awaits live re-proof.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 120

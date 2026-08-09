@@ -205,6 +205,7 @@ Fields on other kinds that can point at this resource:
 | GcpDnsRecord | `spec.routingPolicy.primaryBackup.backupGeo[].healthCheckedTargets.internalLoadBalancers[].project` | `status.outputs.project_id` |
 | GcpDnsZone | `spec.projectId` | `status.outputs.project_id` |
 | GcpFilestoreInstance | `spec.projectId` | `status.outputs.project_id` |
+| GcpFilestoreInstance | `spec.networkConfig.pscEndpointProject` | `status.outputs.project_id` |
 | GcpFirestoreBackupSchedule | `spec.projectId` | `status.outputs.project_id` |
 | GcpFirestoreDatabase | `spec.projectId` | `status.outputs.project_id` |
 | GcpFirestoreIndex | `spec.projectId` | `status.outputs.project_id` |
@@ -244,6 +245,7 @@ Fields on other kinds that can point at this resource:
 | GcpVertexAiEndpoint | `spec.projectId` | `status.outputs.project_id` |
 | GcpVertexAiIndex | `spec.projectId` | `status.outputs.project_id` |
 | GcpVertexAiIndexEndpoint | `spec.projectId` | `status.outputs.project_id` |
+| GcpVertexAiIndexEndpoint | `spec.privateServiceConnectConfig.pscAutomationConfigs[].projectId` | `status.outputs.project_id` |
 | GcpVertexAiNotebook | `spec.projectId` | `status.outputs.project_id` |
 | GcpVpcNetwork | `spec.projectId` | `status.outputs.project_id` |
 | GcpWorkloadIdentityPool | `spec.projectId` | `status.outputs.project_id` |

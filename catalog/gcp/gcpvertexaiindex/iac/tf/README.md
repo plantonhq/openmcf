@@ -33,7 +33,10 @@ default project.
 |------|------|----------|-------------|
 | metadata | object | yes | Planton resource metadata |
 | spec | object | yes | GcpVertexAiIndex specification |
-| provider_config | object | no | GCP provider configuration |
+
+Credentials are never module inputs: the provider block is empty and the
+runner injects `GOOGLE_CREDENTIALS` (or the ambient ADC chain applies) —
+the catalog-wide contract.
 
 ## Outputs
 
@@ -59,9 +62,16 @@ out-of-band data load shows as a one-field diff on the next plan. A change to
 the field travels in its own single-field update (no other index field can
 ride along in the same apply).
 
+## Destroy Behavior
+
+`spec.deletion_policy` is the client-side destroy lever: empty/`DELETE`
+deletes the index and its vectors, `PREVENT` makes destroy fail, `ABANDON`
+drops it from state but leaves it standing (and billing). CMEK
+(`spec.kms_key_name`) renders as the `encryption_spec` block.
+
 ## Provider Requirements
 
-- `hashicorp/google` ~> 6.0
+- `hashicorp/google` ~> 7.43
 
 Note: index create/update/delete timeouts are 180 minutes — large batch
 builds are genuinely slow.

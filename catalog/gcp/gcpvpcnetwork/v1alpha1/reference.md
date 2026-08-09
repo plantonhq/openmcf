@@ -260,6 +260,7 @@ Fields on other kinds that can point at this resource:
 | GcpDnsRecord | `spec.routingPolicy.primaryBackup.backupGeo[].healthCheckedTargets.internalLoadBalancers[].networkUrl` | `status.outputs.network_self_link` |
 | GcpDnsZone | `spec.privateVisibilityConfig.networks[].networkUrl` | `status.outputs.network_self_link` |
 | GcpDnsZone | `spec.peeringConfig.targetNetwork` | `status.outputs.network_self_link` |
+| GcpFilestoreInstance | `spec.fileShare.nfsExportOptions[].network` | `status.outputs.network_name` |
 | GcpFilestoreInstance | `spec.networkConfig.network` | `status.outputs.network_name` |
 | GcpFirewallRule | `spec.network` | `status.outputs.network_self_link` |
 | GcpGcsBucket | `spec.ipFilter.vpcNetworkSources[].network` | `status.outputs.network_id` |
@@ -277,6 +278,7 @@ Fields on other kinds that can point at this resource:
 | GcpSubnetwork | `spec.vpcSelfLink` | `status.outputs.network_self_link` |
 | GcpVertexAiEndpoint | `spec.network` | `status.outputs.network_self_link` |
 | GcpVertexAiIndexEndpoint | `spec.network` | `status.outputs.network_self_link` |
+| GcpVertexAiIndexEndpoint | `spec.privateServiceConnectConfig.pscAutomationConfigs[].network` | `status.outputs.network_self_link` |
 | GcpVertexAiNotebook | `spec.networkInterface.network` | `status.outputs.network_self_link` |
 
 ## See Also

@@ -234,4 +234,31 @@ message GcpVertexAiIndexSpec {
   // at most 63 characters. Merged with the platform's attribution
   // labels; on key conflicts the platform labels win. Mutable in place.
   map<string, string> labels = 9;
+
+  // Cloud KMS key for customer-managed encryption at rest (CMEK) of the
+  // index data, as the full key resource path
+  // projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
+  // — a GcpKmsKey reference resolves to it. The key must live in the
+  // same region as the index, and the Vertex AI service agent needs
+  // roles/cloudkms.cryptoKeyEncrypterDecrypter on it. If omitted, data
+  // is encrypted with Google-managed keys. Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_name = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Deletion policy for the index — what happens when this resource is
+  // destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the index and every vector in it are deleted
+  //   "PREVENT" -- destroy FAILS; a guard for a corpus that took hours
+  //                of batch builds (or months of streaming upserts) to
+  //                load
+  //   "ABANDON" -- the index is removed from management but left
+  //                standing (and billing for its stored vectors) in GCP
+  string deletion_policy = 11 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

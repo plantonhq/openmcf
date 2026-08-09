@@ -21,6 +21,9 @@ spec:
   instanceName: planton-oss-e2e-vnb-${E2E_RUN_ID}
   location: us-central1-a
   machineType: e2-standard-2
+  # Explicit DELETE proves the client-side lever round-trips (the
+  # provider defaults it server-side; every scenario arms it).
+  deletionPolicy: DELETE
   labels:
     e2e: minimal
   # Rides the harness-installed GcpServiceAccount prerequisite so the

@@ -41,6 +41,11 @@ resource "google_workbench_instance" "this" {
   enable_managed_euc          = var.spec.enable_managed_euc ? true : null
   enable_third_party_identity = var.spec.enable_third_party_identity ? true : null
 
+  # Client-side destroy behavior (DELETE deletes the instance and its
+  # disks; PREVENT refuses; ABANDON drops from state but keeps the VM
+  # running). Empty follows the provider default (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   gce_setup {
     machine_type = var.spec.machine_type
 

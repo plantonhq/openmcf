@@ -16,7 +16,7 @@ GcpVertexAiNotebook provisions a [Vertex AI Workbench instance](https://cloud.go
 ## Key Features
 
 - **Pre-built ML images** -- TensorFlow, PyTorch, JAX, and other frameworks pre-installed
-- **GPU accelerators** -- NVIDIA Tesla T4, A100, L4, and other GPUs for training
+- **GPU accelerators** -- from the Tesla family through the current generation (L4, A100, H100, H100 Mega, H200, B200, RTX6000) for training
 - **Reservation affinity** -- consume pre-purchased Compute reservations to guarantee GPU capacity
 - **Custom containers** -- bring your own Docker image for specialized environments
 - **Private networking** -- deploy inside a VPC with no public IP, or pin a static external IP by reference
@@ -46,7 +46,7 @@ This creates a CPU-only notebook in the provider's default project with the defa
 
 Choose based on workload:
 - **CPU-only** (data processing, light ML): `e2-standard-4`, `e2-standard-8`
-- **GPU training** (requires N1/A2): `n1-standard-8` + `NVIDIA_TESLA_T4`, `a2-highgpu-1g`
+- **GPU training**: `n1-standard-8` + `NVIDIA_TESLA_T4`, `a2-highgpu-1g` (A100), or the A3/A4 series for the current H100/H200/B200 generation
 
 ### Image Selection
 
@@ -62,9 +62,13 @@ Two mutually exclusive options:
 
 ### Storage
 
-- **Boot disk**: OS and JupyterLab (default 150 GB PD_SSD)
-- **Data disk**: user notebooks and data (default 100 GB PD_STANDARD)
+- **Boot disk**: OS and JupyterLab (default 150 GB PD_SSD); Persistent Disk or hyperdisk types (`HYPERDISK_BALANCED`, `HYPERDISK_BALANCED_HIGH_AVAILABILITY`, `HYPERDISK_ML` on supported machine series)
+- **Data disk**: user notebooks and data (default 100 GB PD_STANDARD); additionally `HYPERDISK_EXTREME` and `HYPERDISK_THROUGHPUT`
 - Both support CMEK encryption via KMS key references
+
+### Destroy behavior
+
+`deletionPolicy` is the client-side lever: empty/`DELETE` deletes the instance including its disks (unsynced notebook work is lost), `PREVENT` makes destroy fail, `ABANDON` removes it from management but keeps the VM running (and billing).
 
 ### Security
 

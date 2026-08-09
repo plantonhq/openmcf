@@ -32,7 +32,6 @@ entries:
   - kind:GcpCloudTasksQueue
   - kind:GcpDnsRecord
   - kind:GcpDnsZone
-  - kind:GcpFilestoreInstance
   - kind:GcpFirewallRule
   - kind:GcpGlobalAddress
   - kind:GcpGlobalForwardingRule
@@ -46,9 +45,5 @@ entries:
   - kind:GcpSpannerDatabase
   - kind:GcpSpannerInstance
   - kind:GcpSubnetwork
-  - kind:GcpVertexAiDeployedIndex
   - kind:GcpVertexAiEndpoint
-  - kind:GcpVertexAiIndex
-  - kind:GcpVertexAiIndexEndpoint
-  - kind:GcpVertexAiNotebook
   - kind:GcpWorkloadIdentityPool
