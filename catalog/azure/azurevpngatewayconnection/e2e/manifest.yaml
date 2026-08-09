@@ -1,0 +1,36 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVpnGatewayConnection
+metadata:
+  name: test-vpn-connection
+spec:
+  name: branch-london
+  vpnGatewayId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/vpnGateways/hub-vpn-gateway
+  remoteVpnSiteId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/vpnSites/branch-london
+  internetSecurityEnabled: false
+  routing:
+    associatedRouteTableId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualHubs/hub-eastus/hubRouteTables/defaultRouteTable
+    propagatedRouteTable:
+      routeTableIds:
+        - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualHubs/hub-eastus/hubRouteTables/defaultRouteTable
+      labels:
+        - default
+  vpnLinks:
+    - name: primary-isp
+      vpnSiteLinkId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/vpnSites/branch-london/vpnSiteLinks/primary-isp
+      bandwidthMbps: 50
+      dpdTimeoutSeconds: 45
+      sharedKey:
+        value: test-pre-shared-key
+      ipsecPolicies:
+        - saLifetimeSec: 3600
+          saDataSizeKb: 102400000
+          encryptionAlgorithm: AES256
+          integrityAlgorithm: SHA256
+          ikeEncryptionAlgorithm: AES256
+          ikeIntegrityAlgorithm: SHA256
+          dhGroup: DHGroup14
+          pfsGroup: PFS2048

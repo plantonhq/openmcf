@@ -180,6 +180,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AzureVirtualHub | `spec.virtualWanId` | `status.outputs.virtual_wan_id` |
+| AzureVpnSite | `spec.virtualWanId` | `status.outputs.virtual_wan_id` |
 
 ## See Also
 

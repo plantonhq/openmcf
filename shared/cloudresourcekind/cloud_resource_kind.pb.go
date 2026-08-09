@@ -768,6 +768,22 @@ const (
 	// Both sides of the attachment are prerequisites: the hub being
 	// joined and the spoke virtual network being attached.
 	CloudResourceKind_AzureVirtualHubConnection CloudResourceKind = 2150
+	// The hub is the prerequisite: ARM deploys a Virtual WAN VPN gateway
+	// INTO a virtual hub (virtual_hub_id is required and immutable; the
+	// WAN and resource group chain transitively through the hub). ARM
+	// allows one VPN gateway per hub.
+	CloudResourceKind_AzureVpnGateway CloudResourceKind = 2151
+	// Both ends of the tunnel are prerequisites: a connection is an ARM
+	// child of the VPN gateway and pins each of its links to a specific
+	// link of the remote VPN site (the hub, WAN, and resource group
+	// chain transitively through the gateway).
+	CloudResourceKind_AzureVpnGatewayConnection CloudResourceKind = 2152
+	// The WAN is the prerequisite: a VPN site is the Virtual WAN world's
+	// address-book entry for one branch location (virtual_wan_id is
+	// required; the classic-world sibling without a WAN is
+	// AzureLocalNetworkGateway). The resource group chains transitively
+	// through the WAN.
+	CloudResourceKind_AzureVpnSite CloudResourceKind = 2153
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
@@ -1513,6 +1529,9 @@ var (
 		2148:  "AzureVirtualWan",
 		2149:  "AzureVirtualHub",
 		2150:  "AzureVirtualHubConnection",
+		2151:  "AzureVpnGateway",
+		2152:  "AzureVpnGatewayConnection",
+		2153:  "AzureVpnSite",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2140,6 +2159,9 @@ var (
 		"AzureVirtualWan":                                2148,
 		"AzureVirtualHub":                                2149,
 		"AzureVirtualHubConnection":                      2150,
+		"AzureVpnGateway":                                2151,
+		"AzureVpnGatewayConnection":                      2152,
+		"AzureVpnSite":                                   2153,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -2805,7 +2827,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*ѕ\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xfc\x96\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3055,7 +3077,10 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x15AzureExpressRoutePort\x10\xe3\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azerpt:\x02\xd0\x0f\x122\n" +
 	"\x0fAzureVirtualWan\x10\xe4\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azvwan:\x02\xd0\x0f\x122\n" +
 	"\x0fAzureVirtualHub\x10\xe5\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azvhub:\x02\xe4\x10\x12?\n" +
-	"\x19AzureVirtualHubConnection\x10\xe6\x10\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazvhubc:\x04\xe5\x10\xd6\x0f\x12:\n" +
+	"\x19AzureVirtualHubConnection\x10\xe6\x10\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazvhubc:\x04\xe5\x10\xd6\x0f\x123\n" +
+	"\x0fAzureVpnGateway\x10\xe7\x10\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazvpngw:\x02\xe5\x10\x12@\n" +
+	"\x19AzureVpnGatewayConnection\x10\xe8\x10\x1a \xa2\xf7\x04\x1c\b\r\x12\bv1alpha1\"\bazvpngwc:\x04\xe7\x10\xe9\x10\x122\n" +
+	"\fAzureVpnSite\x10\xe9\x10\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\tazvpnsite:\x02\xe4\x10\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
 	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x124\n" +

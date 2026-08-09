@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurevpngatewayconnection
+spec:
+  # The connection is an ARM child of the gateway
+  # (.../vpnGateways/{gateway}/vpnConnections/{name}); its full child
+  # ID is the import identity. Tunnels (vpn_link) are inline properties
+  # of the connection, so the single ID imports the whole object.
+  values:
+    - name: connection_id
+      derivations:
+        - from_stack_output: connection_id
+      where_to_find: >-
+        Compose from the gateway's Resource ID plus
+        /vpnConnections/<name>, or `az network vpn-gateway connection
+        show --gateway-name <gw> -g <rg> -n <name> --query id`.

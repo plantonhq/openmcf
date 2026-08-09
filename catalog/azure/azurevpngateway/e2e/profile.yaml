@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurevpngateway
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, offline tofu plan green); live dual-engine proof has
+  # not yet run. A NEW slow class for the suite: the gateway creates in
+  # 30-45 minutes and deletes in 10-20 (the provider's own timeout class
+  # is 90), bills (~$0.36/hr per scale unit class) from creation, and
+  # its lane also pays the fixture-hub cycle (15-30 min create) inside
+  # the prerequisite chain. The gateway is also a fixture of the VPN
+  # family: the connection lane chains through this kind's install
+  # profile.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 150

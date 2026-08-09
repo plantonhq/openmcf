@@ -144,6 +144,8 @@ Fields on other kinds that can point at this resource:
 | AzureVirtualNetworkGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVirtualNetworkGatewayConnection | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVirtualWan | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureVpnGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureVpnSite | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureWebApplicationFirewallPolicy | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 
 ## See Also

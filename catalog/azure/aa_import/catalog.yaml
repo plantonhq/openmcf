@@ -120,3 +120,19 @@ spec:
       # returned by ARM -- an imported connection configured with one
       # legitimately plans an in-place update on it.
       write_normalized_attributes: [authorization_key]
+    - terraform_type: azurerm_vpn_gateway
+      pulumi_type: azure:network/vpnGateway:VpnGateway
+      id_format: "{vpn_gateway_id}"
+    - terraform_type: azurerm_vpn_gateway_nat_rule
+      # The classic SDK's token is misspelled ("Vnp") -- a legacy
+      # artifact; it creates the same ARM object.
+      pulumi_type: azure:network/vnpGatewayNatRule:VnpGatewayNatRule
+      id_format: "{vpn_gateway_id}/natRules/{nat_rule_name}"
+      # The module deploys one rule per spec entry, keyed by name --
+      # the address's instance key supplies {nat_rule_name}.
+    - terraform_type: azurerm_vpn_site
+      pulumi_type: azure:network/vpnSite:VpnSite
+      id_format: "{vpn_site_id}"
+    - terraform_type: azurerm_vpn_gateway_connection
+      pulumi_type: azure:network/vpnGatewayConnection:VpnGatewayConnection
+      id_format: "{connection_id}"

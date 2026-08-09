@@ -2189,6 +2189,43 @@ enum CloudResourceKind {
     ]
   }];
 
+  // The hub is the prerequisite: ARM deploys a Virtual WAN VPN gateway
+  // INTO a virtual hub (virtual_hub_id is required and immutable; the
+  // WAN and resource group chain transitively through the hub). ARM
+  // allows one VPN gateway per hub.
+  AzureVpnGateway = 2151 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azvpngw"
+    prerequisites: [AzureVirtualHub]
+  }];
+
+  // Both ends of the tunnel are prerequisites: a connection is an ARM
+  // child of the VPN gateway and pins each of its links to a specific
+  // link of the remote VPN site (the hub, WAN, and resource group
+  // chain transitively through the gateway).
+  AzureVpnGatewayConnection = 2152 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azvpngwc"
+    prerequisites: [
+      AzureVpnGateway,
+      AzureVpnSite
+    ]
+  }];
+
+  // The WAN is the prerequisite: a VPN site is the Virtual WAN world's
+  // address-book entry for one branch location (virtual_wan_id is
+  // required; the classic-world sibling without a WAN is
+  // AzureLocalNetworkGateway). The resource group chains transitively
+  // through the WAN.
+  AzureVpnSite = 2153 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azvpnsite"
+    prerequisites: [AzureVirtualWan]
+  }];
+
   // 3000–3999: GCP resources
   GcpArtifactRegistryRepo = 3000 [(kind_meta) = {
     provider: gcp

@@ -1,0 +1,405 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevpngatewayconnection.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureVpnGatewayConnectionSpec** defines a VPN gateway connection --
+// the tunnel bundle joining ONE branch (an AzureVpnSite) to a hub's
+// VPN gateway. ARM addresses it as a child of the gateway.
+//
+// **One vpn_link per site link**: each entry in vpn_links pins to one
+// of the site's links by ARM ID (the site publishes them in its
+// name-keyed link_ids output) and carries that tunnel's own IPsec,
+// BGP, and NAT choices. A two-link site gets a two-link connection --
+// that is Virtual WAN's active-active branch pattern.
+//
+// **Provisioned is not connected**: ARM provisions the connection as
+// soon as the parameters are valid; each tunnel reaches its Connected
+// state only when the branch device negotiates successfully. A
+// Succeeded deployment with a tunnel stuck in Connecting means the
+// device, the shared key, or the IPsec parameters disagree -- not that
+// the deployment failed.
+//
+// **ForceNew fields**: `name`, `vpn_gateway_id`, `remote_vpn_site_id`,
+// and each link's `vpn_site_link_id` and `bgp_enabled` -- everything
+// else updates in place.
+//
+// The connection carries no region, resource group, or tags of its
+// own: ARM derives all three through the gateway it is a child of,
+// and the provider's schema has no tags argument.
+message AzureVpnGatewayConnectionSpec {
+  // The connection's name, unique on the gateway. Name it after the
+  // branch it connects ("branch-london"). Changing the name replaces
+  // the connection (cheap: the tunnels renegotiate, the gateway
+  // stays).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Virtual WAN VPN gateway this connection belongs to --
+  // references an AzureVpnGateway's ARM ID. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpn_gateway_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVpnGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpn_gateway_id"
+  ];
+
+  // The branch being connected -- references an AzureVpnSite's ARM ID
+  // (the address-book entry carrying the branch's links and reachable
+  // prefixes). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef remote_vpn_site_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVpnSite,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpn_site_id"
+  ];
+
+  // Enable "internet security": the hub advertises a default route
+  // (0.0.0.0/0) to this branch, so the branch's internet-bound traffic
+  // rides the tunnel into Azure (typically into a hub firewall via
+  // routing intent). Off by default (ARM's default) -- the branch
+  // keeps its own internet egress.
+  bool internet_security_enabled = 4;
+
+  // The connection's routing configuration. Leave unset for ARM's
+  // default behavior: associate with and propagate to the hub's
+  // built-in default route table (any-to-any reachability).
+  AzureVpnGatewayConnectionRouting routing = 5;
+
+  // The tunnels of this connection -- one per site link being
+  // connected, each pinned to its link by ARM ID and carrying that
+  // tunnel's own parameters. At least one.
+  repeated AzureVpnGatewayConnectionLink vpn_links = 6 [(buf.validate.field).repeated.min_items = 1];
+
+  // Restrict the tunnels to specific address pairs: each policy names
+  // local and remote CIDR sets. Most connections leave this empty
+  // (routing comes from the site's prefixes or BGP).
+  repeated AzureVpnGatewayConnectionTrafficSelectorPolicy traffic_selector_policies = 7;
+
+  option (buf.validate.message).cel = {
+    id: "vpn_link_names_unique"
+    message: "vpn_links names must be unique on the connection"
+    expression: "this.vpn_links.all(l, this.vpn_links.filter(o, o.name == l.name).size() == 1)"
+  };
+}
+
+// The routing configuration of a VPN connection -- how the branch's
+// routes enter the hub and which hub routes the branch learns. ARM
+// requires a configured block to name its associated route table (the
+// provider's contract); the optional parts default sensibly.
+message AzureVpnGatewayConnectionRouting {
+  // The ONE hub route table this connection's traffic is routed by --
+  // references the hub's default table (the hub's
+  // default_route_table_id output, the default reference) or a custom
+  // table via the hub's name-keyed map output, e.g. valueFrom
+  // fieldPath "status.outputs.route_table_ids.branches".
+  dev.planton.shared.foreignkey.v1.StringValueOrRef associated_route_table_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.default_route_table_id"
+  ];
+
+  // A route map applied to routes ARRIVING from the branch --
+  // references the hub's name-keyed route_map_ids output, e.g.
+  // valueFrom fieldPath "status.outputs.route_map_ids.strip-communities".
+  dev.planton.shared.foreignkey.v1.StringValueOrRef inbound_route_map_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.route_map_ids"
+  ];
+
+  // A route map applied to routes ADVERTISED to the branch -- same
+  // referencing shape as inbound_route_map_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef outbound_route_map_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.route_map_ids"
+  ];
+
+  // The hub route tables this connection's routes are PROPAGATED to
+  // (where other networks learn the branch's prefixes from). Unset
+  // lets the service default propagation.
+  AzureVpnGatewayConnectionPropagatedRouteTable propagated_route_table = 4;
+}
+
+// The hub route tables a connection propagates its routes to.
+message AzureVpnGatewayConnectionPropagatedRouteTable {
+  // Propagate to these specific hub route tables -- reference the
+  // hub's default_route_table_id output (the default reference) or its
+  // name-keyed route_table_ids map, e.g. valueFrom fieldPath
+  // "status.outputs.route_table_ids.branches". At least one (the
+  // provider's contract on a configured block).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef route_table_ids = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.default_route_table_id"
+  ];
+
+  // Also propagate to every hub route table carrying these labels
+  // (labels are declared on the hub's route_tables; the built-in label
+  // "default" targets the hub's default table).
+  repeated string labels = 2;
+}
+
+// One tunnel of the connection, pinned to one link of the site.
+message AzureVpnGatewayConnectionLink {
+  // The tunnel's name, unique on the connection. By convention the
+  // name of the site link it connects.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The site link this tunnel connects, by ARM ID -- references the
+  // owning AzureVpnSite's name-keyed link_ids output, e.g. valueFrom
+  // fieldPath "status.outputs.link_ids.primary-isp". Fixed at
+  // creation (ARM cannot repoint a tunnel at a different link).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpn_site_link_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVpnSite,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.link_ids"
+  ];
+
+  // The tunnel's expected bandwidth in Mbps. Unset applies the
+  // provider's default of 10.
+  optional int32 bandwidth_mbps = 3 [
+    (buf.validate.field).int32.gte = 1,
+    (dev.planton.shared.options.default) = "10"
+  ];
+
+  // The IKE protocol version. Unspecified deploys IKE_V2 (ARM's
+  // default); IKE_V1 exists for legacy devices.
+  AzureVpnGatewayConnectionProtocol protocol = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Which side initiates the tunnel: DEFAULT (either),
+  // INITIATOR_ONLY, or RESPONDER_ONLY. Unspecified deploys DEFAULT.
+  AzureVpnGatewayConnectionMode connection_mode = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // The routing weight among this connection's tunnels (higher is
+  // preferred). 0 is the provider's default.
+  int32 route_weight = 6 [(buf.validate.field).int32.gte = 0];
+
+  // Dead Peer Detection timeout in seconds (9-3600). Omit for ARM's
+  // default of 45.
+  optional int32 dpd_timeout_seconds = 7 [
+    (buf.validate.field).int32.gte = 9,
+    (buf.validate.field).int32.lte = 3600
+  ];
+
+  // The IPsec pre-shared key both tunnel ends must agree on.
+  // Reference a secret rather than embedding the literal in
+  // manifests. Omit to let Azure generate one.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef shared_key = 8 [(dev.planton.shared.options.sensitive) = true];
+
+  // Exchange routes over BGP instead of the site's static
+  // address_cidrs. The site link must carry its bgp block. Fixed at
+  // creation.
+  bool bgp_enabled = 9;
+
+  // Rate-limit the tunnel to its bandwidth_mbps. Off is ARM's
+  // default.
+  bool ratelimit_enabled = 10;
+
+  // Terminate the tunnel on the gateway's PRIVATE IP instead of its
+  // public one (for tunnels that ride ExpressRoute private peering).
+  bool local_azure_ip_address_enabled = 11;
+
+  // Use policy-based traffic selectors on this route-based tunnel
+  // (compatibility with policy-based branch devices). Requires a
+  // custom ipsec_policies entry -- Azure rejects the flag without one.
+  bool policy_based_traffic_selector_enabled = 12;
+
+  // Gateway NAT rules applied to this tunnel's EGRESS (Azure ->
+  // branch) traffic, by ARM id -- references the owning gateway's
+  // name-keyed nat_rule_ids output, e.g. valueFrom fieldPath
+  // "status.outputs.nat_rule_ids.branch-overlap".
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef egress_nat_rule_ids = 13 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVpnGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.nat_rule_ids"
+  ];
+
+  // Gateway NAT rules applied to this tunnel's INGRESS (branch ->
+  // Azure) traffic, by ARM id -- same referencing shape as
+  // egress_nat_rule_ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef ingress_nat_rule_ids = 14 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVpnGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.nat_rule_ids"
+  ];
+
+  // Custom IPsec/IKE proposals for this tunnel. Leave empty to use
+  // Azure's default proposal set; set when the branch device needs
+  // pinned algorithms.
+  repeated AzureVpnGatewayConnectionIpsecPolicy ipsec_policies = 15;
+
+  // Custom APIPA BGP endpoints for this tunnel -- pick which of the
+  // gateway's configured custom_ips each instance peers from
+  // (ip_configuration_id "Instance0" or "Instance1").
+  repeated AzureVpnGatewayConnectionCustomBgpAddress custom_bgp_addresses = 16;
+
+  // Azure's contract, front-loaded where the error is actionable.
+  option (buf.validate.message).cel = {
+    id: "policy_based_selectors_require_ipsec_policy"
+    message: "policy_based_traffic_selector_enabled requires a custom ipsec_policies entry (Azure rejects the flag without one)"
+    expression: "!this.policy_based_traffic_selector_enabled || this.ipsec_policies.size() > 0"
+  };
+}
+
+// The IKE protocol version.
+enum AzureVpnGatewayConnectionProtocol {
+  // Not specified -- Azure applies its default (IKEv2).
+  azure_vpn_gateway_connection_protocol_unspecified = 0;
+
+  // IKE version 1 -- legacy devices only (wire value "IKEv1").
+  IKE_V1 = 1;
+
+  // IKE version 2 -- the modern default (wire value "IKEv2").
+  IKE_V2 = 2;
+}
+
+// Which side initiates the tunnel.
+enum AzureVpnGatewayConnectionMode {
+  // Not specified -- deploys DEFAULT (either side initiates).
+  azure_vpn_gateway_connection_mode_unspecified = 0;
+
+  // Either side may initiate (wire value "Default").
+  DEFAULT = 1;
+
+  // Only the gateway initiates (wire value "InitiatorOnly").
+  INITIATOR_ONLY = 2;
+
+  // Only the branch initiates (wire value "ResponderOnly").
+  RESPONDER_ONLY = 3;
+}
+
+// A custom IPsec/IKE proposal for one tunnel. The provider requires
+// every field of a configured proposal (no partial pinning).
+message AzureVpnGatewayConnectionIpsecPolicy {
+  // The security association lifetime in seconds (300-172799).
+  int32 sa_lifetime_sec = 1 [
+    (buf.validate.field).int32.gte = 300,
+    (buf.validate.field).int32.lte = 172799
+  ];
+
+  // The security association size limit in kilobytes (0 disables the
+  // limit).
+  int32 sa_data_size_kb = 2 [(buf.validate.field).int32.gte = 0];
+
+  // The IPsec (Phase 2) encryption algorithm.
+  string encryption_algorithm = 3 [(buf.validate.field).string = {
+    in: [
+      "AES128",
+      "AES192",
+      "AES256",
+      "DES",
+      "DES3",
+      "GCMAES128",
+      "GCMAES192",
+      "GCMAES256",
+      "None"
+    ]
+  }];
+
+  // The IPsec (Phase 2) integrity algorithm.
+  string integrity_algorithm = 4 [(buf.validate.field).string = {
+    in: [
+      "GCMAES128",
+      "GCMAES192",
+      "GCMAES256",
+      "MD5",
+      "SHA1",
+      "SHA256"
+    ]
+  }];
+
+  // The IKE (Phase 1) encryption algorithm.
+  string ike_encryption_algorithm = 5 [(buf.validate.field).string = {
+    in: [
+      "AES128",
+      "AES192",
+      "AES256",
+      "DES",
+      "DES3",
+      "GCMAES128",
+      "GCMAES256"
+    ]
+  }];
+
+  // The IKE (Phase 1) integrity algorithm. With GCM IKE encryption,
+  // Azure requires the MATCHING GCM integrity value.
+  string ike_integrity_algorithm = 6 [(buf.validate.field).string = {
+    in: [
+      "GCMAES128",
+      "GCMAES256",
+      "MD5",
+      "SHA1",
+      "SHA256",
+      "SHA384"
+    ]
+  }];
+
+  // The IKE Phase 1 Diffie-Hellman group.
+  string dh_group = 7 [(buf.validate.field).string = {
+    in: [
+      "DHGroup1",
+      "DHGroup14",
+      "DHGroup2",
+      "DHGroup2048",
+      "DHGroup24",
+      "ECP256",
+      "ECP384",
+      "None"
+    ]
+  }];
+
+  // The Perfect Forward Secrecy group.
+  string pfs_group = 8 [(buf.validate.field).string = {
+    in: [
+      "ECP256",
+      "ECP384",
+      "None",
+      "PFS1",
+      "PFS14",
+      "PFS2",
+      "PFS2048",
+      "PFS24",
+      "PFSMM"
+    ]
+  }];
+}
+
+// One custom APIPA BGP endpoint selection for a tunnel.
+message AzureVpnGatewayConnectionCustomBgpAddress {
+  // The APIPA address this tunnel peers from -- one of the gateway's
+  // configured custom_ips for the chosen instance.
+  string ip_address = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.ipv4 = true
+  ];
+
+  // Which gateway instance the address belongs to: "Instance0" or
+  // "Instance1" (ARM's identifiers, matching the gateway's
+  // instance_0/instance_1 custom_ips).
+  string ip_configuration_id = 2 [(buf.validate.field).string = {
+    in: [
+      "Instance0",
+      "Instance1"
+    ]
+  }];
+}
+
+// One traffic selector policy: a local/remote CIDR pairing the tunnels
+// are restricted to.
+message AzureVpnGatewayConnectionTrafficSelectorPolicy {
+  // The local (Azure-side) address ranges in CIDR notation.
+  repeated string local_address_cidrs = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+
+  // The remote (branch-side) address ranges in CIDR notation.
+  repeated string remote_address_cidrs = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+}

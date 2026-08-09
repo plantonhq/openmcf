@@ -358,6 +358,33 @@ func TestAzureExpressRouteGateway_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureexpressroutegateway", "terraform")
 }
 
+// --- Azure VPN Site (fixture WAN -> a free two-link branch description; seconds -- the flagship is the name-keyed link_ids output connections pin to) ---
+
+func TestAzureVpnSite_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpnsite", "pulumi")
+}
+func TestAzureVpnSite_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpnsite", "terraform")
+}
+
+// --- Azure VPN Gateway (composed: fixture hub -> a one-scale-unit gateway + one NAT rule; 30-45 minute create billing ~$0.36/hr per scale unit, 10-20 minute delete -- ARM allows one VPN gateway per hub) ---
+
+func TestAzureVpnGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpngateway", "pulumi")
+}
+func TestAzureVpnGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpngateway", "terraform")
+}
+
+// --- Azure VPN Gateway Connection (composed: fixture gateway + fixture site -> one tunnel pinned to the site's primary link; the chain pays the whole VPN family -- hub AND gateway cycles -- and the tunnel provisions but never reaches Connected: no real branch device exists behind the fixture site's TEST-NET endpoint) ---
+
+func TestAzureVpnGatewayConnection_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpngatewayconnection", "pulumi")
+}
+func TestAzureVpnGatewayConnection_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpngatewayconnection", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {

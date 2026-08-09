@@ -147,6 +147,9 @@ var verifiers = map[string]Verifier{
 	"azurevirtualnetworkgatewayconnection":           &virtualNetworkGatewayConnectionVerifier{},
 	"azurevirtualnetworkpeering":                     &virtualNetworkPeeringVerifier{},
 	"azurevirtualwan":                                &virtualWanVerifier{},
+	"azurevpngateway":                                &vpnGatewayVerifier{},
+	"azurevpngatewayconnection":                      &vpnGatewayConnectionVerifier{},
+	"azurevpnsite":                                   &vpnSiteVerifier{},
 	"azurewebapplicationfirewallpolicy":              &webApplicationFirewallPolicyVerifier{},
 }
 

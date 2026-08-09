@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevpngateway.v1alpha1;
+
+// **AzureVpnGatewayStackOutputs** captures the outputs of provisioning
+// a Virtual WAN VPN gateway and its NAT rule children.
+message AzureVpnGatewayStackOutputs {
+  // The Azure Resource Manager ID of the gateway -- what a connection
+  // references as its vpn_gateway_id.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/vpnGateways/{name}
+  string vpn_gateway_id = 1;
+
+  // The name of the gateway.
+  string vpn_gateway_name = 2;
+
+  // The gateway's BGP autonomous system number (65515 on today's
+  // Virtual WAN gateways) -- what branch devices configure as the
+  // remote ASN.
+  int64 bgp_asn = 3;
+
+  // The PUBLIC IPv4 address of each gateway instance (the
+  // active-active pair) -- what branch devices dial as their tunnel
+  // peer. Azure assigns them; there is no public-IP resource to bring.
+  repeated string public_ip_addresses = 4;
+
+  // The private IPv4 address of each gateway instance -- the tunnel
+  // endpoints when connections use local_azure_ip_address_enabled
+  // (private peering over ExpressRoute).
+  repeated string private_ip_addresses = 5;
+
+  // The ARM ID of each NAT rule on the gateway, keyed by the rule's
+  // name from the spec -- what a connection link's
+  // egress/ingress_nat_rule_ids reference.
+  // Example valueFrom fieldPath: status.outputs.nat_rule_ids.branch-overlap
+  map<string, string> nat_rule_ids = 6;
+}

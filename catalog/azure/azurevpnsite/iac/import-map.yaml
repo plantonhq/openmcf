@@ -1,0 +1,16 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurevpnsite
+spec:
+  # The site's identity is its full ARM resource ID. Links are inline
+  # properties of the site (not separate Terraform resources), so the
+  # single ID imports the whole object, links included.
+  values:
+    - name: vpn_site_id
+      derivations:
+        - from_stack_output: vpn_site_id
+      where_to_find: >-
+        Portal -> Virtual WAN -> VPN sites -> the site -> Properties ->
+        Resource ID, or `az network vpn-site show -g <rg> -n <name>
+        --query id`.

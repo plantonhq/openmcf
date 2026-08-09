@@ -279,6 +279,9 @@ import (
 	azurevirtualnetworkgatewayconnectionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualnetworkgatewayconnection/v1alpha1"
 	azurevirtualnetworkpeeringv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualnetworkpeering/v1alpha1"
 	azurevirtualwanv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualwan/v1alpha1"
+	azurevpngatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpngateway/v1alpha1"
+	azurevpngatewayconnectionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpngatewayconnection/v1alpha1"
+	azurevpnsitev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnsite/v1alpha1"
 	azurewebapplicationfirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurewebapplicationfirewallpolicy/v1alpha1"
 	civobucketv1alpha1 "github.com/plantonhq/planton/catalog/civo/civobucket/v1alpha1"
 	civocertificatev1alpha1 "github.com/plantonhq/planton/catalog/civo/civocertificate/v1alpha1"
@@ -933,6 +936,9 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetworkGatewayConnection:           &azurevirtualnetworkgatewayconnectionv1alpha1.AzureVirtualNetworkGatewayConnection{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetworkPeering:                     &azurevirtualnetworkpeeringv1alpha1.AzureVirtualNetworkPeering{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualWan:                                &azurevirtualwanv1alpha1.AzureVirtualWan{},
+	cloudresourcekind.CloudResourceKind_AzureVpnGateway:                                &azurevpngatewayv1alpha1.AzureVpnGateway{},
+	cloudresourcekind.CloudResourceKind_AzureVpnGatewayConnection:                      &azurevpngatewayconnectionv1alpha1.AzureVpnGatewayConnection{},
+	cloudresourcekind.CloudResourceKind_AzureVpnSite:                                   &azurevpnsitev1alpha1.AzureVpnSite{},
 	cloudresourcekind.CloudResourceKind_AzureWebApplicationFirewallPolicy:              &azurewebapplicationfirewallpolicyv1alpha1.AzureWebApplicationFirewallPolicy{},
 }
 
