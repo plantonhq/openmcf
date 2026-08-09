@@ -23,8 +23,8 @@ import "shared/options/options.proto";
 //   - The type field can be changed between FIRESTORE_NATIVE and DATASTORE_MODE
 //     after creation, but this is a significant operational change.
 //
-//   - Firestore databases do not support GCP labels. Resource Manager tags are
-//     available but are an advanced organizational feature excluded from v1.
+//   - Firestore databases do not support GCP labels. Resource Manager tags
+//     are supported at create time via resource_manager_tags.
 //
 //   - The "(default)" database name is special -- it is the primary database
 //     that Firestore client libraries connect to when no database ID is
@@ -37,6 +37,26 @@ message GcpFirestoreDatabaseSpec {
     id: "enterprise_requires_firestore_native"
     expression: "this.database_edition == '' || this.database_edition != 'ENTERPRISE' || this.type == 'FIRESTORE_NATIVE'"
     message: "database_edition ENTERPRISE requires type to be FIRESTORE_NATIVE"
+  };
+
+  // The three data-access-mode switches below are ENTERPRISE-edition
+  // levers (the provider accepts them only on ENTERPRISE databases).
+  option (buf.validate.message).cel = {
+    id: "firestore_data_access_mode_requires_enterprise"
+    expression: "this.firestore_data_access_mode == '' || this.database_edition == 'ENTERPRISE'"
+    message: "firestore_data_access_mode can only be set on ENTERPRISE edition databases"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mongodb_data_access_mode_requires_enterprise"
+    expression: "this.mongodb_compatible_data_access_mode == '' || this.database_edition == 'ENTERPRISE'"
+    message: "mongodb_compatible_data_access_mode can only be set on ENTERPRISE edition databases"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "realtime_updates_mode_requires_enterprise"
+    expression: "this.realtime_updates_mode == '' || this.database_edition == 'ENTERPRISE'"
+    message: "realtime_updates_mode can only be set on ENTERPRISE edition databases"
   };
 
   // GCP project where the Firestore database will be created.
@@ -188,4 +208,56 @@ message GcpFirestoreDatabaseSpec {
     expression: "this == '' || this in ['ENABLED', 'DISABLED']"
     message: "app_engine_integration_mode must be ENABLED or DISABLED"
   }];
+
+  // Firestore API data access mode — whether the classic Firestore API
+  // can read and write this database. ENTERPRISE edition only. Use
+  // DATA_ACCESS_MODE_DISABLED on a database dedicated to the
+  // MongoDB-compatible API to keep access single-protocol.
+  string firestore_data_access_mode = 11 [(buf.validate.field).cel = {
+    id: "firestore_data_access_mode_valid_value"
+    expression: "this == '' || this in ['DATA_ACCESS_MODE_ENABLED', 'DATA_ACCESS_MODE_DISABLED']"
+    message: "firestore_data_access_mode must be DATA_ACCESS_MODE_ENABLED or DATA_ACCESS_MODE_DISABLED"
+  }];
+
+  // MongoDB-compatible API data access mode — whether MongoDB drivers
+  // and tools can read and write this database. ENTERPRISE edition only.
+  // Pair with MONGODB_COMPATIBLE_API-scoped GcpFirestoreIndex indexes
+  // for query support.
+  string mongodb_compatible_data_access_mode = 12 [(buf.validate.field).cel = {
+    id: "mongodb_data_access_mode_valid_value"
+    expression: "this == '' || this in ['DATA_ACCESS_MODE_ENABLED', 'DATA_ACCESS_MODE_DISABLED']"
+    message: "mongodb_compatible_data_access_mode must be DATA_ACCESS_MODE_ENABLED or DATA_ACCESS_MODE_DISABLED"
+  }];
+
+  // Realtime updates mode — whether clients can subscribe to live query
+  // snapshots on this database. ENTERPRISE edition only.
+  string realtime_updates_mode = 13 [(buf.validate.field).cel = {
+    id: "realtime_updates_mode_valid_value"
+    expression: "this == '' || this in ['REALTIME_UPDATES_MODE_ENABLED', 'REALTIME_UPDATES_MODE_DISABLED']"
+    message: "realtime_updates_mode must be REALTIME_UPDATES_MODE_ENABLED or REALTIME_UPDATES_MODE_DISABLED"
+  }];
+
+  // Resource Manager tags bound to the database for org-policy and IAM
+  // conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
+  // Create-time only: changing them later replaces the database.
+  map<string, string> resource_manager_tags = 14;
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (the Planton default; note the raw
+  //                provider defaults to ABANDON, which would leave the
+  //                database running unmanaged after a destroy)
+  //   "DELETE"  -- the database is deleted (delete protection, if
+  //                enabled, still blocks it)
+  //   "PREVENT" -- destroy FAILS; belt-and-suspenders beside
+  //                delete_protection_state
+  //   "ABANDON" -- the database is removed from management but keeps
+  //                running in GCP
+  optional string deletion_policy = 15 [
+    (dev.planton.shared.options.default) = "DELETE",
+    (buf.validate.field).cel = {
+      id: "valid_deletion_policy"
+      expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+      message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    }
+  ];
 }

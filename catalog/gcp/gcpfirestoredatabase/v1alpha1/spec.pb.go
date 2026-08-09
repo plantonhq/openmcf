@@ -41,8 +41,8 @@ const (
 //   - The type field can be changed between FIRESTORE_NATIVE and DATASTORE_MODE
 //     after creation, but this is a significant operational change.
 //
-//   - Firestore databases do not support GCP labels. Resource Manager tags are
-//     available but are an advanced organizational feature excluded from v1.
+//   - Firestore databases do not support GCP labels. Resource Manager tags
+//     are supported at create time via resource_manager_tags.
 //
 //   - The "(default)" database name is special -- it is the primary database
 //     that Firestore client libraries connect to when no database ID is
@@ -146,8 +146,37 @@ type GcpFirestoreDatabaseSpec struct {
 	//
 	// If not set, GCP applies its default.
 	AppEngineIntegrationMode string `protobuf:"bytes,10,opt,name=app_engine_integration_mode,json=appEngineIntegrationMode,proto3" json:"app_engine_integration_mode,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// Firestore API data access mode — whether the classic Firestore API
+	// can read and write this database. ENTERPRISE edition only. Use
+	// DATA_ACCESS_MODE_DISABLED on a database dedicated to the
+	// MongoDB-compatible API to keep access single-protocol.
+	FirestoreDataAccessMode string `protobuf:"bytes,11,opt,name=firestore_data_access_mode,json=firestoreDataAccessMode,proto3" json:"firestore_data_access_mode,omitempty"`
+	// MongoDB-compatible API data access mode — whether MongoDB drivers
+	// and tools can read and write this database. ENTERPRISE edition only.
+	// Pair with MONGODB_COMPATIBLE_API-scoped GcpFirestoreIndex indexes
+	// for query support.
+	MongodbCompatibleDataAccessMode string `protobuf:"bytes,12,opt,name=mongodb_compatible_data_access_mode,json=mongodbCompatibleDataAccessMode,proto3" json:"mongodb_compatible_data_access_mode,omitempty"`
+	// Realtime updates mode — whether clients can subscribe to live query
+	// snapshots on this database. ENTERPRISE edition only.
+	RealtimeUpdatesMode string `protobuf:"bytes,13,opt,name=realtime_updates_mode,json=realtimeUpdatesMode,proto3" json:"realtime_updates_mode,omitempty"`
+	// Resource Manager tags bound to the database for org-policy and IAM
+	// conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
+	// Create-time only: changing them later replaces the database.
+	ResourceManagerTags map[string]string `protobuf:"bytes,14,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy — what happens when this resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (the Planton default; note the raw
+	//	             provider defaults to ABANDON, which would leave the
+	//	             database running unmanaged after a destroy)
+	//	"DELETE"  -- the database is deleted (delete protection, if
+	//	             enabled, still blocks it)
+	//	"PREVENT" -- destroy FAILS; belt-and-suspenders beside
+	//	             delete_protection_state
+	//	"ABANDON" -- the database is removed from management but keeps
+	//	             running in GCP
+	DeletionPolicy *string `protobuf:"bytes,15,opt,name=deletion_policy,json=deletionPolicy,proto3,oneof" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpFirestoreDatabaseSpec) Reset() {
@@ -250,11 +279,46 @@ func (x *GcpFirestoreDatabaseSpec) GetAppEngineIntegrationMode() string {
 	return ""
 }
 
+func (x *GcpFirestoreDatabaseSpec) GetFirestoreDataAccessMode() string {
+	if x != nil {
+		return x.FirestoreDataAccessMode
+	}
+	return ""
+}
+
+func (x *GcpFirestoreDatabaseSpec) GetMongodbCompatibleDataAccessMode() string {
+	if x != nil {
+		return x.MongodbCompatibleDataAccessMode
+	}
+	return ""
+}
+
+func (x *GcpFirestoreDatabaseSpec) GetRealtimeUpdatesMode() string {
+	if x != nil {
+		return x.RealtimeUpdatesMode
+	}
+	return ""
+}
+
+func (x *GcpFirestoreDatabaseSpec) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
+func (x *GcpFirestoreDatabaseSpec) GetDeletionPolicy() string {
+	if x != nil && x.DeletionPolicy != nil {
+		return *x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4catalog/gcp/gcpfirestoredatabase/v1alpha1/spec.proto\x12-dev.planton.gcp.gcpfirestoredatabase.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe4\x11\n" +
+	"4catalog/gcp/gcpfirestoredatabase/v1alpha1/spec.proto\x12-dev.planton.gcp.gcpfirestoredatabase.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xff \n" +
 	"\x18GcpFirestoreDatabaseSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12'\n" +
@@ -276,9 +340,25 @@ const file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_rawDesc = "" +
 	"kmsKeyName\x12\xd9\x01\n" +
 	"\x1bapp_engine_integration_mode\x18\n" +
 	" \x01(\tB\x99\x01\xbaH\x95\x01\xba\x01\x91\x01\n" +
-	"'app_engine_integration_mode_valid_value\x127app_engine_integration_mode must be ENABLED or DISABLED\x1a-this == '' || this in ['ENABLED', 'DISABLED']R\x18appEngineIntegrationMode:\xd8\x01\xbaH\xd4\x01\x1a\xd1\x01\n" +
-	"$enterprise_requires_firestore_native\x12@database_edition ENTERPRISE requires type to be FIRESTORE_NATIVE\x1agthis.database_edition == '' || this.database_edition != 'ENTERPRISE' || this.type == 'FIRESTORE_NATIVE'B\x1a\n" +
-	"\x18_delete_protection_stateB\xfc\x02\n" +
+	"'app_engine_integration_mode_valid_value\x127app_engine_integration_mode must be ENABLED or DISABLED\x1a-this == '' || this in ['ENABLED', 'DISABLED']R\x18appEngineIntegrationMode\x12\x99\x02\n" +
+	"\x1afirestore_data_access_mode\x18\v \x01(\tB\xdb\x01\xbaH\xd7\x01\xba\x01\xd3\x01\n" +
+	"&firestore_data_access_mode_valid_value\x12Xfirestore_data_access_mode must be DATA_ACCESS_MODE_ENABLED or DATA_ACCESS_MODE_DISABLED\x1aOthis == '' || this in ['DATA_ACCESS_MODE_ENABLED', 'DATA_ACCESS_MODE_DISABLED']R\x17firestoreDataAccessMode\x12\xb1\x02\n" +
+	"#mongodb_compatible_data_access_mode\x18\f \x01(\tB\xe2\x01\xbaH\xde\x01\xba\x01\xda\x01\n" +
+	"$mongodb_data_access_mode_valid_value\x12amongodb_compatible_data_access_mode must be DATA_ACCESS_MODE_ENABLED or DATA_ACCESS_MODE_DISABLED\x1aOthis == '' || this in ['DATA_ACCESS_MODE_ENABLED', 'DATA_ACCESS_MODE_DISABLED']R\x1fmongodbCompatibleDataAccessMode\x12\x9a\x02\n" +
+	"\x15realtime_updates_mode\x18\r \x01(\tB\xe5\x01\xbaH\xe1\x01\xba\x01\xdd\x01\n" +
+	"!realtime_updates_mode_valid_value\x12]realtime_updates_mode must be REALTIME_UPDATES_MODE_ENABLED or REALTIME_UPDATES_MODE_DISABLED\x1aYthis == '' || this in ['REALTIME_UPDATES_MODE_ENABLED', 'REALTIME_UPDATES_MODE_DISABLED']R\x13realtimeUpdatesMode\x12\x94\x01\n" +
+	"\x15resource_manager_tags\x18\x0e \x03(\v2`.dev.planton.gcp.gcpfirestoredatabase.v1alpha1.GcpFirestoreDatabaseSpec.ResourceManagerTagsEntryR\x13resourceManagerTags\x12\xca\x01\n" +
+	"\x0fdeletion_policy\x18\x0f \x01(\tB\x9b\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']\x8a\xa6\x1d\x06DELETEH\x01R\x0edeletionPolicy\x88\x01\x01\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc6\x06\xbaH\xc2\x06\x1a\xd1\x01\n" +
+	"$enterprise_requires_firestore_native\x12@database_edition ENTERPRISE requires type to be FIRESTORE_NATIVE\x1agthis.database_edition == '' || this.database_edition != 'ENTERPRISE' || this.type == 'FIRESTORE_NATIVE'\x1a\xcc\x01\n" +
+	".firestore_data_access_mode_requires_enterprise\x12Jfirestore_data_access_mode can only be set on ENTERPRISE edition databases\x1aNthis.firestore_data_access_mode == '' || this.database_edition == 'ENTERPRISE'\x1a\xdc\x01\n" +
+	",mongodb_data_access_mode_requires_enterprise\x12Smongodb_compatible_data_access_mode can only be set on ENTERPRISE edition databases\x1aWthis.mongodb_compatible_data_access_mode == '' || this.database_edition == 'ENTERPRISE'\x1a\xbd\x01\n" +
+	")realtime_updates_mode_requires_enterprise\x12Erealtime_updates_mode can only be set on ENTERPRISE edition databases\x1aIthis.realtime_updates_mode == '' || this.database_edition == 'ENTERPRISE'B\x1a\n" +
+	"\x18_delete_protection_stateB\x12\n" +
+	"\x10_deletion_policyB\xfc\x02\n" +
 	"1com.dev.planton.gcp.gcpfirestoredatabase.v1alpha1B\tSpecProtoP\x01Zcgithub.com/plantonhq/planton/catalog/gcp/gcpfirestoredatabase/v1alpha1;gcpfirestoredatabasev1alpha1\xa2\x02\x04DPGG\xaa\x02-Dev.Planton.Gcp.Gcpfirestoredatabase.V1alpha1\xca\x02-Dev\\Planton\\Gcp\\Gcpfirestoredatabase\\V1alpha1\xe2\x029Dev\\Planton\\Gcp\\Gcpfirestoredatabase\\V1alpha1\\GPBMetadata\xea\x021Dev::Planton::Gcp::Gcpfirestoredatabase::V1alpha1b\x06proto3"
 
 var (
@@ -293,19 +373,21 @@ func file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_rawDescGZIP() []b
 	return file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpFirestoreDatabaseSpec)(nil), // 0: dev.planton.gcp.gcpfirestoredatabase.v1alpha1.GcpFirestoreDatabaseSpec
-	(*v1.StringValueOrRef)(nil),      // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                              // 1: dev.planton.gcp.gcpfirestoredatabase.v1alpha1.GcpFirestoreDatabaseSpec.ResourceManagerTagsEntry
+	(*v1.StringValueOrRef)(nil),      // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.gcp.gcpfirestoredatabase.v1alpha1.GcpFirestoreDatabaseSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.gcp.gcpfirestoredatabase.v1alpha1.GcpFirestoreDatabaseSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 0: dev.planton.gcp.gcpfirestoredatabase.v1alpha1.GcpFirestoreDatabaseSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 1: dev.planton.gcp.gcpfirestoredatabase.v1alpha1.GcpFirestoreDatabaseSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 2: dev.planton.gcp.gcpfirestoredatabase.v1alpha1.GcpFirestoreDatabaseSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcpfirestoredatabase.v1alpha1.GcpFirestoreDatabaseSpec.ResourceManagerTagsEntry
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_init() }
@@ -320,7 +402,7 @@ func file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

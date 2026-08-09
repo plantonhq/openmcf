@@ -407,11 +407,17 @@ Match objects whose Custom-Time metadata is before this date
 
 `int64` · optional (explicit presence)
 
+Match objects LARGER than this many bytes. Combine with
+size_below_bytes for a size band (e.g. transition only large
+artifacts to cold storage).
+
 - rule: {"int64":{"gte":"0"}}
 
 ### spec.lifecycleRules[].condition.sizeBelowBytes
 
 `int64` · optional (explicit presence)
+
+Match objects SMALLER than this many bytes.
 
 - rule: {"int64":{"gte":"0"}}
 
@@ -797,9 +803,18 @@ integrations keep working when the filter is Enabled.
 
 `GcpGcsBucketEncryptionEnforcement`
 
+Encryption-type enforcement for NEW objects: restrict which encryption
+mechanisms (Google-managed, customer-managed KMS, customer-supplied)
+may be used when writing objects into this bucket. Applies to new
+objects only — existing objects keep their encryption. Mutable in
+place.
+
 ### spec.encryptionEnforcement.googleManagedRestrictionMode
 
 `string`
+
+Restriction for Google-managed encryption keys (GMEK) — the default
+encryption objects get when no KMS key applies.
 
 - rule: google_managed_restriction_mode must be one of: NotRestricted, FullyRestricted
 
@@ -807,17 +822,32 @@ integrations keep working when the filter is Enabled.
 
 `string`
 
+Restriction for customer-managed encryption keys (CMEK, Cloud KMS).
+
 - rule: customer_managed_restriction_mode must be one of: NotRestricted, FullyRestricted
 
 ### spec.encryptionEnforcement.customerSuppliedRestrictionMode
 
 `string`
 
+Restriction for customer-supplied encryption keys (CSEK — raw keys
+provided per request).
+
 - rule: customer_supplied_restriction_mode must be one of: NotRestricted, FullyRestricted
 
 ### spec.deletionPolicy
 
 `string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the bucket is deleted (subject to force_destroy)
+  "PREVENT" -- destroy FAILS; a guard rail for buckets that must
+               never be removed by automation
+  "ABANDON" -- the bucket is removed from management but left
+               running in GCP (an orphan by design — reserve for
+               deliberate hand-offs)
+Mutable in place.
 
 - rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 

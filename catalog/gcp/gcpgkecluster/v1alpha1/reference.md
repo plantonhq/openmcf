@@ -557,9 +557,17 @@ for pod churn. Immutable.
 
 `[]GcpGkeClusterAdditionalIpRange`
 
+Additional SUBNETWORKS whose secondary ranges node pools may draw pod
+IPs from — grows pod address space across subnetworks (beyond
+additional_pod_range_names, which only names more ranges on the
+cluster's own subnetwork).
+
 ### spec.ipAllocation.additionalIpRanges[].subnetwork
 
 `string | valueFrom` · required
+
+The subnetwork carrying the ranges. Accepts a self link or a
+reference to a GcpSubnetwork resource.
 
 - references: GcpSubnetwork (`status.outputs.subnetwork_self_link`)
 - rule: {"required":true}
@@ -569,19 +577,30 @@ for pod churn. Immutable.
 
 `[]string`
 
+Secondary range names on that subnetwork usable for pod IPs.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
 ### spec.ipAllocation.additionalIpRanges[].status
 
 `string`
 
+Lifecycle status of the subnetwork for scheduling: set "DRAINING" to
+stop NEW node pools from selecting it (existing pools keep running).
+
 ### spec.ipAllocation.autoIpamEnabled
 
 `bool`
 
+Automatic IP address management: GKE plans and allocates the pod and
+service ranges itself (no manual CIDR planning). Immutable.
+
 ### spec.ipAllocation.networkTier
 
 `string`
+
+Network tier for the cluster's IP allocation (e.g. "PREMIUM" or
+"STANDARD"). GKE validates accepted tiers at apply.
 
 ### spec.datapathProvider
 
@@ -692,8 +711,9 @@ If omitted, GKE uses its platform default.
 
 `string`
 
-In-cluster DNS provider: CLOUD_DNS (managed, no kube-dns pods to scale)
-or PLATFORM_DEFAULT (kube-dns).
+In-cluster DNS provider: CLOUD_DNS (managed, no kube-dns pods to
+scale), KUBE_DNS (explicit kube-dns), or PLATFORM_DEFAULT (GKE
+chooses).
 
 - rule: cluster_dns must be empty, PROVIDER_UNSPECIFIED, PLATFORM_DEFAULT, CLOUD_DNS, or KUBE_DNS
 
@@ -724,8 +744,9 @@ VPC-wide — cluster-scoped DNS plus selective VPC visibility.
 
 `string`
 
-Gateway API support: CHANNEL_STANDARD installs the Gateway API CRDs and
-the GKE Gateway controller (the successor to Ingress);
+Gateway API support: CHANNEL_STANDARD installs the Gateway API CRDs
+and the GKE Gateway controller (the successor to Ingress);
+CHANNEL_EXPERIMENTAL adds experimental-channel CRDs;
 CHANNEL_DISABLED turns it off. Mutable.
 
 - rule: gateway_api_channel must be empty, CHANNEL_DISABLED, CHANNEL_EXPERIMENTAL, or CHANNEL_STANDARD
@@ -888,9 +909,15 @@ endpoint posture.
 
 `bool` · optional (explicit presence)
 
+Serve Kubernetes ServiceAccount TOKENS via the DNS endpoint —
+workloads outside the VPC can authenticate without IP connectivity to
+the control plane.
+
 ### spec.controlPlaneEndpoints.enableK8sCertsViaDns
 
 `bool` · optional (explicit presence)
+
+Serve Kubernetes client CERTIFICATES via the DNS endpoint.
 
 ### spec.releaseChannel
 
@@ -1026,21 +1053,34 @@ NO_UPGRADES.
 
 `string`
 
+UNTIL_END_OF_SUPPORT stretches the exclusion until the running minor
+version's end of support, instead of stopping at end_time — the
+"never force this cluster off its minor" stance. Requires scope.
+
 - rule: end_time_behavior must be empty or UNTIL_END_OF_SUPPORT
 
 ### spec.maintenancePolicy.disruptionBudget
 
 `GcpGkeClusterDisruptionBudget`
 
+Minimum spacing between consecutive disruptive maintenance events —
+a floor on how often GKE may disrupt the cluster with version
+changes, independent of windows.
+
 ### spec.maintenancePolicy.disruptionBudget.minorVersionDisruptionInterval
 
 `string`
+
+Minimum interval between MINOR version disruptions, seconds format,
+e.g. "2419200s" (28 days).
 
 - rule: minor_version_disruption_interval must be a seconds-format duration like "2419200s"
 
 ### spec.maintenancePolicy.disruptionBudget.patchVersionDisruptionInterval
 
 `string`
+
+Minimum interval between PATCH version disruptions, seconds format.
 
 - rule: patch_version_disruption_interval must be a seconds-format duration like "604800s"
 
@@ -1152,7 +1192,8 @@ Boot disk size in GB for NAP-created nodes (default 100).
 
 `string`
 
-Boot disk type: pd-standard (default), pd-balanced, or pd-ssd.
+Boot disk type: pd-standard (default), pd-balanced, pd-ssd, or
+hyperdisk-balanced.
 
 - rule: disk_type must be empty, pd-standard, pd-balanced, pd-ssd, or hyperdisk-balanced
 
@@ -1160,7 +1201,8 @@ Boot disk type: pd-standard (default), pd-balanced, or pd-ssd.
 
 `string`
 
-Node image, e.g. "COS_CONTAINERD" (default) or "UBUNTU_CONTAINERD".
+Node image, e.g. "COS_CONTAINERD" (default) or "UBUNTU_CONTAINERD"
+(legacy "COS"/"UBUNTU" accepted for old clusters).
 
 - rule: image_type must be empty, COS_CONTAINERD, COS, UBUNTU_CONTAINERD, or UBUNTU
 
@@ -1216,6 +1258,9 @@ Automatic node repair on NAP-created pools (GCP default true).
 
 `GcpGkeClusterNapUpgradeSettings`
 
+How upgrades roll through NAP-created pools: surge settings or
+blue-green, in the same shape as a GcpGkeNodePool's upgrade_settings.
+
 - rule: blue_green_settings apply only when strategy is BLUE_GREEN
 - rule: max_surge/max_unavailable apply to the SURGE strategy — remove them when strategy is BLUE_GREEN
 
@@ -1223,13 +1268,20 @@ Automatic node repair on NAP-created pools (GCP default true).
 
 `uint32` · optional (explicit presence)
 
+Additional nodes added during a surge upgrade.
+
 ### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.maxUnavailable
 
 `uint32` · optional (explicit presence)
 
+Nodes that may be simultaneously unavailable during a surge upgrade.
+
 ### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.strategy
 
 `string`
+
+SURGE (rolling replacement) or BLUE_GREEN (full new node set,
+migrate, soak, delete).
 
 - rule: strategy must be empty, SURGE, or BLUE_GREEN
 
@@ -1237,9 +1289,13 @@ Automatic node repair on NAP-created pools (GCP default true).
 
 `GcpGkeClusterNapBlueGreenSettings`
 
+Blue-green rollout pacing. Only with strategy BLUE_GREEN.
+
 ### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.standardRolloutPolicy
 
 `GcpGkeClusterNapStandardRolloutPolicy`
+
+How the old (blue) node set drains, batch by batch.
 
 - rule: set batch_percentage or batch_node_count, not both
 
@@ -1247,15 +1303,21 @@ Automatic node repair on NAP-created pools (GCP default true).
 
 `float` · optional (explicit presence)
 
+Fraction of blue nodes drained per batch, 0.0-1.0.
+
 - rule: {"float":{"lte":1,"gte":0}}
 
 ### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.standardRolloutPolicy.batchNodeCount
 
 `uint32` · optional (explicit presence)
 
+Number of blue nodes drained per batch.
+
 ### spec.clusterAutoscaling.autoProvisioningDefaults.upgradeSettings.blueGreenSettings.standardRolloutPolicy.batchSoakDuration
 
 `string`
+
+Soak time after each batch, seconds format, e.g. "600s".
 
 - rule: batch_soak_duration must be a seconds-format duration like "600s"
 
@@ -1263,11 +1325,19 @@ Automatic node repair on NAP-created pools (GCP default true).
 
 `string`
 
+Soak time after the blue set is fully drained before deletion,
+seconds format, e.g. "3600s".
+
 - rule: node_pool_soak_duration must be a seconds-format duration like "3600s"
 
 ### spec.clusterAutoscaling.defaultComputeClassEnabled
 
 `bool` · optional (explicit presence)
+
+Default compute classes: NAP provisions through the cluster's default
+ComputeClass definitions instead of the legacy per-resource limits
+path — the newer Autopilot-style provisioning model on Standard
+clusters.
 
 ### spec.enableVerticalPodAutoscaling
 
@@ -1318,7 +1388,9 @@ a Cloud KMS key (CMEK for etcd secrets).
 
 `string` · required
 
-ENCRYPTED (secrets wrapped with key_name) or DECRYPTED.
+ENCRYPTED (Kubernetes secrets wrapped with key_name),
+ALL_OBJECTS_ENCRYPTION_ENABLED (every etcd object wrapped, not just
+secrets), or DECRYPTED.
 
 - rule: state must be ENCRYPTED, ALL_OBJECTS_ENCRYPTION_ENABLED, or DECRYPTED
 - rule: {"required":true}
@@ -1450,8 +1522,8 @@ default (system components + workloads) applies.
 `[]string`
 
 Components exposing logs: SYSTEM_COMPONENTS, WORKLOADS, APISERVER,
-CONTROLLER_MANAGER, SCHEDULER, KCP_CONNECTION, KCP_SSHD, KCP_HPA.
-An empty list disables Cloud Logging integration entirely.
+CONTROLLER_MANAGER, SCHEDULER, KCP_CONNECTION, KCP_SSHD, KCP_HPA,
+KCP_VPA. An empty list disables Cloud Logging integration entirely.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"in":["SYSTEM_COMPONENTS","WORKLOADS","APISERVER","CONTROLLER_MANAGER","SCHEDULER","KCP_CONNECTION","KCP_SSHD","KCP_HPA","KCP_VPA"]}}}}
 
@@ -1665,17 +1737,27 @@ The Ray operator (KubeRay) for distributed Python/AI workloads.
 
 `bool`
 
+Ray cluster logging integration (with ray_operator_enabled).
+
 ### spec.addons.rayClusterMonitoringEnabled
 
 `bool`
+
+Ray cluster monitoring integration (with ray_operator_enabled).
 
 ### spec.addons.cloudrunEnabled
 
 `bool`
 
+Cloud Run for Anthos / Knative serving addon.
+
 ### spec.addons.cloudrunLoadBalancerType
 
 `string`
+
+Load balancer type for the Cloud Run addon:
+LOAD_BALANCER_TYPE_INTERNAL serves it on an internal LB instead of
+the default external one.
 
 - rule: cloudrun_load_balancer_type must be empty or LOAD_BALANCER_TYPE_INTERNAL
 
@@ -1683,33 +1765,52 @@ The Ray operator (KubeRay) for distributed Python/AI workloads.
 
 `bool`
 
+The Parallelstore CSI driver (managed parallel filesystem for
+AI/HPC).
+
 ### spec.addons.lustreCsiDriverEnabled
 
 `bool`
+
+The Lustre CSI driver (Managed Lustre high-performance filesystem).
 
 ### spec.addons.lustreCsiLegacyPortEnabled
 
 `bool`
 
+Serve the Lustre protocol on the legacy port (compatibility with
+pre-GA Lustre deployments; with lustre_csi_driver_enabled).
+
 ### spec.addons.lustreCsiDisableMultiNic
 
 `bool`
+
+Disable multi-NIC transport for the Lustre CSI driver (with
+lustre_csi_driver_enabled).
 
 ### spec.addons.podSnapshotEnabled
 
 `bool`
 
+Pod snapshot support (checkpoint/restore of running pods).
+
 ### spec.addons.agentSandboxEnabled
 
 `bool`
+
+GKE Sandbox (gVisor) agent addon for Autopilot sandbox pods.
 
 ### spec.addons.sliceControllerEnabled
 
 `bool`
 
+The slice controller addon (TPU slice management).
+
 ### spec.addons.slurmOperatorEnabled
 
 `bool`
+
+The Slurm operator addon (Slurm-on-GKE for HPC scheduling).
 
 ### spec.enableAutopilot
 
@@ -1739,11 +1840,23 @@ management, team scopes).
 
 `string`
 
+Fleet membership type. LIGHTWEIGHT registers a lightweight membership
+(reduced fleet feature surface, no Connect agent). Empty uses the
+fleet default (full membership).
+
 - rule: fleet_membership_type must be empty or LIGHTWEIGHT
 
 ### spec.deletionPolicy
 
 `string`
+
+Destroy-time stance of the IaC engines toward the cluster itself:
+DELETE (default) destroys it, PREVENT fails any plan that would
+destroy it, ABANDON removes it from state and leaves the cluster
+running in GCP. This is an engine-side control layered UNDER
+deletion_protection (the GKE-native guard): deletion_protection
+blocks the API call itself; deletion_policy governs what the engines
+even attempt.
 
 - rule: deletion_policy must be empty, DELETE, PREVENT, or ABANDON
 
@@ -1751,17 +1864,35 @@ management, team scopes).
 
 `bool`
 
+Skips the per-pool Instance Group Manager queries during cluster
+reads — a quota/performance optimization for clusters with many
+pools. While true, node-count drift is invisible to plans and
+managed-instance-group outputs go stale on every pool.
+
 ### spec.skipNodePoolRefresh
 
 `bool`
+
+Skips refreshing inline node-pool state from the API during cluster
+reads — a substantial plan/apply speedup on clusters with many pools.
+Safe in this composition because node pools are always separate
+GcpGkeNodePool resources, never inline blocks on the cluster.
 
 ### spec.enableKubernetesAlpha
 
 `bool`
 
+Creates an ALPHA cluster: all Kubernetes alpha feature gates enabled,
+no SLA, cannot be upgraded, and GKE DELETES the cluster after 30
+days. Strictly for short-lived feature evaluation. Immutable.
+
 ### spec.k8sBetaApis
 
 `[]string`
+
+Specific Kubernetes BETA API groups enabled on the cluster, e.g.
+["resource.k8s.io/v1beta1/deviceclasses"]. Beta APIs are off by
+default on new clusters; list exactly the groups a workload needs.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
@@ -1769,13 +1900,25 @@ management, team scopes).
 
 `string`
 
+Dataplane optimization mode (pass-through to the GKE API; GKE
+validates accepted modes per version). Immutable.
+
 ### spec.issueClientCertificate
 
 `bool` · optional (explicit presence)
 
+Issues a legacy client certificate for control-plane authentication.
+Off on modern clusters — certificate auth bypasses IAM and cannot be
+revoked short of rotating the cluster CA; leave unset unless a legacy
+client genuinely requires it.
+
 ### spec.nodeCreationMode
 
 `string`
+
+How nodes register themselves: VIA_KUBELET (nodes self-register, the
+classic path) or VIA_CONTROL_PLANE (the control plane creates node
+objects — hardens against node impersonation). Immutable.
 
 - rule: node_creation_mode must be empty, VIA_KUBELET, or VIA_CONTROL_PLANE
 
@@ -1783,43 +1926,73 @@ management, team scopes).
 
 `string`
 
+Auto-upgrade patch cadence: ACCELERATED upgrades to the latest patch
+available in the cluster's minor and channel as soon as it ships
+(instead of the channel's default rollout pacing).
+
 - rule: gke_auto_upgrade_patch_mode must be empty or ACCELERATED
 
 ### spec.rbacBindingConfig
 
 `GcpGkeClusterRbacBindingConfig`
 
+Locks down the legacy RBAC bindings to system:authenticated /
+system:unauthenticated — the hardening that prevents accidentally
+granting cluster access to every Google account on earth.
+
 ### spec.rbacBindingConfig.enableInsecureBindingSystemAuthenticated
 
 `bool` · optional (explicit presence)
+
+Allow ClusterRoleBindings/RoleBindings that grant to
+system:authenticated (every Google-authenticated identity). Leave
+false — granting to system:authenticated is almost always a mistake.
 
 ### spec.rbacBindingConfig.enableInsecureBindingSystemUnauthenticated
 
 `bool` · optional (explicit presence)
 
+Allow bindings that grant to system:unauthenticated /
+system:anonymous. Leave false.
+
 ### spec.autopilotPolicy
 
 `GcpGkeClusterAutopilotPolicy`
+
+Autopilot-only conversion/posture policies (standard-pool
+prohibition, system mutation/impersonation guards, webhook safety).
 
 ### spec.autopilotPolicy.noStandardNodePools
 
 `bool` · optional (explicit presence)
 
+Prohibit standard node pools — the cluster runs pure Autopilot.
+
 ### spec.autopilotPolicy.noSystemImpersonation
 
 `bool` · optional (explicit presence)
+
+Disallow impersonating system identities.
 
 ### spec.autopilotPolicy.noSystemMutation
 
 `bool` · optional (explicit presence)
 
+Disallow mutating system-managed objects.
+
 ### spec.autopilotPolicy.noUnsafeWebhooks
 
 `bool` · optional (explicit presence)
 
+Disallow admission webhooks that intercept system-critical requests.
+
 ### spec.autopilotPrivilegedAdmissionPaths
 
 `[]string`
+
+Autopilot-only: Cloud Storage / GKE allowlist paths authorizing
+PRIVILEGED workloads on Autopilot (partner agents etc.). Entries must
+start with gke:// or gs://; [] allows the default partner allowlists.
 
 - rule: {"repeated":{"items":{"string":{"pattern":"^((gke|gs)://.+)?$"}}}}
 
@@ -1827,9 +2000,16 @@ management, team scopes).
 
 `GcpGkeClusterNodePoolAutoConfig`
 
+Node settings GKE applies to the pools IT manages on an Autopilot
+cluster (network tags, Resource Manager tags, kubelet/OS hardening) —
+the Autopilot counterpart of per-pool node_config.
+
 ### spec.nodePoolAutoConfig.networkTags
 
 `[]string`
+
+GCE network tags applied to Autopilot-managed nodes — what VPC
+firewall rules match.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
@@ -1837,9 +2017,14 @@ management, team scopes).
 
 `map<string, string>`
 
+Resource Manager tags bound to Autopilot-managed node VMs, as
+{"tagKeys/123": "tagValues/456"} pairs.
+
 ### spec.nodePoolAutoConfig.cgroupMode
 
 `string`
+
+Container runtime cgroup mode on Autopilot-managed nodes.
 
 - rule: cgroup_mode must be empty, CGROUP_MODE_UNSPECIFIED, CGROUP_MODE_V1, or CGROUP_MODE_V2
 
@@ -1847,11 +2032,17 @@ management, team scopes).
 
 `string`
 
+Signed-kernel-module enforcement on Autopilot-managed nodes.
+
 - rule: node_kernel_module_loading_policy must be empty, POLICY_UNSPECIFIED, ENFORCE_SIGNED_MODULES, or DO_NOT_ENFORCE_SIGNED_MODULES
 
 ### spec.nodePoolAutoConfig.insecureKubeletReadonlyPortEnabled
 
 `string`
+
+The kubelet's insecure read-only port 10255 on Autopilot-managed
+nodes: FALSE closes it (hardened), TRUE keeps it open for legacy
+agents.
 
 - rule: insecure_kubelet_readonly_port_enabled must be empty, TRUE, or FALSE
 
@@ -1859,13 +2050,24 @@ management, team scopes).
 
 `GcpGkeClusterNodePoolDefaults`
 
+Defaults inherited by every node pool at CREATION time on a Standard
+cluster (image streaming, kubelet read-only port, logging variant,
+containerd registry access). A pool's own node_config overrides
+these.
+
 ### spec.nodePoolDefaults.gcfsEnabled
 
 `bool` · optional (explicit presence)
 
+Image streaming (GCFS) default for new pools: containers start before
+the full image is pulled.
+
 ### spec.nodePoolDefaults.insecureKubeletReadonlyPortEnabled
 
 `string`
+
+Default posture of the kubelet's insecure read-only port 10255 on new
+pools: FALSE closes it (hardened), TRUE keeps it open.
 
 - rule: insecure_kubelet_readonly_port_enabled must be empty, TRUE, or FALSE
 
@@ -1873,27 +2075,41 @@ management, team scopes).
 
 `string`
 
+Default node system-log throughput for new pools: DEFAULT (100 KiB/s)
+or MAX_THROUGHPUT (10 MiB/s).
+
 - rule: logging_variant must be empty, DEFAULT, or MAX_THROUGHPUT
 
 ### spec.nodePoolDefaults.containerdConfig
 
 `GcpGkeClusterContainerdDefaults`
 
+Default containerd registry configuration for new pools: private-CA
+registry trust, per-registry host overrides, writable cgroups.
+
 ### spec.nodePoolDefaults.containerdConfig.privateRegistryAccess
 
 `GcpGkeClusterPrivateRegistryAccess`
+
+Trust custom certificate authorities for specific registry domains.
 
 ### spec.nodePoolDefaults.containerdConfig.privateRegistryAccess.enabled
 
 `bool`
 
+Master toggle for private registry access configuration.
+
 ### spec.nodePoolDefaults.containerdConfig.privateRegistryAccess.certificateAuthorityDomains
 
 `[]GcpGkeClusterRegistryCaDomain`
 
+Per-domain CA trust entries.
+
 ### spec.nodePoolDefaults.containerdConfig.privateRegistryAccess.certificateAuthorityDomains[].fqdns
 
 `[]string` · required
+
+Registry FQDNs this CA vouches for, e.g. ["registry.internal:5000"].
 
 - rule: {"repeated":{"minItems":"1"}}
 
@@ -1901,15 +2117,22 @@ management, team scopes).
 
 `string` · required
 
+Secret Manager secret URI holding the CA certificate, in the form
+"projects/{project}/secrets/{secret}/versions/{version}".
+
 - rule: {"required":true}
 
 ### spec.nodePoolDefaults.containerdConfig.registryHosts
 
 `[]GcpGkeClusterRegistryHost`
 
+Per-registry host overrides (mirrors, capabilities, auth, headers).
+
 ### spec.nodePoolDefaults.containerdConfig.registryHosts[].server
 
 `string` · required
+
+The registry server the overrides apply to, e.g. "docker.io".
 
 - rule: {"required":true}
 
@@ -1917,9 +2140,13 @@ management, team scopes).
 
 `[]GcpGkeClusterRegistryHostEndpoint`
 
+Host endpoints serving this registry (mirrors first, in order).
+
 ### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].host
 
 `string` · required
+
+Endpoint URL, e.g. "https://mirror.internal".
 
 - rule: {"required":true}
 
@@ -1927,59 +2154,97 @@ management, team scopes).
 
 `[]string`
 
+Operations this endpoint can serve — typically "pull" and "resolve"
+(containerd hosts.toml capability names).
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true}}
 
 ### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].dialTimeout
 
 `string`
 
+Dial timeout for this endpoint, e.g. "10s".
+
 ### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].overridePath
 
 `bool` · optional (explicit presence)
+
+Path override on the endpoint host.
 
 ### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].caSecretUri
 
 `string`
 
+Secret Manager secret URI for the CA certificate to trust for this
+endpoint.
+
 ### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].clientCertSecretUri
 
 `string`
+
+Secret Manager secret URI for the client TLS certificate presented to
+this endpoint.
 
 ### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].clientKeySecretUri
 
 `string`
 
+Secret Manager secret URI for the client TLS key presented to this
+endpoint.
+
 ### spec.nodePoolDefaults.containerdConfig.registryHosts[].hosts[].headers
 
 `map<string, string>`
+
+Custom HTTP headers sent to this endpoint.
 
 ### spec.nodePoolDefaults.containerdConfig.writableCgroupsEnabled
 
 `bool` · optional (explicit presence)
 
+Writable cgroup filesystem inside containers.
+
 ### spec.userManagedKeys
 
 `GcpGkeClusterUserManagedKeys`
+
+Bring-your-own control-plane keys: customer-managed CAs for the
+cluster/etcd/aggregation trust domains and KMS keys for control-plane
+disk encryption and ServiceAccount JWT signing. For regulated
+environments that must own the entire trust chain. Immutable.
 
 ### spec.userManagedKeys.clusterCa
 
 `string`
 
+CA Service CaPool issuing the cluster CA
+("projects/{p}/locations/{l}/caPools/{pool}").
+
 ### spec.userManagedKeys.etcdApiCa
 
 `string`
+
+CA Service CaPool for the etcd API CA.
 
 ### spec.userManagedKeys.etcdPeerCa
 
 `string`
 
+CA Service CaPool for the etcd peer CA.
+
 ### spec.userManagedKeys.aggregationCa
 
 `string`
 
+CA Service CaPool for the aggregation layer CA.
+
 ### spec.userManagedKeys.controlPlaneDiskEncryptionKey
 
 `string | valueFrom`
+
+KMS key encrypting the control-plane disks
+("projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{k}"). Accepts a
+literal path or a reference to a GcpKmsKey resource.
 
 - references: GcpKmsKey (`status.outputs.key_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
@@ -1988,6 +2253,9 @@ management, team scopes).
 
 `string | valueFrom`
 
+KMS key encrypting GKE-ops etcd backups. Accepts a literal path or a
+reference to a GcpKmsKey resource.
+
 - references: GcpKmsKey (`status.outputs.key_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
 
@@ -1995,11 +2263,17 @@ management, team scopes).
 
 `[]string`
 
+KMS cryptoKeyVersions SIGNING ServiceAccount JWTs issued by the
+cluster ("projects/.../cryptoKeyVersions/1").
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
 ### spec.userManagedKeys.serviceAccountVerificationKeys
 
 `[]string`
+
+KMS cryptoKeyVersions accepted for VERIFYING ServiceAccount JWTs
+(include the previous version during signing-key rotation).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
@@ -2007,13 +2281,21 @@ management, team scopes).
 
 `GcpGkeClusterSecretRotation`
 
+Rotation of Secret Manager secrets mounted through the built-in CSI
+add-on (requires enable_secret_manager_csi): re-fetch cadence for
+mounted secret values.
+
 ### spec.secretManagerRotation.enabled
 
 `bool`
 
+Whether mounted secrets are periodically re-fetched.
+
 ### spec.secretManagerRotation.rotationInterval
 
 `string`
+
+Re-fetch cadence, seconds format (e.g. "120s"; default 120s).
 
 - rule: rotation_interval must be a seconds-format duration like "120s"
 
@@ -2021,17 +2303,27 @@ management, team scopes).
 
 `GcpGkeClusterSecretSync`
 
+The Secret Manager SYNC add-on: syncs Secret Manager secrets into
+Kubernetes Secret objects (as opposed to the CSI add-on's volume
+mounts), with its own rotation cadence.
+
 ### spec.secretSync.enabled
 
 `bool`
+
+Whether the sync add-on is enabled.
 
 ### spec.secretSync.rotationEnabled
 
 `bool`
 
+Whether synced secrets are periodically refreshed.
+
 ### spec.secretSync.rotationInterval
 
 `string`
+
+Refresh cadence, seconds format (e.g. "120s").
 
 - rule: rotation_interval must be a seconds-format duration like "120s"
 

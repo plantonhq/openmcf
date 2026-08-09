@@ -42,7 +42,7 @@ Open the deployment store, find **GCP Firestore Backup Schedule**, and click **D
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirestoreBackupSchedule
 metadata:
   name: daily-backups

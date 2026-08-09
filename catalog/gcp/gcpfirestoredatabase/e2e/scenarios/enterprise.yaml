@@ -1,0 +1,32 @@
+# GcpFirestoreDatabase scenario: an ENTERPRISE-edition database with all
+# three data-access modes armed — MongoDB-compatible access enabled,
+# classic Firestore API disabled (the dedicated-protocol posture), and
+# realtime updates enabled. This is also the exact database shape the
+# Firestore-index Enterprise arms (search_config, MONGODB_COMPATIBLE_API,
+# multikey) need underneath them. An empty ENTERPRISE database bills by
+# usage, so the run cost is ~zero. Same run-scoped name discipline as the
+# minimal scenario (deleted database names are reserved for a window).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpFirestoreDatabase
+metadata:
+  name: planton-oss-e2e-gcpfsdb-ent
+  id: planton-oss-e2e-gcpfsdb-ent
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpfirestoredatabase
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  databaseName: e2e-fsdb-ent-${E2E_RUN_ID}
+  locationId: nam5
+  type: FIRESTORE_NATIVE
+  databaseEdition: ENTERPRISE
+  firestoreDataAccessMode: DATA_ACCESS_MODE_DISABLED
+  mongodbCompatibleDataAccessMode: DATA_ACCESS_MODE_ENABLED
+  realtimeUpdatesMode: REALTIME_UPDATES_MODE_ENABLED
+  deleteProtectionState: DELETE_PROTECTION_DISABLED
+  deletionPolicy: DELETE

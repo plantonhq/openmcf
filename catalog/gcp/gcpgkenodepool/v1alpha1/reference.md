@@ -412,6 +412,12 @@ Example: "general-pool", "spot-batch", "gpu-a100"
 
 `string`
 
+Prefix for a GENERATED pool name — GKE appends a random suffix, so
+every replacement pool gets a fresh unique name (the
+create-before-destroy pattern for pools that must be swapped without
+a name collision). Mutually exclusive with node_pool_name; when both
+are empty, node_pool_name defaults to metadata.name. Immutable.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[a-z]([a-z0-9-]{0,36})?$"}}
 
 ### spec.nodeLocations
@@ -727,6 +733,11 @@ pod range. Immutable.
 
 `string | valueFrom`
 
+Places this pool's nodes on a DIFFERENT subnetwork than the cluster's
+default node subnetwork (same VPC). Accepts a subnetwork self link or
+a reference to a GcpSubnetwork resource. Immutable. Used to give pools
+their own address planning or firewall scope.
+
 - references: GcpSubnetwork (`status.outputs.subnetwork_self_link`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.subnetwork_self_link}} -- a bare string does not parse
 
@@ -734,13 +745,24 @@ pod range. Immutable.
 
 `string`
 
+Accelerator network profile for the pool (e.g. RDMA-capable profiles
+on GPU supercomputer shapes). GKE validates the profile against the
+machine family at apply. Immutable.
+
 ### spec.networkConfig.additionalNodeNetworks
 
 `[]GcpGkeNodePoolAdditionalNodeNetwork`
 
+Additional node network interfaces (multi-networking): each entry
+attaches every node to one more VPC network/subnetwork. Requires the
+cluster's enable_multi_networking. Immutable.
+
 ### spec.networkConfig.additionalNodeNetworks[].network
 
 `string | valueFrom` · required
+
+The VPC network to attach. Accepts a network name/self link or a
+reference to a GcpVpcNetwork resource.
 
 - references: GcpVpcNetwork (`status.outputs.network_self_link`)
 - rule: {"required":true}
@@ -750,6 +772,9 @@ pod range. Immutable.
 
 `string | valueFrom` · required
 
+The subnetwork on that network the interface draws its IP from.
+Accepts a name/self link or a reference to a GcpSubnetwork resource.
+
 - references: GcpSubnetwork (`status.outputs.subnetwork_self_link`)
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.subnetwork_self_link}} -- a bare string does not parse
@@ -758,9 +783,17 @@ pod range. Immutable.
 
 `[]GcpGkeNodePoolAdditionalPodNetwork`
 
+Additional pod ranges (multi-networking): each entry makes a
+secondary range on a subnetwork available to this pool's pods beyond
+the primary pod range. Requires the cluster's
+enable_multi_networking. Immutable.
+
 ### spec.networkConfig.additionalPodNetworks[].subnetwork
 
 `string | valueFrom`
+
+The subnetwork holding the secondary range. Accepts a name/self link
+or a reference to a GcpSubnetwork resource.
 
 - references: GcpSubnetwork (`status.outputs.subnetwork_self_link`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.subnetwork_self_link}} -- a bare string does not parse
@@ -769,11 +802,15 @@ pod range. Immutable.
 
 `string` · required
 
+Name of the secondary range on that subnetwork used for pod IPs.
+
 - rule: {"required":true}
 
 ### spec.networkConfig.additionalPodNetworks[].maxPodsPerNode
 
 `int32` · optional (explicit presence)
+
+Maximum pods per node drawing from this range (8-256).
 
 - rule: {"int32":{"lte":256,"gte":8}}
 
@@ -1169,7 +1206,10 @@ values [name]); NO_RESERVATION opts out. Immutable.
 `string` · required
 
 NO_RESERVATION opts out; ANY_RESERVATION consumes any matching
-reservation; SPECIFIC_RESERVATION targets one by name.
+reservation; SPECIFIC_RESERVATION targets one by name;
+ANY_RESERVATION_THEN_FAIL consumes matching reservations and fails
+scale-up (instead of falling back to on-demand) when none is
+available.
 
 - rule: {"required":true,"string":{"in":["NO_RESERVATION","ANY_RESERVATION","SPECIFIC_RESERVATION","ANY_RESERVATION_THEN_FAIL"]}}
 
@@ -1301,11 +1341,17 @@ Disk usage percent above which image GC always runs.
 
 `string`
 
+Minimum age an unused image must reach before GC may remove it,
+seconds format, e.g. "120s".
+
 - rule: image_minimum_gc_age must be a seconds-format duration like "120s"
 
 ### spec.nodeConfig.kubeletConfig.imageMaximumGcAge
 
 `string`
+
+Maximum age an unused image may reach before GC removes it regardless
+of disk pressure, seconds format, e.g. "86400s".
 
 - rule: image_maximum_gc_age must be a seconds-format duration like "86400s"
 
@@ -1313,11 +1359,18 @@ Disk usage percent above which image GC always runs.
 
 `[]string`
 
+Sysctl patterns pods may set as unsafe sysctls (e.g. "net.*",
+"kernel.shm*") — gate carefully: unsafe sysctls affect the whole
+node, not just the pod that sets them.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
 ### spec.nodeConfig.kubeletConfig.evictionMaxPodGracePeriodSeconds
 
 `int64` · optional (explicit presence)
+
+Maximum seconds the kubelet grants a pod to terminate during
+soft-eviction (caps the pod's own grace period in that path).
 
 - rule: {"int64":{"gte":"0"}}
 
@@ -1325,97 +1378,155 @@ Disk usage percent above which image GC always runs.
 
 `bool` · optional (explicit presence)
 
+Kill only the offending process instead of the whole container on
+OOM — for containers running multiple processes where one leaking
+process should not take down its siblings.
+
 ### spec.nodeConfig.kubeletConfig.evictionSoft
 
 `GcpGkeNodePoolEvictionSignals`
+
+Soft eviction thresholds: the kubelet starts graceful pod eviction
+when a signal stays past its threshold for the paired grace period.
 
 ### spec.nodeConfig.kubeletConfig.evictionSoft.memoryAvailable
 
 `string`
 
+Threshold for memory.available.
+
 ### spec.nodeConfig.kubeletConfig.evictionSoft.nodefsAvailable
 
 `string`
+
+Threshold for nodefs.available (the filesystem backing pod volumes
+and logs).
 
 ### spec.nodeConfig.kubeletConfig.evictionSoft.nodefsInodesFree
 
 `string`
 
+Threshold for nodefs.inodesFree.
+
 ### spec.nodeConfig.kubeletConfig.evictionSoft.imagefsAvailable
 
 `string`
+
+Threshold for imagefs.available (the filesystem backing container
+images and writable layers).
 
 ### spec.nodeConfig.kubeletConfig.evictionSoft.imagefsInodesFree
 
 `string`
 
+Threshold for imagefs.inodesFree.
+
 ### spec.nodeConfig.kubeletConfig.evictionSoft.pidAvailable
 
 `string`
+
+Threshold for pid.available.
 
 ### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod
 
 `GcpGkeNodePoolEvictionGracePeriods`
 
+Grace periods paired with eviction_soft: how long a signal must stay
+past its threshold before eviction starts (durations like "90s").
+
 ### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.memoryAvailable
 
 `string`
+
+Grace period for memory.available.
 
 ### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.nodefsAvailable
 
 `string`
 
+Grace period for nodefs.available.
+
 ### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.nodefsInodesFree
 
 `string`
+
+Grace period for nodefs.inodesFree.
 
 ### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.imagefsAvailable
 
 `string`
 
+Grace period for imagefs.available.
+
 ### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.imagefsInodesFree
 
 `string`
+
+Grace period for imagefs.inodesFree.
 
 ### spec.nodeConfig.kubeletConfig.evictionSoftGracePeriod.pidAvailable
 
 `string`
 
+Grace period for pid.available.
+
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim
 
 `GcpGkeNodePoolEvictionMinimumReclaim`
+
+Minimum amounts reclaimed per eviction: prevents thrashing by making
+each eviction free at least this much of the signal's resource.
 
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.memoryAvailable
 
 `string`
 
+Minimum reclaim for memory.available.
+
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.nodefsAvailable
 
 `string`
+
+Minimum reclaim for nodefs.available.
 
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.nodefsInodesFree
 
 `string`
 
+Minimum reclaim for nodefs.inodesFree.
+
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.imagefsAvailable
 
 `string`
+
+Minimum reclaim for imagefs.available.
 
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.imagefsInodesFree
 
 `string`
 
+Minimum reclaim for imagefs.inodesFree.
+
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.pidAvailable
 
 `string`
+
+Minimum reclaim for pid.available.
 
 ### spec.nodeConfig.kubeletConfig.crashLoopBackOff
 
 `GcpGkeNodePoolCrashLoopBackOff`
 
+Caps the exponential backoff for restarting crashed containers —
+lower caps recover crash-looping containers faster at the cost of
+more restart churn.
+
 ### spec.nodeConfig.kubeletConfig.crashLoopBackOff.maxContainerRestartPeriod
 
 `string`
+
+Maximum backoff delay between restarts of a crashing container,
+seconds format (e.g. "300s"; kubelet default caps at 300s).
 
 - rule: max_container_restart_period must be a seconds-format duration like "300s"
 
@@ -1423,9 +1534,16 @@ Disk usage percent above which image GC always runs.
 
 `GcpGkeNodePoolMemoryManager`
 
+Kubernetes Memory Manager policy: Static reserves exclusive NUMA
+memory for Guaranteed-QoS pods; None (default) does not.
+
 ### spec.nodeConfig.kubeletConfig.memoryManager.policy
 
 `string`
+
+"Static" reserves exclusive NUMA-aligned memory for Guaranteed-QoS
+pods; "None" disables the manager. Capitalized, per the kubelet's
+own policy names.
 
 - rule: policy must be empty, None, or Static
 
@@ -1433,15 +1551,25 @@ Disk usage percent above which image GC always runs.
 
 `GcpGkeNodePoolTopologyManager`
 
+Kubernetes Topology Manager: aligns CPU, memory, and device (GPU)
+NUMA placement per pod or per container — for latency-critical and
+HPC workloads that suffer on cross-NUMA access.
+
 ### spec.nodeConfig.kubeletConfig.topologyManager.policy
 
 `string`
+
+Alignment policy: none (default), best-effort, restricted, or
+single-numa-node (strictest — pods failing alignment are rejected).
 
 - rule: policy must be empty, none, best-effort, restricted, or single-numa-node
 
 ### spec.nodeConfig.kubeletConfig.topologyManager.scope
 
 `string`
+
+Alignment scope: container (default; each container aligned
+independently) or pod (all containers of a pod share one alignment).
 
 - rule: scope must be empty, container, or pod
 
@@ -1490,11 +1618,18 @@ Number of 1GB hugepages.
 
 `string`
 
+Kernel transparent hugepage mode for anonymous memory:
+ALWAYS, MADVISE (only regions that request it), or NEVER.
+
 - rule: transparent_hugepage_enabled must be empty, TRANSPARENT_HUGEPAGE_ENABLED_ALWAYS, TRANSPARENT_HUGEPAGE_ENABLED_MADVISE, TRANSPARENT_HUGEPAGE_ENABLED_NEVER, or TRANSPARENT_HUGEPAGE_ENABLED_UNSPECIFIED
 
 ### spec.nodeConfig.linuxNodeConfig.transparentHugepageDefrag
 
 `string`
+
+Kernel defrag behavior when allocating transparent hugepages:
+ALWAYS (stall to reclaim), DEFER (kick background reclaim),
+DEFER_WITH_MADVISE, MADVISE, or NEVER.
 
 - rule: transparent_hugepage_defrag must be empty, TRANSPARENT_HUGEPAGE_DEFRAG_ALWAYS, TRANSPARENT_HUGEPAGE_DEFRAG_DEFER, TRANSPARENT_HUGEPAGE_DEFRAG_DEFER_WITH_MADVISE, TRANSPARENT_HUGEPAGE_DEFRAG_MADVISE, TRANSPARENT_HUGEPAGE_DEFRAG_NEVER, or TRANSPARENT_HUGEPAGE_DEFRAG_UNSPECIFIED
 
@@ -1502,15 +1637,27 @@ Number of 1GB hugepages.
 
 `string`
 
+Signed-kernel-module enforcement: ENFORCE_SIGNED_MODULES rejects
+unsigned module loads (the hardened posture);
+DO_NOT_ENFORCE_SIGNED_MODULES allows them.
+
 - rule: node_kernel_module_loading_policy must be empty, POLICY_UNSPECIFIED, ENFORCE_SIGNED_MODULES, or DO_NOT_ENFORCE_SIGNED_MODULES
 
 ### spec.nodeConfig.linuxNodeConfig.enablePtpKvmTimeSync
 
 `bool` · optional (explicit presence)
 
+PTP/KVM paravirtual clock sync for sub-millisecond time accuracy —
+for workloads needing precise cross-node timestamps (trading,
+distributed tracing at fine granularity).
+
 ### spec.nodeConfig.linuxNodeConfig.swapConfig
 
 `GcpGkeNodePoolSwapConfig`
+
+Swap on the nodes (Kubernetes swap support): sizing profile plus
+encryption. Swap trades OOM kills for latency under memory pressure;
+pair with kubelet eviction tuning.
 
 - rule: size swap with at most one profile: boot_disk_profile, dedicated_local_ssd_profile, or ephemeral_local_ssd_profile
 
@@ -1518,9 +1665,13 @@ Number of 1GB hugepages.
 
 `bool` · optional (explicit presence)
 
+Whether swap is enabled on the nodes.
+
 ### spec.nodeConfig.linuxNodeConfig.swapConfig.bootDiskProfile
 
 `GcpGkeNodePoolSwapSizing`
+
+Swap carved from the boot disk.
 
 - rule: set swap_size_gib or swap_size_percent, not both
 
@@ -1528,11 +1679,15 @@ Number of 1GB hugepages.
 
 `int64` · optional (explicit presence)
 
+Absolute swap size in GiB.
+
 - rule: {"int64":{"gte":"1"}}
 
 ### spec.nodeConfig.linuxNodeConfig.swapConfig.bootDiskProfile.swapSizePercent
 
 `int32` · optional (explicit presence)
+
+Swap size as a percentage of the backing storage (1-100).
 
 - rule: {"int32":{"lte":100,"gte":1}}
 
@@ -1540,9 +1695,13 @@ Number of 1GB hugepages.
 
 `GcpGkeNodePoolSwapDedicatedSsd`
 
+Swap on local SSDs dedicated entirely to swap.
+
 ### spec.nodeConfig.linuxNodeConfig.swapConfig.dedicatedLocalSsdProfile.diskCount
 
 `int64` · optional (explicit presence)
+
+Number of local SSDs dedicated to swap.
 
 - rule: {"int64":{"gte":"1"}}
 
@@ -1550,11 +1709,15 @@ Number of 1GB hugepages.
 
 `GcpGkeNodePoolSwapSizing`
 
+Swap carved from the ephemeral-storage local SSDs.
+
 - rule: set swap_size_gib or swap_size_percent, not both
 
 ### spec.nodeConfig.linuxNodeConfig.swapConfig.ephemeralLocalSsdProfile.swapSizeGib
 
 `int64` · optional (explicit presence)
+
+Absolute swap size in GiB.
 
 - rule: {"int64":{"gte":"1"}}
 
@@ -1562,15 +1725,22 @@ Number of 1GB hugepages.
 
 `int32` · optional (explicit presence)
 
+Swap size as a percentage of the backing storage (1-100).
+
 - rule: {"int32":{"lte":100,"gte":1}}
 
 ### spec.nodeConfig.linuxNodeConfig.swapConfig.encryptionConfig
 
 `GcpGkeNodePoolSwapEncryption`
 
+Swap encryption (on by default; disabling trades confidentiality for
+a little throughput).
+
 ### spec.nodeConfig.linuxNodeConfig.swapConfig.encryptionConfig.disabled
 
 `bool` · optional (explicit presence)
+
+Set true to DISABLE swap encryption (encrypted by default).
 
 ### spec.nodeConfig.loggingVariant
 
@@ -1603,9 +1773,19 @@ pools; leave empty for long-lived pools. Immutable.
 
 `bool`
 
+Confidential storage on the node disks (hardware-encrypted at the
+storage layer; pairs with confidential_nodes for end-to-end
+confidentiality). Requires a supporting machine family and hyperdisk
+boot disks. Immutable.
+
 ### spec.nodeConfig.localSsdEncryptionMode
 
 `string`
+
+Encryption mode for local SSDs: STANDARD_ENCRYPTION (Google-managed)
+or EPHEMERAL_KEY_ENCRYPTION (per-node ephemeral keys destroyed with
+the node — local data is unrecoverable after preemption/deletion).
+Immutable.
 
 - rule: local_ssd_encryption_mode must be empty, STANDARD_ENCRYPTION, or EPHEMERAL_KEY_ENCRYPTION
 
@@ -1613,13 +1793,26 @@ pools; leave empty for long-lived pools. Immutable.
 
 `string`
 
+GPUDirect strategy for multi-GPU/multi-node communication (e.g.
+"GPUDIRECT_TCPX", "GPUDIRECT_TCPXO", "GPUDIRECT_RDMA"). GKE validates
+the strategy against the machine family and GPU type at apply; the
+provider passes the value through case-insensitively.
+
 ### spec.nodeConfig.nodeGroup
 
 `string`
 
+Sole-tenant node group to schedule this pool's nodes onto (nodes on
+dedicated physical servers you already provisioned). Prefer
+sole_tenant_config's affinity form for flexible matching. Immutable.
+
 ### spec.nodeConfig.storagePools
 
 `[]string`
+
+Hyperdisk storage pools the node boot disks are provisioned in —
+pre-purchased pooled capacity/IOPS shared across disks. Full resource
+paths. Immutable.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
@@ -1627,13 +1820,23 @@ pools; leave empty for long-lived pools. Immutable.
 
 `map<string, string>`
 
+Resource Manager tags bound to the node VMs (org-policy/firewall
+tags, distinct from network tags and labels), as
+{"tagKeys/123": "tagValues/456"} pairs. Mutable.
+
 ### spec.nodeConfig.advancedMachineFeatures
 
 `GcpGkeNodePoolAdvancedMachineFeatures`
 
+Advanced machine features: SMT control, nested virtualization, and
+the performance monitoring unit. Immutable.
+
 ### spec.nodeConfig.advancedMachineFeatures.threadsPerCore
 
 `int64`
+
+Threads per physical core: 1 disables SMT (licensing or
+side-channel isolation), 2 keeps it on. Only 1 or 2 are meaningful.
 
 - rule: {"int64":{"lte":"2","gte":"1"}}
 
@@ -1641,9 +1844,16 @@ pools; leave empty for long-lived pools. Immutable.
 
 `bool` · optional (explicit presence)
 
+Nested virtualization on the nodes (running VMs inside pods, e.g.
+KubeVirt). Requires Haswell-or-newer non-shared-core machine types.
+
 ### spec.nodeConfig.advancedMachineFeatures.performanceMonitoringUnit
 
 `string`
+
+Performance monitoring unit exposure: ARCHITECTURAL (basic counters),
+STANDARD (most counters), or ENHANCED (all counters) — for profiling
+workloads that read hardware counters.
 
 - rule: performance_monitoring_unit must be empty, ARCHITECTURAL, STANDARD, or ENHANCED
 
@@ -1651,9 +1861,17 @@ pools; leave empty for long-lived pools. Immutable.
 
 `GcpGkeNodePoolBootDisk`
 
+Boot disk shape as a first-class block — required for hyperdisk
+tuning (provisioned IOPS/throughput). When set, its disk_type/size
+take precedence over the flat disk_type/disk_size_gb fields.
+
 ### spec.nodeConfig.bootDisk.diskType
 
 `string`
+
+Boot disk type (pd-standard, pd-balanced, pd-ssd,
+hyperdisk-balanced...). Hyperdisk types unlock provisioned_iops /
+provisioned_throughput below.
 
 - rule: disk_type must be empty, pd-standard, pd-balanced, pd-ssd, hyperdisk-balanced, hyperdisk-extreme, or hyperdisk-throughput
 
@@ -1661,11 +1879,16 @@ pools; leave empty for long-lived pools. Immutable.
 
 `int64` · optional (explicit presence)
 
+Boot disk size in GB (min 10).
+
 - rule: {"int64":{"gte":"10"}}
 
 ### spec.nodeConfig.bootDisk.provisionedIops
 
 `int64` · optional (explicit presence)
+
+Provisioned IOPS — hyperdisk types that support IOPS provisioning
+only.
 
 - rule: {"int64":{"gte":"1"}}
 
@@ -1673,15 +1896,23 @@ pools; leave empty for long-lived pools. Immutable.
 
 `int64` · optional (explicit presence)
 
+Provisioned throughput in MiB/s — hyperdisk types that support
+throughput provisioning only.
+
 - rule: {"int64":{"gte":"1"}}
 
 ### spec.nodeConfig.nodeImage
 
 `GcpGkeNodePoolNodeImage`
 
+Custom node OS image family, overriding the stock image_type image.
+Both fields must point at an image built for GKE nodes. Immutable.
+
 ### spec.nodeConfig.nodeImage.image
 
 `string` · required
+
+Image family or full image name to boot nodes from.
 
 - rule: {"required":true}
 
@@ -1689,13 +1920,23 @@ pools; leave empty for long-lived pools. Immutable.
 
 `string`
 
+Project hosting the image. Empty means the pool's own project.
+
 ### spec.nodeConfig.soleTenantConfig
 
 `GcpGkeNodePoolSoleTenantConfig`
 
+Sole-tenant scheduling: affinity rules selecting the sole-tenant node
+groups this pool's nodes run on, plus a dedicated-vCPU floor.
+Immutable.
+
 ### spec.nodeConfig.soleTenantConfig.nodeAffinities
 
 `[]GcpGkeNodePoolSoleTenantAffinity` · required
+
+Affinity rules matching sole-tenant node groups. At least one rule
+selects the groups (e.g. key "compute.googleapis.com/node-group-name",
+operator IN, values [group name]).
 
 - rule: {"repeated":{"minItems":"1"}}
 
@@ -1703,11 +1944,15 @@ pools; leave empty for long-lived pools. Immutable.
 
 `string` · required
 
+Affinity label key, e.g. "compute.googleapis.com/node-group-name".
+
 - rule: {"required":true}
 
 ### spec.nodeConfig.soleTenantConfig.nodeAffinities[].operator
 
 `string` · required
+
+IN selects hosts matching values; NOT_IN avoids them.
 
 - rule: {"required":true,"string":{"in":["IN","NOT_IN"]}}
 
@@ -1715,11 +1960,16 @@ pools; leave empty for long-lived pools. Immutable.
 
 `[]string` · required
 
+Values matched against the key.
+
 - rule: {"repeated":{"minItems":"1"}}
 
 ### spec.nodeConfig.soleTenantConfig.minNodeCpus
 
 `int32` · optional (explicit presence)
+
+Minimum dedicated vCPUs per node reserved for this pool's workloads
+on the shared physical host.
 
 - rule: {"int32":{"gte":1}}
 
@@ -1727,11 +1977,18 @@ pools; leave empty for long-lived pools. Immutable.
 
 `string`
 
+GKE Sandbox: runs every pod in this pool inside gVisor (user-space
+kernel isolation) — for untrusted/multi-tenant workloads. The only
+value is "GVISOR". GKE taints sandbox pools automatically. Immutable.
+
 - rule: sandbox_type must be empty or GVISOR
 
 ### spec.nodeConfig.windowsOsVersion
 
 `string`
+
+Windows Server version for WINDOWS_LTSC_CONTAINERD pools:
+OS_VERSION_LTSC2019 or OS_VERSION_LTSC2022. Immutable.
 
 - rule: windows_os_version must be empty, OS_VERSION_LTSC2019, or OS_VERSION_LTSC2022
 
@@ -1739,11 +1996,20 @@ pools; leave empty for long-lived pools. Immutable.
 
 `string`
 
+Host maintenance cadence for the underlying physical hosts:
+AS_NEEDED (default) or PERIODIC (predictable windows — required by
+some GPU/TPU shapes). Immutable.
+
 - rule: host_maintenance_interval must be empty, AS_NEEDED, or PERIODIC
 
 ### spec.nodeConfig.architectureTaintBehavior
 
 `string`
+
+How GKE taints nodes based on CPU architecture: ARM applies the
+kubernetes.io/arch taint to Arm nodes (the default protection that
+keeps amd64-only workloads off T2A/Axion pools); NONE disables that
+automatic taint.
 
 - rule: architecture_taint_behavior must be empty, NONE, or ARM
 
@@ -1751,21 +2017,35 @@ pools; leave empty for long-lived pools. Immutable.
 
 `GcpGkeNodePoolContainerdConfig`
 
+containerd runtime configuration: private registry access (custom CA
+domains), per-registry host overrides (mirrors, auth, headers), and
+writable cgroups.
+
 ### spec.nodeConfig.containerdConfig.privateRegistryAccess
 
 `GcpGkeNodePoolPrivateRegistryAccess`
+
+Trust custom certificate authorities for specific registry domains —
+required for private registries with self-signed/internal CAs.
 
 ### spec.nodeConfig.containerdConfig.privateRegistryAccess.enabled
 
 `bool`
 
+Master toggle for private registry access configuration.
+
 ### spec.nodeConfig.containerdConfig.privateRegistryAccess.certificateAuthorityDomains
 
 `[]GcpGkeNodePoolRegistryCaDomain`
 
+Per-domain CA trust: each entry names registry FQDNs and the Secret
+Manager secret holding the CA certificate for them.
+
 ### spec.nodeConfig.containerdConfig.privateRegistryAccess.certificateAuthorityDomains[].fqdns
 
 `[]string` · required
+
+Registry FQDNs this CA vouches for, e.g. ["registry.internal:5000"].
 
 - rule: {"repeated":{"minItems":"1"}}
 
@@ -1773,15 +2053,25 @@ pools; leave empty for long-lived pools. Immutable.
 
 `string` · required
 
+Secret Manager secret URI holding the CA certificate, in the form
+"projects/{project}/secrets/{secret}/versions/{version}".
+
 - rule: {"required":true}
 
 ### spec.nodeConfig.containerdConfig.registryHosts
 
 `[]GcpGkeNodePoolRegistryHost`
 
+Per-registry host overrides: mirrors, capabilities, dial timeouts,
+client certificates, and custom headers, in containerd hosts.toml
+semantics.
+
 ### spec.nodeConfig.containerdConfig.registryHosts[].server
 
 `string` · required
+
+The registry server the overrides apply to, e.g. "docker.io" or
+"registry.internal:5000".
 
 - rule: {"required":true}
 
@@ -1789,9 +2079,13 @@ pools; leave empty for long-lived pools. Immutable.
 
 `[]GcpGkeNodePoolRegistryHostEndpoint`
 
+Host endpoints serving this registry (mirrors first, in order).
+
 ### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].host
 
 `string` · required
+
+Endpoint URL, e.g. "https://mirror.internal".
 
 - rule: {"required":true}
 
@@ -1799,39 +2093,68 @@ pools; leave empty for long-lived pools. Immutable.
 
 `[]string`
 
+Operations this endpoint can serve — typically "pull" and
+"resolve" (containerd hosts.toml capability names). GKE validates
+the values at apply.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true}}
 
 ### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].dialTimeout
 
 `string`
 
+Dial timeout for this endpoint, e.g. "10s".
+
 ### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].overridePath
 
 `bool` · optional (explicit presence)
+
+Path override on the endpoint host (registry served under a
+non-standard path).
 
 ### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].caSecretUri
 
 `string`
 
+Secret Manager secret URI for the CA certificate to trust for this
+endpoint.
+
 ### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].clientCertSecretUri
 
 `string`
+
+Secret Manager secret URI for the client TLS certificate presented to
+this endpoint.
 
 ### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].clientKeySecretUri
 
 `string`
 
+Secret Manager secret URI for the client TLS key presented to this
+endpoint.
+
 ### spec.nodeConfig.containerdConfig.registryHosts[].hosts[].headers
 
 `map<string, string>`
+
+Custom HTTP headers sent to this endpoint, e.g. authorization
+headers for pull-through caches.
 
 ### spec.nodeConfig.containerdConfig.writableCgroupsEnabled
 
 `bool` · optional (explicit presence)
 
+Writable cgroup filesystem inside containers — for workloads that
+manage their own sub-cgroups (nested container runtimes, some JVMs).
+
 ### spec.deletionPolicy
 
 `string`
+
+Destroy-time stance of the IaC engines toward the pool itself:
+DELETE (default) destroys it, PREVENT fails any plan that would
+destroy it, ABANDON removes it from state and leaves the pool
+running in GCP. This is an engine-side control, not a GKE API field.
 
 - rule: deletion_policy must be empty, DELETE, PREVENT, or ABANDON
 
@@ -1839,13 +2162,28 @@ pools; leave empty for long-lived pools. Immutable.
 
 `bool`
 
+Skips the per-pool Instance Group Manager queries that reconcile the
+observed node count on every plan — a quota/performance optimization
+for very large pools. While true, node-count drift is invisible to
+plans and the instance_group_urls outputs go stale. The engines
+already never fight the autoscaler over node_count; this additionally
+silences the read-side queries.
+
 ### spec.nodeDrainConfig
 
 `GcpGkeNodePoolNodeDrainConfig`
 
+How nodes drain when the POOL ITSELF is deleted or replaced: grace
+periods and whether PodDisruptionBudgets are honored during the
+teardown. Distinct from upgrade_settings, which paces upgrades of a
+pool that continues to exist.
+
 ### spec.nodeDrainConfig.graceTerminationDuration
 
 `string`
+
+Grace period each node gets to finish draining before it is removed,
+seconds format, e.g. "300s".
 
 - rule: grace_termination_duration must be a seconds-format duration like "300s"
 
@@ -1853,11 +2191,17 @@ pools; leave empty for long-lived pools. Immutable.
 
 `string`
 
+How long the drain waits on a blocking PodDisruptionBudget before
+proceeding anyway, seconds format, e.g. "3600s".
+
 - rule: pdb_timeout_duration must be a seconds-format duration like "3600s"
 
 ### spec.nodeDrainConfig.respectPdbDuringNodePoolDeletion
 
 `bool` · optional (explicit presence)
+
+Honor PodDisruptionBudgets while the pool is being deleted (bounded
+by pdb_timeout_duration) instead of evicting immediately.
 
 ## Validation Rules
 

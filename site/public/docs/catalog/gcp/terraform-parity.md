@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2809 |
+| Spec fields authored across all kinds | 2826 |
 | Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**17 of 79 kinds are at total accounting; 61 proven live.**
+**20 of 79 kinds are at total accounting; 58 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -81,8 +81,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpDnsRecord | 54 | 42 | 0 | 0 | 18 | ❌ | ✅ pulumi, terraform |
 | GcpDnsZone | 28 | 16 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
 | GcpFilestoreInstance | 41 | 12 | 0 | 0 | 44 | ❌ | ✅ pulumi, terraform |
-| GcpFirestoreBackupSchedule | 10 | 3 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
-| GcpFirestoreDatabase | 20 | 7 | 0 | 0 | 16 | ❌ | ✅ pulumi, terraform |
+| GcpFirestoreBackupSchedule | 5 | 4 | 1 | 0 | 0 | ✅ | — |
+| GcpFirestoreDatabase | 15 | 11 | 4 | 0 | 0 | ✅ | — |
 | GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | — |
 | GcpFirewallRule | 20 | 12 | 0 | 0 | 13 | ❌ | — |
 | GcpGcsBucket | 64 | 30 | 29 | 5 | 0 | ✅ | — |
@@ -105,7 +105,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpPubSubTopic | 49 | 35 | 0 | 0 | 16 | ❌ | ✅ pulumi, terraform |
 | GcpRedisInstance | 37 | 21 | 0 | 0 | 21 | ❌ | ✅ pulumi, terraform |
 | GcpRegionNetworkEndpointGroup | 23 | 15 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
-| GcpRouterNat | 59 | 24 | 0 | 0 | 45 | ❌ | ✅ pulumi, terraform |
+| GcpRouterNat | 54 | 28 | 21 | 5 | 0 | ✅ | — |
 | GcpServerlessVpcConnector | 18 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
 | GcpServiceAccount | 26 | 11 | 5 | 10 | 0 | ✅ | — |
 | GcpServiceAccountIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |

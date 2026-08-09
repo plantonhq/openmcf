@@ -7,8 +7,9 @@ spec:
   # address chain before every NAT create. Routers and NATs themselves
   # deploy in seconds; the chain dominates the runtime.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # pending_proof: the spec grew the router BGP surface (redesigned into
+  # router_bgp), NAT64, resource-manager tags, and deletion_policy — the
+  # prior green proof describes code that no longer exists.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

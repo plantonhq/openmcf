@@ -168,11 +168,21 @@ MySQL only: require the current password when changing the password.
 
 `[]string`
 
+MySQL 8+ / PostgreSQL only: database roles granted to the user at
+creation — predefined Cloud SQL roles (e.g. "cloudsqlsuperuser") or
+custom roles already created in the database.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
 
 ### spec.deletionPolicy
 
 `string`
+
+Engine-side teardown behavior. "DELETE" (default) drops the user;
+"PREVENT" fails any plan that would drop it; "ABANDON" removes it
+from IaC management while leaving it on the instance. ABANDON is the
+documented answer for PostgreSQL users that cannot be dropped while
+they still own database objects.
 
 - rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 

@@ -215,15 +215,89 @@ var _ = ginkgo.Describe("GcpRouterNatSpec", func() {
 
 	ginkgo.It("should accept a router BGP arm with private ASN and keepalive", func() {
 		msg := minimal()
-		msg.Spec.RouterAsn = 64514
-		msg.Spec.RouterKeepaliveInterval = 30
+		msg.Spec.RouterBgp = &GcpRouterNatRouterBgp{
+			Asn:               64514,
+			KeepaliveInterval: 30,
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should accept a 32-bit private ASN", func() {
 		msg := minimal()
-		msg.Spec.RouterAsn = 4200000100
+		msg.Spec.RouterBgp = &GcpRouterNatRouterBgp{Asn: 4200000100}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept CUSTOM advertisement with groups and ranges", func() {
+		msg := minimal()
+		msg.Spec.RouterBgp = &GcpRouterNatRouterBgp{
+			Asn:              64514,
+			AdvertiseMode:    "CUSTOM",
+			AdvertisedGroups: []string{"ALL_SUBNETS"},
+			AdvertisedIpRanges: []*GcpRouterNatRouterBgpAdvertisedIpRange{
+				{Range: "10.10.0.0/16", Description: "on-prem reachable services"},
+			},
+			IdentifierRange: "169.254.8.0/30",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept DEFAULT advertisement with no custom entries", func() {
+		msg := minimal()
+		msg.Spec.RouterBgp = &GcpRouterNatRouterBgp{Asn: 64514, AdvertiseMode: "DEFAULT"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a router description and encrypted-interconnect dedication", func() {
+		msg := minimal()
+		msg.Spec.RouterDescription = "egress router for the prod fleet"
+		msg.Spec.EncryptedInterconnectRouter = true
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept resource manager tags on the router", func() {
+		msg := minimal()
+		msg.Spec.ResourceManagerTags = map[string]string{"tagKeys/123": "tagValues/456"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept every deletion_policy value", func() {
+		for _, policy := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = policy
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should accept NAT64 for all IPv6 subnetworks", func() {
+		msg := minimal()
+		msg.Spec.SourceSubnetworkIpRangesToNat64 = "ALL_IPV6_SUBNETWORKS"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept NAT64 scoped to listed subnetworks", func() {
+		msg := minimal()
+		msg.Spec.SourceSubnetworkIpRangesToNat64 = "LIST_OF_IPV6_SUBNETWORKS"
+		msg.Spec.Nat64Subnetworks = []*foreignkeyv1.StringValueOrRef{
+			value("projects/p/regions/us-central1/subnetworks/dual-stack"),
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept listed nat64_subnetworks with the mode left empty (implied)", func() {
+		msg := minimal()
+		msg.Spec.Nat64Subnetworks = []*foreignkeyv1.StringValueOrRef{
+			value("projects/p/regions/us-central1/subnetworks/dual-stack"),
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
@@ -513,14 +587,104 @@ var _ = ginkgo.Describe("GcpRouterNatSpec", func() {
 
 	ginkgo.It("should reject a non-private router ASN", func() {
 		msg := minimal()
-		msg.Spec.RouterAsn = 15169
+		msg.Spec.RouterBgp = &GcpRouterNatRouterBgp{Asn: 15169}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an unset ASN when router_bgp is present", func() {
+		msg := minimal()
+		msg.Spec.RouterBgp = &GcpRouterNatRouterBgp{KeepaliveInterval: 30}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject a router keepalive outside 20-60", func() {
 		msg := minimal()
-		msg.Spec.RouterKeepaliveInterval = 10
+		msg.Spec.RouterBgp = &GcpRouterNatRouterBgp{Asn: 64514, KeepaliveInterval: 10}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid advertise_mode", func() {
+		msg := minimal()
+		msg.Spec.RouterBgp = &GcpRouterNatRouterBgp{Asn: 64514, AdvertiseMode: "SELECTIVE"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject advertised_groups without CUSTOM mode", func() {
+		msg := minimal()
+		msg.Spec.RouterBgp = &GcpRouterNatRouterBgp{
+			Asn:              64514,
+			AdvertisedGroups: []string{"ALL_SUBNETS"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject advertised_ip_ranges without CUSTOM mode", func() {
+		msg := minimal()
+		msg.Spec.RouterBgp = &GcpRouterNatRouterBgp{
+			Asn:           64514,
+			AdvertiseMode: "DEFAULT",
+			AdvertisedIpRanges: []*GcpRouterNatRouterBgpAdvertisedIpRange{
+				{Range: "10.10.0.0/16"},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an advertised range with no CIDR", func() {
+		msg := minimal()
+		msg.Spec.RouterBgp = &GcpRouterNatRouterBgp{
+			Asn:                64514,
+			AdvertiseMode:      "CUSTOM",
+			AdvertisedIpRanges: []*GcpRouterNatRouterBgpAdvertisedIpRange{{Description: "empty"}},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an unknown advertised group value", func() {
+		msg := minimal()
+		msg.Spec.RouterBgp = &GcpRouterNatRouterBgp{
+			Asn:              64514,
+			AdvertiseMode:    "CUSTOM",
+			AdvertisedGroups: []string{"ALL_VPC_SUBNETS"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "KEEP"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid NAT64 mode", func() {
+		msg := minimal()
+		msg.Spec.SourceSubnetworkIpRangesToNat64 = "SOME_IPV6_SUBNETWORKS"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject NAT64 list mode with no subnetworks listed", func() {
+		msg := minimal()
+		msg.Spec.SourceSubnetworkIpRangesToNat64 = "LIST_OF_IPV6_SUBNETWORKS"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject listed nat64_subnetworks with an ALL_IPV6 mode", func() {
+		msg := minimal()
+		msg.Spec.SourceSubnetworkIpRangesToNat64 = "ALL_IPV6_SUBNETWORKS"
+		msg.Spec.Nat64Subnetworks = []*foreignkeyv1.StringValueOrRef{
+			value("projects/p/regions/us-central1/subnetworks/dual-stack"),
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})

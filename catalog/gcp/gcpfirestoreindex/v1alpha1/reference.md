@@ -128,6 +128,9 @@ COLLECTION_RECURSIVE: queries against the collection and everything
 Which API surface the index serves.
 ANY_API: Firestore Native queries (the default).
 DATASTORE_MODE_API: Datastore Mode queries.
+MONGODB_COMPATIBLE_API: Firestore Enterprise (MongoDB-compatible)
+  queries — required for multikey and search-config indexes, and
+  only valid on an ENTERPRISE-edition database.
 
 - default: `ANY_API`
 - rule: api_scope must be ANY_API, DATASTORE_MODE_API, or MONGODB_COMPATIBLE_API
@@ -197,15 +200,25 @@ model's output size, e.g. 768).
 
 `GcpFirestoreIndexSearchConfig`
 
+Text or geo search index configuration for the field — the
+Firestore Enterprise search surface. Requires an ENTERPRISE-edition
+database (GcpFirestoreDatabase database_edition: ENTERPRISE); text
+search additionally pairs with api_scope MONGODB_COMPATIBLE_API,
+while geo search works under the default scope.
+
 - rule: search_config must declare text_spec and/or geo_spec
 
 ### spec.fields[].searchConfig.textSpec
 
 `GcpFirestoreIndexTextSpec`
 
+Text search index specification for the field.
+
 ### spec.fields[].searchConfig.textSpec.indexSpecs
 
 `[]GcpFirestoreIndexTextIndexSpec` · required
+
+Index specifications; at least one.
 
 - rule: {"repeated":{"minItems":"1"}}
 
@@ -213,33 +226,63 @@ model's output size, e.g. 768).
 
 `string`
 
+How the text field value is indexed (e.g. "TOKENIZED").
+
 ### spec.fields[].searchConfig.textSpec.indexSpecs[].matchType
 
 `string`
+
+How the text field value is matched (e.g. "MATCH_GLOBALLY").
 
 ### spec.fields[].searchConfig.geoSpec
 
 `GcpFirestoreIndexGeoSpec`
 
+Geo search index specification for the field.
+
 ### spec.fields[].searchConfig.geoSpec.geoJsonIndexingDisabled
 
 `bool`
+
+If true, disables GeoJSON indexing for the field (GeoJSON points are
+indexed by default). Firestore GeoPoints are indexed regardless.
 
 ### spec.multikey
 
 `bool`
 
+Whether the index is multikey: at most one indexed path may reach or
+traverse an array (MongoDB-style array indexing). Only valid with
+api_scope MONGODB_COMPATIBLE_API. Immutable after creation.
+
 ### spec.unique
 
 `bool`
+
+Whether the index enforces uniqueness: all values of the indexed
+field(s) must be unique across documents. Immutable after creation.
 
 ### spec.skipWait
 
 `bool`
 
+If true, the deploy returns as soon as index creation is REQUESTED
+instead of waiting for the (potentially long) background build to
+finish. The index serves queries only once the build completes —
+use when orchestrating many indexes and the caller polls readiness
+itself.
+
 ### spec.deletionPolicy
 
 `string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the index is deleted
+  "PREVENT" -- destroy FAILS; protects indexes whose rebuild would
+               be expensive on a large collection
+  "ABANDON" -- the index is removed from management but kept
+               serving queries in GCP
 
 - rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 

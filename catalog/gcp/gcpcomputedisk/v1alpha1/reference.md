@@ -19,9 +19,10 @@ instance replacement, resizing, and rescheduling.
 
 Important behavioral notes:
 
-  - disk_name, zone, type, source (image/snapshot/disk), encryption,
-    and architecture are create-time decisions — changing them replaces
-    the disk (and its data). size_gb grows in place but never shrinks.
+  - disk_name, zone, type, source (image / snapshot / instant
+    snapshot / storage object / disk), encryption, and architecture
+    are create-time decisions — changing them replaces the disk (and
+    its data). size_gb grows in place but never shrinks.
   - At most one source may be set. With no source the disk is created
     empty (the common case for data volumes).
   - Deleting a disk that is still attached to a running instance fails;
@@ -282,21 +283,52 @@ Create-time only.
 
 `[]string`
 
+Guest OS features to enable when this disk is used as a boot disk,
+e.g. ["UEFI_COMPATIBLE", "SECURE_BOOT", "GVNIC", "MULTI_IP_SUBNET",
+"WINDOWS"]. The accepted set evolves with GCP — see "Enabling guest
+operating system features" in the Compute Engine docs. Create-time
+only.
+
 ### spec.licenses
 
 `[]string`
+
+License URIs applicable to this disk, e.g. a Windows Server or
+SQL Server license
+("https://www.googleapis.com/compute/v1/projects/windows-cloud/global/licenses/windows-server-core").
+Normally inherited from the source image; set explicitly when
+importing raw disks that need bring-your-own-license attribution.
+Create-time only.
 
 ### spec.sourceInstantSnapshot
 
 `string`
 
+Source INSTANT snapshot to create the disk from (name, partial or
+full URL). Instant snapshots are near-instant, same-region-only
+point-in-time copies — the fast restore path, vs. standard
+snapshots' cross-region durability. Create-time only.
+
 ### spec.sourceStorageObject
 
 `string`
 
+Full Google Cloud Storage URI of a raw disk image to create the
+disk from (e.g. "https://storage.googleapis.com/bucket/image.vmdk"
+or a gs:// URI) — the import-a-disk-file path, skipping the
+intermediate compute image. Create-time only.
+
 ### spec.deletionPolicy
 
 `string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the disk (and its data) is deleted
+  "PREVENT" -- destroy FAILS; a guard rail for precious data volumes
+               (create_snapshot_before_destroy is the softer net)
+  "ABANDON" -- the disk is removed from management but left running
+               in GCP
 
 - rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
@@ -304,13 +336,24 @@ Create-time only.
 
 `string`
 
+Service account used for the encryption request of kms_key (CMEK).
+When omitted, the Compute Engine default service agent is used.
+Only meaningful together with kms_key. Immutable after creation.
+
 ### spec.sourceImageEncryption
 
 `GcpComputeDiskSourceEncryption`
 
+Decrypts the source image when it is itself CMEK-encrypted. Only
+valid together with image.
+
 ### spec.sourceImageEncryption.kmsKey
 
 `string | valueFrom` · required
+
+The KMS key the source was encrypted with, referenced as a GcpKmsKey
+or a literal self link. The service agent performing the read needs
+roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
 
 - references: GcpKmsKey (`status.outputs.key_id`)
 - rule: {"required":true}
@@ -320,13 +363,23 @@ Create-time only.
 
 `string`
 
+Service account used for the decryption request. When omitted, the
+Compute Engine default service agent is used.
+
 ### spec.sourceSnapshotEncryption
 
 `GcpComputeDiskSourceEncryption`
 
+Decrypts the source snapshot when it is itself CMEK-encrypted. Only
+valid together with source_snapshot.
+
 ### spec.sourceSnapshotEncryption.kmsKey
 
 `string | valueFrom` · required
+
+The KMS key the source was encrypted with, referenced as a GcpKmsKey
+or a literal self link. The service agent performing the read needs
+roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
 
 - references: GcpKmsKey (`status.outputs.key_id`)
 - rule: {"required":true}
@@ -336,9 +389,18 @@ Create-time only.
 
 `string`
 
+Service account used for the decryption request. When omitted, the
+Compute Engine default service agent is used.
+
 ### spec.asyncPrimaryDisk
 
 `string | valueFrom`
+
+Makes this disk an ASYNC REPLICATION SECONDARY of the referenced
+primary disk (another GcpComputeDisk, or a literal disk self link in
+another region). Replication starts when the pair is activated on
+the primary; the secondary must match the primary's size and type.
+Create-time only.
 
 - references: GcpComputeDisk (`status.outputs.self_link`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpComputeDisk, name: <that resource's name>, fieldPath: status.outputs.self_link}} -- a bare string does not parse

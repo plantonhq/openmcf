@@ -1,13 +1,13 @@
 # GCP Router NAT
 
-Deploys a GCP Cloud Router with a Cloud NAT gateway (`google_compute_router` + `google_compute_router_nat`) — the managed egress path that lets instances without external IPs reach the internet (public NAT) or other private networks (private NAT). Covers IP allocation (auto or referenced static reservations, with connection draining), per-subnetwork scoping, port tuning, connection timeouts, NAT rules, and translation logging.
+Deploys a GCP Cloud Router with a Cloud NAT gateway (`google_compute_router` + `google_compute_router_nat`) — the managed egress path that lets instances without external IPs reach the internet (public NAT) or other private networks (private NAT). Covers IP allocation (auto or referenced static reservations, with connection draining), per-subnetwork scoping, NAT64 (IPv6-to-IPv4 translation), port tuning, connection timeouts, NAT rules, translation logging, and the router's own BGP surface (ASN, route advertisement, keepalive, identifier range) for routers that also serve VPN or Interconnect sessions.
 
 ## What Gets Created
 
 When you deploy a GcpRouterNat resource, Planton provisions:
 
 - **Compute Engine API enablement** — a `google_project_service` resource that activates `compute.googleapis.com` on the target project
-- **Cloud Router** — a regional `google_compute_router` attached to the specified VPC network, optionally with a BGP ASN and keepalive interval
+- **Cloud Router** — a regional `google_compute_router` attached to the specified VPC network, optionally with full BGP configuration (ASN, route advertisement mode/groups/ranges, keepalive interval, identifier range), a description, encrypted-Interconnect dedication, and resource-manager tags
 - **Cloud NAT Gateway** — a `google_compute_router_nat` on the router, configured with the chosen allocation strategy, subnetwork coverage, port/timeout tuning, rules, and log settings
 
 Static NAT IPs are **referenced, never created**: each `natIps` entry points at a [GcpAddress](/docs/catalog/gcp/gcpaddress) reservation, which is its own composable node with its own lifecycle. The literal IP of each entry is that address node's `address` output.
@@ -84,8 +84,13 @@ This creates a Cloud Router and NAT gateway covering all subnetworks in `us-cent
 | `tcpTimeWaitTimeoutSec` | `int32` | 120 | TIME_WAIT linger before a NAT port is reusable. |
 | `rules` | `object[]` | `[]` | NAT rules: route matching egress (CEL `match` on destination) through dedicated IPs (public) or subnetwork ranges (private). Lower `ruleNumber` wins. |
 | `logFilter` | `enum` | `ERRORS_ONLY` | `DISABLED`, `ERRORS_ONLY`, `TRANSLATIONS_ONLY`, or `ALL`. |
-| `routerAsn` | `uint32` | GCP-assigned | Private BGP ASN (64512-65534 or 4200000000+); only needed when the router also serves BGP sessions. |
-| `routerKeepaliveInterval` | `int32` | 20 | BGP keepalive in seconds (20-60). |
+| `sourceSubnetworkIpRangesToNat64` | `string` | no NAT64 | `ALL_IPV6_SUBNETWORKS` (one NAT per region may claim it) or `LIST_OF_IPV6_SUBNETWORKS` (implied by listing `nat64Subnetworks`). |
+| `nat64Subnetworks` | `StringValueOrRef[]` | `[]` | Dual-stack subnetworks whose IPv6 traffic the NAT64 gateway translates. |
+| `routerBgp` | `object` | unset (GCP assigns ASN) | The router's BGP configuration: `asn` (private, 64512-65534 or 4200000000+), `advertiseMode` (`DEFAULT`/`CUSTOM`), `advertisedGroups` (`ALL_SUBNETS`), `advertisedIpRanges` (CIDR + description), `keepaliveInterval` (20-60s), `identifierRange` (link-local /30+). Only needed when the router also serves BGP sessions. |
+| `routerDescription` | `string` | — | Human-readable description of the router's purpose. |
+| `encryptedInterconnectRouter` | `bool` | `false` | Dedicate the router to encrypted VLAN attachments (HA VPN over Interconnect). Immutable. |
+| `resourceManagerTags` | `map<string,string>` | `{}` | Create-time tags on the router (`tagKeys/{id}` → `tagValues/{id}`) for org policy and IAM conditions. |
+| `deletionPolicy` | `string` | `DELETE` | `DELETE`, `PREVENT` (destroy fails — protects a production egress path), or `ABANDON` (unmanage but keep serving). Applied to both the router and the NAT. |
 
 ### Validation Rules
 
@@ -94,6 +99,8 @@ This creates a Cloud Router and NAT gateway covering all subnetworks in `us-cent
 - **Private NAT carries no external IPs** — `natIps`, `drainNatIps`, and `autoNetworkTier` must be empty when `type` is `PRIVATE`; private rules use subnetwork ranges, public rules use IPs.
 - **`drainNatIps` requires `natIps`** — an IP must be in the manual set before it can be drained (and the API rejects drain entries on a brand-new NAT).
 - **`LIST_OF_SUBNETWORKS` and the `subnetworks` list imply each other.**
+- **`LIST_OF_IPV6_SUBNETWORKS` and the `nat64Subnetworks` list imply each other** — the same idiom as the v4 pair.
+- **Custom BGP advertisements require `advertiseMode: CUSTOM`** — `advertisedGroups` and `advertisedIpRanges` are rejected in `DEFAULT` mode, matching the API.
 
 ## Zero-Downtime Operations
 
@@ -122,7 +129,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 
 ## Important Notes
 
-- **One node, two resources**: the router and the NAT are provisioned together — the 90% case is exactly one NAT per router. A router without NAT (dedicated BGP for Interconnect/VPN, with interfaces and peers) is a different concern and is not modeled here.
+- **One node, two resources**: the router and the NAT are provisioned together, and the router's full inline surface (BGP advertisement included) is configurable here. Router interfaces and BGP peers — the objects that terminate VPN tunnels and Interconnect attachments — are separate resources composed on top of this node.
 - **Auto-allocated IPs can change** as GCP scales the pool. When third parties allowlist your egress IPs, use `natIps` with GcpAddress reservations — the literal IPs live on those nodes' outputs and survive NAT reconfiguration.
 - **Pair with Private Google Access** on your subnetworks so traffic to Google APIs stays internal and never consumes NAT ports.
 
@@ -130,11 +137,9 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 
 | Excluded Feature | Why |
 |---|---|
-| Router interfaces / BGP peers / MD5 auth keys | Interconnect/VPN BGP surface belongs to a dedicated router kind if demand appears; NAT-only routers never need it. |
-| `initial_nat_ips` + `google_compute_router_nat_address` | An alternative address-attachment workflow for incremental IP management; the `natIps`/`drainNatIps` in-place update path covers rotation without a second resource pattern. |
-| NAT64 (`source_subnetwork_ip_ranges_to_nat64`, `nat64_subnetwork`) | IPv6-to-IPv4 translation for IPv6-only subnets is a niche topology; defer until a concrete consumer need appears. |
-| Router `params.resource_manager_tags` | Absent from the released provider line the modules pin. |
-| `deletion_policy` | Client-side lever that conflicts with Planton-managed destroy. |
+| Router interfaces / BGP peers / MD5 auth keys | Interfaces and peers are separate resources (a deferred composition in the router family); MD5 keys are consumed only by peers, so a key with no peer referencing it is inert — the surface arrives with the peer kind that needs it. |
+| `initial_nat_ips` + `google_compute_router_nat_address` | An alternative address-attachment workflow that the provider documents as conflicting with `natIps`/`drainNatIps` — the allocation model this spec already carries; it arrives with the nat-address kind if that composition is ever built. |
+| `ncc_gateway` | An NCC-Gateway-spoke router conflicts with `network` in the provider, so modeling it would relax the required VPC attachment every NAT user relies on; it belongs to the deferred Network Connectivity Center family. |
 
 ## Related Components
 

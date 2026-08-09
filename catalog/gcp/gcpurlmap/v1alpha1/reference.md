@@ -719,6 +719,11 @@ of all weights in the split; 0 drains this backend from the split.
 
 `GcpUrlMapHeaderAction`
 
+Header mutations applied ONLY to the share of traffic sent to this
+backend — e.g. tag canary responses with an identifying header so
+clients and dashboards can tell which arm served them. Applied after
+the URL-map-level and route-level header actions.
+
 ### spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd
 
 `[]GcpUrlMapHeaderValue`
@@ -834,9 +839,17 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+Total time budget for the request, INCLUDING all retries (from the
+first byte of the request to the last byte of the response). Pair with
+retry_policy.per_try_timeout: per-try bounds one attempt, this bounds
+the whole exchange. Unset uses the backend service's own timeout.
+Not permitted when the route targets a redirect.
+
 ### spec.defaultRouteAction.timeout.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -844,15 +857,25 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.defaultRouteAction.retryPolicy
 
 `GcpUrlMapRetryPolicy`
 
+Retry failed requests to the backend. Which failures count is chosen
+by retry_conditions; how long each attempt may run by per_try_timeout.
+Retries consume the overall timeout's budget — they never extend it.
+
 ### spec.defaultRouteAction.retryPolicy.numRetries
 
 `int32`
+
+Number of allowed retries (GCP defaults to 1 when unset/0). Each retry
+still spends the route's overall timeout budget.
 
 - rule: {"int32":{"gte":0}}
 
@@ -860,15 +883,26 @@ path_prefix_rewrite.
 
 `[]string`
 
+Which failures trigger a retry. 5xx (any 5xx or no response at all),
+gateway-error (502/503/504 only), connect-failure, retriable-4xx
+(currently only 409), refused-stream, and the gRPC status conditions
+cancelled, deadline-exceeded, resource-exhausted, unavailable.
+
 - rule: each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable
 
 ### spec.defaultRouteAction.retryPolicy.perTryTimeout
 
 `GcpUrlMapDuration`
 
+Time budget for EACH retry attempt (the route's timeout bounds the
+whole exchange across attempts). Unset uses the overall timeout for
+every attempt.
+
 ### spec.defaultRouteAction.retryPolicy.perTryTimeout.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -876,15 +910,28 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.defaultRouteAction.requestMirrorPolicy
 
 `GcpUrlMapRequestMirrorPolicy`
 
+Mirror every matched request to a second backend service, fire-and-
+forget (responses from the mirror are discarded; the client sees only
+the primary's response). Useful for shadow-testing a new stack with
+production traffic — the mirror backend must be sized for the full
+mirrored load.
+
 ### spec.defaultRouteAction.requestMirrorPolicy.backendService
 
 `string | valueFrom` · required
+
+The backend service receiving the mirrored copy of every matched
+request. Reference a GcpBackendService or provide a self-link
+directly. Responses from this backend are discarded.
 
 - references: GcpBackendService (`status.outputs.self_link`)
 - rule: {"required":true}
@@ -894,13 +941,21 @@ path_prefix_rewrite.
 
 `GcpUrlMapCorsPolicy`
 
+Answer cross-origin (CORS) preflights and stamp CORS headers at the
+load balancer, before requests reach the backend.
+
 ### spec.defaultRouteAction.corsPolicy.allowCredentials
 
 `bool`
 
+Sets Access-Control-Allow-Credentials: allow requests carrying
+credentials (cookies, authorization headers). Default false.
+
 ### spec.defaultRouteAction.corsPolicy.allowHeaders
 
 `[]string`
+
+Headers the client may send (Access-Control-Allow-Headers).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -908,11 +963,17 @@ path_prefix_rewrite.
 
 `[]string`
 
+Methods the client may use (Access-Control-Allow-Methods), e.g.
+["GET", "POST", "OPTIONS"].
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.defaultRouteAction.corsPolicy.allowOriginRegexes
 
 `[]string`
+
+Regular expressions matching allowed origins; a request origin is
+allowed when it matches any listed regex or exact allow_origins entry.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -920,15 +981,23 @@ path_prefix_rewrite.
 
 `[]string`
 
+Exact origins allowed, e.g. "https://app.example.com".
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.defaultRouteAction.corsPolicy.disabled
 
 `bool`
 
+Disable this CORS policy without deleting its configuration (true
+turns the policy off). Default false — the policy is in effect.
+
 ### spec.defaultRouteAction.corsPolicy.exposeHeaders
 
 `[]string`
+
+Headers the browser may read from the response
+(Access-Control-Expose-Headers).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -936,19 +1005,32 @@ path_prefix_rewrite.
 
 `int32`
 
+Seconds a browser may cache the preflight response
+(Access-Control-Max-Age).
+
 - rule: {"int32":{"gte":0}}
 
 ### spec.defaultRouteAction.faultInjectionPolicy
 
 `GcpUrlMapFaultInjectionPolicy`
 
+Deliberately inject failures (aborts with a chosen status, fixed
+delays) into a percentage of matched requests — chaos/resilience
+testing of the CLIENTS of this route. Never leave enabled on a
+production default route: the injected failures are real to callers.
+
 ### spec.defaultRouteAction.faultInjectionPolicy.abort
 
 `GcpUrlMapFaultAbort`
 
+Abort a percentage of requests with a fixed HTTP status, before they
+reach the backend.
+
 ### spec.defaultRouteAction.faultInjectionPolicy.abort.httpStatus
 
 `int32`
+
+HTTP status returned to aborted requests (200-599).
 
 - rule: http_status must be between 200 and 599
 
@@ -956,19 +1038,27 @@ path_prefix_rewrite.
 
 `double`
 
+Percentage of requests aborted (0.0-100.0).
+
 - rule: {"double":{"lte":100,"gte":0}}
 
 ### spec.defaultRouteAction.faultInjectionPolicy.delay
 
 `GcpUrlMapFaultDelay`
 
+Delay a percentage of requests by a fixed duration before forwarding.
+
 ### spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay
 
 `GcpUrlMapDuration`
 
+How long delayed requests are held before forwarding.
+
 ### spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -976,11 +1066,16 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.defaultRouteAction.faultInjectionPolicy.delay.percentage
 
 `double`
+
+Percentage of requests delayed (0.0-100.0).
 
 - rule: {"double":{"lte":100,"gte":0}}
 
@@ -988,9 +1083,15 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+Upper bound on how long a STREAM on this route may stay open
+(gRPC/long-poll streams — distinct from timeout, which bounds a
+request/response exchange).
+
 ### spec.defaultRouteAction.maxStreamDuration.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -998,11 +1099,19 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.defaultRouteAction.cachePolicy
 
 `GcpUrlMapCachePolicy`
+
+Cloud CDN caching for the routes using this action — overrides the
+backend service's cdn_policy for matching traffic only. Takes effect
+only when the target backend service (or bucket) has CDN enabled;
+GCP ignores it otherwise.
 
 - rule: with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)
 
@@ -1010,11 +1119,21 @@ path_prefix_rewrite.
 
 `string`
 
+What gets cached. CACHE_ALL_STATIC (the GCP default) caches static
+content types and honors origin cache headers for the rest;
+USE_ORIGIN_HEADERS caches only what the backends explicitly mark
+cacheable (TTL fields must be unset — the origin controls lifetimes);
+FORCE_CACHE_ALL caches everything, ignoring origin headers (never
+combine with private or per-user content).
+
 - rule: cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL
 
 ### spec.defaultRouteAction.cachePolicy.cacheBypassRequestHeaderNames
 
 `[]string`
+
+Requests carrying any of these headers bypass the cache and go
+straight to the origin (e.g. a debug or authorization header).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -1022,13 +1141,23 @@ path_prefix_rewrite.
 
 `bool`
 
+Cache negative responses (404, 410, ...) so repeated misses do not
+hammer the backends. Pair with negative_caching_policy to set
+per-status TTLs.
+
 ### spec.defaultRouteAction.cachePolicy.requestCoalescing
 
 `bool`
 
+Collapse concurrent cache-fill requests for the same key into one
+origin fetch. Default true on GCP's side.
+
 ### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy
 
 `GcpUrlMapCacheKeyPolicy`
+
+What forms the cache key — trim protocol, host, query string, or
+select specific query parameters, headers, and cookies.
 
 - rule: included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list
 
@@ -1036,23 +1165,36 @@ path_prefix_rewrite.
 
 `[]string`
 
+Query parameters EXCLUDED from the cache key (everything else is
+included). Mutually exclusive with included_query_parameters.
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeHost
 
 `bool`
 
+Include the request host in the cache key (distinct hosts cache
+separately).
+
 ### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeProtocol
 
 `bool`
+
+Include the protocol (http/https) in the cache key.
 
 ### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeQueryString
 
 `bool`
 
+Include the entire query string in the cache key. When false, the
+included/excluded parameter lists refine what participates.
+
 ### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedCookieNames
 
 `[]string`
+
+Cookie names whose values join the cache key.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -1060,11 +1202,16 @@ path_prefix_rewrite.
 
 `[]string`
 
+Header names whose values join the cache key.
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedQueryParameters
 
 `[]string`
+
+Query parameters INCLUDED in the cache key (everything else is
+ignored). Mutually exclusive with excluded_query_parameters.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -1072,9 +1219,14 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+Max lifetime in browsers and downstream caches (sets the max-age
+clients see). Not respected with cache_mode USE_ORIGIN_HEADERS.
+
 ### spec.defaultRouteAction.cachePolicy.clientTtl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -1082,15 +1234,23 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.defaultRouteAction.cachePolicy.defaultTtl
 
 `GcpUrlMapDuration`
 
+Edge-cache lifetime for responses without their own cache headers.
+Not respected with cache_mode USE_ORIGIN_HEADERS.
+
 ### spec.defaultRouteAction.cachePolicy.defaultTtl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -1098,15 +1258,24 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.defaultRouteAction.cachePolicy.maxTtl
 
 `GcpUrlMapDuration`
 
+Upper bound on any edge-cache lifetime, capping even origin-supplied
+max-age. Not respected with cache_mode USE_ORIGIN_HEADERS or
+FORCE_CACHE_ALL.
+
 ### spec.defaultRouteAction.cachePolicy.maxTtl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -1114,15 +1283,23 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.defaultRouteAction.cachePolicy.serveWhileStale
 
 `GcpUrlMapDuration`
 
+How long stale content may still be served while revalidating in the
+background (up to 1 day).
+
 ### spec.defaultRouteAction.cachePolicy.serveWhileStale.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -1130,15 +1307,24 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy
 
 `[]GcpUrlMapNegativeCachingPolicy`
 
+Per-status TTLs for cached negative responses; only meaningful with
+negative_caching enabled.
+
 ### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].code
 
 `int32`
+
+The HTTP status code this TTL applies to. GCP accepts only 300, 301,
+302, 307, 308, 404, 405, 410, 421, 451, and 501, each at most once.
 
 - rule: code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501
 
@@ -1146,15 +1332,22 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+How long responses with this status are cached.
+
 ### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
 ### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.nanos
 
 `int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
 
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
@@ -1451,6 +1644,11 @@ of all weights in the split; 0 drains this backend from the split.
 
 `GcpUrlMapHeaderAction`
 
+Header mutations applied ONLY to the share of traffic sent to this
+backend — e.g. tag canary responses with an identifying header so
+clients and dashboards can tell which arm served them. Applied after
+the URL-map-level and route-level header actions.
+
 ### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd
 
 `[]GcpUrlMapHeaderValue`
@@ -1566,9 +1764,17 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+Total time budget for the request, INCLUDING all retries (from the
+first byte of the request to the last byte of the response). Pair with
+retry_policy.per_try_timeout: per-try bounds one attempt, this bounds
+the whole exchange. Unset uses the backend service's own timeout.
+Not permitted when the route targets a redirect.
+
 ### spec.pathMatchers[].defaultRouteAction.timeout.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -1576,15 +1782,25 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].defaultRouteAction.retryPolicy
 
 `GcpUrlMapRetryPolicy`
 
+Retry failed requests to the backend. Which failures count is chosen
+by retry_conditions; how long each attempt may run by per_try_timeout.
+Retries consume the overall timeout's budget — they never extend it.
+
 ### spec.pathMatchers[].defaultRouteAction.retryPolicy.numRetries
 
 `int32`
+
+Number of allowed retries (GCP defaults to 1 when unset/0). Each retry
+still spends the route's overall timeout budget.
 
 - rule: {"int32":{"gte":0}}
 
@@ -1592,15 +1808,26 @@ path_prefix_rewrite.
 
 `[]string`
 
+Which failures trigger a retry. 5xx (any 5xx or no response at all),
+gateway-error (502/503/504 only), connect-failure, retriable-4xx
+(currently only 409), refused-stream, and the gRPC status conditions
+cancelled, deadline-exceeded, resource-exhausted, unavailable.
+
 - rule: each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable
 
 ### spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout
 
 `GcpUrlMapDuration`
 
+Time budget for EACH retry attempt (the route's timeout bounds the
+whole exchange across attempts). Unset uses the overall timeout for
+every attempt.
+
 ### spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -1608,15 +1835,28 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy
 
 `GcpUrlMapRequestMirrorPolicy`
 
+Mirror every matched request to a second backend service, fire-and-
+forget (responses from the mirror are discarded; the client sees only
+the primary's response). Useful for shadow-testing a new stack with
+production traffic — the mirror backend must be sized for the full
+mirrored load.
+
 ### spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy.backendService
 
 `string | valueFrom` · required
+
+The backend service receiving the mirrored copy of every matched
+request. Reference a GcpBackendService or provide a self-link
+directly. Responses from this backend are discarded.
 
 - references: GcpBackendService (`status.outputs.self_link`)
 - rule: {"required":true}
@@ -1626,13 +1866,21 @@ path_prefix_rewrite.
 
 `GcpUrlMapCorsPolicy`
 
+Answer cross-origin (CORS) preflights and stamp CORS headers at the
+load balancer, before requests reach the backend.
+
 ### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowCredentials
 
 `bool`
 
+Sets Access-Control-Allow-Credentials: allow requests carrying
+credentials (cookies, authorization headers). Default false.
+
 ### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowHeaders
 
 `[]string`
+
+Headers the client may send (Access-Control-Allow-Headers).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -1640,11 +1888,17 @@ path_prefix_rewrite.
 
 `[]string`
 
+Methods the client may use (Access-Control-Allow-Methods), e.g.
+["GET", "POST", "OPTIONS"].
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowOriginRegexes
 
 `[]string`
+
+Regular expressions matching allowed origins; a request origin is
+allowed when it matches any listed regex or exact allow_origins entry.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -1652,15 +1906,23 @@ path_prefix_rewrite.
 
 `[]string`
 
+Exact origins allowed, e.g. "https://app.example.com".
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.pathMatchers[].defaultRouteAction.corsPolicy.disabled
 
 `bool`
 
+Disable this CORS policy without deleting its configuration (true
+turns the policy off). Default false — the policy is in effect.
+
 ### spec.pathMatchers[].defaultRouteAction.corsPolicy.exposeHeaders
 
 `[]string`
+
+Headers the browser may read from the response
+(Access-Control-Expose-Headers).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -1668,19 +1930,32 @@ path_prefix_rewrite.
 
 `int32`
 
+Seconds a browser may cache the preflight response
+(Access-Control-Max-Age).
+
 - rule: {"int32":{"gte":0}}
 
 ### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy
 
 `GcpUrlMapFaultInjectionPolicy`
 
+Deliberately inject failures (aborts with a chosen status, fixed
+delays) into a percentage of matched requests — chaos/resilience
+testing of the CLIENTS of this route. Never leave enabled on a
+production default route: the injected failures are real to callers.
+
 ### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort
 
 `GcpUrlMapFaultAbort`
 
+Abort a percentage of requests with a fixed HTTP status, before they
+reach the backend.
+
 ### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort.httpStatus
 
 `int32`
+
+HTTP status returned to aborted requests (200-599).
 
 - rule: http_status must be between 200 and 599
 
@@ -1688,19 +1963,27 @@ path_prefix_rewrite.
 
 `double`
 
+Percentage of requests aborted (0.0-100.0).
+
 - rule: {"double":{"lte":100,"gte":0}}
 
 ### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay
 
 `GcpUrlMapFaultDelay`
 
+Delay a percentage of requests by a fixed duration before forwarding.
+
 ### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay
 
 `GcpUrlMapDuration`
 
+How long delayed requests are held before forwarding.
+
 ### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -1708,11 +1991,16 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.percentage
 
 `double`
+
+Percentage of requests delayed (0.0-100.0).
 
 - rule: {"double":{"lte":100,"gte":0}}
 
@@ -1720,9 +2008,15 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+Upper bound on how long a STREAM on this route may stay open
+(gRPC/long-poll streams — distinct from timeout, which bounds a
+request/response exchange).
+
 ### spec.pathMatchers[].defaultRouteAction.maxStreamDuration.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -1730,11 +2024,19 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy
 
 `GcpUrlMapCachePolicy`
+
+Cloud CDN caching for the routes using this action — overrides the
+backend service's cdn_policy for matching traffic only. Takes effect
+only when the target backend service (or bucket) has CDN enabled;
+GCP ignores it otherwise.
 
 - rule: with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)
 
@@ -1742,11 +2044,21 @@ path_prefix_rewrite.
 
 `string`
 
+What gets cached. CACHE_ALL_STATIC (the GCP default) caches static
+content types and honors origin cache headers for the rest;
+USE_ORIGIN_HEADERS caches only what the backends explicitly mark
+cacheable (TTL fields must be unset — the origin controls lifetimes);
+FORCE_CACHE_ALL caches everything, ignoring origin headers (never
+combine with private or per-user content).
+
 - rule: cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL
 
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheBypassRequestHeaderNames
 
 `[]string`
+
+Requests carrying any of these headers bypass the cache and go
+straight to the origin (e.g. a debug or authorization header).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -1754,13 +2066,23 @@ path_prefix_rewrite.
 
 `bool`
 
+Cache negative responses (404, 410, ...) so repeated misses do not
+hammer the backends. Pair with negative_caching_policy to set
+per-status TTLs.
+
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.requestCoalescing
 
 `bool`
 
+Collapse concurrent cache-fill requests for the same key into one
+origin fetch. Default true on GCP's side.
+
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy
 
 `GcpUrlMapCacheKeyPolicy`
+
+What forms the cache key — trim protocol, host, query string, or
+select specific query parameters, headers, and cookies.
 
 - rule: included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list
 
@@ -1768,23 +2090,36 @@ path_prefix_rewrite.
 
 `[]string`
 
+Query parameters EXCLUDED from the cache key (everything else is
+included). Mutually exclusive with included_query_parameters.
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeHost
 
 `bool`
 
+Include the request host in the cache key (distinct hosts cache
+separately).
+
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeProtocol
 
 `bool`
+
+Include the protocol (http/https) in the cache key.
 
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeQueryString
 
 `bool`
 
+Include the entire query string in the cache key. When false, the
+included/excluded parameter lists refine what participates.
+
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedCookieNames
 
 `[]string`
+
+Cookie names whose values join the cache key.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -1792,11 +2127,16 @@ path_prefix_rewrite.
 
 `[]string`
 
+Header names whose values join the cache key.
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedQueryParameters
 
 `[]string`
+
+Query parameters INCLUDED in the cache key (everything else is
+ignored). Mutually exclusive with excluded_query_parameters.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -1804,9 +2144,14 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+Max lifetime in browsers and downstream caches (sets the max-age
+clients see). Not respected with cache_mode USE_ORIGIN_HEADERS.
+
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -1814,15 +2159,23 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl
 
 `GcpUrlMapDuration`
 
+Edge-cache lifetime for responses without their own cache headers.
+Not respected with cache_mode USE_ORIGIN_HEADERS.
+
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -1830,15 +2183,24 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl
 
 `GcpUrlMapDuration`
 
+Upper bound on any edge-cache lifetime, capping even origin-supplied
+max-age. Not respected with cache_mode USE_ORIGIN_HEADERS or
+FORCE_CACHE_ALL.
+
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -1846,15 +2208,23 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale
 
 `GcpUrlMapDuration`
 
+How long stale content may still be served while revalidating in the
+background (up to 1 day).
+
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -1862,15 +2232,24 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy
 
 `[]GcpUrlMapNegativeCachingPolicy`
 
+Per-status TTLs for cached negative responses; only meaningful with
+negative_caching enabled.
+
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].code
 
 `int32`
+
+The HTTP status code this TTL applies to. GCP accepts only 300, 301,
+302, 307, 308, 404, 405, 410, 421, 451, and 501, each at most once.
 
 - rule: code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501
 
@@ -1878,15 +2257,22 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+How long responses with this status are cached.
+
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
 ### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.nanos
 
 `int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
 
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
@@ -2097,6 +2483,11 @@ of all weights in the split; 0 drains this backend from the split.
 
 `GcpUrlMapHeaderAction`
 
+Header mutations applied ONLY to the share of traffic sent to this
+backend — e.g. tag canary responses with an identifying header so
+clients and dashboards can tell which arm served them. Applied after
+the URL-map-level and route-level header actions.
+
 ### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd
 
 `[]GcpUrlMapHeaderValue`
@@ -2212,9 +2603,17 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+Total time budget for the request, INCLUDING all retries (from the
+first byte of the request to the last byte of the response). Pair with
+retry_policy.per_try_timeout: per-try bounds one attempt, this bounds
+the whole exchange. Unset uses the backend service's own timeout.
+Not permitted when the route targets a redirect.
+
 ### spec.pathMatchers[].pathRules[].routeAction.timeout.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -2222,15 +2621,25 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.retryPolicy
 
 `GcpUrlMapRetryPolicy`
 
+Retry failed requests to the backend. Which failures count is chosen
+by retry_conditions; how long each attempt may run by per_try_timeout.
+Retries consume the overall timeout's budget — they never extend it.
+
 ### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.numRetries
 
 `int32`
+
+Number of allowed retries (GCP defaults to 1 when unset/0). Each retry
+still spends the route's overall timeout budget.
 
 - rule: {"int32":{"gte":0}}
 
@@ -2238,15 +2647,26 @@ path_prefix_rewrite.
 
 `[]string`
 
+Which failures trigger a retry. 5xx (any 5xx or no response at all),
+gateway-error (502/503/504 only), connect-failure, retriable-4xx
+(currently only 409), refused-stream, and the gRPC status conditions
+cancelled, deadline-exceeded, resource-exhausted, unavailable.
+
 - rule: each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable
 
 ### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout
 
 `GcpUrlMapDuration`
 
+Time budget for EACH retry attempt (the route's timeout bounds the
+whole exchange across attempts). Unset uses the overall timeout for
+every attempt.
+
 ### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -2254,15 +2674,28 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy
 
 `GcpUrlMapRequestMirrorPolicy`
 
+Mirror every matched request to a second backend service, fire-and-
+forget (responses from the mirror are discarded; the client sees only
+the primary's response). Useful for shadow-testing a new stack with
+production traffic — the mirror backend must be sized for the full
+mirrored load.
+
 ### spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy.backendService
 
 `string | valueFrom` · required
+
+The backend service receiving the mirrored copy of every matched
+request. Reference a GcpBackendService or provide a self-link
+directly. Responses from this backend are discarded.
 
 - references: GcpBackendService (`status.outputs.self_link`)
 - rule: {"required":true}
@@ -2272,13 +2705,21 @@ path_prefix_rewrite.
 
 `GcpUrlMapCorsPolicy`
 
+Answer cross-origin (CORS) preflights and stamp CORS headers at the
+load balancer, before requests reach the backend.
+
 ### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowCredentials
 
 `bool`
 
+Sets Access-Control-Allow-Credentials: allow requests carrying
+credentials (cookies, authorization headers). Default false.
+
 ### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowHeaders
 
 `[]string`
+
+Headers the client may send (Access-Control-Allow-Headers).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -2286,11 +2727,17 @@ path_prefix_rewrite.
 
 `[]string`
 
+Methods the client may use (Access-Control-Allow-Methods), e.g.
+["GET", "POST", "OPTIONS"].
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowOriginRegexes
 
 `[]string`
+
+Regular expressions matching allowed origins; a request origin is
+allowed when it matches any listed regex or exact allow_origins entry.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -2298,15 +2745,23 @@ path_prefix_rewrite.
 
 `[]string`
 
+Exact origins allowed, e.g. "https://app.example.com".
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.disabled
 
 `bool`
 
+Disable this CORS policy without deleting its configuration (true
+turns the policy off). Default false — the policy is in effect.
+
 ### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.exposeHeaders
 
 `[]string`
+
+Headers the browser may read from the response
+(Access-Control-Expose-Headers).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -2314,19 +2769,32 @@ path_prefix_rewrite.
 
 `int32`
 
+Seconds a browser may cache the preflight response
+(Access-Control-Max-Age).
+
 - rule: {"int32":{"gte":0}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy
 
 `GcpUrlMapFaultInjectionPolicy`
 
+Deliberately inject failures (aborts with a chosen status, fixed
+delays) into a percentage of matched requests — chaos/resilience
+testing of the CLIENTS of this route. Never leave enabled on a
+production default route: the injected failures are real to callers.
+
 ### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort
 
 `GcpUrlMapFaultAbort`
 
+Abort a percentage of requests with a fixed HTTP status, before they
+reach the backend.
+
 ### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort.httpStatus
 
 `int32`
+
+HTTP status returned to aborted requests (200-599).
 
 - rule: http_status must be between 200 and 599
 
@@ -2334,19 +2802,27 @@ path_prefix_rewrite.
 
 `double`
 
+Percentage of requests aborted (0.0-100.0).
+
 - rule: {"double":{"lte":100,"gte":0}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay
 
 `GcpUrlMapFaultDelay`
 
+Delay a percentage of requests by a fixed duration before forwarding.
+
 ### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay
 
 `GcpUrlMapDuration`
 
+How long delayed requests are held before forwarding.
+
 ### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -2354,11 +2830,16 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.percentage
 
 `double`
+
+Percentage of requests delayed (0.0-100.0).
 
 - rule: {"double":{"lte":100,"gte":0}}
 
@@ -2366,9 +2847,15 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+Upper bound on how long a STREAM on this route may stay open
+(gRPC/long-poll streams — distinct from timeout, which bounds a
+request/response exchange).
+
 ### spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -2376,11 +2863,19 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy
 
 `GcpUrlMapCachePolicy`
+
+Cloud CDN caching for the routes using this action — overrides the
+backend service's cdn_policy for matching traffic only. Takes effect
+only when the target backend service (or bucket) has CDN enabled;
+GCP ignores it otherwise.
 
 - rule: with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)
 
@@ -2388,11 +2883,21 @@ path_prefix_rewrite.
 
 `string`
 
+What gets cached. CACHE_ALL_STATIC (the GCP default) caches static
+content types and honors origin cache headers for the rest;
+USE_ORIGIN_HEADERS caches only what the backends explicitly mark
+cacheable (TTL fields must be unset — the origin controls lifetimes);
+FORCE_CACHE_ALL caches everything, ignoring origin headers (never
+combine with private or per-user content).
+
 - rule: cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL
 
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheBypassRequestHeaderNames
 
 `[]string`
+
+Requests carrying any of these headers bypass the cache and go
+straight to the origin (e.g. a debug or authorization header).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -2400,13 +2905,23 @@ path_prefix_rewrite.
 
 `bool`
 
+Cache negative responses (404, 410, ...) so repeated misses do not
+hammer the backends. Pair with negative_caching_policy to set
+per-status TTLs.
+
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.requestCoalescing
 
 `bool`
 
+Collapse concurrent cache-fill requests for the same key into one
+origin fetch. Default true on GCP's side.
+
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy
 
 `GcpUrlMapCacheKeyPolicy`
+
+What forms the cache key — trim protocol, host, query string, or
+select specific query parameters, headers, and cookies.
 
 - rule: included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list
 
@@ -2414,23 +2929,36 @@ path_prefix_rewrite.
 
 `[]string`
 
+Query parameters EXCLUDED from the cache key (everything else is
+included). Mutually exclusive with included_query_parameters.
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeHost
 
 `bool`
 
+Include the request host in the cache key (distinct hosts cache
+separately).
+
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeProtocol
 
 `bool`
+
+Include the protocol (http/https) in the cache key.
 
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeQueryString
 
 `bool`
 
+Include the entire query string in the cache key. When false, the
+included/excluded parameter lists refine what participates.
+
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedCookieNames
 
 `[]string`
+
+Cookie names whose values join the cache key.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -2438,11 +2966,16 @@ path_prefix_rewrite.
 
 `[]string`
 
+Header names whose values join the cache key.
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedQueryParameters
 
 `[]string`
+
+Query parameters INCLUDED in the cache key (everything else is
+ignored). Mutually exclusive with excluded_query_parameters.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -2450,9 +2983,14 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+Max lifetime in browsers and downstream caches (sets the max-age
+clients see). Not respected with cache_mode USE_ORIGIN_HEADERS.
+
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -2460,15 +2998,23 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl
 
 `GcpUrlMapDuration`
 
+Edge-cache lifetime for responses without their own cache headers.
+Not respected with cache_mode USE_ORIGIN_HEADERS.
+
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -2476,15 +3022,24 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl
 
 `GcpUrlMapDuration`
 
+Upper bound on any edge-cache lifetime, capping even origin-supplied
+max-age. Not respected with cache_mode USE_ORIGIN_HEADERS or
+FORCE_CACHE_ALL.
+
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -2492,15 +3047,23 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale
 
 `GcpUrlMapDuration`
 
+How long stale content may still be served while revalidating in the
+background (up to 1 day).
+
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -2508,15 +3071,24 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy
 
 `[]GcpUrlMapNegativeCachingPolicy`
 
+Per-status TTLs for cached negative responses; only meaningful with
+negative_caching enabled.
+
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].code
 
 `int32`
+
+The HTTP status code this TTL applies to. GCP accepts only 300, 301,
+302, 307, 308, 404, 405, 410, 421, 451, and 501, each at most once.
 
 - rule: code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501
 
@@ -2524,15 +3096,22 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+How long responses with this status are cached.
+
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
 ### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.nanos
 
 `int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
 
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
@@ -2910,6 +3489,11 @@ of all weights in the split; 0 drains this backend from the split.
 
 `GcpUrlMapHeaderAction`
 
+Header mutations applied ONLY to the share of traffic sent to this
+backend — e.g. tag canary responses with an identifying header so
+clients and dashboards can tell which arm served them. Applied after
+the URL-map-level and route-level header actions.
+
 ### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd
 
 `[]GcpUrlMapHeaderValue`
@@ -3025,9 +3609,17 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+Total time budget for the request, INCLUDING all retries (from the
+first byte of the request to the last byte of the response). Pair with
+retry_policy.per_try_timeout: per-try bounds one attempt, this bounds
+the whole exchange. Unset uses the backend service's own timeout.
+Not permitted when the route targets a redirect.
+
 ### spec.pathMatchers[].routeRules[].routeAction.timeout.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -3035,15 +3627,25 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.retryPolicy
 
 `GcpUrlMapRetryPolicy`
 
+Retry failed requests to the backend. Which failures count is chosen
+by retry_conditions; how long each attempt may run by per_try_timeout.
+Retries consume the overall timeout's budget — they never extend it.
+
 ### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.numRetries
 
 `int32`
+
+Number of allowed retries (GCP defaults to 1 when unset/0). Each retry
+still spends the route's overall timeout budget.
 
 - rule: {"int32":{"gte":0}}
 
@@ -3051,15 +3653,26 @@ path_prefix_rewrite.
 
 `[]string`
 
+Which failures trigger a retry. 5xx (any 5xx or no response at all),
+gateway-error (502/503/504 only), connect-failure, retriable-4xx
+(currently only 409), refused-stream, and the gRPC status conditions
+cancelled, deadline-exceeded, resource-exhausted, unavailable.
+
 - rule: each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable
 
 ### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout
 
 `GcpUrlMapDuration`
 
+Time budget for EACH retry attempt (the route's timeout bounds the
+whole exchange across attempts). Unset uses the overall timeout for
+every attempt.
+
 ### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -3067,15 +3680,28 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy
 
 `GcpUrlMapRequestMirrorPolicy`
 
+Mirror every matched request to a second backend service, fire-and-
+forget (responses from the mirror are discarded; the client sees only
+the primary's response). Useful for shadow-testing a new stack with
+production traffic — the mirror backend must be sized for the full
+mirrored load.
+
 ### spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy.backendService
 
 `string | valueFrom` · required
+
+The backend service receiving the mirrored copy of every matched
+request. Reference a GcpBackendService or provide a self-link
+directly. Responses from this backend are discarded.
 
 - references: GcpBackendService (`status.outputs.self_link`)
 - rule: {"required":true}
@@ -3085,13 +3711,21 @@ path_prefix_rewrite.
 
 `GcpUrlMapCorsPolicy`
 
+Answer cross-origin (CORS) preflights and stamp CORS headers at the
+load balancer, before requests reach the backend.
+
 ### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowCredentials
 
 `bool`
 
+Sets Access-Control-Allow-Credentials: allow requests carrying
+credentials (cookies, authorization headers). Default false.
+
 ### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowHeaders
 
 `[]string`
+
+Headers the client may send (Access-Control-Allow-Headers).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -3099,11 +3733,17 @@ path_prefix_rewrite.
 
 `[]string`
 
+Methods the client may use (Access-Control-Allow-Methods), e.g.
+["GET", "POST", "OPTIONS"].
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowOriginRegexes
 
 `[]string`
+
+Regular expressions matching allowed origins; a request origin is
+allowed when it matches any listed regex or exact allow_origins entry.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -3111,15 +3751,23 @@ path_prefix_rewrite.
 
 `[]string`
 
+Exact origins allowed, e.g. "https://app.example.com".
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.disabled
 
 `bool`
 
+Disable this CORS policy without deleting its configuration (true
+turns the policy off). Default false — the policy is in effect.
+
 ### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.exposeHeaders
 
 `[]string`
+
+Headers the browser may read from the response
+(Access-Control-Expose-Headers).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -3127,19 +3775,32 @@ path_prefix_rewrite.
 
 `int32`
 
+Seconds a browser may cache the preflight response
+(Access-Control-Max-Age).
+
 - rule: {"int32":{"gte":0}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy
 
 `GcpUrlMapFaultInjectionPolicy`
 
+Deliberately inject failures (aborts with a chosen status, fixed
+delays) into a percentage of matched requests — chaos/resilience
+testing of the CLIENTS of this route. Never leave enabled on a
+production default route: the injected failures are real to callers.
+
 ### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort
 
 `GcpUrlMapFaultAbort`
 
+Abort a percentage of requests with a fixed HTTP status, before they
+reach the backend.
+
 ### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort.httpStatus
 
 `int32`
+
+HTTP status returned to aborted requests (200-599).
 
 - rule: http_status must be between 200 and 599
 
@@ -3147,19 +3808,27 @@ path_prefix_rewrite.
 
 `double`
 
+Percentage of requests aborted (0.0-100.0).
+
 - rule: {"double":{"lte":100,"gte":0}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay
 
 `GcpUrlMapFaultDelay`
 
+Delay a percentage of requests by a fixed duration before forwarding.
+
 ### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay
 
 `GcpUrlMapDuration`
 
+How long delayed requests are held before forwarding.
+
 ### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -3167,11 +3836,16 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.percentage
 
 `double`
+
+Percentage of requests delayed (0.0-100.0).
 
 - rule: {"double":{"lte":100,"gte":0}}
 
@@ -3179,9 +3853,15 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+Upper bound on how long a STREAM on this route may stay open
+(gRPC/long-poll streams — distinct from timeout, which bounds a
+request/response exchange).
+
 ### spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -3189,11 +3869,19 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy
 
 `GcpUrlMapCachePolicy`
+
+Cloud CDN caching for the routes using this action — overrides the
+backend service's cdn_policy for matching traffic only. Takes effect
+only when the target backend service (or bucket) has CDN enabled;
+GCP ignores it otherwise.
 
 - rule: with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)
 
@@ -3201,11 +3889,21 @@ path_prefix_rewrite.
 
 `string`
 
+What gets cached. CACHE_ALL_STATIC (the GCP default) caches static
+content types and honors origin cache headers for the rest;
+USE_ORIGIN_HEADERS caches only what the backends explicitly mark
+cacheable (TTL fields must be unset — the origin controls lifetimes);
+FORCE_CACHE_ALL caches everything, ignoring origin headers (never
+combine with private or per-user content).
+
 - rule: cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL
 
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheBypassRequestHeaderNames
 
 `[]string`
+
+Requests carrying any of these headers bypass the cache and go
+straight to the origin (e.g. a debug or authorization header).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -3213,13 +3911,23 @@ path_prefix_rewrite.
 
 `bool`
 
+Cache negative responses (404, 410, ...) so repeated misses do not
+hammer the backends. Pair with negative_caching_policy to set
+per-status TTLs.
+
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.requestCoalescing
 
 `bool`
 
+Collapse concurrent cache-fill requests for the same key into one
+origin fetch. Default true on GCP's side.
+
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy
 
 `GcpUrlMapCacheKeyPolicy`
+
+What forms the cache key — trim protocol, host, query string, or
+select specific query parameters, headers, and cookies.
 
 - rule: included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list
 
@@ -3227,23 +3935,36 @@ path_prefix_rewrite.
 
 `[]string`
 
+Query parameters EXCLUDED from the cache key (everything else is
+included). Mutually exclusive with included_query_parameters.
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeHost
 
 `bool`
 
+Include the request host in the cache key (distinct hosts cache
+separately).
+
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeProtocol
 
 `bool`
+
+Include the protocol (http/https) in the cache key.
 
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeQueryString
 
 `bool`
 
+Include the entire query string in the cache key. When false, the
+included/excluded parameter lists refine what participates.
+
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedCookieNames
 
 `[]string`
+
+Cookie names whose values join the cache key.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -3251,11 +3972,16 @@ path_prefix_rewrite.
 
 `[]string`
 
+Header names whose values join the cache key.
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedQueryParameters
 
 `[]string`
+
+Query parameters INCLUDED in the cache key (everything else is
+ignored). Mutually exclusive with excluded_query_parameters.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -3263,9 +3989,14 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+Max lifetime in browsers and downstream caches (sets the max-age
+clients see). Not respected with cache_mode USE_ORIGIN_HEADERS.
+
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -3273,15 +4004,23 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl
 
 `GcpUrlMapDuration`
 
+Edge-cache lifetime for responses without their own cache headers.
+Not respected with cache_mode USE_ORIGIN_HEADERS.
+
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -3289,15 +4028,24 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl
 
 `GcpUrlMapDuration`
 
+Upper bound on any edge-cache lifetime, capping even origin-supplied
+max-age. Not respected with cache_mode USE_ORIGIN_HEADERS or
+FORCE_CACHE_ALL.
+
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -3305,15 +4053,23 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale
 
 `GcpUrlMapDuration`
 
+How long stale content may still be served while revalidating in the
+background (up to 1 day).
+
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
@@ -3321,15 +4077,24 @@ path_prefix_rewrite.
 
 `int32`
 
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy
 
 `[]GcpUrlMapNegativeCachingPolicy`
 
+Per-status TTLs for cached negative responses; only meaningful with
+negative_caching enabled.
+
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].code
 
 `int32`
+
+The HTTP status code this TTL applies to. GCP accepts only 300, 301,
+302, 307, 308, 404, 405, 410, 421, 451, and 501, each at most once.
 
 - rule: code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501
 
@@ -3337,15 +4102,22 @@ path_prefix_rewrite.
 
 `GcpUrlMapDuration`
 
+How long responses with this status are cached.
+
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.seconds
 
 `int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
 
 - rule: {"int64":{"lte":"315576000000","gte":"0"}}
 
 ### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.nanos
 
 `int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
 
 - rule: {"int32":{"lte":999999999,"gte":0}}
 
@@ -3624,6 +4396,13 @@ Header value.
 ### spec.deletionPolicy
 
 `string`
+
+What `terraform destroy` (or a stack teardown) may do to the URL map.
+DELETE (the default when empty) allows deletion; PREVENT fails the
+destroy outright — the URL map and anything orchestrating its teardown
+stop there; ABANDON removes it from state without deleting it in GCP
+(the map keeps serving, unmanaged). Client-side only — never sent to
+the GCP API.
 
 - rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 

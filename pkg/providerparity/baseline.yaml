@@ -36,8 +36,6 @@ entries:
   - kind:GcpDnsRecord
   - kind:GcpDnsZone
   - kind:GcpFilestoreInstance
-  - kind:GcpFirestoreBackupSchedule
-  - kind:GcpFirestoreDatabase
   - kind:GcpFirewallRule
   - kind:GcpGlobalAddress
   - kind:GcpGlobalForwardingRule
@@ -54,7 +52,6 @@ entries:
   - kind:GcpPubSubTopic
   - kind:GcpRedisInstance
   - kind:GcpRegionNetworkEndpointGroup
-  - kind:GcpRouterNat
   - kind:GcpServerlessVpcConnector
   - kind:GcpServiceConnectionPolicy
   - kind:GcpServiceNetworkingConnection

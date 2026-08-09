@@ -147,11 +147,25 @@ Useful as a kill switch during incident response or for staged decommissioning
 
 `GcpServiceAccountUserManagedKey`
 
+Create a user-managed key for this service account. Omit for keyless
+(the recommended default — prefer Workload Identity, impersonation, or
+federation wherever the workload supports it). When present, a key is
+created with the configured algorithm and formats, and the private key
+(unless public_key_data supplies your own public key) is exported in
+stack outputs as `key_base64` — treat that output as a live credential.
+
 - rule: public_key_data (upload flow) cannot be combined with private_key_type or public_key_type (generate flow)
 
 ### spec.userManagedKey.algorithm
 
 `string`
+
+Algorithm used to generate the key:
+  ""                  -- GCP default ("KEY_ALG_RSA_2048")
+  "KEY_ALG_RSA_2048"  -- 2048-bit RSA (the standard choice)
+  "KEY_ALG_RSA_1024"  -- 1024-bit RSA (legacy; weaker — avoid for
+                         new keys)
+Create-time only: changing it replaces the key.
 
 - rule: algorithm must be one of: KEY_ALG_RSA_2048, KEY_ALG_RSA_1024
 
@@ -159,11 +173,24 @@ Useful as a kill switch during incident response or for staged decommissioning
 
 `string`
 
+Output format of the generated private key:
+  ""                             -- GCP default
+                                    ("TYPE_GOOGLE_CREDENTIALS_FILE")
+  "TYPE_GOOGLE_CREDENTIALS_FILE" -- the standard JSON credentials file
+  "TYPE_PKCS12_FILE"             -- PKCS#12 bundle (password "notasecret";
+                                    for legacy tooling that requires p12)
+
 - rule: private_key_type must be one of: TYPE_GOOGLE_CREDENTIALS_FILE, TYPE_PKCS12_FILE
 
 ### spec.userManagedKey.publicKeyType
 
 `string`
+
+Output format of the public key:
+  ""                    -- GCP default ("TYPE_X509_PEM_FILE")
+  "TYPE_X509_PEM_FILE"  -- X.509 certificate PEM
+  "TYPE_RAW_PUBLIC_KEY" -- raw public key bytes
+  "TYPE_NONE"           -- do not return the public key
 
 - rule: public_key_type must be one of: TYPE_X509_PEM_FILE, TYPE_RAW_PUBLIC_KEY, TYPE_NONE
 
@@ -171,13 +198,28 @@ Useful as a kill switch during incident response or for staged decommissioning
 
 `string`
 
+Your own public key (base64-encoded X.509 PEM) — the UPLOAD flow: the
+matching private key never leaves your custody and GCP returns no
+private key material (the key_base64 stack output stays empty).
+The strongest key posture when a user-managed key is unavoidable.
+
 ### spec.userManagedKey.keepers
 
 `map<string, string>`
 
+Arbitrary key/value pairs whose CHANGE forces a new key to be
+generated — the idiomatic rotation trigger. Set e.g.
+{"rotation": "2026-08"} and bump the value on your rotation cadence;
+the old key is destroyed and a fresh one exported.
+
 ### spec.userManagedKey.deletionPolicy
 
 `string`
+
+Deletion policy for the key itself:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the key is deleted on destroy
+  "PREVENT" -- destroy FAILS while this key exists
 
 - rule: deletion_policy must be one of: DELETE, PREVENT
 
@@ -212,9 +254,21 @@ organization — grant sparingly.
 
 `bool`
 
+If true, creating the service account succeeds (as a no-op adoption)
+when an account with the same email already exists, instead of
+failing. Useful for idempotent bootstrap flows that may race other
+provisioning paths onto well-known identity names.
+
 ### spec.deletionPolicy
 
 `string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the service account is deleted
+  "PREVENT" -- destroy FAILS; a guard rail for identities whose
+               deletion would invalidate IAM bindings fleet-wide
+Mutable in place.
 
 - rule: deletion_policy must be one of: DELETE, PREVENT
 
@@ -232,7 +286,7 @@ Reference an output from another manifest as `valueFrom: {kind: GcpServiceAccoun
 | `status.outputs.member` | `string` | The IAM member string for this service account: "serviceAccount:<email>". Feed this directly into IAM grants (GcpProjectIamMember's member field) — it is the exact format GCP IAM policies expect, so no string assembly is needed. |
 | `status.outputs.unique_id` | `string` | The stable, unique numeric ID GCP assigns to the service account. Unlike the email, it is never reused if the account is deleted and recreated — use it where a tamper-proof identity reference matters (e.g. audit tooling). |
 | `status.outputs.name` | `string` | The fully-qualified resource name: projects/<project>/serviceAccounts/<email>. Used by APIs that address the service account as a resource (key management, IAM policy on the service account itself, Workload Identity bindings). |
-| `status.outputs.key_base64` | `string` | Base64-encoded JSON private key, populated only when spec.create_key is true. This is a live, long-lived credential — the engines mark it secret in state; handle it like a password and prefer keyless patterns entirely. |
+| `status.outputs.key_base64` | `string` | Base64-encoded private key, populated only when spec.user_managed_key requested the generate flow (empty for keyless accounts and for the public_key_data upload flow). This is a live, long-lived credential — the engines mark it secret in state; handle it like a password and prefer keyless patterns entirely. |
 
 ## References
 

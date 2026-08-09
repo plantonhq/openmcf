@@ -279,6 +279,12 @@ on when scaling down (0.0-1.0). Default: 0.0.
 
 `string`
 
+Engine-side teardown behavior. "DELETE" (default) deletes the
+policy; "PREVENT" fails any plan that would delete it; "ABANDON"
+removes it from IaC management while leaving it in GCP. Note the API
+refuses to delete a policy while any cluster still references it,
+regardless of this setting.
+
 - rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs

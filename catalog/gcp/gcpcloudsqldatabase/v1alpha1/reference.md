@@ -106,6 +106,12 @@ empty, the engine default applies.
 
 `string`
 
+Engine-side teardown behavior. "DELETE" (default) drops the database;
+"PREVENT" fails any plan that would drop it; "ABANDON" removes it
+from IaC management while leaving it in the instance. ABANDON is the
+documented answer for PostgreSQL databases that cannot be dropped
+while clients hold connections.
+
 - rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs

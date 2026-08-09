@@ -7,8 +7,9 @@ spec:
   # attaches a daily backup schedule. The schedule itself creates/destroys
   # in seconds; the chain cost is the database (~1-2 minutes).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # pending_proof: the spec gained a modeled deletion_policy (previously
+  # unset, deferring to the provider default) — re-prove the pair with the
+  # field armed.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

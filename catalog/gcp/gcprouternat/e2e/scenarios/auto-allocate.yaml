@@ -1,6 +1,9 @@
 # Auto-allocation egress gateway: the recommended default shape — GCP owns
 # the external IP pool and every subnetwork in the region is NATed. Port
-# tuning and full translation logging exercise the in-place update surface.
+# tuning and full translation logging exercise the in-place update surface;
+# the router carries a custom BGP advertisement (free — pure router config,
+# no BGP peer needed) and an explicit deletionPolicy DELETE to prove the
+# no-op-diff behavior on both new arms.
 # Router/NAT names are project-scoped with no soft-delete reservation, so
 # fixed names are safe across runs. project_id is omitted and rides the
 # harness-exported GOOGLE_PROJECT (the ambient-project contract).
@@ -27,6 +30,17 @@ spec:
       kind: GcpVpcNetwork
       name: planton-oss-e2e-gcpvpc-prereq
       fieldPath: status.outputs.network_self_link
+  routerDescription: planton e2e egress router (auto allocation)
+  routerBgp:
+    asn: 64514
+    advertiseMode: CUSTOM
+    advertisedGroups:
+      - ALL_SUBNETS
+    advertisedIpRanges:
+      - range: 10.240.0.0/24
+        description: e2e custom advertisement
+    keepaliveInterval: 30
   minPortsPerVm: 128
   tcpEstablishedIdleTimeoutSec: 1200
   logFilter: ALL
+  deletionPolicy: DELETE

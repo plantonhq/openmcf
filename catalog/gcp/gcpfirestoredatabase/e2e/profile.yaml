@@ -8,8 +8,10 @@ spec:
   # deleted names are reserved for a retention window, so the cloud-side
   # name carries ${E2E_RUN_ID}. Creates in ~1-2 minutes.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # pending_proof: the spec grew the ENTERPRISE data-access modes (a new
+  # enterprise scenario arms them), resource-manager tags, and a modeled
+  # deletion_policy — the prior green proof describes code that no longer
+  # exists.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

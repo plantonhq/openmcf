@@ -25,6 +25,9 @@ variable "spec" {
     weekly_recurrence = optional(object({
       day = string
     }), null)
+
+    # DELETE (default), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {

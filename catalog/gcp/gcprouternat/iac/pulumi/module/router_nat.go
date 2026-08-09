@@ -48,27 +48,72 @@ func routerNat(
 	}
 
 	// The Cloud Router carrying the NAT configuration. NAT-only routers need
-	// no BGP surface at all — the asn/keepalive knobs matter only when the
-	// router will also terminate BGP sessions (Interconnect/VPN).
+	// no BGP surface at all — router_bgp matters only when the router will
+	// also terminate BGP sessions (Interconnect/VPN), where it controls the
+	// ASN and what routes are advertised to every peer.
 	routerArgs := &compute.RouterArgs{
 		Name:    pulumi.String(spec.RouterName),
 		Region:  pulumi.String(spec.Region),
 		Network: pulumi.String(spec.VpcSelfLink.GetValue()),
+		// Dedicates the router to encrypted VLAN attachments (HA VPN over
+		// Interconnect). Immutable; an encrypted router cannot be converted.
+		EncryptedInterconnectRouter: pulumi.BoolPtr(spec.EncryptedInterconnectRouter),
 	}
 	// An empty project falls back to the provider's default project — the
 	// ambient-project contract every GCP kind honors.
 	if spec.ProjectId.GetValue() != "" {
 		routerArgs.Project = pulumi.String(spec.ProjectId.GetValue())
 	}
-	if spec.RouterAsn > 0 || spec.RouterKeepaliveInterval > 0 {
-		bgpArgs := &compute.RouterBgpArgs{}
-		if spec.RouterAsn > 0 {
-			bgpArgs.Asn = pulumi.Int(int(spec.RouterAsn))
+	if spec.RouterDescription != "" {
+		routerArgs.Description = pulumi.StringPtr(spec.RouterDescription)
+	}
+	// Message presence IS the block: the spec's router_bgp carries a valid
+	// ASN whenever it is set (CEL-enforced), so no derivation is needed.
+	if spec.RouterBgp != nil {
+		bgpArgs := &compute.RouterBgpArgs{
+			Asn: pulumi.Int(int(spec.RouterBgp.Asn)),
 		}
-		if spec.RouterKeepaliveInterval > 0 {
-			bgpArgs.KeepaliveInterval = pulumi.IntPtr(int(spec.RouterKeepaliveInterval))
+		// advertise_mode empty means DEFAULT; custom groups/ranges are
+		// legal only in CUSTOM mode (spec CELs mirror the provider).
+		if spec.RouterBgp.AdvertiseMode != "" {
+			bgpArgs.AdvertiseMode = pulumi.StringPtr(spec.RouterBgp.AdvertiseMode)
+		}
+		if len(spec.RouterBgp.AdvertisedGroups) > 0 {
+			bgpArgs.AdvertisedGroups = pulumi.ToStringArray(spec.RouterBgp.AdvertisedGroups)
+		}
+		if len(spec.RouterBgp.AdvertisedIpRanges) > 0 {
+			advertisedRanges := compute.RouterBgpAdvertisedIpRangeArray{}
+			for _, advertisedRange := range spec.RouterBgp.AdvertisedIpRanges {
+				rangeArgs := &compute.RouterBgpAdvertisedIpRangeArgs{
+					Range: pulumi.String(advertisedRange.Range),
+				}
+				if advertisedRange.Description != "" {
+					rangeArgs.Description = pulumi.StringPtr(advertisedRange.Description)
+				}
+				advertisedRanges = append(advertisedRanges, rangeArgs)
+			}
+			bgpArgs.AdvertisedIpRanges = advertisedRanges
+		}
+		if spec.RouterBgp.KeepaliveInterval > 0 {
+			bgpArgs.KeepaliveInterval = pulumi.IntPtr(int(spec.RouterBgp.KeepaliveInterval))
+		}
+		// identifier_range is Optional+Computed: an empty value must stay
+		// out of the payload or it would fight the API's computed value.
+		if spec.RouterBgp.IdentifierRange != "" {
+			bgpArgs.IdentifierRange = pulumi.StringPtr(spec.RouterBgp.IdentifierRange)
 		}
 		routerArgs.Bgp = bgpArgs
+	}
+	// Create-time resource-manager tags (org policy / IAM conditions).
+	if len(spec.ResourceManagerTags) > 0 {
+		routerArgs.Params = &compute.RouterParamsArgs{
+			ResourceManagerTags: pulumi.ToStringMap(spec.ResourceManagerTags),
+		}
+	}
+	// Empty defers to the provider default (DELETE); applied to both the
+	// router and the NAT below.
+	if spec.DeletionPolicy != "" {
+		routerArgs.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	createdRouter, err := compute.NewRouter(ctx, "router", routerArgs,
@@ -143,6 +188,23 @@ func routerNat(
 			subnetworks = append(subnetworks, subnetworkArgs)
 		}
 		natArgs.Subnetworks = subnetworks
+	}
+
+	// NAT64 (IPv6-to-IPv4 translation). The mode mirrors the v4
+	// derivation: an explicit value wins, listing nat64 subnetworks
+	// implies LIST_OF_IPV6_SUBNETWORKS, nothing means no NAT64. Only one
+	// NAT per region in the network may claim ALL_IPV6_SUBNETWORKS.
+	if nat64Mode := sourceSubnetworkIpRangesToNat64(spec); nat64Mode != "" {
+		natArgs.SourceSubnetworkIpRangesToNat64 = pulumi.StringPtr(nat64Mode)
+	}
+	if len(spec.Nat64Subnetworks) > 0 {
+		nat64Subnetworks := compute.RouterNatNat64SubnetworkArray{}
+		for _, nat64Subnetwork := range spec.Nat64Subnetworks {
+			nat64Subnetworks = append(nat64Subnetworks, &compute.RouterNatNat64SubnetworkArgs{
+				Name: pulumi.String(nat64Subnetwork.GetValue()),
+			})
+		}
+		natArgs.Nat64Subnetworks = nat64Subnetworks
 	}
 
 	// Port allocation: unset fields defer to GCP's defaults (64 static / 32
@@ -221,6 +283,12 @@ func routerNat(
 		}
 	}
 
+	// Same deletion policy as the router: the pair tears down (or is
+	// preserved) as one unit.
+	if spec.DeletionPolicy != "" {
+		natArgs.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdRouterNat, err := compute.NewRouterNat(ctx, "router-nat", natArgs,
 		pulumi.Provider(gcpProvider), pulumi.Parent(createdRouter))
 	if err != nil {
@@ -245,6 +313,19 @@ func sourceSubnetworkIpRangesToNat(spec *gcprouternatv1alpha1.GcpRouterNatSpec) 
 		return "LIST_OF_SUBNETWORKS"
 	}
 	return "ALL_SUBNETWORKS_ALL_IP_RANGES"
+}
+
+// sourceSubnetworkIpRangesToNat64 derives the NAT64 mode with the same
+// idiom: an explicit value wins, listing nat64 subnetworks implies
+// LIST_OF_IPV6_SUBNETWORKS, and empty means no NAT64 at all.
+func sourceSubnetworkIpRangesToNat64(spec *gcprouternatv1alpha1.GcpRouterNatSpec) string {
+	if spec.SourceSubnetworkIpRangesToNat64 != "" {
+		return spec.SourceSubnetworkIpRangesToNat64
+	}
+	if len(spec.Nat64Subnetworks) > 0 {
+		return "LIST_OF_IPV6_SUBNETWORKS"
+	}
+	return ""
 }
 
 // buildRuleAction translates a rule's action block. Public NAT rules carry

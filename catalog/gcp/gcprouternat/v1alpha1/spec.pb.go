@@ -154,6 +154,172 @@ func (x *GcpRouterNatSubnetwork) GetSecondaryIpRangeNames() []string {
 	return nil
 }
 
+// GcpRouterNatRouterBgpAdvertisedIpRange is one custom IP range the router
+// advertises to all its BGP peers.
+type GcpRouterNatRouterBgpAdvertisedIpRange struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The IP range to advertise, in CIDR form (e.g. "10.10.0.0/16").
+	Range string `protobuf:"bytes,1,opt,name=range,proto3" json:"range,omitempty"`
+	// Human-readable description of this advertised range.
+	Description   string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpRouterNatRouterBgpAdvertisedIpRange) Reset() {
+	*x = GcpRouterNatRouterBgpAdvertisedIpRange{}
+	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpRouterNatRouterBgpAdvertisedIpRange) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpRouterNatRouterBgpAdvertisedIpRange) ProtoMessage() {}
+
+func (x *GcpRouterNatRouterBgpAdvertisedIpRange) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpRouterNatRouterBgpAdvertisedIpRange.ProtoReflect.Descriptor instead.
+func (*GcpRouterNatRouterBgpAdvertisedIpRange) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GcpRouterNatRouterBgpAdvertisedIpRange) GetRange() string {
+	if x != nil {
+		return x.Range
+	}
+	return ""
+}
+
+func (x *GcpRouterNatRouterBgpAdvertisedIpRange) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+// GcpRouterNatRouterBgp configures the Cloud Router's BGP behavior — the
+// ASN it speaks as and what routes it advertises to every peer. Only
+// needed when the router also serves BGP sessions (Cloud VPN or
+// Interconnect attachments on the same router); a NAT-only router can omit
+// this entirely and GCP assigns an ASN.
+type GcpRouterNatRouterBgp struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Local BGP Autonomous System Number. Must be an RFC6996 private ASN,
+	// 16-bit (64512-65534) or 32-bit (4200000000-4294967294). Fixed for the
+	// router's lifetime; every VPN tunnel and Interconnect attachment on
+	// this router shares it.
+	Asn uint32 `protobuf:"varint,1,opt,name=asn,proto3" json:"asn,omitempty"`
+	// Route advertisement mode. DEFAULT (the value when empty): advertise
+	// all subnets visible to the router. CUSTOM: advertise only what
+	// advertised_groups and advertised_ip_ranges specify — the shape for
+	// exposing a curated set of ranges over VPN/Interconnect.
+	AdvertiseMode string `protobuf:"bytes,2,opt,name=advertise_mode,json=advertiseMode,proto3" json:"advertise_mode,omitempty"`
+	// Prefix groups to advertise in CUSTOM mode, in addition to
+	// advertised_ip_ranges. The API accepts exactly one group value:
+	// ALL_SUBNETS (re-adds the default subnet advertisement on top of the
+	// custom ranges).
+	AdvertisedGroups []string `protobuf:"bytes,3,rep,name=advertised_groups,json=advertisedGroups,proto3" json:"advertised_groups,omitempty"`
+	// Individual IP ranges to advertise in CUSTOM mode, sent to all peers
+	// of the router in addition to any advertised_groups.
+	AdvertisedIpRanges []*GcpRouterNatRouterBgpAdvertisedIpRange `protobuf:"bytes,4,rep,name=advertised_ip_ranges,json=advertisedIpRanges,proto3" json:"advertised_ip_ranges,omitempty"`
+	// Interval in seconds between BGP keepalive messages (20-60, default
+	// 20). Hold time — how long a peer waits before declaring the session
+	// dead — is three times this value.
+	KeepaliveInterval int32 `protobuf:"varint,5,opt,name=keepalive_interval,json=keepaliveInterval,proto3" json:"keepalive_interval,omitempty"`
+	// Explicit range of valid BGP identifiers (what other vendors call the
+	// router ID), as a link-local IPv4 CIDR from 169.254.0.0/16 of size at
+	// least /30 (e.g. "169.254.8.0/30"). Must not overlap any IPv4 BGP
+	// session range on the router. Leave empty to let GCP choose.
+	IdentifierRange string `protobuf:"bytes,6,opt,name=identifier_range,json=identifierRange,proto3" json:"identifier_range,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GcpRouterNatRouterBgp) Reset() {
+	*x = GcpRouterNatRouterBgp{}
+	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpRouterNatRouterBgp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpRouterNatRouterBgp) ProtoMessage() {}
+
+func (x *GcpRouterNatRouterBgp) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpRouterNatRouterBgp.ProtoReflect.Descriptor instead.
+func (*GcpRouterNatRouterBgp) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GcpRouterNatRouterBgp) GetAsn() uint32 {
+	if x != nil {
+		return x.Asn
+	}
+	return 0
+}
+
+func (x *GcpRouterNatRouterBgp) GetAdvertiseMode() string {
+	if x != nil {
+		return x.AdvertiseMode
+	}
+	return ""
+}
+
+func (x *GcpRouterNatRouterBgp) GetAdvertisedGroups() []string {
+	if x != nil {
+		return x.AdvertisedGroups
+	}
+	return nil
+}
+
+func (x *GcpRouterNatRouterBgp) GetAdvertisedIpRanges() []*GcpRouterNatRouterBgpAdvertisedIpRange {
+	if x != nil {
+		return x.AdvertisedIpRanges
+	}
+	return nil
+}
+
+func (x *GcpRouterNatRouterBgp) GetKeepaliveInterval() int32 {
+	if x != nil {
+		return x.KeepaliveInterval
+	}
+	return 0
+}
+
+func (x *GcpRouterNatRouterBgp) GetIdentifierRange() string {
+	if x != nil {
+		return x.IdentifierRange
+	}
+	return ""
+}
+
 // GcpRouterNatRuleAction defines the NAT IPs or ranges a rule uses for
 // connections matching its expression.
 type GcpRouterNatRuleAction struct {
@@ -176,7 +342,7 @@ type GcpRouterNatRuleAction struct {
 
 func (x *GcpRouterNatRuleAction) Reset() {
 	*x = GcpRouterNatRuleAction{}
-	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -188,7 +354,7 @@ func (x *GcpRouterNatRuleAction) String() string {
 func (*GcpRouterNatRuleAction) ProtoMessage() {}
 
 func (x *GcpRouterNatRuleAction) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -201,7 +367,7 @@ func (x *GcpRouterNatRuleAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpRouterNatRuleAction.ProtoReflect.Descriptor instead.
 func (*GcpRouterNatRuleAction) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GcpRouterNatRuleAction) GetSourceNatActiveIps() []*v1.StringValueOrRef {
@@ -253,7 +419,7 @@ type GcpRouterNatRule struct {
 
 func (x *GcpRouterNatRule) Reset() {
 	*x = GcpRouterNatRule{}
-	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -265,7 +431,7 @@ func (x *GcpRouterNatRule) String() string {
 func (*GcpRouterNatRule) ProtoMessage() {}
 
 func (x *GcpRouterNatRule) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -278,7 +444,7 @@ func (x *GcpRouterNatRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpRouterNatRule.ProtoReflect.Descriptor instead.
 func (*GcpRouterNatRule) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GcpRouterNatRule) GetRuleNumber() uint32 {
@@ -313,11 +479,12 @@ func (x *GcpRouterNatRule) GetAction() *GcpRouterNatRuleAction {
 // egress path that lets instances without external IPs reach the internet
 // (public NAT) or other private networks (private NAT).
 //
-// The router and the NAT are provisioned together as one node: the 90% case
-// is exactly one NAT per router, and a router without NAT (dedicated BGP for
-// Interconnect/VPN) is a different concern. The router's BGP surface here is
-// limited to the ASN and keepalive; interface- and peer-level BGP belongs to
-// dedicated interconnect tooling.
+// The router and the NAT are provisioned together as one node, and the
+// router's full inline surface is configurable here: BGP ASN and route
+// advertisement (router_bgp), description, encrypted-Interconnect
+// dedication, and resource-manager tags. Interface- and peer-level BGP
+// (the objects that terminate VPN tunnels and Interconnect attachments on
+// the router) are separate resources composed on top of this node.
 //
 // Important behavioral notes:
 //
@@ -355,15 +522,13 @@ type GcpRouterNatSpec struct {
 	// The VPC network the router attaches to. Accepts a network self link.
 	// Immutable after creation.
 	VpcSelfLink *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=vpc_self_link,json=vpcSelfLink,proto3" json:"vpc_self_link,omitempty"`
-	// BGP autonomous system number for the router. Only needed when the
-	// router will also serve BGP sessions (Interconnect/VPN); NAT-only
-	// routers can leave this unset and GCP assigns one. Must be a private
-	// ASN (64512-65534 or 4200000000-4294967294).
-	RouterAsn uint32 `protobuf:"varint,6,opt,name=router_asn,json=routerAsn,proto3" json:"router_asn,omitempty"`
-	// BGP keepalive interval in seconds (20-60, default 20). The hold time —
-	// three times this value — is how long a BGP peer waits before declaring
-	// the session dead.
-	RouterKeepaliveInterval int32 `protobuf:"varint,7,opt,name=router_keepalive_interval,json=routerKeepaliveInterval,proto3" json:"router_keepalive_interval,omitempty"`
+	// The router's BGP configuration — ASN, route advertisement, keepalive,
+	// identifier range. Only needed when the router also serves BGP
+	// sessions (Cloud VPN / Interconnect on the same router); NAT-only
+	// routers leave this unset and GCP assigns an ASN.
+	RouterBgp *GcpRouterNatRouterBgp `protobuf:"bytes,6,opt,name=router_bgp,json=routerBgp,proto3" json:"router_bgp,omitempty"`
+	// Human-readable description of the Cloud Router's purpose.
+	RouterDescription string `protobuf:"bytes,7,opt,name=router_description,json=routerDescription,proto3" json:"router_description,omitempty"`
 	// NAT gateway type. PUBLIC (default): NAT to the internet using external
 	// IPs. PRIVATE: NAT between VPC networks (Network Connectivity Center
 	// spokes) using subnetwork ranges — no external IPs involved.
@@ -434,14 +599,45 @@ type GcpRouterNatSpec struct {
 	// **Default:** ERRORS_ONLY (recommended for production to detect port exhaustion and connection failures).
 	// Use DISABLED for non-production environments to reduce costs.
 	// Use ALL for security auditing or detailed troubleshooting (generates significant log volume).
-	LogFilter     *GcpRouterNatLogFilter `protobuf:"varint,25,opt,name=log_filter,json=logFilter,proto3,enum=dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatLogFilter,oneof" json:"log_filter,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	LogFilter *GcpRouterNatLogFilter `protobuf:"varint,25,opt,name=log_filter,json=logFilter,proto3,enum=dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatLogFilter,oneof" json:"log_filter,omitempty"`
+	// Dedicate the router to encrypted VLAN attachments (HA VPN over Cloud
+	// Interconnect). An encrypted-Interconnect router carries only
+	// encrypted attachments and cannot be converted later. Immutable after
+	// creation.
+	EncryptedInterconnectRouter bool `protobuf:"varint,26,opt,name=encrypted_interconnect_router,json=encryptedInterconnectRouter,proto3" json:"encrypted_interconnect_router,omitempty"`
+	// Resource Manager tags bound to the Cloud Router for org-policy and
+	// IAM conditions. Keys in the form "tagKeys/{id}", values
+	// "tagValues/{id}". Create-time only: changing them later replaces the
+	// router.
+	ResourceManagerTags map[string]string `protobuf:"bytes,27,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the router and NAT — what happens when this
+	// resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the router and NAT are deleted
+	//	"PREVENT" -- destroy FAILS; protects the egress path of a
+	//	             production fleet from accidental teardown
+	//	"ABANDON" -- the router and NAT are removed from management but
+	//	             keep serving traffic in GCP
+	DeletionPolicy string `protobuf:"bytes,28,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	// NAT64 scope — which subnetworks get IPv6-to-IPv4 translation.
+	// ALL_IPV6_SUBNETWORKS: every subnetwork's IPv6 ranges are translated
+	// (only ONE NAT per region in the network may claim this).
+	// LIST_OF_IPV6_SUBNETWORKS: only the subnetworks in nat64_subnetworks.
+	// Leave empty for no NAT64 (IPv4-only NAT).
+	SourceSubnetworkIpRangesToNat64 string `protobuf:"bytes,29,opt,name=source_subnetwork_ip_ranges_to_nat64,json=sourceSubnetworkIpRangesToNat64,proto3" json:"source_subnetwork_ip_ranges_to_nat64,omitempty"`
+	// Subnetworks whose IPv6 traffic the NAT64 gateway translates. Each
+	// entry references a dual-stack GcpSubnetwork by self link. Listing any
+	// subnetwork here selects LIST_OF_IPV6_SUBNETWORKS mode (mirroring how
+	// subnetworks implies LIST_OF_SUBNETWORKS).
+	Nat64Subnetworks []*v1.StringValueOrRef `protobuf:"bytes,30,rep,name=nat64_subnetworks,json=nat64Subnetworks,proto3" json:"nat64_subnetworks,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GcpRouterNatSpec) Reset() {
 	*x = GcpRouterNatSpec{}
-	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -453,7 +649,7 @@ func (x *GcpRouterNatSpec) String() string {
 func (*GcpRouterNatSpec) ProtoMessage() {}
 
 func (x *GcpRouterNatSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -466,7 +662,7 @@ func (x *GcpRouterNatSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpRouterNatSpec.ProtoReflect.Descriptor instead.
 func (*GcpRouterNatSpec) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GcpRouterNatSpec) GetProjectId() *v1.StringValueOrRef {
@@ -504,18 +700,18 @@ func (x *GcpRouterNatSpec) GetVpcSelfLink() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *GcpRouterNatSpec) GetRouterAsn() uint32 {
+func (x *GcpRouterNatSpec) GetRouterBgp() *GcpRouterNatRouterBgp {
 	if x != nil {
-		return x.RouterAsn
+		return x.RouterBgp
 	}
-	return 0
+	return nil
 }
 
-func (x *GcpRouterNatSpec) GetRouterKeepaliveInterval() int32 {
+func (x *GcpRouterNatSpec) GetRouterDescription() string {
 	if x != nil {
-		return x.RouterKeepaliveInterval
+		return x.RouterDescription
 	}
-	return 0
+	return ""
 }
 
 func (x *GcpRouterNatSpec) GetType() string {
@@ -644,6 +840,41 @@ func (x *GcpRouterNatSpec) GetLogFilter() GcpRouterNatLogFilter {
 	return GcpRouterNatLogFilter_DISABLED
 }
 
+func (x *GcpRouterNatSpec) GetEncryptedInterconnectRouter() bool {
+	if x != nil {
+		return x.EncryptedInterconnectRouter
+	}
+	return false
+}
+
+func (x *GcpRouterNatSpec) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
+func (x *GcpRouterNatSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
+func (x *GcpRouterNatSpec) GetSourceSubnetworkIpRangesToNat64() string {
+	if x != nil {
+		return x.SourceSubnetworkIpRangesToNat64
+	}
+	return ""
+}
+
+func (x *GcpRouterNatSpec) GetNat64Subnetworks() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.Nat64Subnetworks
+	}
+	return nil
+}
+
 var File_catalog_gcp_gcprouternat_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDesc = "" +
@@ -656,7 +887,22 @@ const file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDesc = "" +
 	"\x17source_ip_ranges_to_nat\x18\x02 \x03(\tBH\xbaHE\x92\x01B\"@r>R\rALL_IP_RANGESR\x10PRIMARY_IP_RANGER\x1bLIST_OF_SECONDARY_IP_RANGESR\x13sourceIpRangesToNat\x127\n" +
 	"\x18secondary_ip_range_names\x18\x03 \x03(\tR\x15secondaryIpRangeNames:\x8f\x04\xbaH\x8b\x04\x1a\xfe\x01\n" +
 	"&secondary_names_require_secondary_mode\x12fsecondary_ip_range_names is required when source_ip_ranges_to_nat contains LIST_OF_SECONDARY_IP_RANGES\x1al!('LIST_OF_SECONDARY_IP_RANGES' in this.source_ip_ranges_to_nat) || this.secondary_ip_range_names.size() > 0\x1a\x87\x02\n" +
-	"(secondary_names_only_with_secondary_mode\x12msecondary_ip_range_names is only meaningful when source_ip_ranges_to_nat contains LIST_OF_SECONDARY_IP_RANGES\x1althis.secondary_ip_range_names.size() == 0 || ('LIST_OF_SECONDARY_IP_RANGES' in this.source_ip_ranges_to_nat)\"\xea\x04\n" +
+	"(secondary_names_only_with_secondary_mode\x12msecondary_ip_range_names is only meaningful when source_ip_ranges_to_nat contains LIST_OF_SECONDARY_IP_RANGES\x1althis.secondary_ip_range_names.size() == 0 || ('LIST_OF_SECONDARY_IP_RANGES' in this.source_ip_ranges_to_nat)\"h\n" +
+	"&GcpRouterNatRouterBgpAdvertisedIpRange\x12\x1c\n" +
+	"\x05range\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05range\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\"\x81\t\n" +
+	"\x15GcpRouterNatRouterBgp\x12\xad\x01\n" +
+	"\x03asn\x18\x01 \x01(\rB\x9a\x01\xbaH\x96\x01\xba\x01\x92\x01\n" +
+	"\x13asn_must_be_private\x12@asn must be a private ASN (64512-65534 or 4200000000-4294967294)\x1a9(this >= 64512u && this <= 65534u) || this >= 4200000000uR\x03asn\x12\xa0\x01\n" +
+	"\x0eadvertise_mode\x18\x02 \x01(\tBy\xbaHv\xba\x01s\n" +
+	"\x1aadvertise_mode_valid_value\x12(advertise_mode must be DEFAULT or CUSTOM\x1a+this == '' || this in ['DEFAULT', 'CUSTOM']R\radvertiseMode\x12D\n" +
+	"\x11advertised_groups\x18\x03 \x03(\tB\x17\xbaH\x14\x92\x01\x11\"\x0fr\rR\vALL_SUBNETSR\x10advertisedGroups\x12\x7f\n" +
+	"\x14advertised_ip_ranges\x18\x04 \x03(\v2M.dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRouterBgpAdvertisedIpRangeR\x12advertisedIpRanges\x12\xae\x01\n" +
+	"\x12keepalive_interval\x18\x05 \x01(\x05B\x7f\xbaH|\xba\x01y\n" +
+	"\x18keepalive_interval_range\x124keepalive_interval must be between 20 and 60 seconds\x1a'this == 0 || (this >= 20 && this <= 60)R\x11keepaliveInterval\x12)\n" +
+	"\x10identifier_range\x18\x06 \x01(\tR\x0fidentifierRange:\xf1\x02\xbaH\xed\x02\x1a\xaf\x01\n" +
+	"%advertised_groups_require_custom_mode\x12?advertised_groups can only be set when advertise_mode is CUSTOM\x1aEthis.advertised_groups.size() == 0 || this.advertise_mode == 'CUSTOM'\x1a\xb8\x01\n" +
+	"(advertised_ip_ranges_require_custom_mode\x12Badvertised_ip_ranges can only be set when advertise_mode is CUSTOM\x1aHthis.advertised_ip_ranges.size() == 0 || this.advertise_mode == 'CUSTOM'\"\xea\x04\n" +
 	"\x16GcpRouterNatRuleAction\x12\x88\x01\n" +
 	"\x15source_nat_active_ips\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xaa\x18\x92\xd4a\x18status.outputs.self_linkR\x12sourceNatActiveIps\x12\x86\x01\n" +
 	"\x14source_nat_drain_ips\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xaa\x18\x92\xd4a\x18status.outputs.self_linkR\x11sourceNatDrainIps\x12\x9d\x01\n" +
@@ -667,7 +913,7 @@ const file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDesc = "" +
 	"ruleNumber\x12\x1c\n" +
 	"\x05match\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05match\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12U\n" +
-	"\x06action\x18\x04 \x01(\v2=.dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleActionR\x06action\"\xe9*\n" +
+	"\x06action\x18\x04 \x01(\v2=.dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleActionR\x06action\"\xf63\n" +
 	"\x10GcpRouterNatSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12L\n" +
@@ -675,11 +921,10 @@ const file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDesc = "" +
 	"routerName\x12F\n" +
 	"\bnat_name\x18\x03 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\anatName\x12\x1e\n" +
 	"\x06region\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12\x87\x01\n" +
-	"\rvpc_self_link\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\vvpcSelfLink\x12\x1d\n" +
+	"\rvpc_self_link\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\vvpcSelfLink\x12[\n" +
 	"\n" +
-	"router_asn\x18\x06 \x01(\rR\trouterAsn\x12\xcc\x01\n" +
-	"\x19router_keepalive_interval\x18\a \x01(\x05B\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
-	"\x1frouter_keepalive_interval_range\x12;router_keepalive_interval must be between 20 and 60 seconds\x1a'this == 0 || (this >= 20 && this <= 60)R\x17routerKeepaliveInterval\x12y\n" +
+	"router_bgp\x18\x06 \x01(\v2<.dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRouterBgpR\trouterBgp\x12-\n" +
+	"\x12router_description\x18\a \x01(\tR\x11routerDescription\x12y\n" +
 	"\x04type\x18\b \x01(\tBe\xbaHb\xba\x01_\n" +
 	"\x10type_valid_value\x12\x1etype must be PUBLIC or PRIVATE\x1a+this == '' || this in ['PUBLIC', 'PRIVATE']R\x04type\x12\x80\x03\n" +
 	"\"source_subnetwork_ip_ranges_to_nat\x18\t \x01(\tB\xb4\x02\xbaH\xb0\x02\xba\x01\xac\x02\n" +
@@ -702,7 +947,17 @@ const file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDesc = "" +
 	"\x19tcp_time_wait_timeout_sec\x18\x17 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x15tcpTimeWaitTimeoutSec\x12M\n" +
 	"\x05rules\x18\x18 \x03(\v27.dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleR\x05rules\x12q\n" +
 	"\n" +
-	"log_filter\x18\x19 \x01(\x0e2<.dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatLogFilterB\x0f\x8a\xa6\x1d\vERRORS_ONLYH\x00R\tlogFilter\x88\x01\x01:\x95\x16\xbaH\x91\x16\x1a\xd5\x01\n" +
+	"log_filter\x18\x19 \x01(\x0e2<.dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatLogFilterB\x0f\x8a\xa6\x1d\vERRORS_ONLYH\x00R\tlogFilter\x88\x01\x01\x12B\n" +
+	"\x1dencrypted_interconnect_router\x18\x1a \x01(\bR\x1bencryptedInterconnectRouter\x12\x84\x01\n" +
+	"\x15resource_manager_tags\x18\x1b \x03(\v2P.dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.ResourceManagerTagsEntryR\x13resourceManagerTags\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x1c \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x12\x9b\x02\n" +
+	"$source_subnetwork_ip_ranges_to_nat64\x18\x1d \x01(\tB\xcb\x01\xbaH\xc7\x01\xba\x01\xc3\x01\n" +
+	"\x16nat64_mode_valid_value\x12]source_subnetwork_ip_ranges_to_nat64 must be ALL_IPV6_SUBNETWORKS or LIST_OF_IPV6_SUBNETWORKS\x1aJthis == '' || this in ['ALL_IPV6_SUBNETWORKS', 'LIST_OF_IPV6_SUBNETWORKS']R\x1fsourceSubnetworkIpRangesToNat64\x12\x8d\x01\n" +
+	"\x11nat64_subnetworks\x18\x1e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\x10nat64Subnetworks\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x85\x19\xbaH\x81\x19\x1a\xd5\x01\n" +
 	" dynamic_ports_conflicts_with_eim\x12]enable_dynamic_port_allocation and enable_endpoint_independent_mapping are mutually exclusive\x1aR!(this.enable_dynamic_port_allocation && this.enable_endpoint_independent_mapping)\x1a\xb6\x01\n" +
 	"%max_ports_requires_dynamic_allocation\x12Jmax_ports_per_vm is only valid when enable_dynamic_port_allocation is true\x1aAthis.max_ports_per_vm == 0 || this.enable_dynamic_port_allocation\x1a\xc9\x01\n" +
 	"\x17max_ports_gte_min_ports\x12Bmax_ports_per_vm must be greater than or equal to min_ports_per_vm\x1ajthis.max_ports_per_vm == 0 || this.min_ports_per_vm == 0 || this.max_ports_per_vm >= this.min_ports_per_vm\x1a\xd5\x03\n" +
@@ -712,8 +967,9 @@ const file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1fprivate_nat_has_no_external_ips\x12tprivate NAT uses subnetwork ranges, not external IPs — nat_ips, drain_nat_ips, and auto_network_tier must be empty\x1avthis.type != 'PRIVATE' || (this.nat_ips.size() == 0 && this.drain_nat_ips.size() == 0 && this.auto_network_tier == '')\x1a\xb5\x01\n" +
 	"\x1ddrain_requires_manual_nat_ips\x12Ydrain_nat_ips requires nat_ips (an IP must be in the manual set before it can be drained)\x1a9this.drain_nat_ips.size() == 0 || this.nat_ips.size() > 0\x1a\x8a\x02\n" +
 	"\x1crule_ips_only_for_public_nat\x12Oprivate NAT rules use source_nat_active_ranges/source_nat_drain_ranges, not IPs\x1a\x98\x01this.type != 'PRIVATE' || this.rules.all(r, !has(r.action) || (r.action.source_nat_active_ips.size() == 0 && r.action.source_nat_drain_ips.size() == 0))\x1a\x9b\x02\n" +
-	" rule_ranges_only_for_private_nat\x12Vpublic NAT rules use source_nat_active_ips/source_nat_drain_ips, not subnetwork ranges\x1a\x9e\x01this.type == 'PRIVATE' || this.rules.all(r, !has(r.action) || (r.action.source_nat_active_ranges.size() == 0 && r.action.source_nat_drain_ranges.size() == 0))\x1a\xda\x01\n" +
-	"\x1arouter_asn_must_be_private\x12Grouter_asn must be a private ASN (64512-65534 or 4200000000-4294967294)\x1asthis.router_asn == 0u || (this.router_asn >= 64512u && this.router_asn <= 65534u) || this.router_asn >= 4200000000uB\r\n" +
+	" rule_ranges_only_for_private_nat\x12Vpublic NAT rules use source_nat_active_ips/source_nat_drain_ips, not subnetwork ranges\x1a\x9e\x01this.type == 'PRIVATE' || this.rules.all(r, !has(r.action) || (r.action.source_nat_active_ranges.size() == 0 && r.action.source_nat_drain_ranges.size() == 0))\x1a\xfc\x01\n" +
+	"$nat64_list_mode_requires_subnetworks\x12fnat64_subnetworks must be listed when source_subnetwork_ip_ranges_to_nat64 is LIST_OF_IPV6_SUBNETWORKS\x1althis.source_subnetwork_ip_ranges_to_nat64 != 'LIST_OF_IPV6_SUBNETWORKS' || this.nat64_subnetworks.size() > 0\x1a\xcb\x02\n" +
+	"#nat64_subnetworks_require_list_mode\x12\x80\x01listing nat64_subnetworks requires source_subnetwork_ip_ranges_to_nat64 LIST_OF_IPV6_SUBNETWORKS (or leave it empty to imply it)\x1a\xa0\x01this.nat64_subnetworks.size() == 0 || this.source_subnetwork_ip_ranges_to_nat64 == '' || this.source_subnetwork_ip_ranges_to_nat64 == 'LIST_OF_IPV6_SUBNETWORKS'B\r\n" +
 	"\v_log_filter*V\n" +
 	"\x15GcpRouterNatLogFilter\x12\f\n" +
 	"\bDISABLED\x10\x00\x12\x0f\n" +
@@ -735,34 +991,41 @@ func file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDescGZIP() []byte {
 }
 
 var file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_goTypes = []any{
-	(GcpRouterNatLogFilter)(0),     // 0: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatLogFilter
-	(*GcpRouterNatSubnetwork)(nil), // 1: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSubnetwork
-	(*GcpRouterNatRuleAction)(nil), // 2: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleAction
-	(*GcpRouterNatRule)(nil),       // 3: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRule
-	(*GcpRouterNatSpec)(nil),       // 4: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec
-	(*v1.StringValueOrRef)(nil),    // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(GcpRouterNatLogFilter)(0),                     // 0: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatLogFilter
+	(*GcpRouterNatSubnetwork)(nil),                 // 1: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSubnetwork
+	(*GcpRouterNatRouterBgpAdvertisedIpRange)(nil), // 2: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRouterBgpAdvertisedIpRange
+	(*GcpRouterNatRouterBgp)(nil),                  // 3: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRouterBgp
+	(*GcpRouterNatRuleAction)(nil),                 // 4: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleAction
+	(*GcpRouterNatRule)(nil),                       // 5: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRule
+	(*GcpRouterNatSpec)(nil),                       // 6: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec
+	nil,                                            // 7: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.ResourceManagerTagsEntry
+	(*v1.StringValueOrRef)(nil),                    // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_depIdxs = []int32{
-	5,  // 0: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSubnetwork.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 1: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleAction.source_nat_active_ips:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 2: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleAction.source_nat_drain_ips:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 3: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleAction.source_nat_active_ranges:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 4: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleAction.source_nat_drain_ranges:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 5: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRule.action:type_name -> dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleAction
-	5,  // 6: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 7: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.vpc_self_link:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 8: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.subnetworks:type_name -> dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSubnetwork
-	5,  // 9: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.nat_ips:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 10: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.drain_nat_ips:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 11: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.rules:type_name -> dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRule
-	0,  // 12: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.log_filter:type_name -> dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatLogFilter
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	8,  // 0: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSubnetwork.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 1: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRouterBgp.advertised_ip_ranges:type_name -> dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRouterBgpAdvertisedIpRange
+	8,  // 2: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleAction.source_nat_active_ips:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 3: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleAction.source_nat_drain_ips:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 4: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleAction.source_nat_active_ranges:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 5: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleAction.source_nat_drain_ranges:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 6: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRule.action:type_name -> dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRuleAction
+	8,  // 7: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 8: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.vpc_self_link:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 9: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.router_bgp:type_name -> dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRouterBgp
+	1,  // 10: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.subnetworks:type_name -> dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSubnetwork
+	8,  // 11: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.nat_ips:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 12: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.drain_nat_ips:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 13: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.rules:type_name -> dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatRule
+	0,  // 14: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.log_filter:type_name -> dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatLogFilter
+	7,  // 15: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.ResourceManagerTagsEntry
+	8,  // 16: dev.planton.gcp.gcprouternat.v1alpha1.GcpRouterNatSpec.nat64_subnetworks:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_init() }
@@ -770,14 +1033,14 @@ func file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_init() {
 	if File_catalog_gcp_gcprouternat_v1alpha1_spec_proto != nil {
 		return
 	}
-	file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcprouternat_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   4,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

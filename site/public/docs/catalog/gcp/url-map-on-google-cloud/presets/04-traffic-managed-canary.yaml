@@ -1,0 +1,42 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpUrlMap
+metadata:
+  name: traffic-managed-canary
+spec:
+  projectId:
+    value: "<gcp-project-id>"
+  description: Weighted canary with retries, timeouts, CORS, and header attribution
+  deletionPolicy: PREVENT
+  defaultRouteAction:
+    weightedBackendServices:
+      - backendService:
+          value: "<stable-backend-self-link>" # replace: current production backend
+        weight: 900
+      - backendService:
+          value: "<canary-backend-self-link>" # replace: new version under test
+        weight: 100
+        headerAction:
+          responseHeadersToAdd:
+            - headerName: x-served-by
+              headerValue: canary
+              replace: true
+    timeout:
+      seconds: 15 # total budget INCLUDING retries -- what the client tolerates
+    retryPolicy:
+      numRetries: 2
+      retryConditions:
+        - 5xx
+        - connect-failure
+      perTryTimeout:
+        seconds: 5 # honest backend p99; 15s total / 5s per try = both retries are real
+    corsPolicy:
+      allowOrigins:
+        - https://app.example.com
+      allowMethods:
+        - GET
+        - POST
+        - OPTIONS
+      allowHeaders:
+        - authorization
+        - content-type
+      maxAge: 3600

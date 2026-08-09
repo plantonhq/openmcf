@@ -1,6 +1,6 @@
 # GcpFirestoreDatabase
 
-Provisions a [Google Cloud Firestore](https://cloud.google.com/firestore) database with configurable database type, edition, PITR, CMEK encryption, and delete protection.
+Provisions a [Google Cloud Firestore](https://cloud.google.com/firestore) database with configurable database type, edition, PITR, CMEK encryption, delete protection, ENTERPRISE data-access modes (classic Firestore API, MongoDB-compatible API, realtime updates), resource-manager tags, and teardown policy.
 
 ## What It Does
 
@@ -42,9 +42,23 @@ Choose the database type at creation time:
 
 When enabled, retains 7 days of version history for disaster recovery. When disabled (default), retains 1 hour.
 
-### Labels
+### Data-Access Modes (ENTERPRISE edition only)
 
-Firestore databases do **not** support GCP labels.
+Three switches control which protocols can read and write an ENTERPRISE database — the shape for a database dedicated to MongoDB drivers, or one that must stay single-protocol:
+
+| Field | Values | Controls |
+|---|---|---|
+| `firestore_data_access_mode` | `DATA_ACCESS_MODE_ENABLED` / `DATA_ACCESS_MODE_DISABLED` | The classic Firestore API |
+| `mongodb_compatible_data_access_mode` | `DATA_ACCESS_MODE_ENABLED` / `DATA_ACCESS_MODE_DISABLED` | MongoDB drivers and tools (pair with `MONGODB_COMPATIBLE_API`-scoped GcpFirestoreIndex indexes) |
+| `realtime_updates_mode` | `REALTIME_UPDATES_MODE_ENABLED` / `REALTIME_UPDATES_MODE_DISABLED` | Live query snapshots |
+
+### Teardown Policy (`deletion_policy`)
+
+Defaults to `DELETE` so destroying the resource destroys the database (the raw provider's own default, ABANDON, would leave it running unmanaged). `PREVENT` makes a destroy fail — belt-and-suspenders beside `delete_protection_state`; `ABANDON` unmanages the database while it keeps serving.
+
+### Labels and Tags
+
+Firestore databases do **not** support GCP labels. Resource Manager **tags** (`resource_manager_tags`, `tagKeys/{id}` → `tagValues/{id}`) are supported at create time only — mutating them replaces the database.
 
 ## Outputs
 

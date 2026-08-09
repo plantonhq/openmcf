@@ -268,8 +268,14 @@ generate-provider-parity-report:
 # on every other kind's schema, so there is deliberately no way to scope a
 # run. Deterministic: unchanged schemas regenerate byte-identical files
 # (enforced by the drift test in pkg/explain/refgen).
+#
+# Depends on generate-proto-docs: the pages' comment PROSE renders from the
+# embedded pkg/protodocs index (the protobuf runtime strips comments), so
+# regenerating references against a stale index silently reprints old field
+# documentation even though the schema tables update. Chaining the two is
+# cheap and idempotent — both regens are byte-deterministic.
 .PHONY: generate-reference
-generate-reference:
+generate-reference: generate-proto-docs
 	go run ./pkg/explain/refgen
 
 .PHONY: build-go

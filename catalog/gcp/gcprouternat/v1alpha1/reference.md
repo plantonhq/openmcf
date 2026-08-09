@@ -6,15 +6,18 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpRouterNatSpec defines a Cloud Router with a NAT gateway — the managed
 egress path that lets instances without external IPs reach the internet
 (public NAT) or other private networks (private NAT).
 
-The router and the NAT are provisioned together as one node: the 90% case
-is exactly one NAT per router, and a router without NAT (dedicated BGP for
-Interconnect/VPN) is a different concern. The router's BGP surface here is
-limited to the ASN and keepalive; interface- and peer-level BGP belongs to
-dedicated interconnect tooling.
+The router and the NAT are provisioned together as one node, and the
+router's full inline surface is configurable here: BGP ASN and route
+advertisement (router_bgp), description, encrypted-Interconnect
+dedication, and resource-manager tags. Interface- and peer-level BGP
+(the objects that terminate VPN tunnels and Interconnect attachments on
+the router) are separate resources composed on top of this node.
 
 Important behavioral notes:
 
@@ -36,9 +39,10 @@ Important behavioral notes:
 
 ```yaml
 # Exercises the deep NAT surface offline: explicit subnetwork scoping with a
-# secondary-range selection, dynamic port allocation with power-of-two
-# bounds, tuned timeouts, a NAT rule with a dedicated egress IP, and full
-# translation logging.
+# secondary-range selection, the router's custom BGP advertisement, dynamic
+# port allocation with power-of-two bounds, tuned timeouts, a NAT rule with
+# a dedicated egress IP, full translation logging, and an explicit deletion
+# policy.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRouterNat
 metadata:
@@ -50,6 +54,18 @@ spec:
   region: us-central1
   vpcSelfLink:
     value: projects/hack-project/global/networks/hack-vpc
+  routerDescription: egress router for the hack fleet
+  # BGP posture for a router that also serves VPN/Interconnect sessions:
+  # a private ASN and a curated custom advertisement.
+  routerBgp:
+    asn: 64514
+    advertiseMode: CUSTOM
+    advertisedGroups:
+      - ALL_SUBNETS
+    advertisedIpRanges:
+      - range: 10.10.0.0/16
+        description: on-prem reachable services
+    keepaliveInterval: 30
   sourceSubnetworkIpRangesToNat: LIST_OF_SUBNETWORKS
   subnetworks:
     - subnetwork:
@@ -77,6 +93,8 @@ spec:
         sourceNatActiveIps:
           - value: projects/hack-project/regions/us-central1/addresses/hack-nat-ip-b
   logFilter: ALL
+  # DELETE keeps destroys real; PREVENT belongs on production egress paths.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -88,8 +106,16 @@ spec:
 | `spec.natName` | `string` | yes |  |  |
 | `spec.region` | `string` | yes |  |  |
 | `spec.vpcSelfLink` | `string \| valueFrom` | yes |  | GcpVpcNetwork (`status.outputs.network_self_link`) |
-| `spec.routerAsn` | `uint32` |  |  |  |
-| `spec.routerKeepaliveInterval` | `int32` |  |  |  |
+| `spec.routerBgp` | `GcpRouterNatRouterBgp` |  |  |  |
+| `spec.routerBgp.asn` | `uint32` |  |  |  |
+| `spec.routerBgp.advertiseMode` | `string` |  |  |  |
+| `spec.routerBgp.advertisedGroups` | `[]string` |  |  |  |
+| `spec.routerBgp.advertisedIpRanges` | `[]GcpRouterNatRouterBgpAdvertisedIpRange` |  |  |  |
+| `spec.routerBgp.advertisedIpRanges[].range` | `string` | yes |  |  |
+| `spec.routerBgp.advertisedIpRanges[].description` | `string` |  |  |  |
+| `spec.routerBgp.keepaliveInterval` | `int32` |  |  |  |
+| `spec.routerBgp.identifierRange` | `string` |  |  |  |
+| `spec.routerDescription` | `string` |  |  |  |
 | `spec.type` | `string` |  |  |  |
 | `spec.sourceSubnetworkIpRangesToNat` | `string` |  |  |  |
 | `spec.subnetworks` | `[]GcpRouterNatSubnetwork` |  |  |  |
@@ -119,6 +145,11 @@ spec:
 | `spec.rules[].action.sourceNatActiveRanges` | `[]string \| valueFrom` |  |  | GcpSubnetwork (`status.outputs.subnetwork_self_link`) |
 | `spec.rules[].action.sourceNatDrainRanges` | `[]string \| valueFrom` |  |  | GcpSubnetwork (`status.outputs.subnetwork_self_link`) |
 | `spec.logFilter` | `enum` |  | `ERRORS_ONLY` |  |
+| `spec.encryptedInterconnectRouter` | `bool` |  |  |  |
+| `spec.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
+| `spec.sourceSubnetworkIpRangesToNat64` | `string` |  |  |  |
+| `spec.nat64Subnetworks` | `[]string \| valueFrom` |  |  | GcpSubnetwork (`status.outputs.subnetwork_self_link`) |
 
 ## Field Details
 
@@ -174,24 +205,96 @@ Immutable after creation.
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpVpcNetwork, name: <that resource's name>, fieldPath: status.outputs.network_self_link}} -- a bare string does not parse
 
-### spec.routerAsn
+### spec.routerBgp
+
+`GcpRouterNatRouterBgp`
+
+The router's BGP configuration — ASN, route advertisement, keepalive,
+identifier range. Only needed when the router also serves BGP
+sessions (Cloud VPN / Interconnect on the same router); NAT-only
+routers leave this unset and GCP assigns an ASN.
+
+- rule: advertised_groups can only be set when advertise_mode is CUSTOM
+- rule: advertised_ip_ranges can only be set when advertise_mode is CUSTOM
+
+### spec.routerBgp.asn
 
 `uint32`
 
-BGP autonomous system number for the router. Only needed when the
-router will also serve BGP sessions (Interconnect/VPN); NAT-only
-routers can leave this unset and GCP assigns one. Must be a private
-ASN (64512-65534 or 4200000000-4294967294).
+Local BGP Autonomous System Number. Must be an RFC6996 private ASN,
+16-bit (64512-65534) or 32-bit (4200000000-4294967294). Fixed for the
+router's lifetime; every VPN tunnel and Interconnect attachment on
+this router shares it.
 
-### spec.routerKeepaliveInterval
+- rule: asn must be a private ASN (64512-65534 or 4200000000-4294967294)
+
+### spec.routerBgp.advertiseMode
+
+`string`
+
+Route advertisement mode. DEFAULT (the value when empty): advertise
+all subnets visible to the router. CUSTOM: advertise only what
+advertised_groups and advertised_ip_ranges specify — the shape for
+exposing a curated set of ranges over VPN/Interconnect.
+
+- rule: advertise_mode must be DEFAULT or CUSTOM
+
+### spec.routerBgp.advertisedGroups
+
+`[]string`
+
+Prefix groups to advertise in CUSTOM mode, in addition to
+advertised_ip_ranges. The API accepts exactly one group value:
+ALL_SUBNETS (re-adds the default subnet advertisement on top of the
+custom ranges).
+
+- rule: {"repeated":{"items":{"string":{"in":["ALL_SUBNETS"]}}}}
+
+### spec.routerBgp.advertisedIpRanges
+
+`[]GcpRouterNatRouterBgpAdvertisedIpRange`
+
+Individual IP ranges to advertise in CUSTOM mode, sent to all peers
+of the router in addition to any advertised_groups.
+
+### spec.routerBgp.advertisedIpRanges[].range
+
+`string` · required
+
+The IP range to advertise, in CIDR form (e.g. "10.10.0.0/16").
+
+- rule: {"required":true}
+
+### spec.routerBgp.advertisedIpRanges[].description
+
+`string`
+
+Human-readable description of this advertised range.
+
+### spec.routerBgp.keepaliveInterval
 
 `int32`
 
-BGP keepalive interval in seconds (20-60, default 20). The hold time —
-three times this value — is how long a BGP peer waits before declaring
-the session dead.
+Interval in seconds between BGP keepalive messages (20-60, default
+20). Hold time — how long a peer waits before declaring the session
+dead — is three times this value.
 
-- rule: router_keepalive_interval must be between 20 and 60 seconds
+- rule: keepalive_interval must be between 20 and 60 seconds
+
+### spec.routerBgp.identifierRange
+
+`string`
+
+Explicit range of valid BGP identifiers (what other vendors call the
+router ID), as a link-local IPv4 CIDR from 169.254.0.0/16 of size at
+least /30 (e.g. "169.254.8.0/30"). Must not overlap any IPv4 BGP
+session range on the router. Leave empty to let GCP choose.
+
+### spec.routerDescription
+
+`string`
+
+Human-readable description of the Cloud Router's purpose.
 
 ### spec.type
 
@@ -476,6 +579,63 @@ Allowed values (use exactly as shown):
 - `ALL` -- Log all translations (use for security auditing or troubleshooting)
 - `TRANSLATIONS_ONLY` -- Log successful translations only (connection-level audit trail without the error noise)
 
+### spec.encryptedInterconnectRouter
+
+`bool`
+
+Dedicate the router to encrypted VLAN attachments (HA VPN over Cloud
+Interconnect). An encrypted-Interconnect router carries only
+encrypted attachments and cannot be converted later. Immutable after
+creation.
+
+### spec.resourceManagerTags
+
+`map<string, string>`
+
+Resource Manager tags bound to the Cloud Router for org-policy and
+IAM conditions. Keys in the form "tagKeys/{id}", values
+"tagValues/{id}". Create-time only: changing them later replaces the
+router.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the router and NAT — what happens when this
+resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the router and NAT are deleted
+  "PREVENT" -- destroy FAILS; protects the egress path of a
+               production fleet from accidental teardown
+  "ABANDON" -- the router and NAT are removed from management but
+               keep serving traffic in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
+### spec.sourceSubnetworkIpRangesToNat64
+
+`string`
+
+NAT64 scope — which subnetworks get IPv6-to-IPv4 translation.
+ALL_IPV6_SUBNETWORKS: every subnetwork's IPv6 ranges are translated
+(only ONE NAT per region in the network may claim this).
+LIST_OF_IPV6_SUBNETWORKS: only the subnetworks in nat64_subnetworks.
+Leave empty for no NAT64 (IPv4-only NAT).
+
+- rule: source_subnetwork_ip_ranges_to_nat64 must be ALL_IPV6_SUBNETWORKS or LIST_OF_IPV6_SUBNETWORKS
+
+### spec.nat64Subnetworks
+
+`[]string | valueFrom`
+
+Subnetworks whose IPv6 traffic the NAT64 gateway translates. Each
+entry references a dual-stack GcpSubnetwork by self link. Listing any
+subnetwork here selects LIST_OF_IPV6_SUBNETWORKS mode (mirroring how
+subnetworks implies LIST_OF_SUBNETWORKS).
+
+- references: GcpSubnetwork (`status.outputs.subnetwork_self_link`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.subnetwork_self_link}} -- a bare string does not parse
+
 ## Validation Rules
 
 - `dynamic_ports_conflicts_with_eim`: enable_dynamic_port_allocation and enable_endpoint_independent_mapping are mutually exclusive
@@ -488,7 +648,8 @@ Allowed values (use exactly as shown):
 - `drain_requires_manual_nat_ips`: drain_nat_ips requires nat_ips (an IP must be in the manual set before it can be drained)
 - `rule_ips_only_for_public_nat`: private NAT rules use source_nat_active_ranges/source_nat_drain_ranges, not IPs
 - `rule_ranges_only_for_private_nat`: public NAT rules use source_nat_active_ips/source_nat_drain_ips, not subnetwork ranges
-- `router_asn_must_be_private`: router_asn must be a private ASN (64512-65534 or 4200000000-4294967294)
+- `nat64_list_mode_requires_subnetworks`: nat64_subnetworks must be listed when source_subnetwork_ip_ranges_to_nat64 is LIST_OF_IPV6_SUBNETWORKS
+- `nat64_subnetworks_require_list_mode`: listing nat64_subnetworks requires source_subnetwork_ip_ranges_to_nat64 LIST_OF_IPV6_SUBNETWORKS (or leave it empty to imply it)
 
 ## Outputs
 
@@ -515,6 +676,7 @@ Fields that can point at another resource's outputs:
 | `spec.rules[].action.sourceNatDrainIps` | GcpAddress | `status.outputs.self_link` |
 | `spec.rules[].action.sourceNatActiveRanges` | GcpSubnetwork | `status.outputs.subnetwork_self_link` |
 | `spec.rules[].action.sourceNatDrainRanges` | GcpSubnetwork | `status.outputs.subnetwork_self_link` |
+| `spec.nat64Subnetworks` | GcpSubnetwork | `status.outputs.subnetwork_self_link` |
 
 ## See Also
 

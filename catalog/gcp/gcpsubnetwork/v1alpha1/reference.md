@@ -411,6 +411,7 @@ Fields on other kinds that can point at this resource:
 | GcpRouterNat | `spec.subnetworks[].subnetwork` | `status.outputs.subnetwork_self_link` |
 | GcpRouterNat | `spec.rules[].action.sourceNatActiveRanges` | `status.outputs.subnetwork_self_link` |
 | GcpRouterNat | `spec.rules[].action.sourceNatDrainRanges` | `status.outputs.subnetwork_self_link` |
+| GcpRouterNat | `spec.nat64Subnetworks` | `status.outputs.subnetwork_self_link` |
 | GcpServerlessVpcConnector | `spec.subnet.name` | `status.outputs.subnetwork_name` |
 | GcpServiceConnectionPolicy | `spec.pscConfig.subnetworks` | `status.outputs.subnetwork_self_link` |
 | GcpVertexAiNotebook | `spec.networkInterface.subnet` | `status.outputs.subnetwork_self_link` |

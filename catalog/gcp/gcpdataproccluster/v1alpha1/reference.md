@@ -561,6 +561,11 @@ Enable Confidential Compute for all cluster nodes.
 
 `map<string, string>`
 
+Resource manager (secure) tags applied to all cluster instances,
+keyed "tagKeys/{tag_key_id}" with values "tagValues/{tag_value_id}".
+Unlike network tags, these are IAM-governed and usable in org
+policies and firewall rules.
+
 ### spec.clusterConfig.masterConfig
 
 `GcpDataprocClusterMasterConfig`
@@ -603,8 +608,10 @@ If not specified, GCP defaults to 500 GB for master and worker nodes.
 
 `string`
 
-Boot disk type. Valid values: "pd-standard", "pd-ssd", "pd-balanced".
-If not specified, GCP defaults to "pd-standard".
+Boot disk type: "pd-standard" (GCP default), "pd-ssd", "pd-balanced",
+or "hyperdisk-balanced" (the class whose provisioned IOPS/throughput
+dials apply). The API validates availability per image version and
+machine family at deploy time.
 
 - rule: boot_disk_type must be pd-standard, pd-ssd, pd-balanced, or hyperdisk-balanced
 
@@ -630,11 +637,19 @@ images do).
 
 `int64` · optional (explicit presence)
 
+Provisioned I/O operations per second for the boot disk — the IOPS
+dial decoupled from disk size, honored by disk types that support
+provisioned performance (hyperdisks).
+
 - rule: {"int64":{"gte":"1"}}
 
 ### spec.clusterConfig.masterConfig.diskConfig.bootDiskProvisionedThroughput
 
 `int64` · optional (explicit presence)
+
+Provisioned throughput in MB/s for the boot disk — the bandwidth
+dial decoupled from disk size, honored by disk types that support
+provisioned performance (hyperdisks).
 
 - rule: {"int64":{"gte":"1"}}
 
@@ -679,6 +694,11 @@ determined by software_config.image_version.
 ### spec.clusterConfig.masterConfig.instanceFlexibilityPolicy
 
 `GcpDataprocClusterInstanceFlexibilityPolicy`
+
+Ranked machine-type preferences for master provisioning — keeps the
+cluster creatable when the preferred type's zonal capacity dries up.
+Masters are on-demand capacity: provisioning_model_mix does not
+apply here (secondary workers only).
 
 ### spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.instanceSelectionList
 
@@ -774,8 +794,10 @@ If not specified, GCP defaults to 500 GB for master and worker nodes.
 
 `string`
 
-Boot disk type. Valid values: "pd-standard", "pd-ssd", "pd-balanced".
-If not specified, GCP defaults to "pd-standard".
+Boot disk type: "pd-standard" (GCP default), "pd-ssd", "pd-balanced",
+or "hyperdisk-balanced" (the class whose provisioned IOPS/throughput
+dials apply). The API validates availability per image version and
+machine family at deploy time.
 
 - rule: boot_disk_type must be pd-standard, pd-ssd, pd-balanced, or hyperdisk-balanced
 
@@ -801,11 +823,19 @@ images do).
 
 `int64` · optional (explicit presence)
 
+Provisioned I/O operations per second for the boot disk — the IOPS
+dial decoupled from disk size, honored by disk types that support
+provisioned performance (hyperdisks).
+
 - rule: {"int64":{"gte":"1"}}
 
 ### spec.clusterConfig.workerConfig.diskConfig.bootDiskProvisionedThroughput
 
 `int64` · optional (explicit presence)
+
+Provisioned throughput in MB/s for the boot disk — the bandwidth
+dial decoupled from disk size, honored by disk types that support
+provisioned performance (hyperdisks).
 
 - rule: {"int64":{"gte":"1"}}
 
@@ -855,6 +885,11 @@ The autoscaler will not scale below this threshold. Updatable in place.
 ### spec.clusterConfig.workerConfig.instanceFlexibilityPolicy
 
 `GcpDataprocClusterInstanceFlexibilityPolicy`
+
+Ranked machine-type preferences for primary-worker provisioning —
+keeps scale-ups schedulable when the preferred type's zonal capacity
+dries up. Primary workers are on-demand capacity:
+provisioning_model_mix does not apply here (secondary workers only).
 
 ### spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.instanceSelectionList
 
@@ -954,8 +989,10 @@ If not specified, GCP defaults to 500 GB for master and worker nodes.
 
 `string`
 
-Boot disk type. Valid values: "pd-standard", "pd-ssd", "pd-balanced".
-If not specified, GCP defaults to "pd-standard".
+Boot disk type: "pd-standard" (GCP default), "pd-ssd", "pd-balanced",
+or "hyperdisk-balanced" (the class whose provisioned IOPS/throughput
+dials apply). The API validates availability per image version and
+machine family at deploy time.
 
 - rule: boot_disk_type must be pd-standard, pd-ssd, pd-balanced, or hyperdisk-balanced
 
@@ -981,11 +1018,19 @@ images do).
 
 `int64` · optional (explicit presence)
 
+Provisioned I/O operations per second for the boot disk — the IOPS
+dial decoupled from disk size, honored by disk types that support
+provisioned performance (hyperdisks).
+
 - rule: {"int64":{"gte":"1"}}
 
 ### spec.clusterConfig.secondaryWorkerConfig.diskConfig.bootDiskProvisionedThroughput
 
 `int64` · optional (explicit presence)
+
+Provisioned throughput in MB/s for the boot disk — the bandwidth
+dial decoupled from disk size, honored by disk types that support
+provisioned performance (hyperdisks).
 
 - rule: {"int64":{"gte":"1"}}
 
@@ -1304,11 +1349,19 @@ Useful for time-boxed clusters with a known end date.
 
 `string`
 
+Duration of inactivity after which the cluster is automatically
+STOPPED (not deleted) — VMs shut down, storage and configuration
+retained, restartable later. Same format and range as
+idle_delete_ttl (e.g., "1800s"; 10 minutes to 14 days).
+
 - rule: idle_stop_ttl must be a duration in seconds (e.g., '1800s')
 
 ### spec.clusterConfig.lifecycleConfig.autoStopTime
 
 `string`
+
+RFC3339 timestamp at which the cluster is automatically STOPPED
+(not deleted), regardless of activity.
 
 ### spec.clusterConfig.metastoreConfig
 
@@ -1415,8 +1468,10 @@ If not specified, GCP defaults to 500 GB for master and worker nodes.
 
 `string`
 
-Boot disk type. Valid values: "pd-standard", "pd-ssd", "pd-balanced".
-If not specified, GCP defaults to "pd-standard".
+Boot disk type: "pd-standard" (GCP default), "pd-ssd", "pd-balanced",
+or "hyperdisk-balanced" (the class whose provisioned IOPS/throughput
+dials apply). The API validates availability per image version and
+machine family at deploy time.
 
 - rule: boot_disk_type must be pd-standard, pd-ssd, pd-balanced, or hyperdisk-balanced
 
@@ -1442,11 +1497,19 @@ images do).
 
 `int64` · optional (explicit presence)
 
+Provisioned I/O operations per second for the boot disk — the IOPS
+dial decoupled from disk size, honored by disk types that support
+provisioned performance (hyperdisks).
+
 - rule: {"int64":{"gte":"1"}}
 
 ### spec.clusterConfig.auxiliaryNodeGroups[].nodeGroupConfig.diskConfig.bootDiskProvisionedThroughput
 
 `int64` · optional (explicit presence)
+
+Provisioned throughput in MB/s for the boot disk — the bandwidth
+dial decoupled from disk size, honored by disk types that support
+provisioned performance (hyperdisks).
 
 - rule: {"int64":{"gte":"1"}}
 
@@ -1486,11 +1549,21 @@ If unset, Dataproc generates one.
 
 `string`
 
+The cluster's structural type. STANDARD (default) has masters and
+workers; SINGLE_NODE runs everything on one VM (the modern
+alternative to the "dataproc:dataproc.allow.zero.workers" property);
+ZERO_SCALE keeps only the control plane warm and provisions workers
+on demand. Immutable after creation.
+
 - rule: cluster_type must be STANDARD, SINGLE_NODE, or ZERO_SCALE
 
 ### spec.clusterConfig.engine
 
 `string`
+
+The execution engine. DEFAULT runs open-source Spark as-is;
+LIGHTNING enables the Lightning Engine (Google's accelerated Spark
+runtime, premium tier). Immutable after creation.
 
 - rule: engine must be DEFAULT or LIGHTNING
 
@@ -1746,6 +1819,10 @@ virtual (GKE-based) arm.
 ### spec.deletionPolicy
 
 `string`
+
+Engine-side teardown behavior. "DELETE" (default) destroys the
+cluster; "PREVENT" fails any plan that would destroy it; "ABANDON"
+removes it from IaC management while leaving it running in GCP.
 
 - rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
