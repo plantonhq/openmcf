@@ -23,6 +23,9 @@ locals {
   authorization_mode      = var.spec.authorization_mode != "" ? var.spec.authorization_mode : null
   transit_encryption_mode = var.spec.transit_encryption_mode != "" ? var.spec.transit_encryption_mode : null
   kms_key                 = var.spec.kms_key != "" ? var.spec.kms_key : null
+  server_ca_mode          = var.spec.server_ca_mode != "" ? var.spec.server_ca_mode : null
+  server_ca_pool          = var.spec.server_ca_pool != "" ? var.spec.server_ca_pool : null
+  maintenance_version     = var.spec.maintenance_version != "" ? var.spec.maintenance_version : null
 
   # The ambient-project data source is only instantiated when some PSC
   # endpoint entry omits its consumer project AND the spec carries no

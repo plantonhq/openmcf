@@ -8,3 +8,6 @@ spec:
   subscriptionName: test-subscription
   topic:
     value: "projects/test-project/topics/test-topic"
+  # Explicit destroy behavior: DELETE removes the subscription (and its
+  # unacknowledged backlog) with the stack.
+  deletionPolicy: DELETE

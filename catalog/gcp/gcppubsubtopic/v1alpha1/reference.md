@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpPubSubTopicSpec defines the configuration for a GCP Pub/Sub topic.
 
 A topic is a named resource to which messages are sent by publishers and
@@ -38,6 +40,9 @@ spec:
   projectId:
     value: "test-project"
   topicName: test-events-topic
+  # Explicit destroy behavior: DELETE removes the topic with the stack
+  # (its subscriptions survive but drain to empty).
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -54,6 +59,8 @@ spec:
 | `spec.schemaSettings` | `GcpPubSubTopicSchemaSettings` |  |  |  |
 | `spec.schemaSettings.schema` | `string \| valueFrom` | yes |  | GcpPubSubSchema (`status.outputs.schema_id`) |
 | `spec.schemaSettings.encoding` | `string` |  |  |  |
+| `spec.schemaSettings.firstRevisionId` | `string \| valueFrom` |  |  | GcpPubSubSchema (`status.outputs.revision_id`) |
+| `spec.schemaSettings.lastRevisionId` | `string \| valueFrom` |  |  | GcpPubSubSchema (`status.outputs.revision_id`) |
 | `spec.ingestionDataSourceSettings` | `GcpPubSubTopicIngestionDataSourceSettings` |  |  |  |
 | `spec.ingestionDataSourceSettings.awsKinesis` | `GcpPubSubTopicIngestionAwsKinesis` |  |  |  |
 | `spec.ingestionDataSourceSettings.awsKinesis.streamArn` | `string` | yes |  |  |
@@ -91,10 +98,17 @@ spec:
 | `spec.ingestionDataSourceSettings.platformLogsSettings.severity` | `string` |  |  |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
 | `spec.messageTransforms` | `[]GcpPubSubTopicMessageTransform` |  |  |  |
-| `spec.messageTransforms[].javascriptUdf` | `GcpPubSubTopicMessageTransformJavascriptUdf` | yes |  |  |
+| `spec.messageTransforms[].javascriptUdf` | `GcpPubSubTopicMessageTransformJavascriptUdf` |  |  |  |
 | `spec.messageTransforms[].javascriptUdf.functionName` | `string` | yes |  |  |
 | `spec.messageTransforms[].javascriptUdf.code` | `string` | yes |  |  |
 | `spec.messageTransforms[].disabled` | `bool` |  |  |  |
+| `spec.messageTransforms[].aiInference` | `GcpPubSubTopicMessageTransformAiInference` |  |  |  |
+| `spec.messageTransforms[].aiInference.endpoint` | `string \| valueFrom` | yes |  | GcpVertexAiEndpoint (`status.outputs.endpoint_id`) |
+| `spec.messageTransforms[].aiInference.serviceAccountEmail` | `string \| valueFrom` |  |  | GcpServiceAccount (`status.outputs.email`) |
+| `spec.messageTransforms[].aiInference.unstructuredInference` | `GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference` |  |  |  |
+| `spec.messageTransforms[].aiInference.unstructuredInference.parameters` | `map<string, string>` |  |  |  |
+| `spec.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -203,6 +217,35 @@ The encoding of messages validated against the schema.
 Valid values: "JSON" or "BINARY".
 
 - rule: encoding must be JSON or BINARY
+
+### spec.schemaSettings.firstRevisionId
+
+`string | valueFrom`
+
+The minimum (inclusive) schema revision accepted for validating
+messages. When empty, any revision created before last_revision_id
+(or any revision at all, if that is also empty) is accepted.
+Accepts a literal revision ID or a reference to a GcpPubSubSchema
+resource — its revision_id output is the revision the schema's
+current definition committed, so referencing it pins the topic to
+the contract this deploy produced.
+
+- references: GcpPubSubSchema (`status.outputs.revision_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpPubSubSchema, name: <that resource's name>, fieldPath: status.outputs.revision_id}} -- a bare string does not parse
+
+### spec.schemaSettings.lastRevisionId
+
+`string | valueFrom`
+
+The maximum (inclusive) schema revision accepted for validating
+messages. When empty, any revision created after first_revision_id
+(or any revision at all, if that is also empty) is accepted. Pinning
+BOTH bounds to the same revision freezes the contract exactly.
+Accepts a literal revision ID or a reference to a GcpPubSubSchema
+resource (its revision_id output).
+
+- references: GcpPubSubSchema (`status.outputs.revision_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpPubSubSchema, name: <that resource's name>, fieldPath: status.outputs.revision_id}} -- a bare string does not parse
 
 ### spec.ingestionDataSourceSettings
 
@@ -491,13 +534,13 @@ before it is stored — redact, normalize, or filter at the topic
 boundary instead of in every subscriber. Transforms run in list
 order; a transform returning null drops the message.
 
+- rule: each transform step is exactly one of: javascript_udf or ai_inference
+
 ### spec.messageTransforms[].javascriptUdf
 
-`GcpPubSubTopicMessageTransformJavascriptUdf` · required
+`GcpPubSubTopicMessageTransformJavascriptUdf`
 
 A JavaScript user-defined function transform.
-
-- rule: {"required":true}
 
 ### spec.messageTransforms[].javascriptUdf.functionName
 
@@ -526,6 +569,79 @@ When true, this transform is kept in the pipeline definition but not
 applied — the staging lever for rolling a transform in or out without
 losing its position in the ordered list.
 
+### spec.messageTransforms[].aiInference
+
+`GcpPubSubTopicMessageTransformAiInference`
+
+An AI inference transform backed by a Vertex AI model endpoint.
+
+### spec.messageTransforms[].aiInference.endpoint
+
+`string | valueFrom` · required
+
+The Vertex AI model endpoint inference requests are sent to. Accepts a
+literal path — projects/{project}/locations/{location}/endpoints/{endpoint}
+for a dedicated endpoint, or
+projects/{project}/locations/{location}/publishers/{publisher}/models/{model}
+for a publisher model — or a reference to a GcpVertexAiEndpoint resource
+(its endpoint_id output is exactly the dedicated-endpoint form).
+
+- references: GcpVertexAiEndpoint (`status.outputs.endpoint_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpVertexAiEndpoint, name: <that resource's name>, fieldPath: status.outputs.endpoint_id}} -- a bare string does not parse
+
+### spec.messageTransforms[].aiInference.serviceAccountEmail
+
+`string | valueFrom`
+
+The service account used to make prediction requests against the
+endpoint (it needs Vertex AI invocation permission on the model).
+Accepts a literal email or a reference to a GcpServiceAccount resource.
+Defaults to the Pub/Sub service agent if not specified.
+
+- references: GcpServiceAccount (`status.outputs.email`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpServiceAccount, name: <that resource's name>, fieldPath: status.outputs.email}} -- a bare string does not parse
+
+### spec.messageTransforms[].aiInference.unstructuredInference
+
+`GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference`
+
+Configuration for making inferences using arbitrary JSON payloads
+(rather than a model-specific request schema).
+
+### spec.messageTransforms[].aiInference.unstructuredInference.parameters
+
+`map<string, string>`
+
+A parameters object included in each inference request (e.g. model
+temperature or system-prompt knobs the endpoint understands). Combined
+with the message data to form the request body.
+
+### spec.resourceManagerTags
+
+`map<string, string>`
+
+Resource Manager tags bound to the topic for org-policy and IAM
+conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
+Create-time only: changing them later replaces the topic (and detaches
+every subscription with it — plan tag changes deliberately).
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the topic — what happens when this resource is
+destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the topic is deleted. Its subscriptions survive but
+               receive no new messages and drain to empty
+  "PREVENT" -- destroy FAILS; protects the topic an event pipeline
+               publishes into
+  "ABANDON" -- the topic is removed from management but left serving
+               in GCP (publishers and subscriptions keep working)
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Outputs
 
 Reference an output from another manifest as `valueFrom: {kind: GcpPubSubTopic, name: <resource-name>, fieldPath: status.outputs.<output>}`.
@@ -544,11 +660,15 @@ Fields that can point at another resource's outputs:
 | `spec.projectId` | GcpProject | `status.outputs.project_id` |
 | `spec.kmsKeyName` | GcpKmsKey | `status.outputs.key_id` |
 | `spec.schemaSettings.schema` | GcpPubSubSchema | `status.outputs.schema_id` |
+| `spec.schemaSettings.firstRevisionId` | GcpPubSubSchema | `status.outputs.revision_id` |
+| `spec.schemaSettings.lastRevisionId` | GcpPubSubSchema | `status.outputs.revision_id` |
 | `spec.ingestionDataSourceSettings.awsKinesis.gcpServiceAccount` | GcpServiceAccount | `status.outputs.email` |
 | `spec.ingestionDataSourceSettings.awsMsk.gcpServiceAccount` | GcpServiceAccount | `status.outputs.email` |
 | `spec.ingestionDataSourceSettings.azureEventHubs.gcpServiceAccount` | GcpServiceAccount | `status.outputs.email` |
 | `spec.ingestionDataSourceSettings.cloudStorage.bucket` | GcpGcsBucket | `status.outputs.bucket_id` |
 | `spec.ingestionDataSourceSettings.confluentCloud.gcpServiceAccount` | GcpServiceAccount | `status.outputs.email` |
+| `spec.messageTransforms[].aiInference.endpoint` | GcpVertexAiEndpoint | `status.outputs.endpoint_id` |
+| `spec.messageTransforms[].aiInference.serviceAccountEmail` | GcpServiceAccount | `status.outputs.email` |
 
 ## Referenced By
 

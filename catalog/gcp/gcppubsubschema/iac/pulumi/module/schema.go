@@ -42,6 +42,12 @@ func schema(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) erro
 		Definition: pulumi.StringPtr(spec.Definition),
 	}
 
+	// Client-side destroy behavior: DELETE (default), PREVENT, or ABANDON.
+	// Sent only when set so the provider default stays in charge otherwise.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	// Honor the spec contract: an empty project_id falls back to the
 	// provider's default project.
 	if spec.ProjectId.GetValue() != "" {
@@ -60,6 +66,9 @@ func schema(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) erro
 	// schema_settings.schema reference consumes.
 	ctx.Export(OpSchemaId, createdSchema.ID())
 	ctx.Export(OpSchemaName, createdSchema.Name)
+	// A new revision is committed every time the definition changes.
+	// Topics consume this in schema_settings revision pinning.
+	ctx.Export(OpRevisionId, createdSchema.RevisionId)
 
 	return nil
 }

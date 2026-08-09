@@ -45,6 +45,12 @@ variable "spec" {
       # projects/{project}/schemas/{name} path.
       schema   = string
       encoding = optional(string, "")
+
+      # Revision-range pinning (resolved from GcpPubSubSchema revision_id
+      # references or given as literal revision IDs). Empty means any
+      # revision on that bound.
+      first_revision_id = optional(string, "")
+      last_revision_id  = optional(string, "")
     }), null)
 
     ingestion_data_source_settings = optional(object({
@@ -97,17 +103,42 @@ variable "spec" {
     }), null)
 
     # Ordered transform pipeline applied to every published message.
+    # Each step carries exactly one transform arm (spec-enforced):
+    # javascript_udf or ai_inference.
     message_transforms = optional(list(object({
-      javascript_udf = object({
+      javascript_udf = optional(object({
         function_name = string
         code          = string
-      })
+      }), null)
+      ai_inference = optional(object({
+        # Vertex AI endpoint path (resolved from a GcpVertexAiEndpoint
+        # reference or given as a literal dedicated-endpoint or
+        # publisher-model path).
+        endpoint              = string
+        service_account_email = optional(string, "")
+        unstructured_inference = optional(object({
+          parameters = optional(map(string), {})
+        }), null)
+      }), null)
       disabled = optional(bool, false)
     })), [])
+
+    # Resource Manager tags bound at create time (tagKeys/{id} =>
+    # tagValues/{id}). Changing them later replaces the topic.
+    resource_manager_tags = optional(map(string), {})
+
+    # Deletion policy: "", "DELETE" (default), "PREVENT" (destroy fails),
+    # or "ABANDON" (remove from management, leave serving in GCP).
+    deletion_policy = optional(string, "")
   })
 
   validation {
     condition     = var.spec.topic_name != ""
     error_message = "topic_name is required."
+  }
+
+  validation {
+    condition     = contains(["", "DELETE", "PREVENT", "ABANDON"], var.spec.deletion_policy)
+    error_message = "deletion_policy must be one of: DELETE, PREVENT, ABANDON."
   }
 }

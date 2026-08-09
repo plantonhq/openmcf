@@ -30,7 +30,13 @@ type GcpPubSubSchemaStackOutputs struct {
 	SchemaId string `protobuf:"bytes,1,opt,name=schema_id,json=schemaId,proto3" json:"schema_id,omitempty"`
 	// The short name of the schema (same as the spec's schema_name input).
 	// Useful for display, logging, and human-readable references.
-	SchemaName    string `protobuf:"bytes,2,opt,name=schema_name,json=schemaName,proto3" json:"schema_name,omitempty"`
+	SchemaName string `protobuf:"bytes,2,opt,name=schema_name,json=schemaName,proto3" json:"schema_name,omitempty"`
+	// The current revision ID of the schema (a new one is committed every
+	// time the definition changes). This is the exact value a topic's
+	// schema_settings.first_revision_id / last_revision_id consume —
+	// reference it from GcpPubSubTopic to pin validation to the revision
+	// this deploy produced.
+	RevisionId    string `protobuf:"bytes,3,opt,name=revision_id,json=revisionId,proto3" json:"revision_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -79,15 +85,24 @@ func (x *GcpPubSubSchemaStackOutputs) GetSchemaName() string {
 	return ""
 }
 
+func (x *GcpPubSubSchemaStackOutputs) GetRevisionId() string {
+	if x != nil {
+		return x.RevisionId
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcppubsubschema_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcppubsubschema_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/gcp/gcppubsubschema/v1alpha1/outputs.proto\x12(dev.planton.gcp.gcppubsubschema.v1alpha1\"[\n" +
+	"2catalog/gcp/gcppubsubschema/v1alpha1/outputs.proto\x12(dev.planton.gcp.gcppubsubschema.v1alpha1\"|\n" +
 	"\x1bGcpPubSubSchemaStackOutputs\x12\x1b\n" +
 	"\tschema_id\x18\x01 \x01(\tR\bschemaId\x12\x1f\n" +
 	"\vschema_name\x18\x02 \x01(\tR\n" +
-	"schemaNameB\xdc\x02\n" +
+	"schemaName\x12\x1f\n" +
+	"\vrevision_id\x18\x03 \x01(\tR\n" +
+	"revisionIdB\xdc\x02\n" +
 	",com.dev.planton.gcp.gcppubsubschema.v1alpha1B\fOutputsProtoP\x01ZYgithub.com/plantonhq/planton/catalog/gcp/gcppubsubschema/v1alpha1;gcppubsubschemav1alpha1\xa2\x02\x04DPGG\xaa\x02(Dev.Planton.Gcp.Gcppubsubschema.V1alpha1\xca\x02(Dev\\Planton\\Gcp\\Gcppubsubschema\\V1alpha1\xe2\x024Dev\\Planton\\Gcp\\Gcppubsubschema\\V1alpha1\\GPBMetadata\xea\x02,Dev::Planton::Gcp::Gcppubsubschema::V1alpha1b\x06proto3"
 
 var (

@@ -15,3 +15,5 @@ spec:
       kind: GcpVpcNetwork
       name: my-app-vpc # replace with your GcpVpcNetwork resource name
       fieldPath: status.outputs.network_self_link
+  # A dev cache comes and goes with its stack — allow destroy.
+  deletionProtection: false

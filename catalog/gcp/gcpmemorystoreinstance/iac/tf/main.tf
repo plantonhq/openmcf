@@ -60,11 +60,28 @@ resource "google_memorystore_instance" "this" {
   transit_encryption_mode = local.transit_encryption_mode
   kms_key                 = local.kms_key
 
+  # Server certificate authority for the TLS-enabled instance: which CA
+  # signs the certificate clients verify. A customer-managed CA pool is
+  # consumed only in CUSTOMER_MANAGED_CAS_CA mode (spec-enforced pairing).
+  # Both are fixed at creation (ForceNew).
+  server_ca_mode = local.server_ca_mode
+  server_ca_pool = local.server_ca_pool
+
+  # Self-service maintenance: setting a newer available version applies
+  # the update now instead of waiting for GCP's rollout. Update-only —
+  # the API rejects it at create and rejects downgrades.
+  maintenance_version = local.maintenance_version
+
   # Always sent explicitly (spec defaults TRUE) so destroy behavior is
   # identical on both engines: omitting it would let the provider default
   # decide, and a manifest that never mentions deletion protection must
   # behave the same everywhere.
   deletion_protection_enabled = var.spec.deletion_protection_enabled
+
+  # Client-side destroy behavior: DELETE (default), PREVENT, or ABANDON.
+  # Sent only when set so the provider default stays in charge otherwise.
+  # Evaluated only after deletion_protection_enabled allows the destroy.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   labels = local.final_labels
 
@@ -124,7 +141,8 @@ resource "google_memorystore_instance" "this" {
       weekly_maintenance_window {
         day = maintenance_policy.value.weekly_maintenance_window.day
         start_time {
-          hours = maintenance_policy.value.weekly_maintenance_window.hour
+          hours   = maintenance_policy.value.weekly_maintenance_window.hour
+          minutes = maintenance_policy.value.weekly_maintenance_window.minute
         }
       }
     }

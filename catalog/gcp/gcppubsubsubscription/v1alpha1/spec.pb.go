@@ -747,11 +747,141 @@ func (x *GcpPubSubSubscriptionMessageTransformJavascriptUdf) GetCode() string {
 	return ""
 }
 
+// GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference
+// configures AI inference over arbitrary JSON payloads. The parameters
+// object is combined with each Pub/Sub message's data field to form the
+// inference request sent to the model.
+type GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A parameters object included in each inference request (e.g. model
+	// temperature or system-prompt knobs the endpoint understands). Combined
+	// with the message data to form the request body.
+	Parameters    map[string]string `protobuf:"bytes,1,rep,name=parameters,proto3" json:"parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference) Reset() {
+	*x = GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference{}
+	mi := &file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference) ProtoMessage() {}
+
+func (x *GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference.ProtoReflect.Descriptor instead.
+func (*GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference) GetParameters() map[string]string {
+	if x != nil {
+		return x.Parameters
+	}
+	return nil
+}
+
+// GcpPubSubSubscriptionMessageTransformAiInference sends each message to a
+// Vertex AI model before delivery and replaces the message with the
+// inference response — enrich, classify, or redact messages for THIS
+// consumer with a model instead of hand-written JavaScript.
+type GcpPubSubSubscriptionMessageTransformAiInference struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Vertex AI model endpoint inference requests are sent to. Accepts a
+	// literal path — projects/{project}/locations/{location}/endpoints/{endpoint}
+	// for a dedicated endpoint, or
+	// projects/{project}/locations/{location}/publishers/{publisher}/models/{model}
+	// for a publisher model — or a reference to a GcpVertexAiEndpoint resource
+	// (its endpoint_id output is exactly the dedicated-endpoint form).
+	Endpoint *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// The service account used to make prediction requests against the
+	// endpoint (it needs Vertex AI invocation permission on the model).
+	// Accepts a literal email or a reference to a GcpServiceAccount resource.
+	// Defaults to the Pub/Sub service agent if not specified.
+	ServiceAccountEmail *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=service_account_email,json=serviceAccountEmail,proto3" json:"service_account_email,omitempty"`
+	// Configuration for making inferences using arbitrary JSON payloads
+	// (rather than a model-specific request schema).
+	UnstructuredInference *GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference `protobuf:"bytes,3,opt,name=unstructured_inference,json=unstructuredInference,proto3" json:"unstructured_inference,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *GcpPubSubSubscriptionMessageTransformAiInference) Reset() {
+	*x = GcpPubSubSubscriptionMessageTransformAiInference{}
+	mi := &file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpPubSubSubscriptionMessageTransformAiInference) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpPubSubSubscriptionMessageTransformAiInference) ProtoMessage() {}
+
+func (x *GcpPubSubSubscriptionMessageTransformAiInference) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpPubSubSubscriptionMessageTransformAiInference.ProtoReflect.Descriptor instead.
+func (*GcpPubSubSubscriptionMessageTransformAiInference) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GcpPubSubSubscriptionMessageTransformAiInference) GetEndpoint() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Endpoint
+	}
+	return nil
+}
+
+func (x *GcpPubSubSubscriptionMessageTransformAiInference) GetServiceAccountEmail() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ServiceAccountEmail
+	}
+	return nil
+}
+
+func (x *GcpPubSubSubscriptionMessageTransformAiInference) GetUnstructuredInference() *GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference {
+	if x != nil {
+		return x.UnstructuredInference
+	}
+	return nil
+}
+
 // GcpPubSubSubscriptionMessageTransform is one step in the subscription's
 // ordered transform pipeline, applied to every message before delivery.
 // Use transforms to reshape payloads for one consumer without touching the
 // topic's canonical form (topic-level transforms change what ALL
 // subscriptions see; subscription-level transforms are per-consumer).
+//
+// Each step is exactly one transform: a JavaScript user-defined function
+// or an AI inference call (the Pub/Sub API models the step as a choice).
 type GcpPubSubSubscriptionMessageTransform struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// A JavaScript user-defined function transform.
@@ -759,14 +889,16 @@ type GcpPubSubSubscriptionMessageTransform struct {
 	// When true, this transform is kept in the pipeline definition but not
 	// applied — the staging lever for rolling a transform in or out without
 	// losing its position in the ordered list.
-	Disabled      bool `protobuf:"varint,2,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	Disabled bool `protobuf:"varint,2,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	// An AI inference transform backed by a Vertex AI model endpoint.
+	AiInference   *GcpPubSubSubscriptionMessageTransformAiInference `protobuf:"bytes,3,opt,name=ai_inference,json=aiInference,proto3" json:"ai_inference,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpPubSubSubscriptionMessageTransform) Reset() {
 	*x = GcpPubSubSubscriptionMessageTransform{}
-	mi := &file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -778,7 +910,7 @@ func (x *GcpPubSubSubscriptionMessageTransform) String() string {
 func (*GcpPubSubSubscriptionMessageTransform) ProtoMessage() {}
 
 func (x *GcpPubSubSubscriptionMessageTransform) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -791,7 +923,7 @@ func (x *GcpPubSubSubscriptionMessageTransform) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use GcpPubSubSubscriptionMessageTransform.ProtoReflect.Descriptor instead.
 func (*GcpPubSubSubscriptionMessageTransform) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+	return file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GcpPubSubSubscriptionMessageTransform) GetJavascriptUdf() *GcpPubSubSubscriptionMessageTransformJavascriptUdf {
@@ -806,6 +938,13 @@ func (x *GcpPubSubSubscriptionMessageTransform) GetDisabled() bool {
 		return x.Disabled
 	}
 	return false
+}
+
+func (x *GcpPubSubSubscriptionMessageTransform) GetAiInference() *GcpPubSubSubscriptionMessageTransformAiInference {
+	if x != nil {
+		return x.AiInference
+	}
+	return nil
 }
 
 // GcpPubSubSubscriptionSpec defines the configuration for a GCP Pub/Sub subscription.
@@ -907,13 +1046,29 @@ type GcpPubSubSubscriptionSpec struct {
 	// Transforms run in list order; a transform returning null drops the
 	// message.
 	MessageTransforms []*GcpPubSubSubscriptionMessageTransform `protobuf:"bytes,17,rep,name=message_transforms,json=messageTransforms,proto3" json:"message_transforms,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Resource Manager tags bound to the subscription for org-policy and
+	// IAM conditions. Keys in the form "tagKeys/{id}", values
+	// "tagValues/{id}". Create-time only: changing them later replaces the
+	// subscription (its backlog is lost — plan tag changes deliberately).
+	ResourceManagerTags map[string]string `protobuf:"bytes,18,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the subscription — what happens when this
+	// resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the subscription is deleted; its unacknowledged
+	//	             backlog is lost immediately
+	//	"PREVENT" -- destroy FAILS; protects a consumer whose backlog
+	//	             must never be silently dropped
+	//	"ABANDON" -- the subscription is removed from management but keeps
+	//	             accumulating and serving messages in GCP
+	DeletionPolicy string `protobuf:"bytes,19,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpPubSubSubscriptionSpec) Reset() {
 	*x = GcpPubSubSubscriptionSpec{}
-	mi := &file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -925,7 +1080,7 @@ func (x *GcpPubSubSubscriptionSpec) String() string {
 func (*GcpPubSubSubscriptionSpec) ProtoMessage() {}
 
 func (x *GcpPubSubSubscriptionSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -938,7 +1093,7 @@ func (x *GcpPubSubSubscriptionSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpPubSubSubscriptionSpec.ProtoReflect.Descriptor instead.
 func (*GcpPubSubSubscriptionSpec) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+	return file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GcpPubSubSubscriptionSpec) GetProjectId() *v1.StringValueOrRef {
@@ -1060,6 +1215,20 @@ func (x *GcpPubSubSubscriptionSpec) GetMessageTransforms() []*GcpPubSubSubscript
 	return nil
 }
 
+func (x *GcpPubSubSubscriptionSpec) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
+func (x *GcpPubSubSubscriptionSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDesc = "" +
@@ -1114,10 +1283,23 @@ const file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15service_account_email\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\"}\n" +
 	"2GcpPubSubSubscriptionMessageTransformJavascriptUdf\x12+\n" +
 	"\rfunction_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\ffunctionName\x12\x1a\n" +
-	"\x04code\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04code\"\xd7\x01\n" +
-	"%GcpPubSubSubscriptionMessageTransform\x12\x91\x01\n" +
-	"\x0ejavascript_udf\x18\x01 \x01(\v2b.dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformJavascriptUdfB\x06\xbaH\x03\xc8\x01\x01R\rjavascriptUdf\x12\x1a\n" +
-	"\bdisabled\x18\x02 \x01(\bR\bdisabled\"\xd0\x14\n" +
+	"\x04code\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04code\"\xaf\x02\n" +
+	"EGcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference\x12\xa6\x01\n" +
+	"\n" +
+	"parameters\x18\x01 \x03(\v2\x85\x01.dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference.ParametersEntryR\n" +
+	"parameters\x1a=\n" +
+	"\x0fParametersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe4\x03\n" +
+	"0GcpPubSubSubscriptionMessageTransformAiInference\x12y\n" +
+	"\bendpoint\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xff\x17\x92\xd4a\x1astatus.outputs.endpoint_idR\bendpoint\x12\x85\x01\n" +
+	"\x15service_account_email\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\x12\xac\x01\n" +
+	"\x16unstructured_inference\x18\x03 \x01(\v2u.dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInferenceR\x15unstructuredInference\"\x89\x04\n" +
+	"%GcpPubSubSubscriptionMessageTransform\x12\x89\x01\n" +
+	"\x0ejavascript_udf\x18\x01 \x01(\v2b.dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformJavascriptUdfR\rjavascriptUdf\x12\x1a\n" +
+	"\bdisabled\x18\x02 \x01(\bR\bdisabled\x12\x83\x01\n" +
+	"\fai_inference\x18\x03 \x01(\v2`.dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInferenceR\vaiInference:\xb1\x01\xbaH\xad\x01\x1a\xaa\x01\n" +
+	"\x15exactly_one_transform\x12Eeach transform step is exactly one of: javascript_udf or ai_inference\x1aJ(has(this.javascript_udf) ? 1 : 0) + (has(this.ai_inference) ? 1 : 0) == 1\"\xef\x17\n" +
 	"\x19GcpPubSubSubscriptionSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xf8\x01\n" +
@@ -1140,8 +1322,14 @@ const file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0fbigquery_config\x18\x0e \x01(\v2S.dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionBigQueryConfigR\x0ebigqueryConfig\x12\x89\x01\n" +
 	"\x14cloud_storage_config\x18\x0f \x01(\v2W.dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfigR\x12cloudStorageConfig\x12m\n" +
 	"\x06labels\x18\x10 \x03(\v2U.dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.LabelsEntryR\x06labels\x12\x84\x01\n" +
-	"\x12message_transforms\x18\x11 \x03(\v2U.dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformR\x11messageTransforms\x1a9\n" +
+	"\x12message_transforms\x18\x11 \x03(\v2U.dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformR\x11messageTransforms\x12\x96\x01\n" +
+	"\x15resource_manager_tags\x18\x12 \x03(\v2b.dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.ResourceManagerTagsEntryR\x13resourceManagerTags\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x13 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xd0\x04\xbaH\xcc\x04\x1a\xe1\x02\n" +
 	" delivery_method_mutual_exclusion\x12\x81\x01only one of push_config, bigquery_config, or cloud_storage_config can be set; if none is set, the subscription uses pull delivery\x1a\xb8\x01(!has(this.push_config) || !has(this.bigquery_config)) && (!has(this.push_config) || !has(this.cloud_storage_config)) && (!has(this.bigquery_config) || !has(this.cloud_storage_config))\x1a\xe5\x01\n" +
@@ -1160,52 +1348,62 @@ func file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDescGZIP() []
 	return file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_goTypes = []any{
-	(*GcpPubSubSubscriptionExpirationPolicy)(nil),              // 0: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionExpirationPolicy
-	(*GcpPubSubSubscriptionDeadLetterPolicy)(nil),              // 1: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionDeadLetterPolicy
-	(*GcpPubSubSubscriptionRetryPolicy)(nil),                   // 2: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionRetryPolicy
-	(*GcpPubSubSubscriptionPushConfigOidcToken)(nil),           // 3: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfigOidcToken
-	(*GcpPubSubSubscriptionPushConfigNoWrapper)(nil),           // 4: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfigNoWrapper
-	(*GcpPubSubSubscriptionPushConfig)(nil),                    // 5: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig
-	(*GcpPubSubSubscriptionBigQueryConfig)(nil),                // 6: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionBigQueryConfig
-	(*GcpPubSubSubscriptionCloudStorageConfigAvroConfig)(nil),  // 7: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfigAvroConfig
-	(*GcpPubSubSubscriptionCloudStorageConfig)(nil),            // 8: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfig
-	(*GcpPubSubSubscriptionMessageTransformJavascriptUdf)(nil), // 9: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformJavascriptUdf
-	(*GcpPubSubSubscriptionMessageTransform)(nil),              // 10: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransform
-	(*GcpPubSubSubscriptionSpec)(nil),                          // 11: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec
-	nil,                                                        // 12: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig.AttributesEntry
-	nil,                                                        // 13: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.LabelsEntry
-	(*v1.StringValueOrRef)(nil),                                // 14: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpPubSubSubscriptionExpirationPolicy)(nil),                                 // 0: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionExpirationPolicy
+	(*GcpPubSubSubscriptionDeadLetterPolicy)(nil),                                 // 1: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionDeadLetterPolicy
+	(*GcpPubSubSubscriptionRetryPolicy)(nil),                                      // 2: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionRetryPolicy
+	(*GcpPubSubSubscriptionPushConfigOidcToken)(nil),                              // 3: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfigOidcToken
+	(*GcpPubSubSubscriptionPushConfigNoWrapper)(nil),                              // 4: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfigNoWrapper
+	(*GcpPubSubSubscriptionPushConfig)(nil),                                       // 5: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig
+	(*GcpPubSubSubscriptionBigQueryConfig)(nil),                                   // 6: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionBigQueryConfig
+	(*GcpPubSubSubscriptionCloudStorageConfigAvroConfig)(nil),                     // 7: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfigAvroConfig
+	(*GcpPubSubSubscriptionCloudStorageConfig)(nil),                               // 8: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfig
+	(*GcpPubSubSubscriptionMessageTransformJavascriptUdf)(nil),                    // 9: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformJavascriptUdf
+	(*GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference)(nil), // 10: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference
+	(*GcpPubSubSubscriptionMessageTransformAiInference)(nil),                      // 11: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInference
+	(*GcpPubSubSubscriptionMessageTransform)(nil),                                 // 12: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransform
+	(*GcpPubSubSubscriptionSpec)(nil),                                             // 13: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec
+	nil,                                                                           // 14: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig.AttributesEntry
+	nil,                                                                           // 15: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference.ParametersEntry
+	nil,                                                                           // 16: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.LabelsEntry
+	nil,                                                                           // 17: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.ResourceManagerTagsEntry
+	(*v1.StringValueOrRef)(nil),                                                   // 18: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_depIdxs = []int32{
-	14, // 0: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionDeadLetterPolicy.dead_letter_topic:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 1: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfigOidcToken.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 2: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig.push_endpoint:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 3: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig.attributes:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig.AttributesEntry
+	18, // 0: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionDeadLetterPolicy.dead_letter_topic:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 1: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfigOidcToken.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 2: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig.push_endpoint:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 3: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig.attributes:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig.AttributesEntry
 	3,  // 4: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig.oidc_token:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfigOidcToken
 	4,  // 5: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig.no_wrapper:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfigNoWrapper
-	14, // 6: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionBigQueryConfig.table:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 7: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionBigQueryConfig.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 8: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfig.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 6: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionBigQueryConfig.table:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 7: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionBigQueryConfig.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 8: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfig.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	7,  // 9: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfig.avro_config:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfigAvroConfig
-	14, // 10: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfig.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 11: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransform.javascript_udf:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformJavascriptUdf
-	14, // 12: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 13: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.topic:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0,  // 14: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.expiration_policy:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionExpirationPolicy
-	1,  // 15: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.dead_letter_policy:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionDeadLetterPolicy
-	2,  // 16: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.retry_policy:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionRetryPolicy
-	5,  // 17: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.push_config:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig
-	6,  // 18: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.bigquery_config:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionBigQueryConfig
-	8,  // 19: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.cloud_storage_config:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfig
-	13, // 20: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.labels:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.LabelsEntry
-	10, // 21: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.message_transforms:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransform
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	18, // 10: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfig.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 11: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference.parameters:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference.ParametersEntry
+	18, // 12: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInference.endpoint:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 13: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInference.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 14: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInference.unstructured_inference:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference
+	9,  // 15: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransform.javascript_udf:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformJavascriptUdf
+	11, // 16: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransform.ai_inference:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransformAiInference
+	18, // 17: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 18: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.topic:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 19: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.expiration_policy:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionExpirationPolicy
+	1,  // 20: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.dead_letter_policy:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionDeadLetterPolicy
+	2,  // 21: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.retry_policy:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionRetryPolicy
+	5,  // 22: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.push_config:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionPushConfig
+	6,  // 23: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.bigquery_config:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionBigQueryConfig
+	8,  // 24: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.cloud_storage_config:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionCloudStorageConfig
+	16, // 25: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.labels:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.LabelsEntry
+	12, // 26: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.message_transforms:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionMessageTransform
+	17, // 27: dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcppubsubsubscription.v1alpha1.GcpPubSubSubscriptionSpec.ResourceManagerTagsEntry
+	28, // [28:28] is the sub-list for method output_type
+	28, // [28:28] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_init() }
@@ -1219,7 +1417,7 @@ func file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcppubsubsubscription_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

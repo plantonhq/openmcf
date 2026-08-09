@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2865 |
+| Spec fields authored across all kinds | 2887 |
 | Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**34 of 79 kinds are at total accounting; 45 proven live.**
+**39 of 79 kinds are at total accounting; 40 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -97,13 +97,13 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpKmsKeyIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpKmsKeyRing | 8 | 1 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
 | GcpManagedSslCertificate | 6 | 2 | 3 | 1 | 0 | ✅ | — |
-| GcpMemorystoreInstance | 43 | 25 | 0 | 0 | 24 | ❌ | ✅ pulumi, terraform |
+| GcpMemorystoreInstance | 38 | 29 | 7 | 2 | 0 | ✅ | — |
 | GcpProject | 14 | 6 | 0 | 0 | 13 | ❌ | — |
 | GcpProjectIamMember | 6 | 5 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
-| GcpPubSubSchema | 10 | 2 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
-| GcpPubSubSubscription | 49 | 37 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
-| GcpPubSubTopic | 49 | 35 | 0 | 0 | 16 | ❌ | ✅ pulumi, terraform |
-| GcpRedisInstance | 37 | 21 | 0 | 0 | 21 | ❌ | ✅ pulumi, terraform |
+| GcpPubSubSchema | 5 | 3 | 2 | 0 | 0 | ✅ | — |
+| GcpPubSubSubscription | 44 | 41 | 3 | 0 | 0 | ✅ | — |
+| GcpPubSubTopic | 44 | 41 | 3 | 0 | 0 | ✅ | — |
+| GcpRedisInstance | 32 | 24 | 6 | 2 | 0 | ✅ | — |
 | GcpRegionNetworkEndpointGroup | 18 | 16 | 2 | 0 | 0 | ✅ | — |
 | GcpRouterNat | 54 | 28 | 21 | 5 | 0 | ✅ | — |
 | GcpServerlessVpcConnector | 13 | 9 | 2 | 2 | 0 | ✅ | — |

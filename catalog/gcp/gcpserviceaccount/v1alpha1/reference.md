@@ -324,10 +324,12 @@ Fields on other kinds that can point at this resource:
 | GcpPubSubSubscription | `spec.pushConfig.oidcToken.serviceAccountEmail` | `status.outputs.email` |
 | GcpPubSubSubscription | `spec.bigqueryConfig.serviceAccountEmail` | `status.outputs.email` |
 | GcpPubSubSubscription | `spec.cloudStorageConfig.serviceAccountEmail` | `status.outputs.email` |
+| GcpPubSubSubscription | `spec.messageTransforms[].aiInference.serviceAccountEmail` | `status.outputs.email` |
 | GcpPubSubTopic | `spec.ingestionDataSourceSettings.awsKinesis.gcpServiceAccount` | `status.outputs.email` |
 | GcpPubSubTopic | `spec.ingestionDataSourceSettings.awsMsk.gcpServiceAccount` | `status.outputs.email` |
 | GcpPubSubTopic | `spec.ingestionDataSourceSettings.azureEventHubs.gcpServiceAccount` | `status.outputs.email` |
 | GcpPubSubTopic | `spec.ingestionDataSourceSettings.confluentCloud.gcpServiceAccount` | `status.outputs.email` |
+| GcpPubSubTopic | `spec.messageTransforms[].aiInference.serviceAccountEmail` | `status.outputs.email` |
 | GcpServiceAccountIamMember | `spec.serviceAccountId` | `status.outputs.name` |
 | GcpServiceAccountIamMember | `spec.member` | `status.outputs.member` |
 | GcpVertexAiDeployedIndex | `spec.authConfig.allowedIssuers` | `status.outputs.email` |

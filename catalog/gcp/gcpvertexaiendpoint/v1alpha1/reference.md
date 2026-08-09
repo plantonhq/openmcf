@@ -279,6 +279,15 @@ Fields that can point at another resource's outputs:
 | `spec.network` | GcpVpcNetwork | `status.outputs.network_self_link` |
 | `spec.kmsKeyName` | GcpKmsKey | `status.outputs.key_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| GcpPubSubSubscription | `spec.messageTransforms[].aiInference.endpoint` | `status.outputs.endpoint_id` |
+| GcpPubSubTopic | `spec.messageTransforms[].aiInference.endpoint` | `status.outputs.endpoint_id` |
+
 ## See Also
 
 - [Overview](../README.md)

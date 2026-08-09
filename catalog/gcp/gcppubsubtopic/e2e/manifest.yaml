@@ -6,3 +6,6 @@ spec:
   projectId:
     value: "test-project"
   topicName: test-events-topic
+  # Explicit destroy behavior: DELETE removes the topic with the stack
+  # (its subscriptions survive but drain to empty).
+  deletionPolicy: DELETE

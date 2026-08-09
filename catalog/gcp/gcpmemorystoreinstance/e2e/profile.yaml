@@ -11,8 +11,9 @@ spec:
   # deploy -> ACTIVE + discovery-endpoint verify -> destroy -> verify
   # gone, on both provisioners.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # The prior green predates the current spec shape (maintenance window
+  # minute, expanded node types, server CA mode/pool, maintenance_version,
+  # deletion_policy) — awaits live re-proof.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 120

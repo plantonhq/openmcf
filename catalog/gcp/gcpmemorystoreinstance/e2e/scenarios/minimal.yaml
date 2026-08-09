@@ -32,4 +32,14 @@ spec:
           kind: GcpVpcNetwork
           name: planton-oss-e2e-gcpvpcnetwork-prereq
           fieldPath: status.outputs.network_id
+  # Weekly window pinned to the minute — the live arm of the new
+  # maintenance minute mapping.
+  maintenancePolicy:
+    weeklyMaintenanceWindow:
+      day: SUNDAY
+      hour: 3
+      minute: 30
   deletionProtectionEnabled: false
+  # Explicit DELETE so the ephemeral run's destroy is a live no-op-diff
+  # proof of the new deletion_policy wiring.
+  deletionPolicy: DELETE

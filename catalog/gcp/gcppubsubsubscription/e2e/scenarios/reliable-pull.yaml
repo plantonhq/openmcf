@@ -35,3 +35,4 @@ spec:
     maximumBackoff: "300s"
   expirationPolicy:
     ttl: ""
+  deletionPolicy: DELETE

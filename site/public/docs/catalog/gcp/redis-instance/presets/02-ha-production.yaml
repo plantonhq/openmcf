@@ -25,7 +25,11 @@ spec:
     day: SUNDAY
     hour: 3
     minute: 30
+    description: post-midnight window, after the nightly batch completes
   persistenceConfig:
     persistenceMode: RDB
     rdbSnapshotPeriod: TWELVE_HOURS
     rdbSnapshotStartTime: "2026-01-01T03:00:00Z" # snapshots align to this clock
+  # Destroying a production session store must be a deliberate two-step:
+  # flip this to false, apply, then destroy.
+  deletionProtection: true

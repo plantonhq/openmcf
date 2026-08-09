@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpMemorystoreInstanceSpec defines the configuration for a Google Cloud
 Memorystore instance.
 
@@ -77,8 +79,18 @@ spec:
       projectId:
         value: my-gcp-project-123
 
-  # Allow hack-manifest teardown without a two-step disable.
+  # Weekly maintenance window pinned to the minute (UTC) — stagger it
+  # against the systems this cache fronts.
+  maintenancePolicy:
+    weeklyMaintenanceWindow:
+      day: SUNDAY
+      hour: 3
+      minute: 30
+
+  # Allow hack-manifest teardown without a two-step disable; the policy
+  # then deletes the instance.
   deletionProtectionEnabled: false
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -114,6 +126,7 @@ spec:
 | `spec.maintenancePolicy.weeklyMaintenanceWindow` | `GcpMemorystoreInstanceMaintenanceWindow` | yes |  |  |
 | `spec.maintenancePolicy.weeklyMaintenanceWindow.day` | `string` | yes |  |  |
 | `spec.maintenancePolicy.weeklyMaintenanceWindow.hour` | `int32` |  |  |  |
+| `spec.maintenancePolicy.weeklyMaintenanceWindow.minute` | `int32` |  |  |  |
 | `spec.automatedBackupConfig` | `GcpMemorystoreInstanceAutomatedBackupConfig` |  |  |  |
 | `spec.automatedBackupConfig.startHour` | `int32` |  |  |  |
 | `spec.automatedBackupConfig.retention` | `string` | yes |  |  |
@@ -129,6 +142,10 @@ spec:
 | `spec.managedBackupSource.backup` | `string` | yes |  |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
 | `spec.deletionProtectionEnabled` | `bool` |  | `true` |  |
+| `spec.serverCaMode` | `string` |  |  |  |
+| `spec.serverCaPool` | `string` |  |  |  |
+| `spec.maintenanceVersion` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -193,13 +210,16 @@ Immutable after creation.
 `string`
 
 Predefined node type determining CPU and memory per node.
-SHARED_CORE_NANO: shared-core, smallest (dev/test).
-STANDARD_SMALL: dedicated core, small workloads.
-HIGHMEM_MEDIUM: high memory, medium production workloads.
-HIGHMEM_XLARGE: high memory, large production workloads.
+Shared-core and custom (burstable, dev/test tiers, smallest first):
+  SHARED_CORE_NANO, CUSTOM_PICO, CUSTOM_MICRO, CUSTOM_MINI.
+Dedicated-core (production tiers):
+  STANDARD_SMALL, STANDARD_LARGE — balanced CPU:memory;
+  HIGHCPU_MEDIUM — compute-leaning;
+  HIGHMEM_MEDIUM, HIGHMEM_XLARGE, HIGHMEM_2XLARGE — memory-leaning,
+  for large keyspaces.
 If not specified, GCP selects a default.
 
-- rule: node_type must be SHARED_CORE_NANO, STANDARD_SMALL, HIGHMEM_MEDIUM, or HIGHMEM_XLARGE
+- rule: node_type must be one of: SHARED_CORE_NANO, CUSTOM_PICO, CUSTOM_MICRO, CUSTOM_MINI, STANDARD_SMALL, STANDARD_LARGE, HIGHCPU_MEDIUM, HIGHMEM_MEDIUM, HIGHMEM_XLARGE, HIGHMEM_2XLARGE
 
 ### spec.engineVersion
 
@@ -417,6 +437,17 @@ Hour of day (0-23, UTC) when the maintenance window starts.
 
 - rule: {"int32":{"lte":23,"gte":0}}
 
+### spec.maintenancePolicy.weeklyMaintenanceWindow.minute
+
+`int32`
+
+Minute of the hour (0-59, UTC) when the maintenance window starts.
+Combined with hour, this pins the window start to the exact minute —
+useful for coordinating with maintenance windows of dependent systems
+(e.g. start cache maintenance 30 minutes after the database's window).
+
+- rule: {"int32":{"lte":59,"gte":0}}
+
 ### spec.automatedBackupConfig
 
 `GcpMemorystoreInstanceAutomatedBackupConfig`
@@ -558,9 +589,66 @@ explicitly so destroy behavior is identical regardless of engine.
 
 - default: `true`
 
+### spec.serverCaMode
+
+`string`
+
+Server certificate authority mode for the TLS-enabled instance —
+which CA signs the server certificate clients verify:
+  ""                             -- GCP default (GOOGLE_MANAGED_PER_INSTANCE_CA)
+  "GOOGLE_MANAGED_PER_INSTANCE_CA" -- a Google-managed CA unique to
+                                      this instance
+  "GOOGLE_MANAGED_SHARED_CA"       -- a Google-managed CA shared
+                                      across instances (clients trust
+                                      one CA for a whole fleet)
+  "CUSTOMER_MANAGED_CAS_CA"        -- your own CA pool in Certificate
+                                      Authority Service (pair with
+                                      server_ca_pool)
+Meaningful with transit_encryption_mode SERVER_AUTHENTICATION.
+Immutable after creation.
+
+- rule: server_ca_mode must be GOOGLE_MANAGED_PER_INSTANCE_CA, GOOGLE_MANAGED_SHARED_CA, or CUSTOMER_MANAGED_CAS_CA
+
+### spec.serverCaPool
+
+`string`
+
+The Certificate Authority Service CA pool that signs the server
+certificate when server_ca_mode is CUSTOMER_MANAGED_CAS_CA.
+Format: projects/{project}/locations/{region}/caPools/{caPoolId}.
+Immutable after creation.
+
+### spec.maintenanceVersion
+
+`string`
+
+Self-service maintenance version. Setting this to a newer available
+version triggers the maintenance update on your schedule instead of
+waiting for GCP's rollout — the lever for applying a security patch
+immediately. Only settable as an UPDATE to an existing instance, and
+only forward (downgrades are rejected). Leave unset to follow GCP's
+automatic rollout.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the instance — what happens when this resource
+is destroyed (evaluated only after deletion_protection_enabled allows
+the destroy at all):
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the instance is deleted; all in-memory data is lost
+  "PREVENT" -- destroy FAILS; a second, independent guard for a
+               cache whose loss would stampede the backing store
+  "ABANDON" -- the instance is removed from management but left
+               running (and billing) in GCP with its data intact
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `at_most_one_seed_source`: gcs_source and managed_backup_source are mutually exclusive — choose one seed source
+- `server_ca_pool_requires_customer_managed_cas`: server_ca_pool requires server_ca_mode CUSTOMER_MANAGED_CAS_CA
 
 ## Outputs
 

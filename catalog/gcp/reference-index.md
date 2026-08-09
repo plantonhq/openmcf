@@ -56,13 +56,13 @@
 | [GcpKmsKeyIamMember](gcpkmskeyiammember/v1alpha1/reference.md) | GcpKmsKeyIamMemberSpec defines a single ADDITIVE IAM grant ON a KMS crypto key: one role, to one member, on one key — the least-privilege unit of customer-managed encryption (CMEK) access control. | yes |  |
 | [GcpKmsKeyRing](gcpkmskeyring/v1alpha1/reference.md) | GcpKmsKeyRingSpec defines the configuration for a GCP Cloud KMS key ring. | yes |  |
 | [GcpManagedSslCertificate](gcpmanagedsslcertificate/v1alpha1/reference.md) | GcpManagedSslCertificateSpec defines a Google-managed SSL certificate — a global Compute Engine SSL certificate whose private key and issuance are handled entirely by Google. | yes | yes |
-| [GcpMemorystoreInstance](gcpmemorystoreinstance/v1alpha1/reference.md) | GcpMemorystoreInstanceSpec defines the configuration for a Google Cloud Memorystore instance. | yes |  |
+| [GcpMemorystoreInstance](gcpmemorystoreinstance/v1alpha1/reference.md) | GcpMemorystoreInstanceSpec defines the configuration for a Google Cloud Memorystore instance. | yes | yes |
 | [GcpProject](gcpproject/v1alpha1/reference.md) | GcpProjectSpec creates one Google Cloud project — the Layer-0 container every other GCP resource lives in. | yes |  |
 | [GcpProjectIamMember](gcpprojectiammember/v1alpha1/reference.md) | GcpProjectIamMemberSpec defines a single ADDITIVE project-level IAM grant: one role, to one member, on one project — the safe, composable unit of GCP access control. | yes |  |
-| [GcpPubSubSchema](gcppubsubschema/v1alpha1/reference.md) | GcpPubSubSchemaSpec defines a Pub/Sub schema — the message contract publishers and subscribers agree on. | yes |  |
-| [GcpPubSubSubscription](gcppubsubsubscription/v1alpha1/reference.md) | GcpPubSubSubscriptionSpec defines the configuration for a GCP Pub/Sub subscription. | yes |  |
-| [GcpPubSubTopic](gcppubsubtopic/v1alpha1/reference.md) | GcpPubSubTopicSpec defines the configuration for a GCP Pub/Sub topic. | yes |  |
-| [GcpRedisInstance](gcpredisinstance/v1alpha1/reference.md) | GcpRedisInstanceSpec defines the configuration for a Google Cloud Memorystore for Redis instance. | yes |  |
+| [GcpPubSubSchema](gcppubsubschema/v1alpha1/reference.md) | GcpPubSubSchemaSpec defines a Pub/Sub schema — the message contract publishers and subscribers agree on. | yes | yes |
+| [GcpPubSubSubscription](gcppubsubsubscription/v1alpha1/reference.md) | GcpPubSubSubscriptionSpec defines the configuration for a GCP Pub/Sub subscription. | yes | yes |
+| [GcpPubSubTopic](gcppubsubtopic/v1alpha1/reference.md) | GcpPubSubTopicSpec defines the configuration for a GCP Pub/Sub topic. | yes | yes |
+| [GcpRedisInstance](gcpredisinstance/v1alpha1/reference.md) | GcpRedisInstanceSpec defines the configuration for a Google Cloud Memorystore for Redis instance. | yes | yes |
 | [GcpRegionNetworkEndpointGroup](gcpregionnetworkendpointgroup/v1alpha1/reference.md) | GcpRegionNetworkEndpointGroupSpec defines a regional network endpoint group (NEG) — the bridge that lets a load balancer's backend service send traffic to something other than a group of Compute Engine VMs. | yes | yes |
 | [GcpRouterNat](gcprouternat/v1alpha1/reference.md) | GcpRouterNatSpec defines a Cloud Router with a NAT gateway — the managed egress path that lets instances without external IPs reach the internet (public NAT) or other private networks (private NAT). | yes | yes |
 | [GcpServerlessVpcConnector](gcpserverlessvpcconnector/v1alpha1/reference.md) | GcpServerlessVpcConnectorSpec defines a Serverless VPC Access connector (`google_vpc_access_connector`) — the managed bridge that lets serverless workloads (Cloud Functions, Cloud Run, App Engine) send traffic into a VPC network. | yes | yes |
