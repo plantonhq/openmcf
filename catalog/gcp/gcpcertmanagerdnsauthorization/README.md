@@ -34,6 +34,9 @@ The full composition is three explicit nodes:
 - Regional authorizations for regional certificates
 - User labels merged beneath platform attribution labels, identically on
   both engines
+- `deletionPolicy` (DELETE / PREVENT / ABANDON) controls what a destroy
+  does — PREVENT protects the validation chain a certificate migration
+  depends on
 
 ## Example Usage
 

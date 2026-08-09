@@ -35,6 +35,9 @@ The classic compute certificates are separate kinds:
   ALL_REGIONS / CLIENT_AUTH).
 - User labels merged beneath platform attribution labels, identically on
   both engines.
+- `deletionPolicy` (DELETE / PREVENT / ABANDON) controls what a destroy
+  does — PREVENT guards a certificate whose replacement is not yet
+  serving; ABANDON hands the certificate off mid-rotation.
 
 ## Example Usage
 

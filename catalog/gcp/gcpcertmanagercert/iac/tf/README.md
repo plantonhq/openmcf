@@ -39,7 +39,7 @@ module "certificate" {
 | Name | Version |
 |------|---------|
 | terraform | >= 1.0 |
-| google | ~> 6.0 |
+| google | ~> 7.43 |
 
 ## Inputs
 

@@ -43,5 +43,9 @@ variable "spec" {
     }), null)
 
     labels = optional(map(string), {})
+
+    # What happens to the certificate when this resource is destroyed:
+    # DELETE (default), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
   })
 }

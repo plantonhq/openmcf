@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2850 |
+| Spec fields authored across all kinds | 2856 |
 | Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**21 of 79 kinds are at total accounting; 57 proven live.**
+**26 of 79 kinds are at total accounting; 52 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -60,8 +60,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpBigQueryTable | 103 | 80 | 0 | 0 | 35 | ❌ | ✅ pulumi, terraform |
 | GcpBigtableInstance | 24 | 4 | 0 | 0 | 32 | ❌ | ✅ pulumi, terraform |
 | GcpBigtableTable | 28 | 6 | 0 | 0 | 32 | ❌ | ✅ pulumi, terraform |
-| GcpCertManagerCert | 17 | 9 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
-| GcpCertManagerDnsAuthorization | 13 | 5 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
+| GcpCertManagerCert | 12 | 10 | 2 | 0 | 0 | ✅ | — |
+| GcpCertManagerDnsAuthorization | 8 | 6 | 2 | 0 | 0 | ✅ | — |
 | GcpCloudArmorPolicy | 66 | 7 | 0 | 0 | 110 | ❌ | ✅ pulumi, terraform |
 | GcpCloudComposerEnvironment | 86 | 2 | 0 | 0 | 150 | ❌ | ✅ pulumi, terraform |
 | GcpCloudComposerUserWorkloadsConfigMap | 6 | 3 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
@@ -96,7 +96,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpKmsKey | 17 | 9 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
 | GcpKmsKeyIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpKmsKeyRing | 8 | 1 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
-| GcpManagedSslCertificate | 11 | 1 | 0 | 0 | 13 | ❌ | ✅ pulumi, terraform |
+| GcpManagedSslCertificate | 6 | 2 | 3 | 1 | 0 | ✅ | — |
 | GcpMemorystoreInstance | 43 | 25 | 0 | 0 | 24 | ❌ | ✅ pulumi, terraform |
 | GcpProject | 14 | 6 | 0 | 0 | 13 | ❌ | — |
 | GcpProjectIamMember | 6 | 5 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
@@ -114,8 +114,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpSpannerBackupSchedule | 15 | 6 | 0 | 0 | 13 | ❌ | ✅ pulumi, terraform |
 | GcpSpannerDatabase | 17 | 9 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
 | GcpSpannerInstance | 33 | 15 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
-| GcpSslCertificate | 24 | 7 | 0 | 0 | 19 | ❌ | ✅ pulumi, terraform |
-| GcpSslPolicy | 22 | 9 | 0 | 0 | 15 | ❌ | ✅ pulumi, terraform |
+| GcpSslCertificate | 19 | 9 | 4 | 6 | 0 | ✅ | — |
+| GcpSslPolicy | 17 | 13 | 4 | 0 | 0 | ✅ | — |
 | GcpSubnetwork | 34 | 17 | 0 | 0 | 22 | ❌ | ✅ pulumi, terraform |
 | GcpTargetHttpProxy | 12 | 4 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
 | GcpTargetHttpsProxy | 19 | 11 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |

@@ -23,8 +23,6 @@ entries:
   - kind:GcpBigQueryTable
   - kind:GcpBigtableInstance
   - kind:GcpBigtableTable
-  - kind:GcpCertManagerCert
-  - kind:GcpCertManagerDnsAuthorization
   - kind:GcpCloudArmorPolicy
   - kind:GcpCloudComposerEnvironment
   - kind:GcpCloudComposerUserWorkloadsConfigMap
@@ -42,7 +40,6 @@ entries:
   - kind:GcpIamCustomRole
   - kind:GcpKmsKey
   - kind:GcpKmsKeyRing
-  - kind:GcpManagedSslCertificate
   - kind:GcpMemorystoreInstance
   - kind:GcpProject
   - kind:GcpProjectIamMember
@@ -57,8 +54,6 @@ entries:
   - kind:GcpSpannerBackupSchedule
   - kind:GcpSpannerDatabase
   - kind:GcpSpannerInstance
-  - kind:GcpSslCertificate
-  - kind:GcpSslPolicy
   - kind:GcpSubnetwork
   - kind:GcpTargetHttpProxy
   - kind:GcpTargetHttpsProxy

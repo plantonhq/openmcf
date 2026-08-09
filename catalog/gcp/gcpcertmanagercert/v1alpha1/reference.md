@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCertManagerCertSpec creates one Certificate Manager certificate — the
 modern certificate resource external Application Load Balancers consume
 via a target HTTPS proxy's certificate_manager_certificates list or a
@@ -64,6 +66,7 @@ spec:
 | `spec.selfManaged.pemCertificate` | `string` | yes |  |  |
 | `spec.selfManaged.pemPrivateKey` | `string` (sensitive) | yes |  |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -192,6 +195,21 @@ never logged, masked in outputs.
 User labels merged onto the certificate beneath the platform's
 attribution labels (platform keys win on conflicts).
 Keys/values: lowercase letters, digits, underscores, hyphens.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the certificate is deleted (GCP refuses while a proxy
+               or certificate map still references it)
+  "PREVENT" -- destroy FAILS; a guard rail for a certificate whose
+               replacement is not yet serving
+  "ABANDON" -- the certificate is removed from management but left
+               in GCP (useful mid-rotation handoff)
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

@@ -60,8 +60,15 @@ func certManagerCert(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 	if spec.SelfManaged != nil {
 		args.SelfManaged = &certificatemanager.CertificateSelfManagedArgs{
 			PemCertificate: pulumi.StringPtr(spec.SelfManaged.PemCertificate),
-			PemPrivateKey:  pulumi.StringPtr(spec.SelfManaged.PemPrivateKey),
+			// Secret material: ToSecret marks it encrypted in Pulumi state —
+			// the same handling GcpSslCertificate gives its private key.
+			PemPrivateKey: pulumi.ToSecret(pulumi.String(spec.SelfManaged.PemPrivateKey)).(pulumi.StringOutput),
 		}
+	}
+
+	// Unset defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	createdCertificate, err := certificatemanager.NewCertificate(ctx,

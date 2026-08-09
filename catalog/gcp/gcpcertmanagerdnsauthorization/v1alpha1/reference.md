@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCertManagerDnsAuthorizationSpec creates one Certificate Manager DNS
 authorization: the proof-of-domain-control a Google-managed certificate
 needs before it can be issued for a domain the load balancer is not yet
@@ -46,6 +48,7 @@ spec:
 | `spec.location` | `string` |  |  |  |
 | `spec.type` | `string` |  |  |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -117,6 +120,22 @@ If omitted, GCP picks the location-appropriate default. Immutable.
 User labels merged onto the authorization beneath the platform's
 attribution labels (platform keys win on conflicts).
 Keys/values: lowercase letters, digits, underscores, hyphens.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the authorization is deleted (certificates already
+               issued against it keep serving; renewal for domains
+               not yet serving through the LB stops validating)
+  "PREVENT" -- destroy FAILS; protects the validation chain a
+               certificate migration depends on
+  "ABANDON" -- the authorization is removed from management but
+               left in GCP, still validating its domain
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

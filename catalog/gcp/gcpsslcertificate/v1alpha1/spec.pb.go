@@ -82,9 +82,20 @@ type GcpSslCertificateSpec struct {
 	// RSA-2048 (and larger) and ECDSA P-256 keys; the key must be unencrypted
 	// (no passphrase). Write-only in GCP — the API never returns it, and it
 	// never appears in stack outputs. Immutable.
-	PrivateKey    string `protobuf:"bytes,6,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	PrivateKey string `protobuf:"bytes,6,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
+	// Deletion policy — what happens when this resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the certificate is deleted (GCP refuses while any
+	//	             proxy still references it, so destroy fails rather
+	//	             than dropping TLS)
+	//	"PREVENT" -- destroy FAILS; a guard rail for a certificate whose
+	//	             replacement is not yet serving
+	//	"ABANDON" -- the certificate is removed from management but left
+	//	             in GCP (useful mid-rotation handoff)
+	DeletionPolicy string `protobuf:"bytes,7,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpSslCertificateSpec) Reset() {
@@ -159,11 +170,18 @@ func (x *GcpSslCertificateSpec) GetPrivateKey() string {
 	return ""
 }
 
+func (x *GcpSslCertificateSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpsslcertificate_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpsslcertificate_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/gcp/gcpsslcertificate/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpsslcertificate.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xf2\t\n" +
+	"1catalog/gcp/gcpsslcertificate/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpsslcertificate.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb0\v\n" +
 	"\x15GcpSslCertificateSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x9f\x02\n" +
@@ -176,7 +194,9 @@ const file_catalog_gcp_gcpsslcertificate_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0fcertificate_pem\x12Qcertificate must be a PEM-encoded certificate chain (-----BEGIN CERTIFICATE-----)\x1a.this.startsWith('-----BEGIN CERTIFICATE-----')r\x02\x10\x01R\vcertificate\x12\xfc\x02\n" +
 	"\vprivate_key\x18\x06 \x01(\tB\xda\x02\xbaH\xd2\x02\xba\x01\xca\x02\n" +
 	"\x0fprivate_key_pem\x12\x9a\x01private_key must be a PEM-encoded unencrypted private key (-----BEGIN PRIVATE KEY----- / -----BEGIN RSA PRIVATE KEY----- / -----BEGIN EC PRIVATE KEY-----)\x1a\x99\x01this.startsWith('-----BEGIN PRIVATE KEY-----') || this.startsWith('-----BEGIN RSA PRIVATE KEY-----') || this.startsWith('-----BEGIN EC PRIVATE KEY-----')r\x02\x10\x01\xa0\xa6\x1d\x01R\n" +
-	"privateKeyB\xe7\x02\n" +
+	"privateKey\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\a \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\xe7\x02\n" +
 	".com.dev.planton.gcp.gcpsslcertificate.v1alpha1B\tSpecProtoP\x01Z]github.com/plantonhq/planton/catalog/gcp/gcpsslcertificate/v1alpha1;gcpsslcertificatev1alpha1\xa2\x02\x04DPGG\xaa\x02*Dev.Planton.Gcp.Gcpsslcertificate.V1alpha1\xca\x02*Dev\\Planton\\Gcp\\Gcpsslcertificate\\V1alpha1\xe2\x026Dev\\Planton\\Gcp\\Gcpsslcertificate\\V1alpha1\\GPBMetadata\xea\x02.Dev::Planton::Gcp::Gcpsslcertificate::V1alpha1b\x06proto3"
 
 var (

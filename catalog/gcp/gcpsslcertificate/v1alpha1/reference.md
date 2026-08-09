@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpSslCertificateSpec defines a self-managed Compute Engine SSL certificate
 — you bring the PEM certificate chain and private key (issued by your own
 CA, purchased commercially, or automated via ACME outside GCP), and the
@@ -114,6 +116,7 @@ spec:
 | `spec.description` | `string` |  |  |  |
 | `spec.certificate` | `string` | yes |  |  |
 | `spec.privateKey` | `string` (sensitive) | yes |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -190,6 +193,22 @@ never appears in stack outputs. Immutable.
 
 - rule: private_key must be a PEM-encoded unencrypted private key (-----BEGIN PRIVATE KEY----- / -----BEGIN RSA PRIVATE KEY----- / -----BEGIN EC PRIVATE KEY-----)
 - rule: {"string":{"minLen":"1"}}
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the certificate is deleted (GCP refuses while any
+               proxy still references it, so destroy fails rather
+               than dropping TLS)
+  "PREVENT" -- destroy FAILS; a guard rail for a certificate whose
+               replacement is not yet serving
+  "ABANDON" -- the certificate is removed from management but left
+               in GCP (useful mid-rotation handoff)
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

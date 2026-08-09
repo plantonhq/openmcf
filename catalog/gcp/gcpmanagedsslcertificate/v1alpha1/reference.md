@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpManagedSslCertificateSpec defines a Google-managed SSL certificate — a
 global Compute Engine SSL certificate whose private key and issuance are
 handled entirely by Google. Attach it to a target HTTPS proxy to terminate
@@ -56,6 +58,7 @@ spec:
 | `spec.certificateName` | `string` |  |  |  |
 | `spec.description` | `string` |  |  |  |
 | `spec.domains` | `[]string` | yes |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -104,6 +107,22 @@ changing the list destroys and recreates the certificate.
 
 - rule: each domain must be a fully-qualified domain name (no wildcards) such as app.example.com
 - rule: {"repeated":{"minItems":"1","maxItems":"100"}}
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the certificate is deleted (GCP refuses while any
+               proxy still references it, so destroy fails rather
+               than dropping TLS)
+  "PREVENT" -- destroy FAILS; a guard rail for a certificate whose
+               replacement is not yet provisioned and serving
+  "ABANDON" -- the certificate is removed from management but left
+               in GCP (useful mid-rotation handoff)
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 
