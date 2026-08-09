@@ -249,6 +249,7 @@ Fields on other kinds that can point at this resource:
 | GcpAddress | `spec.network` | `status.outputs.network_self_link` |
 | GcpAlloydbCluster | `spec.network` | `status.outputs.network_id` |
 | GcpCloudComposerEnvironment | `spec.nodeConfig.network` | `status.outputs.network_self_link` |
+| GcpCloudFunction | `spec.serviceConfig.directVpcNetworkInterface.network` | `status.outputs.network_name` |
 | GcpCloudRun | `spec.vpcAccess.networkInterfaces[].network` | `status.outputs.network_name` |
 | GcpCloudRunJob | `spec.template.vpcAccess.networkInterfaces[].network` | `status.outputs.network_name` |
 | GcpCloudSql | `spec.network.privateNetwork` | `status.outputs.network_id` |

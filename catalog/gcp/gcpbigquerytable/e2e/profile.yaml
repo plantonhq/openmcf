@@ -8,8 +8,6 @@ spec:
   # deletionProtection is false so ephemeral DESTROY can run. CMEK and external
   # GCS arms are excluded live (org-level KMS grant / staged object data).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

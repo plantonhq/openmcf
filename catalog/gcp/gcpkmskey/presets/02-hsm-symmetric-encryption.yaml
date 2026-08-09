@@ -15,3 +15,6 @@ spec:
     # HSM protection is immutable: compliance posture is fixed at
     # creation, never silently downgraded later.
     protectionLevel: HSM
+  # Destroy protection for a compliance-grade key: a destroy fails
+  # instead of scheduling every version for destruction.
+  deletionPolicy: PREVENT

@@ -17,3 +17,8 @@ spec:
     maxDoublings: 16
   stackdriverLoggingConfig:
     samplingRatio: 0.1
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE
+  # Explicit dispatch state: the queue runs (and the module reconciles the
+  # value on every apply -- pause/resume is declarative).
+  desiredState: RUNNING

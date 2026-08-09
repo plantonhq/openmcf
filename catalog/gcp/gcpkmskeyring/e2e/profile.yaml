@@ -9,8 +9,6 @@ spec:
   # ${E2E_RUN_ID} name means the permanent leftover ring is inert, free,
   # and can never collide with a later run.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

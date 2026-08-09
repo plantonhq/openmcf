@@ -31,7 +31,7 @@ Open the deployment store, find **IAM Custom Role on Google Cloud**, and click *
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpIamCustomRole
 metadata:
   name: log-bucket-writer

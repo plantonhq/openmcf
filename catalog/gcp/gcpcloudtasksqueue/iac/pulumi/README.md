@@ -32,9 +32,10 @@ Uses `pulumi-gcp/sdk/v9/go/gcp/cloudtasks` for the `cloudtasks.NewQueue` resourc
 - If `project_id` is empty, the queue lands in the provider's default project.
 - `max_burst_size` is computed by GCP from the dispatch rate and exported as an output.
 - Flattened URI path/query overrides are mapped back to the SDK's nested structure.
-- The bridged provider's client-side `deletion_policy` is pinned to `DELETE`, and its
-  `desired_state` (pause/resume) surface is deliberately unused — see the PARITY
-  comments in `cloud_tasks_queue.go`.
+- The `deletion_policy` spec field (DELETE / PREVENT / ABANDON, provider default
+  DELETE) is sent only when set; `desired_state` (RUNNING / PAUSED) is sent
+  explicitly on every apply so pause/resume reconciles declaratively — both
+  mirror the Terraform module.
 
 ## Debug
 

@@ -610,4 +610,20 @@ var _ = ginkgo.Describe("GcpCloudSchedulerJobSpec", func() {
 		gomega.Expect(decoded.Spec.HttpTarget.HttpMethod).To(gomega.Equal("POST"))
 		gomega.Expect(decoded.Spec.HttpTarget.Headers["X-Test"]).To(gomega.Equal("value"))
 	})
+
+	ginkgo.It("should accept each deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			msg := minimalHttp()
+			msg.Spec.DeletionPolicy = v
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimalHttp()
+		msg.Spec.DeletionPolicy = "KEEP"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
 })

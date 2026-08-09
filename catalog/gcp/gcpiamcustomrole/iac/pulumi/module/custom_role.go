@@ -40,6 +40,13 @@ func customRole(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) 
 		Permissions: permissions,
 	}
 
+	// DELETE (provider default) soft-deletes the role on destroy; PREVENT
+	// fails the destroy; ABANDON leaves the role active. Sent only when
+	// set — mirrors the Terraform module.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	// Omitted description stays unset (matching the Terraform module's null)
 	// rather than being sent as an empty string.
 	if spec.Description != "" {

@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCloudSchedulerJobSpec defines the configuration for a GCP Cloud Scheduler job.
 
 Cloud Scheduler is a fully managed cron job scheduler. It allows you to
@@ -62,6 +64,8 @@ spec:
     minBackoffDuration: "5s"
     maxBackoffDuration: "600s"
     maxDoublings: 3
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -106,6 +110,7 @@ spec:
 | `spec.retryConfig.minBackoffDuration` | `string` |  |  |  |
 | `spec.retryConfig.maxBackoffDuration` | `string` |  |  |  |
 | `spec.retryConfig.maxDoublings` | `int32` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -446,6 +451,20 @@ Format: duration string (e.g., "3600s" for 1 hour).
 The number of times that the retry interval doubles before becoming
 constant. The retry interval starts at min_backoff_duration, then
 doubles max_doublings times, and increases linearly thereafter.
+
+### spec.deletionPolicy
+
+`string`
+
+What destroying this resource does to the job:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the job is deleted and its schedule stops firing
+  "PREVENT" -- destroy FAILS; protects a job whose missed runs would
+               break downstream systems
+  "ABANDON" -- the job is removed from management but keeps firing on
+               schedule in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

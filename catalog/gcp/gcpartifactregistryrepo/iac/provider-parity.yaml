@@ -1,0 +1,94 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_artifact_registry_repository:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.vulnerability_scanning_enablement
+        arg: vulnerability_scanning_config.enablement_config
+
+      # The provider wraps each well-known public upstream in a
+      # per-format block; the spec flattens the choice to one field per
+      # format (each accepts exactly its registry's sentinel value, e.g.
+      # DOCKER_HUB) -- the exactly-one-upstream CEL owns the arm choice.
+      - spec: spec.remote_repository_config.docker_public_repository
+        arg: remote_repository_config.docker_repository.public_repository
+      - spec: spec.remote_repository_config.maven_public_repository
+        arg: remote_repository_config.maven_repository.public_repository
+      - spec: spec.remote_repository_config.npm_public_repository
+        arg: remote_repository_config.npm_repository.public_repository
+      - spec: spec.remote_repository_config.python_public_repository
+        arg: remote_repository_config.python_repository.public_repository
+
+      # apt/yum public mirrors: the provider nests base+path in a
+      # public_repository wrapper block; the spec carries the pair
+      # directly on the per-format message.
+      - spec: spec.remote_repository_config.apt_repository.repository_base
+        arg: remote_repository_config.apt_repository.public_repository.repository_base
+      - spec: spec.remote_repository_config.apt_repository.repository_path
+        arg: remote_repository_config.apt_repository.public_repository.repository_path
+      - spec: spec.remote_repository_config.yum_repository.repository_base
+        arg: remote_repository_config.yum_repository.public_repository.repository_base
+      - spec: spec.remote_repository_config.yum_repository.repository_path
+        arg: remote_repository_config.yum_repository.public_repository.repository_path
+
+      # Upstream credentials: the provider nests username/password inside
+      # a username_password_credentials wrapper (the only credential kind
+      # the API defines); the spec flattens the wrapper away.
+      - spec: spec.remote_repository_config.upstream_credentials.username
+        arg: remote_repository_config.upstream_credentials.username_password_credentials.username
+      - spec: spec.remote_repository_config.upstream_credentials.password_secret_version
+        arg: remote_repository_config.upstream_credentials.username_password_credentials.password_secret_version
+    exclusions:
+      # The provider deprecates these arms in their own descriptions:
+      # "[Deprecated, please use commonRepository instead] Settings for a
+      # remote repository with a custom uri." The spec models
+      # common_repository (whose URI accepts a registry URI, an AR
+      # repository resource name, or an AR repository URI) and its field
+      # comments already direct custom registries there.
+      - arg: remote_repository_config.docker_repository.custom_repository.uri
+        reason: >-
+          provider-deprecated in favor of common_repository ("[Deprecated,
+          please use commonRepository instead]"); the spec's
+          common_repository carries the same capability
+      - arg: remote_repository_config.maven_repository.custom_repository.uri
+        reason: >-
+          provider-deprecated in favor of common_repository; see the
+          docker custom_repository entry
+      - arg: remote_repository_config.npm_repository.custom_repository.uri
+        reason: >-
+          provider-deprecated in favor of common_repository; see the
+          docker custom_repository entry
+      - arg: remote_repository_config.python_repository.custom_repository.uri
+        reason: >-
+          provider-deprecated in favor of common_repository; see the
+          docker custom_repository entry
+
+  google_artifact_registry_repository_iam_member:
+    # Instantiated per spec.iam_members entry (additive grants; the
+    # authoritative iam_binding/iam_policy forms are deliberately not
+    # modeled -- they clobber grants made elsewhere).
+    specRoot: spec.iam_members
+    exclusions:
+      - arg: repository
+        reason: wired by the module to the repository it creates -- never user surface
+      - arg: project
+        reason: wired by the module to the repository's project -- never user surface
+      - arg: location
+        reason: wired by the module to the repository's location -- never user surface
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      artifactregistry.googleapis.com with fixed arguments
+      (disable_on_destroy false so destroying one repository never
+      disables the API project-wide); not spec surface.

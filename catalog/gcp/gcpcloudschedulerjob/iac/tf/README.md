@@ -1,6 +1,6 @@
 # GcpCloudSchedulerJob Terraform Module
 
-Provisions a Google Cloud Scheduler job using the Terraform Google provider (`~> 6.0`).
+Provisions a Google Cloud Scheduler job using the Terraform Google provider (`~> 7.43`).
 
 ## Resources Created
 
@@ -49,7 +49,7 @@ module "scheduler_job" {
 
 ## Notes
 
-- Requires Google provider `~> 6.0`
+- Requires Google provider `~> 7.43`
 - Cloud Scheduler jobs do not support GCP labels
 - If `job_name` is empty, the job takes its name from `metadata.name`
 - If `project_id` is empty, the job is created in the provider's default

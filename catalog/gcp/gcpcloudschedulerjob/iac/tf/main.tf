@@ -18,6 +18,10 @@ resource "google_cloud_scheduler_job" "this" {
   project  = local.project_id
   schedule = var.spec.schedule
 
+  # DELETE (provider default) removes the job on destroy; PREVENT fails
+  # the destroy; ABANDON leaves the job firing on schedule.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   # time_zone defaults to Etc/UTC and attempt_deadline to 180s on the
   # provider — both are only sent when the manifest sets them, so the
   # provider defaults apply identically on both engines.

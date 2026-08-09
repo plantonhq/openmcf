@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpProjectSpec creates one Google Cloud project — the Layer-0 container
 every other GCP resource lives in. It attaches the project to the
 resource hierarchy (organization or folder), links a billing account,

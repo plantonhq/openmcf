@@ -63,6 +63,11 @@ variable "spec" {
     # User labels, merged beneath the platform attribution labels
     # (see locals.tf).
     labels = optional(map(string), {})
+
+    # DELETE (default) destroys every key version on destroy — data
+    # encrypted under them becomes unrecoverable; PREVENT fails the
+    # destroy; ABANDON leaves the key and all versions intact.
+    deletion_policy = optional(string, "")
   })
 
   validation {

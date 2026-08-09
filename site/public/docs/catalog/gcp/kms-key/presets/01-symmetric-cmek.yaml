@@ -14,5 +14,9 @@ spec:
   # 90-day automatic rotation: a new primary version is minted on the
   # cadence; old versions keep decrypting existing data until destroyed.
   rotationPeriod: "7776000s"
+  # Destroy protection for a key real data depends on: a destroy fails
+  # instead of scheduling every version (and the data under them) for
+  # destruction. Flip to DELETE only for disposable keys.
+  deletionPolicy: PREVENT
   labels:
     team: platform # replace with your cost-attribution labels

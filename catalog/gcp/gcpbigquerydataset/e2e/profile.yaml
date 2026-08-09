@@ -7,8 +7,6 @@ spec:
   # authoritative ACL with projectOwners/projectReaders entries. BigQuery
   # datasets delete immediately when empty (no soft-delete reservation).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

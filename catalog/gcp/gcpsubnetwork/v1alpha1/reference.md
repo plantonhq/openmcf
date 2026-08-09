@@ -394,6 +394,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | GcpAddress | `spec.subnetwork` | `status.outputs.subnetwork_self_link` |
 | GcpCloudComposerEnvironment | `spec.nodeConfig.subnetwork` | `status.outputs.subnetwork_self_link` |
+| GcpCloudFunction | `spec.serviceConfig.directVpcNetworkInterface.subnetwork` | `status.outputs.subnetwork_name` |
 | GcpCloudRun | `spec.vpcAccess.networkInterfaces[].subnetwork` | `status.outputs.subnetwork_name` |
 | GcpCloudRunJob | `spec.template.vpcAccess.networkInterfaces[].subnetwork` | `status.outputs.subnetwork_name` |
 | GcpComputeInstance | `spec.networkInterfaces[].subnetwork` | `status.outputs.subnetwork_self_link` |

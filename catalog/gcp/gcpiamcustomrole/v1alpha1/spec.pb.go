@@ -70,9 +70,22 @@ type GcpIamCustomRoleSpec struct {
 	// Purely informational — it does not change what the role can do, but
 	// GA (the default) is right for production roles; use DISABLED to keep the
 	// role defined while rejecting all of its grants (an IAM kill switch).
-	Stage         *string `protobuf:"bytes,6,opt,name=stage,proto3,oneof" json:"stage,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Stage *string `protobuf:"bytes,6,opt,name=stage,proto3,oneof" json:"stage,omitempty"`
+	// What destroying this resource does to the role. Custom-role deletion
+	// is a SOFT delete in GCP — the role enters a deleted state (recoverable
+	// by undelete for 7 days, purged after 37), so DELETE and ABANDON differ
+	// less here than on hard-delete resources:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the role is soft-deleted; existing bindings to it stop
+	//	             granting access
+	//	"PREVENT" -- destroy FAILS; protects a role that live bindings
+	//	             depend on
+	//	"ABANDON" -- the role is removed from management but stays active,
+	//	             and every binding to it keeps working
+	DeletionPolicy string `protobuf:"bytes,7,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpIamCustomRoleSpec) Reset() {
@@ -147,11 +160,18 @@ func (x *GcpIamCustomRoleSpec) GetStage() string {
 	return ""
 }
 
+func (x *GcpIamCustomRoleSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpiamcustomrole_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpiamcustomrole_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/gcp/gcpiamcustomrole/v1alpha1/spec.proto\x12)dev.planton.gcp.gcpiamcustomrole.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x91\x04\n" +
+	"0catalog/gcp/gcpiamcustomrole/v1alpha1/spec.proto\x12)dev.planton.gcp.gcpiamcustomrole.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xcf\x05\n" +
 	"\x14GcpIamCustomRoleSpec\x128\n" +
 	"\arole_id\x18\x01 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-zA-Z0-9_.]{3,64}$R\x06roleId\x12u\n" +
 	"\n" +
@@ -161,7 +181,9 @@ const file_catalog_gcp_gcpiamcustomrole_v1alpha1_spec_proto_rawDesc = "" +
 	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription\x120\n" +
 	"\vpermissions\x18\x05 \x03(\tB\x0e\xbaH\v\x92\x01\b\b\x01\"\x04r\x02\x10\x01R\vpermissions\x12\xbd\x01\n" +
 	"\x05stage\x18\x06 \x01(\tB\xa1\x01\xbaH\x97\x01\xba\x01\x93\x01\n" +
-	"\vstage_valid\x12Bstage must be one of ALPHA, BETA, GA, DEPRECATED, DISABLED, or EAP\x1a@this in ['ALPHA', 'BETA', 'GA', 'DEPRECATED', 'DISABLED', 'EAP']\x8a\xa6\x1d\x02GAH\x00R\x05stage\x88\x01\x01B\b\n" +
+	"\vstage_valid\x12Bstage must be one of ALPHA, BETA, GA, DEPRECATED, DISABLED, or EAP\x1a@this in ['ALPHA', 'BETA', 'GA', 'DEPRECATED', 'DISABLED', 'EAP']\x8a\xa6\x1d\x02GAH\x00R\x05stage\x88\x01\x01\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\a \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\b\n" +
 	"\x06_stageB\xe0\x02\n" +
 	"-com.dev.planton.gcp.gcpiamcustomrole.v1alpha1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/catalog/gcp/gcpiamcustomrole/v1alpha1;gcpiamcustomrolev1alpha1\xa2\x02\x04DPGG\xaa\x02)Dev.Planton.Gcp.Gcpiamcustomrole.V1alpha1\xca\x02)Dev\\Planton\\Gcp\\Gcpiamcustomrole\\V1alpha1\xe2\x025Dev\\Planton\\Gcp\\Gcpiamcustomrole\\V1alpha1\\GPBMetadata\xea\x02-Dev::Planton::Gcp::Gcpiamcustomrole::V1alpha1b\x06proto3"
 

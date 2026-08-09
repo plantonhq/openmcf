@@ -1,0 +1,58 @@
+# GcpCloudFunction Guide
+
+The judgment this guide protects: a Gen 2 function is a Cloud Run
+service with a build pipeline attached. The serving decisions (identity,
+networking, scaling) outlive any single deploy — get those right and
+redeploys stay boring.
+
+## Direct VPC vs connector: pick by operational appetite
+
+Direct VPC egress (`directVpcNetworkInterface`) attaches instances
+straight to a subnet — no connector to size, pay for, or saturate. The
+trade: instances draw IPs from the subnet, so the subnet's free range is
+the function's real scaling ceiling; size it for `maxInstanceCount`,
+not for today's traffic. The Serverless VPC Access connector remains the
+right choice when many functions share one egress point or the subnet
+is not yours to consume. The two paths are mutually exclusive
+(enforced pre-deploy), and the egress mode (`directVpcEgress:
+ALL_TRAFFIC`) is what enables static egress IPs via Cloud NAT.
+
+## Identity: one function, one service account
+
+The default compute service account is broad by default; give each
+production function its own `serviceAccountEmail` holding exactly what
+the code touches. Secrets ride Secret Manager references
+(`secretEnvironmentVariables` / `secretVolumes`) — the runtime SA needs
+`secretmanager.secretAccessor` per secret, and the material never
+enters the spec or state.
+
+## Cold starts are a spend decision
+
+`scaling.minInstanceCount: 1` eliminates cold starts for the price of
+one always-on instance — right for latency-sensitive HTTP endpoints,
+waste for event handlers that tolerate a second of warmup. Concurrency
+above 1 cuts instance count for I/O-bound code but requires ≥ 1 CPU and
+thread-safe code.
+
+## Event functions: idempotency is not optional
+
+`retryPolicy: RETRY_POLICY_RETRY` is at-least-once delivery — the
+handler WILL eventually see duplicates. Write the handler idempotent
+first, then enable retry; the reverse order pages you at 3am with a
+double-charged customer.
+
+## Public invocation is a one-line blast radius
+
+`allowUnauthenticated: true` grants `run.invoker` to `allUsers` on the
+underlying Cloud Run service. It is the right line for a public webhook
+and the wrong default for everything else — prefer granting invoker to
+the specific caller identity (Scheduler SA, Pub/Sub push SA, another
+service's SA).
+
+## Destroy semantics
+
+`deletionPolicy: DELETE` (default) removes the function and its
+triggers stop firing; queued events are the source system's problem, so
+drain or pause producers first. `PREVENT` suits functions other systems
+invoke by URL. `ABANDON` keeps the function serving AND consuming
+events unmanaged — someone must still own its errors.

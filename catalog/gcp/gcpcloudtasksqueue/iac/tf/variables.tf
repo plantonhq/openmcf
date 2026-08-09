@@ -85,6 +85,14 @@ variable "spec" {
     stackdriver_logging_config = optional(object({
       sampling_ratio = number
     }), null)
+
+    # RUNNING (default) dispatches tasks; PAUSED holds them in the queue.
+    # Reconciled on every apply.
+    desired_state = optional(string, "")
+
+    # DELETE (default) removes the queue and its backlog on destroy;
+    # PREVENT fails the destroy; ABANDON leaves the queue running in GCP.
+    deletion_policy = optional(string, "")
   })
 
   validation {

@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2938 |
+| Spec fields authored across all kinds | 2956 |
 | Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**60 of 79 kinds are at total accounting; 20 proven live.**
+**71 of 79 kinds are at total accounting; 10 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -53,11 +53,11 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpAlloydbCluster | 84 | 19 | 0 | 0 | 89 | ❌ | ✅ pulumi, terraform |
 | GcpAlloydbInstance | 35 | 16 | 0 | 0 | 27 | ❌ | ✅ pulumi, terraform |
 | GcpAlloydbUser | 13 | 5 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
-| GcpArtifactRegistryRepo | 57 | 28 | 0 | 0 | 46 | ❌ | ✅ pulumi, terraform |
+| GcpArtifactRegistryRepo | 52 | 33 | 12 | 7 | 0 | ✅ | — |
 | GcpBackendBucket | 29 | 22 | 6 | 1 | 0 | ✅ | — |
 | GcpBackendService | 116 | 91 | 22 | 3 | 0 | ✅ | — |
-| GcpBigQueryDataset | 44 | 32 | 0 | 0 | 18 | ❌ | ✅ pulumi, terraform |
-| GcpBigQueryTable | 103 | 80 | 0 | 0 | 35 | ❌ | ✅ pulumi, terraform |
+| GcpBigQueryDataset | 39 | 33 | 6 | 0 | 0 | ✅ | — |
+| GcpBigQueryTable | 98 | 86 | 12 | 0 | 0 | ✅ | — |
 | GcpBigtableInstance | 19 | 6 | 13 | 0 | 0 | ✅ | — |
 | GcpBigtableTable | 23 | 8 | 14 | 1 | 0 | ✅ | — |
 | GcpCertManagerCert | 12 | 10 | 2 | 0 | 0 | ✅ | — |
@@ -66,14 +66,14 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpCloudComposerEnvironment | 81 | 3 | 66 | 12 | 0 | ✅ | — |
 | GcpCloudComposerUserWorkloadsConfigMap | 6 | 4 | 2 | 0 | 0 | ✅ | — |
 | GcpCloudComposerUserWorkloadsSecret | 6 | 4 | 2 | 0 | 0 | ✅ | — |
-| GcpCloudFunction | 70 | 38 | 0 | 0 | 49 | ❌ | ✅ pulumi, terraform |
+| GcpCloudFunction | 65 | 43 | 15 | 7 | 0 | ✅ | — |
 | GcpCloudRun | 129 | 27 | 90 | 12 | 0 | ✅ | — |
 | GcpCloudRunJob | 74 | 10 | 61 | 3 | 0 | ✅ | — |
-| GcpCloudSchedulerJob | 37 | 28 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
+| GcpCloudSchedulerJob | 32 | 29 | 3 | 0 | 0 | ✅ | — |
 | GcpCloudSql | 147 | 40 | 97 | 10 | 0 | ✅ | — |
 | GcpCloudSqlDatabase | 6 | 4 | 2 | 0 | 0 | ✅ | — |
 | GcpCloudSqlUser | 14 | 10 | 2 | 2 | 0 | ✅ | — |
-| GcpCloudTasksQueue | 34 | 20 | 0 | 0 | 21 | ❌ | ✅ pulumi, terraform |
+| GcpCloudTasksQueue | 29 | 22 | 7 | 0 | 0 | ✅ | — |
 | GcpComputeDisk | 36 | 18 | 14 | 4 | 0 | ✅ | — |
 | GcpComputeInstance | 124 | 47 | 64 | 13 | 0 | ✅ | — |
 | GcpDataprocAutoscalingPolicy | 16 | 15 | 1 | 0 | 0 | ✅ | — |
@@ -92,14 +92,14 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpGlobalAddress | 11 | 9 | 2 | 0 | 0 | ✅ | — |
 | GcpGlobalForwardingRule | 23 | 18 | 4 | 1 | 0 | ✅ | — |
 | GcpHealthCheck | 105 | 12 | 0 | 0 | 136 | ❌ | ✅ pulumi, terraform |
-| GcpIamCustomRole | 7 | 5 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
-| GcpKmsKey | 17 | 9 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
+| GcpIamCustomRole | 7 | 6 | 1 | 0 | 0 | ✅ | — |
+| GcpKmsKey | 12 | 10 | 2 | 0 | 0 | ✅ | — |
 | GcpKmsKeyIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpKmsKeyRing | 8 | 1 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
+| GcpKmsKeyRing | 3 | 1 | 2 | 0 | 0 | ✅ | — |
 | GcpManagedSslCertificate | 6 | 2 | 3 | 1 | 0 | ✅ | — |
 | GcpMemorystoreInstance | 38 | 29 | 7 | 2 | 0 | ✅ | — |
-| GcpProject | 14 | 6 | 0 | 0 | 13 | ❌ | — |
-| GcpProjectIamMember | 6 | 5 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
+| GcpProject | 14 | 5 | 5 | 4 | 0 | ✅ | — |
+| GcpProjectIamMember | 6 | 5 | 1 | 0 | 0 | ✅ | — |
 | GcpPubSubSchema | 5 | 3 | 2 | 0 | 0 | ✅ | — |
 | GcpPubSubSubscription | 44 | 41 | 3 | 0 | 0 | ✅ | — |
 | GcpPubSubTopic | 44 | 41 | 3 | 0 | 0 | ✅ | — |

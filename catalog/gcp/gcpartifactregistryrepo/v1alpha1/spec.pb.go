@@ -173,9 +173,20 @@ type GcpArtifactRegistryRepoSpec struct {
 	//
 	// Public access: grant roles/artifactregistry.reader to the special
 	// member "allUsers" (requires the project to allow public access).
-	IamMembers    []*GcpArtifactRegistryRepoIamMember `protobuf:"bytes,16,rep,name=iam_members,json=iamMembers,proto3" json:"iam_members,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	IamMembers []*GcpArtifactRegistryRepoIamMember `protobuf:"bytes,16,rep,name=iam_members,json=iamMembers,proto3" json:"iam_members,omitempty"`
+	// What destroying this resource does to the repository (IAM grants are
+	// plain bindings — they are always removed with the destroy):
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the repository and every artifact stored in it are
+	//	             deleted; images/packages become unpullable immediately
+	//	"PREVENT" -- destroy FAILS; protects a registry that running
+	//	             workloads still pull from
+	//	"ABANDON" -- the repository is removed from management but keeps
+	//	             serving artifacts in GCP
+	DeletionPolicy string `protobuf:"bytes,17,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpArtifactRegistryRepoSpec) Reset() {
@@ -320,6 +331,13 @@ func (x *GcpArtifactRegistryRepoSpec) GetIamMembers() []*GcpArtifactRegistryRepo
 	return nil
 }
 
+func (x *GcpArtifactRegistryRepoSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 // Docker-format-specific repository configuration.
 type GcpArtifactRegistryRepoDockerConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -378,6 +396,8 @@ type GcpArtifactRegistryRepoMavenConfig struct {
 	//	""         -- accept both release and snapshot versions (default)
 	//	"RELEASE"  -- accept only release versions
 	//	"SNAPSHOT" -- accept only snapshot versions
+	//	"VERSION_POLICY_UNSPECIFIED" -- the API's explicit mixed-versions
+	//	             sentinel (equivalent to leaving this unset)
 	//
 	// The conventional Maven setup is a RELEASE repository and a SNAPSHOT
 	// repository, with builds publishing to each as appropriate.
@@ -822,8 +842,10 @@ type GcpArtifactRegistryRepoRemoteAptRepository struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The mirror tree to cache from:
 	//
-	//	"DEBIAN" -- deb.debian.org
-	//	"UBUNTU" -- archive.ubuntu.com
+	//	"DEBIAN"          -- deb.debian.org
+	//	"UBUNTU"          -- archive.ubuntu.com
+	//	"DEBIAN_SNAPSHOT" -- snapshot.debian.org (point-in-time Debian
+	//	                     archives, for reproducible builds)
 	RepositoryBase string `protobuf:"bytes,1,opt,name=repository_base,json=repositoryBase,proto3" json:"repository_base,omitempty"`
 	// The specific repository path within the base, e.g. "debian/dists/bookworm".
 	RepositoryPath string `protobuf:"bytes,2,opt,name=repository_path,json=repositoryPath,proto3" json:"repository_path,omitempty"`
@@ -1309,7 +1331,7 @@ var File_catalog_gcp_gcpartifactregistryrepo_v1alpha1_spec_proto protoreflect.Fi
 
 const file_catalog_gcp_gcpartifactregistryrepo_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7catalog/gcp/gcpartifactregistryrepo/v1alpha1/spec.proto\x120dev.planton.gcp.gcpartifactregistryrepo.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xc8\x16\n" +
+	"7catalog/gcp/gcpartifactregistryrepo/v1alpha1/spec.proto\x120dev.planton.gcp.gcpartifactregistryrepo.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x86\x18\n" +
 	"\x1bGcpArtifactRegistryRepoSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xf8\x01\n" +
@@ -1334,7 +1356,9 @@ const file_catalog_gcp_gcpartifactregistryrepo_v1alpha1_spec_proto_rawDesc = "" 
 	"!vulnerability_scanning_enablement\x18\x0f \x01(\tB\xa9\x01\xbaH\xa5\x01\xba\x01\xa1\x01\n" +
 	"'valid_vulnerability_scanning_enablement\x12Evulnerability_scanning_enablement must be one of: INHERITED, DISABLED\x1a/this == '' || this in ['INHERITED', 'DISABLED']R\x1fvulnerabilityScanningEnablement\x12s\n" +
 	"\viam_members\x18\x10 \x03(\v2R.dev.planton.gcp.gcpartifactregistryrepo.v1alpha1.GcpArtifactRegistryRepoIamMemberR\n" +
-	"iamMembers\x1a9\n" +
+	"iamMembers\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x11 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x92\x06\xbaH\x8e\x06\x1a\xb6\x01\n" +
@@ -1343,10 +1367,10 @@ const file_catalog_gcp_gcpartifactregistryrepo_v1alpha1_spec_proto_rawDesc = "" 
 	"$virtual_config_requires_virtual_mode\x12Ivirtual_repository_config can only be set when mode is VIRTUAL_REPOSITORY\x1aI!has(this.virtual_repository_config) || this.mode == 'VIRTUAL_REPOSITORY'\x1a\xcc\x01\n" +
 	"$virtual_mode_requires_virtual_config\x12Zmode VIRTUAL_REPOSITORY requires virtual_repository_config to define the upstream policies\x1aHthis.mode != 'VIRTUAL_REPOSITORY' || has(this.virtual_repository_config)\"L\n" +
 	"#GcpArtifactRegistryRepoDockerConfig\x12%\n" +
-	"\x0eimmutable_tags\x18\x01 \x01(\bR\rimmutableTags\"\x87\x02\n" +
-	"\"GcpArtifactRegistryRepoMavenConfig\x12\xa4\x01\n" +
-	"\x0eversion_policy\x18\x01 \x01(\tB}\xbaHz\xba\x01w\n" +
-	"\x14valid_version_policy\x120version_policy must be one of: RELEASE, SNAPSHOT\x1a-this == '' || this in ['RELEASE', 'SNAPSHOT']R\rversionPolicy\x12:\n" +
+	"\x0eimmutable_tags\x18\x01 \x01(\bR\rimmutableTags\"\xc4\x02\n" +
+	"\"GcpArtifactRegistryRepoMavenConfig\x12\xe1\x01\n" +
+	"\x0eversion_policy\x18\x01 \x01(\tB\xb9\x01\xbaH\xb5\x01\xba\x01\xb1\x01\n" +
+	"\x14valid_version_policy\x12Lversion_policy must be one of: VERSION_POLICY_UNSPECIFIED, RELEASE, SNAPSHOT\x1aKthis == '' || this in ['VERSION_POLICY_UNSPECIFIED', 'RELEASE', 'SNAPSHOT']R\rversionPolicy\x12:\n" +
 	"\x19allow_snapshot_overwrites\x18\x02 \x01(\bR\x17allowSnapshotOverwrites\"\xda\x06\n" +
 	"$GcpArtifactRegistryRepoCleanupPolicy\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x80\x01R\x02id\x12p\n" +
@@ -1388,10 +1412,10 @@ const file_catalog_gcp_gcpartifactregistryrepo_v1alpha1_spec_proto_rawDesc = "" 
 	"\x14upstream_credentials\x18\t \x01(\v2b.dev.planton.gcp.gcpartifactregistryrepo.v1alpha1.GcpArtifactRegistryRepoRemoteUpstreamCredentialsR\x13upstreamCredentials\x12>\n" +
 	"\x1bdisable_upstream_validation\x18\n" +
 	" \x01(\bR\x19disableUpstreamValidation:\xb5\x03\xbaH\xb1\x03\x1a\xae\x03\n" +
-	"\x14exactly_one_upstream\x12\x98\x01exactly one upstream source must be set: apt_repository, yum_repository, common_repository, or one of the docker/maven/npm/python public repository arms\x1a\xfa\x01[has(this.apt_repository), has(this.common_repository), this.docker_public_repository != '', this.maven_public_repository != '', this.npm_public_repository != '', this.python_public_repository != '', has(this.yum_repository)].filter(x, x).size() == 1\"\xfb\x01\n" +
-	"*GcpArtifactRegistryRepoRemoteAptRepository\x12\x9b\x01\n" +
-	"\x0frepository_base\x18\x01 \x01(\tBr\xbaHo\xba\x01i\n" +
-	"\x19valid_apt_repository_base\x12.repository_base must be one of: DEBIAN, UBUNTU\x1a\x1cthis in ['DEBIAN', 'UBUNTU']\xc8\x01\x01R\x0erepositoryBase\x12/\n" +
+	"\x14exactly_one_upstream\x12\x98\x01exactly one upstream source must be set: apt_repository, yum_repository, common_repository, or one of the docker/maven/npm/python public repository arms\x1a\xfa\x01[has(this.apt_repository), has(this.common_repository), this.docker_public_repository != '', this.maven_public_repository != '', this.npm_public_repository != '', this.python_public_repository != '', has(this.yum_repository)].filter(x, x).size() == 1\"\xa2\x02\n" +
+	"*GcpArtifactRegistryRepoRemoteAptRepository\x12\xc2\x01\n" +
+	"\x0frepository_base\x18\x01 \x01(\tB\x98\x01\xbaH\x94\x01\xba\x01\x8d\x01\n" +
+	"\x19valid_apt_repository_base\x12?repository_base must be one of: DEBIAN, UBUNTU, DEBIAN_SNAPSHOT\x1a/this in ['DEBIAN', 'UBUNTU', 'DEBIAN_SNAPSHOT']\xc8\x01\x01R\x0erepositoryBase\x12/\n" +
 	"\x0frepository_path\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0erepositoryPath\"\xe6\x02\n" +
 	"*GcpArtifactRegistryRepoRemoteYumRepository\x12\x86\x02\n" +
 	"\x0frepository_base\x18\x01 \x01(\tB\xdc\x01\xbaH\xd8\x01\xba\x01\xd1\x01\n" +

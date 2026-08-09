@@ -33,6 +33,7 @@ Use GcpCloudSchedulerJob when you need:
 | `app_engine_http_target` | App Engine handler with routing configuration |
 | `retry_config` | Retry count, backoff durations, and doublings |
 | `paused` | Create job in paused state (won't execute until resumed) |
+| `deletion_policy` | `DELETE` (default: destroy removes the job), `PREVENT` (destroy fails), `ABANDON` (job keeps firing unmanaged) |
 
 ## Important Notes
 

@@ -37,6 +37,10 @@ variable "spec" {
 
     # Launch stage label: ALPHA, BETA, GA (default), DEPRECATED, DISABLED, EAP.
     stage = optional(string)
+
+    # DELETE (default) soft-deletes the role on destroy; PREVENT fails the
+    # destroy; ABANDON leaves the role active with every binding working.
+    deletion_policy = optional(string, "")
   })
 
   validation {

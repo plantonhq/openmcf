@@ -9,8 +9,6 @@ spec:
   # getIamPolicy verify -> destroy -> verify the (role, member) pair is gone.
   # The additive grant never touches other bindings in the test project.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

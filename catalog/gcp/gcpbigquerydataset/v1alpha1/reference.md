@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpBigQueryDatasetSpec defines the configuration for a GCP BigQuery
 dataset.
 
@@ -62,6 +64,8 @@ spec:
         projectId: test-project
         datasetId: shared_views
         tableId: revenue_summary
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -113,6 +117,7 @@ spec:
 | `spec.externalCatalogOptions` | `GcpBigQueryDatasetExternalCatalogOptions` |  |  |  |
 | `spec.externalCatalogOptions.defaultStorageLocationUri` | `string` |  |  |  |
 | `spec.externalCatalogOptions.parameters` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -502,6 +507,24 @@ gs://bucket/path. Maximum 1024 characters.
 
 Hive-database-style key/value parameters (the whole map is limited to
 30 KB by the API).
+
+### spec.deletionPolicy
+
+`string`
+
+What destroying this resource does to the dataset. Works alongside
+delete_contents_on_destroy (which decides whether a NON-EMPTY dataset
+may be removed); this switch decides whether removal is attempted at
+all:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the dataset is deleted (GCP refuses while tables remain
+               unless delete_contents_on_destroy is true)
+  "PREVENT" -- destroy FAILS; protects a dataset other projects'
+               queries and authorized views depend on
+  "ABANDON" -- the dataset is removed from management but keeps
+               serving queries in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 
