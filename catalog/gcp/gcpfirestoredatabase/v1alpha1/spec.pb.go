@@ -149,15 +149,23 @@ type GcpFirestoreDatabaseSpec struct {
 	// Firestore API data access mode — whether the classic Firestore API
 	// can read and write this database. ENTERPRISE edition only. Use
 	// DATA_ACCESS_MODE_DISABLED on a database dedicated to the
-	// MongoDB-compatible API to keep access single-protocol.
+	// MongoDB-compatible API to keep access single-protocol. At most one of
+	// the two data-access modes can be ENABLED on a database (the API
+	// rejects both-enabled at create), and realtime updates require THIS
+	// mode to be explicitly ENABLED.
 	FirestoreDataAccessMode string `protobuf:"bytes,11,opt,name=firestore_data_access_mode,json=firestoreDataAccessMode,proto3" json:"firestore_data_access_mode,omitempty"`
 	// MongoDB-compatible API data access mode — whether MongoDB drivers
 	// and tools can read and write this database. ENTERPRISE edition only.
 	// Pair with MONGODB_COMPATIBLE_API-scoped GcpFirestoreIndex indexes
-	// for query support.
+	// for query support. Mutually exclusive with an ENABLED
+	// firestore_data_access_mode — a database is single-protocol, so a
+	// MongoDB-dedicated database can never carry realtime updates.
 	MongodbCompatibleDataAccessMode string `protobuf:"bytes,12,opt,name=mongodb_compatible_data_access_mode,json=mongodbCompatibleDataAccessMode,proto3" json:"mongodb_compatible_data_access_mode,omitempty"`
 	// Realtime updates mode — whether clients can subscribe to live query
-	// snapshots on this database. ENTERPRISE edition only.
+	// snapshots on this database. ENTERPRISE edition only. Enabling it
+	// requires firestore_data_access_mode DATA_ACCESS_MODE_ENABLED
+	// (realtime subscriptions ride the classic Firestore API; leaving the
+	// access mode unset does not count as enabled).
 	RealtimeUpdatesMode string `protobuf:"bytes,13,opt,name=realtime_updates_mode,json=realtimeUpdatesMode,proto3" json:"realtime_updates_mode,omitempty"`
 	// Resource Manager tags bound to the database for org-policy and IAM
 	// conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
@@ -318,7 +326,7 @@ var File_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto protoreflect.FileD
 
 const file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4catalog/gcp/gcpfirestoredatabase/v1alpha1/spec.proto\x12-dev.planton.gcp.gcpfirestoredatabase.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xff \n" +
+	"4catalog/gcp/gcpfirestoredatabase/v1alpha1/spec.proto\x12-dev.planton.gcp.gcpfirestoredatabase.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x94&\n" +
 	"\x18GcpFirestoreDatabaseSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12'\n" +
@@ -352,11 +360,13 @@ const file_catalog_gcp_gcpfirestoredatabase_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']\x8a\xa6\x1d\x06DELETEH\x01R\x0edeletionPolicy\x88\x01\x01\x1aF\n" +
 	"\x18ResourceManagerTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc6\x06\xbaH\xc2\x06\x1a\xd1\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xdb\v\xbaH\xd7\v\x1a\xd1\x01\n" +
 	"$enterprise_requires_firestore_native\x12@database_edition ENTERPRISE requires type to be FIRESTORE_NATIVE\x1agthis.database_edition == '' || this.database_edition != 'ENTERPRISE' || this.type == 'FIRESTORE_NATIVE'\x1a\xcc\x01\n" +
 	".firestore_data_access_mode_requires_enterprise\x12Jfirestore_data_access_mode can only be set on ENTERPRISE edition databases\x1aNthis.firestore_data_access_mode == '' || this.database_edition == 'ENTERPRISE'\x1a\xdc\x01\n" +
 	",mongodb_data_access_mode_requires_enterprise\x12Smongodb_compatible_data_access_mode can only be set on ENTERPRISE edition databases\x1aWthis.mongodb_compatible_data_access_mode == '' || this.database_edition == 'ENTERPRISE'\x1a\xbd\x01\n" +
-	")realtime_updates_mode_requires_enterprise\x12Erealtime_updates_mode can only be set on ENTERPRISE edition databases\x1aIthis.realtime_updates_mode == '' || this.database_edition == 'ENTERPRISE'B\x1a\n" +
+	")realtime_updates_mode_requires_enterprise\x12Erealtime_updates_mode can only be set on ENTERPRISE edition databases\x1aIthis.realtime_updates_mode == '' || this.database_edition == 'ENTERPRISE'\x1a\xa0\x02\n" +
+	"$data_access_modes_mutually_exclusive\x12nonly one of firestore_data_access_mode and mongodb_compatible_data_access_mode can be DATA_ACCESS_MODE_ENABLED\x1a\x87\x01this.firestore_data_access_mode != 'DATA_ACCESS_MODE_ENABLED' || this.mongodb_compatible_data_access_mode != 'DATA_ACCESS_MODE_ENABLED'\x1a\xef\x02\n" +
+	"*realtime_updates_requires_firestore_access\x12\xc0\x01realtime_updates_mode REALTIME_UPDATES_MODE_ENABLED requires firestore_data_access_mode DATA_ACCESS_MODE_ENABLED (realtime subscriptions use the Firestore API; unset does not count as enabled)\x1a~this.realtime_updates_mode != 'REALTIME_UPDATES_MODE_ENABLED' || this.firestore_data_access_mode == 'DATA_ACCESS_MODE_ENABLED'B\x1a\n" +
 	"\x18_delete_protection_stateB\x12\n" +
 	"\x10_deletion_policyB\xfc\x02\n" +
 	"1com.dev.planton.gcp.gcpfirestoredatabase.v1alpha1B\tSpecProtoP\x01Zcgithub.com/plantonhq/planton/catalog/gcp/gcpfirestoredatabase/v1alpha1;gcpfirestoredatabasev1alpha1\xa2\x02\x04DPGG\xaa\x02-Dev.Planton.Gcp.Gcpfirestoredatabase.V1alpha1\xca\x02-Dev\\Planton\\Gcp\\Gcpfirestoredatabase\\V1alpha1\xe2\x029Dev\\Planton\\Gcp\\Gcpfirestoredatabase\\V1alpha1\\GPBMetadata\xea\x021Dev::Planton::Gcp::Gcpfirestoredatabase::V1alpha1b\x06proto3"

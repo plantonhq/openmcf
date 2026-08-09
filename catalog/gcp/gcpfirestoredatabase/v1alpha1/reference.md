@@ -249,7 +249,10 @@ If not set, GCP applies its default.
 Firestore API data access mode — whether the classic Firestore API
 can read and write this database. ENTERPRISE edition only. Use
 DATA_ACCESS_MODE_DISABLED on a database dedicated to the
-MongoDB-compatible API to keep access single-protocol.
+MongoDB-compatible API to keep access single-protocol. At most one of
+the two data-access modes can be ENABLED on a database (the API
+rejects both-enabled at create), and realtime updates require THIS
+mode to be explicitly ENABLED.
 
 - rule: firestore_data_access_mode must be DATA_ACCESS_MODE_ENABLED or DATA_ACCESS_MODE_DISABLED
 
@@ -260,7 +263,9 @@ MongoDB-compatible API to keep access single-protocol.
 MongoDB-compatible API data access mode — whether MongoDB drivers
 and tools can read and write this database. ENTERPRISE edition only.
 Pair with MONGODB_COMPATIBLE_API-scoped GcpFirestoreIndex indexes
-for query support.
+for query support. Mutually exclusive with an ENABLED
+firestore_data_access_mode — a database is single-protocol, so a
+MongoDB-dedicated database can never carry realtime updates.
 
 - rule: mongodb_compatible_data_access_mode must be DATA_ACCESS_MODE_ENABLED or DATA_ACCESS_MODE_DISABLED
 
@@ -269,7 +274,10 @@ for query support.
 `string`
 
 Realtime updates mode — whether clients can subscribe to live query
-snapshots on this database. ENTERPRISE edition only.
+snapshots on this database. ENTERPRISE edition only. Enabling it
+requires firestore_data_access_mode DATA_ACCESS_MODE_ENABLED
+(realtime subscriptions ride the classic Firestore API; leaving the
+access mode unset does not count as enabled).
 
 - rule: realtime_updates_mode must be REALTIME_UPDATES_MODE_ENABLED or REALTIME_UPDATES_MODE_DISABLED
 
@@ -305,6 +313,8 @@ Deletion policy — what happens when this resource is destroyed:
 - `firestore_data_access_mode_requires_enterprise`: firestore_data_access_mode can only be set on ENTERPRISE edition databases
 - `mongodb_data_access_mode_requires_enterprise`: mongodb_compatible_data_access_mode can only be set on ENTERPRISE edition databases
 - `realtime_updates_mode_requires_enterprise`: realtime_updates_mode can only be set on ENTERPRISE edition databases
+- `data_access_modes_mutually_exclusive`: only one of firestore_data_access_mode and mongodb_compatible_data_access_mode can be DATA_ACCESS_MODE_ENABLED
+- `realtime_updates_requires_firestore_access`: realtime_updates_mode REALTIME_UPDATES_MODE_ENABLED requires firestore_data_access_mode DATA_ACCESS_MODE_ENABLED (realtime subscriptions use the Firestore API; unset does not count as enabled)
 
 ## Outputs
 

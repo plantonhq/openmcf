@@ -6,10 +6,19 @@ spec:
   # Composed scenarios: the registry installs the VPC -> subnetwork ->
   # address chain before every NAT create. Routers and NATs themselves
   # deploy in seconds; the chain dominates the runtime.
+  #
+  # Offline-proven-only arms (deferred, with unblock conditions):
+  #   - NAT64 (source_subnetwork_ip_ranges_to_nat64 + nat64_subnetworks):
+  #     needs a dual-stack (IPv6-enabled) VPC/subnetwork fixture the harness
+  #     lacks. Unblock: design the dual-stack fixture (the compute-instance
+  #     IPv6 family shares the same need).
+  #   - resource_manager_tags (router params): needs pre-existing org-level
+  #     tagKeys/tagValues the E2E project does not have. Unblock: org tag
+  #     fixtures.
+  #   - encrypted_interconnect_router: requires Cloud Interconnect hardware;
+  #     the module sends false by default, and live re-plans on ordinary
+  #     runs stayed diff-free with that default.
   tier: 1
-  # pending_proof: the spec grew the router BGP surface (redesigned into
-  # router_bgp), NAT64, resource-manager tags, and deletion_policy — the
-  # prior green proof describes code that no longer exists.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

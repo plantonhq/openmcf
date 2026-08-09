@@ -2,6 +2,8 @@ package runner
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -145,4 +147,23 @@ func GenerateStackName(component string, runID string) string {
 		short = short[:8]
 	}
 	return fmt.Sprintf("e2e-%s-%s", component, short)
+}
+
+// maxStackNameLen bounds generated stack names. The bound itself is a
+// conservative readability/tooling limit; what matters is HOW names shrink
+// to it -- see boundStackName.
+const maxStackNameLen = 50
+
+// boundStackName truncates a stack name to maxStackNameLen while preserving
+// uniqueness: the head stays readable and the tail is replaced by a short
+// stable hash of the FULL name. A plain head-truncate is a correctness bug,
+// not a cosmetic one -- it cuts off exactly the disambiguating parts (a
+// dependency's manifest-name tail, the run-id suffix), collapsing distinct
+// stacks onto one name.
+func boundStackName(name string) string {
+	if len(name) <= maxStackNameLen {
+		return name
+	}
+	sum := sha256.Sum256([]byte(name))
+	return name[:maxStackNameLen-9] + "-" + hex.EncodeToString(sum[:4])
 }

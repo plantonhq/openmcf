@@ -62,6 +62,17 @@ EXPORTING OUTPUTS -- APPLYT TYPING IS A DEPLOY-TIME TRAP
 - Prefer exporting resource outputs DIRECTLY (`ctx.Export(OpX, created.X)`). Most SDK
   string attributes are `pulumi.StringOutput` and already resolve to `""` when the
   underlying value is absent -- no nil-normalizing transform is needed.
+- **NEVER call `ctx.Export` INSIDE an `ApplyT` callback.** Apply callbacks run on
+  output-resolution goroutines, and an export registered there writes the SDK's
+  shared exports map while the engine's end-of-program stack-output marshaling
+  reads it -- a data race that kills the whole program with
+  `fatal error: concurrent map read and map write`, timing-dependent and therefore
+  FLAKY (live-caught: a per-index export loop inside an ApplyT crashed one deploy
+  and passed the next, identical code). `ctx.Export(key, out.ApplyT(...))` is safe --
+  it is the export REGISTRATION that must stay on the program goroutine. For
+  per-element keys over a computed list, derive the index space from the spec
+  (known before the program returns) and register every key synchronously with an
+  index-guarded ApplyT value.
 - When a real transform IS needed, the `ApplyT` applier's input parameter must match
   the output's element type EXACTLY: `StringOutput` takes `func(string) T`,
   `StringPtrOutput` takes `func(*string) T`. A `func(*string)` applier on a

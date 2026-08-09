@@ -92,7 +92,9 @@ type GcpFirestoreIndexField struct {
 	// Firestore Enterprise search surface. Requires an ENTERPRISE-edition
 	// database (GcpFirestoreDatabase database_edition: ENTERPRISE); text
 	// search additionally pairs with api_scope MONGODB_COMPATIBLE_API,
-	// while geo search works under the default scope.
+	// while geo search works under the default scope. Search and
+	// non-search fields cannot mix in one index (API-enforced): when any
+	// field carries search_config, every field must.
 	SearchConfig  *GcpFirestoreIndexSearchConfig `protobuf:"bytes,5,opt,name=search_config,json=searchConfig,proto3" json:"search_config,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -414,7 +416,9 @@ type GcpFirestoreIndexSpec struct {
 	// MONGODB_COMPATIBLE_API: Firestore Enterprise (MongoDB-compatible)
 	//
 	//	queries — required for multikey and search-config indexes, and
-	//	only valid on an ENTERPRISE-edition database.
+	//	only valid on an ENTERPRISE-edition database. Requires
+	//	query_scope COLLECTION_GROUP explicitly (the API rejects the
+	//	COLLECTION default for this scope).
 	ApiScope *string `protobuf:"bytes,5,opt,name=api_scope,json=apiScope,proto3,oneof" json:"api_scope,omitempty"`
 	// Index density. Leave empty for GCP's default (SPARSE_ALL).
 	// DENSE indexes also include documents missing the indexed fields —
@@ -588,7 +592,7 @@ const file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
 	"match_type\x18\x02 \x01(\tR\tmatchType\"W\n" +
 	"\x18GcpFirestoreIndexGeoSpec\x12;\n" +
-	"\x1ageo_json_indexing_disabled\x18\x01 \x01(\bR\x17geoJsonIndexingDisabled\"\xf1\v\n" +
+	"\x1ageo_json_indexing_disabled\x18\x01 \x01(\bR\x17geoJsonIndexingDisabled\"\x90\x10\n" +
 	"\x15GcpFirestoreIndexSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12u\n" +
@@ -610,8 +614,10 @@ const file_catalog_gcp_gcpfirestoreindex_v1alpha1_spec_proto_rawDesc = "" +
 	"\tskip_wait\x18\n" +
 	" \x01(\bR\bskipWait\x12\xbb\x01\n" +
 	"\x0fdeletion_policy\x18\v \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
-	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy:\xa1\x01\xbaH\x9d\x01\x1a\x9a\x01\n" +
-	"\x1fmultikey_requires_mongodb_scope\x129multikey indexes require api_scope MONGODB_COMPATIBLE_API\x1a<!this.multikey || this.api_scope == 'MONGODB_COMPATIBLE_API'B\x0e\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy:\xc0\x05\xbaH\xbc\x05\x1a\x9a\x01\n" +
+	"\x1fmultikey_requires_mongodb_scope\x129multikey indexes require api_scope MONGODB_COMPATIBLE_API\x1a<!this.multikey || this.api_scope == 'MONGODB_COMPATIBLE_API'\x1a\x8b\x02\n" +
+	"'mongodb_scope_requires_collection_group\x12\x89\x01api_scope MONGODB_COMPATIBLE_API requires query_scope COLLECTION_GROUP (set it explicitly; the COLLECTION default is rejected by the API)\x1aTthis.api_scope != 'MONGODB_COMPATIBLE_API' || this.query_scope == 'COLLECTION_GROUP'\x1a\x8e\x02\n" +
+	"%search_and_non_search_fields_dont_mix\x12\x8d\x01an index is either a search index (every field carries search_config) or a non-search index (no field does) — the API rejects mixed indexes\x1aUthis.fields.all(f, has(f.search_config)) || this.fields.all(f, !has(f.search_config))B\x0e\n" +
 	"\f_query_scopeB\f\n" +
 	"\n" +
 	"_api_scopeB\xe7\x02\n" +

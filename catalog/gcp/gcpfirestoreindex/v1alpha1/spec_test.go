@@ -127,15 +127,19 @@ var _ = ginkgo.Describe("GcpFirestoreIndexSpec", func() {
 		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
 	})
 
-	ginkgo.It("should accept MONGODB_COMPATIBLE_API api_scope", func() {
+	// The MongoDB-compatible scope requires an explicit COLLECTION_GROUP
+	// query scope (API-enforced; the COLLECTION default is rejected).
+	ginkgo.It("should accept MONGODB_COMPATIBLE_API api_scope with COLLECTION_GROUP", func() {
 		msg := minimal()
 		msg.Spec.ApiScope = proto.String("MONGODB_COMPATIBLE_API")
+		msg.Spec.QueryScope = proto.String("COLLECTION_GROUP")
 		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
 	})
 
 	ginkgo.It("should accept a multikey index under the MongoDB-compatible scope", func() {
 		msg := minimal()
 		msg.Spec.ApiScope = proto.String("MONGODB_COMPATIBLE_API")
+		msg.Spec.QueryScope = proto.String("COLLECTION_GROUP")
 		msg.Spec.Multikey = true
 		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
 	})
@@ -158,6 +162,7 @@ var _ = ginkgo.Describe("GcpFirestoreIndexSpec", func() {
 	ginkgo.It("should accept a text search field", func() {
 		msg := minimal()
 		msg.Spec.ApiScope = proto.String("MONGODB_COMPATIBLE_API")
+		msg.Spec.QueryScope = proto.String("COLLECTION_GROUP")
 		msg.Spec.Fields = []*GcpFirestoreIndexField{
 			{
 				FieldPath: "description",
@@ -194,6 +199,37 @@ var _ = ginkgo.Describe("GcpFirestoreIndexSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 		gomega.Expect(err.Error()).To(gomega.ContainSubstring("MONGODB_COMPATIBLE_API"))
+	})
+
+	ginkgo.It("should reject the MongoDB-compatible scope without COLLECTION_GROUP", func() {
+		msg := minimal()
+		msg.Spec.ApiScope = proto.String("MONGODB_COMPATIBLE_API")
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("COLLECTION_GROUP"))
+	})
+
+	// The API rejects indexes mixing search and non-search fields.
+	ginkgo.It("should reject mixed search and non-search fields", func() {
+		msg := minimal()
+		msg.Spec.ApiScope = proto.String("MONGODB_COMPATIBLE_API")
+		msg.Spec.QueryScope = proto.String("COLLECTION_GROUP")
+		msg.Spec.Fields = []*GcpFirestoreIndexField{
+			{FieldPath: "category", Order: "ASCENDING"},
+			{
+				FieldPath: "title",
+				SearchConfig: &GcpFirestoreIndexSearchConfig{
+					TextSpec: &GcpFirestoreIndexTextSpec{
+						IndexSpecs: []*GcpFirestoreIndexTextIndexSpec{
+							{IndexType: "TOKENIZED", MatchType: "MATCH_GLOBALLY"},
+						},
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("search"))
 	})
 
 	ginkgo.It("should reject an invalid deletion_policy", func() {

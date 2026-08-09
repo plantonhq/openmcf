@@ -19,7 +19,11 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  databaseName: e2e-fsidx-db-${E2E_RUN_ID}
+  # Scenario-scoped: this override redeploys for EVERY scenario of the kind,
+  # and Firestore reserves a deleted database name for minutes — without the
+  # scenario token the next scenario's create collides with the previous
+  # scenario's just-deleted ghost.
+  databaseName: e2e-fsidx-db-${E2E_SCENARIO}-${E2E_RUN_ID}
   locationId: nam5
   type: FIRESTORE_NATIVE
   deleteProtectionState: DELETE_PROTECTION_DISABLED

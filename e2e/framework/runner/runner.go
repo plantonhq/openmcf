@@ -59,7 +59,7 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 	// identifiers that cloud providers reserve across soft-delete windows get a
 	// fresh value on every run (and on each engine within a run).
 	expandRunID := EngineScopedRunID(tc.RunID, tc.Engine)
-	expandedPath, err := ExpandManifestTokens(tc.ManifestPath, expandRunID)
+	expandedPath, err := ExpandManifestTokens(tc.ManifestPath, expandRunID, ScenarioSlug(tc.ManifestPath))
 	if err != nil {
 		result.Passed = false
 		result.Phases = append(result.Phases, PhaseResult{

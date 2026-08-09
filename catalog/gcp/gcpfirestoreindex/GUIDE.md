@@ -26,6 +26,15 @@ database's edition. `multikey` additionally requires the MongoDB-compatible
 `apiScope` (validated pre-deploy); text search pairs with the same scope,
 while geo search works under the default scope.
 
+Two more contracts the API enforces at create (both validated pre-deploy
+here): the MongoDB-compatible `apiScope` demands an explicit
+`queryScope: COLLECTION_GROUP` — the COLLECTION default is rejected — and
+an index never mixes search and non-search fields: when any field carries
+`searchConfig`, every field must (want a sort field alongside a text
+index? that is two indexes). All three Enterprise arms compose in one
+index: a search field under `MONGODB_COMPATIBLE_API` with
+`multikey: true` is a valid — and the flagship — shape.
+
 ## Conventions and gotchas
 
 - `skipWait` returns as soon as creation is REQUESTED. Use it when

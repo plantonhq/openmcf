@@ -3,15 +3,20 @@ kind: ComponentE2EProfile
 metadata:
   name: gcpfirestoredatabase
 spec:
-  # Leaf scenario: a named Native-mode database with delete protection
-  # disabled (E2E must destroy). Database names are project-scoped and
-  # deleted names are reserved for a retention window, so the cloud-side
-  # name carries ${E2E_RUN_ID}. Creates in ~1-2 minutes.
+  # Leaf scenarios: a named Native-mode database (minimal) plus the two
+  # legal ENTERPRISE single-protocol postures -- MongoDB-dedicated
+  # (enterprise) and Firestore-protocol-with-realtime (enterprise-realtime).
+  # The API enforces that at most one data-access mode is enabled and that
+  # realtime requires the Firestore mode explicitly ENABLED, so these two
+  # scenarios cover the whole legal enterprise space. Delete protection is
+  # disabled everywhere (E2E must destroy). Database names are
+  # project-scoped and deleted names are reserved for a retention window,
+  # so every cloud-side name carries ${E2E_RUN_ID}. Creates in ~1-2 minutes.
+  #
+  # Offline-proven-only arm (deferred): resource_manager_tags needs
+  # pre-existing org-level tagKeys/tagValues the E2E project does not have.
+  # Unblock: org tag fixtures.
   tier: 1
-  # pending_proof: the spec grew the ENTERPRISE data-access modes (a new
-  # enterprise scenario arms them), resource-manager tags, and a modeled
-  # deletion_policy — the prior green proof describes code that no longer
-  # exists.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

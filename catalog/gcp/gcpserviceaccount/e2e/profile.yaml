@@ -10,6 +10,6 @@ spec:
   # manifests omit project_id and ride the harness-exported GOOGLE_PROJECT,
   # so no project id is hardcoded in the repo.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

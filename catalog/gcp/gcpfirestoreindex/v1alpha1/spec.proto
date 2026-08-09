@@ -48,7 +48,9 @@ message GcpFirestoreIndexField {
   // Firestore Enterprise search surface. Requires an ENTERPRISE-edition
   // database (GcpFirestoreDatabase database_edition: ENTERPRISE); text
   // search additionally pairs with api_scope MONGODB_COMPATIBLE_API,
-  // while geo search works under the default scope.
+  // while geo search works under the default scope. Search and
+  // non-search fields cannot mix in one index (API-enforced): when any
+  // field carries search_config, every field must.
   GcpFirestoreIndexSearchConfig search_config = 5;
 
   // Every field plays exactly one role.
@@ -154,7 +156,9 @@ message GcpFirestoreIndexSpec {
   // DATASTORE_MODE_API: Datastore Mode queries.
   // MONGODB_COMPATIBLE_API: Firestore Enterprise (MongoDB-compatible)
   //   queries — required for multikey and search-config indexes, and
-  //   only valid on an ENTERPRISE-edition database.
+  //   only valid on an ENTERPRISE-edition database. Requires
+  //   query_scope COLLECTION_GROUP explicitly (the API rejects the
+  //   COLLECTION default for this scope).
   optional string api_scope = 5 [
     (dev.planton.shared.options.default) = "ANY_API",
     (buf.validate.field).cel = {
@@ -213,5 +217,25 @@ message GcpFirestoreIndexSpec {
     id: "multikey_requires_mongodb_scope"
     expression: "!this.multikey || this.api_scope == 'MONGODB_COMPATIBLE_API'"
     message: "multikey indexes require api_scope MONGODB_COMPATIBLE_API"
+  };
+
+  // Two API contracts the provider schema does not carry (both rejected by
+  // the Firestore Admin API at create with a 400, verified live):
+  //   - "Indexes with the MONGODB_COMPATIBLE_API API scope must use the
+  //     COLLECTION_GROUP query scope." — the scope must be set explicitly
+  //     (the COLLECTION default does not satisfy it).
+  //   - "Mixing search and non-search indexes is not supported." — an index
+  //     is either a search index (every field carries search_config) or a
+  //     regular one (no field does).
+  option (buf.validate.message).cel = {
+    id: "mongodb_scope_requires_collection_group"
+    expression: "this.api_scope != 'MONGODB_COMPATIBLE_API' || this.query_scope == 'COLLECTION_GROUP'"
+    message: "api_scope MONGODB_COMPATIBLE_API requires query_scope COLLECTION_GROUP (set it explicitly; the COLLECTION default is rejected by the API)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "search_and_non_search_fields_dont_mix"
+    expression: "this.fields.all(f, has(f.search_config)) || this.fields.all(f, !has(f.search_config))"
+    message: "an index is either a search index (every field carries search_config) or a non-search index (no field does) — the API rejects mixed indexes"
   };
 }

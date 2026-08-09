@@ -429,14 +429,54 @@ var _ = ginkgo.Describe("GcpFirestoreDatabaseSpec", func() {
 
 	// ──────────────── ENTERPRISE data-access modes ────────────────
 
-	ginkgo.It("should accept all three data-access modes on an ENTERPRISE database", func() {
+	ginkgo.It("should accept a MongoDB-dedicated ENTERPRISE database", func() {
+		msg := minimal()
+		msg.Spec.DatabaseEdition = "ENTERPRISE"
+		msg.Spec.FirestoreDataAccessMode = "DATA_ACCESS_MODE_DISABLED"
+		msg.Spec.MongodbCompatibleDataAccessMode = "DATA_ACCESS_MODE_ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a Firestore-protocol ENTERPRISE database with realtime updates", func() {
+		msg := minimal()
+		msg.Spec.DatabaseEdition = "ENTERPRISE"
+		msg.Spec.FirestoreDataAccessMode = "DATA_ACCESS_MODE_ENABLED"
+		msg.Spec.RealtimeUpdatesMode = "REALTIME_UPDATES_MODE_ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	// The API enforces single-protocol access: only one of the two
+	// data-access modes may be ENABLED on a database.
+	ginkgo.It("should reject both data-access modes ENABLED together", func() {
+		msg := minimal()
+		msg.Spec.DatabaseEdition = "ENTERPRISE"
+		msg.Spec.FirestoreDataAccessMode = "DATA_ACCESS_MODE_ENABLED"
+		msg.Spec.MongodbCompatibleDataAccessMode = "DATA_ACCESS_MODE_ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// Realtime updates ride the classic Firestore API: the API rejects
+	// realtime ENABLED unless firestore_data_access_mode is explicitly
+	// ENABLED — a disabled OR unset access mode both fail.
+	ginkgo.It("should reject realtime updates on a MongoDB-dedicated database", func() {
 		msg := minimal()
 		msg.Spec.DatabaseEdition = "ENTERPRISE"
 		msg.Spec.FirestoreDataAccessMode = "DATA_ACCESS_MODE_DISABLED"
 		msg.Spec.MongodbCompatibleDataAccessMode = "DATA_ACCESS_MODE_ENABLED"
 		msg.Spec.RealtimeUpdatesMode = "REALTIME_UPDATES_MODE_ENABLED"
 		err := validator.Validate(msg)
-		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject realtime updates with the firestore access mode unset", func() {
+		msg := minimal()
+		msg.Spec.DatabaseEdition = "ENTERPRISE"
+		msg.Spec.RealtimeUpdatesMode = "REALTIME_UPDATES_MODE_ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should reject firestore_data_access_mode without ENTERPRISE edition", func() {

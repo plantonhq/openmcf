@@ -157,17 +157,33 @@ func subnetwork(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) 
 	ctx.Export(OpInternalIpv6Prefix, createdSubnetwork.InternalIpv6Prefix)
 	ctx.Export(OpExternalIpv6Prefix, createdSubnetwork.ExternalIpv6Prefix)
 
-	// Export secondary ranges with individual fields so the outputs
-	// transformer can map them onto the repeated proto message.
-	createdSubnetwork.SecondaryIpRanges.ApplyT(func(secondaryIpRanges []compute.SubnetworkSecondaryIpRange) error {
-		for index, secondaryIpRange := range secondaryIpRanges {
-			ctx.Export(fmt.Sprintf("%s.%d.%s", OpSecondaryRanges, index, "range_name"), pulumi.String(secondaryIpRange.RangeName))
-			if secondaryIpRange.IpCidrRange != nil {
-				ctx.Export(fmt.Sprintf("%s.%d.%s", OpSecondaryRanges, index, "ip_cidr_range"), pulumi.String(*secondaryIpRange.IpCidrRange))
-			}
-		}
-		return nil
-	})
+	// Export secondary ranges with individual per-index keys so the outputs
+	// transformer can map them onto the repeated proto message. The exports
+	// are registered HERE, synchronously, with values DERIVED from the
+	// resolved array — never inside an ApplyT callback. Apply callbacks run
+	// on output-resolution goroutines, and a ctx.Export there writes the
+	// SDK's shared exports map while the engine's end-of-program
+	// stack-output marshaling reads it: a data race that crashes the whole
+	// program with `fatal error: concurrent map read and map write`,
+	// timing-dependent and therefore flaky. The index space is known up
+	// front from the spec (the same filtered list sent to the API), so
+	// every key can be registered before the program returns.
+	for index := range secondaryRanges {
+		ctx.Export(fmt.Sprintf("%s.%d.%s", OpSecondaryRanges, index, "range_name"),
+			createdSubnetwork.SecondaryIpRanges.ApplyT(func(ranges []compute.SubnetworkSecondaryIpRange) string {
+				if index < len(ranges) {
+					return ranges[index].RangeName
+				}
+				return ""
+			}).(pulumi.StringOutput))
+		ctx.Export(fmt.Sprintf("%s.%d.%s", OpSecondaryRanges, index, "ip_cidr_range"),
+			createdSubnetwork.SecondaryIpRanges.ApplyT(func(ranges []compute.SubnetworkSecondaryIpRange) string {
+				if index < len(ranges) && ranges[index].IpCidrRange != nil {
+					return *ranges[index].IpCidrRange
+				}
+				return ""
+			}).(pulumi.StringOutput))
+	}
 
 	return createdSubnetwork, nil
 }

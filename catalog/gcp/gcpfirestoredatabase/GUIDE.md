@@ -22,15 +22,22 @@ this manifest as a decision record, not a tuning surface.
 - **CMEK**: the key must live in the location-matched KMS region (`us` for
   `nam5`, `europe` for `eur3`); Google-managed encryption otherwise.
 
-## The ENTERPRISE mode switches: single-protocol databases on purpose
+## The ENTERPRISE mode switches: single-protocol databases by API decree
 
-An ENTERPRISE database can serve three protocols; the three switches exist
-so it does not have to. A database dedicated to MongoDB drivers is
+An ENTERPRISE database is single-protocol, and not by convention — the
+control plane rejects a create that enables both data-access modes ("Only
+one of Firestore or MongoDB Compatible Data Access Mode can be enabled"),
+so every database is either a Firestore-protocol or a MongoDB-protocol
+database, decided at create. A MongoDB-dedicated database is
 `mongodbCompatibleDataAccessMode: DATA_ACCESS_MODE_ENABLED` with the
-classic API disabled — one protocol, one security review. Pair MongoDB
-access with `MONGODB_COMPATIBLE_API`-scoped `GcpFirestoreIndex` indexes,
-or queries fail at runtime. `realtimeUpdatesMode` gates live query
-snapshots; disable it on databases that only serve batch/API traffic.
+classic API explicitly disabled; pair it with
+`MONGODB_COMPATIBLE_API`-scoped `GcpFirestoreIndex` indexes, or queries
+fail at runtime. `realtimeUpdatesMode` gates live query snapshots and
+rides the CLASSIC Firestore API: enabling it requires
+`firestoreDataAccessMode: DATA_ACCESS_MODE_ENABLED` explicitly (unset does
+not count — the API rejects that too), which means a MongoDB-dedicated
+database can never serve realtime updates. If you need both MongoDB
+drivers and realtime subscriptions, that is two databases.
 
 ## PITR is not a backup strategy
 

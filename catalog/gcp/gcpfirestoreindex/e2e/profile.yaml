@@ -3,13 +3,14 @@ kind: ComponentE2EProfile
 metadata:
   name: gcpfirestoreindex
 spec:
-  # Composed scenario: deploys the GcpFirestoreDatabase prerequisite, then
-  # creates a simple composite index. Index build is asynchronous but the
-  # resource creates quickly; the chain cost is the database (~1-2 minutes).
-  # The Enterprise surface (search_config, MONGODB_COMPATIBLE_API, multikey)
-  # needs an ENTERPRISE-edition database prerequisite — the proving session
-  # owns that arm's design (or its honest recorded deferral).
+  # Composed scenarios: minimal deploys the GcpFirestoreDatabase
+  # prerequisite and creates a simple composite index; enterprise arms the
+  # Enterprise surface (search_config, MONGODB_COMPATIBLE_API, multikey)
+  # against a MongoDB-dedicated ENTERPRISE database deployed as an
+  # extra-instance fixture via the e2e-prerequisites annotation. Index
+  # build is asynchronous but the resource creates quickly; the chain cost
+  # is the database(s) (~1-2 minutes each).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

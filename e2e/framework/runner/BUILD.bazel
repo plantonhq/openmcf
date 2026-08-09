@@ -4,6 +4,7 @@ go_library(
     name = "runner",
     srcs = [
         "dependencies.go",
+        "fixtureintegrity.go",
         "import_roundtrip.go",
         "outputs_verifier.go",
         "pulumi.go",
@@ -44,6 +45,7 @@ go_test(
     name = "runner_test",
     srcs = [
         "dependencies_test.go",
+        "fixture_integrity_test.go",
         "import_roundtrip_test.go",
         "outputs_verifier_test.go",
         "refresolve_test.go",
@@ -60,5 +62,6 @@ go_test(
         "//catalog/gcp/gcpurlmap/v1alpha1",
         "//internal/manifest",
         "//shared/cloudresourcekind",
+        "@io_k8s_sigs_yaml//:yaml",
     ],
 )

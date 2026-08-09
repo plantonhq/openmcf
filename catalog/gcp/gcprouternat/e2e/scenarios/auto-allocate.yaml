@@ -28,7 +28,7 @@ spec:
   vpcSelfLink:
     valueFrom:
       kind: GcpVpcNetwork
-      name: planton-oss-e2e-gcpvpc-prereq
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
       fieldPath: status.outputs.network_self_link
   routerDescription: planton e2e egress router (auto allocation)
   routerBgp:

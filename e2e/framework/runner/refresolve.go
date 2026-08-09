@@ -78,7 +78,20 @@ func ResolveManifestRefs(manifestPath string, depOutputs DependencyOutputs) (str
 		return manifestPath, nil
 	}
 
-	resolvedAny, err := resolveRefsInMessage(top.Mutable(specFd).Message(), flattened)
+	// The visitor replaces each resolvable value_from arm with the literal read
+	// from the matching prerequisite's outputs; unmatched refs stay untouched.
+	resolvedAny, err := forEachRefField(top.Mutable(specFd).Message(), func(fd protoreflect.FieldDescriptor, ref *foreignkeyv1.StringValueOrRef) (*foreignkeyv1.StringValueOrRef, error) {
+		if ref.GetValueFrom() == nil {
+			return nil, nil
+		}
+		val, resolved, err := lookupRefValue(fd, ref, flattened)
+		if err != nil || !resolved {
+			return nil, err
+		}
+		return &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: val},
+		}, nil
+	})
 	if err != nil {
 		return "", err
 	}
@@ -112,12 +125,22 @@ func ResolveManifestRefs(manifestPath string, depOutputs DependencyOutputs) (str
 	return tmpPath, nil
 }
 
-// resolveRefsInMessage replaces value_from arms on the message's StringValueOrRef
-// fields with literals from the matching prerequisite's outputs, and recurses
-// into nested (repeated) messages so refs buried inside structured spec fields
-// resolve too. Returns whether any field was resolved.
-func resolveRefsInMessage(msg protoreflect.Message, flattened map[cloudresourcekind.CloudResourceKind]map[string]map[string]string) (bool, error) {
-	resolvedAny := false
+// refFieldVisitor is invoked for every StringValueOrRef value in a spec tree,
+// literal-valued ones included (visitors filter on GetValueFrom themselves).
+// Returning a non-nil replacement swaps the value in place; returning (nil,
+// nil) leaves it untouched.
+type refFieldVisitor func(fd protoreflect.FieldDescriptor, ref *foreignkeyv1.StringValueOrRef) (*foreignkeyv1.StringValueOrRef, error)
+
+// forEachRefField is the single traversal over a spec tree's StringValueOrRef
+// fields -- singular, repeated, and nested inside (repeated) messages. Both the
+// deploy-time resolver above and the offline fixture-integrity checker walk
+// through here, so "what counts as a reference" can never diverge between
+// them. Each element of a repeated ref field is visited independently, so a
+// list can mix literals with references. Map-typed fields are not traversed
+// (no spec models refs inside maps today). Returns whether any value was
+// replaced.
+func forEachRefField(msg protoreflect.Message, visit refFieldVisitor) (bool, error) {
+	changedAny := false
 	fields := msg.Descriptor().Fields()
 	for i := 0; i < fields.Len(); i++ {
 		fd := fields.Get(i)
@@ -136,31 +159,26 @@ func resolveRefsInMessage(msg protoreflect.Message, flattened map[cloudresourcek
 				if !isRef {
 					// A repeated nested message (e.g. a listener's default
 					// actions): recurse into each element.
-					resolved, err := resolveRefsInMessage(list.Get(j).Message(), flattened)
+					changed, err := forEachRefField(list.Get(j).Message(), visit)
 					if err != nil {
 						return false, err
 					}
-					resolvedAny = resolvedAny || resolved
+					changedAny = changedAny || changed
 					continue
 				}
-				// Repeated refs (e.g. a role's managed_policy_arns): each element
-				// resolves independently, so literals and references can mix in
-				// one list.
 				ref, ok := list.Get(j).Message().Interface().(*foreignkeyv1.StringValueOrRef)
-				if !ok || ref.GetValueFrom() == nil {
+				if !ok {
 					continue
 				}
-				val, resolved, err := lookupRefValue(fd, ref, flattened)
+				replacement, err := visit(fd, ref)
 				if err != nil {
 					return false, err
 				}
-				if !resolved {
-					continue // no prerequisite matches this element; leave it untouched
+				if replacement == nil {
+					continue
 				}
-				list.Set(j, protoreflect.ValueOfMessage((&foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: val},
-				}).ProtoReflect()))
-				resolvedAny = true
+				list.Set(j, protoreflect.ValueOfMessage(replacement.ProtoReflect()))
+				changedAny = true
 			}
 			continue
 		}
@@ -171,31 +189,29 @@ func resolveRefsInMessage(msg protoreflect.Message, flattened map[cloudresourcek
 
 		if !isRef {
 			// A singular nested message (e.g. a listener's tls config): recurse.
-			resolved, err := resolveRefsInMessage(msg.Mutable(fd).Message(), flattened)
+			changed, err := forEachRefField(msg.Mutable(fd).Message(), visit)
 			if err != nil {
 				return false, err
 			}
-			resolvedAny = resolvedAny || resolved
+			changedAny = changedAny || changed
 			continue
 		}
 
 		ref, ok := msg.Get(fd).Message().Interface().(*foreignkeyv1.StringValueOrRef)
-		if !ok || ref.GetValueFrom() == nil {
+		if !ok {
 			continue
 		}
-		val, resolved, err := lookupRefValue(fd, ref, flattened)
+		replacement, err := visit(fd, ref)
 		if err != nil {
 			return false, err
 		}
-		if !resolved {
+		if replacement == nil {
 			continue
 		}
-		msg.Set(fd, protoreflect.ValueOfMessage((&foreignkeyv1.StringValueOrRef{
-			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: val},
-		}).ProtoReflect()))
-		resolvedAny = true
+		msg.Set(fd, protoreflect.ValueOfMessage(replacement.ProtoReflect()))
+		changedAny = true
 	}
-	return resolvedAny, nil
+	return changedAny, nil
 }
 
 // lookupRefValue resolves one value_from reference against the deployed
@@ -213,10 +229,7 @@ func lookupRefValue(fd protoreflect.FieldDescriptor, ref *foreignkeyv1.StringVal
 		return "", false, nil
 	}
 
-	kind := valueFrom.GetKind()
-	if kind == cloudresourcekind.CloudResourceKind_unspecified && fd.Options() != nil {
-		kind, _ = proto.GetExtension(fd.Options(), foreignkeyv1.E_DefaultKind).(cloudresourcekind.CloudResourceKind)
-	}
+	kind := referencedKind(fd, ref)
 	if kind == cloudresourcekind.CloudResourceKind_unspecified {
 		return "", false, nil
 	}
@@ -248,4 +261,17 @@ func lookupRefValue(fd protoreflect.FieldDescriptor, ref *foreignkeyv1.StringVal
 		return "", false, errors.Errorf("prerequisite %s has no output %q to resolve field %q", kind, key, fd.Name())
 	}
 	return val, true, nil
+}
+
+// referencedKind determines which kind a value_from reference points at: the
+// reference's own explicit kind wins, falling back to the field's default_kind
+// annotation. Returns unspecified for a bare polymorphic reference that
+// carries neither -- such a reference can never resolve (the resolver leaves
+// it untouched and the module deploys without the value).
+func referencedKind(fd protoreflect.FieldDescriptor, ref *foreignkeyv1.StringValueOrRef) cloudresourcekind.CloudResourceKind {
+	kind := ref.GetValueFrom().GetKind()
+	if kind == cloudresourcekind.CloudResourceKind_unspecified && fd.Options() != nil {
+		kind, _ = proto.GetExtension(fd.Options(), foreignkeyv1.E_DefaultKind).(cloudresourcekind.CloudResourceKind)
+	}
+	return kind
 }
