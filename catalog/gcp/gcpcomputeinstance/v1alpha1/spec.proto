@@ -33,14 +33,29 @@ import "shared/options/options.proto";
 //     stops while terminated; disks keep billing.
 message GcpComputeInstanceSpec {
   option (buf.validate.message).cel = {
-    id: "spot_requires_no_automatic_restart"
-    expression: "!has(this.scheduling) || this.scheduling.provisioning_model != 'SPOT' || !has(this.scheduling.automatic_restart) || this.scheduling.automatic_restart == false"
-    message: "Spot VMs cannot automatically restart after preemption — leave scheduling.automatic_restart unset or set it to false when provisioning_model is SPOT"
+    id: "reclaimable_models_require_no_automatic_restart"
+    expression: "!has(this.scheduling) || !(this.scheduling.provisioning_model in ['SPOT', 'FLEX_START']) || !has(this.scheduling.automatic_restart) || this.scheduling.automatic_restart == false"
+    message: "SPOT and FLEX_START VMs cannot automatically restart after reclamation — leave scheduling.automatic_restart unset or set it to false"
   };
   option (buf.validate.message).cel = {
-    id: "termination_action_requires_spot"
-    expression: "!has(this.scheduling) || this.scheduling.instance_termination_action == '' || this.scheduling.provisioning_model == 'SPOT'"
-    message: "scheduling.instance_termination_action applies only to Spot VMs — set scheduling.provisioning_model to SPOT or remove the termination action"
+    id: "termination_action_requires_reclaimable_or_timed_vm"
+    expression: "!has(this.scheduling) || this.scheduling.instance_termination_action == '' || this.scheduling.provisioning_model in ['SPOT', 'FLEX_START'] || has(this.scheduling.max_run_duration_seconds) || this.scheduling.termination_time != ''"
+    message: "scheduling.instance_termination_action applies to SPOT/FLEX_START VMs and to timed-run VMs (max_run_duration_seconds or termination_time) — configure one of those or remove the termination action"
+  };
+  option (buf.validate.message).cel = {
+    id: "flex_start_requires_max_run_duration"
+    expression: "!has(this.scheduling) || this.scheduling.provisioning_model != 'FLEX_START' || has(this.scheduling.max_run_duration_seconds)"
+    message: "FLEX_START VMs must bound their runtime — set scheduling.max_run_duration_seconds"
+  };
+  option (buf.validate.message).cel = {
+    id: "flex_start_terminates_by_delete"
+    expression: "!has(this.scheduling) || this.scheduling.provisioning_model != 'FLEX_START' || this.scheduling.instance_termination_action != 'STOP'"
+    message: "FLEX_START VMs are deleted when reclaimed — leave scheduling.instance_termination_action unset or set it to DELETE"
+  };
+  option (buf.validate.message).cel = {
+    id: "reservation_bound_requires_specific_reservation"
+    expression: "!has(this.scheduling) || this.scheduling.provisioning_model != 'RESERVATION_BOUND' || (has(this.reservation_affinity) && this.reservation_affinity.type == 'SPECIFIC_RESERVATION')"
+    message: "RESERVATION_BOUND VMs consume one named reservation — set reservation_affinity.type to SPECIFIC_RESERVATION and name the reservation"
   };
   option (buf.validate.message).cel = {
     id: "confidential_requires_terminate_maintenance"
@@ -247,6 +262,25 @@ message GcpComputeInstanceSpec {
     expression: "this == '' || this in ['NONE', 'STOP']"
     message: "key_revocation_action_type must be NONE or STOP"
   }];
+
+  // Customer-managed encryption key (CMEK) for INSTANCE-LEVEL data —
+  // memory contents and other instance state, distinct from the per-disk
+  // keys on boot_disk/attached_disks. Create-time only.
+  GcpComputeInstanceEncryptionKey instance_encryption_key = 33;
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the instance is deleted (disks follow their own
+  //                lifecycle: boot auto_delete, GcpComputeDisk configs)
+  //   "PREVENT" -- destroy FAILS; a guard rail beyond deletion_protection
+  //                because it blocks the IaC destroy itself
+  //   "ABANDON" -- the instance is removed from management but left
+  //                running in GCP
+  string deletion_policy = 34 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
 }
 
 // GcpComputeInstanceBootDisk defines the disk the instance boots from.
@@ -257,6 +291,16 @@ message GcpComputeInstanceBootDisk {
     id: "boot_disk_exactly_one_source"
     expression: "(this.image != '' ? 1 : 0) + (this.source_snapshot != '' ? 1 : 0) + ((has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) ? 1 : 0) == 1"
     message: "exactly one boot source is required: image (fresh install), source_snapshot (restore), or source_disk (pre-created bootable disk)"
+  };
+  option (buf.validate.message).cel = {
+    id: "source_image_encryption_requires_image"
+    expression: "!has(this.source_image_encryption) || this.image != ''"
+    message: "source_image_encryption is only valid together with image"
+  };
+  option (buf.validate.message).cel = {
+    id: "source_snapshot_encryption_requires_snapshot"
+    expression: "!has(this.source_snapshot_encryption) || this.source_snapshot != ''"
+    message: "source_snapshot_encryption is only valid together with source_snapshot"
   };
 
   // Source image for a fresh boot disk. Accepts an image family
@@ -279,11 +323,12 @@ message GcpComputeInstanceBootDisk {
   ];
 
   // Size of the boot disk in GB. When omitted, the image or snapshot size
-  // is used. Grows in place; never shrinks.
+  // is used. Grows in place; never shrinks. Most OS images need at least
+  // 10 GB; the API floor itself is 1 GB.
   int32 size_gb = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).int32 = {
-      gte: 10
+      gte: 1
       lte: 65536
     }
   ];
@@ -347,6 +392,67 @@ message GcpComputeInstanceBootDisk {
   // URL of the storage pool to create the boot disk in (hyperdisk storage
   // pools).
   string storage_pool = 15;
+
+  // Attachment mode: "READ_WRITE" (default) or "READ_ONLY" (share one
+  // boot disk read-only across many VMs).
+  string mode = 16 [(buf.validate.field).cel = {
+    id: "valid_boot_disk_mode"
+    expression: "this == '' || this in ['READ_WRITE', 'READ_ONLY']"
+    message: "mode must be READ_WRITE or READ_ONLY"
+  }];
+
+  // Disk attachment interface: "SCSI" or "NVME". GCP normally selects
+  // the right interface from the machine type and disk type — the
+  // provider's own guidance is "only used for specific cases, please
+  // don't specify this field without advice from Google". Leave unset
+  // unless you have such a case.
+  string interface = 17 [(buf.validate.field).cel = {
+    id: "valid_boot_disk_interface"
+    expression: "this == '' || this in ['SCSI', 'NVME']"
+    message: "interface must be SCSI or NVME"
+  }];
+
+  // Force-attach a REGIONAL boot disk even if it is currently attached
+  // to another instance (regional-disk failover takeover). Attempting to
+  // force-attach a zonal disk fails. Changing this replaces the VM.
+  bool force_attach = 18;
+
+  // Guest OS features to enable on the boot disk, e.g.
+  // ["UEFI_COMPATIBLE", "SECURE_BOOT", "GVNIC", "MULTI_IP_SUBNET",
+  // "WINDOWS"]. The accepted set evolves with GCP — see "Enabling guest
+  // operating system features" in the Compute Engine docs. Create-time
+  // only.
+  repeated string guest_os_features = 19;
+
+  // Zones for a REGIONAL boot disk (exactly two, one of which must be
+  // the instance's own zone; short names or self links). Setting this
+  // converts the boot disk to a regional disk replicated across both
+  // zones. Ignored when booting from an existing source_disk.
+  // Create-time only.
+  repeated string replica_zones = 20 [(buf.validate.field).cel = {
+    id: "replica_zones_exactly_two"
+    expression: "size(this) == 0 || size(this) == 2"
+    message: "replica_zones takes exactly two zones (one must be the instance's zone)"
+  }];
+
+  // Resource Manager tags bound to the boot disk at create time. Keys in
+  // the form "tagKeys/{id}", values "tagValues/{id}". Create-time only —
+  // changing them replaces the VM. Ignored when booting from an existing
+  // source_disk.
+  map<string, string> resource_manager_tags = 21;
+
+  // Service account used for the encryption request of kms_key (CMEK).
+  // When omitted, the Compute Engine default service agent is used.
+  // Only meaningful together with kms_key.
+  string kms_key_service_account = 22;
+
+  // Decrypts the source image when it is itself CMEK-encrypted. Only
+  // valid together with image.
+  GcpComputeInstanceSourceEncryption source_image_encryption = 23;
+
+  // Decrypts the source snapshot when it is itself CMEK-encrypted. Only
+  // valid together with source_snapshot.
+  GcpComputeInstanceSourceEncryption source_snapshot_encryption = 24;
 }
 
 // GcpComputeInstanceAttachedDisk attaches an existing persistent disk —
@@ -379,6 +485,16 @@ message GcpComputeInstanceAttachedDisk {
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
   ];
+
+  // Service account used for the encryption request of kms_key (CMEK).
+  // When omitted, the Compute Engine default service agent is used.
+  // Only meaningful together with kms_key.
+  string kms_key_service_account = 5;
+
+  // Force-attach a REGIONAL disk even if it is currently attached to
+  // another instance (regional-disk failover takeover). Attempting to
+  // force-attach a zonal disk fails. Changing this replaces the VM.
+  bool force_attach = 6;
 }
 
 // GcpComputeInstanceScratchDisk defines an ephemeral local-SSD disk.
@@ -409,9 +525,9 @@ message GcpComputeInstanceScratchDisk {
 // GcpComputeInstanceNetworkInterface defines one vNIC.
 message GcpComputeInstanceNetworkInterface {
   option (buf.validate.message).cel = {
-    id: "network_interface_network_or_subnetwork_required"
-    expression: "(has(this.network) && (has(this.network.value) || has(this.network.value_from))) || (has(this.subnetwork) && (has(this.subnetwork.value) || has(this.subnetwork.value_from)))"
-    message: "each network interface needs a network (auto-mode VPC) or a subnetwork (custom-mode VPC) — set at least one"
+    id: "network_interface_attachment_point_required"
+    expression: "(has(this.network) && (has(this.network.value) || has(this.network.value_from))) || (has(this.subnetwork) && (has(this.subnetwork.value) || has(this.subnetwork.value_from))) || this.network_attachment != ''"
+    message: "each network interface needs an attachment point: a network (auto-mode VPC), a subnetwork (custom-mode VPC), or a network_attachment (Private Service Connect) — set at least one"
   };
 
   // VPC network for this interface, referenced as a GcpVpcNetwork.
@@ -480,6 +596,46 @@ message GcpComputeInstanceNetworkInterface {
   // Alias IP ranges served by this interface — the mechanism behind
   // per-pod/per-container IPs and multi-IP VMs.
   repeated GcpComputeInstanceAliasIpRange alias_ip_ranges = 10;
+
+  // URL of a Private Service Connect NETWORK ATTACHMENT this interface
+  // connects to, in the form
+  // "projects/{projectNumber}/regions/{region}/networkAttachments/{name}"
+  // — the consumer side of PSC interfaces, connecting this VM into a
+  // producer's VPC. An attachment-only interface is legal (no network or
+  // subnetwork). Immutable after creation.
+  string network_attachment = 11;
+
+  // VLAN tag (2-255) making this a DYNAMIC network interface — a
+  // sub-interface multiplexed onto a parent NIC. Immutable after
+  // creation.
+  optional int32 vlan = 12 [(buf.validate.field).int32 = {
+    gte: 2
+    lte: 255
+  }];
+
+  // IGMP multicast query support on this interface:
+  //   ""                    -- GCP default (disabled)
+  //   "IGMP_QUERY_V2"       -- IGMPv2 queries enabled (multicast)
+  //   "IGMP_QUERY_DISABLED" -- explicitly disabled
+  // Updatable in place.
+  string igmp_query = 13 [(buf.validate.field).cel = {
+    id: "valid_igmp_query"
+    expression: "this == '' || this in ['IGMP_QUERY_V2', 'IGMP_QUERY_DISABLED']"
+    message: "igmp_query must be IGMP_QUERY_V2 or IGMP_QUERY_DISABLED"
+  }];
+
+  // Static INTERNAL IPv6 address for this interface (requires an
+  // IPv6-enabled stack_type and subnetwork). When omitted, GCP assigns
+  // one from the subnetwork's internal IPv6 range. Long-form and
+  // compressed spellings are equivalent.
+  string ipv6_address = 14;
+
+  // Prefix length of the primary internal IPv6 range assigned to this
+  // interface. When omitted, GCP assigns its default.
+  optional int32 internal_ipv6_prefix_length = 15 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 128
+  }];
 }
 
 // GcpComputeInstanceAccessConfig grants the interface an external IPv4.
@@ -522,6 +678,22 @@ message GcpComputeInstanceIpv6AccessConfig {
   // Domain name for the public PTR (reverse DNS) record of the external
   // IPv6 range.
   string public_ptr_domain_name = 2;
+
+  // Static EXTERNAL IPv6 address (the first address of the external
+  // range) to pin to this interface. Must be unused and in the same
+  // region as the instance's zone. When omitted, GCP assigns an external
+  // IPv6 range from the subnetwork. Changing it replaces the VM.
+  string external_ipv6 = 3;
+
+  // Prefix length of the external IPv6 range (the provider models this
+  // as a string). Normally read back from GCP rather than set — only
+  // meaningful together with external_ipv6. Changing it replaces the VM.
+  string external_ipv6_prefix_length = 4;
+
+  // Name of this IPv6 access configuration; GCP's recommended value is
+  // "External IPv6". When omitted, GCP assigns one. Changing it replaces
+  // the VM.
+  string name = 5;
 }
 
 // GcpComputeInstanceAliasIpRange defines an alias IP range on an
@@ -563,15 +735,22 @@ message GcpComputeInstanceServiceAccount {
 // same discount and fewer restrictions.
 message GcpComputeInstanceScheduling {
   // Provisioning model:
-  //   ""         -- same as "STANDARD"
-  //   "STANDARD" -- on-demand capacity
-  //   "SPOT"     -- deeply discounted preemptible capacity; GCP may
-  //                 reclaim the VM at any time
+  //   ""                  -- same as "STANDARD"
+  //   "STANDARD"          -- on-demand capacity
+  //   "SPOT"              -- deeply discounted preemptible capacity; GCP
+  //                          may reclaim the VM at any time
+  //   "FLEX_START"        -- discounted capacity with a flexible start
+  //                          time (Dynamic Workload Scheduler); requires
+  //                          max_run_duration_seconds and is deleted when
+  //                          reclaimed
+  //   "RESERVATION_BOUND" -- runs only on capacity from one specific
+  //                          reservation (pair with reservation_affinity
+  //                          type SPECIFIC_RESERVATION)
   // Create-time only.
   string provisioning_model = 1 [(buf.validate.field).cel = {
     id: "valid_provisioning_model"
-    expression: "this == '' || this in ['STANDARD', 'SPOT']"
-    message: "provisioning_model must be STANDARD or SPOT"
+    expression: "this == '' || this in ['STANDARD', 'SPOT', 'FLEX_START', 'RESERVATION_BOUND']"
+    message: "provisioning_model must be STANDARD, SPOT, FLEX_START, or RESERVATION_BOUND"
   }];
 
   // Restart the VM automatically when Compute Engine (not a user) stops
@@ -592,9 +771,11 @@ message GcpComputeInstanceScheduling {
     }
   ];
 
-  // What GCP does when a Spot VM is preempted or its run duration
-  // expires: "STOP" (keep the stopped VM and disks) or "DELETE" (remove
-  // the VM). Spot only.
+  // What GCP does when the VM is reclaimed (Spot preemption, FLEX_START
+  // expiry) or a run-duration limit fires: "STOP" (keep the stopped VM
+  // and disks) or "DELETE" (remove the VM). Applies to SPOT and
+  // FLEX_START models and to timed-run VMs
+  // (max_run_duration_seconds/termination_time).
   string instance_termination_action = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
@@ -791,4 +972,43 @@ message GcpComputeInstanceSpecificReservation {
   // Reservation label values (the reservation name when using the
   // reservation-name key).
   repeated string values = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// GcpComputeInstanceEncryptionKey configures CMEK encryption of
+// instance-level data. Customer-supplied raw keys (CSEK) are
+// deliberately not modeled: raw key material does not belong in
+// declarative manifests or state — use CMEK, where the key stays in
+// Cloud KMS.
+message GcpComputeInstanceEncryptionKey {
+  // The KMS key encrypting instance-level data, referenced as a
+  // GcpKmsKey or a literal self link. The Compute Engine service agent
+  // needs roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Service account used for the encryption request. When omitted, the
+  // Compute Engine default service agent is used.
+  string kms_key_service_account = 2;
+}
+
+// CMEK decryption parameters for an encrypted boot-disk source (image or
+// snapshot). Customer-supplied raw keys (CSEK) are deliberately not
+// modeled: raw key material does not belong in declarative manifests or
+// state — use CMEK, where the key stays in Cloud KMS.
+message GcpComputeInstanceSourceEncryption {
+  // The KMS key the source was encrypted with, referenced as a GcpKmsKey
+  // or a literal self link. The service agent performing the read needs
+  // roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Service account used for the decryption request. When omitted, the
+  // Compute Engine default service agent is used.
+  string kms_key_service_account = 2;
 }

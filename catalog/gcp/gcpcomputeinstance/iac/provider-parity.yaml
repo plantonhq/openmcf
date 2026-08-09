@@ -1,0 +1,181 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_compute_instance:
+    mappings:
+      # Renames: the spec says what the field IS (an instance name, a
+      # project, a startup script), where the provider inherits terser
+      # API names.
+      - spec: spec.instance_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.startup_script
+        arg: metadata_startup_script
+      # Fan-in: user metadata entries and ssh_keys (folded under the
+      # well-known "ssh-keys" key, newline-joined) both land in the
+      # provider's one metadata map.
+      - spec: spec.metadata
+        arg: metadata
+      - spec: spec.ssh_keys
+        arg: metadata
+      # One-field blocks flattened: the tier IS the block.
+      - spec: spec.total_egress_bandwidth_tier
+        arg: network_performance_config.total_egress_bandwidth_tier
+      # The provider nests create-time Resource Manager tags in params.
+      - spec: spec.resource_manager_tags
+        arg: params.resource_manager_tags
+
+      # Boot disk: the spec flattens the provider's boot_disk +
+      # initialize_params split into ONE message -- a fresh disk's shape
+      # (image/snapshot source, size, type, tuning) and the attachment's
+      # shape (mode, interface, encryption) are a single decision for
+      # the user. Exact matching resumes for same-named leaves
+      # (auto_delete, device_name, mode, interface, force_attach,
+      # guest_os_features).
+      - spec: spec.boot_disk.image
+        arg: boot_disk.initialize_params.image
+      - spec: spec.boot_disk.source_snapshot
+        arg: boot_disk.initialize_params.snapshot
+      - spec: spec.boot_disk.source_disk
+        arg: boot_disk.source
+      - spec: spec.boot_disk.size_gb
+        arg: boot_disk.initialize_params.size
+      - spec: spec.boot_disk.type
+        arg: boot_disk.initialize_params.type
+      - spec: spec.boot_disk.disk_labels
+        arg: boot_disk.initialize_params.labels
+      - spec: spec.boot_disk.provisioned_iops
+        arg: boot_disk.initialize_params.provisioned_iops
+      - spec: spec.boot_disk.provisioned_throughput
+        arg: boot_disk.initialize_params.provisioned_throughput
+      - spec: spec.boot_disk.architecture
+        arg: boot_disk.initialize_params.architecture
+      - spec: spec.boot_disk.enable_confidential_compute
+        arg: boot_disk.initialize_params.enable_confidential_compute
+      - spec: spec.boot_disk.resource_policies
+        arg: boot_disk.initialize_params.resource_policies
+      - spec: spec.boot_disk.storage_pool
+        arg: boot_disk.initialize_params.storage_pool
+      - spec: spec.boot_disk.replica_zones
+        arg: boot_disk.initialize_params.replica_zones
+      - spec: spec.boot_disk.resource_manager_tags
+        arg: boot_disk.initialize_params.resource_manager_tags
+      # One-field blocks flattened: the reference IS the value.
+      - spec: spec.boot_disk.kms_key
+        arg: boot_disk.kms_key_self_link
+      - spec: spec.boot_disk.kms_key_service_account
+        arg: boot_disk.disk_encryption_service_account
+      # Source-decryption subtrees: CMEK arms mapped; exact matching
+      # resumes below each mapped prefix.
+      - spec: spec.boot_disk.source_image_encryption
+        arg: boot_disk.initialize_params.source_image_encryption_key
+      - spec: spec.boot_disk.source_image_encryption.kms_key
+        arg: boot_disk.initialize_params.source_image_encryption_key.kms_key_self_link
+      - spec: spec.boot_disk.source_snapshot_encryption
+        arg: boot_disk.initialize_params.source_snapshot_encryption_key
+      - spec: spec.boot_disk.source_snapshot_encryption.kms_key
+        arg: boot_disk.initialize_params.source_snapshot_encryption_key.kms_key_self_link
+
+      # Repeated-block pluralization: the spec names collections in the
+      # plural; the provider names the block in the singular. Exact
+      # matching resumes below each mapped subtree.
+      - spec: spec.attached_disks
+        arg: attached_disk
+      - spec: spec.attached_disks.kms_key
+        arg: attached_disk.kms_key_self_link
+      - spec: spec.attached_disks.kms_key_service_account
+        arg: attached_disk.disk_encryption_service_account
+      - spec: spec.scratch_disks
+        arg: scratch_disk
+      - spec: spec.scratch_disks.size_gb
+        arg: scratch_disk.size
+      - spec: spec.guest_accelerators
+        arg: guest_accelerator
+      - spec: spec.network_interfaces
+        arg: network_interface
+      - spec: spec.network_interfaces.access_configs
+        arg: network_interface.access_config
+      - spec: spec.network_interfaces.ipv6_access_configs
+        arg: network_interface.ipv6_access_config
+      - spec: spec.network_interfaces.alias_ip_ranges
+        arg: network_interface.alias_ip_range
+
+      # Duration blocks flattened to seconds: sub-second precision is
+      # excluded below with the provider's own granularity reasoning.
+      - spec: spec.scheduling.max_run_duration_seconds
+        arg: scheduling.max_run_duration.seconds
+      - spec: spec.scheduling.local_ssd_recovery_timeout_seconds
+        arg: scheduling.local_ssd_recovery_timeout.seconds
+      # One-field blocks flattened: the discard switch IS the block.
+      - spec: spec.scheduling.discard_local_ssds_on_stop
+        arg: scheduling.on_instance_stop_action.discard_local_ssd
+      # Fan-out derivation: the API's legacy preemptible flag must agree
+      # with the provisioning model, so both modules derive it from
+      # provisioning_model = "SPOT" (legacy preemptible-only VMs are a
+      # recorded non-goal -- Spot supersedes them).
+      - spec: spec.scheduling.provisioning_model
+        arg: scheduling.preemptible
+
+      # One-field blocks flattened: the reference IS the value.
+      - spec: spec.instance_encryption_key.kms_key
+        arg: instance_encryption_key.kms_key_self_link
+    exclusions:
+      # Customer-supplied encryption keys (CSEK): raw key material does
+      # not belong in declarative manifests or state -- the provider's own
+      # docs flag these args as stored in plain text. CMEK covers the
+      # customer-controlled-encryption need with the key held in Cloud
+      # KMS; the same posture as GcpComputeDisk.
+      - arg: boot_disk.disk_encryption_key_raw
+        reason: CSEK raw key material in manifests/state contradicts secure-by-default; use kms_key (CMEK)
+      - arg: boot_disk.disk_encryption_key_rsa
+        reason: CSEK RSA-wrapped key material in manifests/state contradicts secure-by-default; use kms_key (CMEK)
+      - arg: attached_disk.disk_encryption_key_raw
+        reason: CSEK raw key material in manifests/state contradicts secure-by-default; use kms_key (CMEK)
+      - arg: attached_disk.disk_encryption_key_rsa
+        reason: CSEK RSA-wrapped key material in manifests/state contradicts secure-by-default; use kms_key (CMEK)
+      - arg: boot_disk.initialize_params.source_image_encryption_key.raw_key
+        reason: CSEK raw key material in manifests/state contradicts secure-by-default; use source_image_encryption.kms_key (CMEK)
+      - arg: boot_disk.initialize_params.source_image_encryption_key.rsa_encrypted_key
+        reason: CSEK RSA-wrapped key material in manifests/state contradicts secure-by-default; use source_image_encryption.kms_key (CMEK)
+      - arg: boot_disk.initialize_params.source_snapshot_encryption_key.raw_key
+        reason: CSEK raw key material in manifests/state contradicts secure-by-default; use source_snapshot_encryption.kms_key (CMEK)
+      - arg: boot_disk.initialize_params.source_snapshot_encryption_key.rsa_encrypted_key
+        reason: CSEK RSA-wrapped key material in manifests/state contradicts secure-by-default; use source_snapshot_encryption.kms_key (CMEK)
+      # The legacy confidential-compute boolean only expresses SEV and its
+      # own provider description says it "will be deprecated in a future
+      # release"; the spec's typed confidential_instance_type covers the
+      # whole surface (SEV/SEV_SNP/TDX) and block presence is the enable
+      # signal, so neither module ever sends the boolean.
+      - arg: confidential_instance_config.enable_confidential_compute
+        reason: legacy SEV-only enable flag the provider marks future-deprecated; confidential_instance_type expresses the full surface and block presence enables it
+      # Sub-second duration precision serves no VM configuration purpose:
+      # the provider's own local_ssd_recovery_timeout description says the
+      # value has "hour granularity", max_run_duration is a VM lifetime,
+      # and the provider drops nanos = 0 as empty -- identical to omitting
+      # it. The spec models both durations as whole seconds.
+      - arg: scheduling.max_run_duration.nanos
+        reason: sub-second precision on a VM lifetime is meaningless; the spec models the duration as whole seconds
+      - arg: scheduling.local_ssd_recovery_timeout.nanos
+        reason: the provider documents this timeout at hour granularity; the spec models the duration as whole seconds
+      # SDK gap at the pinned pulumi-gcp (v9.29.0): the bridge does not
+      # carry workload_identity_config, so modeling it would break the
+      # cross-engine parity contract. Re-evaluate at the next pulumi-gcp
+      # bump -- when the bridge carries it, these come back through this
+      # manifest as modeled fields.
+      - arg: workload_identity_config.identity
+        reason: unbridged at pulumi-gcp v9.29.0 (no WorkloadIdentityConfig on compute.Instance); model when the SDK catches up
+      - arg: workload_identity_config.identity_certificate_enabled
+        reason: unbridged at pulumi-gcp v9.29.0 (no WorkloadIdentityConfig on compute.Instance); model when the SDK catches up
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables compute.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one VM
+      never disables the API project-wide); not spec surface.

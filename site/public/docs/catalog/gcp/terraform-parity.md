@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2826 |
+| Spec fields authored across all kinds | 2850 |
 | Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**20 of 79 kinds are at total accounting; 58 proven live.**
+**21 of 79 kinds are at total accounting; 57 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -75,7 +75,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpCloudSqlUser | 14 | 10 | 2 | 2 | 0 | ✅ | — |
 | GcpCloudTasksQueue | 34 | 20 | 0 | 0 | 21 | ❌ | ✅ pulumi, terraform |
 | GcpComputeDisk | 36 | 18 | 14 | 4 | 0 | ✅ | — |
-| GcpComputeInstance | 129 | 42 | 0 | 0 | 132 | ❌ | ✅ pulumi, terraform |
+| GcpComputeInstance | 124 | 47 | 64 | 13 | 0 | ✅ | — |
 | GcpDataprocAutoscalingPolicy | 16 | 15 | 1 | 0 | 0 | ✅ | — |
 | GcpDataprocCluster | 148 | 77 | 52 | 19 | 0 | ✅ | — |
 | GcpDnsRecord | 54 | 42 | 0 | 0 | 18 | ❌ | ✅ pulumi, terraform |

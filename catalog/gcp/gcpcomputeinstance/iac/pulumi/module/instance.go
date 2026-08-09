@@ -71,6 +71,24 @@ func computeInstance(
 	if spec.BootDisk.KmsKey.GetValue() != "" {
 		bootDiskArgs.KmsKeySelfLink = pulumi.StringPtr(spec.BootDisk.KmsKey.GetValue())
 	}
+	if spec.BootDisk.KmsKeyServiceAccount != "" {
+		bootDiskArgs.DiskEncryptionServiceAccount = pulumi.StringPtr(spec.BootDisk.KmsKeyServiceAccount)
+	}
+	if spec.BootDisk.Mode != "" {
+		bootDiskArgs.Mode = pulumi.StringPtr(spec.BootDisk.Mode)
+	}
+	// Google-advice-only lever — sent only when explicitly set, so the
+	// API's auto-selected interface never produces a diff.
+	if spec.BootDisk.Interface != "" {
+		bootDiskArgs.Interface = pulumi.StringPtr(spec.BootDisk.Interface)
+	}
+	// Regional-disk takeover; forcing a zonal disk is an API error.
+	if spec.BootDisk.ForceAttach {
+		bootDiskArgs.ForceAttach = pulumi.BoolPtr(true)
+	}
+	if len(spec.BootDisk.GuestOsFeatures) > 0 {
+		bootDiskArgs.GuestOsFeatures = pulumi.ToStringArray(spec.BootDisk.GuestOsFeatures)
+	}
 	if spec.BootDisk.SourceDisk.GetValue() != "" {
 		bootDiskArgs.Source = pulumi.StringPtr(spec.BootDisk.SourceDisk.GetValue())
 	} else {
@@ -111,6 +129,35 @@ func computeInstance(
 		if spec.BootDisk.StoragePool != "" {
 			initializeParams.StoragePool = pulumi.StringPtr(spec.BootDisk.StoragePool)
 		}
+		// Exactly two zones (one the instance's own) converts the boot
+		// disk to a regional disk — enforced pre-deploy by the spec.
+		if len(spec.BootDisk.ReplicaZones) > 0 {
+			initializeParams.ReplicaZones = pulumi.ToStringArray(spec.BootDisk.ReplicaZones)
+		}
+		// Create-time only; not returned by the API.
+		if len(spec.BootDisk.ResourceManagerTags) > 0 {
+			initializeParams.ResourceManagerTags = pulumi.ToStringMap(spec.BootDisk.ResourceManagerTags)
+		}
+		// CMEK decryption of an encrypted source image/snapshot. CSEK
+		// raw-key arms are deliberately not modeled (secure-by-default).
+		if spec.BootDisk.SourceImageEncryption != nil {
+			keyArgs := &compute.InstanceBootDiskInitializeParamsSourceImageEncryptionKeyArgs{
+				KmsKeySelfLink: pulumi.StringPtr(spec.BootDisk.SourceImageEncryption.KmsKey.GetValue()),
+			}
+			if spec.BootDisk.SourceImageEncryption.KmsKeyServiceAccount != "" {
+				keyArgs.KmsKeyServiceAccount = pulumi.StringPtr(spec.BootDisk.SourceImageEncryption.KmsKeyServiceAccount)
+			}
+			initializeParams.SourceImageEncryptionKey = keyArgs
+		}
+		if spec.BootDisk.SourceSnapshotEncryption != nil {
+			keyArgs := &compute.InstanceBootDiskInitializeParamsSourceSnapshotEncryptionKeyArgs{
+				KmsKeySelfLink: pulumi.StringPtr(spec.BootDisk.SourceSnapshotEncryption.KmsKey.GetValue()),
+			}
+			if spec.BootDisk.SourceSnapshotEncryption.KmsKeyServiceAccount != "" {
+				keyArgs.KmsKeyServiceAccount = pulumi.StringPtr(spec.BootDisk.SourceSnapshotEncryption.KmsKeyServiceAccount)
+			}
+			initializeParams.SourceSnapshotEncryptionKey = keyArgs
+		}
 		bootDiskArgs.InitializeParams = initializeParams
 	}
 
@@ -129,6 +176,13 @@ func computeInstance(
 		}
 		if disk.KmsKey.GetValue() != "" {
 			diskArgs.KmsKeySelfLink = pulumi.StringPtr(disk.KmsKey.GetValue())
+		}
+		if disk.KmsKeyServiceAccount != "" {
+			diskArgs.DiskEncryptionServiceAccount = pulumi.StringPtr(disk.KmsKeyServiceAccount)
+		}
+		// Regional-disk takeover; forcing a zonal disk is an API error.
+		if disk.ForceAttach {
+			diskArgs.ForceAttach = pulumi.BoolPtr(true)
 		}
 		attachedDisks = append(attachedDisks, diskArgs)
 	}
@@ -160,6 +214,11 @@ func computeInstance(
 		if ni.SubnetworkProject != "" {
 			niArgs.SubnetworkProject = pulumi.StringPtr(ni.SubnetworkProject)
 		}
+		// PSC consumer interface — legal on its own with no
+		// network/subnetwork (the spec's CEL mirrors that rule).
+		if ni.NetworkAttachment != "" {
+			niArgs.NetworkAttachment = pulumi.StringPtr(ni.NetworkAttachment)
+		}
 		if ni.NetworkIp.GetValue() != "" {
 			niArgs.NetworkIp = pulumi.StringPtr(ni.NetworkIp.GetValue())
 		}
@@ -171,6 +230,21 @@ func computeInstance(
 		}
 		if ni.QueueCount != nil {
 			niArgs.QueueCount = pulumi.IntPtr(int(ni.GetQueueCount()))
+		}
+		// VLAN tag marks a dynamic sub-interface (2-255).
+		if ni.Vlan != nil {
+			niArgs.Vlan = pulumi.IntPtr(int(ni.GetVlan()))
+		}
+		if ni.IgmpQuery != "" {
+			niArgs.IgmpQuery = pulumi.StringPtr(ni.IgmpQuery)
+		}
+		// Static internal IPv6 — requires an IPv6-enabled stack_type and
+		// subnetwork; unset lets GCP assign from the subnetwork range.
+		if ni.Ipv6Address != "" {
+			niArgs.Ipv6Address = pulumi.StringPtr(ni.Ipv6Address)
+		}
+		if ni.InternalIpv6PrefixLength != nil {
+			niArgs.InternalIpv6PrefixLength = pulumi.IntPtr(int(ni.GetInternalIpv6PrefixLength()))
 		}
 
 		// Presence of an access config grants an ephemeral or static
@@ -202,6 +276,17 @@ func computeInstance(
 				}
 				if ac.PublicPtrDomainName != "" {
 					acArgs.PublicPtrDomainName = pulumi.StringPtr(ac.PublicPtrDomainName)
+				}
+				// Unset lets GCP assign the external range; these three
+				// are immutable — pinning or renaming replaces the VM.
+				if ac.ExternalIpv6 != "" {
+					acArgs.ExternalIpv6 = pulumi.StringPtr(ac.ExternalIpv6)
+				}
+				if ac.ExternalIpv6PrefixLength != "" {
+					acArgs.ExternalIpv6PrefixLength = pulumi.StringPtr(ac.ExternalIpv6PrefixLength)
+				}
+				if ac.Name != "" {
+					acArgs.Name = pulumi.StringPtr(ac.Name)
 				}
 				ipv6Configs = append(ipv6Configs, acArgs)
 			}
@@ -464,6 +549,25 @@ func computeInstance(
 		args.Params = &compute.InstanceParamsArgs{
 			ResourceManagerTags: pulumi.ToStringMap(spec.ResourceManagerTags),
 		}
+	}
+
+	// Instance-level CMEK (memory and other instance state) — distinct
+	// from the per-disk keys. CSEK raw keys are deliberately not modeled.
+	if spec.InstanceEncryptionKey != nil {
+		keyArgs := &compute.InstanceInstanceEncryptionKeyArgs{
+			KmsKeySelfLink: pulumi.StringPtr(spec.InstanceEncryptionKey.KmsKey.GetValue()),
+		}
+		if spec.InstanceEncryptionKey.KmsKeyServiceAccount != "" {
+			keyArgs.KmsKeyServiceAccount = pulumi.StringPtr(spec.InstanceEncryptionKey.KmsKeyServiceAccount)
+		}
+		args.InstanceEncryptionKey = keyArgs
+	}
+
+	// Destroy behavior: unset follows the provider default (DELETE);
+	// PREVENT fails the destroy; ABANDON forgets the VM but leaves it
+	// running in GCP.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	createdInstance, err := compute.NewInstance(ctx,

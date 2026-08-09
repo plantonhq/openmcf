@@ -287,7 +287,10 @@ Fields on other kinds that can point at this resource:
 | GcpComputeDisk | `spec.sourceImageEncryption.kmsKey` | `status.outputs.key_id` |
 | GcpComputeDisk | `spec.sourceSnapshotEncryption.kmsKey` | `status.outputs.key_id` |
 | GcpComputeInstance | `spec.bootDisk.kmsKey` | `status.outputs.key_id` |
+| GcpComputeInstance | `spec.bootDisk.sourceImageEncryption.kmsKey` | `status.outputs.key_id` |
+| GcpComputeInstance | `spec.bootDisk.sourceSnapshotEncryption.kmsKey` | `status.outputs.key_id` |
 | GcpComputeInstance | `spec.attachedDisks[].kmsKey` | `status.outputs.key_id` |
+| GcpComputeInstance | `spec.instanceEncryptionKey.kmsKey` | `status.outputs.key_id` |
 | GcpDataprocCluster | `spec.clusterConfig.encryptionKmsKeyName` | `status.outputs.key_id` |
 | GcpDataprocCluster | `spec.clusterConfig.securityConfig.kerberosConfig.kmsKeyUri` | `status.outputs.key_id` |
 | GcpFilestoreInstance | `spec.kmsKeyName` | `status.outputs.key_id` |

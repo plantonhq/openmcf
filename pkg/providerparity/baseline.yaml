@@ -32,7 +32,6 @@ entries:
   - kind:GcpCloudFunction
   - kind:GcpCloudSchedulerJob
   - kind:GcpCloudTasksQueue
-  - kind:GcpComputeInstance
   - kind:GcpDnsRecord
   - kind:GcpDnsZone
   - kind:GcpFilestoreInstance
