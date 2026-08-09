@@ -331,6 +331,33 @@ func TestAzureVirtualWan_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurevirtualwan", "terraform")
 }
 
+// --- Azure Virtual Hub (composed: fixture WAN -> a Standard hub in eastus2 + one route table + one route map; the hub router provisions in 15-30 minutes and bills from creation; the scenario region deliberately differs from the fixture hub's eastus -- ARM allows one hub per region per WAN) ---
+
+func TestAzureVirtualHub_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualhub", "pulumi")
+}
+func TestAzureVirtualHub_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualhub", "terraform")
+}
+
+// --- Azure Virtual Hub Connection (composed: fixture hub + fixture VNet -> the attachment with a propagation-only routing block; the chain pays a full fixture-hub cycle inside the lane) ---
+
+func TestAzureVirtualHubConnection_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualhubconnection", "pulumi")
+}
+func TestAzureVirtualHubConnection_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualhubconnection", "terraform")
+}
+
+// --- Azure ExpressRoute Gateway (composed: fixture hub -> a one-scale-unit gateway, NO connections -- ARM accepts a connection only against a provider-PROVISIONED circuit peering, the same recorded boundary as the peering's own lane; ~30-minute create billing ~$0.42/hr) ---
+
+func TestAzureExpressRouteGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressroutegateway", "pulumi")
+}
+func TestAzureExpressRouteGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressroutegateway", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {

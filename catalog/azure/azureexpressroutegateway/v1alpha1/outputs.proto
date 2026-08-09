@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureexpressroutegateway.v1alpha1;
+
+// **AzureExpressRouteGatewayStackOutputs** captures the outputs of
+// provisioning an ExpressRoute Gateway and its connections.
+message AzureExpressRouteGatewayStackOutputs {
+  // The Azure Resource Manager ID of the gateway.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/expressRouteGateways/{name}
+  string express_route_gateway_id = 1;
+
+  // The name of the gateway.
+  string express_route_gateway_name = 2;
+
+  // The ARM ID of each connection on the gateway, keyed by the
+  // connection's name from the spec.
+  // Example valueFrom fieldPath: status.outputs.connection_ids.dc-primary
+  map<string, string> connection_ids = 3;
+}

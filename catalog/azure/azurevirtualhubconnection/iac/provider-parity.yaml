@@ -1,0 +1,15 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_virtual_hub_connection:
+    mappings:
+      # The spec pluralizes repeated fields; the provider names blocks
+      # in the singular.
+      - spec: spec.routing.static_vnet_routes
+        arg: routing.static_vnet_route

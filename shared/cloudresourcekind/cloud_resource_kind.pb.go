@@ -748,6 +748,10 @@ const (
 	// circuit, addressed by the circuit's name (the resource group chains
 	// transitively through the circuit).
 	CloudResourceKind_AzureExpressRouteCircuitPeering CloudResourceKind = 2145
+	// The hub is the prerequisite: ARM requires an ExpressRoute Gateway
+	// to be deployed INTO a Virtual WAN hub (the WAN and resource group
+	// chain transitively through the hub).
+	CloudResourceKind_AzureExpressRouteGateway CloudResourceKind = 2146
 	// ExpressRoute Port: your own physical port pair on a Microsoft edge
 	// router (ExpressRoute Direct), from whose bandwidth circuits are
 	// carved. Self-contained -- only the resource group is required.
@@ -756,6 +760,14 @@ const (
 	// networking, under which virtual hubs and their gateways are
 	// created. Self-contained -- only the resource group is required.
 	CloudResourceKind_AzureVirtualWan CloudResourceKind = 2148
+	// The WAN is the prerequisite: this kind models the Virtual WAN hub
+	// (virtual_wan_id is required; standalone hubs are the legacy Route
+	// Server construction, which has its own ARM surface). The resource
+	// group chains transitively through the WAN.
+	CloudResourceKind_AzureVirtualHub CloudResourceKind = 2149
+	// Both sides of the attachment are prerequisites: the hub being
+	// joined and the spoke virtual network being attached.
+	CloudResourceKind_AzureVirtualHubConnection CloudResourceKind = 2150
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
@@ -1496,8 +1508,11 @@ var (
 		2143:  "AzurePrivateLinkService",
 		2144:  "AzureExpressRouteCircuit",
 		2145:  "AzureExpressRouteCircuitPeering",
+		2146:  "AzureExpressRouteGateway",
 		2147:  "AzureExpressRoutePort",
 		2148:  "AzureVirtualWan",
+		2149:  "AzureVirtualHub",
+		2150:  "AzureVirtualHubConnection",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2120,8 +2135,11 @@ var (
 		"AzurePrivateLinkService":                        2143,
 		"AzureExpressRouteCircuit":                       2144,
 		"AzureExpressRouteCircuitPeering":                2145,
+		"AzureExpressRouteGateway":                       2146,
 		"AzureExpressRoutePort":                          2147,
 		"AzureVirtualWan":                                2148,
+		"AzureVirtualHub":                                2149,
+		"AzureVirtualHubConnection":                      2150,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -2787,7 +2805,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x9f\x94\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*ѕ\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3032,9 +3050,12 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x18AzureLocalNetworkGateway\x10\xde\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azlngw:\x02\xd0\x0f\x129\n" +
 	"\x17AzurePrivateLinkService\x10\xdf\x10\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azpls:\x02\xdb\x0f\x12:\n" +
 	"\x18AzureExpressRouteCircuit\x10\xe0\x10\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azerc:\x02\xd0\x0f\x12B\n" +
-	"\x1fAzureExpressRouteCircuitPeering\x10\xe1\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azercp:\x02\xe0\x10\x128\n" +
+	"\x1fAzureExpressRouteCircuitPeering\x10\xe1\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azercp:\x02\xe0\x10\x12;\n" +
+	"\x18AzureExpressRouteGateway\x10\xe2\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azergw:\x02\xe5\x10\x128\n" +
 	"\x15AzureExpressRoutePort\x10\xe3\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azerpt:\x02\xd0\x0f\x122\n" +
-	"\x0fAzureVirtualWan\x10\xe4\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azvwan:\x02\xd0\x0f\x12:\n" +
+	"\x0fAzureVirtualWan\x10\xe4\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azvwan:\x02\xd0\x0f\x122\n" +
+	"\x0fAzureVirtualHub\x10\xe5\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azvhub:\x02\xe4\x10\x12?\n" +
+	"\x19AzureVirtualHubConnection\x10\xe6\x10\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazvhubc:\x04\xe5\x10\xd6\x0f\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
 	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x124\n" +

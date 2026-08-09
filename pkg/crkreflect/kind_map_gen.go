@@ -195,6 +195,7 @@ import (
 	azureeventhubschemagroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventhubschemagroup/v1alpha1"
 	azureexpressroutecircuitv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressroutecircuit/v1alpha1"
 	azureexpressroutecircuitpeeringv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressroutecircuitpeering/v1alpha1"
+	azureexpressroutegatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressroutegateway/v1alpha1"
 	azureexpressrouteportv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressrouteport/v1alpha1"
 	azurefederatedidentitycredentialv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefederatedidentitycredential/v1alpha1"
 	azurefirewallv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefirewall/v1alpha1"
@@ -269,6 +270,8 @@ import (
 	azurestoragetablev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurestoragetable/v1alpha1"
 	azuresubnetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuresubnet/v1alpha1"
 	azureuserassignedidentityv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureuserassignedidentity/v1alpha1"
+	azurevirtualhubv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualhub/v1alpha1"
+	azurevirtualhubconnectionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualhubconnection/v1alpha1"
 	azurevirtualmachinev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualmachine/v1alpha1"
 	azurevirtualmachinescalesetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualmachinescaleset/v1alpha1"
 	azurevirtualnetworkv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualnetwork/v1alpha1"
@@ -846,6 +849,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureEventHubSchemaGroup:                       &azureeventhubschemagroupv1alpha1.AzureEventHubSchemaGroup{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRouteCircuit:                       &azureexpressroutecircuitv1alpha1.AzureExpressRouteCircuit{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRouteCircuitPeering:                &azureexpressroutecircuitpeeringv1alpha1.AzureExpressRouteCircuitPeering{},
+	cloudresourcekind.CloudResourceKind_AzureExpressRouteGateway:                       &azureexpressroutegatewayv1alpha1.AzureExpressRouteGateway{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRoutePort:                          &azureexpressrouteportv1alpha1.AzureExpressRoutePort{},
 	cloudresourcekind.CloudResourceKind_AzureFederatedIdentityCredential:               &azurefederatedidentitycredentialv1alpha1.AzureFederatedIdentityCredential{},
 	cloudresourcekind.CloudResourceKind_AzureFirewall:                                  &azurefirewallv1alpha1.AzureFirewall{},
@@ -920,6 +924,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureStorageTable:                              &azurestoragetablev1alpha1.AzureStorageTable{},
 	cloudresourcekind.CloudResourceKind_AzureSubnet:                                    &azuresubnetv1alpha1.AzureSubnet{},
 	cloudresourcekind.CloudResourceKind_AzureUserAssignedIdentity:                      &azureuserassignedidentityv1alpha1.AzureUserAssignedIdentity{},
+	cloudresourcekind.CloudResourceKind_AzureVirtualHub:                                &azurevirtualhubv1alpha1.AzureVirtualHub{},
+	cloudresourcekind.CloudResourceKind_AzureVirtualHubConnection:                      &azurevirtualhubconnectionv1alpha1.AzureVirtualHubConnection{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualMachine:                            &azurevirtualmachinev1alpha1.AzureVirtualMachine{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualMachineScaleSet:                    &azurevirtualmachinescalesetv1alpha1.AzureVirtualMachineScaleSet{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualNetwork:                            &azurevirtualnetworkv1alpha1.AzureVirtualNetwork{},

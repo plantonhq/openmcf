@@ -1,0 +1,42 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualHub
+metadata:
+  name: test-virtual-hub
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: hub-eastus
+  virtualWanId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualWans/global-wan
+  addressPrefix: "10.100.0.0/23"
+  # The unset optional fields apply ARM's defaults: Standard tier,
+  # ExpressRoute routing preference, branch-to-branch off, router
+  # capacity floor 2.
+  routeTables:
+    - name: prod-isolated
+      labels:
+        - prod
+      routes:
+        - name: to-firewall
+          destinationsType: CIDR
+          destinations:
+            - "0.0.0.0/0"
+          nextHop:
+            value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/azureFirewalls/hub-fw
+  routeMaps:
+    - name: ingress-policy
+      rules:
+        - name: tag-on-prem
+          matchCriteria:
+            - matchCondition: CONTAINS
+              routePrefix:
+                - "10.0.0.0/8"
+          actions:
+            - type: ADD
+              parameters:
+                - community:
+                    - "65001:100"
+          nextStepIfMatched: CONTINUE
+  tags:
+    purpose: hack-test

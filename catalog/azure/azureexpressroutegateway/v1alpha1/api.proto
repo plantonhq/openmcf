@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureexpressroutegateway.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureexpressroutegateway/v1alpha1/outputs.proto";
+import "catalog/azure/azureexpressroutegateway/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureExpressRouteGateway is the top-level API resource describing an
+// ExpressRoute Gateway -- the Virtual WAN hub's on-ramp for ExpressRoute
+// circuits.
+message AzureExpressRouteGateway {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureExpressRouteGateway".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureExpressRouteGateway'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // ExpressRoute Gateway specification.
+  AzureExpressRouteGatewaySpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureExpressRouteGatewayStatus status = 5;
+}
+
+// AzureExpressRouteGatewayStatus holds the deployment outputs.
+message AzureExpressRouteGatewayStatus {
+  // Stack outputs from the IaC deployment.
+  AzureExpressRouteGatewayStackOutputs outputs = 1;
+}

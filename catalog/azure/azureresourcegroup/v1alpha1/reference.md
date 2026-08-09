@@ -97,6 +97,7 @@ Fields on other kinds that can point at this resource:
 | AzureEventHubNamespace | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureExpressRouteCircuit | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureExpressRouteCircuitPeering | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureExpressRouteGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureExpressRoutePort | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFirewall | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFirewallPolicy | `spec.resourceGroup` | `status.outputs.resource_group_name` |
@@ -136,6 +137,7 @@ Fields on other kinds that can point at this resource:
 | AzureServicePlan | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureStorageAccount | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureUserAssignedIdentity | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureVirtualHub | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVirtualMachine | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVirtualMachineScaleSet | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVirtualNetwork | `spec.resourceGroup` | `status.outputs.resource_group_name` |

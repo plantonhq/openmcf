@@ -447,6 +447,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AzureExpressRouteCircuitPeering | `spec.connections[].peerPeeringId` | `status.outputs.express_route_circuit_peering_id` |
+| AzureExpressRouteGateway | `spec.connections[].expressRouteCircuitPeeringId` | `status.outputs.express_route_circuit_peering_id` |
 
 ## See Also
 

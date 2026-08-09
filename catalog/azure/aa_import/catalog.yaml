@@ -85,3 +85,38 @@ spec:
     - terraform_type: azurerm_virtual_wan
       pulumi_type: azure:network/virtualWan:VirtualWan
       id_format: "{virtual_wan_id}"
+    - terraform_type: azurerm_virtual_hub
+      pulumi_type: azure:network/virtualHub:VirtualHub
+      id_format: "{virtual_hub_id}"
+    - terraform_type: azurerm_virtual_hub_route_table
+      pulumi_type: azure:network/virtualHubRouteTable:VirtualHubRouteTable
+      id_format: "{virtual_hub_id}/hubRouteTables/{route_table_name}"
+      # The module deploys one table per spec entry, keyed by name --
+      # the address's instance key supplies {route_table_name}.
+    - terraform_type: azurerm_route_map
+      pulumi_type: azure:network/routeMap:RouteMap
+      id_format: "{virtual_hub_id}/routeMaps/{route_map_name}"
+      # The module deploys one map per spec entry, keyed by name.
+    - terraform_type: azurerm_virtual_hub_bgp_connection
+      pulumi_type: azure:network/bgpConnection:BgpConnection
+      id_format: "{virtual_hub_id}/bgpConnections/{bgp_connection_name}"
+      # The module deploys one peering per spec entry, keyed by name.
+    - terraform_type: azurerm_virtual_hub_routing_intent
+      pulumi_type: azure:network/routingIntent:RoutingIntent
+      id_format: "{virtual_hub_id}/routingIntent/{routing_intent_name}"
+      # A hub has at most one routing intent; the module keys it by the
+      # intent's name so the address supplies {routing_intent_name}.
+    - terraform_type: azurerm_virtual_hub_connection
+      pulumi_type: azure:network/virtualHubConnection:VirtualHubConnection
+      id_format: "{virtual_hub_connection_id}"
+    - terraform_type: azurerm_express_route_gateway
+      pulumi_type: azure:network/expressRouteGateway:ExpressRouteGateway
+      id_format: "{express_route_gateway_id}"
+    - terraform_type: azurerm_express_route_connection
+      pulumi_type: azure:network/expressRouteConnection:ExpressRouteConnection
+      id_format: "{express_route_gateway_id}/expressRouteConnections/{connection_name}"
+      # The module deploys one connection per spec entry, keyed by name.
+      # authorization_key (the key the connection REDEEMS) is never
+      # returned by ARM -- an imported connection configured with one
+      # legitimately plans an in-place update on it.
+      write_normalized_attributes: [authorization_key]

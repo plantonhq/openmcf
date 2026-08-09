@@ -1,0 +1,82 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The related azurerm_virtual_hub_ip resource is deliberately NOT
+# consumed by this kind: hub IP configurations exist for the standalone
+# Route Server construction (a hub without a WAN), which has its own ARM
+# product surface -- this kind models WAN hubs only (virtual_wan_id is
+# required). The same goes for azurerm_virtual_hub_route_table_route:
+# routes are managed INLINE on each composed route table (mixing the
+# standalone route resource with inline routes fights over the same ARM
+# collection).
+
+resources:
+  azurerm_virtual_hub:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (an Azure
+      # region, a resource group), where the provider inherits ARM's
+      # terser property names.
+      - spec: spec.region
+        arg: location
+      - spec: spec.resource_group
+        arg: resource_group_name
+      # The spec pluralizes repeated fields; the provider names blocks
+      # in the singular.
+      - spec: spec.routes
+        arg: route
+
+  azurerm_virtual_hub_route_table:
+    # Instantiated per spec.route_tables entry (the hub's composed
+    # custom route tables, keyed by name into the route_table_ids
+    # output).
+    specRoot: spec.route_tables
+    mappings:
+      - spec: spec.route_tables.routes
+        arg: route
+    exclusions:
+      - arg: virtual_hub_id
+        reason: wired by the module to the hub it creates -- never user surface
+      - arg: route.next_hop_type
+        reason: ARM's only value is "ResourceId" -- the module leaves the provider default; there is nothing to configure
+
+  azurerm_route_map:
+    # Instantiated per spec.route_maps entry (the hub's composed route
+    # maps, keyed by name into the route_map_ids output).
+    specRoot: spec.route_maps
+    mappings:
+      - spec: spec.route_maps.rules
+        arg: rule
+      - spec: spec.route_maps.rules.match_criteria
+        arg: rule.match_criterion
+      - spec: spec.route_maps.rules.actions
+        arg: rule.action
+      - spec: spec.route_maps.rules.actions.parameters
+        arg: rule.action.parameter
+    exclusions:
+      - arg: virtual_hub_id
+        reason: wired by the module to the hub it creates -- never user surface
+
+  azurerm_virtual_hub_bgp_connection:
+    # Instantiated per spec.bgp_connections entry (the hub router's
+    # composed NVA peerings, keyed by name into the bgp_connection_ids
+    # output).
+    specRoot: spec.bgp_connections
+    exclusions:
+      - arg: virtual_hub_id
+        reason: wired by the module to the hub it creates -- never user surface
+
+  azurerm_virtual_hub_routing_intent:
+    # Instantiated from the singleton spec.routing_intent message (a hub
+    # has at most one routing intent).
+    specRoot: spec.routing_intent
+    mappings:
+      - spec: spec.routing_intent.routing_policies
+        arg: routing_policy
+    exclusions:
+      - arg: virtual_hub_id
+        reason: wired by the module to the hub it creates -- never user surface

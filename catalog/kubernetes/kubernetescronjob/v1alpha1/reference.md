@@ -1530,8 +1530,11 @@ Allowed values (use exactly as shown):
 - `AzurePrivateLinkService` -- AzureSubnet is the sole prerequisite: every NAT ip configuration draws its address from a subnet with private-link-service network policies disabled (the subnet install profile publishes a fixture instance with that flag off). The Standard load balancer whose frontend the service typically fronts is NOT a registry prerequisite -- the spec's destination is an exactly-one-of (load balancer frontend OR fixed destination IP), so scenarios that use the load-balancer shape declare it via the planton.dev/e2e-prerequisites annotation instead.
 - `AzureExpressRouteCircuit`
 - `AzureExpressRouteCircuitPeering` -- The circuit is the prerequisite: a peering is an ARM child of the circuit, addressed by the circuit's name (the resource group chains transitively through the circuit).
-- `AzureExpressRoutePort`
-- `AzureVirtualWan`
+- `AzureExpressRouteGateway`
+- `AzureExpressRoutePort` -- ExpressRoute Port: your own physical port pair on a Microsoft edge router (ExpressRoute Direct), from whose bandwidth circuits are carved. Self-contained -- only the resource group is required.
+- `AzureVirtualWan` -- Virtual WAN: the umbrella of Azure's managed hub-and-spoke networking, under which virtual hubs and their gateways are created. Self-contained -- only the resource group is required.
+- `AzureVirtualHub`
+- `AzureVirtualHubConnection`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -2317,8 +2320,11 @@ Allowed values (use exactly as shown):
 - `AzurePrivateLinkService` -- AzureSubnet is the sole prerequisite: every NAT ip configuration draws its address from a subnet with private-link-service network policies disabled (the subnet install profile publishes a fixture instance with that flag off). The Standard load balancer whose frontend the service typically fronts is NOT a registry prerequisite -- the spec's destination is an exactly-one-of (load balancer frontend OR fixed destination IP), so scenarios that use the load-balancer shape declare it via the planton.dev/e2e-prerequisites annotation instead.
 - `AzureExpressRouteCircuit`
 - `AzureExpressRouteCircuitPeering` -- The circuit is the prerequisite: a peering is an ARM child of the circuit, addressed by the circuit's name (the resource group chains transitively through the circuit).
-- `AzureExpressRoutePort`
-- `AzureVirtualWan`
+- `AzureExpressRouteGateway`
+- `AzureExpressRoutePort` -- ExpressRoute Port: your own physical port pair on a Microsoft edge router (ExpressRoute Direct), from whose bandwidth circuits are carved. Self-contained -- only the resource group is required.
+- `AzureVirtualWan` -- Virtual WAN: the umbrella of Azure's managed hub-and-spoke networking, under which virtual hubs and their gateways are created. Self-contained -- only the resource group is required.
+- `AzureVirtualHub`
+- `AzureVirtualHubConnection`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -4257,8 +4263,11 @@ Allowed values (use exactly as shown):
 - `AzurePrivateLinkService` -- AzureSubnet is the sole prerequisite: every NAT ip configuration draws its address from a subnet with private-link-service network policies disabled (the subnet install profile publishes a fixture instance with that flag off). The Standard load balancer whose frontend the service typically fronts is NOT a registry prerequisite -- the spec's destination is an exactly-one-of (load balancer frontend OR fixed destination IP), so scenarios that use the load-balancer shape declare it via the planton.dev/e2e-prerequisites annotation instead.
 - `AzureExpressRouteCircuit`
 - `AzureExpressRouteCircuitPeering` -- The circuit is the prerequisite: a peering is an ARM child of the circuit, addressed by the circuit's name (the resource group chains transitively through the circuit).
-- `AzureExpressRoutePort`
-- `AzureVirtualWan`
+- `AzureExpressRouteGateway`
+- `AzureExpressRoutePort` -- ExpressRoute Port: your own physical port pair on a Microsoft edge router (ExpressRoute Direct), from whose bandwidth circuits are carved. Self-contained -- only the resource group is required.
+- `AzureVirtualWan` -- Virtual WAN: the umbrella of Azure's managed hub-and-spoke networking, under which virtual hubs and their gateways are created. Self-contained -- only the resource group is required.
+- `AzureVirtualHub`
+- `AzureVirtualHubConnection`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -5044,8 +5053,11 @@ Allowed values (use exactly as shown):
 - `AzurePrivateLinkService` -- AzureSubnet is the sole prerequisite: every NAT ip configuration draws its address from a subnet with private-link-service network policies disabled (the subnet install profile publishes a fixture instance with that flag off). The Standard load balancer whose frontend the service typically fronts is NOT a registry prerequisite -- the spec's destination is an exactly-one-of (load balancer frontend OR fixed destination IP), so scenarios that use the load-balancer shape declare it via the planton.dev/e2e-prerequisites annotation instead.
 - `AzureExpressRouteCircuit`
 - `AzureExpressRouteCircuitPeering` -- The circuit is the prerequisite: a peering is an ARM child of the circuit, addressed by the circuit's name (the resource group chains transitively through the circuit).
-- `AzureExpressRoutePort`
-- `AzureVirtualWan`
+- `AzureExpressRouteGateway`
+- `AzureExpressRoutePort` -- ExpressRoute Port: your own physical port pair on a Microsoft edge router (ExpressRoute Direct), from whose bandwidth circuits are carved. Self-contained -- only the resource group is required.
+- `AzureVirtualWan` -- Virtual WAN: the umbrella of Azure's managed hub-and-spoke networking, under which virtual hubs and their gateways are created. Self-contained -- only the resource group is required.
+- `AzureVirtualHub`
+- `AzureVirtualHubConnection`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -7020,8 +7032,11 @@ Allowed values (use exactly as shown):
 - `AzurePrivateLinkService` -- AzureSubnet is the sole prerequisite: every NAT ip configuration draws its address from a subnet with private-link-service network policies disabled (the subnet install profile publishes a fixture instance with that flag off). The Standard load balancer whose frontend the service typically fronts is NOT a registry prerequisite -- the spec's destination is an exactly-one-of (load balancer frontend OR fixed destination IP), so scenarios that use the load-balancer shape declare it via the planton.dev/e2e-prerequisites annotation instead.
 - `AzureExpressRouteCircuit`
 - `AzureExpressRouteCircuitPeering` -- The circuit is the prerequisite: a peering is an ARM child of the circuit, addressed by the circuit's name (the resource group chains transitively through the circuit).
-- `AzureExpressRoutePort`
-- `AzureVirtualWan`
+- `AzureExpressRouteGateway`
+- `AzureExpressRoutePort` -- ExpressRoute Port: your own physical port pair on a Microsoft edge router (ExpressRoute Direct), from whose bandwidth circuits are carved. Self-contained -- only the resource group is required.
+- `AzureVirtualWan` -- Virtual WAN: the umbrella of Azure's managed hub-and-spoke networking, under which virtual hubs and their gateways are created. Self-contained -- only the resource group is required.
+- `AzureVirtualHub`
+- `AzureVirtualHubConnection`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -7807,8 +7822,11 @@ Allowed values (use exactly as shown):
 - `AzurePrivateLinkService` -- AzureSubnet is the sole prerequisite: every NAT ip configuration draws its address from a subnet with private-link-service network policies disabled (the subnet install profile publishes a fixture instance with that flag off). The Standard load balancer whose frontend the service typically fronts is NOT a registry prerequisite -- the spec's destination is an exactly-one-of (load balancer frontend OR fixed destination IP), so scenarios that use the load-balancer shape declare it via the planton.dev/e2e-prerequisites annotation instead.
 - `AzureExpressRouteCircuit`
 - `AzureExpressRouteCircuitPeering` -- The circuit is the prerequisite: a peering is an ARM child of the circuit, addressed by the circuit's name (the resource group chains transitively through the circuit).
-- `AzureExpressRoutePort`
-- `AzureVirtualWan`
+- `AzureExpressRouteGateway`
+- `AzureExpressRoutePort` -- ExpressRoute Port: your own physical port pair on a Microsoft edge router (ExpressRoute Direct), from whose bandwidth circuits are carved. Self-contained -- only the resource group is required.
+- `AzureVirtualWan` -- Virtual WAN: the umbrella of Azure's managed hub-and-spoke networking, under which virtual hubs and their gateways are created. Self-contained -- only the resource group is required.
+- `AzureVirtualHub`
+- `AzureVirtualHubConnection`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
