@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCloudComposerUserWorkloadsConfigMapSpec defines a Kubernetes
 ConfigMap delivered into a Cloud Composer environment's workloads
 namespace.
@@ -61,6 +63,7 @@ spec:
 | `spec.environment` | `string \| valueFrom` | yes |  | GcpCloudComposerEnvironment (`status.outputs.environment_name`) |
 | `spec.configMapName` | `string` | yes |  |  |
 | `spec.data` | `map<string, string>` | yes |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -112,6 +115,22 @@ number. Immutable after creation.
 The ConfigMap's key-value entries (plain configuration data).
 
 - rule: {"map":{"minPairs":"1"}}
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the ConfigMap — what happens when this resource
+is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the Kubernetes ConfigMap is removed from the
+               environment; DAGs consuming it start failing
+  "PREVENT" -- destroy FAILS; protects configuration live pipelines
+               depend on from riding along with a stack teardown
+  "ABANDON" -- the ConfigMap is removed from management but stays
+               in the environment's cluster
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

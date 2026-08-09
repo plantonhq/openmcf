@@ -66,4 +66,19 @@ message GcpCloudComposerUserWorkloadsSecretSpec {
     },
     (dev.planton.shared.options.sensitive) = true
   ];
+
+  // Deletion policy for the Secret — what happens when this resource is
+  // destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the Kubernetes Secret is removed from the
+  //                environment; DAGs consuming it start failing
+  //   "PREVENT" -- destroy FAILS; protects credentials live pipelines
+  //                depend on from riding along with a stack teardown
+  //   "ABANDON" -- the Secret is removed from management but stays in
+  //                the environment's cluster
+  string deletion_policy = 6 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

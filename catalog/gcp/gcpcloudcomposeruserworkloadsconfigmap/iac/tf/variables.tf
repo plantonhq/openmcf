@@ -32,6 +32,9 @@ variable "spec" {
     # Key-value entries (plain configuration data — use the user
     # workloads Secret kind for secret material).
     data = map(string)
+
+    # Client-side destroy behavior: DELETE (default), PREVENT, ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {

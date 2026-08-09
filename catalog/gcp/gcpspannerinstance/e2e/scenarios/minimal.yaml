@@ -22,3 +22,4 @@ spec:
   displayName: Planton E2E Minimal
   processingUnits: 100
   edition: STANDARD
+  deletionPolicy: DELETE

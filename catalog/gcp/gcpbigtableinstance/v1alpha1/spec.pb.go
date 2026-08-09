@@ -315,9 +315,34 @@ type GcpBigtableInstanceSpec struct {
 	// User-defined labels to organize and track the instance (instance-level
 	// only — GCP has no per-cluster labels). Merged beneath Planton's
 	// platform attribution labels (platform keys win on conflict).
-	Labels        map[string]string `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Labels map[string]string `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Edition of the instance, gating feature availability. ENTERPRISE
+	// (the GCP default when unset) is the standard production edition;
+	// ENTERPRISE_PLUS adds enterprise capabilities such as multi-location
+	// automated-backup placement for the instance's tables. Upgrading
+	// ENTERPRISE -> ENTERPRISE_PLUS applies in place; there is no
+	// downgrade path.
+	Edition string `protobuf:"bytes,8,opt,name=edition,proto3" json:"edition,omitempty"`
+	// Resource Manager tags bound to the instance for org-policy and IAM
+	// conditions. Keys in the form "tagKeys/{id}" (or the namespaced
+	// "project/tag-key"), values "tagValues/{id}" (or
+	// "project/tag-key/tag-value"). Create-time only: changing them later
+	// replaces the instance — plan tag changes deliberately.
+	ResourceManagerTags map[string]string `protobuf:"bytes,9,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the instance — what happens when this resource
+	// is destroyed. Applies only once deletion_protection (above) permits
+	// a destroy at all:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the instance is deleted with every cluster and table
+	//	             on it (backups additionally gated by force_destroy)
+	//	"PREVENT" -- destroy FAILS; a second wall for the instance a
+	//	             data platform depends on
+	//	"ABANDON" -- the instance is removed from management but left
+	//	             running (and billing) in GCP with its data intact
+	DeletionPolicy string `protobuf:"bytes,10,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpBigtableInstanceSpec) Reset() {
@@ -399,6 +424,27 @@ func (x *GcpBigtableInstanceSpec) GetLabels() map[string]string {
 	return nil
 }
 
+func (x *GcpBigtableInstanceSpec) GetEdition() string {
+	if x != nil {
+		return x.Edition
+	}
+	return ""
+}
+
+func (x *GcpBigtableInstanceSpec) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
+func (x *GcpBigtableInstanceSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_rawDesc = "" +
@@ -427,7 +473,7 @@ const file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1fnode_scaling_factor_valid_value\x12Fnode_scaling_factor must be NodeScalingFactor1X or NodeScalingFactor2X\x1aDthis == '' || this in ['NodeScalingFactor1X', 'NodeScalingFactor2X']R\x11nodeScalingFactor\x12\x88\x01\n" +
 	"\x12autoscaling_config\x18\a \x01(\v2Y.dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceClusterAutoscalingConfigR\x11autoscalingConfig:\x8f\x01\xbaH\x8b\x01\x1a\x88\x01\n" +
 	"\x18scaling_mutual_exclusion\x126only one of num_nodes or autoscaling_config may be set\x1a4this.num_nodes == 0 || !has(this.autoscaling_config)B\x0f\n" +
-	"\r_storage_type\"\x99\x05\n" +
+	"\r_storage_type\"\xd6\t\n" +
 	"\x17GcpBigtableInstanceSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
@@ -436,8 +482,17 @@ const file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x13deletion_protection\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x12deletionProtection\x88\x01\x01\x12#\n" +
 	"\rforce_destroy\x18\x05 \x01(\bR\fforceDestroy\x12n\n" +
 	"\bclusters\x18\x06 \x03(\v2H.dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceClusterB\b\xbaH\x05\x92\x01\x02\b\x01R\bclusters\x12i\n" +
-	"\x06labels\x18\a \x03(\v2Q.dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.LabelsEntryR\x06labels\x1a9\n" +
+	"\x06labels\x18\a \x03(\v2Q.dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.LabelsEntryR\x06labels\x12\x9f\x01\n" +
+	"\aedition\x18\b \x01(\tB\x84\x01\xbaH\x80\x01\xba\x01}\n" +
+	"\x13edition_valid_value\x12-edition must be ENTERPRISE or ENTERPRISE_PLUS\x1a7this == '' || this in ['ENTERPRISE', 'ENTERPRISE_PLUS']R\aedition\x12\x92\x01\n" +
+	"\x15resource_manager_tags\x18\t \x03(\v2^.dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.ResourceManagerTagsEntryR\x13resourceManagerTags\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\n" +
+	" \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x16\n" +
 	"\x14_deletion_protectionB\xf5\x02\n" +
@@ -455,25 +510,27 @@ func file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_rawDescGZIP() []by
 	return file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpBigtableInstanceClusterAutoscalingConfig)(nil), // 0: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceClusterAutoscalingConfig
 	(*GcpBigtableInstanceCluster)(nil),                  // 1: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceCluster
 	(*GcpBigtableInstanceSpec)(nil),                     // 2: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec
 	nil,                                                 // 3: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.LabelsEntry
-	(*v1.StringValueOrRef)(nil),                         // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                                                 // 4: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.ResourceManagerTagsEntry
+	(*v1.StringValueOrRef)(nil),                         // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceCluster.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 0: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceCluster.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0, // 1: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceCluster.autoscaling_config:type_name -> dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceClusterAutoscalingConfig
-	4, // 2: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 2: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 3: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.clusters:type_name -> dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceCluster
 	3, // 4: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.labels:type_name -> dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.LabelsEntry
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	4, // 5: dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.ResourceManagerTagsEntry
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_init() }
@@ -489,7 +546,7 @@ func file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpbigtableinstance_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

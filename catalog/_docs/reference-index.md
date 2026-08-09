@@ -32,7 +32,7 @@ Start with:
 | [cloudflare](../cloudflare/reference-index.md) | 30 | 30 | 0 |
 | [confluent](../confluent/reference-index.md) | 1 | 1 | 0 |
 | [digitalocean](../digitalocean/reference-index.md) | 15 | 14 | 0 |
-| [gcp](../gcp/reference-index.md) | 79 | 79 | 42 |
+| [gcp](../gcp/reference-index.md) | 79 | 79 | 50 |
 | [hetznercloud](../hetznercloud/reference-index.md) | 12 | 12 | 0 |
 | [kubernetes](../kubernetes/reference-index.md) | 120 | 120 | 71 |
 | [oci](../oci/reference-index.md) | 37 | 7 | 0 |

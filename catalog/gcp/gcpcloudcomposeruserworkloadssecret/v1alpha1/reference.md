@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCloudComposerUserWorkloadsSecretSpec defines a Kubernetes Secret
 delivered into a Cloud Composer environment's workloads namespace.
 
@@ -59,6 +61,7 @@ spec:
 | `spec.environment` | `string \| valueFrom` | yes |  | GcpCloudComposerEnvironment (`status.outputs.environment_name`) |
 | `spec.secretName` | `string` | yes |  |  |
 | `spec.data` | `map<string, string>` (sensitive) | yes |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -114,6 +117,22 @@ connection URIs, passwords, tokens) is never placed in stack
 outputs, and the entries are held as secrets in IaC state.
 
 - rule: {"map":{"minPairs":"1","values":{"cel":[{"id":"data_value_base64","message":"each data value must be base64-encoded (e.g. echo -n 'value' | base64)","expression":"this.matches('^[A-Za-z0-9+/]+={0,2}$')"}]}}}
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the Secret — what happens when this resource is
+destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the Kubernetes Secret is removed from the
+               environment; DAGs consuming it start failing
+  "PREVENT" -- destroy FAILS; protects credentials live pipelines
+               depend on from riding along with a stack teardown
+  "ABANDON" -- the Secret is removed from management but stays in
+               the environment's cluster
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

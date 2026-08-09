@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 79 |
 | Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2904 |
+| Spec fields authored across all kinds | 2922 |
 | Module pins on `google` | `~> 7.43` × 79 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**44 of 79 kinds are at total accounting; 35 proven live.**
+**52 of 79 kinds are at total accounting; 27 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -58,14 +58,14 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpBackendService | 121 | 89 | 0 | 0 | 52 | ❌ | ✅ pulumi, terraform |
 | GcpBigQueryDataset | 44 | 32 | 0 | 0 | 18 | ❌ | ✅ pulumi, terraform |
 | GcpBigQueryTable | 103 | 80 | 0 | 0 | 35 | ❌ | ✅ pulumi, terraform |
-| GcpBigtableInstance | 24 | 4 | 0 | 0 | 32 | ❌ | ✅ pulumi, terraform |
-| GcpBigtableTable | 28 | 6 | 0 | 0 | 32 | ❌ | ✅ pulumi, terraform |
+| GcpBigtableInstance | 19 | 6 | 13 | 0 | 0 | ✅ | — |
+| GcpBigtableTable | 23 | 8 | 14 | 1 | 0 | ✅ | — |
 | GcpCertManagerCert | 12 | 10 | 2 | 0 | 0 | ✅ | — |
 | GcpCertManagerDnsAuthorization | 8 | 6 | 2 | 0 | 0 | ✅ | — |
 | GcpCloudArmorPolicy | 66 | 7 | 0 | 0 | 110 | ❌ | ✅ pulumi, terraform |
-| GcpCloudComposerEnvironment | 86 | 2 | 0 | 0 | 150 | ❌ | ✅ pulumi, terraform |
-| GcpCloudComposerUserWorkloadsConfigMap | 6 | 3 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
-| GcpCloudComposerUserWorkloadsSecret | 6 | 3 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
+| GcpCloudComposerEnvironment | 81 | 3 | 66 | 12 | 0 | ✅ | — |
+| GcpCloudComposerUserWorkloadsConfigMap | 6 | 4 | 2 | 0 | 0 | ✅ | — |
+| GcpCloudComposerUserWorkloadsSecret | 6 | 4 | 2 | 0 | 0 | ✅ | — |
 | GcpCloudFunction | 70 | 38 | 0 | 0 | 49 | ❌ | ✅ pulumi, terraform |
 | GcpCloudRun | 129 | 27 | 90 | 12 | 0 | ✅ | — |
 | GcpCloudRunJob | 74 | 10 | 61 | 3 | 0 | ✅ | — |
@@ -111,9 +111,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpServiceAccountIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpServiceConnectionPolicy | 12 | 9 | 3 | 0 | 0 | ✅ | — |
 | GcpServiceNetworkingConnection | 5 | 5 | 0 | 0 | 0 | ✅ | — |
-| GcpSpannerBackupSchedule | 15 | 6 | 0 | 0 | 13 | ❌ | ✅ pulumi, terraform |
-| GcpSpannerDatabase | 17 | 9 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
-| GcpSpannerInstance | 33 | 15 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
+| GcpSpannerBackupSchedule | 10 | 7 | 3 | 0 | 0 | ✅ | — |
+| GcpSpannerDatabase | 12 | 10 | 2 | 0 | 0 | ✅ | — |
+| GcpSpannerInstance | 28 | 21 | 7 | 0 | 0 | ✅ | — |
 | GcpSslCertificate | 19 | 9 | 4 | 6 | 0 | ✅ | — |
 | GcpSslPolicy | 17 | 13 | 4 | 0 | 0 | ✅ | — |
 | GcpSubnetwork | 34 | 17 | 0 | 0 | 22 | ❌ | ✅ pulumi, terraform |

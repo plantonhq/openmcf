@@ -24,3 +24,6 @@ spec:
     connection: cG9zdGdyZXNxbDovL2FpcmZsb3c6cGFzc0AxMC4wLjAuNS9teWRi
     # base64 of "sk-live-4f9a2b7c8d1e"
     api-token: c2stbGl2ZS00ZjlhMmI3YzhkMWU=
+
+  # Explicit DELETE (the provider default) proves the round-trip.
+  deletionPolicy: DELETE

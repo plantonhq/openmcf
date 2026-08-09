@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpSpannerInstanceSpec defines the configuration for a Google Cloud
 Spanner instance.
 
@@ -75,15 +77,23 @@ spec:
 | `spec.autoscalingConfig.autoscalingTargets` | `GcpSpannerInstanceAutoscalingTargets` |  |  |  |
 | `spec.autoscalingConfig.autoscalingTargets.highPriorityCpuUtilizationPercent` | `int32` |  |  |  |
 | `spec.autoscalingConfig.autoscalingTargets.storageUtilizationPercent` | `int32` |  |  |  |
+| `spec.autoscalingConfig.autoscalingTargets.totalCpuUtilizationPercent` | `int32` |  |  |  |
 | `spec.autoscalingConfig.asymmetricAutoscalingOptions` | `[]GcpSpannerInstanceAsymmetricAutoscalingOption` |  |  |  |
 | `spec.autoscalingConfig.asymmetricAutoscalingOptions[].replicaLocation` | `string` | yes |  |  |
 | `spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides` | `GcpSpannerInstanceAsymmetricAutoscalingOverrides` | yes |  |  |
 | `spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.minNodes` | `int32` |  |  |  |
 | `spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.maxNodes` | `int32` |  |  |  |
+| `spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.minProcessingUnits` | `int32` |  |  |  |
+| `spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.maxProcessingUnits` | `int32` |  |  |  |
+| `spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.autoscalingTargetHighPriorityCpuUtilizationPercent` | `int32` |  |  |  |
+| `spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.autoscalingTargetTotalCpuUtilizationPercent` | `int32` |  |  |  |
+| `spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.disableHighPriorityCpuAutoscaling` | `bool` |  |  |  |
+| `spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.disableTotalCpuAutoscaling` | `bool` |  |  |  |
 | `spec.instanceType` | `string` |  |  |  |
 | `spec.edition` | `string` |  |  |  |
 | `spec.defaultBackupScheduleType` | `string` |  |  |  |
 | `spec.forceDestroy` | `bool` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -241,14 +251,27 @@ to leave headroom for growth spikes.
 
 - rule: {"int32":{"lte":100,"gte":0}}
 
+### spec.autoscalingConfig.autoscalingTargets.totalCpuUtilizationPercent
+
+`int32`
+
+Target percentage of TOTAL CPU utilization — user traffic plus
+Spanner's background maintenance work — as a second CPU signal
+alongside high_priority_cpu_utilization_percent. Useful when
+background work (change streams, backups) is a meaningful share of
+the load and scaling on user traffic alone would run the instance
+hot. Scale 0 (no utilization) to 100 (full utilization).
+
+- rule: {"int32":{"lte":100,"gte":0}}
+
 ### spec.autoscalingConfig.asymmetricAutoscalingOptions
 
 `[]GcpSpannerInstanceAsymmetricAutoscalingOption`
 
 Per-replica-location overrides for multi-region instances: scale a
 read-heavy region independently instead of sizing every region for the
-hottest one. Each entry selects one replica location and bounds its
-node range.
+hottest one. Each entry selects one replica location and overrides its
+capacity bounds, CPU targets, or both.
 
 ### spec.autoscalingConfig.asymmetricAutoscalingOptions[].replicaLocation
 
@@ -263,19 +286,23 @@ e.g. "europe-west1") whose autoscaling this option overrides.
 
 `GcpSpannerInstanceAsymmetricAutoscalingOverrides` · required
 
-Node bounds for this replica location, replacing the instance-wide
-autoscaling_limits for it.
+The per-replica tuning applied at this location: capacity bounds
+(nodes or processing units) replacing the instance-wide
+autoscaling_limits, replica-local CPU targets, or switches disabling
+a CPU signal for this replica.
 
 - rule: {"required":true}
-- rule: max_nodes must be >= min_nodes
+- rule: use either nodes (min_nodes + max_nodes) or processing units (min_processing_units + max_processing_units), not both
+- rule: max_nodes must be >= min_nodes and both must be positive
+- rule: max_processing_units must be >= min_processing_units and both must be positive
 
 ### spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.minNodes
 
 `int32`
 
 Minimum number of nodes for the selected replica location.
-
-- rule: {"int32":{"gte":1}}
+Use together with max_nodes; mutually exclusive with the
+processing-unit bounds.
 
 ### spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.maxNodes
 
@@ -284,7 +311,56 @@ Minimum number of nodes for the selected replica location.
 Maximum number of nodes for the selected replica location.
 Must be >= min_nodes.
 
-- rule: {"int32":{"gte":1}}
+### spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.minProcessingUnits
+
+`int32`
+
+Minimum number of processing units for the selected replica
+location — the fine-grained alternative to node bounds. Per-replica
+PU bounds must be multiples of 1000 (unlike instance-wide limits,
+which allow multiples of 100 below 1000). Use together with
+max_processing_units; mutually exclusive with the node bounds.
+
+### spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.maxProcessingUnits
+
+`int32`
+
+Maximum number of processing units for the selected replica
+location. Must be >= min_processing_units and a multiple of 1000.
+
+### spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.autoscalingTargetHighPriorityCpuUtilizationPercent
+
+`int32`
+
+Target high-priority CPU utilization percentage for THIS replica,
+overriding the instance-wide autoscaling_targets value there.
+Scale 0-100.
+
+- rule: {"int32":{"lte":100,"gte":0}}
+
+### spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.autoscalingTargetTotalCpuUtilizationPercent
+
+`int32`
+
+Target total CPU utilization percentage for THIS replica, overriding
+the instance-wide autoscaling_targets value there. Scale 0-100.
+
+- rule: {"int32":{"lte":100,"gte":0}}
+
+### spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.disableHighPriorityCpuAutoscaling
+
+`bool`
+
+Disable high-priority CPU autoscaling for this replica: the
+instance-wide high_priority_cpu_utilization_percent target is
+ignored there and only the remaining signals drive scaling.
+
+### spec.autoscalingConfig.asymmetricAutoscalingOptions[].overrides.disableTotalCpuAutoscaling
+
+`bool`
+
+Disable total CPU autoscaling for this replica: the instance-wide
+total_cpu_utilization_percent target is ignored there.
 
 ### spec.instanceType
 
@@ -330,6 +406,23 @@ Whether destroying the instance also deletes all backups held on it.
 When false (default), destroy fails if any database on the instance
 has backups — a safety net against losing the last restore point. Set
 true only when the backups are intentionally disposable.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the instance — what happens when this resource
+is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the instance is deleted, taking every database and
+               backup on it with it (backups additionally gated by
+               force_destroy above)
+  "PREVENT" -- destroy FAILS; protects the instance every database
+               in the topology depends on
+  "ABANDON" -- the instance is removed from management but left
+               running (and billing) in GCP with its data intact
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

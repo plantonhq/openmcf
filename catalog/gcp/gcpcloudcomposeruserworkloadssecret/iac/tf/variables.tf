@@ -34,6 +34,9 @@ variable "spec" {
     # attribute sensitive, so plans redact it; it still lands in IaC
     # state, which is the engine's secret boundary.
     data = map(string)
+
+    # Client-side destroy behavior: DELETE (default), PREVENT, ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {

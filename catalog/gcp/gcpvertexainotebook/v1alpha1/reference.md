@@ -79,6 +79,7 @@ spec:
     enableSecureBoot: true
     enableVtpm: true
     enableIntegrityMonitoring: true
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields

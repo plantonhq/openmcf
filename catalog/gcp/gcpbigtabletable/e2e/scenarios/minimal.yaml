@@ -32,3 +32,4 @@ spec:
     - family: counters
       type: intsum
   deletionProtection: UNPROTECTED
+  deletionPolicy: DELETE

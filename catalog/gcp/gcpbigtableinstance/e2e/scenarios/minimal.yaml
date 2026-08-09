@@ -22,6 +22,7 @@ metadata:
 spec:
   instanceName: e2e-bt-${E2E_RUN_ID}
   deletionProtection: false
+  deletionPolicy: DELETE
   clusters:
     - clusterId: e2e-btc-${E2E_RUN_ID}
       zone: us-central1-a

@@ -49,6 +49,7 @@ spec:
   displayName: Test Index Endpoint
   description: Serving surface for the test vector index
   publicEndpointEnabled: true
+  deletionPolicy: DELETE
   labels:
     team: ml-platform
     cost-center: research

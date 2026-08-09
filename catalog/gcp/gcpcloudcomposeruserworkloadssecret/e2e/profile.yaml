@@ -7,8 +7,6 @@ spec:
   # (25-45 minutes) before delivering the Secret, so a batch run for both
   # engines needs >=240m. The Secret itself creates/destroys in seconds.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 240

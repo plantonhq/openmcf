@@ -57,6 +57,7 @@ spec:
   networkConfig:
     network:
       value: default
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields

@@ -28,3 +28,4 @@ spec:
   ddl:
     - CREATE TABLE e2e_orders (order_id STRING(36) NOT NULL, created_at TIMESTAMP NOT NULL) PRIMARY KEY (order_id)
   deletionProtection: false
+  deletionPolicy: DELETE

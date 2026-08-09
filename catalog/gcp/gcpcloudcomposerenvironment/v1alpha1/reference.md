@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCloudComposerEnvironmentSpec defines the configuration for a Google Cloud
 Composer environment -- a managed Apache Airflow service for authoring,
 scheduling, and monitoring data pipelines.
@@ -190,6 +192,7 @@ spec:
 | `spec.enablePrivateEnvironment` | `bool` |  |  |  |
 | `spec.enablePrivateBuildsOnly` | `bool` |  |  |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -844,6 +847,25 @@ Only applicable to Composer 3.
 User-defined labels to organize and track the environment. Merged
 beneath Planton's platform attribution labels (platform keys win on
 conflict).
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the environment — what happens when this
+resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the environment is deleted (10-15 minutes: Composer
+               tears down the managed GKE cluster and database).
+               The DAG bucket Composer auto-created survives — GCP
+               never deletes it with the environment
+  "PREVENT" -- destroy FAILS; protects the environment whose DAGs
+               a data platform runs on
+  "ABANDON" -- the environment is removed from management but keeps
+               running (and billing meaningfully — Composer bills
+               for its infrastructure even when idle) in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

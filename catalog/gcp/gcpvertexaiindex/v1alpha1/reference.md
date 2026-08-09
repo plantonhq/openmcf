@@ -57,6 +57,7 @@ spec:
     treeAhConfig:
       leafNodeEmbeddingCount: 1000
       leafNodesToSearchPercent: 10
+  deletionPolicy: DELETE
   labels:
     team: ml-platform
     cost-center: research

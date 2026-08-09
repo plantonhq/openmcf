@@ -16,4 +16,9 @@ resource "google_composer_user_workloads_config_map" "config_map" {
   project     = local.project_id
 
   data = var.spec.data
+
+  # Client-side destroy behavior: DELETE (default), PREVENT (destroy
+  # fails — protects configuration live pipelines depend on), or ABANDON
+  # (drop from state, keep the ConfigMap in the cluster).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 }

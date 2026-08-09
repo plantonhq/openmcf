@@ -8,8 +8,6 @@ spec:
   # posture verify -> destroy -> verify gone, on both provisioners.
   # Instance create/destroy runs a few minutes each.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 45

@@ -118,6 +118,13 @@ message GcpBigtableTableAutomatedBackupPolicy {
     (buf.validate.field).required = true,
     (buf.validate.field).string.pattern = "^([0-9]+(\\.[0-9]+)?(h|m|s|ms))+$"
   ];
+
+  // Cloud Bigtable zones where automated backups are ALLOWED to be
+  // created, each in the format "projects/{project}/locations/{zone}".
+  // Empty means backups may be created in all zones of the instance.
+  // Can only be set for tables in ENTERPRISE_PLUS instances (see the
+  // GcpBigtableInstance edition field).
+  repeated string locations = 3;
 }
 
 // GcpBigtableTableSpec defines a table inside a Cloud Bigtable instance —
@@ -211,4 +218,20 @@ message GcpBigtableTableSpec {
   // existing schema, clear this field, apply, then set the new schema
   // and apply again. Byte delimiters must be base64-encoded.
   string row_key_schema = 9;
+
+  // Deletion policy — what a destroy does to BOTH objects this component
+  // manages: the table and its per-family GC policies. Applies only once
+  // deletion_protection (above) is UNPROTECTED:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the table (and its data) is deleted; GC policies go
+  //                with it
+  //   "PREVENT" -- destroy FAILS; a second wall for data-bearing tables
+  //   "ABANDON" -- the table is removed from management but left intact
+  //                in Bigtable — also the escape hatch when a GC-policy
+  //                delete is rejected on a replicated instance
+  string deletion_policy = 10 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

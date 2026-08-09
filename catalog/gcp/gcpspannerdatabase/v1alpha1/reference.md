@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpSpannerDatabaseSpec defines the configuration for a Google Cloud
 Spanner database.
 
@@ -29,13 +31,14 @@ Important behavioral notes:
   - Spanner databases do not support GCP labels; labels exist only at
     the instance level.
 
-  - TWO deletion guards exist and differ in enforcement point:
+  - THREE deletion levers exist and differ in enforcement point:
     enable_drop_protection is GCP API-side (blocks deletion through
     Console, gcloud, API, and IaC alike — and blocks deletion of the
     PARENT INSTANCE while set); deletion_protection is IaC-side (both
     engines refuse to destroy this resource while true — GCP itself
-    would still allow a console delete). deletion_protection defaults
-    TRUE, matching the safe posture.
+    would still allow a console delete) and defaults TRUE, matching
+    the safe posture; deletion_policy decides WHAT a permitted destroy
+    does (delete the database, fail, or abandon it in GCP).
 
 ## Example
 
@@ -71,6 +74,7 @@ spec:
 | `spec.encryptionConfig.kmsKeyNames` | `[]string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
 | `spec.defaultTimeZone` | `string` |  |  |  |
 | `spec.deletionProtection` | `bool` |  | `true` |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -204,6 +208,23 @@ teardown. Unlike enable_drop_protection, GCP itself does not enforce
 this: a console/gcloud delete would still succeed.
 
 - default: `true`
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy — what a PERMITTED destroy does, once the two guards
+above allow one (deletion_protection false, enable_drop_protection
+off):
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the database and its data are deleted (backups
+               already taken survive until their retention expires)
+  "PREVENT" -- destroy FAILS — a third, explicit wall for databases
+               whose teardown must never ride along with a stack's
+  "ABANDON" -- the database is removed from management but left
+               intact in GCP, still billing for its storage
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

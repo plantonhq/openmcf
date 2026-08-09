@@ -53,6 +53,7 @@ spec:
       - value: query-sa@my-gcp-project.iam.gserviceaccount.com
     audiences:
       - vector-search-clients
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
