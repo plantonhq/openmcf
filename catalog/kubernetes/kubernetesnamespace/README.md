@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesNamespace** is a Planton deployment component that implements a "Namespace-as-a-Service" pattern for creating and managing production-ready Kubernetes namespaces. Rather than creating a bare namespace, this component provisions a complete, secure, multi-tenant environment with resource quotas, network policies, access controls, and optional service mesh integration pre-configured according to best practices.
+**KubernetesNamespace** is a Planton component that implements a "Namespace-as-a-Service" pattern for creating and managing production-ready Kubernetes namespaces. Rather than creating a bare namespace, this component provisions a complete, secure, multi-tenant environment with resource quotas, network policies, access controls, and optional service mesh integration pre-configured according to best practices.
 
 ## Purpose
 

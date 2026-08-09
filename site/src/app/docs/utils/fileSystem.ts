@@ -73,7 +73,7 @@ const iconMap: Record<string, string> = {
 const categoryIcons: Record<string, string> = {
   docs: '📚',
   concepts: '💡',
-  'deployment-components': '📦',
+  'components': '📦',
   deployment: '🚀',
   monitoring: '📊',
   security: '🔒',

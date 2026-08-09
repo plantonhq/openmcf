@@ -7,7 +7,7 @@ order: 70
 
 # Module Management
 
-Planton deployment components ship as IaC modules — Pulumi programs (Go) and HCL configurations (Terraform/OpenTofu) — that are resolved and executed at runtime. This page covers the commands that manage those modules and the CLI binary itself.
+Planton components ship as IaC modules — Pulumi programs (Go) and HCL configurations (Terraform/OpenTofu) — that are resolved and executed at runtime. This page covers the commands that manage those modules and the CLI binary itself.
 
 ## Module Resolution
 
@@ -76,7 +76,7 @@ planton pull
 
 This runs `git fetch --all` followed by `git pull` in the staging directory. If the staging area does not exist, it is cloned first. After pulling, the command displays the staging path and current version.
 
-Run `pull` periodically to ensure you have access to the latest deployment components and bug fixes.
+Run `pull` periodically to ensure you have access to the latest components and bug fixes.
 
 ### modules-version
 

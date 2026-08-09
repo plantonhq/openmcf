@@ -71,6 +71,17 @@ func Build(input BuildInput) (*Manifest, error) {
 		return nil, fmt.Errorf("no presets found under %s -- refusing to build a bundle without its preset cargo", input.CatalogDir)
 	}
 
+	// Catalog entries are projected from the tree plus the compiled kind
+	// registry -- the projection itself refuses missing components, dead
+	// module directories, and an empty result.
+	entryFiles, err := projectEntries(input.CatalogDir)
+	if err != nil {
+		return nil, err
+	}
+	for name, content := range entryFiles {
+		entries[name] = content
+	}
+
 	manifest := &Manifest{
 		FormatVersion: FormatVersion,
 		ReleaseTag:    input.ReleaseTag,

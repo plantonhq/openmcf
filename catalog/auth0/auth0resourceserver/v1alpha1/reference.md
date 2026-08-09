@@ -24,7 +24,7 @@ https://auth0.com/docs/get-started/apis
 
 ```yaml
 # Auth0 Resource Server Test Manifest
-# This file is used for testing the Auth0ResourceServer deployment component
+# This file is used for testing the Auth0ResourceServer component
 #
 # Prerequisites:
 # 1. Set the following environment variables:

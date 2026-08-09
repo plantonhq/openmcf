@@ -1,16 +1,16 @@
 ---
-description: Action rule to apply default option semantics to a deployment component's proto and IaC module
+description: Action rule to apply default option semantics to a component's proto and IaC module
 globs:
 alwaysApply: false
 ---
 
 # Rule: Apply Planton Default Option Semantics
 
-Purpose: When a deployment component has fields with default values documented in comments but not enforced via proto field options, this rule ensures the proper semantics are applied.
+Purpose: When a component has fields with default values documented in comments but not enforced via proto field options, this rule ensures the proper semantics are applied.
 
 ## When to Use This Rule
 
-Invoke this rule when you encounter a deployment component where:
+Invoke this rule when you encounter a component where:
 - Proto fields have default values mentioned in comments (e.g., `// Default: "default"`)
 - But the fields are NOT marked as `optional`
 - And do NOT have the `(dev.planton.shared.options.default)` field option

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesPersistentVolumeClaim** is a Planton deployment component that creates and manages Kubernetes PersistentVolumeClaims — the durable-disk primitive — as first-class, declaratively managed resources. A claim names how much storage it needs, how it will be accessed, and (optionally) which StorageClass provisions it; the cluster binds it to a PersistentVolume that satisfies the request.
+**KubernetesPersistentVolumeClaim** is a Planton component that creates and manages Kubernetes PersistentVolumeClaims — the durable-disk primitive — as first-class, declaratively managed resources. A claim names how much storage it needs, how it will be accessed, and (optionally) which StorageClass provisions it; the cluster binds it to a PersistentVolume that satisfies the request.
 
 The component covers the complete `core/v1` PersistentVolumeClaimSpec surface: access modes, storage requests and limits, StorageClass selection (including the empty-vs-absent distinction), volume mode, static binding to a named volume, volume selectors, and data sources (clone a claim or restore a snapshot). The feature-gated `volumeAttributesClassName` and cross-namespace data sources are deliberately unmodeled until they graduate.
 

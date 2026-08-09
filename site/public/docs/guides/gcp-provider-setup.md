@@ -7,7 +7,7 @@ order: 80
 
 # GCP Provider Setup
 
-This guide covers everything you need to authenticate Planton with Google Cloud Platform. It applies to all GCP deployment components: `GcpCloudSql`, `GcpGkeCluster`, `GcpGcsBucket`, `GcpCloudRun`, and others.
+This guide covers everything you need to authenticate Planton with Google Cloud Platform. It applies to all GCP components: `GcpCloudSql`, `GcpGkeCluster`, `GcpGcsBucket`, `GcpCloudRun`, and others.
 
 For a quick reference of all provider credentials, see [Credentials](./credentials).
 

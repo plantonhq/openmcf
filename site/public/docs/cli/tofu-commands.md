@@ -7,7 +7,7 @@ order: 50
 
 # OpenTofu Commands
 
-The `planton tofu` command group runs infrastructure operations using OpenTofu as the IaC engine. Each deployment component in Planton ships with an HCL module in `iac/tf/` that translates the manifest spec into cloud resources.
+The `planton tofu` command group runs infrastructure operations using OpenTofu as the IaC engine. Each component in Planton ships with an HCL module in `iac/tf/` that translates the manifest spec into cloud resources.
 
 ## Prerequisites
 
@@ -99,14 +99,14 @@ Queries the cloud provider for the current state of all managed resources and up
 
 ### generate-variables
 
-Generate Terraform `variables.tf` content for a specified deployment component kind. This is useful when building custom HCL modules that need to accept Planton manifests as input.
+Generate Terraform `variables.tf` content for a specified component kind. This is useful when building custom HCL modules that need to accept Planton manifests as input.
 
 ```bash
 planton tofu generate-variables KubernetesPostgres
 planton tofu generate-variables AwsS3Bucket --output-file variables.tf
 ```
 
-Takes exactly one argument: the deployment component kind name (e.g., `KubernetesPostgres`, `AwsS3Bucket`, `GcpCloudSqlPostgres`). The kind name matches the `CloudResourceKind` enum values from the protobuf definitions.
+Takes exactly one argument: the component kind name (e.g., `KubernetesPostgres`, `AwsS3Bucket`, `GcpCloudSqlPostgres`). The kind name matches the `CloudResourceKind` enum values from the protobuf definitions.
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -130,7 +130,7 @@ All `planton tofu` subcommands inherit persistent flags from the parent command.
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--manifest` | | Path to the deployment-component manifest file |
+| `--manifest` | | Path to the component manifest file |
 | `--input-dir` | | Directory containing `target.yaml` and credential YAML files |
 | `--kustomize-dir` | | Directory containing kustomize configuration |
 | `--overlay` | | Kustomize overlay (e.g., `prod`, `dev`, `staging`) |

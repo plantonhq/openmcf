@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesPriorityClass** is a Planton deployment component that creates and manages Kubernetes PriorityClasses — the rungs of the cluster's workload importance ladder — as first-class, declaratively managed resources. Pods reference a class by name (the shared workload pod spec's `priority_class_name`); the scheduler places higher-priority pods first when capacity is scarce and — unless preemption is disabled — EVICTS lower-priority pods to make room for a higher-priority pod that cannot otherwise schedule.
+**KubernetesPriorityClass** is a Planton component that creates and manages Kubernetes PriorityClasses — the rungs of the cluster's workload importance ladder — as first-class, declaratively managed resources. Pods reference a class by name (the shared workload pod spec's `priority_class_name`); the scheduler places higher-priority pods first when capacity is scarce and — unless preemption is disabled — EVICTS lower-priority pods to make room for a higher-priority pod that cannot otherwise schedule.
 
 The component covers the complete `scheduling.k8s.io/v1` PriorityClass surface: the priority value, the global-default flag, the human description, and the preemption policy.
 

@@ -12,8 +12,9 @@ spec:
   containerName: public-assets
   # BLOB serves objects anonymously by direct URL with NO listing --
   # the public-website/CDN-origin pattern. Requires the ACCOUNT's
-  # allowNestedItemsToBePublic to be true (Azure's default); prefer
-  # CONTAINER only when anonymous enumeration is genuinely wanted.
+  # allowNestedItemsToBePublic to be true (the account spec's default;
+  # Azure's own default is false); prefer CONTAINER only when anonymous
+  # enumeration is genuinely wanted.
   containerAccessType: BLOB
   metadata:
     purpose: public-assets

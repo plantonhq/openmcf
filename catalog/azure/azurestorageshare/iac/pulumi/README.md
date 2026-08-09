@@ -1,6 +1,6 @@
 # AzureStorageShare - Pulumi Module
 
-Pulumi implementation for the AzureStorageShare deployment component.
+Pulumi implementation for the AzureStorageShare component.
 
 ## Architecture
 

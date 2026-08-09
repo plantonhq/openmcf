@@ -85,4 +85,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-This component operates independently and does not reference other deployment components.
+This component operates independently and does not reference other components.

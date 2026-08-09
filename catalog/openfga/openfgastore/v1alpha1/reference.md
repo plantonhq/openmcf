@@ -26,7 +26,7 @@ Reference:
 ```yaml
 # OpenFgaStore Test Manifest
 #
-# This manifest is used for testing the OpenFGA Store deployment component.
+# This manifest is used for testing the OpenFGA Store component.
 #
 # Prerequisites:
 # - OpenFGA server running (locally or cloud-hosted)

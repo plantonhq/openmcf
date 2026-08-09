@@ -83,7 +83,7 @@ Cross-compiles the CLI binary for darwin/linux on amd64/arm64.
 make generate-cloud-resource-kind-map
 ```
 
-Regenerates the cloud resource kind map. Run this after adding a new deployment component to `cloud_resource_kind.proto`.
+Regenerates the cloud resource kind map. Run this after adding a new component to `cloud_resource_kind.proto`.
 
 ## Testing
 
@@ -225,6 +225,6 @@ When proposing larger changes, open a GitHub Issue first to discuss the approach
 
 ## What's Next
 
-- **[Adding Components](./adding-components)** — Step-by-step guide for creating new deployment components
-- **[Deployment Components](/docs/concepts/deployment-components)** — Understand the anatomy of a component
+- **[Adding Components](./adding-components)** — Step-by-step guide for creating new components
+- **[Components](/docs/concepts/components)** — Understand the anatomy of a component
 - **[Dual IaC Engines](/docs/concepts/dual-iac-engines)** — How Pulumi and OpenTofu modules work together

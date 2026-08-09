@@ -3,4 +3,4 @@ runtime:
   name: go
   options:
     binary: main
-description: AWS MSK Cluster deployment component
+description: AWS MSK Cluster component

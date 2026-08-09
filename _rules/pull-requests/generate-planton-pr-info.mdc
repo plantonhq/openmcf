@@ -71,7 +71,7 @@ Usage: In Ask mode, invoke explicitly as `@pr-info`.
 ## Repository-aware scope heuristics (Planton)
 Determine the `<scope-path>` from the changed files. Use the most impacted area by lines changed; if multiple, see multi-area guidance.
 
-- Catalog (deployment components)
+- Catalog (components)
   - `catalog/<provider>/<kind>/**` → `catalog/<provider>/<kind>`
   - Multiple kinds under the same provider → `catalog/<provider>`
   - Shared proto surfaces (`shared/**`, `qa/**`, `iac/**`) → `shared`, `qa`, or `iac`

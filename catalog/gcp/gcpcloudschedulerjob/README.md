@@ -1,6 +1,6 @@
 # GcpCloudSchedulerJob
 
-A deployment component for provisioning [Google Cloud Scheduler](https://cloud.google.com/scheduler) jobs through Planton.
+A component for provisioning [Google Cloud Scheduler](https://cloud.google.com/scheduler) jobs through Planton.
 
 ## Overview
 

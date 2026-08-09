@@ -1,7 +1,7 @@
 # AzureCosmosdbSqlRoleDefinition - Terraform Module
 
 Terraform implementation for the AzureCosmosdbSqlRoleDefinition
-deployment component.
+component.
 
 ## Resources Created
 

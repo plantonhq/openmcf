@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesSecret** is an Planton deployment component that implements a "Secret-as-a-Service" pattern for creating and managing Kubernetes Secrets as first-class, declaratively managed resources. It provides type-safe configuration for all common Kubernetes secret types -- Opaque, TLS, DockerConfigJson, BasicAuth, and SSHAuth -- with per-type validation and a clean, structured API.
+**KubernetesSecret** is an Planton component that implements a "Secret-as-a-Service" pattern for creating and managing Kubernetes Secrets as first-class, declaratively managed resources. It provides type-safe configuration for all common Kubernetes secret types -- Opaque, TLS, DockerConfigJson, BasicAuth, and SSHAuth -- with per-type validation and a clean, structured API.
 
 ## Purpose
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesConfigMap** is a Planton deployment component that creates and manages Kubernetes ConfigMaps as first-class, declaratively managed resources. A ConfigMap holds non-confidential configuration data — file-like text values, property settings, or binary payloads — that pods consume as environment variables, command-line arguments, or mounted files.
+**KubernetesConfigMap** is a Planton component that creates and manages Kubernetes ConfigMaps as first-class, declaratively managed resources. A ConfigMap holds non-confidential configuration data — file-like text values, property settings, or binary payloads — that pods consume as environment variables, command-line arguments, or mounted files.
 
 The component covers the complete Kubernetes ConfigMap surface: UTF-8 `data`, base64-encoded `binary_data`, and the `immutable` flag. There is nothing an upstream ConfigMap can express that this spec cannot.
 

@@ -1,7 +1,7 @@
 # AzureCosmosdbSqlRoleAssignment - Terraform Module
 
 Terraform implementation for the AzureCosmosdbSqlRoleAssignment
-deployment component.
+component.
 
 ## Resources Created
 

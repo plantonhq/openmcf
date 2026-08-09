@@ -54,7 +54,7 @@
 
 ## What Are Presets?
 
-A **preset** is a production-quality, directly deployable YAML manifest paired with a companion markdown document. Together, they represent a specific, real-world configuration pattern for an Planton deployment component.
+A **preset** is a production-quality, directly deployable YAML manifest paired with a companion markdown document. Together, they represent a specific, real-world configuration pattern for an Planton component.
 
 ### Technical Definition
 
@@ -101,7 +101,7 @@ Rank 01 answers the question: **"If you had 30 seconds to deploy this resource a
 
 ## Relationship to Other Artifacts
 
-Each deployment component has several YAML-related artifacts. They serve different purposes for different audiences:
+Each component has several YAML-related artifacts. They serve different purposes for different audiences:
 
 **Presets** (`presets/*.yaml` at the component root):
 

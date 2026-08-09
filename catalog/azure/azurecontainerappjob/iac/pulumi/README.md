@@ -1,6 +1,6 @@
 # AzureContainerAppJob - Pulumi Module
 
-Pulumi implementation for the AzureContainerAppJob deployment component.
+Pulumi implementation for the AzureContainerAppJob component.
 
 ## Architecture
 

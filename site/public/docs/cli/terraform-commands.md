@@ -18,7 +18,7 @@ The `planton terraform` command group runs infrastructure operations using Terra
 
 Planton's Terraform and OpenTofu command groups share the same:
 
-- **HCL modules**: Every deployment component has a single `iac/tf/` directory used by both engines
+- **HCL modules**: Every component has a single `iac/tf/` directory used by both engines
 - **Module resolution**: Both use the same download, caching, and staging mechanisms
 - **Execution engine**: Both route through the same Go package (`tofumodule.RunCommand`) with the binary name as the only difference
 
@@ -108,7 +108,7 @@ All `planton terraform` subcommands inherit persistent flags from the parent com
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--manifest` | | Path to the deployment-component manifest file |
+| `--manifest` | | Path to the component manifest file |
 | `--input-dir` | | Directory containing `target.yaml` and credential YAML files |
 | `--kustomize-dir` | | Directory containing kustomize configuration |
 | `--overlay` | | Kustomize overlay (e.g., `prod`, `dev`, `staging`) |

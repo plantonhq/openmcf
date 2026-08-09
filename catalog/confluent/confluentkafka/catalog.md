@@ -93,4 +93,4 @@ No presets are available yet. Configure directly using the fields documented in 
 
 ## Works With
 
-This component operates independently and does not reference other deployment components.
+This component operates independently and does not reference other components.

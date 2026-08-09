@@ -1,6 +1,6 @@
 # AliCloudPrivateDnsZone -- Pulumi Module
 
-This directory contains the Pulumi (Go) implementation for the AliCloudPrivateDnsZone deployment component.
+This directory contains the Pulumi (Go) implementation for the AliCloudPrivateDnsZone component.
 
 ## Structure
 

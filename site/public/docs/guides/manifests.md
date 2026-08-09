@@ -15,7 +15,7 @@ Every manifest starts with two decisions: which `kind` to use and what to put in
 
 ### Step 1: Identify the Kind
 
-Browse the [Deployment Component Catalog](/docs/catalog) to find the component that matches what you want to deploy. Each catalog entry shows the `kind` name, provider, and a description of what the component deploys.
+Browse the [Component Catalog](/docs/catalog) to find the component that matches what you want to deploy. Each catalog entry shows the `kind` name, provider, and a description of what the component deploys.
 
 If you know the provider and resource type, the kind name follows a predictable pattern:
 

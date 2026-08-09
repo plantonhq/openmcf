@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * Build script to copy deployment component documentation from catalog/ to site/public/docs/catalog/
+ * Build script to copy component documentation from catalog/ to site/public/docs/catalog/
  *
  * Scans: catalog/{provider}/{component}/catalog.md
  * Also:  catalog/{provider}/{component}/presets/*.yaml + *.md
@@ -738,14 +738,14 @@ function generateMainIndex(_providers: string[], outputRoot: string, _allDocs: M
   // file exists for the static-generation pipeline.
   const indexContent = `---
 title: "Catalog"
-description: "Browse deployment components organized by cloud provider"
+description: "Browse components organized by cloud provider"
 icon: "package"
 order: 50
 ---
 
 # Catalog
 
-Browse deployment components by cloud provider:
+Browse components by cloud provider:
 `;
 
   const indexPath = path.join(outputRoot, 'index.md');
