@@ -162,7 +162,7 @@ release:
 
     ## Terraform Modules
 
-    Terraform module zips are hosted on **downloads.planton.dev** for all deployment components across all providers.
+    Terraform module zips are hosted on **downloads.planton.dev** for all components across all providers.
 
     **Browse all modules:** [downloads.planton.dev/releases/{{ .Tag }}/modules/terraform/](https://downloads.planton.dev/releases/{{ .Tag }}/modules/terraform/)
 
