@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpmonitoringnotificationchannel.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpMonitoringNotificationChannelSpec defines a Cloud Monitoring
+// notification channel — the delivery endpoint (an email address, a Slack
+// channel, a PagerDuty service, a webhook, an SMS number, or a Pub/Sub
+// topic) that alerting policies notify when incidents open, close, or gain
+// new violations.
+//
+// A channel is pure configuration: creating one sends nothing on its own.
+// Alert policies reference the channel by its server-assigned resource name
+// (the `channel_name` stack output) in their notification_channels list —
+// that reference is the composition edge charts wire.
+//
+// Channel behavior is driven by `type` plus type-specific configuration in
+// `channel_labels` (non-secret settings such as the email address) and
+// `sensitive_labels` (credentials such as a Slack auth token). GCP validates
+// the configuration server-side against the chosen type's schema — an
+// unknown or missing configuration key fails at apply time with the API's
+// own message.
+message GcpMonitoringNotificationChannelSpec {
+  // Credentials belong in sensitive_labels, where they are handled as
+  // secrets end to end. The provider rejects the same key set in both maps,
+  // and a credential in the plain map would sit in state as plaintext.
+  option (buf.validate.message).cel = {
+    id: "credentials_never_in_channel_labels"
+    message: "auth_token, password, and service_key are credentials — set them in sensitive_labels, never in channel_labels"
+    expression: "!('auth_token' in this.channel_labels) && !('password' in this.channel_labels) && !('service_key' in this.channel_labels)"
+  };
+
+  // The GCP project that owns the notification channel.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The channel type — which delivery mechanism this channel uses. GCP
+  // validates the value server-side against its live channel-type catalog
+  // (there is no fixed client-side list; new types appear without provider
+  // releases). Common values:
+  //   email              -- channel_labels: email_address
+  //   sms                -- channel_labels: number (E.164, e.g. +15551234567)
+  //   slack              -- channel_labels: channel_name (e.g. #alerts);
+  //                         sensitive_labels: auth_token
+  //   pagerduty          -- sensitive_labels: service_key
+  //   webhook_tokenauth  -- channel_labels: url; the token rides the URL
+  //   webhook_basicauth  -- channel_labels: url, username;
+  //                         sensitive_labels: password
+  //   pubsub             -- channel_labels: topic (projects/{p}/topics/{t})
+  // Immutable in practice for most types: GCP updates a channel's type only
+  // by delete-and-recreate semantics on the provider side.
+  string type = 2 [(buf.validate.field).required = true];
+
+  // Human-readable name shown in the Cloud Monitoring console and in
+  // notification footers. Defaults to metadata.name when left empty.
+  // Limited to 512 Unicode characters by the API.
+  string display_name = 3 [(buf.validate.field).string.max_len = 512];
+
+  // Why this channel exists and who owns the endpoint — write it for the
+  // operator triaging a 3am page. Limited to 1024 bytes by the API.
+  string description = 4 [(buf.validate.field).string.max_len = 1024];
+
+  // Type-specific, NON-SECRET configuration keys (maps to the provider's
+  // `labels` argument — distinct from the `labels` field below, which is
+  // user metadata). Which keys apply depends on `type`; see the type list
+  // above. GCP rejects unknown keys for the chosen type at apply time.
+  // Credentials (auth_token, password, service_key) are refused here by
+  // validation — they belong in sensitive_labels.
+  map<string, string> channel_labels = 5;
+
+  // Credentials for channel types that authenticate to an external service.
+  // Each field is a secret: the platform stores it as a managed-secret
+  // reference and resolves it just-in-time at deploy — it never sits in
+  // plaintext in the control plane.
+  GcpMonitoringNotificationChannelSensitiveLabels sensitive_labels = 6;
+
+  // Whether notifications are forwarded to the described channel (default
+  // true). A disabled channel keeps its configuration and its references
+  // from alert policies but delivers nothing — the safe way to silence an
+  // endpoint temporarily without rewiring policies. Both IaC engines send
+  // the value explicitly so behavior is identical regardless of engine.
+  optional bool enabled = 7 [(dev.planton.shared.options.default) = "true"];
+
+  // If true, deleting the channel proceeds even when alert policies still
+  // reference it — GCP removes the channel from those policies in the same
+  // operation. If false (default), the delete FAILS while references exist,
+  // which is the safer posture: a dangling policy silently loses its
+  // delivery endpoint.
+  bool force_delete = 8;
+
+  // User labels attached to the channel for organizing and identifying it
+  // (maps to the provider's user_labels), merged with Planton's platform
+  // labels (which win on key conflicts). Keys and values may contain only
+  // lowercase letters, numerals, underscores, and dashes; keys must begin
+  // with a letter.
+  map<string, string> labels = 9;
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the channel is deleted (fails while alert policies still
+  //                reference it unless force_delete is true)
+  //   "PREVENT" -- destroy FAILS; protects the paging path of a production
+  //                alerting setup from accidental teardown
+  //   "ABANDON" -- the channel is removed from management but keeps
+  //                delivering notifications in GCP
+  string deletion_policy = 10 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+}
+
+// Credentials for channel types that authenticate to an external service.
+// Exactly which field applies depends on the channel type: auth_token for
+// slack, service_key for pagerduty, password for webhook_basicauth. These
+// values come from the external service's own console — no Planton resource
+// produces them, so they are plain secret values (never plaintext at rest;
+// the platform enforces managed-secret references).
+message GcpMonitoringNotificationChannelSensitiveLabels {
+  // OAuth token for the slack channel type (from the Slack app
+  // installation).
+  string auth_token = 1 [(dev.planton.shared.options.sensitive) = true];
+
+  // HTTP basic-auth password for the webhook_basicauth channel type.
+  string password = 2 [(dev.planton.shared.options.sensitive) = true];
+
+  // Integration/service key for the pagerduty channel type (from the
+  // PagerDuty service's integration settings).
+  string service_key = 3 [(dev.planton.shared.options.sensitive) = true];
+}

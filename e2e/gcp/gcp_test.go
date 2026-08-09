@@ -767,6 +767,51 @@ func TestGcpProject_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpproject", "terraform")
 }
 
+// --- GCP Monitoring Notification Channel (alerting delivery endpoint; free, second-scale) ---
+
+func TestGcpMonitoringNotificationChannel_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringnotificationchannel", "pulumi")
+}
+func TestGcpMonitoringNotificationChannel_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringnotificationchannel", "terraform")
+}
+
+// --- GCP Monitoring Alert Policy (composes the channel prerequisite fixture) ---
+
+func TestGcpMonitoringAlertPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringalertpolicy", "pulumi")
+}
+func TestGcpMonitoringAlertPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringalertpolicy", "terraform")
+}
+
+// --- GCP Monitoring Uptime Check (probes example.com; free, second-scale) ---
+
+func TestGcpMonitoringUptimeCheck_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringuptimecheck", "pulumi")
+}
+func TestGcpMonitoringUptimeCheck_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringuptimecheck", "terraform")
+}
+
+// --- GCP Logging Sink (composes the GCS bucket prerequisite; pubsub arm composes a topic) ---
+
+func TestGcpLoggingSink_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcploggingsink", "pulumi")
+}
+func TestGcpLoggingSink_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcploggingsink", "terraform")
+}
+
+// --- GCP Secret Manager Secret (composes the service-account prerequisite for the scoped grant) ---
+
+func TestGcpSecretManagerSecret_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpsecretmanagersecret", "pulumi")
+}
+func TestGcpSecretManagerSecret_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpsecretmanagersecret", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

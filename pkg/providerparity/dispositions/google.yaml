@@ -1623,23 +1623,17 @@ resources:
     disposition: model-planned
     reason: "planned kind GcpLogBucket (bucket configs across scopes, with log views composed)"
   - resource: google_logging_billing_account_exclusion
-    disposition: model-planned
-    reason: "composes into the planned GcpLoggingSink kind (sink exclusions)"
-  - resource: google_logging_billing_account_sink
-    disposition: model-planned
-    reason: "planned kind GcpLoggingSink (one kind with project/folder/organization/billing-account scope)"
+    disposition: composed
+    reason: "GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink"
   - resource: google_logging_folder_bucket_config
     disposition: model-planned
     reason: "planned kind GcpLogBucket (bucket configs across scopes, with log views composed)"
   - resource: google_logging_folder_exclusion
-    disposition: model-planned
-    reason: "composes into the planned GcpLoggingSink kind (sink exclusions)"
+    disposition: composed
+    reason: "GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink"
   - resource: google_logging_folder_settings
     disposition: model-planned
     reason: "composes into the planned GcpLogBucket kind (scope-level logging settings)"
-  - resource: google_logging_folder_sink
-    disposition: model-planned
-    reason: "planned kind GcpLoggingSink (one kind with project/folder/organization/billing-account scope)"
   - resource: google_logging_linked_dataset
     disposition: model-planned
     reason: "composes into the planned GcpLogBucket kind (BigQuery linked datasets)"
@@ -1656,23 +1650,17 @@ resources:
     disposition: model-planned
     reason: "planned kind GcpLogBucket (bucket configs across scopes, with log views composed)"
   - resource: google_logging_organization_exclusion
-    disposition: model-planned
-    reason: "composes into the planned GcpLoggingSink kind (sink exclusions)"
+    disposition: composed
+    reason: "GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink"
   - resource: google_logging_organization_settings
     disposition: model-planned
     reason: "composes into the planned GcpLogBucket kind (scope-level logging settings)"
-  - resource: google_logging_organization_sink
-    disposition: model-planned
-    reason: "planned kind GcpLoggingSink (one kind with project/folder/organization/billing-account scope)"
   - resource: google_logging_project_bucket_config
     disposition: model-planned
     reason: "planned kind GcpLogBucket (bucket configs across scopes, with log views composed)"
   - resource: google_logging_project_exclusion
-    disposition: model-planned
-    reason: "composes into the planned GcpLoggingSink kind (sink exclusions)"
-  - resource: google_logging_project_sink
-    disposition: model-planned
-    reason: "planned kind GcpLoggingSink (one kind with project/folder/organization/billing-account scope)"
+    disposition: composed
+    reason: "GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink"
   - resource: google_logging_saved_query
     disposition: deferred
     reason: "saved queries are console artifacts, not provisioned infrastructure; deferred"
@@ -1739,9 +1727,6 @@ resources:
   - resource: google_model_armor_template
     disposition: deferred
     reason: "Model Armor prompt-safety templates are new; deferred"
-  - resource: google_monitoring_alert_policy
-    disposition: model-planned
-    reason: "planned kind GcpMonitoringAlertPolicy"
   - resource: google_monitoring_custom_service
     disposition: model-planned
     reason: "planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources)"
@@ -1749,26 +1734,20 @@ resources:
     disposition: model-planned
     reason: "planned kind GcpMonitoringDashboard"
   - resource: google_monitoring_group
-    disposition: model-planned
-    reason: "composes into the planned GcpMonitoringAlertPolicy kind (group-scoped alerting)"
+    disposition: deferred
+    reason: "monitoring groups are a separate grouping resource with no adopter ask; GcpMonitoringAlertPolicy and GcpMonitoringUptimeCheck reference existing groups by ID -- revisit with a grouping-focused ask"
   - resource: google_monitoring_metric_descriptor
     disposition: deferred
     reason: "metric descriptors are rarely hand-managed; deferred"
   - resource: google_monitoring_monitored_project
     disposition: model-planned
     reason: "composes into the planned monitoring kinds (metrics-scope management)"
-  - resource: google_monitoring_notification_channel
-    disposition: model-planned
-    reason: "planned kind GcpMonitoringNotificationChannel"
   - resource: google_monitoring_service
     disposition: model-planned
     reason: "planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources)"
   - resource: google_monitoring_slo
     disposition: model-planned
     reason: "planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources)"
-  - resource: google_monitoring_uptime_check_config
-    disposition: model-planned
-    reason: "planned kind GcpMonitoringUptimeCheck"
   - resource: google_netapp_active_directory
     disposition: deferred
     reason: "NetApp Volumes judged as storage-pool, volume, backup-vault, and backup-policy kinds (companions composed); deferred pending demand"
@@ -2213,18 +2192,6 @@ resources:
   - resource: google_scc_v2_project_scc_big_query_export
     disposition: deferred
     reason: "SCC v2 judged as notification-config, mute-config, and BigQuery-export kinds with project/folder/organization scope; deferred pending demand"
-  - resource: google_secret_manager_regional_secret
-    disposition: model-planned
-    reason: "planned kind GcpSecretManagerSecret models regional secrets as a location flag"
-  - resource: google_secret_manager_regional_secret_version
-    disposition: model-planned
-    reason: "planned kind GcpSecretManagerSecret models regional secrets as a location flag"
-  - resource: google_secret_manager_secret
-    disposition: model-planned
-    reason: "planned kind GcpSecretManagerSecret (secret with versions composed)"
-  - resource: google_secret_manager_secret_version
-    disposition: model-planned
-    reason: "planned kind GcpSecretManagerSecret (secret with versions composed)"
   - resource: google_secure_source_manager_branch_rule
     disposition: deferred
     reason: "Secure Source Manager is a niche; deferred"

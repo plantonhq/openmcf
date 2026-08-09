@@ -44,10 +44,13 @@ import (
 	"google.golang.org/api/dns/v1"
 	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
+	logging "google.golang.org/api/logging/v2"
+	monitoring "google.golang.org/api/monitoring/v3"
 	"google.golang.org/api/networkconnectivity/v1"
 	pubsub "google.golang.org/api/pubsub/v1"
 	"google.golang.org/api/redis/v1"
 	run "google.golang.org/api/run/v2"
+	secretmanager "google.golang.org/api/secretmanager/v1"
 	"google.golang.org/api/spanner/v1"
 	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
@@ -193,6 +196,18 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create certificatemanager client")
 	}
+	monitoringService, err := monitoring.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create monitoring client")
+	}
+	secretManagerService, err := secretmanager.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create secretmanager client")
+	}
+	loggingService, err := logging.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create logging client")
+	}
 	// ADC-authenticated plain HTTP client for services whose typed Go
 	// client is not in the pinned google.golang.org/api line (Memorystore
 	// for Valkey) — verifiers use it for REST GET probes only.
@@ -236,6 +251,9 @@ func (h *Harness) Setup(ctx context.Context) error {
 		CloudScheduler:      cloudSchedulerService,
 		ArtifactRegistry:    artifactRegistryService,
 		CertificateManager:  certificateManagerService,
+		Monitoring:          monitoringService,
+		SecretManager:       secretManagerService,
+		Logging:             loggingService,
 		RestClient:          restClient,
 	}
 	return nil

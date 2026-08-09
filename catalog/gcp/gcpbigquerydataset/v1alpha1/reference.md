@@ -556,6 +556,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | GcpBigQueryTable | `spec.datasetId` | `status.outputs.dataset_id` |
 | GcpGkeCluster | `spec.resourceUsageExport.bigqueryDatasetId` | `status.outputs.dataset_id` |
+| GcpLoggingSink | `spec.destination.bigqueryDataset` | `status.outputs.self_link` |
 
 ## See Also
 

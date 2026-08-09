@@ -1,0 +1,27 @@
+# Regional-secret scenario: the second API surface — a regional secret
+# (payloads never leave us-central1) with user labels and a seeded
+# version, proving the regional trio (secret/version) and the
+# region-selector count guards on both engines. No CMEK: keeping the
+# fixture KMS-free keeps the lane free and dependency-less.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpSecretManagerSecret
+metadata:
+  name: planton-oss-e2e-gcpsecret-regional
+  id: planton-oss-e2e-gcpsecret-regional
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpsecretmanagersecret
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-central1
+  initialVersion:
+    data:
+      value: planton-e2e-regional-payload
+  labels:
+    e2e-arm: regional
+  deletionPolicy: DELETE

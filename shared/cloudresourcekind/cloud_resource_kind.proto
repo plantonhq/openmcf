@@ -2664,6 +2664,47 @@ enum CloudResourceKind {
     id_prefix: "gcpdisk"
   }];
 
+  // 3140–3149: GCP observability & log routing
+  GcpMonitoringNotificationChannel = 3140 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpnotifchan"
+  }];
+  // GcpMonitoringNotificationChannel is a prerequisite because the policy's
+  // canonical shape references a channel to notify — a policy without a
+  // delivery endpoint measures but never pages.
+  GcpMonitoringAlertPolicy = 3141 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpalertpol"
+    prerequisites: [GcpMonitoringNotificationChannel]
+  }];
+  GcpMonitoringUptimeCheck = 3142 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpuptime"
+  }];
+  // GcpGcsBucket is a prerequisite because the canonical sink exports to a
+  // Cloud Storage bucket — the cheapest destination that proves the whole
+  // writer-identity grant flow.
+  GcpLoggingSink = 3143 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcplogsink"
+    prerequisites: [GcpGcsBucket]
+  }];
+
+  // 3150–3159: GCP security & identity
+  // GcpServiceAccount is a prerequisite because the canonical secret grants
+  // secretAccessor to a workload service account — the access story the
+  // kind exists to model.
+  GcpSecretManagerSecret = 3150 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpsecret"
+    prerequisites: [GcpServiceAccount]
+  }];
+
   // 4000–4999: Kubernetes resources, organized in family sub-bands
   // (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts
   // analytics & ML; 4190–4199 reserved for growth)

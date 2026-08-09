@@ -1,0 +1,43 @@
+# Log-match scenario: the condition family minimal cannot exercise, and
+# the API pairing that only shows live — conditionMatchedLog REQUIRES
+# alertStrategy.notificationRateLimit (GCP rejects the policy without it).
+# Also arms label extractors, notification prompts, and severity ERROR.
+# The filter matches a log signature the test project never produces.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringAlertPolicy
+metadata:
+  name: planton-oss-e2e-gcpalertpol-logmatch
+  id: planton-oss-e2e-gcpalertpol-logmatch
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmonitoringalertpolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  displayName: E2E log match smoke
+  combiner: OR
+  severity: ERROR
+  conditions:
+    - displayName: e2e sentinel logged
+      conditionMatchedLog:
+        filter: severity>=ERROR AND textPayload:"planton-e2e-sentinel-never-logged"
+        labelExtractors:
+          vm: EXTRACT(resource.labels.instance_id)
+  notificationChannels:
+    - valueFrom:
+        kind: GcpMonitoringNotificationChannel
+        name: planton-oss-e2e-gcpnotifchan-prereq
+        fieldPath: status.outputs.channel_name
+  alertStrategy:
+    notificationRateLimit:
+      period: 300s
+    autoClose: 1800s
+    notificationPrompts:
+      - OPENED
+  labels:
+    e2e-arm: logmatch
+  deletionPolicy: DELETE

@@ -1,0 +1,15 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpmonitoringnotificationchannel
+spec:
+  # Standalone scenarios: an email smoke channel (free, instant,
+  # credential-less) and a disabled-channel arm proving the explicit-send
+  # enabled=false contract plus user-label merge and force_delete.
+  # deploy -> monitoring notificationChannels.get verify -> destroy ->
+  # verify gone, on both provisioners. Channels are free and create in
+  # seconds.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 10

@@ -1,0 +1,237 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcploggingsink.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpLoggingSinkSpec defines a Cloud Logging sink — the routing rule that
+// exports log entries matching a filter to a destination (a GCS bucket, a
+// BigQuery dataset, a Pub/Sub topic, or any other Logging-supported
+// destination URI).
+//
+// One kind covers all four sink scopes. The `scope` message selects where
+// the sink lives — a project (the default; an empty scope uses the
+// provider's ambient project), a folder, an organization, or a billing
+// account — and the module creates the matching GCP resource
+// (google_logging_{project|folder|organization|billing_account}_sink).
+//
+// THE post-create step every sink needs: GCP mints a `writer_identity`
+// service account for the sink, and that identity must be GRANTED write
+// access on the destination (e.g. roles/storage.objectCreator on the
+// bucket) or the sink silently exports nothing. The writer_identity stack
+// output exists exactly for that wiring — grant it through the destination
+// kind's iam_members in the same chart.
+message GcpLoggingSinkSpec {
+  // include_children/intercept_children are folder/org capabilities — the
+  // project and billing-account sink resources do not carry the arguments.
+  option (buf.validate.message).cel = {
+    id: "children_flags_need_folder_or_org_scope"
+    message: "include_children and intercept_children apply only to folder or organization scoped sinks"
+    expression: "(!this.include_children && !this.intercept_children) || (has(this.scope) && (this.scope.folder_id != '' || this.scope.organization_id != ''))"
+  };
+  // Only the project sink resource models writer-identity control; folder,
+  // organization, and billing-account sinks ALWAYS get a unique writer.
+  option (buf.validate.message).cel = {
+    id: "writer_identity_controls_are_project_scope_only"
+    message: "unique_writer_identity=false and custom_writer_identity apply only to project-scoped sinks — other scopes always create a unique writer identity"
+    expression: "((!has(this.unique_writer_identity) || this.unique_writer_identity) && this.custom_writer_identity == '') || !has(this.scope) || (this.scope.folder_id == '' && this.scope.organization_id == '' && this.scope.billing_account == '')"
+  };
+  // The provider enforces this on the project sink: BigQuery destinations
+  // demand a unique writer.
+  option (buf.validate.message).cel = {
+    id: "bigquery_destination_requires_unique_writer"
+    message: "a BigQuery destination requires unique_writer_identity to remain true"
+    expression: "!has(this.destination) || !has(this.destination.bigquery_dataset) || !has(this.unique_writer_identity) || this.unique_writer_identity"
+  };
+
+  // Where the sink lives. Omit entirely for a project sink in the
+  // provider's default project — the common case.
+  GcpLoggingSinkScope scope = 1;
+
+  // The sink name in GCP. Defaults to metadata.name when left empty.
+  // Immutable: changing it destroys and recreates the sink (a new
+  // writer_identity is minted — re-grant destination access).
+  string sink_name = 2;
+
+  // Where matching log entries are exported. Exactly one destination arm.
+  GcpLoggingSinkDestination destination = 3 [(buf.validate.field).required = true];
+
+  // The logs filter selecting entries to export
+  // (https://cloud.google.com/logging/docs/view/logging-query-language),
+  // e.g. severity>=ERROR or resource.type="cloud_run_revision".
+  // Empty exports EVERYTHING in scope — deliberate for audit archives,
+  // expensive for anything else.
+  string filter = 4;
+
+  // Why this sink exists and where its data lands — write it for the
+  // operator auditing log routing later. At most 8000 characters.
+  string description = 5 [(buf.validate.field).string.max_len = 8000];
+
+  // If true, the sink keeps its configuration but exports nothing — the
+  // safe way to pause an export without losing the writer identity and
+  // destination grants.
+  bool disabled = 6;
+
+  // Log entries matching ANY of these exclusion filters are NOT exported,
+  // even when they match `filter` — carve noisy sub-streams (health checks,
+  // debug logs) out of a broad export.
+  repeated GcpLoggingSinkExclusion exclusions = 7 [(buf.validate.field).repeated.max_items = 50];
+
+  // Folder/organization scopes only: also export logs from all CHILD
+  // resources (subfolders and projects). Off by default — the sink then
+  // sees only logs at the scope itself.
+  bool include_children = 8;
+
+  // Folder/organization scopes only (requires include_children semantics):
+  // INTERCEPT matching logs — they are exported by this sink and NOT routed
+  // onward to the children's own sinks. For centralized compliance capture;
+  // use deliberately, it changes what child projects see.
+  bool intercept_children = 9;
+
+  // Project scope only. If true (default), GCP mints a dedicated service
+  // account as the sink's writer identity — required for exporting across
+  // projects and for BigQuery destinations. Setting false uses the legacy
+  // shared cloud-logs@ account (single-project GCS/Pub/Sub only; not
+  // recommended). Folder/organization/billing sinks always get a unique
+  // writer. Both IaC engines send the value explicitly on project sinks so
+  // behavior is identical regardless of engine.
+  optional bool unique_writer_identity = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // Project scope only: use a caller-provided service account as the
+  // writer identity instead of a GCP-minted one (format:
+  // serviceAccount:{email} is NOT included — pass the bare email). Requires
+  // unique_writer_identity true semantics; GCP rejects the combination
+  // with false.
+  string custom_writer_identity = 11;
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the sink is deleted; export stops immediately (already
+  //                exported data stays in the destination)
+  //   "PREVENT" -- destroy FAILS; protects a compliance-mandated export
+  //                pipeline from accidental teardown
+  //   "ABANDON" -- the sink is removed from management but keeps exporting
+  //                in GCP
+  string deletion_policy = 12 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+}
+
+// Where the sink lives. At most one arm; all empty means "project sink in
+// the provider's default project".
+message GcpLoggingSinkScope {
+  option (buf.validate.message).cel = {
+    id: "at_most_one_scope"
+    message: "set at most one of project_id, folder_id, organization_id, or billing_account (empty means the provider's default project)"
+    expression: "[has(this.project_id) && (this.project_id.value != '' || has(this.project_id.value_from)), this.folder_id != '', this.organization_id != '', this.billing_account != ''].filter(x, x).size() <= 1"
+  };
+
+  // Project sink: the owning project — a literal project ID or a reference
+  // to a GcpProject resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Folder sink: the folder ID (numeric, with or without the "folders/"
+  // prefix).
+  string folder_id = 2;
+
+  // Organization sink: the numeric organization ID.
+  string organization_id = 3;
+
+  // Billing-account sink: the billing account ID
+  // (e.g. 012345-6789AB-CDEF01).
+  string billing_account = 4;
+}
+
+// Where matching logs are exported. Exactly one arm — the module renders
+// the destination URI GCP expects, so a manifest references the resource
+// naturally instead of hand-assembling service URIs (the mis-wiring this
+// kind exists to remove).
+message GcpLoggingSinkDestination {
+  option (buf.validate.message).cel = {
+    id: "exactly_one_destination"
+    message: "set exactly one destination: gcs_bucket, bigquery_dataset, pubsub_topic, or raw_uri"
+    expression: "[has(this.gcs_bucket), has(this.bigquery_dataset), has(this.pubsub_topic), this.raw_uri != ''].filter(x, x).size() == 1"
+  };
+  option (buf.validate.message).cel = {
+    id: "partitioned_tables_need_bigquery"
+    message: "use_partitioned_tables applies only to a bigquery_dataset destination"
+    expression: "!this.use_partitioned_tables || has(this.bigquery_dataset)"
+  };
+
+  // Export to a Cloud Storage bucket (hourly batches of JSON files). The
+  // bucket NAME — a literal or a reference to a GcpGcsBucket resource.
+  // Rendered as storage.googleapis.com/{bucket}. Grant the sink's
+  // writer_identity roles/storage.objectCreator on the bucket.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef gcs_bucket = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpGcsBucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Export to a BigQuery dataset (near-real-time, queryable). Accepts the
+  // dataset SELF LINK (https://bigquery.googleapis.com/bigquery/v2/projects/
+  // {p}/datasets/{d} — the GcpBigQueryDataset self_link output) or a bare
+  // projects/{p}/datasets/{d} path; the module normalizes either into the
+  // bigquery.googleapis.com/... destination URI. Grant the writer_identity
+  // roles/bigquery.dataEditor on the dataset.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bigquery_dataset = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpBigQueryDataset,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+
+  // BigQuery destinations only: write into date-partitioned tables
+  // (recommended — enables partition pruning and expiration) instead of
+  // date-sharded table names. Requires unique_writer_identity true (the
+  // provider's own constraint).
+  bool use_partitioned_tables = 3;
+
+  // Export to a Pub/Sub topic (streaming; the front door to third-party
+  // log pipelines). The full topic path projects/{p}/topics/{t} — a literal
+  // or a reference to a GcpPubSubTopic resource (its topic_id output).
+  // Rendered as pubsub.googleapis.com/projects/{p}/topics/{t}. Grant the
+  // writer_identity roles/pubsub.publisher on the topic.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef pubsub_topic = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpPubSubTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_id"
+  ];
+
+  // Escape hatch: a complete destination URI passed through verbatim, for
+  // destinations without a first-class arm — chiefly Cloud Logging buckets
+  // (logging.googleapis.com/projects/{p}/locations/{l}/buckets/{b}) until a
+  // dedicated log-bucket kind exists, and cross-project Logging API
+  // destinations.
+  string raw_uri = 5;
+}
+
+// One exclusion rule — entries matching its filter are dropped from the
+// export even when the sink's main filter matches them.
+message GcpLoggingSinkExclusion {
+  // Identifier for this exclusion (letters, digits, underscores, hyphens,
+  // periods; must start alphanumeric; at most 100 characters).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_exclusion_name"
+      message: "exclusion name must start with a letter or digit, use only letters, digits, underscores, hyphens, and periods, and be at most 100 characters"
+      expression: "this.matches('^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,99}$')"
+    }
+  ];
+
+  // The logs filter selecting entries to EXCLUDE. Use the sample()
+  // function to exclude only a percentage (e.g.
+  // sample(insertId, 0.9) drops 90% of matches).
+  string filter = 2 [(buf.validate.field).required = true];
+
+  // What this exclusion carves out and why.
+  string description = 3;
+
+  // If true, this exclusion is ignored (its entries export normally) —
+  // stage or pause a carve-out without deleting it.
+  bool disabled = 4;
+}

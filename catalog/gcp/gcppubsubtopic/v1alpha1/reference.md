@@ -679,8 +679,10 @@ Fields on other kinds that can point at this resource:
 | GcpCloudFunction | `spec.trigger.eventTrigger.pubsubTopic` | `status.outputs.topic_id` |
 | GcpCloudSchedulerJob | `spec.pubsubTarget.topicName` | `status.outputs.topic_id` |
 | GcpGkeCluster | `spec.notificationPubsub.topic` | `status.outputs.topic_id` |
+| GcpLoggingSink | `spec.destination.pubsubTopic` | `status.outputs.topic_id` |
 | GcpPubSubSubscription | `spec.topic` | `status.outputs.topic_id` |
 | GcpPubSubSubscription | `spec.deadLetterPolicy.deadLetterTopic` | `status.outputs.topic_id` |
+| GcpSecretManagerSecret | `spec.topics` | `status.outputs.topic_id` |
 
 ## See Also
 

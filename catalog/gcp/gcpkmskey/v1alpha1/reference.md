@@ -331,6 +331,9 @@ Fields on other kinds that can point at this resource:
 | GcpMemorystoreInstance | `spec.kmsKey` | `status.outputs.key_id` |
 | GcpPubSubTopic | `spec.kmsKeyName` | `status.outputs.key_id` |
 | GcpRedisInstance | `spec.customerManagedKey` | `status.outputs.key_id` |
+| GcpSecretManagerSecret | `spec.replication.auto.customerManagedEncryption.kmsKey` | `status.outputs.key_id` |
+| GcpSecretManagerSecret | `spec.replication.userManaged.replicas[].customerManagedEncryption.kmsKey` | `status.outputs.key_id` |
+| GcpSecretManagerSecret | `spec.customerManagedEncryption.kmsKey` | `status.outputs.key_id` |
 | GcpSpannerBackupSchedule | `spec.encryptionConfig.kmsKeyName` | `status.outputs.key_id` |
 | GcpSpannerBackupSchedule | `spec.encryptionConfig.kmsKeyNames` | `status.outputs.key_id` |
 | GcpSpannerDatabase | `spec.encryptionConfig.kmsKeyName` | `status.outputs.key_id` |

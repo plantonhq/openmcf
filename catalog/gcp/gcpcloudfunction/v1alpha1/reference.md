@@ -924,6 +924,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| GcpMonitoringUptimeCheck | `spec.syntheticMonitor.cloudFunction` | `status.outputs.function_id` |
 | GcpRegionNetworkEndpointGroup | `spec.cloudFunction.function` | `status.outputs.name` |
 
 ## See Also

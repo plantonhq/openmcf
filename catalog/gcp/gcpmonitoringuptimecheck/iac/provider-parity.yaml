@@ -1,0 +1,44 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_monitoring_uptime_check_config:
+    mappings:
+      - spec: spec.project_id
+        arg: project
+
+      # user_labels is the freeform metadata map -> the spec's labels (the
+      # catalog-wide labels idiom, merged with platform attribution labels
+      # by the modules).
+      - spec: spec.labels
+        arg: user_labels
+
+      # The provider wraps the synthetic monitor's target function in a
+      # cloud_function_v2 block whose only argument is the name; the spec
+      # carries the reference directly (a StringValueOrRef to
+      # GcpCloudFunction's function_id output).
+      - spec: spec.synthetic_monitor.cloud_function
+        arg: synthetic_monitor.cloud_function_v2.name
+    exclusions:
+      # Write-only twin of the modeled auth_info.password: same credential
+      # material, Terraform-state-only plumbing (the spec's sensitive field
+      # already never persists plaintext). Re-evaluate trigger: the catalog
+      # declaring a >= 1.11 toolchain floor.
+      - arg: http_check.auth_info.password_wo
+        reason: >-
+          write-only twin of the modeled http_check.auth_info.password --
+          same credential material, Terraform-state-only plumbing
+      - arg: http_check.auth_info.password_wo_version
+        reason: version selector for the write-only twin; see password_wo
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      monitoring.googleapis.com with fixed arguments (disable_on_destroy
+      false so destroying one check never disables monitoring
+      project-wide); not spec surface.

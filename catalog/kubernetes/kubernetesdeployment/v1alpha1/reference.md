@@ -1516,6 +1516,11 @@ Allowed values (use exactly as shown):
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -2298,6 +2303,11 @@ Allowed values (use exactly as shown):
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -4228,6 +4238,11 @@ Allowed values (use exactly as shown):
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -5010,6 +5025,11 @@ Allowed values (use exactly as shown):
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -6981,6 +7001,11 @@ Allowed values (use exactly as shown):
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -7763,6 +7788,11 @@ Allowed values (use exactly as shown):
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`

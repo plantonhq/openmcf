@@ -1,0 +1,4 @@
+name: gcpsecretmanagersecret-pulumi-project
+runtime:
+  name: go
+description: Planton GcpSecretManagerSecret Pulumi module

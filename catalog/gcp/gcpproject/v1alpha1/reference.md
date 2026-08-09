@@ -221,9 +221,13 @@ Fields on other kinds that can point at this resource:
 | GcpHealthCheck | `spec.projectId` | `status.outputs.project_id` |
 | GcpIamCustomRole | `spec.projectId` | `status.outputs.project_id` |
 | GcpKmsKeyRing | `spec.projectId` | `status.outputs.project_id` |
+| GcpLoggingSink | `spec.scope.projectId` | `status.outputs.project_id` |
 | GcpManagedSslCertificate | `spec.projectId` | `status.outputs.project_id` |
 | GcpMemorystoreInstance | `spec.projectId` | `status.outputs.project_id` |
 | GcpMemorystoreInstance | `spec.pscAutoConnections[].projectId` | `status.outputs.project_id` |
+| GcpMonitoringAlertPolicy | `spec.projectId` | `status.outputs.project_id` |
+| GcpMonitoringNotificationChannel | `spec.projectId` | `status.outputs.project_id` |
+| GcpMonitoringUptimeCheck | `spec.projectId` | `status.outputs.project_id` |
 | GcpProjectIamMember | `spec.projectId` | `status.outputs.project_id` |
 | GcpPubSubSchema | `spec.projectId` | `status.outputs.project_id` |
 | GcpPubSubSubscription | `spec.projectId` | `status.outputs.project_id` |
@@ -231,6 +235,7 @@ Fields on other kinds that can point at this resource:
 | GcpRedisInstance | `spec.projectId` | `status.outputs.project_id` |
 | GcpRegionNetworkEndpointGroup | `spec.projectId` | `status.outputs.project_id` |
 | GcpRouterNat | `spec.projectId` | `status.outputs.project_id` |
+| GcpSecretManagerSecret | `spec.projectId` | `status.outputs.project_id` |
 | GcpServerlessVpcConnector | `spec.projectId` | `status.outputs.project_id` |
 | GcpServiceAccount | `spec.projectId` | `status.outputs.project_id` |
 | GcpServiceConnectionPolicy | `spec.projectId` | `status.outputs.project_id` |

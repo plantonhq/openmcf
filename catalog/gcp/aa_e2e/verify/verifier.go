@@ -32,10 +32,13 @@ import (
 	"google.golang.org/api/dns/v1"
 	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
+	logging "google.golang.org/api/logging/v2"
+	monitoring "google.golang.org/api/monitoring/v3"
 	"google.golang.org/api/networkconnectivity/v1"
 	pubsub "google.golang.org/api/pubsub/v1"
 	"google.golang.org/api/redis/v1"
 	run "google.golang.org/api/run/v2"
+	secretmanager "google.golang.org/api/secretmanager/v1"
 	"google.golang.org/api/spanner/v1"
 	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
@@ -73,6 +76,9 @@ type Services struct {
 	CloudScheduler      *cloudscheduler.Service
 	ArtifactRegistry    *artifactregistry.Service
 	CertificateManager  *certificatemanager.Service
+	Monitoring          *monitoring.Service
+	SecretManager       *secretmanager.Service
+	Logging             *logging.Service
 
 	// RestClient is an ADC-authenticated HTTP client for GCP services whose
 	// typed Go client is not yet in the pinned google.golang.org/api line
@@ -174,6 +180,11 @@ var verifiers = map[string]Verifier{
 	"gcpcertmanagerdnsauthorization":         &certManagerDnsAuthorizationVerifier{},
 	"gcpcertmanagercert":                     &certManagerCertVerifier{},
 	"gcpproject":                             &projectVerifier{},
+	"gcpmonitoringnotificationchannel":       &monitoringNotificationChannelVerifier{},
+	"gcpmonitoringalertpolicy":               &monitoringAlertPolicyVerifier{},
+	"gcpmonitoringuptimecheck":               &monitoringUptimeCheckVerifier{},
+	"gcploggingsink":                         &loggingSinkVerifier{},
+	"gcpsecretmanagersecret":                 &secretManagerSecretVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

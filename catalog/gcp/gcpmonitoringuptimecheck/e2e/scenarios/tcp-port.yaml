@@ -1,0 +1,32 @@
+# TCP-check scenario: the check arm minimal cannot exercise — a plain TCP
+# connect probe (example.com:80 always accepts) with pings and a
+# non-default period/deletion_policy. Proves the tcp_check block renders
+# and applies on both engines.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringUptimeCheck
+metadata:
+  name: planton-oss-e2e-gcpuptime-tcp
+  id: planton-oss-e2e-gcpuptime-tcp
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmonitoringuptimecheck
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  timeout: 10s
+  period: 900s
+  monitoredResource:
+    type: uptime_url
+    labels:
+      host: example.com
+  tcpCheck:
+    port: 80
+    pingConfig:
+      pingsCount: 1
+  labels:
+    e2e-arm: tcp
+  deletionPolicy: DELETE

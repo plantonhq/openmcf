@@ -1,0 +1,15 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpmonitoringuptimecheck
+spec:
+  # Standalone scenarios against example.com (IANA's reserved domain):
+  # the canonical HTTPS probe with certificate validation and a body
+  # matcher, plus a TCP-connect arm with pings. deploy -> monitoring
+  # uptimeCheckConfigs.get verify -> destroy -> verify gone, on both
+  # provisioners. Uptime checks are free-tier objects that create in
+  # seconds.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 10

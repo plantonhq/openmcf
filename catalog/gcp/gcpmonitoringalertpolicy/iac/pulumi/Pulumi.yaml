@@ -1,0 +1,4 @@
+name: gcpmonitoringalertpolicy-pulumi-project
+runtime:
+  name: go
+description: Planton GcpMonitoringAlertPolicy Pulumi module

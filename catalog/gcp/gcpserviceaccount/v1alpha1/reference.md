@@ -330,6 +330,7 @@ Fields on other kinds that can point at this resource:
 | GcpPubSubTopic | `spec.ingestionDataSourceSettings.azureEventHubs.gcpServiceAccount` | `status.outputs.email` |
 | GcpPubSubTopic | `spec.ingestionDataSourceSettings.confluentCloud.gcpServiceAccount` | `status.outputs.email` |
 | GcpPubSubTopic | `spec.messageTransforms[].aiInference.serviceAccountEmail` | `status.outputs.email` |
+| GcpSecretManagerSecret | `spec.iamMembers[].member` | `status.outputs.member` |
 | GcpServiceAccountIamMember | `spec.serviceAccountId` | `status.outputs.name` |
 | GcpServiceAccountIamMember | `spec.member` | `status.outputs.member` |
 | GcpVertexAiDeployedIndex | `spec.authConfig.allowedIssuers` | `status.outputs.email` |

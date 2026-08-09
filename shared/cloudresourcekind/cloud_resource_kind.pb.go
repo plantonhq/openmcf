@@ -822,6 +822,22 @@ const (
 	// 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that
 	// holds GcpComputeInstance is fully allocated)
 	CloudResourceKind_GcpComputeDisk CloudResourceKind = 3130
+	// 3140–3149: GCP observability & log routing
+	CloudResourceKind_GcpMonitoringNotificationChannel CloudResourceKind = 3140
+	// GcpMonitoringNotificationChannel is a prerequisite because the policy's
+	// canonical shape references a channel to notify — a policy without a
+	// delivery endpoint measures but never pages.
+	CloudResourceKind_GcpMonitoringAlertPolicy CloudResourceKind = 3141
+	CloudResourceKind_GcpMonitoringUptimeCheck CloudResourceKind = 3142
+	// GcpGcsBucket is a prerequisite because the canonical sink exports to a
+	// Cloud Storage bucket — the cheapest destination that proves the whole
+	// writer-identity grant flow.
+	CloudResourceKind_GcpLoggingSink CloudResourceKind = 3143
+	// 3150–3159: GCP security & identity
+	// GcpServiceAccount is a prerequisite because the canonical secret grants
+	// secretAccessor to a workload service account — the access story the
+	// kind exists to model.
+	CloudResourceKind_GcpSecretManagerSecret CloudResourceKind = 3150
 	// 4000–4999: Kubernetes resources, organized in family sub-bands
 	// (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts
 	// analytics & ML; 4190–4199 reserved for growth)
@@ -1549,6 +1565,11 @@ var (
 		3120:  "GcpCloudRunJob",
 		3121:  "GcpServerlessVpcConnector",
 		3130:  "GcpComputeDisk",
+		3140:  "GcpMonitoringNotificationChannel",
+		3141:  "GcpMonitoringAlertPolicy",
+		3142:  "GcpMonitoringUptimeCheck",
+		3143:  "GcpLoggingSink",
+		3150:  "GcpSecretManagerSecret",
 		4000:  "KubernetesNamespace",
 		4001:  "KubernetesDeployment",
 		4002:  "KubernetesStatefulSet",
@@ -2168,6 +2189,11 @@ var (
 		"GcpCloudRunJob":                                 3120,
 		"GcpServerlessVpcConnector":                      3121,
 		"GcpComputeDisk":                                 3130,
+		"GcpMonitoringNotificationChannel":               3140,
+		"GcpMonitoringAlertPolicy":                       3141,
+		"GcpMonitoringUptimeCheck":                       3142,
+		"GcpLoggingSink":                                 3143,
+		"GcpSecretManagerSecret":                         3150,
 		"KubernetesNamespace":                            4000,
 		"KubernetesDeployment":                           4001,
 		"KubernetesStatefulSet":                          4002,
@@ -2754,7 +2780,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf6\x91\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xb0\x94\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3083,7 +3109,13 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x0eGcpCloudRunJob\x10\xb0\x18\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\bv1alpha1\"\tcldrunjob\x12B\n" +
 	"\x19GcpServerlessVpcConnector\x10\xb1\x18\x1a\"\xa2\xf7\x04\x1e\b\x12\x12\bv1alpha1\"\n" +
 	"gcpvpcconn:\x04\xc2\x17\xc3\x17\x12.\n" +
-	"\x0eGcpComputeDisk\x10\xba\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpdisk\x123\n" +
+	"\x0eGcpComputeDisk\x10\xba\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpdisk\x12E\n" +
+	" GcpMonitoringNotificationChannel\x10\xc4\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\fgcpnotifchan\x12@\n" +
+	"\x18GcpMonitoringAlertPolicy\x10\xc5\x18\x1a!\xa2\xf7\x04\x1d\b\x12\x12\bv1alpha1\"\vgcpalertpol:\x02\xc4\x18\x12:\n" +
+	"\x18GcpMonitoringUptimeCheck\x10\xc6\x18\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\bv1alpha1\"\tgcpuptime\x125\n" +
+	"\x0eGcpLoggingSink\x10\xc7\x18\x1a \xa2\xf7\x04\x1c\b\x12\x12\bv1alpha1\"\n" +
+	"gcplogsink:\x02\xbe\x17\x12<\n" +
+	"\x16GcpSecretManagerSecret\x10\xce\x18\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\bv1alpha1\"\tgcpsecret:\x02\xc6\x17\x123\n" +
 	"\x13KubernetesNamespace\x10\xa0\x1f\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\bv1alpha1\"\x05k8sns0\x01\x125\n" +
 	"\x14KubernetesDeployment\x10\xa1\x1f\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\bv1alpha1\"\x06k8sdpl(\x01\x126\n" +
 	"\x15KubernetesStatefulSet\x10\xa2\x1f\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\bv1alpha1\"\x06k8ssts(\x01\x121\n" +

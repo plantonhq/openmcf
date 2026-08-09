@@ -2112,6 +2112,75 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpMonitoringNotificationChannel: the server-assigned channel
+			// resource name (the alert-policy composition handle) and the
+			// verification state both engines emit must land on StackOutputs.
+			name: "GcpMonitoringNotificationChannel",
+			kind: cloudresourcekind.CloudResourceKind_GcpMonitoringNotificationChannel,
+			rawOutputs: map[string]interface{}{
+				"channel_name":        "projects/my-project/notificationChannels/1234567890",
+				"verification_status": "VERIFICATION_STATUS_UNSPECIFIED",
+			},
+			mustPopulate: []string{
+				"channel_name", "verification_status",
+			},
+		},
+		{
+			// GcpMonitoringAlertPolicy: the policy resource name is the single
+			// output both engines emit.
+			name: "GcpMonitoringAlertPolicy",
+			kind: cloudresourcekind.CloudResourceKind_GcpMonitoringAlertPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_name": "projects/my-project/alertPolicies/1234567890",
+			},
+			mustPopulate: []string{
+				"policy_name",
+			},
+		},
+		{
+			// GcpMonitoringUptimeCheck: the full resource name plus the bare
+			// check id (the value alert policies filter on) must land on
+			// StackOutputs.
+			name: "GcpMonitoringUptimeCheck",
+			kind: cloudresourcekind.CloudResourceKind_GcpMonitoringUptimeCheck,
+			rawOutputs: map[string]interface{}{
+				"uptime_check_name": "projects/my-project/uptimeCheckConfigs/my-check-id",
+				"uptime_check_id":   "my-check-id",
+			},
+			mustPopulate: []string{
+				"uptime_check_name", "uptime_check_id",
+			},
+		},
+		{
+			// GcpLoggingSink: the sink name and the writer identity (the
+			// grant-me-on-the-destination handle) both engines emit must land
+			// on StackOutputs.
+			name: "GcpLoggingSink",
+			kind: cloudresourcekind.CloudResourceKind_GcpLoggingSink,
+			rawOutputs: map[string]interface{}{
+				"sink_name":       "error-archive",
+				"writer_identity": "serviceAccount:service-1234@gcp-sa-logging.iam.gserviceaccount.com",
+			},
+			mustPopulate: []string{
+				"sink_name", "writer_identity",
+			},
+		},
+		{
+			// GcpSecretManagerSecret: the full secret name, the short id, and
+			// the seeded version handle both engines emit must land on
+			// StackOutputs.
+			name: "GcpSecretManagerSecret",
+			kind: cloudresourcekind.CloudResourceKind_GcpSecretManagerSecret,
+			rawOutputs: map[string]interface{}{
+				"secret_name":         "projects/my-project/secrets/db-password",
+				"secret_id":           "db-password",
+				"latest_version_name": "projects/my-project/secrets/db-password/versions/1",
+			},
+			mustPopulate: []string{
+				"secret_name", "secret_id", "latest_version_name",
+			},
+		},
+		{
 			// GcpSslCertificate: flat scalar outputs from both engines
 			// (self-link, name, id, expiry, scope region) must land on
 			// StackOutputs. The private key is write-only and never an output.

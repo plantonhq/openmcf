@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `google@7.43.0` |
-| Kinds in the catalog | 79 |
-| Distinct provider resources consumed | 92 |
-| Spec fields authored across all kinds | 2956 |
-| Module pins on `google` | `~> 7.43` × 79 |
+| Kinds in the catalog | 84 |
+| Distinct provider resources consumed | 105 |
+| Spec fields authored across all kinds | 3124 |
+| Module pins on `google` | `~> 7.43` × 84 |
 
 The GA provider is the parity baseline. Capability that exists only in a
 secondary channel (for Google, the `google-beta` provider) enters per kind
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**71 of 79 kinds are at total accounting; 10 proven live.**
+**76 of 84 kinds are at total accounting; 14 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -81,10 +81,10 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpDnsRecord | 49 | 43 | 6 | 0 | 0 | ✅ | — |
 | GcpDnsZone | 23 | 18 | 2 | 3 | 0 | ✅ | — |
 | GcpFilestoreInstance | 36 | 14 | 22 | 0 | 0 | ✅ | — |
-| GcpFirestoreBackupSchedule | 5 | 4 | 1 | 0 | 0 | ✅ | — |
-| GcpFirestoreDatabase | 15 | 11 | 4 | 0 | 0 | ✅ | — |
+| GcpFirestoreBackupSchedule | 5 | 4 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpFirestoreDatabase | 15 | 11 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | — |
-| GcpFirewallRule | 20 | 12 | 0 | 0 | 13 | ❌ | — |
+| GcpFirewallRule | 20 | 12 | 0 | 0 | 13 | ❌ | ✅ pulumi, terraform |
 | GcpGcsBucket | 64 | 30 | 29 | 5 | 0 | ✅ | — |
 | GcpGkeCluster | 537 | 61 | 137 | 339 | 0 | ✅ | — |
 | GcpGkeNodePool | 184 | 127 | 51 | 6 | 0 | ✅ | — |
@@ -96,8 +96,12 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpKmsKey | 12 | 10 | 2 | 0 | 0 | ✅ | — |
 | GcpKmsKeyIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpKmsKeyRing | 3 | 1 | 2 | 0 | 0 | ✅ | — |
+| GcpLoggingSink | 54 | 38 | 16 | 0 | 0 | ✅ | — |
 | GcpManagedSslCertificate | 6 | 2 | 3 | 1 | 0 | ✅ | — |
 | GcpMemorystoreInstance | 38 | 29 | 7 | 2 | 0 | ✅ | — |
+| GcpMonitoringAlertPolicy | 70 | 68 | 2 | 0 | 0 | ✅ | — |
+| GcpMonitoringNotificationChannel | 18 | 9 | 3 | 6 | 0 | ✅ | — |
+| GcpMonitoringUptimeCheck | 38 | 33 | 3 | 2 | 0 | ✅ | — |
 | GcpProject | 14 | 5 | 5 | 4 | 0 | ✅ | — |
 | GcpProjectIamMember | 6 | 5 | 1 | 0 | 0 | ✅ | — |
 | GcpPubSubSchema | 5 | 3 | 2 | 0 | 0 | ✅ | — |
@@ -105,7 +109,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpPubSubTopic | 44 | 41 | 3 | 0 | 0 | ✅ | — |
 | GcpRedisInstance | 32 | 24 | 6 | 2 | 0 | ✅ | — |
 | GcpRegionNetworkEndpointGroup | 18 | 16 | 2 | 0 | 0 | ✅ | — |
-| GcpRouterNat | 54 | 28 | 21 | 5 | 0 | ✅ | — |
+| GcpRouterNat | 54 | 28 | 21 | 5 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpSecretManagerSecret | 61 | 35 | 16 | 10 | 0 | ✅ | — |
 | GcpServerlessVpcConnector | 13 | 9 | 2 | 2 | 0 | ✅ | — |
 | GcpServiceAccount | 26 | 11 | 5 | 10 | 0 | ✅ | — |
 | GcpServiceAccountIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
@@ -135,11 +140,11 @@ All resources of `google@7.43.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 92 | consumed by a kind's Terraform module today |
-| IAM-covered | 409 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 2 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 73 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 681 | deliberately not offered, each with the recorded reason |
+| Modeled | 105 | consumed by a kind's Terraform module today |
+| IAM-covered | 407 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
+| Composed | 6 | capability covered through an existing kind's surface rather than a kind of its own |
+| Planned | 57 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 682 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 76 | deprecated or superseded provider surface |
 | **Total** | **1333** | |
 
@@ -148,7 +153,7 @@ All resources of `google@7.43.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (92)
+### Modeled (105)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -215,17 +220,30 @@ rather than trusted.
 | `google_kms_crypto_key` | consumed by GcpKmsKey |
 | `google_kms_crypto_key_iam_member` | consumed by GcpKmsKeyIamMember |
 | `google_kms_key_ring` | consumed by GcpKmsKeyRing |
+| `google_logging_billing_account_sink` | consumed by GcpLoggingSink |
+| `google_logging_folder_sink` | consumed by GcpLoggingSink |
+| `google_logging_organization_sink` | consumed by GcpLoggingSink |
+| `google_logging_project_sink` | consumed by GcpLoggingSink |
 | `google_memorystore_instance` | consumed by GcpMemorystoreInstance |
+| `google_monitoring_alert_policy` | consumed by GcpMonitoringAlertPolicy |
+| `google_monitoring_notification_channel` | consumed by GcpMonitoringNotificationChannel |
+| `google_monitoring_uptime_check_config` | consumed by GcpMonitoringUptimeCheck |
 | `google_network_connectivity_service_connection_policy` | consumed by GcpServiceConnectionPolicy |
 | `google_organization_iam_member` | consumed by GcpServiceAccount |
 | `google_project` | consumed by GcpProject |
 | `google_project_iam_custom_role` | consumed by GcpIamCustomRole |
 | `google_project_iam_member` | consumed by GcpProjectIamMember, GcpServiceAccount |
-| `google_project_service` | consumed by GcpAddress, GcpAlloydbCluster, GcpAlloydbInstance, GcpAlloydbUser, GcpArtifactRegistryRepo, GcpBackendBucket, GcpBackendService, GcpBigQueryDataset, GcpBigQueryTable, GcpBigtableInstance, GcpBigtableTable, GcpCertManagerCert, GcpCertManagerDnsAuthorization, GcpCloudArmorPolicy, GcpCloudComposerEnvironment, GcpCloudFunction, GcpCloudRun, GcpCloudRunJob, GcpCloudSchedulerJob, GcpCloudSql, GcpCloudTasksQueue, GcpComputeDisk, GcpComputeInstance, GcpDataprocAutoscalingPolicy, GcpDataprocCluster, GcpDnsRecord, GcpDnsZone, GcpFilestoreInstance, GcpFirestoreBackupSchedule, GcpFirestoreDatabase, GcpFirestoreIndex, GcpGcsBucket, GcpGkeCluster, GcpGkeNodePool, GcpGlobalAddress, GcpGlobalForwardingRule, GcpHealthCheck, GcpKmsKey, GcpKmsKeyRing, GcpManagedSslCertificate, GcpMemorystoreInstance, GcpProject, GcpPubSubSchema, GcpPubSubSubscription, GcpPubSubTopic, GcpRedisInstance, GcpRegionNetworkEndpointGroup, GcpRouterNat, GcpServerlessVpcConnector, GcpServiceConnectionPolicy, GcpServiceNetworkingConnection, GcpSpannerBackupSchedule, GcpSpannerDatabase, GcpSpannerInstance, GcpSslCertificate, GcpSslPolicy, GcpSubnetwork, GcpTargetHttpProxy, GcpTargetHttpsProxy, GcpUrlMap, GcpVertexAiEndpoint, GcpVertexAiIndex, GcpVertexAiIndexEndpoint, GcpVertexAiNotebook, GcpVpcNetwork |
+| `google_project_service` | consumed by GcpAddress, GcpAlloydbCluster, GcpAlloydbInstance, GcpAlloydbUser, GcpArtifactRegistryRepo, GcpBackendBucket, GcpBackendService, GcpBigQueryDataset, GcpBigQueryTable, GcpBigtableInstance, GcpBigtableTable, GcpCertManagerCert, GcpCertManagerDnsAuthorization, GcpCloudArmorPolicy, GcpCloudComposerEnvironment, GcpCloudFunction, GcpCloudRun, GcpCloudRunJob, GcpCloudSchedulerJob, GcpCloudSql, GcpCloudTasksQueue, GcpComputeDisk, GcpComputeInstance, GcpDataprocAutoscalingPolicy, GcpDataprocCluster, GcpDnsRecord, GcpDnsZone, GcpFilestoreInstance, GcpFirestoreBackupSchedule, GcpFirestoreDatabase, GcpFirestoreIndex, GcpGcsBucket, GcpGkeCluster, GcpGkeNodePool, GcpGlobalAddress, GcpGlobalForwardingRule, GcpHealthCheck, GcpKmsKey, GcpKmsKeyRing, GcpLoggingSink, GcpManagedSslCertificate, GcpMemorystoreInstance, GcpMonitoringAlertPolicy, GcpMonitoringNotificationChannel, GcpMonitoringUptimeCheck, GcpProject, GcpPubSubSchema, GcpPubSubSubscription, GcpPubSubTopic, GcpRedisInstance, GcpRegionNetworkEndpointGroup, GcpRouterNat, GcpSecretManagerSecret, GcpServerlessVpcConnector, GcpServiceConnectionPolicy, GcpServiceNetworkingConnection, GcpSpannerBackupSchedule, GcpSpannerDatabase, GcpSpannerInstance, GcpSslCertificate, GcpSslPolicy, GcpSubnetwork, GcpTargetHttpProxy, GcpTargetHttpsProxy, GcpUrlMap, GcpVertexAiEndpoint, GcpVertexAiIndex, GcpVertexAiIndexEndpoint, GcpVertexAiNotebook, GcpVpcNetwork |
 | `google_pubsub_schema` | consumed by GcpPubSubSchema |
 | `google_pubsub_subscription` | consumed by GcpPubSubSubscription |
 | `google_pubsub_topic` | consumed by GcpPubSubTopic |
 | `google_redis_instance` | consumed by GcpRedisInstance |
+| `google_secret_manager_regional_secret` | consumed by GcpSecretManagerSecret |
+| `google_secret_manager_regional_secret_iam_member` | consumed by GcpSecretManagerSecret |
+| `google_secret_manager_regional_secret_version` | consumed by GcpSecretManagerSecret |
+| `google_secret_manager_secret` | consumed by GcpSecretManagerSecret |
+| `google_secret_manager_secret_iam_member` | consumed by GcpSecretManagerSecret |
+| `google_secret_manager_secret_version` | consumed by GcpSecretManagerSecret |
 | `google_service_account` | consumed by GcpServiceAccount |
 | `google_service_account_iam_member` | consumed by GcpGkeWorkloadIdentityBinding, GcpServiceAccountIamMember |
 | `google_service_account_key` | consumed by GcpServiceAccount |
@@ -245,7 +263,7 @@ rather than trusted.
 | `google_vpc_access_connector` | consumed by GcpServerlessVpcConnector |
 | `google_workbench_instance` | consumed by GcpVertexAiNotebook |
 
-### IAM-covered (409)
+### IAM-covered (407)
 
 | Resource | Detail |
 |---|---|
@@ -607,10 +625,8 @@ rather than trusted.
 | `google_scc_v2_organization_source_iam_member` | per-resource IAM triplet, covered by the owning kind's additive iam_members field |
 | `google_scc_v2_organization_source_iam_policy` | per-resource IAM triplet, covered by the owning kind's additive iam_members field |
 | `google_secret_manager_regional_secret_iam_binding` | per-resource IAM triplet, covered by the owning kind's additive iam_members field |
-| `google_secret_manager_regional_secret_iam_member` | per-resource IAM triplet, covered by the owning kind's additive iam_members field |
 | `google_secret_manager_regional_secret_iam_policy` | per-resource IAM triplet, covered by the owning kind's additive iam_members field |
 | `google_secret_manager_secret_iam_binding` | per-resource IAM triplet, covered by the owning kind's additive iam_members field |
-| `google_secret_manager_secret_iam_member` | per-resource IAM triplet, covered by the owning kind's additive iam_members field |
 | `google_secret_manager_secret_iam_policy` | per-resource IAM triplet, covered by the owning kind's additive iam_members field |
 | `google_secure_source_manager_instance_iam_binding` | per-resource IAM triplet, covered by the owning kind's additive iam_members field |
 | `google_secure_source_manager_instance_iam_member` | per-resource IAM triplet, covered by the owning kind's additive iam_members field |
@@ -659,14 +675,18 @@ rather than trusted.
 | `google_workstations_workstation_iam_member` | per-resource IAM triplet, covered by the owning kind's additive iam_members field |
 | `google_workstations_workstation_iam_policy` | per-resource IAM triplet, covered by the owning kind's additive iam_members field |
 
-### Composed (2)
+### Composed (6)
 
 | Resource | Recorded reason |
 |---|---|
 | `google_bigquery_dataset_access` | the GcpBigQueryDataset spec models dataset access entries directly on the dataset, which is this standalone resource's entire surface |
+| `google_logging_billing_account_exclusion` | GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink |
+| `google_logging_folder_exclusion` | GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink |
+| `google_logging_organization_exclusion` | GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink |
+| `google_logging_project_exclusion` | GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink |
 | `google_project_iam_member_remove` | declarative member removal is inherent to the additive iam_members reconciliation on the IAM member kinds (GcpProjectIamMember); a dedicated removal escape hatch is redundant |
 
-### Planned (73)
+### Planned (57)
 
 | Resource | Recorded reason |
 |---|---|
@@ -708,35 +728,19 @@ rather than trusted.
 | `google_identity_platform_tenant_inbound_saml_config` | composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration) |
 | `google_identity_platform_tenant_oauth_idp_config` | composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration) |
 | `google_logging_billing_account_bucket_config` | planned kind GcpLogBucket (bucket configs across scopes, with log views composed) |
-| `google_logging_billing_account_exclusion` | composes into the planned GcpLoggingSink kind (sink exclusions) |
-| `google_logging_billing_account_sink` | planned kind GcpLoggingSink (one kind with project/folder/organization/billing-account scope) |
 | `google_logging_folder_bucket_config` | planned kind GcpLogBucket (bucket configs across scopes, with log views composed) |
-| `google_logging_folder_exclusion` | composes into the planned GcpLoggingSink kind (sink exclusions) |
 | `google_logging_folder_settings` | composes into the planned GcpLogBucket kind (scope-level logging settings) |
-| `google_logging_folder_sink` | planned kind GcpLoggingSink (one kind with project/folder/organization/billing-account scope) |
 | `google_logging_linked_dataset` | composes into the planned GcpLogBucket kind (BigQuery linked datasets) |
 | `google_logging_log_view` | planned kind GcpLogBucket (bucket configs across scopes, with log views composed) |
 | `google_logging_metric` | planned kind GcpLogMetric |
 | `google_logging_organization_bucket_config` | planned kind GcpLogBucket (bucket configs across scopes, with log views composed) |
-| `google_logging_organization_exclusion` | composes into the planned GcpLoggingSink kind (sink exclusions) |
 | `google_logging_organization_settings` | composes into the planned GcpLogBucket kind (scope-level logging settings) |
-| `google_logging_organization_sink` | planned kind GcpLoggingSink (one kind with project/folder/organization/billing-account scope) |
 | `google_logging_project_bucket_config` | planned kind GcpLogBucket (bucket configs across scopes, with log views composed) |
-| `google_logging_project_exclusion` | composes into the planned GcpLoggingSink kind (sink exclusions) |
-| `google_logging_project_sink` | planned kind GcpLoggingSink (one kind with project/folder/organization/billing-account scope) |
-| `google_monitoring_alert_policy` | planned kind GcpMonitoringAlertPolicy |
 | `google_monitoring_custom_service` | planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources) |
 | `google_monitoring_dashboard` | planned kind GcpMonitoringDashboard |
-| `google_monitoring_group` | composes into the planned GcpMonitoringAlertPolicy kind (group-scoped alerting) |
 | `google_monitoring_monitored_project` | composes into the planned monitoring kinds (metrics-scope management) |
-| `google_monitoring_notification_channel` | planned kind GcpMonitoringNotificationChannel |
 | `google_monitoring_service` | planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources) |
 | `google_monitoring_slo` | planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources) |
-| `google_monitoring_uptime_check_config` | planned kind GcpMonitoringUptimeCheck |
-| `google_secret_manager_regional_secret` | planned kind GcpSecretManagerSecret models regional secrets as a location flag |
-| `google_secret_manager_regional_secret_version` | planned kind GcpSecretManagerSecret models regional secrets as a location flag |
-| `google_secret_manager_secret` | planned kind GcpSecretManagerSecret (secret with versions composed) |
-| `google_secret_manager_secret_version` | planned kind GcpSecretManagerSecret (secret with versions composed) |
 | `google_storage_bucket_object` | planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications) |
 | `google_storage_folder` | planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications) |
 | `google_storage_hmac_key` | planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications) |
@@ -744,7 +748,7 @@ rather than trusted.
 | `google_storage_notification` | planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications) |
 | `google_workflows_workflow` | planned kind GcpWorkflow |
 
-### Deferred (681)
+### Deferred (682)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1231,6 +1235,7 @@ rather than trusted.
 | `google_migration_center_source` | Migration Center assessment tooling is episodic; deferred |
 | `google_model_armor_floorsetting` | Model Armor prompt-safety templates are new; deferred |
 | `google_model_armor_template` | Model Armor prompt-safety templates are new; deferred |
+| `google_monitoring_group` | monitoring groups are a separate grouping resource with no adopter ask; GcpMonitoringAlertPolicy and GcpMonitoringUptimeCheck reference existing groups by ID -- revisit with a grouping-focused ask |
 | `google_monitoring_metric_descriptor` | metric descriptors are rarely hand-managed; deferred |
 | `google_netapp_active_directory` | NetApp Volumes judged as storage-pool, volume, backup-vault, and backup-policy kinds (companions composed); deferred pending demand |
 | `google_netapp_backup` | NetApp Volumes judged as storage-pool, volume, backup-vault, and backup-policy kinds (companions composed); deferred pending demand |

@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpsecretmanagersecret
+spec:
+  # minimal composes the service-account prerequisite fixture (registry
+  # prerequisite) into a secret-scoped secretAccessor grant — the
+  # one-manifest-to-readable-secret shape. disable-destroy-window proves
+  # the version-lifecycle levers (version_destroy_ttl DISABLE-then-
+  # destroy, base64 payload, alias, ttl expiry). regional proves the
+  # second API surface (regional trio, no CMEK). deploy -> secretmanager
+  # secrets.get / versions.get verify -> destroy -> verify gone, on both
+  # provisioners. Secrets are free-tier at this volume and create in
+  # seconds; secret IDs hard-delete (no soft-delete reservation), so
+  # fixed names are safe across engines.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

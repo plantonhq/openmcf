@@ -1,0 +1,32 @@
+# Pub/Sub-destination scenario: the second destination arm live — proves
+# the pubsub.googleapis.com URI rendering and a disabled sink (config
+# without export). The topic rides the scenario-level prerequisites
+# annotation (a topic is NOT a registry prerequisite of this kind — only
+# the canonical bucket is).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLoggingSink
+metadata:
+  name: planton-oss-e2e-gcplogsink-pubsub
+  id: planton-oss-e2e-gcplogsink-pubsub
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcploggingsink
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "GcpPubSubTopic"
+  tags:
+    - planton-e2e
+spec:
+  sinkName: planton-oss-e2e-gcplogsink-pubsub
+  destination:
+    pubsubTopic:
+      valueFrom:
+        kind: GcpPubSubTopic
+        name: planton-oss-e2e-gcppst-prereq
+        fieldPath: status.outputs.topic_id
+  filter: severity>=WARNING
+  description: E2E pubsub-destination sink — deployed disabled
+  disabled: true
+  deletionPolicy: DELETE
