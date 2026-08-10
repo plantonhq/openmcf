@@ -536,7 +536,7 @@ header. Supported by proxy and service integrations on HTTP APIs.
 The backend response status code these mappings apply to (e.g. "403",
 "500").
 
-- rule: {"string":{"pattern":"^[1-5][0-9][0-9]$"}}
+- rule: {"string":{"pattern":"^[2-5][0-9][0-9]$"}}
 
 ### spec.routes[].integration.responseParameters[].mappings
 
@@ -740,6 +740,7 @@ Only applicable to REQUEST authorizers.
 - `payload_format_version_valid`: route integration payload_format_version must be '1.0' or '2.0' when set
 - `payload_format_version_lambda_only`: payload_format_version '2.0' applies only to Lambda proxy integrations -- HTTP_PROXY and AWS service integrations (integration_subtype) are fixed at '1.0' by AWS
 - `integration_timeout_range`: route integration timeout_milliseconds must be between 50 and 30000 when set
+- `integration_method_valid`: route integration integration_method must be one of 'ANY', 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT' when set
 - `authorizer_ttl_range`: authorizer result_ttl_seconds must be between 0 and 3600 when set
 - `authorizer_payload_format_version_valid`: authorizer authorizer_payload_format_version must be '1.0' or '2.0' when set
 - `stage_route_settings_target_defined_routes`: stage.route_settings route_key values must match a route defined in routes
@@ -779,6 +780,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AwsHttpApiDomain | `spec.apiMappings[].apiId` | `status.outputs.api_id` |
+| AwsHttpApiDomain | `spec.routingRules[].apiId` | `status.outputs.api_id` |
 
 ## See Also
 

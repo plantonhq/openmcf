@@ -10,7 +10,31 @@ spec:
   domainName: api.example.com
   certificateArn:
     value: arn:aws:acm:us-west-2:123456789012:certificate/abc-123
+  # AWS-issued public certificate proving domain ownership -- required when
+  # the TLS certificate is Private-CA-issued or mTLS uses an imported cert.
+  ownershipVerificationCertificateArn:
+    value: arn:aws:acm:us-west-2:123456789012:certificate/own-456
   apiMappings:
     - apiId:
+        value: a1b2c3d4
+      stage: $default
+  # Rules first (by ascending priority); unmatched requests fall back to the
+  # api_mappings above.
+  routingMode: ROUTING_RULE_THEN_API_MAPPING
+  routingRules:
+    - priority: 10
+      conditions:
+        - basePaths:
+            - orders
+      apiId:
+        value: e5f6a7b8
+      stage: $default
+      stripBasePath: true
+    - priority: 20
+      conditions:
+        - header:
+            name: x-tenant-id
+            valueGlob: tenant-a-*
+      apiId:
         value: a1b2c3d4
       stage: $default

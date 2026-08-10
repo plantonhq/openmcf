@@ -46,9 +46,11 @@ const (
 //     them. (Edge-optimized domains are a REST API v1 feature.)
 //   - The certificate must be issued in the SAME region as the domain and must
 //     cover the domain name (exact match or wildcard).
-//   - routing_mode (routing rules) is deliberately not modeled: header/path
-//     rule-based routing is a separate resource family; the default
-//     API-mapping-only mode covers the mapping surface this component models.
+//   - The domain routes requests two ways, selected by routing_mode: static
+//     path-key API mappings (api_mappings, the default) and dynamic routing
+//     rules (routing_rules) that match on base path or header and invoke an
+//     API stage by priority order. Rules are their own AWS resources attached
+//     to the domain; the module creates one per routing_rules entry.
 //
 // Credentials, region, and deployment workflow live outside this spec in
 // stack inputs.
@@ -86,7 +88,32 @@ type AwsHttpApiDomainSpec struct {
 	// domain root ("https://api.example.com/"), while a key like "orders"
 	// serves it under "https://api.example.com/orders/". Multiple APIs
 	// compose onto one domain by using distinct keys.
-	ApiMappings   []*AwsHttpApiDomainApiMapping `protobuf:"bytes,6,rep,name=api_mappings,json=apiMappings,proto3" json:"api_mappings,omitempty"`
+	ApiMappings []*AwsHttpApiDomainApiMapping `protobuf:"bytes,6,rep,name=api_mappings,json=apiMappings,proto3" json:"api_mappings,omitempty"`
+	// ARN of an AWS-issued public ACM certificate that proves ownership of the
+	// custom domain. Required by AWS in exactly two setups: when
+	// certificate_arn is issued by an ACM Private CA, or when mutual_tls is
+	// configured with an ACM-IMPORTED certificate. The certificate must be a
+	// public ACM certificate for the same domain, in the same region. Accepts
+	// a direct ARN or a reference to an AwsCertManagerCert resource.
+	OwnershipVerificationCertificateArn *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=ownership_verification_certificate_arn,json=ownershipVerificationCertificateArn,proto3" json:"ownership_verification_certificate_arn,omitempty"`
+	// How the domain routes incoming requests. Valid values:
+	//   - "API_MAPPING_ONLY" (AWS default when omitted): only the static
+	//     api_mappings path keys route requests.
+	//   - "ROUTING_RULE_ONLY": only routing_rules route requests; api_mappings
+	//     are not evaluated.
+	//   - "ROUTING_RULE_THEN_API_MAPPING": routing rules are evaluated first
+	//     (by ascending priority); requests matching no rule fall back to the
+	//     api_mappings.
+	//
+	// Updatable in place.
+	RoutingMode string `protobuf:"bytes,8,opt,name=routing_mode,json=routingMode,proto3" json:"routing_mode,omitempty"`
+	// Dynamic routing rules attached to the domain. Each rule matches requests
+	// on base path or header values and invokes one API stage; rules are
+	// evaluated in ascending priority order and the first match wins. Rules
+	// route requests only when routing_mode is "ROUTING_RULE_ONLY" or
+	// "ROUTING_RULE_THEN_API_MAPPING". Each entry creates one
+	// aws_apigatewayv2_routing_rule resource on the domain.
+	RoutingRules  []*AwsHttpApiDomainRoutingRule `protobuf:"bytes,9,rep,name=routing_rules,json=routingRules,proto3" json:"routing_rules,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -163,6 +190,27 @@ func (x *AwsHttpApiDomainSpec) GetApiMappings() []*AwsHttpApiDomainApiMapping {
 	return nil
 }
 
+func (x *AwsHttpApiDomainSpec) GetOwnershipVerificationCertificateArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.OwnershipVerificationCertificateArn
+	}
+	return nil
+}
+
+func (x *AwsHttpApiDomainSpec) GetRoutingMode() string {
+	if x != nil {
+		return x.RoutingMode
+	}
+	return ""
+}
+
+func (x *AwsHttpApiDomainSpec) GetRoutingRules() []*AwsHttpApiDomainRoutingRule {
+	if x != nil {
+		return x.RoutingRules
+	}
+	return nil
+}
+
 // AwsHttpApiDomainMutualTls configures mutual TLS client authentication for
 // the domain using an S3-hosted truststore.
 type AwsHttpApiDomainMutualTls struct {
@@ -224,6 +272,223 @@ func (x *AwsHttpApiDomainMutualTls) GetTruststoreVersion() string {
 	return ""
 }
 
+// AwsHttpApiDomainRoutingRule matches requests on base path or header values
+// and routes them to one API stage. Rules are evaluated in ascending
+// priority order; the first rule whose conditions ALL match wins. The
+// provider nests the target under an action/invoke_api wrapper (the only
+// action type API Gateway supports); the spec flattens it to the rule's own
+// api_id / stage / strip_base_path fields.
+type AwsHttpApiDomainRoutingRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Evaluation order of this rule: lower values are evaluated first. Must
+	// be between 1 and 1,000,000 and unique across the domain's rules (AWS
+	// rejects duplicate priorities). Updatable in place.
+	Priority int32 `protobuf:"varint,1,opt,name=priority,proto3" json:"priority,omitempty"`
+	// Conditions that must ALL match for this rule to fire. Each condition
+	// tests exactly one dimension -- a set of candidate base paths, or one
+	// header pattern; combine a base-path condition with a header condition
+	// to require both.
+	Conditions []*AwsHttpApiDomainRoutingRuleCondition `protobuf:"bytes,2,rep,name=conditions,proto3" json:"conditions,omitempty"`
+	// The API that matching requests are routed to. Accepts a direct API ID
+	// or a reference to an AwsHttpApiGateway resource.
+	ApiId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=api_id,json=apiId,proto3" json:"api_id,omitempty"`
+	// The stage of the target API to invoke. For HTTP APIs managed by
+	// AwsHttpApiGateway this is the stage name exported in the API's outputs
+	// (typically "$default").
+	Stage string `protobuf:"bytes,4,opt,name=stage,proto3" json:"stage,omitempty"`
+	// Strip the matched base path from the request before forwarding it to
+	// the target API. With "orders" in a rule's base paths and
+	// strip_base_path=true, a request to "https://<domain>/orders/list"
+	// reaches the API as "/list"; false (the default) forwards
+	// "/orders/list" unchanged.
+	StripBasePath bool `protobuf:"varint,5,opt,name=strip_base_path,json=stripBasePath,proto3" json:"strip_base_path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsHttpApiDomainRoutingRule) Reset() {
+	*x = AwsHttpApiDomainRoutingRule{}
+	mi := &file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsHttpApiDomainRoutingRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsHttpApiDomainRoutingRule) ProtoMessage() {}
+
+func (x *AwsHttpApiDomainRoutingRule) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsHttpApiDomainRoutingRule.ProtoReflect.Descriptor instead.
+func (*AwsHttpApiDomainRoutingRule) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsHttpApiDomainRoutingRule) GetPriority() int32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+func (x *AwsHttpApiDomainRoutingRule) GetConditions() []*AwsHttpApiDomainRoutingRuleCondition {
+	if x != nil {
+		return x.Conditions
+	}
+	return nil
+}
+
+func (x *AwsHttpApiDomainRoutingRule) GetApiId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ApiId
+	}
+	return nil
+}
+
+func (x *AwsHttpApiDomainRoutingRule) GetStage() string {
+	if x != nil {
+		return x.Stage
+	}
+	return ""
+}
+
+func (x *AwsHttpApiDomainRoutingRule) GetStripBasePath() bool {
+	if x != nil {
+		return x.StripBasePath
+	}
+	return false
+}
+
+// AwsHttpApiDomainRoutingRuleCondition tests one dimension of a request:
+// its first path segment (base path) or one of its headers. Set exactly one
+// of the two arms.
+type AwsHttpApiDomainRoutingRuleCondition struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Candidate base paths (the request's first path segment, without
+	// slashes); the condition matches when the request's base path equals ANY
+	// entry. Example: ["orders", "billing"]. Case-sensitive.
+	BasePaths []string `protobuf:"bytes,1,rep,name=base_paths,json=basePaths,proto3" json:"base_paths,omitempty"`
+	// One header pattern the request must match. The condition matches when
+	// the named header's value matches the glob.
+	Header        *AwsHttpApiDomainRoutingRuleHeaderMatch `protobuf:"bytes,2,opt,name=header,proto3" json:"header,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsHttpApiDomainRoutingRuleCondition) Reset() {
+	*x = AwsHttpApiDomainRoutingRuleCondition{}
+	mi := &file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsHttpApiDomainRoutingRuleCondition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsHttpApiDomainRoutingRuleCondition) ProtoMessage() {}
+
+func (x *AwsHttpApiDomainRoutingRuleCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsHttpApiDomainRoutingRuleCondition.ProtoReflect.Descriptor instead.
+func (*AwsHttpApiDomainRoutingRuleCondition) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsHttpApiDomainRoutingRuleCondition) GetBasePaths() []string {
+	if x != nil {
+		return x.BasePaths
+	}
+	return nil
+}
+
+func (x *AwsHttpApiDomainRoutingRuleCondition) GetHeader() *AwsHttpApiDomainRoutingRuleHeaderMatch {
+	if x != nil {
+		return x.Header
+	}
+	return nil
+}
+
+// AwsHttpApiDomainRoutingRuleHeaderMatch matches one request header against
+// a glob pattern.
+type AwsHttpApiDomainRoutingRuleHeaderMatch struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Header name to test (max 40 characters), e.g. "x-tenant-id".
+	// Case-insensitive on the wire, as HTTP headers are.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Glob pattern the header value must match (max 128 characters), e.g.
+	// "tenant-a-*" or an exact literal like "beta".
+	ValueGlob     string `protobuf:"bytes,2,opt,name=value_glob,json=valueGlob,proto3" json:"value_glob,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsHttpApiDomainRoutingRuleHeaderMatch) Reset() {
+	*x = AwsHttpApiDomainRoutingRuleHeaderMatch{}
+	mi := &file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsHttpApiDomainRoutingRuleHeaderMatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsHttpApiDomainRoutingRuleHeaderMatch) ProtoMessage() {}
+
+func (x *AwsHttpApiDomainRoutingRuleHeaderMatch) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsHttpApiDomainRoutingRuleHeaderMatch.ProtoReflect.Descriptor instead.
+func (*AwsHttpApiDomainRoutingRuleHeaderMatch) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsHttpApiDomainRoutingRuleHeaderMatch) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsHttpApiDomainRoutingRuleHeaderMatch) GetValueGlob() string {
+	if x != nil {
+		return x.ValueGlob
+	}
+	return ""
+}
+
 // AwsHttpApiDomainApiMapping binds one API's stage onto the domain under an
 // optional path key.
 type AwsHttpApiDomainApiMapping struct {
@@ -246,7 +511,7 @@ type AwsHttpApiDomainApiMapping struct {
 
 func (x *AwsHttpApiDomainApiMapping) Reset() {
 	*x = AwsHttpApiDomainApiMapping{}
-	mi := &file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -258,7 +523,7 @@ func (x *AwsHttpApiDomainApiMapping) String() string {
 func (*AwsHttpApiDomainApiMapping) ProtoMessage() {}
 
 func (x *AwsHttpApiDomainApiMapping) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -271,7 +536,7 @@ func (x *AwsHttpApiDomainApiMapping) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsHttpApiDomainApiMapping.ProtoReflect.Descriptor instead.
 func (*AwsHttpApiDomainApiMapping) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AwsHttpApiDomainApiMapping) GetApiId() *v1.StringValueOrRef {
@@ -299,7 +564,7 @@ var File_catalog_aws_awshttpapidomain_v1alpha1_spec_proto protoreflect.FileDescr
 
 const file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/aws/awshttpapidomain/v1alpha1/spec.proto\x12)dev.planton.aws.awshttpapidomain.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xac\a\n" +
+	"0catalog/aws/awshttpapidomain/v1alpha1/spec.proto\x12)dev.planton.aws.awshttpapidomain.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x9a\x12\n" +
 	"\x14AwsHttpApiDomainSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12;\n" +
 	"\vdomain_name\x18\x02 \x01(\tB\x1a\xbaH\x17r\x15\x10\x01\x18\x80\x042\x0e^[a-z0-9*.-]+$R\n" +
@@ -308,12 +573,37 @@ const file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0fip_address_type\x18\x04 \x01(\tR\ripAddressType\x12c\n" +
 	"\n" +
 	"mutual_tls\x18\x05 \x01(\v2D.dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainMutualTlsR\tmutualTls\x12h\n" +
-	"\fapi_mappings\x18\x06 \x03(\v2E.dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainApiMappingR\vapiMappings:\xb8\x03\xbaH\xb4\x03\x1a\x9c\x01\n" +
+	"\fapi_mappings\x18\x06 \x03(\v2E.dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainApiMappingR\vapiMappings\x12\xa9\x01\n" +
+	"&ownership_verification_certificate_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR#ownershipVerificationCertificateArn\x12!\n" +
+	"\frouting_mode\x18\b \x01(\tR\vroutingMode\x12k\n" +
+	"\rrouting_rules\x18\t \x03(\v2F.dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRuleR\froutingRules:\xea\v\xbaH\xe6\v\x1a\x9c\x01\n" +
 	"\x15ip_address_type_valid\x126ip_address_type must be 'ipv4' or 'dualstack' when set\x1aKthis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack']\x1a\x92\x02\n" +
-	"\x17api_mapping_keys_unique\x12\x87\x01api_mapping_key values must be unique across api_mappings (only one API can serve the domain root, and each path key can carry one API)\x1amthis.api_mappings.all(m1, this.api_mappings.filter(m2, m2.api_mapping_key == m1.api_mapping_key).size() == 1)\"\x84\x01\n" +
+	"\x17api_mapping_keys_unique\x12\x87\x01api_mapping_key values must be unique across api_mappings (only one API can serve the domain root, and each path key can carry one API)\x1amthis.api_mappings.all(m1, this.api_mappings.filter(m2, m2.api_mapping_key == m1.api_mapping_key).size() == 1)\x1a\xfb\x01\n" +
+	"\x12routing_mode_valid\x12irouting_mode must be 'API_MAPPING_ONLY', 'ROUTING_RULE_ONLY', or 'ROUTING_RULE_THEN_API_MAPPING' when set\x1azthis.routing_mode == '' || this.routing_mode in ['API_MAPPING_ONLY', 'ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING']\x1a\xba\x02\n" +
+	"\x1frouting_rules_require_rule_mode\x12\xa7\x01routing_rules require routing_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' -- under the default API_MAPPING_ONLY mode the rules would never be evaluated\x1amthis.routing_rules.size() == 0 || this.routing_mode in ['ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING']\x1a\x82\x02\n" +
+	" rule_mode_requires_routing_rules\x12mrouting_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' requires at least one routing_rules entry\x1ao!(this.routing_mode in ['ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING']) || this.routing_rules.size() > 0\x1a\xef\x01\n" +
+	"\x1erouting_rule_priorities_unique\x12jrouting_rules priority values must be unique -- AWS rejects two rules with the same priority on one domain\x1aathis.routing_rules.all(r1, this.routing_rules.filter(r2, r2.priority == r1.priority).size() == 1)\"\x84\x01\n" +
 	"\x19AwsHttpApiDomainMutualTls\x128\n" +
 	"\x0etruststore_uri\x18\x01 \x01(\tB\x11\xbaH\x0er\f\x10\x012\b^s3://.+R\rtruststoreUri\x12-\n" +
-	"\x12truststore_version\x18\x02 \x01(\tR\x11truststoreVersion\"\xe4\x01\n" +
+	"\x12truststore_version\x18\x02 \x01(\tR\x11truststoreVersion\"\xf9\x02\n" +
+	"\x1bAwsHttpApiDomainRoutingRule\x12'\n" +
+	"\bpriority\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xc0\x84=(\x01R\bpriority\x12y\n" +
+	"\n" +
+	"conditions\x18\x02 \x03(\v2O.dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRuleConditionB\b\xbaH\x05\x92\x01\x02\b\x01R\n" +
+	"conditions\x12o\n" +
+	"\x06api_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\b\x92\xd4a\x15status.outputs.api_idR\x05apiId\x12\x1d\n" +
+	"\x05stage\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05stage\x12&\n" +
+	"\x0fstrip_base_path\x18\x05 \x01(\bR\rstripBasePath\"\xdf\x02\n" +
+	"$AwsHttpApiDomainRoutingRuleCondition\x12+\n" +
+	"\n" +
+	"base_paths\x18\x01 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\tbasePaths\x12i\n" +
+	"\x06header\x18\x02 \x01(\v2Q.dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRuleHeaderMatchR\x06header:\x9e\x01\xbaH\x9a\x01\x1a\x97\x01\n" +
+	"\x19condition_exactly_one_arm\x12Heach routing rule condition must set exactly one of base_paths or header\x1a0(this.base_paths.size() > 0) != has(this.header)\"r\n" +
+	"&AwsHttpApiDomainRoutingRuleHeaderMatch\x12\x1d\n" +
+	"\x04name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18(R\x04name\x12)\n" +
+	"\n" +
+	"value_glob\x18\x02 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\tvalueGlob\"\xe4\x01\n" +
 	"\x1aAwsHttpApiDomainApiMapping\x12o\n" +
 	"\x06api_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\b\x92\xd4a\x15status.outputs.api_idR\x05apiId\x12\x1d\n" +
 	"\x05stage\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05stage\x126\n" +
@@ -332,23 +622,31 @@ func file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDescGZIP() []byte 
 	return file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsHttpApiDomainSpec)(nil),       // 0: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainSpec
-	(*AwsHttpApiDomainMutualTls)(nil),  // 1: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainMutualTls
-	(*AwsHttpApiDomainApiMapping)(nil), // 2: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainApiMapping
-	(*v1.StringValueOrRef)(nil),        // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsHttpApiDomainSpec)(nil),                   // 0: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainSpec
+	(*AwsHttpApiDomainMutualTls)(nil),              // 1: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainMutualTls
+	(*AwsHttpApiDomainRoutingRule)(nil),            // 2: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRule
+	(*AwsHttpApiDomainRoutingRuleCondition)(nil),   // 3: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRuleCondition
+	(*AwsHttpApiDomainRoutingRuleHeaderMatch)(nil), // 4: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRuleHeaderMatch
+	(*AwsHttpApiDomainApiMapping)(nil),             // 5: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainApiMapping
+	(*v1.StringValueOrRef)(nil),                    // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainSpec.certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // 0: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainSpec.certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 1: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainSpec.mutual_tls:type_name -> dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainMutualTls
-	2, // 2: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainSpec.api_mappings:type_name -> dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainApiMapping
-	3, // 3: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainApiMapping.api_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 2: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainSpec.api_mappings:type_name -> dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainApiMapping
+	6, // 3: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainSpec.ownership_verification_certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 4: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainSpec.routing_rules:type_name -> dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRule
+	3, // 5: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRule.conditions:type_name -> dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRuleCondition
+	6, // 6: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRule.api_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 7: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRuleCondition.header:type_name -> dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRuleHeaderMatch
+	6, // 8: dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainApiMapping.api_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_init() }
@@ -362,7 +660,7 @@ func file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

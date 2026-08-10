@@ -683,6 +683,46 @@ var _ = ginkgo.Describe("AwsHttpApiGatewaySpec validations", func() {
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
+	ginkgo.It("fails when response parameter status_code is informational (1xx) -- API Gateway accepts 200-599", func() {
+		spec.Routes[0].Integration.ResponseParameters = []*AwsHttpApiGatewayResponseParameters{
+			{StatusCode: "101", Mappings: map[string]string{"overwrite:statuscode": "200"}},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts response parameter status_code at the 2xx boundary", func() {
+		spec.Routes[0].Integration.ResponseParameters = []*AwsHttpApiGatewayResponseParameters{
+			{StatusCode: "200", Mappings: map[string]string{"append:header.x-request": "$context.requestId"}},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: integration_method_valid
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts every real HTTP method as integration_method", func() {
+		for _, m := range []string{"ANY", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"} {
+			spec.Routes[0].Integration.IntegrationMethod = m
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil(), "method %s should validate", m)
+		}
+	})
+
+	ginkgo.It("fails when integration_method is not an HTTP method", func() {
+		spec.Routes[0].Integration.IntegrationMethod = "FETCH"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when integration_method is lowercase", func() {
+		spec.Routes[0].Integration.IntegrationMethod = "get"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
 	ginkgo.It("fails when response parameter mappings are empty", func() {
 		spec.Routes[0].Integration.ResponseParameters = []*AwsHttpApiGatewayResponseParameters{
 			{StatusCode: "500"},

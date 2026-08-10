@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 223 |
-| Spec fields authored across all kinds | 4168 |
+| Distinct provider resources consumed | 224 |
+| Spec fields authored across all kinds | 4177 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**13 of 112 kinds are at total accounting; 85 proven live.**
+**16 of 112 kinds are at total accounting; 83 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -85,9 +85,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsEgressOnlyInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsEksAccessEntry | 14 | 9 | 0 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEksAddon | 14 | 10 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEksCluster | 38 | 8 | 20 | 10 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEksCluster | 38 | 8 | 20 | 10 | 0 | ✅ | — |
 | AwsEksFargateProfile | 9 | 4 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEksNodeGroup | 43 | 26 | 12 | 5 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEksNodeGroup | 43 | 26 | 12 | 5 | 0 | ✅ | — |
 | AwsElasticFileSystem | 34 | 12 | 0 | 0 | 40 | ❌ | ✅ pulumi, terraform |
 | AwsElasticIp | 12 | 4 | 0 | 0 | 8 | ❌ | — |
 | AwsElasticacheUser | 13 | 6 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
@@ -103,9 +103,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsFsxWindowsFileSystem | 34 | 28 | 0 | 0 | 8 | ❌ | — |
 | AwsGlobalAccelerator | 28 | 3 | 0 | 0 | 48 | ❌ | ✅ pulumi, terraform |
 | AwsGlueCatalogDatabase | 15 | 10 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
-| AwsHttpApiDomain | 17 | 4 | 0 | 0 | 20 | ❌ | ✅ pulumi, terraform |
-| AwsHttpApiGateway | 91 | 15 | 0 | 0 | 120 | ❌ | ✅ pulumi, terraform |
-| AwsHttpApiVpcLink | 6 | 3 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
+| AwsHttpApiDomain | 26 | 7 | 11 | 8 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsHttpApiGateway | 91 | 42 | 11 | 38 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsHttpApiVpcLink | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamInstanceProfile | 6 | 2 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
 | AwsIamOidcProvider | 5 | 3 | 0 | 0 | 3 | ❌ | — |
 | AwsIamPolicy | 8 | 2 | 0 | 0 | 11 | ❌ | ✅ pulumi, terraform |
@@ -170,10 +170,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 223 | consumed by a kind's Terraform module today |
+| Modeled | 224 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 3 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 821 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 820 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 516 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 128 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -183,7 +183,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (223)
+### Modeled (224)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -195,6 +195,7 @@ rather than trusted.
 | `aws_apigatewayv2_domain_name` | consumed by AwsHttpApiDomain |
 | `aws_apigatewayv2_integration` | consumed by AwsHttpApiGateway |
 | `aws_apigatewayv2_route` | consumed by AwsHttpApiGateway |
+| `aws_apigatewayv2_routing_rule` | consumed by AwsHttpApiDomain |
 | `aws_apigatewayv2_stage` | consumed by AwsHttpApiGateway |
 | `aws_apigatewayv2_vpc_link` | consumed by AwsHttpApiVpcLink |
 | `aws_appautoscaling_policy` | consumed by AwsEcsService |
@@ -419,7 +420,7 @@ rather than trusted.
 | `aws_autoscaling_traffic_source_attachment` | covered by AwsAutoScalingGroup.traffic_sources -- the standalone attachment is the imperative pattern for a group that owns its traffic sources |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
 
-### Planned (821)
+### Planned (820)
 
 | Resource | Recorded reason |
 |---|---|
@@ -468,11 +469,10 @@ rather than trusted.
 | `aws_api_gateway_usage_plan` | judged as a planned AwsRestApiUsagePlan kind (usage plans, plan keys, API keys) |
 | `aws_api_gateway_usage_plan_key` | judged as a planned AwsRestApiUsagePlan kind (usage plans, plan keys, API keys) |
 | `aws_api_gateway_vpc_link` | judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in) |
-| `aws_apigatewayv2_deployment` | WebSocket-API companion surface; folds into the existing AwsHttpApiGateway kind as its spec deepens |
-| `aws_apigatewayv2_integration_response` | WebSocket-API companion surface; folds into the existing AwsHttpApiGateway kind as its spec deepens |
-| `aws_apigatewayv2_model` | WebSocket-API companion surface; folds into the existing AwsHttpApiGateway kind as its spec deepens |
-| `aws_apigatewayv2_route_response` | WebSocket-API companion surface; folds into the existing AwsHttpApiGateway kind as its spec deepens |
-| `aws_apigatewayv2_routing_rule` | WebSocket-API companion surface; folds into the existing AwsHttpApiGateway kind as its spec deepens |
+| `aws_apigatewayv2_deployment` | judged into the planned AwsWebSocketApiGateway kind (WebSocket APIs are their own protocol surface -- AwsHttpApiGateway records that boundary in its spec); explicit deployments are the WebSocket publish mechanism, while HTTP APIs deploy via the stage's auto_deploy, already modeled on AwsHttpApiGateway |
+| `aws_apigatewayv2_integration_response` | judged into the planned AwsWebSocketApiGateway kind -- integration responses exist only in the WebSocket request/response model; HTTP APIs have no integration-response concept (they transform via response_parameters, already modeled on AwsHttpApiGateway) |
+| `aws_apigatewayv2_model` | judged into the planned AwsWebSocketApiGateway kind -- request models are consumed via route request_models/model_selection_expression, WebSocket-only route surface; HTTP APIs never reference models |
+| `aws_apigatewayv2_route_response` | judged into the planned AwsWebSocketApiGateway kind -- route responses implement WebSocket two-way communication (only the $default route response is supported); HTTP APIs have no route-response concept |
 | `aws_appautoscaling_scheduled_action` | application-autoscaling scheduled actions fold into the consuming kinds' scaling surface (AwsDynamodb, AwsEcsService) |
 | `aws_appconfig_application` | judged as a planned AwsAppConfig kind (application, environments, profiles, versions, deployment strategies, extensions) |
 | `aws_appconfig_configuration_profile` | judged as a planned AwsAppConfig kind (application, environments, profiles, versions, deployment strategies, extensions) |

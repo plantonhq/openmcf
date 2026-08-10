@@ -19,7 +19,17 @@ resource "aws_apigatewayv2_domain_name" "this" {
 
     # ipv4 or dualstack; AWS applies its default when unset.
     ip_address_type = var.spec.ip_address_type != "" ? var.spec.ip_address_type : null
+
+    # AWS-issued public certificate proving domain ownership -- required by
+    # AWS when the TLS certificate is Private-CA-issued, or when mTLS is
+    # combined with an ACM-imported certificate.
+    ownership_verification_certificate_arn = var.spec.ownership_verification_certificate_arn != "" ? var.spec.ownership_verification_certificate_arn : null
   }
+
+  # How requests route: static api_mappings only (AWS default), routing
+  # rules only, or rules first with mapping fallback. Spec CEL guarantees
+  # the mode and the routing_rules list agree.
+  routing_mode = var.spec.routing_mode != "" ? var.spec.routing_mode : null
 
   # Mutual TLS: clients must present a certificate chaining to a CA in the
   # S3-hosted truststore. Pinning truststore_version makes CA rotation an
@@ -48,4 +58,48 @@ resource "aws_apigatewayv2_api_mapping" "this" {
 
   # Empty means the domain root; AWS stores the absence of a key, not "".
   api_mapping_key = each.value.api_mapping_key != "" ? each.value.api_mapping_key : null
+}
+
+# One routing rule per entry, addressed by priority (unique per spec CEL,
+# mirroring AWS's own uniqueness rule). Rules match on base path or header
+# and invoke one API stage; the provider nests the target under
+# action/invoke_api -- the spec's flat api_id/stage/strip_base_path fields
+# render into that wrapper here.
+resource "aws_apigatewayv2_routing_rule" "this" {
+  for_each = local.routing_rule_map
+
+  domain_name = aws_apigatewayv2_domain_name.this.id
+  priority    = each.value.priority
+
+  action {
+    invoke_api {
+      api_id          = each.value.api_id
+      stage           = each.value.stage
+      strip_base_path = each.value.strip_base_path
+    }
+  }
+
+  # Each condition tests exactly one dimension (spec CEL mirrors the
+  # provider's exactly-one-of); all conditions on a rule must match.
+  dynamic "condition" {
+    for_each = each.value.conditions
+    content {
+      dynamic "match_base_paths" {
+        for_each = length(condition.value.base_paths) > 0 ? [condition.value.base_paths] : []
+        content {
+          any_of = match_base_paths.value
+        }
+      }
+
+      dynamic "match_headers" {
+        for_each = condition.value.header != null ? [condition.value.header] : []
+        content {
+          any_of {
+            header     = match_headers.value.name
+            value_glob = match_headers.value.value_glob
+          }
+        }
+      }
+    }
+  }
 }

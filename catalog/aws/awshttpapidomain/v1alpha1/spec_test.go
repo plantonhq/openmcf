@@ -184,4 +184,218 @@ var _ = ginkgo.Describe("AwsHttpApiDomainSpec validations", func() {
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
+
+	// -------------------------------------------------------------------------
+	// Ownership verification certificate
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts an ownership verification certificate ARN", func() {
+		spec.OwnershipVerificationCertificateArn = strRef("arn:aws:acm:us-west-2:123456789012:certificate/own-456")
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Routing mode and routing rules
+	// -------------------------------------------------------------------------
+
+	// helper: one valid base-path rule.
+	validRule := func(priority int32) *AwsHttpApiDomainRoutingRule {
+		return &AwsHttpApiDomainRoutingRule{
+			Priority: priority,
+			Conditions: []*AwsHttpApiDomainRoutingRuleCondition{
+				{BasePaths: []string{"orders"}},
+			},
+			ApiId: strRef("api-abc123"),
+			Stage: "$default",
+		}
+	}
+
+	ginkgo.It("accepts routing rules under ROUTING_RULE_THEN_API_MAPPING", func() {
+		spec.RoutingMode = "ROUTING_RULE_THEN_API_MAPPING"
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{validRule(10)}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a header-match rule under ROUTING_RULE_ONLY", func() {
+		spec.RoutingMode = "ROUTING_RULE_ONLY"
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{
+			{
+				Priority: 5,
+				Conditions: []*AwsHttpApiDomainRoutingRuleCondition{
+					{Header: &AwsHttpApiDomainRoutingRuleHeaderMatch{Name: "x-tenant-id", ValueGlob: "tenant-a-*"}},
+				},
+				ApiId:         strRef("api-abc123"),
+				Stage:         "$default",
+				StripBasePath: true,
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a rule combining a base-path and a header condition", func() {
+		spec.RoutingMode = "ROUTING_RULE_THEN_API_MAPPING"
+		rule := validRule(1)
+		rule.Conditions = append(rule.Conditions, &AwsHttpApiDomainRoutingRuleCondition{
+			Header: &AwsHttpApiDomainRoutingRuleHeaderMatch{Name: "x-env", ValueGlob: "beta"},
+		})
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{rule}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts explicit API_MAPPING_ONLY with no rules", func() {
+		spec.RoutingMode = "API_MAPPING_ONLY"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when routing_mode is invalid", func() {
+		spec.RoutingMode = "RULES_FIRST"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when rules are set without a rule-honoring routing_mode", func() {
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{validRule(10)}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when rules are set under API_MAPPING_ONLY", func() {
+		spec.RoutingMode = "API_MAPPING_ONLY"
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{validRule(10)}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a rule-honoring mode has no rules", func() {
+		spec.RoutingMode = "ROUTING_RULE_ONLY"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when two rules share a priority", func() {
+		spec.RoutingMode = "ROUTING_RULE_THEN_API_MAPPING"
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{validRule(10), validRule(10)}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when priority is zero", func() {
+		spec.RoutingMode = "ROUTING_RULE_THEN_API_MAPPING"
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{validRule(0)}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when priority exceeds 1,000,000", func() {
+		spec.RoutingMode = "ROUTING_RULE_THEN_API_MAPPING"
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{validRule(1000001)}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a rule has no conditions", func() {
+		spec.RoutingMode = "ROUTING_RULE_THEN_API_MAPPING"
+		rule := validRule(10)
+		rule.Conditions = nil
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{rule}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a condition sets both base_paths and header", func() {
+		spec.RoutingMode = "ROUTING_RULE_THEN_API_MAPPING"
+		rule := validRule(10)
+		rule.Conditions = []*AwsHttpApiDomainRoutingRuleCondition{
+			{
+				BasePaths: []string{"orders"},
+				Header:    &AwsHttpApiDomainRoutingRuleHeaderMatch{Name: "x-env", ValueGlob: "beta"},
+			},
+		}
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{rule}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a condition sets neither base_paths nor header", func() {
+		spec.RoutingMode = "ROUTING_RULE_THEN_API_MAPPING"
+		rule := validRule(10)
+		rule.Conditions = []*AwsHttpApiDomainRoutingRuleCondition{{}}
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{rule}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a rule omits api_id", func() {
+		spec.RoutingMode = "ROUTING_RULE_THEN_API_MAPPING"
+		rule := validRule(10)
+		rule.ApiId = nil
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{rule}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a rule omits stage", func() {
+		spec.RoutingMode = "ROUTING_RULE_THEN_API_MAPPING"
+		rule := validRule(10)
+		rule.Stage = ""
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{rule}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a header match name exceeds 40 characters", func() {
+		spec.RoutingMode = "ROUTING_RULE_ONLY"
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{
+			{
+				Priority: 5,
+				Conditions: []*AwsHttpApiDomainRoutingRuleCondition{
+					{Header: &AwsHttpApiDomainRoutingRuleHeaderMatch{
+						Name:      "x-this-header-name-is-way-over-forty-characters-long",
+						ValueGlob: "v",
+					}},
+				},
+				ApiId: strRef("api-abc123"),
+				Stage: "$default",
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a header match glob exceeds 128 characters", func() {
+		longGlob := make([]byte, 129)
+		for i := range longGlob {
+			longGlob[i] = 'a'
+		}
+		spec.RoutingMode = "ROUTING_RULE_ONLY"
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{
+			{
+				Priority: 5,
+				Conditions: []*AwsHttpApiDomainRoutingRuleCondition{
+					{Header: &AwsHttpApiDomainRoutingRuleHeaderMatch{
+						Name:      "x-env",
+						ValueGlob: string(longGlob),
+					}},
+				},
+				ApiId: strRef("api-abc123"),
+				Stage: "$default",
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a base path entry is empty", func() {
+		spec.RoutingMode = "ROUTING_RULE_THEN_API_MAPPING"
+		rule := validRule(10)
+		rule.Conditions = []*AwsHttpApiDomainRoutingRuleCondition{{BasePaths: []string{""}}}
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{rule}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
 })

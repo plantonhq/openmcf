@@ -55,9 +55,6 @@ entries:
   - kind:AwsFsxWindowsFileSystem
   - kind:AwsGlobalAccelerator
   - kind:AwsGlueCatalogDatabase
-  - kind:AwsHttpApiDomain
-  - kind:AwsHttpApiGateway
-  - kind:AwsHttpApiVpcLink
   - kind:AwsIamInstanceProfile
   - kind:AwsIamOidcProvider
   - kind:AwsIamPolicy

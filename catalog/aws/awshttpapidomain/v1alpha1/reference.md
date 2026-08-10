@@ -51,8 +51,32 @@ spec:
   domainName: api.example.com
   certificateArn:
     value: arn:aws:acm:us-west-2:123456789012:certificate/abc-123
+  # AWS-issued public certificate proving domain ownership -- required when
+  # the TLS certificate is Private-CA-issued or mTLS uses an imported cert.
+  ownershipVerificationCertificateArn:
+    value: arn:aws:acm:us-west-2:123456789012:certificate/own-456
   apiMappings:
     - apiId:
+        value: a1b2c3d4
+      stage: $default
+  # Rules first (by ascending priority); unmatched requests fall back to the
+  # api_mappings above.
+  routingMode: ROUTING_RULE_THEN_API_MAPPING
+  routingRules:
+    - priority: 10
+      conditions:
+        - basePaths:
+            - orders
+      apiId:
+        value: e5f6a7b8
+      stage: $default
+      stripBasePath: true
+    - priority: 20
+      conditions:
+        - header:
+            name: x-tenant-id
+            valueGlob: tenant-a-*
+      apiId:
         value: a1b2c3d4
       stage: $default
 ```
@@ -72,6 +96,18 @@ spec:
 | `spec.apiMappings[].apiId` | `string \| valueFrom` | yes |  | AwsHttpApiGateway (`status.outputs.api_id`) |
 | `spec.apiMappings[].stage` | `string` | yes |  |  |
 | `spec.apiMappings[].apiMappingKey` | `string` |  |  |  |
+| `spec.ownershipVerificationCertificateArn` | `string \| valueFrom` |  |  | AwsCertManagerCert (`status.outputs.cert_arn`) |
+| `spec.routingMode` | `string` |  |  |  |
+| `spec.routingRules` | `[]AwsHttpApiDomainRoutingRule` |  |  |  |
+| `spec.routingRules[].priority` | `int32` |  |  |  |
+| `spec.routingRules[].conditions` | `[]AwsHttpApiDomainRoutingRuleCondition` | yes |  |  |
+| `spec.routingRules[].conditions[].basePaths` | `[]string` |  |  |  |
+| `spec.routingRules[].conditions[].header` | `AwsHttpApiDomainRoutingRuleHeaderMatch` |  |  |  |
+| `spec.routingRules[].conditions[].header.name` | `string` | yes |  |  |
+| `spec.routingRules[].conditions[].header.valueGlob` | `string` | yes |  |  |
+| `spec.routingRules[].apiId` | `string \| valueFrom` | yes |  | AwsHttpApiGateway (`status.outputs.api_id`) |
+| `spec.routingRules[].stage` | `string` | yes |  |  |
+| `spec.routingRules[].stripBasePath` | `bool` |  |  |  |
 
 ## Field Details
 
@@ -191,10 +227,82 @@ by API Gateway v2.
 
 - rule: {"string":{"pattern":"^[^/]*$"}}
 
+### spec.ownershipVerificationCertificateArn
+
+`string | valueFrom`
+
+- references: AwsCertManagerCert (`status.outputs.cert_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsCertManagerCert, name: <that resource's name>, fieldPath: status.outputs.cert_arn}} -- a bare string does not parse
+
+### spec.routingMode
+
+`string`
+
+### spec.routingRules
+
+`[]AwsHttpApiDomainRoutingRule`
+
+### spec.routingRules[].priority
+
+`int32`
+
+- rule: {"int32":{"lte":1000000,"gte":1}}
+
+### spec.routingRules[].conditions
+
+`[]AwsHttpApiDomainRoutingRuleCondition` · required
+
+- rule: {"repeated":{"minItems":"1"}}
+- rule: each routing rule condition must set exactly one of base_paths or header
+
+### spec.routingRules[].conditions[].basePaths
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.routingRules[].conditions[].header
+
+`AwsHttpApiDomainRoutingRuleHeaderMatch`
+
+### spec.routingRules[].conditions[].header.name
+
+`string` · required
+
+- rule: {"string":{"minLen":"1","maxLen":"40"}}
+
+### spec.routingRules[].conditions[].header.valueGlob
+
+`string` · required
+
+- rule: {"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.routingRules[].apiId
+
+`string | valueFrom` · required
+
+- references: AwsHttpApiGateway (`status.outputs.api_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsHttpApiGateway, name: <that resource's name>, fieldPath: status.outputs.api_id}} -- a bare string does not parse
+
+### spec.routingRules[].stage
+
+`string` · required
+
+- rule: {"string":{"minLen":"1"}}
+
+### spec.routingRules[].stripBasePath
+
+`bool`
+
 ## Validation Rules
 
 - `ip_address_type_valid`: ip_address_type must be 'ipv4' or 'dualstack' when set
 - `api_mapping_keys_unique`: api_mapping_key values must be unique across api_mappings (only one API can serve the domain root, and each path key can carry one API)
+- `routing_mode_valid`: routing_mode must be 'API_MAPPING_ONLY', 'ROUTING_RULE_ONLY', or 'ROUTING_RULE_THEN_API_MAPPING' when set
+- `routing_rules_require_rule_mode`: routing_rules require routing_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' -- under the default API_MAPPING_ONLY mode the rules would never be evaluated
+- `rule_mode_requires_routing_rules`: routing_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' requires at least one routing_rules entry
+- `routing_rule_priorities_unique`: routing_rules priority values must be unique -- AWS rejects two rules with the same priority on one domain
 
 ## Outputs
 
@@ -215,6 +323,8 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.certificateArn` | AwsCertManagerCert | `status.outputs.cert_arn` |
 | `spec.apiMappings[].apiId` | AwsHttpApiGateway | `status.outputs.api_id` |
+| `spec.ownershipVerificationCertificateArn` | AwsCertManagerCert | `status.outputs.cert_arn` |
+| `spec.routingRules[].apiId` | AwsHttpApiGateway | `status.outputs.api_id` |
 
 ## See Also
 

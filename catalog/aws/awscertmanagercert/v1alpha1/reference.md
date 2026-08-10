@@ -324,6 +324,7 @@ Fields on other kinds that can point at this resource:
 | AwsCloudFront | `spec.viewerCertificate.acmCertificateArn` | `status.outputs.cert_arn` |
 | AwsCognitoUserPool | `spec.domain.certificateArn` | `status.outputs.cert_arn` |
 | AwsHttpApiDomain | `spec.certificateArn` | `status.outputs.cert_arn` |
+| AwsHttpApiDomain | `spec.ownershipVerificationCertificateArn` | `status.outputs.cert_arn` |
 | AwsLbListener | `spec.certificateArn` | `status.outputs.cert_arn` |
 | AwsLbListener | `spec.additionalCertificateArns` | `status.outputs.cert_arn` |
 | AwsOpenSearchDomain | `spec.domainEndpointOptions.customEndpointCertificateArn` | `status.outputs.cert_arn` |

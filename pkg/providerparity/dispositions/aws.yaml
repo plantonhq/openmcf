@@ -175,19 +175,16 @@ resources:
     reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
   - resource: aws_apigatewayv2_deployment
     disposition: model-planned
-    reason: "WebSocket-API companion surface; folds into the existing AwsHttpApiGateway kind as its spec deepens"
+    reason: "judged into the planned AwsWebSocketApiGateway kind (WebSocket APIs are their own protocol surface -- AwsHttpApiGateway records that boundary in its spec); explicit deployments are the WebSocket publish mechanism, while HTTP APIs deploy via the stage's auto_deploy, already modeled on AwsHttpApiGateway"
   - resource: aws_apigatewayv2_integration_response
     disposition: model-planned
-    reason: "WebSocket-API companion surface; folds into the existing AwsHttpApiGateway kind as its spec deepens"
+    reason: "judged into the planned AwsWebSocketApiGateway kind -- integration responses exist only in the WebSocket request/response model; HTTP APIs have no integration-response concept (they transform via response_parameters, already modeled on AwsHttpApiGateway)"
   - resource: aws_apigatewayv2_model
     disposition: model-planned
-    reason: "WebSocket-API companion surface; folds into the existing AwsHttpApiGateway kind as its spec deepens"
+    reason: "judged into the planned AwsWebSocketApiGateway kind -- request models are consumed via route request_models/model_selection_expression, WebSocket-only route surface; HTTP APIs never reference models"
   - resource: aws_apigatewayv2_route_response
     disposition: model-planned
-    reason: "WebSocket-API companion surface; folds into the existing AwsHttpApiGateway kind as its spec deepens"
-  - resource: aws_apigatewayv2_routing_rule
-    disposition: model-planned
-    reason: "WebSocket-API companion surface; folds into the existing AwsHttpApiGateway kind as its spec deepens"
+    reason: "judged into the planned AwsWebSocketApiGateway kind -- route responses implement WebSocket two-way communication (only the $default route response is supported); HTTP APIs have no route-response concept"
   - resource: aws_app_cookie_stickiness_policy
     disposition: excluded-deprecated
     reason: "Classic Load Balancer surface, superseded by ALB/NLB (covered by AwsAlb and AwsNlb)"
