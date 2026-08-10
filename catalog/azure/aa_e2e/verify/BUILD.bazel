@@ -57,6 +57,8 @@ go_library(
         "linux_web_app.go",
         "load_balancer.go",
         "log_analytics_workspace.go",
+        "machine_learning_compute_cluster.go",
+        "machine_learning_compute_instance.go",
         "machine_learning_datastore.go",
         "machine_learning_workspace.go",
         "managed_disk.go",

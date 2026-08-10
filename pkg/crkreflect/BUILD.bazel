@@ -240,6 +240,8 @@ go_library(
         "//catalog/azure/azureloadbalancer/v1alpha1",
         "//catalog/azure/azurelocalnetworkgateway/v1alpha1",
         "//catalog/azure/azureloganalyticsworkspace/v1alpha1",
+        "//catalog/azure/azuremachinelearningcomputecluster/v1alpha1",
+        "//catalog/azure/azuremachinelearningcomputeinstance/v1alpha1",
         "//catalog/azure/azuremachinelearningdatastore/v1alpha1",
         "//catalog/azure/azuremachinelearningworkspace/v1alpha1",
         "//catalog/azure/azuremanageddisk/v1alpha1",

@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuremachinelearningcomputecluster
+spec:
+  # The cluster's identity is its full ARM resource ID
+  # (.../workspaces/{ws}/computes/{name}) -- ARM addresses every ML
+  # compute (clusters and instances alike) in the same child
+  # collection.
+  values:
+    - name: machine_learning_compute_cluster_id
+      derivations:
+        - from_stack_output: machine_learning_compute_cluster_id
+      where_to_find: >-
+        Compose {workspace-id}/computes/{cluster-name}, or `az ml
+        compute show -g <rg> --workspace-name <ws> -n <name>
+        --query id`.

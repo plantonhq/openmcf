@@ -400,6 +400,8 @@ Fields on other kinds that can point at this resource:
 | AzureLinuxWebApp | `spec.siteConfig.scmIpRestrictions[].virtualNetworkSubnetId` | `status.outputs.subnet_id` |
 | AzureLinuxWebApp | `spec.virtualNetworkSubnetId` | `status.outputs.subnet_id` |
 | AzureLoadBalancer | `spec.frontendIpConfigurations[].subnetId` | `status.outputs.subnet_id` |
+| AzureMachineLearningComputeCluster | `spec.subnetId` | `status.outputs.subnet_id` |
+| AzureMachineLearningComputeInstance | `spec.subnetId` | `status.outputs.subnet_id` |
 | AzureMachineLearningWorkspace | `spec.serverlessCompute.subnetId` | `status.outputs.subnet_id` |
 | AzureMssqlServer | `spec.virtualNetworkRules[].subnetId` | `status.outputs.subnet_id` |
 | AzureMysqlFlexibleServer | `spec.delegatedSubnetId` | `status.outputs.subnet_id` |

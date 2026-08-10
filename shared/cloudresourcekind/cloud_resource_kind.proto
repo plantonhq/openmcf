@@ -2309,6 +2309,22 @@ enum CloudResourceKind {
     id_prefix: "azmlds"
     prerequisites: [AzureMachineLearningWorkspace]
   }];
+  // An ARM child of its workspace (.../computes/{name}) -- the
+  // auto-scaling pool of VMs training jobs run on.
+  AzureMachineLearningComputeCluster = 2165 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlcc"
+    prerequisites: [AzureMachineLearningWorkspace]
+  }];
+  // An ARM child of its workspace (.../computes/{name}) -- a single
+  // always-on VM serving as one data scientist's cloud workstation.
+  AzureMachineLearningComputeInstance = 2166 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlci"
+    prerequisites: [AzureMachineLearningWorkspace]
+  }];
 
   // 3000–3999: GCP resources
   GcpArtifactRegistryRepo = 3000 [(kind_meta) = {

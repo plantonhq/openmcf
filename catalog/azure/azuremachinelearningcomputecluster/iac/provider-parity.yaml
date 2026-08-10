@@ -1,0 +1,26 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name (nested block arguments derive as
+# spec.<block>.<arg>: the scale_settings, identity, and ssh blocks all
+# match that way). Every exclusion carries its reason: omission is a
+# decision, never an accident.
+
+resources:
+  azurerm_machine_learning_compute_cluster:
+    mappings:
+      # The workspace reference: the family models the parent as
+      # workspace_id (a typed AzureMachineLearningWorkspace ref).
+      - spec: spec.workspace_id
+        arg: machine_learning_workspace_id
+      # The family-wide rename: the spec models the provider's
+      # `location` as `region`. On this kind it is the NODES' region
+      # (clusters may run away from the workspace's region).
+      - spec: spec.region
+        arg: location
+      # The subnet reference: the spec models the provider's
+      # `subnet_resource_id` as a typed AzureSubnet ref.
+      - spec: spec.subnet_id
+        arg: subnet_resource_id

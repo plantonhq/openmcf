@@ -448,6 +448,24 @@ func TestAzureMachineLearningDatastore_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningdatastore", "terraform")
 }
 
+// --- Azure Machine Learning Compute Cluster (composed: fixture workspace -> a scale-to-zero dedicated cluster with a system identity; the compute OBJECT is the proof -- no node ever provisions, zero VM cost) ---
+
+func TestAzureMachineLearningComputeCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningcomputecluster", "pulumi")
+}
+func TestAzureMachineLearningComputeCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningcomputecluster", "terraform")
+}
+
+// --- Azure Machine Learning Compute Instance (composed: fixture workspace -> one small workstation VM with a system identity; the cloud-side name carries the run-id token -- instance names are reserved region-wide per subscription) ---
+
+func TestAzureMachineLearningComputeInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningcomputeinstance", "pulumi")
+}
+func TestAzureMachineLearningComputeInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningcomputeinstance", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {

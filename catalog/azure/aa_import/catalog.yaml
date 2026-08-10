@@ -213,3 +213,12 @@ spec:
       pulumi_type: azure:machinelearning/datastoreFileshare:DatastoreFileshare
       id_format: "{datastore_id}"
       write_normalized_attributes: [account_key, shared_access_signature]
+    # The ML computes (cluster and instance) share ONE ARM child
+    # collection (.../workspaces/{ws}/computes/{name}) -- each kind is
+    # a single-id import keyed on its own primary output.
+    - terraform_type: azurerm_machine_learning_compute_cluster
+      pulumi_type: azure:machinelearning/computeCluster:ComputeCluster
+      id_format: "{machine_learning_compute_cluster_id}"
+    - terraform_type: azurerm_machine_learning_compute_instance
+      pulumi_type: azure:machinelearning/computeInstance:ComputeInstance
+      id_format: "{machine_learning_compute_instance_id}"

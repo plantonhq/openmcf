@@ -1455,6 +1455,8 @@ Allowed values (use exactly as shown):
 - `AzureCognitiveAccountProject` -- An ARM child of its account: an AI Foundry project exists only on an "AIServices"-kind account with project management enabled.
 - `AzureMachineLearningWorkspace` -- The workspace REQUIRES all three companion services at creation (default storage, secrets vault, telemetry) -- genuine deploy-order prerequisites, each with its own fixture profile.
 - `AzureMachineLearningDatastore` -- An ARM child of its workspace. The storage target (container, filesystem or share) is scenario-declared via the e2e-prerequisites annotation -- only the blob scenario needs a container, so it is not a kind-wide prerequisite.
+- `AzureMachineLearningComputeCluster` -- An ARM child of its workspace (.../computes/{name}) -- the auto-scaling pool of VMs training jobs run on.
+- `AzureMachineLearningComputeInstance` -- An ARM child of its workspace (.../computes/{name}) -- a single always-on VM serving as one data scientist's cloud workstation.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -2255,6 +2257,8 @@ Allowed values (use exactly as shown):
 - `AzureCognitiveAccountProject` -- An ARM child of its account: an AI Foundry project exists only on an "AIServices"-kind account with project management enabled.
 - `AzureMachineLearningWorkspace` -- The workspace REQUIRES all three companion services at creation (default storage, secrets vault, telemetry) -- genuine deploy-order prerequisites, each with its own fixture profile.
 - `AzureMachineLearningDatastore` -- An ARM child of its workspace. The storage target (container, filesystem or share) is scenario-declared via the e2e-prerequisites annotation -- only the blob scenario needs a container, so it is not a kind-wide prerequisite.
+- `AzureMachineLearningComputeCluster` -- An ARM child of its workspace (.../computes/{name}) -- the auto-scaling pool of VMs training jobs run on.
+- `AzureMachineLearningComputeInstance` -- An ARM child of its workspace (.../computes/{name}) -- a single always-on VM serving as one data scientist's cloud workstation.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -4203,6 +4207,8 @@ Allowed values (use exactly as shown):
 - `AzureCognitiveAccountProject` -- An ARM child of its account: an AI Foundry project exists only on an "AIServices"-kind account with project management enabled.
 - `AzureMachineLearningWorkspace` -- The workspace REQUIRES all three companion services at creation (default storage, secrets vault, telemetry) -- genuine deploy-order prerequisites, each with its own fixture profile.
 - `AzureMachineLearningDatastore` -- An ARM child of its workspace. The storage target (container, filesystem or share) is scenario-declared via the e2e-prerequisites annotation -- only the blob scenario needs a container, so it is not a kind-wide prerequisite.
+- `AzureMachineLearningComputeCluster` -- An ARM child of its workspace (.../computes/{name}) -- the auto-scaling pool of VMs training jobs run on.
+- `AzureMachineLearningComputeInstance` -- An ARM child of its workspace (.../computes/{name}) -- a single always-on VM serving as one data scientist's cloud workstation.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -5003,6 +5009,8 @@ Allowed values (use exactly as shown):
 - `AzureCognitiveAccountProject` -- An ARM child of its account: an AI Foundry project exists only on an "AIServices"-kind account with project management enabled.
 - `AzureMachineLearningWorkspace` -- The workspace REQUIRES all three companion services at creation (default storage, secrets vault, telemetry) -- genuine deploy-order prerequisites, each with its own fixture profile.
 - `AzureMachineLearningDatastore` -- An ARM child of its workspace. The storage target (container, filesystem or share) is scenario-declared via the e2e-prerequisites annotation -- only the blob scenario needs a container, so it is not a kind-wide prerequisite.
+- `AzureMachineLearningComputeCluster` -- An ARM child of its workspace (.../computes/{name}) -- the auto-scaling pool of VMs training jobs run on.
+- `AzureMachineLearningComputeInstance` -- An ARM child of its workspace (.../computes/{name}) -- a single always-on VM serving as one data scientist's cloud workstation.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -6992,6 +7000,8 @@ Allowed values (use exactly as shown):
 - `AzureCognitiveAccountProject` -- An ARM child of its account: an AI Foundry project exists only on an "AIServices"-kind account with project management enabled.
 - `AzureMachineLearningWorkspace` -- The workspace REQUIRES all three companion services at creation (default storage, secrets vault, telemetry) -- genuine deploy-order prerequisites, each with its own fixture profile.
 - `AzureMachineLearningDatastore` -- An ARM child of its workspace. The storage target (container, filesystem or share) is scenario-declared via the e2e-prerequisites annotation -- only the blob scenario needs a container, so it is not a kind-wide prerequisite.
+- `AzureMachineLearningComputeCluster` -- An ARM child of its workspace (.../computes/{name}) -- the auto-scaling pool of VMs training jobs run on.
+- `AzureMachineLearningComputeInstance` -- An ARM child of its workspace (.../computes/{name}) -- a single always-on VM serving as one data scientist's cloud workstation.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -7792,6 +7802,8 @@ Allowed values (use exactly as shown):
 - `AzureCognitiveAccountProject` -- An ARM child of its account: an AI Foundry project exists only on an "AIServices"-kind account with project management enabled.
 - `AzureMachineLearningWorkspace` -- The workspace REQUIRES all three companion services at creation (default storage, secrets vault, telemetry) -- genuine deploy-order prerequisites, each with its own fixture profile.
 - `AzureMachineLearningDatastore` -- An ARM child of its workspace. The storage target (container, filesystem or share) is scenario-declared via the e2e-prerequisites annotation -- only the blob scenario needs a container, so it is not a kind-wide prerequisite.
+- `AzureMachineLearningComputeCluster` -- An ARM child of its workspace (.../computes/{name}) -- the auto-scaling pool of VMs training jobs run on.
+- `AzureMachineLearningComputeInstance` -- An ARM child of its workspace (.../computes/{name}) -- a single always-on VM serving as one data scientist's cloud workstation.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`

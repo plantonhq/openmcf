@@ -223,6 +223,8 @@ import (
 	azureloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureloadbalancer/v1alpha1"
 	azurelocalnetworkgatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurelocalnetworkgateway/v1alpha1"
 	azureloganalyticsworkspacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureloganalyticsworkspace/v1alpha1"
+	azuremachinelearningcomputeclusterv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremachinelearningcomputecluster/v1alpha1"
+	azuremachinelearningcomputeinstancev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremachinelearningcomputeinstance/v1alpha1"
 	azuremachinelearningdatastorev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremachinelearningdatastore/v1alpha1"
 	azuremachinelearningworkspacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremachinelearningworkspace/v1alpha1"
 	azuremanageddiskv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremanageddisk/v1alpha1"
@@ -887,6 +889,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureLoadBalancer:                              &azureloadbalancerv1alpha1.AzureLoadBalancer{},
 	cloudresourcekind.CloudResourceKind_AzureLocalNetworkGateway:                       &azurelocalnetworkgatewayv1alpha1.AzureLocalNetworkGateway{},
 	cloudresourcekind.CloudResourceKind_AzureLogAnalyticsWorkspace:                     &azureloganalyticsworkspacev1alpha1.AzureLogAnalyticsWorkspace{},
+	cloudresourcekind.CloudResourceKind_AzureMachineLearningComputeCluster:             &azuremachinelearningcomputeclusterv1alpha1.AzureMachineLearningComputeCluster{},
+	cloudresourcekind.CloudResourceKind_AzureMachineLearningComputeInstance:            &azuremachinelearningcomputeinstancev1alpha1.AzureMachineLearningComputeInstance{},
 	cloudresourcekind.CloudResourceKind_AzureMachineLearningDatastore:                  &azuremachinelearningdatastorev1alpha1.AzureMachineLearningDatastore{},
 	cloudresourcekind.CloudResourceKind_AzureMachineLearningWorkspace:                  &azuremachinelearningworkspacev1alpha1.AzureMachineLearningWorkspace{},
 	cloudresourcekind.CloudResourceKind_AzureManagedDisk:                               &azuremanageddiskv1alpha1.AzureManagedDisk{},

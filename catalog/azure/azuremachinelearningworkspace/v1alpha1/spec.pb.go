@@ -369,6 +369,10 @@ type AzureMachineLearningWorkspaceSpec struct {
 	// default, ACCESS_KEY. IDENTITY uses the workspace identity instead
 	// of account keys (the hardened posture; the identity needs Blob
 	// Data Contributor on the storage account).
+	//
+	// PARITY-EXCEPTION: the Pulumi engine's classic SDK does not expose
+	// this argument, so workspaces that set it deploy via the Terraform
+	// engine only -- the Pulumi module fails loudly when it is set.
 	StorageAccountAccessType AzureMachineLearningWorkspaceStorageAccountAccessType `protobuf:"varint,22,opt,name=storage_account_access_type,json=storageAccountAccessType,proto3,enum=dev.planton.azure.azuremachinelearningworkspace.v1alpha1.AzureMachineLearningWorkspaceStorageAccountAccessType" json:"storage_account_access_type,omitempty"`
 	// Settings for the workspace's serverless compute (the managed
 	// on-demand compute for jobs without a named cluster).

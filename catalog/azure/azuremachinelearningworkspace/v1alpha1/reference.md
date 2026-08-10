@@ -717,6 +717,8 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureMachineLearningComputeCluster | `spec.workspaceId` | `status.outputs.machine_learning_workspace_id` |
+| AzureMachineLearningComputeInstance | `spec.workspaceId` | `status.outputs.machine_learning_workspace_id` |
 | AzureMachineLearningDatastore | `spec.workspaceId` | `status.outputs.machine_learning_workspace_id` |
 
 ## See Also
