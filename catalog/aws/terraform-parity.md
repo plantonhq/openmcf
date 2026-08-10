@@ -32,7 +32,7 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
 | Distinct provider resources consumed | 226 |
-| Spec fields authored across all kinds | 4156 |
+| Spec fields authored across all kinds | 4180 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**21 of 112 kinds are at total accounting; 77 proven live.**
+**22 of 112 kinds are at total accounting; 77 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -112,7 +112,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsIamRole | 16 | 5 | 0 | 0 | 20 | ❌ | — |
 | AwsIamUser | 15 | 3 | 0 | 0 | 17 | ❌ | ✅ pulumi, terraform |
 | AwsInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
-| AwsKinesisFirehose | 337 | 1 | 0 | 0 | 676 | ❌ | ✅ pulumi, terraform |
+| AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsKinesisStream | 17 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
 | AwsKinesisStreamConsumer | 8 | 3 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
 | AwsKmsKey | 19 | 9 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |

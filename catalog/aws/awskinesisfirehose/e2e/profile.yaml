@@ -24,11 +24,12 @@ spec:
   # cluster, whose own live lane is deferred); the OpenSearch, OpenSearch
   # Serverless, HTTP endpoint, Redshift, and Snowflake destinations
   # (each needs live external infrastructure or an external SaaS
-  # account); and the Iceberg destination (its Glue catalog ARN embeds
-  # the AWS account ID, which a committed manifest cannot carry).
+  # account); the Iceberg destination (its Glue catalog ARN embeds
+  # the AWS account ID, which a committed manifest cannot carry); the
+  # data-format-conversion serde arms and the Lambda processor's
+  # invocation role (both need a live Glue table / Lambda function --
+  # proven offline via the canonical manifest and the
+  # 04-s3-parquet-analytics preset on both engines).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 20

@@ -70,17 +70,71 @@ metadata:
     pulumi.planton.dev/stack.name: dev.AwsKinesisFirehose.test-firehose
 spec:
   region: us-west-2
-  # Extended S3 destination: data lake storage with Direct PUT source
+  # Extended S3 destination: data lake storage with Direct PUT source.
+  # This manifest is the offline plan/preview fixture for the arms no live
+  # scenario can carry (the Glue-backed ORC conversion, the Hive JSON
+  # deserializer, the backup-leg CloudWatch logging, and the Lambda
+  # processor's dedicated invocation role) -- the parquet/OpenX tuning arms
+  # ride the 04-s3-parquet-analytics preset.
   extendedS3:
     bucketArn:
       value: arn:aws:s3:::my-data-lake-bucket
     roleArn:
       value: arn:aws:iam::123456789012:role/firehose-s3-role
     prefix: firehose/events/
-    compressionFormat: GZIP
+    # UNCOMPRESSED because format conversion is enabled below: ORC carries
+    # its own columnar compression, and S3-level compression must stay off.
+    compressionFormat: UNCOMPRESSED
+    fileExtension: .orc
     buffering:
       intervalInSeconds: 60
-      sizeInMbs: 5
+      sizeInMbs: 64
+    # Lambda transformation with a fractional buffer (AWS-legal 0.2-3 MiB)
+    # and a dedicated invocation role distinct from the delivery role.
+    processing:
+      enabled: true
+      processors:
+        - lambda:
+            lambdaArn:
+              value: arn:aws:lambda:us-west-2:123456789012:function:enrich-events
+            bufferSizeInMbs: 0.5
+            roleArn:
+              value: arn:aws:iam::123456789012:role/firehose-lambda-invoke
+    # JSON -> ORC conversion: Hive JSON deserializer with explicit timestamp
+    # patterns, ORC serializer tuned with bloom filters for point lookups.
+    dataFormatConversion:
+      enabled: true
+      hiveJson:
+        timestampFormats:
+          - "yyyy-MM-dd'T'HH:mm:ss"
+          - millis
+      orc:
+        compression: ZLIB
+        stripeSizeBytes: 16777216
+        bloomFilterColumns:
+          - customer_id
+        bloomFilterFalsePositiveProbability: 0.01
+        formatVersion: V0_12
+        rowIndexStride: 5000
+      schema:
+        databaseName: analytics_db
+        tableName: events_orc
+        roleArn:
+          value: arn:aws:iam::123456789012:role/firehose-glue-access-role
+    # Source-record backup with CloudWatch logging on the backup S3 leg --
+    # the s3-level logging block, distinct from destination-level logging.
+    s3BackupMode: Enabled
+    s3Backup:
+      bucketArn:
+        value: arn:aws:s3:::my-data-lake-backup-bucket
+      roleArn:
+        value: arn:aws:iam::123456789012:role/firehose-s3-role
+      prefix: firehose/raw/
+      compressionFormat: GZIP
+      logging:
+        enabled: true
+        logGroupName: /aws/kinesisfirehose/test-firehose
+        logStreamName: S3BackupDelivery
 ```
 
 ## Spec Fields
@@ -131,9 +185,10 @@ spec:
 | `spec.extendedS3.processing.processors` | `[]AwsKinesisFirehoseProcessor` |  |  |  |
 | `spec.extendedS3.processing.processors[].lambda` | `AwsKinesisFirehoseLambdaProcessor` |  |  |  |
 | `spec.extendedS3.processing.processors[].lambda.lambdaArn` | `string \| valueFrom` | yes |  | AwsLambda (`status.outputs.function_arn`) |
-| `spec.extendedS3.processing.processors[].lambda.bufferSizeInMbs` | `int32` |  |  |  |
+| `spec.extendedS3.processing.processors[].lambda.bufferSizeInMbs` | `double` |  |  |  |
 | `spec.extendedS3.processing.processors[].lambda.bufferIntervalInSeconds` | `int32` |  |  |  |
 | `spec.extendedS3.processing.processors[].lambda.numberOfRetries` | `int32` |  |  |  |
+| `spec.extendedS3.processing.processors[].lambda.roleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.extendedS3.processing.processors[].metadataExtraction` | `AwsKinesisFirehoseMetadataExtractionProcessor` |  |  |  |
 | `spec.extendedS3.processing.processors[].metadataExtraction.query` | `string` | yes |  |  |
 | `spec.extendedS3.processing.processors[].metadataExtraction.jsonParsingEngine` | `string` |  |  |  |
@@ -155,10 +210,30 @@ spec:
 | `spec.extendedS3.dynamicPartitioning.retryDurationInSeconds` | `int32` |  |  |  |
 | `spec.extendedS3.dataFormatConversion` | `AwsKinesisFirehoseDataFormatConversion` |  |  |  |
 | `spec.extendedS3.dataFormatConversion.enabled` | `bool` |  |  |  |
-| `spec.extendedS3.dataFormatConversion.inputFormat` | `string` |  |  |  |
-| `spec.extendedS3.dataFormatConversion.outputFormat` | `string` |  |  |  |
-| `spec.extendedS3.dataFormatConversion.parquetCompression` | `string` |  |  |  |
-| `spec.extendedS3.dataFormatConversion.orcCompression` | `string` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.openXJson` | `AwsKinesisFirehoseOpenXJsonDeserializer` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.openXJson.caseInsensitive` | `bool` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.openXJson.columnToJsonKeyMappings` | `map<string, string>` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.openXJson.convertDotsInJsonKeysToUnderscores` | `bool` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.hiveJson` | `AwsKinesisFirehoseHiveJsonDeserializer` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.hiveJson.timestampFormats` | `[]string` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.parquet` | `AwsKinesisFirehoseParquetSerializer` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.parquet.compression` | `string` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.parquet.blockSizeBytes` | `int64` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.parquet.pageSizeBytes` | `int64` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.parquet.maxPaddingBytes` | `int64` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.parquet.enableDictionaryCompression` | `bool` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.parquet.writerVersion` | `string` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.orc` | `AwsKinesisFirehoseOrcSerializer` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.orc.compression` | `string` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.orc.blockSizeBytes` | `int64` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.orc.stripeSizeBytes` | `int64` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.orc.bloomFilterColumns` | `[]string` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.orc.bloomFilterFalsePositiveProbability` | `double` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.orc.dictionaryKeyThreshold` | `double` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.orc.enablePadding` | `bool` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.orc.paddingTolerance` | `double` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.orc.formatVersion` | `string` |  |  |  |
+| `spec.extendedS3.dataFormatConversion.orc.rowIndexStride` | `int32` |  |  |  |
 | `spec.extendedS3.dataFormatConversion.schema` | `AwsKinesisFirehoseGlueSchemaConfig` |  |  |  |
 | `spec.extendedS3.dataFormatConversion.schema.databaseName` | `string` | yes |  |  |
 | `spec.extendedS3.dataFormatConversion.schema.tableName` | `string` | yes |  |  |
@@ -198,9 +273,10 @@ spec:
 | `spec.opensearch.processing.processors` | `[]AwsKinesisFirehoseProcessor` |  |  |  |
 | `spec.opensearch.processing.processors[].lambda` | `AwsKinesisFirehoseLambdaProcessor` |  |  |  |
 | `spec.opensearch.processing.processors[].lambda.lambdaArn` | `string \| valueFrom` | yes |  | AwsLambda (`status.outputs.function_arn`) |
-| `spec.opensearch.processing.processors[].lambda.bufferSizeInMbs` | `int32` |  |  |  |
+| `spec.opensearch.processing.processors[].lambda.bufferSizeInMbs` | `double` |  |  |  |
 | `spec.opensearch.processing.processors[].lambda.bufferIntervalInSeconds` | `int32` |  |  |  |
 | `spec.opensearch.processing.processors[].lambda.numberOfRetries` | `int32` |  |  |  |
+| `spec.opensearch.processing.processors[].lambda.roleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.opensearch.processing.processors[].metadataExtraction` | `AwsKinesisFirehoseMetadataExtractionProcessor` |  |  |  |
 | `spec.opensearch.processing.processors[].metadataExtraction.query` | `string` | yes |  |  |
 | `spec.opensearch.processing.processors[].metadataExtraction.jsonParsingEngine` | `string` |  |  |  |
@@ -249,9 +325,10 @@ spec:
 | `spec.opensearchServerless.processing.processors` | `[]AwsKinesisFirehoseProcessor` |  |  |  |
 | `spec.opensearchServerless.processing.processors[].lambda` | `AwsKinesisFirehoseLambdaProcessor` |  |  |  |
 | `spec.opensearchServerless.processing.processors[].lambda.lambdaArn` | `string \| valueFrom` | yes |  | AwsLambda (`status.outputs.function_arn`) |
-| `spec.opensearchServerless.processing.processors[].lambda.bufferSizeInMbs` | `int32` |  |  |  |
+| `spec.opensearchServerless.processing.processors[].lambda.bufferSizeInMbs` | `double` |  |  |  |
 | `spec.opensearchServerless.processing.processors[].lambda.bufferIntervalInSeconds` | `int32` |  |  |  |
 | `spec.opensearchServerless.processing.processors[].lambda.numberOfRetries` | `int32` |  |  |  |
+| `spec.opensearchServerless.processing.processors[].lambda.roleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.opensearchServerless.processing.processors[].metadataExtraction` | `AwsKinesisFirehoseMetadataExtractionProcessor` |  |  |  |
 | `spec.opensearchServerless.processing.processors[].metadataExtraction.query` | `string` | yes |  |  |
 | `spec.opensearchServerless.processing.processors[].metadataExtraction.jsonParsingEngine` | `string` |  |  |  |
@@ -304,9 +381,10 @@ spec:
 | `spec.httpEndpoint.processing.processors` | `[]AwsKinesisFirehoseProcessor` |  |  |  |
 | `spec.httpEndpoint.processing.processors[].lambda` | `AwsKinesisFirehoseLambdaProcessor` |  |  |  |
 | `spec.httpEndpoint.processing.processors[].lambda.lambdaArn` | `string \| valueFrom` | yes |  | AwsLambda (`status.outputs.function_arn`) |
-| `spec.httpEndpoint.processing.processors[].lambda.bufferSizeInMbs` | `int32` |  |  |  |
+| `spec.httpEndpoint.processing.processors[].lambda.bufferSizeInMbs` | `double` |  |  |  |
 | `spec.httpEndpoint.processing.processors[].lambda.bufferIntervalInSeconds` | `int32` |  |  |  |
 | `spec.httpEndpoint.processing.processors[].lambda.numberOfRetries` | `int32` |  |  |  |
+| `spec.httpEndpoint.processing.processors[].lambda.roleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.httpEndpoint.processing.processors[].metadataExtraction` | `AwsKinesisFirehoseMetadataExtractionProcessor` |  |  |  |
 | `spec.httpEndpoint.processing.processors[].metadataExtraction.query` | `string` | yes |  |  |
 | `spec.httpEndpoint.processing.processors[].metadataExtraction.jsonParsingEngine` | `string` |  |  |  |
@@ -374,9 +452,10 @@ spec:
 | `spec.redshift.processing.processors` | `[]AwsKinesisFirehoseProcessor` |  |  |  |
 | `spec.redshift.processing.processors[].lambda` | `AwsKinesisFirehoseLambdaProcessor` |  |  |  |
 | `spec.redshift.processing.processors[].lambda.lambdaArn` | `string \| valueFrom` | yes |  | AwsLambda (`status.outputs.function_arn`) |
-| `spec.redshift.processing.processors[].lambda.bufferSizeInMbs` | `int32` |  |  |  |
+| `spec.redshift.processing.processors[].lambda.bufferSizeInMbs` | `double` |  |  |  |
 | `spec.redshift.processing.processors[].lambda.bufferIntervalInSeconds` | `int32` |  |  |  |
 | `spec.redshift.processing.processors[].lambda.numberOfRetries` | `int32` |  |  |  |
+| `spec.redshift.processing.processors[].lambda.roleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.redshift.processing.processors[].metadataExtraction` | `AwsKinesisFirehoseMetadataExtractionProcessor` |  |  |  |
 | `spec.redshift.processing.processors[].metadataExtraction.query` | `string` | yes |  |  |
 | `spec.redshift.processing.processors[].metadataExtraction.jsonParsingEngine` | `string` |  |  |  |
@@ -425,9 +504,10 @@ spec:
 | `spec.splunk.processing.processors` | `[]AwsKinesisFirehoseProcessor` |  |  |  |
 | `spec.splunk.processing.processors[].lambda` | `AwsKinesisFirehoseLambdaProcessor` |  |  |  |
 | `spec.splunk.processing.processors[].lambda.lambdaArn` | `string \| valueFrom` | yes |  | AwsLambda (`status.outputs.function_arn`) |
-| `spec.splunk.processing.processors[].lambda.bufferSizeInMbs` | `int32` |  |  |  |
+| `spec.splunk.processing.processors[].lambda.bufferSizeInMbs` | `double` |  |  |  |
 | `spec.splunk.processing.processors[].lambda.bufferIntervalInSeconds` | `int32` |  |  |  |
 | `spec.splunk.processing.processors[].lambda.numberOfRetries` | `int32` |  |  |  |
+| `spec.splunk.processing.processors[].lambda.roleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.splunk.processing.processors[].metadataExtraction` | `AwsKinesisFirehoseMetadataExtractionProcessor` |  |  |  |
 | `spec.splunk.processing.processors[].metadataExtraction.query` | `string` | yes |  |  |
 | `spec.splunk.processing.processors[].metadataExtraction.jsonParsingEngine` | `string` |  |  |  |
@@ -485,9 +565,10 @@ spec:
 | `spec.snowflake.processing.processors` | `[]AwsKinesisFirehoseProcessor` |  |  |  |
 | `spec.snowflake.processing.processors[].lambda` | `AwsKinesisFirehoseLambdaProcessor` |  |  |  |
 | `spec.snowflake.processing.processors[].lambda.lambdaArn` | `string \| valueFrom` | yes |  | AwsLambda (`status.outputs.function_arn`) |
-| `spec.snowflake.processing.processors[].lambda.bufferSizeInMbs` | `int32` |  |  |  |
+| `spec.snowflake.processing.processors[].lambda.bufferSizeInMbs` | `double` |  |  |  |
 | `spec.snowflake.processing.processors[].lambda.bufferIntervalInSeconds` | `int32` |  |  |  |
 | `spec.snowflake.processing.processors[].lambda.numberOfRetries` | `int32` |  |  |  |
+| `spec.snowflake.processing.processors[].lambda.roleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.snowflake.processing.processors[].metadataExtraction` | `AwsKinesisFirehoseMetadataExtractionProcessor` |  |  |  |
 | `spec.snowflake.processing.processors[].metadataExtraction.query` | `string` | yes |  |  |
 | `spec.snowflake.processing.processors[].metadataExtraction.jsonParsingEngine` | `string` |  |  |  |
@@ -537,9 +618,10 @@ spec:
 | `spec.iceberg.processing.processors` | `[]AwsKinesisFirehoseProcessor` |  |  |  |
 | `spec.iceberg.processing.processors[].lambda` | `AwsKinesisFirehoseLambdaProcessor` |  |  |  |
 | `spec.iceberg.processing.processors[].lambda.lambdaArn` | `string \| valueFrom` | yes |  | AwsLambda (`status.outputs.function_arn`) |
-| `spec.iceberg.processing.processors[].lambda.bufferSizeInMbs` | `int32` |  |  |  |
+| `spec.iceberg.processing.processors[].lambda.bufferSizeInMbs` | `double` |  |  |  |
 | `spec.iceberg.processing.processors[].lambda.bufferIntervalInSeconds` | `int32` |  |  |  |
 | `spec.iceberg.processing.processors[].lambda.numberOfRetries` | `int32` |  |  |  |
+| `spec.iceberg.processing.processors[].lambda.roleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.iceberg.processing.processors[].metadataExtraction` | `AwsKinesisFirehoseMetadataExtractionProcessor` |  |  |  |
 | `spec.iceberg.processing.processors[].metadataExtraction.query` | `string` | yes |  |  |
 | `spec.iceberg.processing.processors[].metadataExtraction.jsonParsingEngine` | `string` |  |  |  |
@@ -618,6 +700,7 @@ configured, server-side encryption (sse_enabled) must NOT be set -- the
 source cluster handles its own encryption.
 
 - rule: connectivity must be 'PRIVATE' or 'PUBLIC'
+- rule: read_from_timestamp must be an RFC 3339 timestamp (e.g., '2026-05-01T00:00:00Z') when set
 
 ### spec.mskSource.mskClusterArn
 
@@ -994,7 +1077,7 @@ Invoke an AWS Lambda function to transform records. The function
 receives batches of records and returns transformed records with a
 status (Ok, Dropped, ProcessingFailed) per record.
 
-- rule: buffer_size_in_mbs must be between 1 and 3 when set
+- rule: buffer_size_in_mbs must be between 0.2 and 3 when set
 - rule: buffer_interval_in_seconds must be between 60 and 900 when set
 - rule: number_of_retries must be between 0 and 300 when set
 
@@ -1011,7 +1094,7 @@ version or alias qualifier to pin the deployed transformation.
 
 ### spec.extendedS3.processing.processors[].lambda.bufferSizeInMbs
 
-`int32`
+`double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
 Range: 1-3 MiB. Default: 3 MiB.
@@ -1035,6 +1118,13 @@ Range: 60-900 seconds. Default: 60 seconds.
 Number of times Firehose retries a failed Lambda invocation before
 writing the record to the error output prefix.
 Range: 0-300. Default: 3.
+
+### spec.extendedS3.processing.processors[].lambda.roleArn
+
+`string | valueFrom`
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
 
 ### spec.extendedS3.processing.processors[].metadataExtraction
 
@@ -1220,14 +1310,11 @@ Data format conversion from JSON to columnar formats (Parquet or ORC)
 using an AWS Glue Data Catalog schema. Dramatically improves query
 performance and reduces storage cost for analytics workloads.
 
-- rule: output_format is required when data format conversion is enabled
+- rule: at most one deserializer arm may be set: open_x_json or hive_json
+- rule: a deserializer arm (open_x_json or hive_json) is required when data format conversion is enabled
+- rule: at most one serializer arm may be set: parquet or orc
+- rule: a serializer arm (parquet or orc) is required when data format conversion is enabled
 - rule: schema is required when data format conversion is enabled
-- rule: input_format must be 'OPENX_JSON' or 'HIVE_JSON' when set
-- rule: output_format must be 'PARQUET' or 'ORC' when set
-- rule: parquet_compression must be 'SNAPPY', 'GZIP', or 'UNCOMPRESSED' when set
-- rule: orc_compression must be 'SNAPPY', 'ZLIB', or 'NONE' when set
-- rule: parquet_compression is only valid when output_format is 'PARQUET'
-- rule: orc_compression is only valid when output_format is 'ORC'
 
 ### spec.extendedS3.dataFormatConversion.enabled
 
@@ -1236,46 +1323,116 @@ performance and reduces storage cost for analytics workloads.
 Enable data format conversion. When true, output_format and schema are
 required.
 
-### spec.extendedS3.dataFormatConversion.inputFormat
+### spec.extendedS3.dataFormatConversion.openXJson
+
+`AwsKinesisFirehoseOpenXJsonDeserializer`
+
+### spec.extendedS3.dataFormatConversion.openXJson.caseInsensitive
+
+`bool` · optional (explicit presence)
+
+### spec.extendedS3.dataFormatConversion.openXJson.columnToJsonKeyMappings
+
+`map<string, string>`
+
+### spec.extendedS3.dataFormatConversion.openXJson.convertDotsInJsonKeysToUnderscores
+
+`bool`
+
+### spec.extendedS3.dataFormatConversion.hiveJson
+
+`AwsKinesisFirehoseHiveJsonDeserializer`
+
+### spec.extendedS3.dataFormatConversion.hiveJson.timestampFormats
+
+`[]string`
+
+### spec.extendedS3.dataFormatConversion.parquet
+
+`AwsKinesisFirehoseParquetSerializer`
+
+- rule: compression must be 'SNAPPY', 'GZIP', or 'UNCOMPRESSED' when set
+- rule: block_size_bytes must be at least 67108864 (64 MiB) when set
+- rule: page_size_bytes must be at least 65536 (64 KiB) when set
+- rule: max_padding_bytes must not be negative
+- rule: writer_version must be 'V1' or 'V2' when set
+
+### spec.extendedS3.dataFormatConversion.parquet.compression
 
 `string`
 
-Input data format for deserialization. Firehose reads incoming JSON
-records using this deserializer.
+### spec.extendedS3.dataFormatConversion.parquet.blockSizeBytes
 
-Valid values:
-- "OPENX_JSON" (default) -- OpenX JSON SerDe. Handles most JSON formats
-  including nested objects. Recommended for general use.
-- "HIVE_JSON" -- Apache Hive JSON SerDe. Use for Hive-compatible JSON
-  with custom timestamp formats.
+`int64`
 
-### spec.extendedS3.dataFormatConversion.outputFormat
+### spec.extendedS3.dataFormatConversion.parquet.pageSizeBytes
 
-`string`
+`int64`
 
-Output columnar format for serialization. Records are converted from
-JSON to this format before writing to S3.
+### spec.extendedS3.dataFormatConversion.parquet.maxPaddingBytes
 
-Valid values:
-- "PARQUET" -- Apache Parquet format. Best for read-heavy analytical
-  workloads (Athena, Spark, Presto). Excellent compression, predicate
-  pushdown, and columnar pruning.
-- "ORC" -- Apache ORC format. Best for Hive workloads. ACID support,
-  bloom filters, and built-in indexing.
+`int64`
 
-### spec.extendedS3.dataFormatConversion.parquetCompression
+### spec.extendedS3.dataFormatConversion.parquet.enableDictionaryCompression
+
+`bool`
+
+### spec.extendedS3.dataFormatConversion.parquet.writerVersion
 
 `string`
 
-Compression for Parquet output. Only used when output_format is "PARQUET".
-Valid values: "SNAPPY" (default), "GZIP", "UNCOMPRESSED".
+### spec.extendedS3.dataFormatConversion.orc
 
-### spec.extendedS3.dataFormatConversion.orcCompression
+`AwsKinesisFirehoseOrcSerializer`
+
+- rule: compression must be 'SNAPPY', 'ZLIB', or 'NONE' when set
+- rule: block_size_bytes must be at least 67108864 (64 MiB) when set
+- rule: stripe_size_bytes must be at least 8388608 (8 MiB) when set
+- rule: bloom_filter_false_positive_probability must be between 0 and 1
+- rule: dictionary_key_threshold must be between 0 and 1
+- rule: padding_tolerance must be between 0 and 1
+- rule: format_version must be 'V0_11' or 'V0_12' when set
+- rule: row_index_stride must be at least 1000 when set
+
+### spec.extendedS3.dataFormatConversion.orc.compression
 
 `string`
 
-Compression for ORC output. Only used when output_format is "ORC".
-Valid values: "SNAPPY" (default), "ZLIB", "NONE".
+### spec.extendedS3.dataFormatConversion.orc.blockSizeBytes
+
+`int64`
+
+### spec.extendedS3.dataFormatConversion.orc.stripeSizeBytes
+
+`int64`
+
+### spec.extendedS3.dataFormatConversion.orc.bloomFilterColumns
+
+`[]string`
+
+### spec.extendedS3.dataFormatConversion.orc.bloomFilterFalsePositiveProbability
+
+`double` · optional (explicit presence)
+
+### spec.extendedS3.dataFormatConversion.orc.dictionaryKeyThreshold
+
+`double`
+
+### spec.extendedS3.dataFormatConversion.orc.enablePadding
+
+`bool`
+
+### spec.extendedS3.dataFormatConversion.orc.paddingTolerance
+
+`double` · optional (explicit presence)
+
+### spec.extendedS3.dataFormatConversion.orc.formatVersion
+
+`string`
+
+### spec.extendedS3.dataFormatConversion.orc.rowIndexStride
+
+`int32`
 
 ### spec.extendedS3.dataFormatConversion.schema
 
@@ -1643,7 +1800,7 @@ Invoke an AWS Lambda function to transform records. The function
 receives batches of records and returns transformed records with a
 status (Ok, Dropped, ProcessingFailed) per record.
 
-- rule: buffer_size_in_mbs must be between 1 and 3 when set
+- rule: buffer_size_in_mbs must be between 0.2 and 3 when set
 - rule: buffer_interval_in_seconds must be between 60 and 900 when set
 - rule: number_of_retries must be between 0 and 300 when set
 
@@ -1660,7 +1817,7 @@ version or alias qualifier to pin the deployed transformation.
 
 ### spec.opensearch.processing.processors[].lambda.bufferSizeInMbs
 
-`int32`
+`double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
 Range: 1-3 MiB. Default: 3 MiB.
@@ -1684,6 +1841,13 @@ Range: 60-900 seconds. Default: 60 seconds.
 Number of times Firehose retries a failed Lambda invocation before
 writing the record to the error output prefix.
 Range: 0-300. Default: 3.
+
+### spec.opensearch.processing.processors[].lambda.roleArn
+
+`string | valueFrom`
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
 
 ### spec.opensearch.processing.processors[].metadataExtraction
 
@@ -2138,7 +2302,7 @@ Invoke an AWS Lambda function to transform records. The function
 receives batches of records and returns transformed records with a
 status (Ok, Dropped, ProcessingFailed) per record.
 
-- rule: buffer_size_in_mbs must be between 1 and 3 when set
+- rule: buffer_size_in_mbs must be between 0.2 and 3 when set
 - rule: buffer_interval_in_seconds must be between 60 and 900 when set
 - rule: number_of_retries must be between 0 and 300 when set
 
@@ -2155,7 +2319,7 @@ version or alias qualifier to pin the deployed transformation.
 
 ### spec.opensearchServerless.processing.processors[].lambda.bufferSizeInMbs
 
-`int32`
+`double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
 Range: 1-3 MiB. Default: 3 MiB.
@@ -2179,6 +2343,13 @@ Range: 60-900 seconds. Default: 60 seconds.
 Number of times Firehose retries a failed Lambda invocation before
 writing the record to the error output prefix.
 Range: 0-300. Default: 3.
+
+### spec.opensearchServerless.processing.processors[].lambda.roleArn
+
+`string | valueFrom`
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
 
 ### spec.opensearchServerless.processing.processors[].metadataExtraction
 
@@ -2676,7 +2847,7 @@ Invoke an AWS Lambda function to transform records. The function
 receives batches of records and returns transformed records with a
 status (Ok, Dropped, ProcessingFailed) per record.
 
-- rule: buffer_size_in_mbs must be between 1 and 3 when set
+- rule: buffer_size_in_mbs must be between 0.2 and 3 when set
 - rule: buffer_interval_in_seconds must be between 60 and 900 when set
 - rule: number_of_retries must be between 0 and 300 when set
 
@@ -2693,7 +2864,7 @@ version or alias qualifier to pin the deployed transformation.
 
 ### spec.httpEndpoint.processing.processors[].lambda.bufferSizeInMbs
 
-`int32`
+`double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
 Range: 1-3 MiB. Default: 3 MiB.
@@ -2717,6 +2888,13 @@ Range: 60-900 seconds. Default: 60 seconds.
 Number of times Firehose retries a failed Lambda invocation before
 writing the record to the error output prefix.
 Range: 0-300. Default: 3.
+
+### spec.httpEndpoint.processing.processors[].lambda.roleArn
+
+`string | valueFrom`
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
 
 ### spec.httpEndpoint.processing.processors[].metadataExtraction
 
@@ -3326,7 +3504,7 @@ Invoke an AWS Lambda function to transform records. The function
 receives batches of records and returns transformed records with a
 status (Ok, Dropped, ProcessingFailed) per record.
 
-- rule: buffer_size_in_mbs must be between 1 and 3 when set
+- rule: buffer_size_in_mbs must be between 0.2 and 3 when set
 - rule: buffer_interval_in_seconds must be between 60 and 900 when set
 - rule: number_of_retries must be between 0 and 300 when set
 
@@ -3343,7 +3521,7 @@ version or alias qualifier to pin the deployed transformation.
 
 ### spec.redshift.processing.processors[].lambda.bufferSizeInMbs
 
-`int32`
+`double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
 Range: 1-3 MiB. Default: 3 MiB.
@@ -3367,6 +3545,13 @@ Range: 60-900 seconds. Default: 60 seconds.
 Number of times Firehose retries a failed Lambda invocation before
 writing the record to the error output prefix.
 Range: 0-300. Default: 3.
+
+### spec.redshift.processing.processors[].lambda.roleArn
+
+`string | valueFrom`
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
 
 ### spec.redshift.processing.processors[].metadataExtraction
 
@@ -3821,7 +4006,7 @@ Invoke an AWS Lambda function to transform records. The function
 receives batches of records and returns transformed records with a
 status (Ok, Dropped, ProcessingFailed) per record.
 
-- rule: buffer_size_in_mbs must be between 1 and 3 when set
+- rule: buffer_size_in_mbs must be between 0.2 and 3 when set
 - rule: buffer_interval_in_seconds must be between 60 and 900 when set
 - rule: number_of_retries must be between 0 and 300 when set
 
@@ -3838,7 +4023,7 @@ version or alias qualifier to pin the deployed transformation.
 
 ### spec.splunk.processing.processors[].lambda.bufferSizeInMbs
 
-`int32`
+`double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
 Range: 1-3 MiB. Default: 3 MiB.
@@ -3862,6 +4047,13 @@ Range: 60-900 seconds. Default: 60 seconds.
 Number of times Firehose retries a failed Lambda invocation before
 writing the record to the error output prefix.
 Range: 0-300. Default: 3.
+
+### spec.splunk.processing.processors[].lambda.roleArn
+
+`string | valueFrom`
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
 
 ### spec.splunk.processing.processors[].metadataExtraction
 
@@ -4393,7 +4585,7 @@ Invoke an AWS Lambda function to transform records. The function
 receives batches of records and returns transformed records with a
 status (Ok, Dropped, ProcessingFailed) per record.
 
-- rule: buffer_size_in_mbs must be between 1 and 3 when set
+- rule: buffer_size_in_mbs must be between 0.2 and 3 when set
 - rule: buffer_interval_in_seconds must be between 60 and 900 when set
 - rule: number_of_retries must be between 0 and 300 when set
 
@@ -4410,7 +4602,7 @@ version or alias qualifier to pin the deployed transformation.
 
 ### spec.snowflake.processing.processors[].lambda.bufferSizeInMbs
 
-`int32`
+`double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
 Range: 1-3 MiB. Default: 3 MiB.
@@ -4434,6 +4626,13 @@ Range: 60-900 seconds. Default: 60 seconds.
 Number of times Firehose retries a failed Lambda invocation before
 writing the record to the error output prefix.
 Range: 0-300. Default: 3.
+
+### spec.snowflake.processing.processors[].lambda.roleArn
+
+`string | valueFrom`
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
 
 ### spec.snowflake.processing.processors[].metadataExtraction
 
@@ -4889,7 +5088,7 @@ Invoke an AWS Lambda function to transform records. The function
 receives batches of records and returns transformed records with a
 status (Ok, Dropped, ProcessingFailed) per record.
 
-- rule: buffer_size_in_mbs must be between 1 and 3 when set
+- rule: buffer_size_in_mbs must be between 0.2 and 3 when set
 - rule: buffer_interval_in_seconds must be between 60 and 900 when set
 - rule: number_of_retries must be between 0 and 300 when set
 
@@ -4906,7 +5105,7 @@ version or alias qualifier to pin the deployed transformation.
 
 ### spec.iceberg.processing.processors[].lambda.bufferSizeInMbs
 
-`int32`
+`double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
 Range: 1-3 MiB. Default: 3 MiB.
@@ -4930,6 +5129,13 @@ Range: 60-900 seconds. Default: 60 seconds.
 Number of times Firehose retries a failed Lambda invocation before
 writing the record to the error output prefix.
 Range: 0-300. Default: 3.
+
+### spec.iceberg.processing.processors[].lambda.roleArn
+
+`string | valueFrom`
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
 
 ### spec.iceberg.processing.processors[].metadataExtraction
 
@@ -5112,6 +5318,7 @@ Fields that can point at another resource's outputs:
 | `spec.extendedS3.s3Backup.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.extendedS3.s3Backup.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.extendedS3.processing.processors[].lambda.lambdaArn` | AwsLambda | `status.outputs.function_arn` |
+| `spec.extendedS3.processing.processors[].lambda.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.extendedS3.dataFormatConversion.schema.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.opensearch.domainArn` | AwsOpenSearchDomain | `status.outputs.domain_arn` |
 | `spec.opensearch.roleArn` | AwsIamRole | `status.outputs.role_arn` |
@@ -5119,6 +5326,7 @@ Fields that can point at another resource's outputs:
 | `spec.opensearch.s3Config.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.opensearch.s3Config.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.opensearch.processing.processors[].lambda.lambdaArn` | AwsLambda | `status.outputs.function_arn` |
+| `spec.opensearch.processing.processors[].lambda.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.opensearch.vpcConfig.subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.opensearch.vpcConfig.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.opensearch.vpcConfig.roleArn` | AwsIamRole | `status.outputs.role_arn` |
@@ -5127,6 +5335,7 @@ Fields that can point at another resource's outputs:
 | `spec.opensearchServerless.s3Config.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.opensearchServerless.s3Config.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.opensearchServerless.processing.processors[].lambda.lambdaArn` | AwsLambda | `status.outputs.function_arn` |
+| `spec.opensearchServerless.processing.processors[].lambda.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.opensearchServerless.vpcConfig.subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.opensearchServerless.vpcConfig.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.opensearchServerless.vpcConfig.roleArn` | AwsIamRole | `status.outputs.role_arn` |
@@ -5136,6 +5345,7 @@ Fields that can point at another resource's outputs:
 | `spec.httpEndpoint.s3Config.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.httpEndpoint.s3Config.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.httpEndpoint.processing.processors[].lambda.lambdaArn` | AwsLambda | `status.outputs.function_arn` |
+| `spec.httpEndpoint.processing.processors[].lambda.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.redshift.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.redshift.secretsManager.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.redshift.s3Config.bucketArn` | AwsS3Bucket | `status.outputs.bucket_arn` |
@@ -5145,22 +5355,26 @@ Fields that can point at another resource's outputs:
 | `spec.redshift.s3Backup.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.redshift.s3Backup.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.redshift.processing.processors[].lambda.lambdaArn` | AwsLambda | `status.outputs.function_arn` |
+| `spec.redshift.processing.processors[].lambda.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.splunk.secretsManager.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.splunk.s3Config.bucketArn` | AwsS3Bucket | `status.outputs.bucket_arn` |
 | `spec.splunk.s3Config.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.splunk.s3Config.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.splunk.processing.processors[].lambda.lambdaArn` | AwsLambda | `status.outputs.function_arn` |
+| `spec.splunk.processing.processors[].lambda.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.snowflake.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.snowflake.secretsManager.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.snowflake.s3Config.bucketArn` | AwsS3Bucket | `status.outputs.bucket_arn` |
 | `spec.snowflake.s3Config.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.snowflake.s3Config.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.snowflake.processing.processors[].lambda.lambdaArn` | AwsLambda | `status.outputs.function_arn` |
+| `spec.snowflake.processing.processors[].lambda.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.iceberg.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.iceberg.s3Config.bucketArn` | AwsS3Bucket | `status.outputs.bucket_arn` |
 | `spec.iceberg.s3Config.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.iceberg.s3Config.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.iceberg.processing.processors[].lambda.lambdaArn` | AwsLambda | `status.outputs.function_arn` |
+| `spec.iceberg.processing.processors[].lambda.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 
 ## Referenced By
 

@@ -106,53 +106,117 @@ func buildS3BackupConfig(cfg *awskinesisfirehose.AwsKinesisFirehoseS3Config) *ki
 			args.BufferingSize = pulumi.IntPtr(int(b.SizeInMbs))
 		}
 	}
+	// CloudWatch logging for the backup S3 leg -- distinct from the
+	// destination-level logging options.
+	if log := cfg.Logging; log != nil && log.Enabled {
+		args.CloudwatchLoggingOptions = &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationS3BackupConfigurationCloudwatchLoggingOptionsArgs{
+			Enabled:       pulumi.BoolPtr(true),
+			LogGroupName:  pulumi.StringPtr(log.LogGroupName),
+			LogStreamName: pulumi.StringPtr(log.LogStreamName),
+		}
+	}
 	return args
 }
 
 // buildDataFormatConversion constructs the data format conversion configuration
-// for Extended S3 (Parquet/ORC via Glue catalog).
+// for Extended S3 (Parquet/ORC via Glue catalog). The spec enforces exactly one
+// deserializer arm and exactly one serializer arm when conversion is enabled;
+// unset optional leaves are omitted so the AWS defaults win.
 func buildDataFormatConversion(dfc *awskinesisfirehose.AwsKinesisFirehoseDataFormatConversion) *kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationArgs {
 	args := &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationArgs{
 		Enabled: pulumi.BoolPtr(true),
 	}
 
 	// Input format (deserializer)
-	inputFormat := dfc.InputFormat
-	if inputFormat == "" {
-		inputFormat = "OPENX_JSON"
-	}
-
-	switch inputFormat {
-	case "HIVE_JSON":
+	if hj := dfc.HiveJson; hj != nil {
+		hjArgs := &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationInputFormatConfigurationDeserializerHiveJsonSerDeArgs{}
+		if len(hj.TimestampFormats) > 0 {
+			hjArgs.TimestampFormats = pulumi.ToStringArray(hj.TimestampFormats)
+		}
 		args.InputFormatConfiguration = &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationInputFormatConfigurationArgs{
 			Deserializer: &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationInputFormatConfigurationDeserializerArgs{
-				HiveJsonSerDe: &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationInputFormatConfigurationDeserializerHiveJsonSerDeArgs{},
+				HiveJsonSerDe: hjArgs,
 			},
 		}
-	default: // OPENX_JSON
+	} else if oxj := dfc.OpenXJson; oxj != nil {
+		oxjArgs := &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationInputFormatConfigurationDeserializerOpenXJsonSerDeArgs{}
+		// AWS defaults case_insensitive to true; only an explicit choice is
+		// sent (the spec field carries presence).
+		if oxj.CaseInsensitive != nil {
+			oxjArgs.CaseInsensitive = pulumi.BoolPtr(oxj.GetCaseInsensitive())
+		}
+		if len(oxj.ColumnToJsonKeyMappings) > 0 {
+			oxjArgs.ColumnToJsonKeyMappings = pulumi.ToStringMap(oxj.ColumnToJsonKeyMappings)
+		}
+		if oxj.ConvertDotsInJsonKeysToUnderscores {
+			oxjArgs.ConvertDotsInJsonKeysToUnderscores = pulumi.BoolPtr(true)
+		}
 		args.InputFormatConfiguration = &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationInputFormatConfigurationArgs{
 			Deserializer: &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationInputFormatConfigurationDeserializerArgs{
-				OpenXJsonSerDe: &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationInputFormatConfigurationDeserializerOpenXJsonSerDeArgs{},
+				OpenXJsonSerDe: oxjArgs,
 			},
 		}
 	}
 
 	// Output format (serializer)
-	switch dfc.OutputFormat {
-	case "ORC":
+	if orc := dfc.Orc; orc != nil {
 		orcArgs := &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationOutputFormatConfigurationSerializerOrcSerDeArgs{}
-		if dfc.OrcCompression != "" {
-			orcArgs.Compression = pulumi.StringPtr(dfc.OrcCompression)
+		if orc.Compression != "" {
+			orcArgs.Compression = pulumi.StringPtr(orc.Compression)
+		}
+		if orc.BlockSizeBytes > 0 {
+			orcArgs.BlockSizeBytes = pulumi.IntPtr(int(orc.BlockSizeBytes))
+		}
+		if orc.StripeSizeBytes > 0 {
+			orcArgs.StripeSizeBytes = pulumi.IntPtr(int(orc.StripeSizeBytes))
+		}
+		if len(orc.BloomFilterColumns) > 0 {
+			orcArgs.BloomFilterColumns = pulumi.ToStringArray(orc.BloomFilterColumns)
+		}
+		// Optional-with-presence in the spec: explicit 0 is AWS-legal here,
+		// distinct from "unset -> AWS default".
+		if orc.BloomFilterFalsePositiveProbability != nil {
+			orcArgs.BloomFilterFalsePositiveProbability = pulumi.Float64Ptr(orc.GetBloomFilterFalsePositiveProbability())
+		}
+		if orc.DictionaryKeyThreshold > 0 {
+			orcArgs.DictionaryKeyThreshold = pulumi.Float64Ptr(orc.DictionaryKeyThreshold)
+		}
+		if orc.EnablePadding {
+			orcArgs.EnablePadding = pulumi.BoolPtr(true)
+		}
+		if orc.PaddingTolerance != nil {
+			orcArgs.PaddingTolerance = pulumi.Float64Ptr(orc.GetPaddingTolerance())
+		}
+		if orc.FormatVersion != "" {
+			orcArgs.FormatVersion = pulumi.StringPtr(orc.FormatVersion)
+		}
+		if orc.RowIndexStride > 0 {
+			orcArgs.RowIndexStride = pulumi.IntPtr(int(orc.RowIndexStride))
 		}
 		args.OutputFormatConfiguration = &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationOutputFormatConfigurationArgs{
 			Serializer: &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationOutputFormatConfigurationSerializerArgs{
 				OrcSerDe: orcArgs,
 			},
 		}
-	default: // PARQUET
+	} else if pq := dfc.Parquet; pq != nil {
 		parquetArgs := &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationOutputFormatConfigurationSerializerParquetSerDeArgs{}
-		if dfc.ParquetCompression != "" {
-			parquetArgs.Compression = pulumi.StringPtr(dfc.ParquetCompression)
+		if pq.Compression != "" {
+			parquetArgs.Compression = pulumi.StringPtr(pq.Compression)
+		}
+		if pq.BlockSizeBytes > 0 {
+			parquetArgs.BlockSizeBytes = pulumi.IntPtr(int(pq.BlockSizeBytes))
+		}
+		if pq.PageSizeBytes > 0 {
+			parquetArgs.PageSizeBytes = pulumi.IntPtr(int(pq.PageSizeBytes))
+		}
+		if pq.MaxPaddingBytes > 0 {
+			parquetArgs.MaxPaddingBytes = pulumi.IntPtr(int(pq.MaxPaddingBytes))
+		}
+		if pq.EnableDictionaryCompression {
+			parquetArgs.EnableDictionaryCompression = pulumi.BoolPtr(true)
+		}
+		if pq.WriterVersion != "" {
+			parquetArgs.WriterVersion = pulumi.StringPtr(pq.WriterVersion)
 		}
 		args.OutputFormatConfiguration = &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationOutputFormatConfigurationArgs{
 			Serializer: &kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationDataFormatConversionConfigurationOutputFormatConfigurationSerializerArgs{

@@ -12,14 +12,68 @@ metadata:
     pulumi.planton.dev/stack.name: dev.AwsKinesisFirehose.test-firehose
 spec:
   region: us-west-2
-  # Extended S3 destination: data lake storage with Direct PUT source
+  # Extended S3 destination: data lake storage with Direct PUT source.
+  # This manifest is the offline plan/preview fixture for the arms no live
+  # scenario can carry (the Glue-backed ORC conversion, the Hive JSON
+  # deserializer, the backup-leg CloudWatch logging, and the Lambda
+  # processor's dedicated invocation role) -- the parquet/OpenX tuning arms
+  # ride the 04-s3-parquet-analytics preset.
   extendedS3:
     bucketArn:
       value: arn:aws:s3:::my-data-lake-bucket
     roleArn:
       value: arn:aws:iam::123456789012:role/firehose-s3-role
     prefix: firehose/events/
-    compressionFormat: GZIP
+    # UNCOMPRESSED because format conversion is enabled below: ORC carries
+    # its own columnar compression, and S3-level compression must stay off.
+    compressionFormat: UNCOMPRESSED
+    fileExtension: .orc
     buffering:
       intervalInSeconds: 60
-      sizeInMbs: 5
+      sizeInMbs: 64
+    # Lambda transformation with a fractional buffer (AWS-legal 0.2-3 MiB)
+    # and a dedicated invocation role distinct from the delivery role.
+    processing:
+      enabled: true
+      processors:
+        - lambda:
+            lambdaArn:
+              value: arn:aws:lambda:us-west-2:123456789012:function:enrich-events
+            bufferSizeInMbs: 0.5
+            roleArn:
+              value: arn:aws:iam::123456789012:role/firehose-lambda-invoke
+    # JSON -> ORC conversion: Hive JSON deserializer with explicit timestamp
+    # patterns, ORC serializer tuned with bloom filters for point lookups.
+    dataFormatConversion:
+      enabled: true
+      hiveJson:
+        timestampFormats:
+          - "yyyy-MM-dd'T'HH:mm:ss"
+          - millis
+      orc:
+        compression: ZLIB
+        stripeSizeBytes: 16777216
+        bloomFilterColumns:
+          - customer_id
+        bloomFilterFalsePositiveProbability: 0.01
+        formatVersion: V0_12
+        rowIndexStride: 5000
+      schema:
+        databaseName: analytics_db
+        tableName: events_orc
+        roleArn:
+          value: arn:aws:iam::123456789012:role/firehose-glue-access-role
+    # Source-record backup with CloudWatch logging on the backup S3 leg --
+    # the s3-level logging block, distinct from destination-level logging.
+    s3BackupMode: Enabled
+    s3Backup:
+      bucketArn:
+        value: arn:aws:s3:::my-data-lake-backup-bucket
+      roleArn:
+        value: arn:aws:iam::123456789012:role/firehose-s3-role
+      prefix: firehose/raw/
+      compressionFormat: GZIP
+      logging:
+        enabled: true
+        logGroupName: /aws/kinesisfirehose/test-firehose
+        logStreamName: S3BackupDelivery

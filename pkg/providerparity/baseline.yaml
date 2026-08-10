@@ -58,7 +58,6 @@ entries:
   - kind:AwsIamRole
   - kind:AwsIamUser
   - kind:AwsInternetGateway
-  - kind:AwsKinesisFirehose
   - kind:AwsKinesisStream
   - kind:AwsKinesisStreamConsumer
   - kind:AwsKmsKey
