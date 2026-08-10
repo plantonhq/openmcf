@@ -816,6 +816,10 @@ const (
 	CloudResourceKind_GcpAddress                     CloudResourceKind = 3114
 	CloudResourceKind_GcpServiceConnectionPolicy     CloudResourceKind = 3115
 	CloudResourceKind_GcpCertManagerDnsAuthorization CloudResourceKind = 3116
+	// GcpCertManagerCert is a prerequisite because a map entry binds
+	// hostnames to EXISTING certificates — the canonical map references a
+	// certificate fixture's resource name.
+	CloudResourceKind_GcpCertificateMap CloudResourceKind = 3117
 	// 3120–3129: GCP serverless overflow
 	CloudResourceKind_GcpCloudRunJob            CloudResourceKind = 3120
 	CloudResourceKind_GcpServerlessVpcConnector CloudResourceKind = 3121
@@ -855,6 +859,12 @@ const (
 	// point a verified domain at a running Cloud Run service — the route it
 	// maps must already exist for the mapping to be created at all.
 	CloudResourceKind_GcpCloudRunDomainMapping CloudResourceKind = 3160
+	CloudResourceKind_GcpWorkflow              CloudResourceKind = 3161
+	// GcpCloudRun is a prerequisite because the canonical trigger routes a
+	// Pub/Sub messagePublished event to a Cloud Run service — the
+	// destination story the kind exists to model.
+	CloudResourceKind_GcpEventarcTrigger    CloudResourceKind = 3162
+	CloudResourceKind_GcpEventarcMessageBus CloudResourceKind = 3163
 	// 4000–4999: Kubernetes resources, organized in family sub-bands
 	// (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts
 	// analytics & ML; 4190–4199 reserved for growth)
@@ -1579,6 +1589,7 @@ var (
 		3114:  "GcpAddress",
 		3115:  "GcpServiceConnectionPolicy",
 		3116:  "GcpCertManagerDnsAuthorization",
+		3117:  "GcpCertificateMap",
 		3120:  "GcpCloudRunJob",
 		3121:  "GcpServerlessVpcConnector",
 		3130:  "GcpComputeDisk",
@@ -1596,6 +1607,9 @@ var (
 		3153:  "GcpIamOauthClient",
 		3154:  "GcpIamDenyPolicy",
 		3160:  "GcpCloudRunDomainMapping",
+		3161:  "GcpWorkflow",
+		3162:  "GcpEventarcTrigger",
+		3163:  "GcpEventarcMessageBus",
 		4000:  "KubernetesNamespace",
 		4001:  "KubernetesDeployment",
 		4002:  "KubernetesStatefulSet",
@@ -2212,6 +2226,7 @@ var (
 		"GcpAddress":                                     3114,
 		"GcpServiceConnectionPolicy":                     3115,
 		"GcpCertManagerDnsAuthorization":                 3116,
+		"GcpCertificateMap":                              3117,
 		"GcpCloudRunJob":                                 3120,
 		"GcpServerlessVpcConnector":                      3121,
 		"GcpComputeDisk":                                 3130,
@@ -2229,6 +2244,9 @@ var (
 		"GcpIamOauthClient":                              3153,
 		"GcpIamDenyPolicy":                               3154,
 		"GcpCloudRunDomainMapping":                       3160,
+		"GcpWorkflow":                                    3161,
+		"GcpEventarcTrigger":                             3162,
+		"GcpEventarcMessageBus":                          3163,
 		"KubernetesNamespace":                            4000,
 		"KubernetesDeployment":                           4001,
 		"KubernetesStatefulSet":                          4002,
@@ -2829,7 +2847,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xfa\x97\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*Й\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3152,7 +3170,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\n" +
 	"GcpAddress\x10\xaa\x18\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\bv1alpha1\"\agcpaddr:\x04\xc2\x17\xc3\x17\x12?\n" +
 	"\x1aGcpServiceConnectionPolicy\x10\xab\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\x06gcpscp:\x04\xc2\x17\xc3\x17\x12>\n" +
-	"\x1eGcpCertManagerDnsAuthorization\x10\xac\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpcmda\x12.\n" +
+	"\x1eGcpCertManagerDnsAuthorization\x10\xac\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpcmda\x125\n" +
+	"\x11GcpCertificateMap\x10\xad\x18\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpcmap:\x02\xc8\x17\x12.\n" +
 	"\x0eGcpCloudRunJob\x10\xb0\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcprunj\x12?\n" +
 	"\x19GcpServerlessVpcConnector\x10\xb1\x18\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\bv1alpha1\"\agcpvpcc:\x04\xc2\x17\xc3\x17\x12.\n" +
 	"\x0eGcpComputeDisk\x10\xba\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpdisk\x12A\n" +
@@ -3169,7 +3188,10 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x19GcpIdentityPlatformTenant\x10\xd0\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpidten:\x02\xcf\x18\x122\n" +
 	"\x11GcpIamOauthClient\x10\xd1\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpoauth\x121\n" +
 	"\x10GcpIamDenyPolicy\x10\xd2\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpdenyp\x12=\n" +
-	"\x18GcpCloudRunDomainMapping\x10\xd8\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcprundm:\x02\xbb\x17\x123\n" +
+	"\x18GcpCloudRunDomainMapping\x10\xd8\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcprundm:\x02\xbb\x17\x12,\n" +
+	"\vGcpWorkflow\x10\xd9\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpwflow\x127\n" +
+	"\x12GcpEventarcTrigger\x10\xda\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpevtrg:\x02\xbb\x17\x126\n" +
+	"\x15GcpEventarcMessageBus\x10\xdb\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpevbus\x123\n" +
 	"\x13KubernetesNamespace\x10\xa0\x1f\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\bv1alpha1\"\x05k8sns0\x01\x125\n" +
 	"\x14KubernetesDeployment\x10\xa1\x1f\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\bv1alpha1\"\x06k8sdpl(\x01\x126\n" +
 	"\x15KubernetesStatefulSet\x10\xa2\x1f\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\bv1alpha1\"\x06k8ssts(\x01\x121\n" +

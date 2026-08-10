@@ -1,0 +1,4 @@
+name: gcpworkflow-pulumi-project
+runtime:
+  name: go
+description: Planton GcpWorkflow Pulumi module

@@ -319,6 +319,11 @@ Fields on other kinds that can point at this resource:
 | GcpComputeInstance | `spec.instanceEncryptionKey.kmsKey` | `status.outputs.key_id` |
 | GcpDataprocCluster | `spec.clusterConfig.encryptionKmsKeyName` | `status.outputs.key_id` |
 | GcpDataprocCluster | `spec.clusterConfig.securityConfig.kerberosConfig.kmsKeyUri` | `status.outputs.key_id` |
+| GcpEventarcMessageBus | `spec.cryptoKey` | `status.outputs.key_id` |
+| GcpEventarcMessageBus | `spec.googleApiSources[].cryptoKey` | `status.outputs.key_id` |
+| GcpEventarcMessageBus | `spec.pipelines[].cryptoKey` | `status.outputs.key_id` |
+| GcpEventarcTrigger | `spec.partnerChannel.cryptoKey` | `status.outputs.key_id` |
+| GcpEventarcTrigger | `spec.googleChannelCryptoKey` | `status.outputs.key_id` |
 | GcpFilestoreInstance | `spec.kmsKeyName` | `status.outputs.key_id` |
 | GcpFirestoreDatabase | `spec.kmsKeyName` | `status.outputs.key_id` |
 | GcpGcsBucket | `spec.kmsKeyName` | `status.outputs.key_id` |
@@ -345,6 +350,7 @@ Fields on other kinds that can point at this resource:
 | GcpVertexAiIndexEndpoint | `spec.kmsKeyName` | `status.outputs.key_id` |
 | GcpVertexAiNotebook | `spec.bootDisk.kmsKey` | `status.outputs.key_id` |
 | GcpVertexAiNotebook | `spec.dataDisk.kmsKey` | `status.outputs.key_id` |
+| GcpWorkflow | `spec.cryptoKey` | `status.outputs.key_id` |
 | KubernetesOpenBao | `spec.autoUnseal.gcpKms.cryptoKey` | `status.outputs.key_name` |
 
 ## See Also

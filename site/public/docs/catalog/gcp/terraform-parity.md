@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `google@7.43.0` |
-| Kinds in the catalog | 93 |
-| Distinct provider resources consumed | 130 |
-| Spec fields authored across all kinds | 3386 |
-| Module pins on `google` | `~> 7.43` × 93 |
+| Kinds in the catalog | 97 |
+| Distinct provider resources consumed | 140 |
+| Spec fields authored across all kinds | 3485 |
+| Module pins on `google` | `~> 7.43` × 97 |
 
 The GA provider is the parity baseline. Capability that exists only in a
 secondary channel (for Google, the `google-beta` provider) enters per kind
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**93 of 93 kinds are at total accounting; 23 proven live.**
+**97 of 97 kinds are at total accounting; 23 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -62,6 +62,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpBigtableTable | 23 | 8 | 14 | 1 | 0 | ✅ | — |
 | GcpCertManagerCert | 12 | 10 | 2 | 0 | 0 | ✅ | — |
 | GcpCertManagerDnsAuthorization | 8 | 6 | 2 | 0 | 0 | ✅ | — |
+| GcpCertificateMap | 14 | 4 | 9 | 1 | 0 | ✅ | — |
 | GcpCloudArmorPolicy | 61 | 10 | 51 | 0 | 0 | ✅ | — |
 | GcpCloudComposerEnvironment | 81 | 3 | 66 | 12 | 0 | ✅ | — |
 | GcpCloudComposerUserWorkloadsConfigMap | 6 | 4 | 2 | 0 | 0 | ✅ | — |
@@ -81,6 +82,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpDataprocCluster | 148 | 77 | 52 | 19 | 0 | ✅ | — |
 | GcpDnsRecord | 49 | 43 | 6 | 0 | 0 | ✅ | — |
 | GcpDnsZone | 23 | 18 | 2 | 3 | 0 | ✅ | — |
+| GcpEventarcMessageBus | 56 | 12 | 42 | 2 | 0 | ✅ | — |
+| GcpEventarcTrigger | 35 | 22 | 12 | 1 | 0 | ✅ | — |
 | GcpFilestoreInstance | 36 | 14 | 22 | 0 | 0 | ✅ | — |
 | GcpFirestoreBackupSchedule | 5 | 4 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreDatabase | 15 | 11 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
@@ -140,6 +143,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpVertexAiIndexEndpoint | 13 | 10 | 3 | 0 | 0 | ✅ | — |
 | GcpVertexAiNotebook | 46 | 8 | 34 | 4 | 0 | ✅ | — |
 | GcpVpcNetwork | 17 | 10 | 6 | 1 | 0 | ✅ | — |
+| GcpWorkflow | 15 | 10 | 4 | 1 | 0 | ✅ | — |
 | GcpWorkloadIdentityPool | 16 | 15 | 1 | 0 | 0 | ✅ | — |
 | GcpWorkloadIdentityPoolProvider | 16 | 15 | 1 | 0 | 0 | ✅ | — |
 
@@ -149,10 +153,10 @@ All resources of `google@7.43.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 130 | consumed by a kind's Terraform module today |
+| Modeled | 140 | consumed by a kind's Terraform module today |
 | IAM-covered | 407 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 6 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 25 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 15 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 689 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 76 | deprecated or superseded provider surface |
 | **Total** | **1333** | |
@@ -162,7 +166,7 @@ All resources of `google@7.43.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (130)
+### Modeled (140)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -177,6 +181,8 @@ rather than trusted.
 | `google_bigtable_instance` | consumed by GcpBigtableInstance |
 | `google_bigtable_table` | consumed by GcpBigtableTable |
 | `google_certificate_manager_certificate` | consumed by GcpCertManagerCert |
+| `google_certificate_manager_certificate_map` | consumed by GcpCertificateMap |
+| `google_certificate_manager_certificate_map_entry` | consumed by GcpCertificateMap |
 | `google_certificate_manager_dns_authorization` | consumed by GcpCertManagerDnsAuthorization |
 | `google_cloud_run_domain_mapping` | consumed by GcpCloudRunDomainMapping |
 | `google_cloud_run_service_iam_member` | consumed by GcpCloudFunction |
@@ -221,6 +227,13 @@ rather than trusted.
 | `google_dataproc_cluster` | consumed by GcpDataprocCluster |
 | `google_dns_managed_zone` | consumed by GcpDnsZone |
 | `google_dns_record_set` | consumed by GcpDnsRecord |
+| `google_eventarc_channel` | consumed by GcpEventarcTrigger |
+| `google_eventarc_enrollment` | consumed by GcpEventarcMessageBus |
+| `google_eventarc_google_api_source` | consumed by GcpEventarcMessageBus |
+| `google_eventarc_google_channel_config` | consumed by GcpEventarcTrigger |
+| `google_eventarc_message_bus` | consumed by GcpEventarcMessageBus |
+| `google_eventarc_pipeline` | consumed by GcpEventarcMessageBus |
+| `google_eventarc_trigger` | consumed by GcpEventarcTrigger |
 | `google_filestore_instance` | consumed by GcpFilestoreInstance |
 | `google_firestore_backup_schedule` | consumed by GcpFirestoreBackupSchedule |
 | `google_firestore_database` | consumed by GcpFirestoreDatabase |
@@ -267,7 +280,7 @@ rather than trusted.
 | `google_project` | consumed by GcpProject |
 | `google_project_iam_custom_role` | consumed by GcpIamCustomRole |
 | `google_project_iam_member` | consumed by GcpProjectIamMember, GcpServiceAccount |
-| `google_project_service` | consumed by GcpAddress, GcpAlloydbCluster, GcpAlloydbInstance, GcpAlloydbUser, GcpArtifactRegistryRepo, GcpBackendBucket, GcpBackendService, GcpBigQueryDataset, GcpBigQueryTable, GcpBigtableInstance, GcpBigtableTable, GcpCertManagerCert, GcpCertManagerDnsAuthorization, GcpCloudArmorPolicy, GcpCloudComposerEnvironment, GcpCloudFunction, GcpCloudRun, GcpCloudRunDomainMapping, GcpCloudRunJob, GcpCloudSchedulerJob, GcpCloudSql, GcpCloudTasksQueue, GcpComputeDisk, GcpComputeInstance, GcpDataprocAutoscalingPolicy, GcpDataprocCluster, GcpDnsRecord, GcpDnsZone, GcpFilestoreInstance, GcpFirestoreBackupSchedule, GcpFirestoreDatabase, GcpFirestoreIndex, GcpGcsBucket, GcpGkeCluster, GcpGkeNodePool, GcpGlobalAddress, GcpGlobalForwardingRule, GcpHealthCheck, GcpIamOauthClient, GcpIdentityPlatformConfig, GcpIdentityPlatformTenant, GcpKmsKey, GcpKmsKeyRing, GcpLogBucket, GcpLogMetric, GcpLoggingSink, GcpManagedSslCertificate, GcpMemorystoreInstance, GcpMonitoringAlertPolicy, GcpMonitoringDashboard, GcpMonitoringNotificationChannel, GcpMonitoringSlo, GcpMonitoringUptimeCheck, GcpProject, GcpPubSubSchema, GcpPubSubSubscription, GcpPubSubTopic, GcpRedisInstance, GcpRegionNetworkEndpointGroup, GcpRouterNat, GcpSecretManagerSecret, GcpServerlessVpcConnector, GcpServiceConnectionPolicy, GcpServiceNetworkingConnection, GcpSpannerBackupSchedule, GcpSpannerDatabase, GcpSpannerInstance, GcpSslCertificate, GcpSslPolicy, GcpSubnetwork, GcpTargetHttpProxy, GcpTargetHttpsProxy, GcpUrlMap, GcpVertexAiEndpoint, GcpVertexAiIndex, GcpVertexAiIndexEndpoint, GcpVertexAiNotebook, GcpVpcNetwork |
+| `google_project_service` | consumed by GcpAddress, GcpAlloydbCluster, GcpAlloydbInstance, GcpAlloydbUser, GcpArtifactRegistryRepo, GcpBackendBucket, GcpBackendService, GcpBigQueryDataset, GcpBigQueryTable, GcpBigtableInstance, GcpBigtableTable, GcpCertManagerCert, GcpCertManagerDnsAuthorization, GcpCertificateMap, GcpCloudArmorPolicy, GcpCloudComposerEnvironment, GcpCloudFunction, GcpCloudRun, GcpCloudRunDomainMapping, GcpCloudRunJob, GcpCloudSchedulerJob, GcpCloudSql, GcpCloudTasksQueue, GcpComputeDisk, GcpComputeInstance, GcpDataprocAutoscalingPolicy, GcpDataprocCluster, GcpDnsRecord, GcpDnsZone, GcpEventarcMessageBus, GcpEventarcTrigger, GcpFilestoreInstance, GcpFirestoreBackupSchedule, GcpFirestoreDatabase, GcpFirestoreIndex, GcpGcsBucket, GcpGkeCluster, GcpGkeNodePool, GcpGlobalAddress, GcpGlobalForwardingRule, GcpHealthCheck, GcpIamOauthClient, GcpIdentityPlatformConfig, GcpIdentityPlatformTenant, GcpKmsKey, GcpKmsKeyRing, GcpLogBucket, GcpLogMetric, GcpLoggingSink, GcpManagedSslCertificate, GcpMemorystoreInstance, GcpMonitoringAlertPolicy, GcpMonitoringDashboard, GcpMonitoringNotificationChannel, GcpMonitoringSlo, GcpMonitoringUptimeCheck, GcpProject, GcpPubSubSchema, GcpPubSubSubscription, GcpPubSubTopic, GcpRedisInstance, GcpRegionNetworkEndpointGroup, GcpRouterNat, GcpSecretManagerSecret, GcpServerlessVpcConnector, GcpServiceConnectionPolicy, GcpServiceNetworkingConnection, GcpSpannerBackupSchedule, GcpSpannerDatabase, GcpSpannerInstance, GcpSslCertificate, GcpSslPolicy, GcpSubnetwork, GcpTargetHttpProxy, GcpTargetHttpsProxy, GcpUrlMap, GcpVertexAiEndpoint, GcpVertexAiIndex, GcpVertexAiIndexEndpoint, GcpVertexAiNotebook, GcpVpcNetwork, GcpWorkflow |
 | `google_pubsub_schema` | consumed by GcpPubSubSchema |
 | `google_pubsub_subscription` | consumed by GcpPubSubSubscription |
 | `google_pubsub_topic` | consumed by GcpPubSubTopic |
@@ -296,6 +309,7 @@ rather than trusted.
 | `google_vertex_ai_index_endpoint_deployed_index` | consumed by GcpVertexAiDeployedIndex |
 | `google_vpc_access_connector` | consumed by GcpServerlessVpcConnector |
 | `google_workbench_instance` | consumed by GcpVertexAiNotebook |
+| `google_workflows_workflow` | consumed by GcpWorkflow |
 
 ### IAM-covered (407)
 
@@ -720,13 +734,11 @@ rather than trusted.
 | `google_logging_project_exclusion` | GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink |
 | `google_project_iam_member_remove` | declarative member removal is inherent to the additive iam_members reconciliation on the IAM member kinds (GcpProjectIamMember); a dedicated removal escape hatch is redundant |
 
-### Planned (25)
+### Planned (15)
 
 | Resource | Recorded reason |
 |---|---|
 | `google_certificate_manager_certificate_issuance_config` | planned composition into the existing GcpCertManagerCert kind (trust and issuance configuration) |
-| `google_certificate_manager_certificate_map` | planned kind GcpCertificateMap |
-| `google_certificate_manager_certificate_map_entry` | composes into the planned GcpCertificateMap kind |
 | `google_certificate_manager_trust_config` | planned composition into the existing GcpCertManagerCert kind (trust and issuance configuration) |
 | `google_compute_autoscaler` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
 | `google_compute_instance_group_manager` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
@@ -738,17 +750,9 @@ rather than trusted.
 | `google_compute_region_per_instance_config` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
 | `google_compute_region_resize_request` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
 | `google_compute_resize_request` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
-| `google_eventarc_channel` | composes into the planned GcpEventarcTrigger kind |
-| `google_eventarc_enrollment` | composes into the planned GcpEventarcMessageBus kind (Eventarc Advanced) |
-| `google_eventarc_google_api_source` | composes into the planned GcpEventarcMessageBus kind (Eventarc Advanced) |
-| `google_eventarc_google_channel_config` | composes into the planned GcpEventarcTrigger kind |
-| `google_eventarc_message_bus` | planned kind GcpEventarcMessageBus (Eventarc Advanced) |
-| `google_eventarc_pipeline` | composes into the planned GcpEventarcMessageBus kind (Eventarc Advanced) |
-| `google_eventarc_trigger` | planned kind GcpEventarcTrigger |
 | `google_storage_folder` | planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs) |
 | `google_storage_managed_folder` | planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs) |
 | `google_storage_notification` | planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs) |
-| `google_workflows_workflow` | planned kind GcpWorkflow |
 
 ### Deferred (689)
 

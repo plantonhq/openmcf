@@ -1,0 +1,27 @@
+# Minimal GcpWorkflow scenario: the smallest deployable workflow — a
+# two-step source, ambient project, explicit region.
+# deletion_protection must be false so DESTROY can run.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpWorkflow
+metadata:
+  name: planton-oss-e2e-gcpwflow-minimal
+  id: planton-oss-e2e-gcpwflow-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpworkflow
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-central1
+  sourceContents: |
+    main:
+      steps:
+        - hello:
+            return: "hello world"
+  description: E2E minimal workflow — returns a constant; delete freely.
+  deletionProtection: false
+  deletionPolicy: DELETE

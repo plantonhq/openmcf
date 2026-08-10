@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpeventarctrigger.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/gcp/gcpeventarctrigger/v1alpha1/outputs.proto";
+import "catalog/gcp/gcpeventarctrigger/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+//gcp-eventarc-trigger
+message GcpEventarcTrigger {
+  string api_version = 1 [(buf.validate.field).string.const = 'gcp.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'GcpEventarcTrigger'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  GcpEventarcTriggerSpec spec = 4 [(buf.validate.field).required = true];
+  GcpEventarcTriggerStatus status = 5;
+}
+
+message GcpEventarcTriggerStatus {
+  GcpEventarcTriggerStackOutputs outputs = 1;
+}

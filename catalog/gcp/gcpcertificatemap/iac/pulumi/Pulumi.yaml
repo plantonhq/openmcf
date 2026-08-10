@@ -1,0 +1,4 @@
+name: gcpcertificatemap-pulumi-project
+runtime:
+  name: go
+description: Planton GcpCertificateMap Pulumi module

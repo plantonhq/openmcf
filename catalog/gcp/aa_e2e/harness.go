@@ -42,6 +42,7 @@ import (
 	"google.golang.org/api/container/v1"
 	dataproc "google.golang.org/api/dataproc/v1"
 	"google.golang.org/api/dns/v1"
+	eventarc "google.golang.org/api/eventarc/v1"
 	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
 	iamv2 "google.golang.org/api/iam/v2"
@@ -58,6 +59,7 @@ import (
 	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
 	"google.golang.org/api/vpcaccess/v1"
+	workflows "google.golang.org/api/workflows/v1"
 )
 
 // Harness manages the GCP E2E test lifecycle.
@@ -226,6 +228,14 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create iam v2 client")
 	}
+	workflowsService, err := workflows.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create workflows client")
+	}
+	eventarcService, err := eventarc.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create eventarc client")
+	}
 	// ADC-authenticated plain HTTP client for services whose typed Go
 	// client is not in the pinned google.golang.org/api line (Memorystore
 	// for Valkey) — verifiers use it for REST GET probes only.
@@ -275,6 +285,8 @@ func (h *Harness) Setup(ctx context.Context) error {
 		Logging:              loggingService,
 		IdentityToolkit:      identityToolkitService,
 		IamV2:                iamV2Service,
+		Workflows:            workflowsService,
+		Eventarc:             eventarcService,
 		RestClient:           restClient,
 	}
 	return nil

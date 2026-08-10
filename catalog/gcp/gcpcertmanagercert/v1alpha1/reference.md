@@ -245,6 +245,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| GcpCertificateMap | `spec.entries[].certificates` | `status.outputs.certificate_id` |
 | GcpTargetHttpsProxy | `spec.certificateManagerCertificates` | `status.outputs.certificate_name` |
 
 ## See Also

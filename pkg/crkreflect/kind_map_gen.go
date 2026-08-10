@@ -341,6 +341,7 @@ import (
 	gcpbigquerytablev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpbigquerytable/v1alpha1"
 	gcpbigtableinstancev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpbigtableinstance/v1alpha1"
 	gcpbigtabletablev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpbigtabletable/v1alpha1"
+	gcpcertificatemapv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcertificatemap/v1alpha1"
 	gcpcertmanagercertv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcertmanagercert/v1alpha1"
 	gcpcertmanagerdnsauthorizationv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcertmanagerdnsauthorization/v1alpha1"
 	gcpcloudarmorpolicyv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcloudarmorpolicy/v1alpha1"
@@ -362,6 +363,8 @@ import (
 	gcpdataprocclusterv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpdataproccluster/v1alpha1"
 	gcpdnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpdnsrecord/v1alpha1"
 	gcpdnszonev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpdnszone/v1alpha1"
+	gcpeventarcmessagebusv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpeventarcmessagebus/v1alpha1"
+	gcpeventarctriggerv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpeventarctrigger/v1alpha1"
 	gcpfilestoreinstancev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpfilestoreinstance/v1alpha1"
 	gcpfirestorebackupschedulev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpfirestorebackupschedule/v1alpha1"
 	gcpfirestoredatabasev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpfirestoredatabase/v1alpha1"
@@ -421,6 +424,7 @@ import (
 	gcpvertexaiindexendpointv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpvertexaiindexendpoint/v1alpha1"
 	gcpvertexainotebookv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpvertexainotebook/v1alpha1"
 	gcpvpcnetworkv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpvpcnetwork/v1alpha1"
+	gcpworkflowv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpworkflow/v1alpha1"
 	gcpworkloadidentitypoolv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpworkloadidentitypool/v1alpha1"
 	gcpworkloadidentitypoolproviderv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpworkloadidentitypoolprovider/v1alpha1"
 	hetznercloudcertificatev1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznercloudcertificate/v1alpha1"
@@ -1018,6 +1022,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpBigtableTable:                       &gcpbigtabletablev1alpha1.GcpBigtableTable{},
 	cloudresourcekind.CloudResourceKind_GcpCertManagerCert:                     &gcpcertmanagercertv1alpha1.GcpCertManagerCert{},
 	cloudresourcekind.CloudResourceKind_GcpCertManagerDnsAuthorization:         &gcpcertmanagerdnsauthorizationv1alpha1.GcpCertManagerDnsAuthorization{},
+	cloudresourcekind.CloudResourceKind_GcpCertificateMap:                      &gcpcertificatemapv1alpha1.GcpCertificateMap{},
 	cloudresourcekind.CloudResourceKind_GcpCloudArmorPolicy:                    &gcpcloudarmorpolicyv1alpha1.GcpCloudArmorPolicy{},
 	cloudresourcekind.CloudResourceKind_GcpCloudComposerEnvironment:            &gcpcloudcomposerenvironmentv1alpha1.GcpCloudComposerEnvironment{},
 	cloudresourcekind.CloudResourceKind_GcpCloudComposerUserWorkloadsConfigMap: &gcpcloudcomposeruserworkloadsconfigmapv1alpha1.GcpCloudComposerUserWorkloadsConfigMap{},
@@ -1037,6 +1042,8 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpDataprocCluster:                     &gcpdataprocclusterv1alpha1.GcpDataprocCluster{},
 	cloudresourcekind.CloudResourceKind_GcpDnsRecord:                           &gcpdnsrecordv1alpha1.GcpDnsRecord{},
 	cloudresourcekind.CloudResourceKind_GcpDnsZone:                             &gcpdnszonev1alpha1.GcpDnsZone{},
+	cloudresourcekind.CloudResourceKind_GcpEventarcMessageBus:                  &gcpeventarcmessagebusv1alpha1.GcpEventarcMessageBus{},
+	cloudresourcekind.CloudResourceKind_GcpEventarcTrigger:                     &gcpeventarctriggerv1alpha1.GcpEventarcTrigger{},
 	cloudresourcekind.CloudResourceKind_GcpFilestoreInstance:                   &gcpfilestoreinstancev1alpha1.GcpFilestoreInstance{},
 	cloudresourcekind.CloudResourceKind_GcpFirestoreBackupSchedule:             &gcpfirestorebackupschedulev1alpha1.GcpFirestoreBackupSchedule{},
 	cloudresourcekind.CloudResourceKind_GcpFirestoreDatabase:                   &gcpfirestoredatabasev1alpha1.GcpFirestoreDatabase{},
@@ -1096,6 +1103,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpVertexAiIndexEndpoint:               &gcpvertexaiindexendpointv1alpha1.GcpVertexAiIndexEndpoint{},
 	cloudresourcekind.CloudResourceKind_GcpVertexAiNotebook:                    &gcpvertexainotebookv1alpha1.GcpVertexAiNotebook{},
 	cloudresourcekind.CloudResourceKind_GcpVpcNetwork:                          &gcpvpcnetworkv1alpha1.GcpVpcNetwork{},
+	cloudresourcekind.CloudResourceKind_GcpWorkflow:                            &gcpworkflowv1alpha1.GcpWorkflow{},
 	cloudresourcekind.CloudResourceKind_GcpWorkloadIdentityPool:                &gcpworkloadidentitypoolv1alpha1.GcpWorkloadIdentityPool{},
 	cloudresourcekind.CloudResourceKind_GcpWorkloadIdentityPoolProvider:        &gcpworkloadidentitypoolproviderv1alpha1.GcpWorkloadIdentityPoolProvider{},
 }

@@ -1,0 +1,49 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpWorkflow
+metadata:
+  name: http-orchestrator
+spec:
+  region: us-central1
+
+  # Call services in order with per-step auth and retries — the
+  # coordination skeleton; per-item logic belongs in the services.
+  sourceContents: |
+    main:
+      params: [input]
+      steps:
+        - validate:
+            call: http.post
+            args:
+              url: https://validator.internal.example.com/check
+              auth:
+                type: OIDC
+              body: ${input}
+            result: validation
+        - process:
+            call: http.post
+            args:
+              url: https://processor.internal.example.com/run
+              auth:
+                type: OIDC
+              body: ${validation.body}
+            retry:
+              max_retries: 3
+              backoff:
+                initial_delay: 2
+                max_delay: 30
+                multiplier: 2
+            result: outcome
+        - done:
+            return: ${outcome.body}
+
+  # A dedicated identity granted exactly the target services' invoker
+  # roles — never the default compute account in production.
+  serviceAccount:
+    value: http-orchestrator@my-project.iam.gserviceaccount.com
+
+  # Loud while developing; scale back to LOG_ERRORS_ONLY in steady state.
+  callLogLevel: LOG_ERRORS_ONLY
+
+  # Destroy stays blocked until deletionProtection is explicitly false —
+  # execution history dies with the workflow.
+  deletionPolicy: PREVENT

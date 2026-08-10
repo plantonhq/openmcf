@@ -315,6 +315,9 @@ Fields on other kinds that can point at this resource:
 | GcpCloudTasksQueue | `spec.httpTarget.oidcToken.serviceAccountEmail` | `status.outputs.email` |
 | GcpComputeInstance | `spec.serviceAccount.email` | `status.outputs.email` |
 | GcpDataprocCluster | `spec.clusterConfig.gceConfig.serviceAccount` | `status.outputs.email` |
+| GcpEventarcMessageBus | `spec.pipelines[].authentication.googleOidc.serviceAccount` | `status.outputs.email` |
+| GcpEventarcMessageBus | `spec.pipelines[].authentication.oauthToken.serviceAccount` | `status.outputs.email` |
+| GcpEventarcTrigger | `spec.serviceAccount` | `status.outputs.email` |
 | GcpGcsBucket | `spec.iamMembers[].member` | `status.outputs.member` |
 | GcpGkeCluster | `spec.clusterAutoscaling.autoProvisioningDefaults.serviceAccount` | `status.outputs.email` |
 | GcpGkeNodePool | `spec.nodeConfig.serviceAccount` | `status.outputs.email` |
@@ -335,6 +338,7 @@ Fields on other kinds that can point at this resource:
 | GcpServiceAccountIamMember | `spec.member` | `status.outputs.member` |
 | GcpVertexAiDeployedIndex | `spec.authConfig.allowedIssuers` | `status.outputs.email` |
 | GcpVertexAiNotebook | `spec.serviceAccount` | `status.outputs.email` |
+| GcpWorkflow | `spec.serviceAccount` | `status.outputs.email` |
 | KubernetesCertManager | `spec.workloadIdentity.gke.serviceAccountEmail` | `status.outputs.email` |
 | KubernetesExternalDns | `spec.workloadIdentity.gke.serviceAccountEmail` | `status.outputs.email` |
 | KubernetesExternalSecretsOperator | `spec.workloadIdentity.gke.serviceAccountEmail` | `status.outputs.email` |

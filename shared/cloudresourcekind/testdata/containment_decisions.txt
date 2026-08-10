@@ -267,6 +267,7 @@ contained dev.planton.gcp.gcpbigquerytable.v1alpha1.GcpBigQueryTableSpec.project
 contained dev.planton.gcp.gcpbigtableinstance.v1alpha1.GcpBigtableInstanceSpec.project_id -> GcpProject
 contained dev.planton.gcp.gcpbigtabletable.v1alpha1.GcpBigtableTableSpec.instance -> GcpBigtableInstance
 contained dev.planton.gcp.gcpbigtabletable.v1alpha1.GcpBigtableTableSpec.project_id -> GcpProject
+contained dev.planton.gcp.gcpcertificatemap.v1alpha1.GcpCertificateMapSpec.project_id -> GcpProject
 contained dev.planton.gcp.gcpcertmanagercert.v1alpha1.GcpCertManagerCertSpec.project_id -> GcpProject
 contained dev.planton.gcp.gcpcertmanagerdnsauthorization.v1alpha1.GcpCertManagerDnsAuthorizationSpec.project_id -> GcpProject
 contained dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorPolicySpec.project_id -> GcpProject
@@ -301,6 +302,8 @@ contained dev.planton.gcp.gcpdnsrecord.v1alpha1.GcpDnsRecordInternalLoadBalancer
 contained dev.planton.gcp.gcpdnsrecord.v1alpha1.GcpDnsRecordSpec.managed_zone -> GcpDnsZone
 contained dev.planton.gcp.gcpdnsrecord.v1alpha1.GcpDnsRecordSpec.project_id -> GcpProject
 contained dev.planton.gcp.gcpdnszone.v1alpha1.GcpDnsZoneSpec.project_id -> GcpProject
+contained dev.planton.gcp.gcpeventarcmessagebus.v1alpha1.GcpEventarcMessageBusSpec.project_id -> GcpProject
+contained dev.planton.gcp.gcpeventarctrigger.v1alpha1.GcpEventarcTriggerSpec.project_id -> GcpProject
 contained dev.planton.gcp.gcpfilestoreinstance.v1alpha1.GcpFilestoreInstanceNetworkConfig.psc_endpoint_project -> GcpProject
 contained dev.planton.gcp.gcpfilestoreinstance.v1alpha1.GcpFilestoreInstanceSpec.project_id -> GcpProject
 contained dev.planton.gcp.gcpfirestorebackupschedule.v1alpha1.GcpFirestoreBackupScheduleSpec.database -> GcpFirestoreDatabase
@@ -393,6 +396,7 @@ contained dev.planton.gcp.gcpvertexainotebook.v1alpha1.GcpVertexAiNotebookNetwor
 contained dev.planton.gcp.gcpvertexainotebook.v1alpha1.GcpVertexAiNotebookNetworkInterface.subnet -> GcpSubnetwork
 contained dev.planton.gcp.gcpvertexainotebook.v1alpha1.GcpVertexAiNotebookSpec.project_id -> GcpProject
 contained dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkSpec.project_id -> GcpProject
+contained dev.planton.gcp.gcpworkflow.v1alpha1.GcpWorkflowSpec.project_id -> GcpProject
 contained dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolSpec.project_id -> GcpProject
 contained dev.planton.gcp.gcpworkloadidentitypoolprovider.v1alpha1.GcpWorkloadIdentityPoolProviderSpec.project_id -> GcpProject
 contained dev.planton.gcp.gcpworkloadidentitypoolprovider.v1alpha1.GcpWorkloadIdentityPoolProviderSpec.workload_identity_pool_id -> GcpWorkloadIdentityPool
@@ -684,6 +688,7 @@ exempt    dev.planton.gcp.gcpdnsrecord.v1alpha1.GcpDnsRecordInternalLoadBalancer
 exempt    dev.planton.gcp.gcpdnszone.v1alpha1.GcpDnsZonePeeringConfig.target_network -> GcpVpcNetwork
 exempt    dev.planton.gcp.gcpdnszone.v1alpha1.GcpDnsZonePrivateVisibilityGkeCluster.gke_cluster_name -> GcpGkeCluster
 exempt    dev.planton.gcp.gcpdnszone.v1alpha1.GcpDnsZonePrivateVisibilityNetwork.network_url -> GcpVpcNetwork
+exempt    dev.planton.gcp.gcpeventarctrigger.v1alpha1.GcpEventarcTriggerGkeDestination.cluster -> GcpGkeCluster
 exempt    dev.planton.gcp.gcpfilestoreinstance.v1alpha1.GcpFilestoreInstanceNetworkConfig.network -> GcpVpcNetwork
 exempt    dev.planton.gcp.gcpfilestoreinstance.v1alpha1.GcpFilestoreInstanceNfsExportOption.network -> GcpVpcNetwork
 exempt    dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterVpcNetworkSource.network -> GcpVpcNetwork

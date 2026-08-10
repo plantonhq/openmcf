@@ -2653,6 +2653,15 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "gcpcmda"
   }];
+  // GcpCertManagerCert is a prerequisite because a map entry binds
+  // hostnames to EXISTING certificates — the canonical map references a
+  // certificate fixture's resource name.
+  GcpCertificateMap = 3117 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpcmap"
+    prerequisites: [GcpCertManagerCert]
+  }];
 
   // 3120–3129: GCP serverless overflow
   GcpCloudRunJob = 3120 [(kind_meta) = {
@@ -2773,6 +2782,25 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "gcprundm"
     prerequisites: [GcpCloudRun]
+  }];
+  GcpWorkflow = 3161 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpwflow"
+  }];
+  // GcpCloudRun is a prerequisite because the canonical trigger routes a
+  // Pub/Sub messagePublished event to a Cloud Run service — the
+  // destination story the kind exists to model.
+  GcpEventarcTrigger = 3162 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpevtrg"
+    prerequisites: [GcpCloudRun]
+  }];
+  GcpEventarcMessageBus = 3163 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpevbus"
   }];
 
   // 4000–4999: Kubernetes resources, organized in family sub-bands

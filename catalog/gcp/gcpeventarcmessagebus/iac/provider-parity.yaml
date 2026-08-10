@@ -1,0 +1,216 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# One kind, four eventarc resources -- Eventarc Advanced as one unit: the
+# bus is the primary; google_api_sources, pipelines, and enrollments are
+# plural satellites whose spec lists fan out one resource each. The
+# family's internal wiring (api_source.destination -> the bus,
+# enrollment.message_bus -> the bus, enrollment.destination -> a sibling
+# pipeline) is done BY RESOURCE REFERENCE in both modules -- those
+# arguments are derived from the kind's own resources, recorded below as
+# derivation exclusions or sibling-id mappings.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name (location, display_name, labels,
+# annotations, deletion_policy, cel_match, the payload-format and
+# retry-policy subtrees all auto-match that way). Every exclusion carries
+# its reason: omission is a decision, never an accident.
+
+resources:
+  google_eventarc_message_bus:
+    mappings:
+      - spec: spec.project_id
+        arg: project
+
+      # The spec names the CMEK lever for what it references; the provider
+      # suffixes _name.
+      - spec: spec.crypto_key
+        arg: crypto_key_name
+
+      # GA wraps the one logging lever in a logging_config block; the spec
+      # flattens it.
+      - spec: spec.log_severity
+        arg: logging_config.log_severity
+
+  google_eventarc_google_api_source:
+    mappings:
+      - spec: spec.google_api_sources.source_id
+        arg: google_api_source_id
+
+      - spec: spec.project_id
+        arg: project
+
+      - spec: spec.google_api_sources.crypto_key
+        arg: crypto_key_name
+
+      - spec: spec.google_api_sources.log_severity
+        arg: logging_config.log_severity
+
+      # Per-satellite plural leaves: the satellite's own field feeds its
+      # resource's argument (layered with the bus-level labels by the
+      # modules).
+      - spec: spec.google_api_sources.display_name
+        arg: display_name
+
+      - spec: spec.google_api_sources.labels
+        arg: labels
+
+      - spec: spec.google_api_sources.annotations
+        arg: annotations
+    exclusions:
+      - arg: destination
+        reason: >-
+          Auto-wired by both modules to THIS kind's own bus (the created
+          bus resource's computed full name) -- an api source feeding
+          another bus belongs to that bus's kind instance; there is
+          nothing for a practitioner to choose.
+
+  google_eventarc_pipeline:
+    mappings:
+      - spec: spec.pipelines.pipeline_id
+        arg: pipeline_id
+
+      - spec: spec.project_id
+        arg: project
+
+      - spec: spec.pipelines.crypto_key
+        arg: crypto_key_name
+
+      - spec: spec.pipelines.log_severity
+        arg: logging_config.log_severity
+
+      # The API supports exactly one destination per pipeline (the
+      # provider's own schema note) -- the spec models the one destination
+      # and the modules render the single-element destinations list.
+      - spec: spec.pipelines.destination.http_endpoint.uri
+        arg: destinations.http_endpoint.uri
+
+      - spec: spec.pipelines.destination.http_endpoint.message_binding_template
+        arg: destinations.http_endpoint.message_binding_template
+
+      # Required for HTTP endpoints, forbidden for every other target (the
+      # provider's own rule, spec-CEL-enforced) -- the spec carries it
+      # inside the arm it belongs to; the modules restore the provider's
+      # sibling network_config shape.
+      - spec: spec.pipelines.destination.http_endpoint.network_attachment
+        arg: destinations.network_config.network_attachment
+
+      - spec: spec.pipelines.destination.topic
+        arg: destinations.topic
+
+      - spec: spec.pipelines.destination.workflow
+        arg: destinations.workflow
+
+      - spec: spec.pipelines.destination.message_bus
+        arg: destinations.message_bus
+
+      - spec: spec.pipelines.authentication.google_oidc.service_account
+        arg: destinations.authentication_config.google_oidc.service_account
+
+      - spec: spec.pipelines.authentication.google_oidc.audience
+        arg: destinations.authentication_config.google_oidc.audience
+
+      - spec: spec.pipelines.authentication.oauth_token.service_account
+        arg: destinations.authentication_config.oauth_token.service_account
+
+      - spec: spec.pipelines.authentication.oauth_token.scope
+        arg: destinations.authentication_config.oauth_token.scope
+
+      # The provider nests the OUTPUT payload format inside the
+      # destination element; the spec keeps input and output side by side
+      # on the pipeline where practitioners reason about the conversion.
+      # (The JSON forms are EMPTY marker blocks -- see specExclusions.)
+      - spec: spec.pipelines.output_payload_format.avro.schema_definition
+        arg: destinations.output_payload_format.avro.schema_definition
+
+      - spec: spec.pipelines.output_payload_format.protobuf.schema_definition
+        arg: destinations.output_payload_format.protobuf.schema_definition
+
+      - spec: spec.pipelines.input_payload_format.avro.schema_definition
+        arg: input_payload_format.avro.schema_definition
+
+      - spec: spec.pipelines.input_payload_format.protobuf.schema_definition
+        arg: input_payload_format.protobuf.schema_definition
+
+      # The API allows at most ONE mediation (transformation) per pipeline
+      # (the provider's own schema note) -- the spec models the single
+      # template and the modules render the single-element mediations
+      # list.
+      - spec: spec.pipelines.mediation_transformation_template
+        arg: mediations.transformation.transformation_template
+
+      - spec: spec.pipelines.retry_policy.max_attempts
+        arg: retry_policy.max_attempts
+
+      - spec: spec.pipelines.retry_policy.min_retry_delay
+        arg: retry_policy.min_retry_delay
+
+      - spec: spec.pipelines.retry_policy.max_retry_delay
+        arg: retry_policy.max_retry_delay
+
+      # Per-satellite plural leaves (see the api-source note).
+      - spec: spec.pipelines.display_name
+        arg: display_name
+
+      - spec: spec.pipelines.labels
+        arg: labels
+
+      - spec: spec.pipelines.annotations
+        arg: annotations
+
+  google_eventarc_enrollment:
+    mappings:
+      - spec: spec.enrollments.enrollment_id
+        arg: enrollment_id
+
+      - spec: spec.project_id
+        arg: project
+
+      # The enrollment routes to a pipeline DEFINED IN THIS SPEC by its
+      # pipeline_id (spec-CEL-enforced to exist); both modules render the
+      # provider's required full resource name from the created sibling
+      # pipeline's computed name attribute.
+      - spec: spec.enrollments.pipeline
+        arg: destination
+
+      # Per-satellite plural leaves (see the api-source note).
+      - spec: spec.enrollments.cel_match
+        arg: cel_match
+
+      - spec: spec.enrollments.display_name
+        arg: display_name
+
+      - spec: spec.enrollments.labels
+        arg: labels
+
+      - spec: spec.enrollments.annotations
+        arg: annotations
+    exclusions:
+      - arg: message_bus
+        reason: >-
+          Auto-wired by both modules to THIS kind's own bus (the created
+          bus resource's computed full name) -- an enrollment belongs to
+          exactly the bus this kind manages; there is nothing for a
+          practitioner to choose.
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      eventarc.googleapis.com with fixed arguments (disable_on_destroy
+      false so destroying one bus never disables Eventarc project-wide);
+      not spec surface.
+
+specExclusions:
+  - field: spec.pipelines.input_payload_format.json
+    reason: >-
+      the provider expresses the JSON payload format as an EMPTY marker
+      block carrying no arguments to map onto; the spec models the choice
+      as a presence bool and the modules emit the marker block from it
+      (the established marker-block judgment)
+  - field: spec.pipelines.output_payload_format.json
+    reason: >-
+      the provider expresses the JSON payload format as an EMPTY marker
+      block (nested inside the destination element) carrying no arguments
+      to map onto; the spec models the choice as a presence bool and the
+      modules emit the marker block from it

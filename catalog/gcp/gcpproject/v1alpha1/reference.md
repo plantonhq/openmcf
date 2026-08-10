@@ -184,6 +184,7 @@ Fields on other kinds that can point at this resource:
 | GcpBigtableTable | `spec.projectId` | `status.outputs.project_id` |
 | GcpCertManagerCert | `spec.projectId` | `status.outputs.project_id` |
 | GcpCertManagerDnsAuthorization | `spec.projectId` | `status.outputs.project_id` |
+| GcpCertificateMap | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudArmorPolicy | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudComposerEnvironment | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudComposerUserWorkloadsConfigMap | `spec.projectId` | `status.outputs.project_id` |
@@ -207,6 +208,8 @@ Fields on other kinds that can point at this resource:
 | GcpDnsRecord | `spec.routingPolicy.primaryBackup.primary.internalLoadBalancers[].project` | `status.outputs.project_id` |
 | GcpDnsRecord | `spec.routingPolicy.primaryBackup.backupGeo[].healthCheckedTargets.internalLoadBalancers[].project` | `status.outputs.project_id` |
 | GcpDnsZone | `spec.projectId` | `status.outputs.project_id` |
+| GcpEventarcMessageBus | `spec.projectId` | `status.outputs.project_id` |
+| GcpEventarcTrigger | `spec.projectId` | `status.outputs.project_id` |
 | GcpFilestoreInstance | `spec.projectId` | `status.outputs.project_id` |
 | GcpFilestoreInstance | `spec.networkConfig.pscEndpointProject` | `status.outputs.project_id` |
 | GcpFirestoreBackupSchedule | `spec.projectId` | `status.outputs.project_id` |
@@ -265,6 +268,7 @@ Fields on other kinds that can point at this resource:
 | GcpVertexAiIndexEndpoint | `spec.privateServiceConnectConfig.pscAutomationConfigs[].projectId` | `status.outputs.project_id` |
 | GcpVertexAiNotebook | `spec.projectId` | `status.outputs.project_id` |
 | GcpVpcNetwork | `spec.projectId` | `status.outputs.project_id` |
+| GcpWorkflow | `spec.projectId` | `status.outputs.project_id` |
 | GcpWorkloadIdentityPool | `spec.projectId` | `status.outputs.project_id` |
 | GcpWorkloadIdentityPoolProvider | `spec.projectId` | `status.outputs.project_id` |
 | KubernetesClusterSecretStore | `spec.config.gcpSecretManager.projectId` | `status.outputs.project_id` |

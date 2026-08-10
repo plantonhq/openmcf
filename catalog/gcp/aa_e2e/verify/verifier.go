@@ -30,6 +30,7 @@ import (
 	"google.golang.org/api/container/v1"
 	dataproc "google.golang.org/api/dataproc/v1"
 	"google.golang.org/api/dns/v1"
+	eventarc "google.golang.org/api/eventarc/v1"
 	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
 	iamv2 "google.golang.org/api/iam/v2"
@@ -46,6 +47,7 @@ import (
 	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
 	"google.golang.org/api/vpcaccess/v1"
+	workflows "google.golang.org/api/workflows/v1"
 )
 
 // Services carries the resolved test project and the shared API clients every
@@ -88,6 +90,8 @@ type Services struct {
 	Logging              *logging.Service
 	IdentityToolkit      *identitytoolkit.Service
 	IamV2                *iamv2.Service
+	Workflows            *workflows.Service
+	Eventarc             *eventarc.Service
 
 	// RestClient is an ADC-authenticated HTTP client for GCP services whose
 	// typed Go client is not yet in the pinned google.golang.org/api line
@@ -203,6 +207,10 @@ var verifiers = map[string]Verifier{
 	"gcpidentityplatformtenant":              &identityPlatformTenantVerifier{},
 	"gcpiamoauthclient":                      &iamOauthClientVerifier{},
 	"gcpiamdenypolicy":                       &iamDenyPolicyVerifier{},
+	"gcpworkflow":                            &workflowVerifier{},
+	"gcpeventarctrigger":                     &eventarcTriggerVerifier{},
+	"gcpeventarcmessagebus":                  &eventarcMessageBusVerifier{},
+	"gcpcertificatemap":                      &certificateMapVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

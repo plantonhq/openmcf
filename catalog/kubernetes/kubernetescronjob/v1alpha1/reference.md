@@ -1603,6 +1603,7 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
@@ -1620,6 +1621,9 @@ Allowed values (use exactly as shown):
 - `GcpIamOauthClient`
 - `GcpIamDenyPolicy`
 - `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -2399,6 +2403,7 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
@@ -2416,6 +2421,9 @@ Allowed values (use exactly as shown):
 - `GcpIamOauthClient`
 - `GcpIamDenyPolicy`
 - `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -4348,6 +4356,7 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
@@ -4365,6 +4374,9 @@ Allowed values (use exactly as shown):
 - `GcpIamOauthClient`
 - `GcpIamDenyPolicy`
 - `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -5144,6 +5156,7 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
@@ -5161,6 +5174,9 @@ Allowed values (use exactly as shown):
 - `GcpIamOauthClient`
 - `GcpIamDenyPolicy`
 - `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -7129,6 +7145,7 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
@@ -7146,6 +7163,9 @@ Allowed values (use exactly as shown):
 - `GcpIamOauthClient`
 - `GcpIamDenyPolicy`
 - `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -7925,6 +7945,7 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
@@ -7942,6 +7963,9 @@ Allowed values (use exactly as shown):
 - `GcpIamOauthClient`
 - `GcpIamDenyPolicy`
 - `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`

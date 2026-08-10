@@ -2322,6 +2322,67 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpWorkflow: the full resource name (what Eventarc
+			// destinations consume), the short name, the deployed revision,
+			// and the state must land on StackOutputs.
+			name: "GcpWorkflow",
+			kind: cloudresourcekind.CloudResourceKind_GcpWorkflow,
+			rawOutputs: map[string]interface{}{
+				"workflow_id":   "projects/my-project/locations/us-central1/workflows/order-orchestrator",
+				"workflow_name": "order-orchestrator",
+				"revision_id":   "000001-a4d",
+				"state":         "ACTIVE",
+			},
+			mustPopulate: []string{
+				"workflow_id", "workflow_name", "revision_id", "state",
+			},
+		},
+		{
+			// GcpEventarcTrigger: the trigger name and the partner-channel
+			// activation token (empty for non-partner triggers — both
+			// engines emit the empty string then) must land on
+			// StackOutputs.
+			name: "GcpEventarcTrigger",
+			kind: cloudresourcekind.CloudResourceKind_GcpEventarcTrigger,
+			rawOutputs: map[string]interface{}{
+				"trigger_name":                     "order-events",
+				"trigger_id":                       "projects/my-project/locations/us-central1/triggers/order-events",
+				"partner_channel_activation_token": "tok-abc123",
+			},
+			mustPopulate: []string{
+				"trigger_name", "trigger_id", "partner_channel_activation_token",
+			},
+		},
+		{
+			// GcpEventarcMessageBus: the full bus resource name (the
+			// cross-bus / external-publisher handle) must land on
+			// StackOutputs.
+			name: "GcpEventarcMessageBus",
+			kind: cloudresourcekind.CloudResourceKind_GcpEventarcMessageBus,
+			rawOutputs: map[string]interface{}{
+				"message_bus_name": "projects/my-project/locations/us-central1/messageBuses/central-bus",
+			},
+			mustPopulate: []string{
+				"message_bus_name",
+			},
+		},
+		{
+			// GcpCertificateMap: the full resource name, the
+			// //certificatemanager.googleapis.com/ URI (what a
+			// GcpTargetHttpsProxy's certificate_map consumes), and the
+			// short name must land on StackOutputs.
+			name: "GcpCertificateMap",
+			kind: cloudresourcekind.CloudResourceKind_GcpCertificateMap,
+			rawOutputs: map[string]interface{}{
+				"map_id":   "projects/my-project/locations/global/certificateMaps/prod-map",
+				"map_uri":  "//certificatemanager.googleapis.com/projects/my-project/locations/global/certificateMaps/prod-map",
+				"map_name": "prod-map",
+			},
+			mustPopulate: []string{
+				"map_id", "map_uri", "map_name",
+			},
+		},
+		{
 			// GcpSslCertificate: flat scalar outputs from both engines
 			// (self-link, name, id, expiry, scope region) must land on
 			// StackOutputs. The private key is write-only and never an output.

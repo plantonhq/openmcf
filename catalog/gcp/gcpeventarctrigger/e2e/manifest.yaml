@@ -1,0 +1,28 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpEventarcTrigger
+metadata:
+  name: my-sample-eventarc-trigger
+spec:
+  # A region or "global"; must match where the events originate.
+  location: us-central1
+
+  # ALL criteria must match; every trigger MUST filter the type
+  # attribute (the API's own rule).
+  matchingCriteria:
+    - attribute: type
+      value: google.cloud.pubsub.topic.v1.messagePublished
+
+  # Exactly one destination arm. The service references the Cloud Run
+  # fixture the lanes deploy first (its bare service name).
+  destination:
+    cloudRunService:
+      service:
+        valueFrom:
+          kind: GcpCloudRun
+          name: planton-oss-e2e-gcprun-prereq
+          fieldPath: status.outputs.service_name
+
+  # What a destroy does: DELETE (event delivery stops immediately),
+  # PREVENT (the posture for production routes), or ABANDON (keep
+  # delivering unmanaged).
+  deletionPolicy: DELETE

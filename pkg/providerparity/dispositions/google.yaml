@@ -410,12 +410,6 @@ resources:
   - resource: google_certificate_manager_certificate_issuance_config
     disposition: model-planned
     reason: "planned composition into the existing GcpCertManagerCert kind (trust and issuance configuration)"
-  - resource: google_certificate_manager_certificate_map
-    disposition: model-planned
-    reason: "planned kind GcpCertificateMap"
-  - resource: google_certificate_manager_certificate_map_entry
-    disposition: model-planned
-    reason: "composes into the planned GcpCertificateMap kind"
   - resource: google_certificate_manager_trust_config
     disposition: model-planned
     reason: "planned composition into the existing GcpCertManagerCert kind (trust and issuance configuration)"
@@ -1286,27 +1280,6 @@ resources:
   - resource: google_essential_contacts_contact
     disposition: deferred
     reason: "judged to deserve a GcpEssentialContact kind (organization hygiene); deferred pending demand"
-  - resource: google_eventarc_channel
-    disposition: model-planned
-    reason: "composes into the planned GcpEventarcTrigger kind"
-  - resource: google_eventarc_enrollment
-    disposition: model-planned
-    reason: "composes into the planned GcpEventarcMessageBus kind (Eventarc Advanced)"
-  - resource: google_eventarc_google_api_source
-    disposition: model-planned
-    reason: "composes into the planned GcpEventarcMessageBus kind (Eventarc Advanced)"
-  - resource: google_eventarc_google_channel_config
-    disposition: model-planned
-    reason: "composes into the planned GcpEventarcTrigger kind"
-  - resource: google_eventarc_message_bus
-    disposition: model-planned
-    reason: "planned kind GcpEventarcMessageBus (Eventarc Advanced)"
-  - resource: google_eventarc_pipeline
-    disposition: model-planned
-    reason: "composes into the planned GcpEventarcMessageBus kind (Eventarc Advanced)"
-  - resource: google_eventarc_trigger
-    disposition: model-planned
-    reason: "planned kind GcpEventarcTrigger"
   - resource: google_filestore_backup
     disposition: deferred
     reason: "judged to fold into the existing GcpFilestoreInstance kind's spec (backups and snapshots); the composition is not built"
@@ -2342,9 +2315,6 @@ resources:
   - resource: google_vmwareengine_subnet
     disposition: deferred
     reason: "VMware Engine is a named niche family (an eventual ~5 kind family); deferred pending demand"
-  - resource: google_workflows_workflow
-    disposition: model-planned
-    reason: "planned kind GcpWorkflow"
   - resource: google_workload_identity_service_agent
     disposition: deferred
     reason: "service agents are auto-provisioned by service enablement; deferred"

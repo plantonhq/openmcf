@@ -2384,6 +2384,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | GcpDataprocCluster | `spec.virtualClusterConfig.kubernetesClusterConfig.gkeClusterConfig.gkeClusterTarget` | `status.outputs.cluster_id` |
 | GcpDnsZone | `spec.privateVisibilityConfig.gkeClusters[].gkeClusterName` | `status.outputs.cluster_id` |
+| GcpEventarcTrigger | `spec.destination.gke.cluster` | `status.outputs.name` |
 | GcpGkeNodePool | `spec.clusterName` | `status.outputs.name` |
 | GcpGkeNodePool | `spec.location` | `status.outputs.location` |
 

@@ -24,6 +24,7 @@ go_library(
         "@org_golang_google_api//container/v1:container",
         "@org_golang_google_api//dataproc/v1:dataproc",
         "@org_golang_google_api//dns/v1:dns",
+        "@org_golang_google_api//eventarc/v1:eventarc",
         "@org_golang_google_api//firestore/v1:firestore",
         "@org_golang_google_api//iam/v1:iam",
         "@org_golang_google_api//iam/v2:iam",
@@ -40,6 +41,7 @@ go_library(
         "@org_golang_google_api//sqladmin/v1:sqladmin",
         "@org_golang_google_api//storage/v1:storage",
         "@org_golang_google_api//vpcaccess/v1:vpcaccess",
+        "@org_golang_google_api//workflows/v1:workflows",
         "@org_golang_x_oauth2//google",
     ],
 )
