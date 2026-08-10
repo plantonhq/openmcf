@@ -80,6 +80,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureAiFoundry | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureAksCluster | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureApplicationGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureApplicationInsights | `spec.resourceGroup` | `status.outputs.resource_group_name` |
@@ -136,6 +137,7 @@ Fields on other kinds that can point at this resource:
 | AzureRoleDefinition | `spec.scope` | `status.outputs.resource_group_id` |
 | AzureRoleDefinition | `spec.assignableScopes` | `status.outputs.resource_group_id` |
 | AzureRouteTable | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureSearchService | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureServiceBusNamespace | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureServicePlan | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureStorageAccount | `spec.resourceGroup` | `status.outputs.resource_group_name` |

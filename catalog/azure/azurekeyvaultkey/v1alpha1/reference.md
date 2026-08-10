@@ -301,6 +301,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureAiFoundry | `spec.encryption.keyId` | `status.outputs.key_id` |
 | AzureAksCluster | `spec.keyManagementService.keyVaultKeyId` | `status.outputs.key_id` |
 | AzureCognitiveAccount | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureContainerRegistry | `spec.encryption.keyVaultKeyId` | `status.outputs.versionless_id` |

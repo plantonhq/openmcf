@@ -160,6 +160,8 @@ import (
 	awswafipsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awswafipset/v1alpha1"
 	awswafregexpatternsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awswafregexpatternset/v1alpha1"
 	awswafwebaclv1alpha1 "github.com/plantonhq/planton/catalog/aws/awswafwebacl/v1alpha1"
+	azureaifoundryv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureaifoundry/v1alpha1"
+	azureaifoundryprojectv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureaifoundryproject/v1alpha1"
 	azureaksclusterv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureakscluster/v1alpha1"
 	azureaksnodepoolv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureaksnodepool/v1alpha1"
 	azureapplicationgatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationgateway/v1alpha1"
@@ -260,6 +262,7 @@ import (
 	azureroleassignmentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureroleassignment/v1alpha1"
 	azureroledefinitionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureroledefinition/v1alpha1"
 	azureroutetablev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureroutetable/v1alpha1"
+	azuresearchservicev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuresearchservice/v1alpha1"
 	azureservicebusauthorizationrulev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureservicebusauthorizationrule/v1alpha1"
 	azureservicebusdisasterrecoveryconfigv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureservicebusdisasterrecoveryconfig/v1alpha1"
 	azureservicebusnamespacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureservicebusnamespace/v1alpha1"
@@ -826,6 +829,8 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 }
 
 var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
+	cloudresourcekind.CloudResourceKind_AzureAiFoundry:                                 &azureaifoundryv1alpha1.AzureAiFoundry{},
+	cloudresourcekind.CloudResourceKind_AzureAiFoundryProject:                          &azureaifoundryprojectv1alpha1.AzureAiFoundryProject{},
 	cloudresourcekind.CloudResourceKind_AzureAksCluster:                                &azureaksclusterv1alpha1.AzureAksCluster{},
 	cloudresourcekind.CloudResourceKind_AzureAksNodePool:                               &azureaksnodepoolv1alpha1.AzureAksNodePool{},
 	cloudresourcekind.CloudResourceKind_AzureApplicationGateway:                        &azureapplicationgatewayv1alpha1.AzureApplicationGateway{},
@@ -926,6 +931,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureRoleAssignment:                            &azureroleassignmentv1alpha1.AzureRoleAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureRoleDefinition:                            &azureroledefinitionv1alpha1.AzureRoleDefinition{},
 	cloudresourcekind.CloudResourceKind_AzureRouteTable:                                &azureroutetablev1alpha1.AzureRouteTable{},
+	cloudresourcekind.CloudResourceKind_AzureSearchService:                             &azuresearchservicev1alpha1.AzureSearchService{},
 	cloudresourcekind.CloudResourceKind_AzureServiceBusAuthorizationRule:               &azureservicebusauthorizationrulev1alpha1.AzureServiceBusAuthorizationRule{},
 	cloudresourcekind.CloudResourceKind_AzureServiceBusDisasterRecoveryConfig:          &azureservicebusdisasterrecoveryconfigv1alpha1.AzureServiceBusDisasterRecoveryConfig{},
 	cloudresourcekind.CloudResourceKind_AzureServiceBusNamespace:                       &azureservicebusnamespacev1alpha1.AzureServiceBusNamespace{},

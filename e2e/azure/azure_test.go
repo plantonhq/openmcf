@@ -466,6 +466,33 @@ func TestAzureMachineLearningComputeInstance_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningcomputeinstance", "terraform")
 }
 
+// --- Azure AI Foundry (composed: fixture RG + key vault + HNS-off storage account -> a system-identity hub; minutes -- hubs are ML workspaces at ARM, soft-delete ghosts hold the name, the orphan sweep checks `az ml workspace list --archived`) ---
+
+func TestAzureAiFoundry_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureaifoundry", "pulumi")
+}
+func TestAzureAiFoundry_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureaifoundry", "terraform")
+}
+
+// --- Azure AI Foundry Project (composed: fixture hub chain -> a system-identity project INSIDE the hub; the proof is the cross-kind wiring -- ARM returns kind "Project", and the project lands in the hub's resource group) ---
+
+func TestAzureAiFoundryProject_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureaifoundryproject", "pulumi")
+}
+func TestAzureAiFoundryProject_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureaifoundryproject", "terraform")
+}
+
+// --- Azure AI Search Service (composed: fixture RG + storage account -> a standard-SKU service with one shared private link to the fixture storage's blob subresource; the link sits PENDING by design -- nothing approves the target side, the verifier asserts ARM state; the service name is GLOBALLY unique endpoint DNS) ---
+
+func TestAzureSearchService_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuresearchservice", "pulumi")
+}
+func TestAzureSearchService_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuresearchservice", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {

@@ -826,6 +826,14 @@ const (
 	// An ARM child of its workspace (.../computes/{name}) -- a single
 	// always-on VM serving as one data scientist's cloud workstation.
 	CloudResourceKind_AzureMachineLearningComputeInstance CloudResourceKind = 2166
+	// The hub REQUIRES both companion services at creation (secrets
+	// vault, default storage) -- genuine deploy-order prerequisites,
+	// each with its own fixture profile.
+	CloudResourceKind_AzureAiFoundry CloudResourceKind = 2167
+	// Deploys into its hub's resource group (the provider derives the
+	// group from the hub reference -- the project spec carries none).
+	CloudResourceKind_AzureAiFoundryProject CloudResourceKind = 2168
+	CloudResourceKind_AzureSearchService    CloudResourceKind = 2169
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
@@ -1583,6 +1591,9 @@ var (
 		2164:  "AzureMachineLearningDatastore",
 		2165:  "AzureMachineLearningComputeCluster",
 		2166:  "AzureMachineLearningComputeInstance",
+		2167:  "AzureAiFoundry",
+		2168:  "AzureAiFoundryProject",
+		2169:  "AzureSearchService",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2222,6 +2233,9 @@ var (
 		"AzureMachineLearningDatastore":                  2164,
 		"AzureMachineLearningComputeCluster":             2165,
 		"AzureMachineLearningComputeInstance":            2166,
+		"AzureAiFoundry":                                 2167,
+		"AzureAiFoundryProject":                          2168,
+		"AzureSearchService":                             2169,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -2887,7 +2901,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*Λ\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf5\x9c\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3149,7 +3163,10 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1dAzureMachineLearningWorkspace\x10\xf3\x10\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\x05azmlw:\b\xd0\x0f\xd9\x0f\xd5\x0f\x83\x10\x12@\n" +
 	"\x1dAzureMachineLearningDatastore\x10\xf4\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlds:\x02\xf3\x10\x12E\n" +
 	"\"AzureMachineLearningComputeCluster\x10\xf5\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlcc:\x02\xf3\x10\x12F\n" +
-	"#AzureMachineLearningComputeInstance\x10\xf6\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlci:\x02\xf3\x10\x12:\n" +
+	"#AzureMachineLearningComputeInstance\x10\xf6\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlci:\x02\xf3\x10\x124\n" +
+	"\x0eAzureAiFoundry\x10\xf7\x10\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\x05azaif:\x06\xd0\x0f\xd5\x0f\xd9\x0f\x128\n" +
+	"\x15AzureAiFoundryProject\x10\xf8\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azaifp:\x02\xf7\x10\x125\n" +
+	"\x12AzureSearchService\x10\xf9\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azsrch:\x02\xd0\x0f\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
 	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x124\n" +

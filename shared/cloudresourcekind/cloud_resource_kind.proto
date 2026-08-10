@@ -2325,6 +2325,33 @@ enum CloudResourceKind {
     id_prefix: "azmlci"
     prerequisites: [AzureMachineLearningWorkspace]
   }];
+  // The hub REQUIRES both companion services at creation (secrets
+  // vault, default storage) -- genuine deploy-order prerequisites,
+  // each with its own fixture profile.
+  AzureAiFoundry = 2167 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azaif"
+    prerequisites: [
+      AzureResourceGroup,
+      AzureKeyVault,
+      AzureStorageAccount
+    ]
+  }];
+  // Deploys into its hub's resource group (the provider derives the
+  // group from the hub reference -- the project spec carries none).
+  AzureAiFoundryProject = 2168 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azaifp"
+    prerequisites: [AzureAiFoundry]
+  }];
+  AzureSearchService = 2169 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azsrch"
+    prerequisites: [AzureResourceGroup]
+  }];
 
   // 3000–3999: GCP resources
   GcpArtifactRegistryRepo = 3000 [(kind_meta) = {

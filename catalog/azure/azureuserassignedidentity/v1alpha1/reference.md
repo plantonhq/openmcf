@@ -142,6 +142,11 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureAiFoundry | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureAiFoundry | `spec.primaryUserAssignedIdentity` | `status.outputs.identity_id` |
+| AzureAiFoundry | `spec.encryption.userAssignedIdentityId` | `status.outputs.identity_id` |
+| AzureAiFoundryProject | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureAiFoundryProject | `spec.primaryUserAssignedIdentity` | `status.outputs.identity_id` |
 | AzureAksCluster | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureAksCluster | `spec.kubeletIdentity.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureApplicationGateway | `spec.identity.identityIds` | `status.outputs.identity_id` |
@@ -197,6 +202,7 @@ Fields on other kinds that can point at this resource:
 | AzureRedisCache | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureRedisCacheAccessPolicyAssignment | `spec.objectId` | `status.outputs.principal_id` |
 | AzureRoleAssignment | `spec.principalId` | `status.outputs.principal_id` |
+| AzureSearchService | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureServiceBusNamespace | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureServiceBusNamespace | `spec.customerManagedKey.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureStorageAccount | `spec.identity.identityIds` | `status.outputs.identity_id` |

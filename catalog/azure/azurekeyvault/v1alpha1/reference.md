@@ -505,6 +505,8 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureAiFoundry | `spec.keyVaultId` | `status.outputs.key_vault_id` |
+| AzureAiFoundry | `spec.encryption.keyVaultId` | `status.outputs.key_vault_id` |
 | AzureAksCluster | `spec.serviceMeshProfile.certificateAuthority.keyVaultId` | `status.outputs.key_vault_id` |
 | AzureKeyVaultCertificate | `spec.keyVaultId` | `status.outputs.key_vault_id` |
 | AzureKeyVaultKey | `spec.keyVaultId` | `status.outputs.key_vault_id` |

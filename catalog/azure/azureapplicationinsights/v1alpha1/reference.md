@@ -299,6 +299,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureAiFoundry | `spec.applicationInsightsId` | `status.outputs.application_insights_id` |
 | AzureApplicationInsightsStandardWebTest | `spec.applicationInsightsId` | `status.outputs.application_insights_id` |
 | AzureFunctionApp | `spec.applicationInsightsConnectionString` | `status.outputs.connection_string` |
 | AzureLinuxWebApp | `spec.applicationInsightsConnectionString` | `status.outputs.connection_string` |

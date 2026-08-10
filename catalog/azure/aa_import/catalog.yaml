@@ -222,3 +222,22 @@ spec:
     - terraform_type: azurerm_machine_learning_compute_instance
       pulumi_type: azure:machinelearning/computeInstance:ComputeInstance
       id_format: "{machine_learning_compute_instance_id}"
+    # AI Foundry hubs and projects are ML workspaces at ARM (kind
+    # "Hub" / kind "Project") -- the providers' importers verify the
+    # kind and reject a mismatch, so a hub id never imports as a
+    # project or vice versa.
+    - terraform_type: azurerm_ai_foundry
+      pulumi_type: azure:aifoundry/hub:Hub
+      id_format: "{ai_foundry_id}"
+    - terraform_type: azurerm_ai_foundry_project
+      pulumi_type: azure:aifoundry/project:Project
+      id_format: "{ai_foundry_project_id}"
+    # --- AI Search ---------------------------------------------------------
+    - terraform_type: azurerm_search_service
+      pulumi_type: azure:search/service:Service
+      id_format: "{search_service_id}"
+    - terraform_type: azurerm_search_shared_private_link_service
+      pulumi_type: azure:search/sharedPrivateLinkService:SharedPrivateLinkService
+      id_format: "{search_service_id}/sharedPrivateLinkResources/{shared_private_link_name}"
+      # The module deploys one link per spec entry, keyed by name --
+      # the address's instance key supplies {shared_private_link_name}.

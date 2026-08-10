@@ -3,6 +3,8 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "verify",
     srcs = [
+        "ai_foundry.go",
+        "ai_foundry_project.go",
         "aks_cluster.go",
         "aks_node_pool.go",
         "application_gateway.go",
@@ -94,6 +96,7 @@ go_library(
         "role_assignment.go",
         "role_definition.go",
         "route_table.go",
+        "search_service.go",
         "service_bus.go",
         "service_plan.go",
         "storage_account.go",

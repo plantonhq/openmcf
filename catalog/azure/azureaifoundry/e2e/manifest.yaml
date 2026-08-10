@@ -1,0 +1,46 @@
+# Offline-plan test manifest. Exercises the deep seams: a
+# system-and-user-assigned identity with a primary identity, CMK
+# encryption with a VERSIONED key URL (the hub's own contract --
+# versionless is rejected), the managed network at approved-outbound
+# isolation, both optional attachments (insights, registry), disabled
+# public access, and the high-business-impact flag.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureAiFoundry
+metadata:
+  name: test-ai-foundry
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: test-ai-foundry
+  keyVaultId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.KeyVault/vaults/test-vault
+  storageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/testaifstorage
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aif-uai
+  applicationInsightsId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Insights/components/test-insights
+  containerRegistryId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ContainerRegistry/registries/testaifacr
+  primaryUserAssignedIdentity:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aif-uai
+  publicNetworkAccessEnabled: false
+  encryption:
+    keyVaultId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.KeyVault/vaults/test-vault
+    keyId:
+      value: https://test-vault.vault.azure.net/keys/aif-cmk/0123456789abcdef0123456789abcdef
+    userAssignedIdentityId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aif-uai
+  managedNetwork:
+    isolationMode: ALLOW_ONLY_APPROVED_OUTBOUND
+  highBusinessImpactEnabled: true
+  description: Offline-plan AI Foundry hub exercising the deep seams
+  friendlyName: Test AI Foundry Hub
+  tags:
+    cost-center: ai-platform

@@ -1,0 +1,20 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureSearchService
+metadata:
+  name: production-search
+spec:
+  region: eastus
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  # GLOBALLY unique -- forms the endpoint {name}.search.windows.net.
+  name: acme-search-prod # replace with your globally-unique name
+  sku: standard
+  # 3 replicas is the 99.9% read-write SLA floor.
+  replicaCount: 3
+  partitionCount: 1
+  # RBAC alongside API keys: Entra-authenticated callers work, and the
+  # keys keep working for legacy clients.
+  authenticationFailureMode: http401WithBearerChallenge
+  identity:
+    type: SYSTEM_ASSIGNED
+  networkRuleBypassOption: AzureServices
