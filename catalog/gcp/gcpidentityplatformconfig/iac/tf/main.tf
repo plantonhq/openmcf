@@ -9,13 +9,33 @@ resource "google_project_service" "identitytoolkit_api" {
   disable_on_destroy         = false
 }
 
+# Resolves the ambient project ONLY for the adoption import ID below, and
+# only when the spec omits project_id — plans that name their project stay
+# credential-free (the count-gated client-config pattern).
+data "google_client_config" "this" {
+  count = var.spec.adopt_existing && var.spec.project_id == "" ? 1 : 0
+}
+
+# Adoption: initialization is one-way and ONCE-ONLY — GCP rejects a second
+# initializeAuth with 400 "Identity Platform has already been enabled for
+# this project" (live-verified). When the spec arms adopt_existing, the
+# deterministic singleton (projects/{project}/config) is imported and the
+# spec applies as an update; the block is inert once the resource is in
+# state, so re-applies stay clean.
+import {
+  for_each = var.spec.adopt_existing ? toset(["adopt"]) : toset([])
+  to       = google_identity_platform_config.this
+  id       = "projects/${var.spec.project_id != "" ? var.spec.project_id : data.google_client_config.this[0].project}/config"
+}
+
 # The project's Identity Platform configuration — a ONE-WAY project
 # singleton. The provider's create is a bare initializeAuth call
 # (permanently enabling Identity Platform on the project, billing required)
 # followed by an update that applies every setting, and its delete abandons
-# the configuration in place — GCP has no de-initialize. That is why this
-# resource carries no deletion_policy: the spec's deletion_policy governs
-# only the composed IdP configs below.
+# the configuration in place — GCP has no de-initialize; a create on an
+# already-initialized project hard-fails (arm spec.adopt_existing there).
+# That is why this resource carries no deletion_policy: the spec's
+# deletion_policy governs only the composed IdP configs below.
 #
 # Every sign-in arm's `enabled` is sent EXPLICITLY whenever its object is
 # present: the fields drive live authentication surfaces, and a spec
@@ -26,24 +46,24 @@ resource "google_identity_platform_config" "this" {
   authorized_domains         = length(var.spec.authorized_domains) > 0 ? var.spec.authorized_domains : null
   autodelete_anonymous_users = var.spec.autodelete_anonymous_users ? true : null
 
+  # The API always materializes the email and phone_number policies in its
+  # read-back (enabled=false when never configured), so BOTH blocks render
+  # explicitly whenever sign_in is present — omitting one leaves a perpetual
+  # block-removal diff on every re-plan (idempotency-gate caught,
+  # live-verified). The anonymous arm is NOT echoed when unset and renders
+  # only when the spec sets it.
   dynamic "sign_in" {
     for_each = var.spec.sign_in != null ? [var.spec.sign_in] : []
     content {
       allow_duplicate_emails = sign_in.value.allow_duplicate_emails
 
-      dynamic "email" {
-        for_each = sign_in.value.email != null ? [sign_in.value.email] : []
-        content {
-          enabled           = email.value.enabled
-          password_required = email.value.password_required
-        }
+      email {
+        enabled           = sign_in.value.email != null ? sign_in.value.email.enabled : false
+        password_required = sign_in.value.email != null ? sign_in.value.email.password_required : null
       }
-      dynamic "phone_number" {
-        for_each = sign_in.value.phone_number != null ? [sign_in.value.phone_number] : []
-        content {
-          enabled            = phone_number.value.enabled
-          test_phone_numbers = length(phone_number.value.test_phone_numbers) > 0 ? phone_number.value.test_phone_numbers : null
-        }
+      phone_number {
+        enabled            = sign_in.value.phone_number != null ? sign_in.value.phone_number.enabled : false
+        test_phone_numbers = sign_in.value.phone_number != null && length(coalesce(sign_in.value.phone_number.test_phone_numbers, {})) > 0 ? sign_in.value.phone_number.test_phone_numbers : null
       }
       dynamic "anonymous" {
         for_each = sign_in.value.anonymous != null ? [sign_in.value.anonymous] : []

@@ -34,6 +34,16 @@ On a `customService` the API accepts the SLO and measures NOTHING
 meaningful. Custom services take `requestBasedSli`, whose filters say
 exactly what good means.
 
+## Every filter must pin exactly one resource.type
+
+GCP validates each SLO filter at create: it must parse to exactly ONE
+monitored resource type, so `metric.type=...` alone is rejected with
+`Error 400: parses to N resource types and must parse to 1`. Always pair
+the metric with its monitored resource — `resource.type="consumed_api"`
+for serviceruntime metrics, `resource.type="https_lb_rule"` for load
+balancer metrics. The filter syntax accepts the bare form; only the live
+create catches it.
+
 ## Rolling windows for engineering, calendar for contracts
 
 `rollingPeriodDays: 30` answers "how are we doing lately" and is what

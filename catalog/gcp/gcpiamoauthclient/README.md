@@ -72,14 +72,14 @@ planton apply -f client.yaml
 | `displayName` | `string` | `""` | Name shown in consoles and consent surfaces. |
 | `description` | `string` | `""` | What this client is for — the operator-facing record. |
 | `disabled` | `bool` | `false` | When true, the client stops accepting new authorizations without being deleted — the reversible kill switch. |
-| `clientType` | `string` | GCP default | `PUBLIC_CLIENT` (mobile/SPA; cannot hold secrets) or `CONFIDENTIAL_CLIENT` (server-side; manage secrets via `credentials`). Immutable. |
+| `clientType` | `string` | GCP default | Only `CONFIDENTIAL_CLIENT` (server-side; manage secrets via `credentials`) can be created — GCP's enum lists `PUBLIC_CLIENT` but the service rejects it ("Client type is not supported", live-verified). Immutable. |
 | `credentials` | `[]object` | `[]` | Managed client secrets (CONFIDENTIAL_CLIENT only). Each entry needs a `credentialId`; `displayName` and `disabled` are optional. |
 | `deletionPolicy` | `string` | `DELETE` | One switch governing the client AND its credentials: `DELETE`, `PREVENT` (refuse), or `ABANDON` (keep working, drop from management). |
 
 ### Validation Rules
 
 - **Grant types are a closed set**: only `AUTHORIZATION_CODE_GRANT` and `REFRESH_TOKEN_GRANT` are accepted — Google's IAM API defines exactly these.
-- **Client type is a closed set**: `PUBLIC_CLIENT` or `CONFIDENTIAL_CLIENT`.
+- **Client type is `CONFIDENTIAL_CLIENT` only**: GCP rejects `PUBLIC_CLIENT` creation at the API ("Client type is not supported"); the validation re-admits it if GCP ever ships support.
 - **Every credential needs a `credentialId`** — it is the credential's immutable resource ID.
 
 ## Stack Outputs

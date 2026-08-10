@@ -42,6 +42,15 @@ needs one slice: add a `logViews` entry with the filter and grant
 `roles/logging.viewAccessor` on THAT view. Views update in place for
 filter/description but REPLACE on rename — treat `viewId` as permanent.
 
+View filters are NOT general log filters: the API accepts only
+restrictions on log source, resource type, apphub fields, user-defined
+labels, and `LOG_ID()`. A `severity>=ERROR` view is inexpressible — GCP
+rejects it at create ("Invalid view filter") even though the same
+filter is legal in sinks and log-based metrics. Slice by resource type
+or log ID (`LOG_ID("run.googleapis.com/stderr")` is the closest
+errors-shaped cut for containers) and leave severity to the reader's
+query.
+
 ## Retention changes are cheap; shortening is deletion
 
 Raising `retentionDays` is free. LOWERING it schedules deletion of

@@ -166,14 +166,15 @@ being deleted — the reversible kill switch.
 
 `string`
 
-The client's confidentiality model (the API's closed set):
-  "PUBLIC_CLIENT"       -- cannot keep a secret (mobile/SPA);
-                           secrets cannot be attached
-  "CONFIDENTIAL_CLIENT" -- can keep a secret (server-side apps);
-                           manage secrets via credentials below
-Immutable.
+The client's confidentiality model. Only "CONFIDENTIAL_CLIENT"
+(server-side apps that can keep a secret; manage secrets via
+credentials below) can be created: GCP's enum also lists
+PUBLIC_CLIENT (mobile/SPA), but the service rejects creating one
+with 400 "Client type is not supported" (live-verified at the raw
+API — no field combination unlocks it). Re-admit PUBLIC_CLIENT here
+when GCP ships support. Immutable.
 
-- rule: client_type must be one of: PUBLIC_CLIENT, CONFIDENTIAL_CLIENT
+- rule: client_type must be CONFIDENTIAL_CLIENT — GCP rejects PUBLIC_CLIENT creation ("Client type is not supported")
 
 ### spec.allowedGrantTypes
 

@@ -275,6 +275,7 @@ spec:
 | `spec.inboundSamlConfigs[].spConfig.callbackUri` | `string` |  |  |  |
 | `spec.inboundSamlConfigs[].spConfig.spEntityId` | `string` |  |  |  |
 | `spec.deletionPolicy` | `string` |  |  |  |
+| `spec.adoptExisting` | `bool` |  |  |  |
 
 ## Field Details
 
@@ -858,6 +859,22 @@ itself cannot be deleted (destroy always abandons it in place):
                working in GCP
 
 - rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
+### spec.adoptExisting
+
+`bool`
+
+Adopt the project's EXISTING Identity Platform configuration instead
+of initializing it. Initialization is one-way and once-only: GCP
+rejects a second initializeAuth with 400 "Identity Platform has
+already been enabled for this project" (live-verified), and there is
+no de-initialize. Set true for any project where Identity Platform
+was ever enabled — by a console click, a Firebase Auth setup, or a
+previous deployment of this kind (destroy abandons the configuration
+in place, so a re-deploy after destroy also needs it). The module
+then imports the singleton (projects/{project}/config) and applies
+this spec as an update. Leave false only for a project whose
+Identity Platform has never been enabled.
 
 ## Outputs
 

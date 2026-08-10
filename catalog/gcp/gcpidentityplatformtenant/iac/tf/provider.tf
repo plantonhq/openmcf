@@ -13,4 +13,11 @@ terraform {
 }
 
 provider "google" {
+  # The Identity Toolkit API requires a quota project on user-credential
+  # calls: without this override, a deploy under plain ADC
+  # (`gcloud auth application-default login`) fails at create with 403
+  # "requires a quota project" (live-verified on the config kind — same
+  # API serves tenants). The override attributes quota to the resource's
+  # own project under every credential mode.
+  user_project_override = true
 }

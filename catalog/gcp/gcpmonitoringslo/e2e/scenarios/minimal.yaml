@@ -24,9 +24,13 @@ spec:
       displayName: E2E smoke service
   goal: 0.99
   rollingPeriodDays: 30
+  # Every SLO filter MUST pin resource.type alongside metric.type: GCP
+  # validates at create that a filter parses to exactly ONE monitored
+  # resource type and rejects anything broader (Error 400 "parses to N
+  # resource types and must parse to 1" — live-verified).
   sli:
     requestBasedSli:
       goodTotalRatio:
-        goodServiceFilter: metric.type="serviceruntime.googleapis.com/api/request_count" metric.labels.response_code_class="2xx"
-        totalServiceFilter: metric.type="serviceruntime.googleapis.com/api/request_count"
+        goodServiceFilter: metric.type="serviceruntime.googleapis.com/api/request_count" resource.type="consumed_api" metric.labels.response_code_class="2xx"
+        totalServiceFilter: metric.type="serviceruntime.googleapis.com/api/request_count" resource.type="consumed_api"
   deletionPolicy: DELETE

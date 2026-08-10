@@ -18,14 +18,18 @@ after removing the old entry the remaining credential is again the first
 and downstream ValueFromRef consumers pick up the new secret without a
 manifest change.
 
-## Public or confidential — decide once
+## Only confidential clients exist (GCP's rule, not ours)
 
-`clientType` is immutable. `CONFIDENTIAL_CLIENT` is for server-side apps
-that can keep a secret; `PUBLIC_CLIENT` is for SPAs and mobile apps that
-cannot — credentials cannot even be attached to one, which is the point:
-a secret shipped inside a browser bundle is public by definition.
-Choosing wrong means destroy-and-recreate plus re-registering every
-consumer against the new client ID.
+`clientType` is immutable, and only `CONFIDENTIAL_CLIENT` (server-side
+apps that can keep a secret) can actually be created: GCP's API lists
+`PUBLIC_CLIENT` in its enum but rejects creating one with "Client type
+is not supported" — verified at the raw API, no field combination
+unlocks it. SPAs and mobile apps that need a public OAuth client have
+no workforce-federation path today; when GCP ships support, the spec's
+validation re-admits the value. A wrong choice would mean
+destroy-and-recreate plus re-registering every consumer against the new
+client ID — which today cannot arise, since there is exactly one legal
+choice.
 
 ## Redirect URIs should be references, not strings
 

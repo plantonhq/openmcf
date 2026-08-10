@@ -21,6 +21,10 @@ metadata:
   tags:
     - planton-e2e
 spec:
+  # The test project's Identity Platform is permanently initialized (the
+  # one-way initializeAuth was spent by this kind's first live proof);
+  # every subsequent deploy adopts — GCP hard-rejects re-initialization.
+  adoptExisting: true
   signIn:
     email:
       enabled: true

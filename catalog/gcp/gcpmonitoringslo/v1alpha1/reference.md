@@ -52,12 +52,14 @@ spec:
 
   # How good service is counted — exactly one SLI family. The good/total
   # ratio takes exactly TWO of good/bad/total filters; GCP derives the
-  # third.
+  # third. Every filter must pin resource.type alongside metric.type:
+  # GCP validates at create that a filter parses to exactly ONE monitored
+  # resource type and rejects anything broader.
   sli:
     requestBasedSli:
       goodTotalRatio:
-        goodServiceFilter: metric.type="serviceruntime.googleapis.com/api/request_count" metric.labels.response_code_class="2xx"
-        totalServiceFilter: metric.type="serviceruntime.googleapis.com/api/request_count"
+        goodServiceFilter: metric.type="serviceruntime.googleapis.com/api/request_count" resource.type="consumed_api" metric.labels.response_code_class="2xx"
+        totalServiceFilter: metric.type="serviceruntime.googleapis.com/api/request_count" resource.type="consumed_api"
 
   # What a destroy does: DELETE (default — the error-budget history dies
   # with the SLO), PREVENT (the posture once burn-rate alerts reference
@@ -380,6 +382,10 @@ Good service = values of a distribution metric falling inside a range
 
 A monitoring filter (https://cloud.google.com/monitoring/api/v3/filters)
 selecting a DISTRIBUTION-valued metric, e.g. request latencies.
+The filter MUST pin resource.type alongside metric.type: GCP validates
+at create that every SLO filter parses to exactly ONE monitored
+resource type and rejects anything broader (Error 400 "parses to N
+resource types and must parse to 1").
 
 - rule: {"required":true}
 
@@ -452,7 +458,9 @@ The window length, as a duration string between "60s" and "604800s"
 `string`
 
 A window is good when this filter's BOOLEAN metric is true throughout
-the window.
+the window. Like every SLO filter, it must pin resource.type
+alongside metric.type (GCP requires exactly one monitored resource
+type per filter).
 
 ### spec.sli.windowsBasedSli.goodTotalRatioThreshold
 
@@ -552,6 +560,10 @@ Distribution-cut criterion for the window.
 
 A monitoring filter (https://cloud.google.com/monitoring/api/v3/filters)
 selecting a DISTRIBUTION-valued metric, e.g. request latencies.
+The filter MUST pin resource.type alongside metric.type: GCP validates
+at create that every SLO filter parses to exactly ONE monitored
+resource type and rejects anything broader (Error 400 "parses to N
+resource types and must parse to 1").
 
 - rule: {"required":true}
 

@@ -12,6 +12,11 @@ kind: GcpIdentityPlatformConfig
 metadata:
   name: planton-oss-e2e-gcpidcfg-prereq
 spec:
+  # The test project's Identity Platform is permanently initialized (the
+  # one-way initializeAuth was spent by this kind's first live proof);
+  # every deploy of this fixture adopts — GCP hard-rejects
+  # re-initialization.
+  adoptExisting: true
   signIn:
     email:
       enabled: true

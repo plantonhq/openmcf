@@ -1,9 +1,12 @@
 package module
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/identityplatform"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/organizations"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -59,23 +62,26 @@ func identityPlatformConfig(ctx *pulumi.Context, locals *Locals, gcpProvider *gc
 		signInArgs := &identityplatform.ConfigSignInArgs{
 			AllowDuplicateEmails: pulumi.BoolPtr(spec.SignIn.AllowDuplicateEmails),
 		}
+		// The API always materializes the email and phone_number policies in
+		// its read-back (enabled=false when never configured), so BOTH args
+		// are set explicitly whenever sign_in is present — omitting one
+		// leaves a perpetual diff on every re-preview (idempotency-gate
+		// caught, live-verified). The anonymous arm is NOT echoed when unset
+		// and is set only when the spec sets it.
+		emailArgs := &identityplatform.ConfigSignInEmailArgs{
+			Enabled: pulumi.Bool(spec.SignIn.Email != nil && spec.SignIn.Email.Enabled),
+		}
 		if spec.SignIn.Email != nil {
-			signInArgs.Email = &identityplatform.ConfigSignInEmailArgs{
-				// Explicit send — see the function comment.
-				Enabled:          pulumi.Bool(spec.SignIn.Email.Enabled),
-				PasswordRequired: pulumi.BoolPtr(spec.SignIn.Email.PasswordRequired),
-			}
+			emailArgs.PasswordRequired = pulumi.BoolPtr(spec.SignIn.Email.PasswordRequired)
 		}
-		if spec.SignIn.PhoneNumber != nil {
-			phoneArgs := &identityplatform.ConfigSignInPhoneNumberArgs{
-				// Explicit send — see the function comment.
-				Enabled: pulumi.Bool(spec.SignIn.PhoneNumber.Enabled),
-			}
-			if len(spec.SignIn.PhoneNumber.TestPhoneNumbers) > 0 {
-				phoneArgs.TestPhoneNumbers = pulumi.ToStringMap(spec.SignIn.PhoneNumber.TestPhoneNumbers)
-			}
-			signInArgs.PhoneNumber = phoneArgs
+		signInArgs.Email = emailArgs
+		phoneArgs := &identityplatform.ConfigSignInPhoneNumberArgs{
+			Enabled: pulumi.Bool(spec.SignIn.PhoneNumber != nil && spec.SignIn.PhoneNumber.Enabled),
 		}
+		if spec.SignIn.PhoneNumber != nil && len(spec.SignIn.PhoneNumber.TestPhoneNumbers) > 0 {
+			phoneArgs.TestPhoneNumbers = pulumi.ToStringMap(spec.SignIn.PhoneNumber.TestPhoneNumbers)
+		}
+		signInArgs.PhoneNumber = phoneArgs
 		if spec.SignIn.Anonymous != nil {
 			signInArgs.Anonymous = &identityplatform.ConfigSignInAnonymousArgs{
 				// Explicit send — see the function comment.
@@ -191,8 +197,30 @@ func identityPlatformConfig(ctx *pulumi.Context, locals *Locals, gcpProvider *gc
 		args.MultiTenant = multiTenantArgs
 	}
 
-	createdConfig, err := identityplatform.NewConfig(ctx, "config", args,
-		pulumi.Provider(gcpProvider), pulumi.DependsOn([]pulumi.Resource{createdProjectService}))
+	configOpts := []pulumi.ResourceOption{
+		pulumi.Provider(gcpProvider), pulumi.DependsOn([]pulumi.Resource{createdProjectService}),
+	}
+	// Adoption: initialization is one-way and ONCE-ONLY — GCP rejects a
+	// second initializeAuth with 400 "Identity Platform has already been
+	// enabled for this project" (live-verified). When the spec arms
+	// adopt_existing, the deterministic singleton (projects/{project}/config)
+	// is imported instead of created; the option is consulted only while the
+	// resource is not yet in state, so re-applies stay clean.
+	if spec.AdoptExisting {
+		adoptionProject := spec.ProjectId.GetValue()
+		if adoptionProject == "" {
+			// Ambient-project fallback for the import ID only — mirrors the
+			// Terraform module's count-gated client-config read.
+			clientConfig, err := organizations.GetClientConfig(ctx, pulumi.Provider(gcpProvider))
+			if err != nil {
+				return errors.Wrap(err, "failed to resolve ambient project for identity platform adoption")
+			}
+			adoptionProject = clientConfig.Project
+		}
+		configOpts = append(configOpts, pulumi.Import(pulumi.ID(fmt.Sprintf("projects/%s/config", adoptionProject))))
+	}
+
+	createdConfig, err := identityplatform.NewConfig(ctx, "config", args, configOpts...)
 	if err != nil {
 		return errors.Wrap(err, "failed to create identity platform config")
 	}

@@ -16,15 +16,16 @@ import (
 type Phase string
 
 const (
-	PhaseDepsUp    Phase = "DEPENDENCIES-UP"
-	PhaseValidate  Phase = "VALIDATE"
-	PhaseDeploy    Phase = "DEPLOY"
-	PhaseVerifyOut Phase = "VERIFY-OUT"
-	PhaseVerifyRes Phase = "VERIFY-RES"
-	PhaseImportRT  Phase = "IMPORT-RT"
-	PhaseDestroy   Phase = "DESTROY"
-	PhaseVerifyCln Phase = "VERIFY-CLN"
-	PhaseDepsDn    Phase = "DEPENDENCIES-DOWN"
+	PhaseDepsUp      Phase = "DEPENDENCIES-UP"
+	PhaseValidate    Phase = "VALIDATE"
+	PhaseDeploy      Phase = "DEPLOY"
+	PhaseIdempotency Phase = "IDEMPOTENCY"
+	PhaseVerifyOut   Phase = "VERIFY-OUT"
+	PhaseVerifyRes   Phase = "VERIFY-RES"
+	PhaseImportRT    Phase = "IMPORT-RT"
+	PhaseDestroy     Phase = "DESTROY"
+	PhaseVerifyCln   Phase = "VERIFY-CLN"
+	PhaseDepsDn      Phase = "DEPENDENCIES-DOWN"
 )
 
 // PhaseResult captures the outcome of a single lifecycle phase.
@@ -152,9 +153,21 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 	phases := []lifecyclePhase{
 		{PhaseValidate, func() error { return runValidate(tc) }},
 		{PhaseDeploy, func() error { return runDeploy(tc) }},
-		{PhaseVerifyOut, func() error { return runVerifyOutputs(tc) }},
-		{PhaseVerifyRes, func() error { return runVerifyResources(verifyCtx, tc, harness) }},
 	}
+	// The idempotency gate re-plans the configuration DEPLOY just applied and
+	// fails on any pending change: a dirty second plan means the module and
+	// the provider disagree about the applied state (the send-omitted-value /
+	// Optional+Computed echo defect classes), which users would meet as a
+	// perpetual diff on every re-apply. Provider profiles arm it via
+	// assert_apply_idempotency; prerequisite fixtures are deliberately outside
+	// its scope (they belong to other kinds' contracts).
+	if tc.AssertApplyIdempotency {
+		phases = append(phases, lifecyclePhase{PhaseIdempotency, func() error { return runIdempotency(tc) }})
+	}
+	phases = append(phases,
+		lifecyclePhase{PhaseVerifyOut, func() error { return runVerifyOutputs(tc) }},
+		lifecyclePhase{PhaseVerifyRes, func() error { return runVerifyResources(verifyCtx, tc, harness) }},
+	)
 	// The import round-trip slots between VERIFY-RES and DESTROY: it needs the
 	// deployed fixture live (imports read the real cloud) and the destroy that
 	// follows tears down through the re-imported state -- itself part of the
@@ -180,7 +193,7 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 
 		if err != nil {
 			result.Passed = false
-			if p.phase == PhaseDeploy || p.phase == PhaseVerifyOut || p.phase == PhaseVerifyRes || p.phase == PhaseImportRT {
+			if p.phase == PhaseDeploy || p.phase == PhaseIdempotency || p.phase == PhaseVerifyOut || p.phase == PhaseVerifyRes || p.phase == PhaseImportRT {
 				cleanupErr := runDestroy(tc)
 				if cleanupErr != nil {
 					fmt.Printf("  [WARN] cleanup destroy also failed: %v\n", cleanupErr)
@@ -264,6 +277,26 @@ func runDeploy(tc *provider.ComponentTestContext) error {
 			return errors.New("terraform options not initialized (runValidate must run first)")
 		}
 		_, err := TerraformDeploy(tc.T, opts)
+		return err
+	default:
+		return errors.Errorf("unsupported engine: %s", tc.Engine)
+	}
+}
+
+// runIdempotency re-plans the configuration runDeploy just applied and fails
+// on any pending change. See the phase-insertion comment in RunComponentTest
+// for why this gate exists and what a failure means.
+func runIdempotency(tc *provider.ComponentTestContext) error {
+	switch tc.Engine {
+	case "pulumi":
+		_, err := PulumiPreviewExpectNoChanges(tc.ModuleDir, tc.StackName, tc.BackendURL, tc.StackInputFilePath)
+		return err
+	case "terraform":
+		opts, ok := tc.TerraformOpts.(*tt.Options)
+		if !ok || opts == nil {
+			return errors.New("terraform options not initialized (runValidate must run first)")
+		}
+		_, err := TerraformPlanNoChanges(tc.T, opts)
 		return err
 	default:
 		return errors.Errorf("unsupported engine: %s", tc.Engine)

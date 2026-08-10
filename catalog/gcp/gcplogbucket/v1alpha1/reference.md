@@ -65,11 +65,14 @@ spec:
 
   # Named, filtered slices grantable independently
   # (roles/logging.viewAccessor on a view shows a reader only these
-  # entries). viewId is permanent — renames replace the view.
+  # entries). viewId is permanent — renames replace the view. View
+  # filters speak a RESTRICTED grammar: only log source, resource type,
+  # apphub fields, user-defined labels, or LOG_ID() restrictions —
+  # severity is NOT a legal view dimension.
   logViews:
-    - viewId: errors-only
-      filter: severity>=ERROR
-      description: The on-call slice — errors without the noise
+    - viewId: run-stderr
+      filter: resource.type="cloud_run_revision" AND LOG_ID("run.googleapis.com/stderr")
+      description: The on-call slice — Cloud Run stderr without the noise
 
   # What a destroy does: DELETE (default — stored entries are deleted,
   # no recycle bin), PREVENT (the compliance posture), or ABANDON. Also
@@ -280,9 +283,16 @@ and description update in place).
 
 `string`
 
-The filter selecting which of the bucket's entries this view exposes
-(https://cloud.google.com/logging/docs/view/logging-query-language).
+The filter selecting which of the bucket's entries this view exposes.
 Empty exposes every entry in the bucket.
+
+View filters speak a RESTRICTED grammar — NOT the general log filter
+language: the API accepts only restrictions on log source
+(source()), resource type (resource.type=...), apphub fields,
+user-defined labels, and log ID (LOG_ID(...)). Severity is NOT a
+legal view dimension — GCP rejects it at create with "Invalid view
+filter" (live-verified), even though the same expression is legal in
+sinks and log-based metrics.
 
 ### spec.logViews[].description
 

@@ -24,6 +24,7 @@ import (
 	"github.com/plantonhq/planton/e2e/framework/discovery"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/e2e/framework/runner"
+	"github.com/plantonhq/planton/pkg/e2e/profile"
 	gcpstorage "google.golang.org/api/storage/v1"
 )
 
@@ -32,6 +33,10 @@ var (
 	repoRoot         string
 	runID            string
 	pulumiBackendURL string
+	// assertApplyIdempotency mirrors the provider profile's
+	// assert_apply_idempotency field: when armed, every scenario lifecycle
+	// gains the IDEMPOTENCY phase (re-plan after apply must be empty).
+	assertApplyIdempotency bool
 )
 
 func TestMain(m *testing.M) {
@@ -56,6 +61,13 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "failed to login to pulumi backend: %v\n", err)
 		os.Exit(1)
 	}
+
+	providerProfile, err := profile.LoadProviderProfile(repoRoot, "gcp")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load GCP provider E2E profile: %v\n", err)
+		os.Exit(1)
+	}
+	assertApplyIdempotency = providerProfile.GetSpec().GetAssertApplyIdempotency()
 
 	testHarness = gcpe2e.NewHarness()
 	ctx := context.Background()
@@ -888,6 +900,42 @@ func TestGcpLogMetric_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcplogmetric", "terraform")
 }
 
+// --- GCP Workflow (serverless orchestrator; the Eventarc destination target) ---
+
+func TestGcpWorkflow_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpworkflow", "pulumi")
+}
+func TestGcpWorkflow_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpworkflow", "terraform")
+}
+
+// --- GCP Eventarc Trigger (event routing: deploys the GcpCloudRun prerequisite) ---
+
+func TestGcpEventarcTrigger_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpeventarctrigger", "pulumi")
+}
+func TestGcpEventarcTrigger_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpeventarctrigger", "terraform")
+}
+
+// --- GCP Eventarc Message Bus (Eventarc Advanced: bus + sources + pipelines + enrollments) ---
+
+func TestGcpEventarcMessageBus_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpeventarcmessagebus", "pulumi")
+}
+func TestGcpEventarcMessageBus_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpeventarcmessagebus", "terraform")
+}
+
+// --- GCP Certificate Map (SNI routing table: deploys the GcpCertManagerCert prerequisite chain) ---
+
+func TestGcpCertificateMap_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcertificatemap", "pulumi")
+}
+func TestGcpCertificateMap_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcertificatemap", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
@@ -937,7 +985,8 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 		// Leaving it empty makes the dependency stacks fall back to the
 		// machine's ambient `pulumi login` backend, coupling the run to
 		// stale developer state.
-		BackendURL: pulumiBackendURL,
+		BackendURL:             pulumiBackendURL,
+		AssertApplyIdempotency: assertApplyIdempotency,
 	}
 
 	if engine == "pulumi" {

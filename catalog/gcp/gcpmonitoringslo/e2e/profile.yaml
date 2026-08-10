@@ -5,11 +5,13 @@ metadata:
 spec:
   # Two live scenarios on the custom-service arm: minimal (request-based
   # good/total ratio, rolling 30d) and calendar-distribution
-  # (distribution cut + calendar MONTH). SLOs are free and create in
-  # seconds; filters are validated syntactically at create, so no live
-  # metric streams are needed. Deploy -> services.serviceLevelObjectives
-  # .get verify -> destroy -> verify gone (the created custom service
-  # destroys with the kind), on both provisioners.
+  # (distribution cut + calendar MONTH). PROVEN live 4/4 lanes (both
+  # scenarios x both engines), IDEMPOTENCY clean. LIVE-CAUGHT API truth
+  # landed on the spec/GUIDE: every SLO filter must parse to exactly ONE
+  # monitored resource type — pin resource.type alongside metric.type or
+  # the create is rejected (Error 400 "parses to N resource types and
+  # must parse to 1"); filters are otherwise validated syntactically at
+  # create, so no live metric streams are needed.
   # OFFLINE-PROVEN-ONLY arms (recorded): the basic_service (generic
   # service) arm — GCP validates service_type + labels server-side and
   # the test tenant carries no auto-detectable workload — and the
@@ -18,6 +20,6 @@ spec:
   # RENDERED. Unblock: a Cloud Run fixture chain for basic_service; a
   # metric-producing workload for windows arms.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

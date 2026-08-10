@@ -201,9 +201,16 @@ message GcpLogBucketLogView {
   // and description update in place).
   string view_id = 1 [(buf.validate.field).required = true];
 
-  // The filter selecting which of the bucket's entries this view exposes
-  // (https://cloud.google.com/logging/docs/view/logging-query-language).
+  // The filter selecting which of the bucket's entries this view exposes.
   // Empty exposes every entry in the bucket.
+  //
+  // View filters speak a RESTRICTED grammar — NOT the general log filter
+  // language: the API accepts only restrictions on log source
+  // (source()), resource type (resource.type=...), apphub fields,
+  // user-defined labels, and log ID (LOG_ID(...)). Severity is NOT a
+  // legal view dimension — GCP rejects it at create with "Invalid view
+  // filter" (live-verified), even though the same expression is legal in
+  // sinks and log-based metrics.
   string filter = 2;
 
   // What this view is for and who should be granted it.

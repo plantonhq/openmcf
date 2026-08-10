@@ -36,6 +36,19 @@ func PulumiDeploy(moduleDir, stackName, backendURL, stackInputFilePath string) (
 	return runPulumi(moduleDir, backendURL, stackInputFilePath, "", args)
 }
 
+// PulumiPreviewExpectNoChanges re-plans the just-applied stack and fails if
+// any change is still pending — the Pulumi arm of the IDEMPOTENCY phase. No
+// --refresh here: the point is whether the program's desired state matches
+// what the apply recorded, not whether the cloud drifted in the seconds since.
+func PulumiPreviewExpectNoChanges(moduleDir, stackName, backendURL, stackInputFilePath string) (*PulumiResult, error) {
+	args := []string{"preview", "--stack", stackName, "--expect-no-changes", "--non-interactive"}
+	result, err := runPulumi(moduleDir, backendURL, stackInputFilePath, "", args)
+	if err != nil {
+		return result, errors.Wrap(err, "pulumi preview reported pending changes after apply (idempotency violation)")
+	}
+	return result, nil
+}
+
 // PulumiDestroy runs `pulumi destroy` for the given module directory and stack.
 // --run-program keeps the program available so BeforeDelete/AfterDelete
 // resource hooks fire (e.g. Kyverno's webhook-GC sentinel). Without it,

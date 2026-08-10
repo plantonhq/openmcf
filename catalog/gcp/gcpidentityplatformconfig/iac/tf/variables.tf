@@ -110,5 +110,6 @@ variable "spec" {
       }))
     })), [])
     deletion_policy = optional(string, "")
+    adopt_existing  = optional(bool, false)
   })
 }

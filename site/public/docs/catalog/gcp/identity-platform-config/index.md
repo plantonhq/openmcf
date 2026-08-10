@@ -21,6 +21,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ## Before You Deploy
 
 - **The first deploy PERMANENTLY initializes Identity Platform on the project** (billing required). GCP has no de-initialize — destroy abandons the config in place. Choose the project deliberately.
+- **Already-initialized projects deploy with `adoptExisting: true`** — GCP rejects a second initialization outright, so the adoption switch imports the project's config singleton and applies your spec as an update (a re-deploy after destroy needs it too).
 - **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project.
 - **IAM**: the deploying identity needs `roles/identityplatform.admin` or broader.
 - **IdP credentials**: each provider's `clientId`/`clientSecret` comes from that provider's own developer console — consent-screen OAuth clients have no programmatic creation path (supplied as managed secrets).

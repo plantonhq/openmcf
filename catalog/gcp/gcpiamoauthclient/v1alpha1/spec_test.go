@@ -58,12 +58,16 @@ var _ = ginkgo.Describe("GcpIamOauthClientSpec", func() {
 		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
 	})
 
-	ginkgo.It("should accept each client_type value", func() {
-		for _, v := range []string{"PUBLIC_CLIENT", "CONFIDENTIAL_CLIENT"} {
-			target := minimal()
-			target.Spec.ClientType = v
-			gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
-		}
+	ginkgo.It("should accept CONFIDENTIAL_CLIENT", func() {
+		target := minimal()
+		target.Spec.ClientType = "CONFIDENTIAL_CLIENT"
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject PUBLIC_CLIENT — GCP refuses to create one (live API truth)", func() {
+		target := minimal()
+		target.Spec.ClientType = "PUBLIC_CLIENT"
+		gomega.Expect(validator.Validate(target)).NotTo(gomega.Succeed())
 	})
 
 	ginkgo.It("should accept a confidential client with credentials", func() {

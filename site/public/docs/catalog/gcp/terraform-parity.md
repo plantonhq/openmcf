@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 93 |
 | Distinct provider resources consumed | 130 |
-| Spec fields authored across all kinds | 3385 |
+| Spec fields authored across all kinds | 3386 |
 | Module pins on `google` | `~> 7.43` × 93 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**93 of 93 kinds are at total accounting; 16 proven live.**
+**93 of 93 kinds are at total accounting; 23 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -95,21 +95,21 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpHealthCheck | 100 | 14 | 86 | 0 | 0 | ✅ | — |
 | GcpIamCustomRole | 7 | 6 | 1 | 0 | 0 | ✅ | — |
 | GcpIamDenyPolicy | 13 | 11 | 2 | 0 | 0 | ✅ | — |
-| GcpIamOauthClient | 18 | 12 | 3 | 3 | 0 | ✅ | — |
-| GcpIdentityPlatformConfig | 55 | 42 | 10 | 3 | 0 | ✅ | — |
-| GcpIdentityPlatformTenant | 36 | 24 | 6 | 6 | 0 | ✅ | — |
+| GcpIamOauthClient | 18 | 12 | 3 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpIdentityPlatformConfig | 55 | 42 | 10 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpIdentityPlatformTenant | 36 | 24 | 6 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpKmsKey | 12 | 10 | 2 | 0 | 0 | ✅ | — |
 | GcpKmsKeyIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpKmsKeyRing | 3 | 1 | 2 | 0 | 0 | ✅ | — |
-| GcpLogBucket | 59 | 38 | 17 | 4 | 0 | ✅ | — |
-| GcpLogMetric | 23 | 21 | 2 | 0 | 0 | ✅ | — |
+| GcpLogBucket | 59 | 38 | 17 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpLogMetric | 23 | 21 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpLoggingSink | 54 | 38 | 16 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpManagedSslCertificate | 6 | 2 | 3 | 1 | 0 | ✅ | — |
 | GcpMemorystoreInstance | 38 | 29 | 7 | 2 | 0 | ✅ | — |
 | GcpMonitoringAlertPolicy | 70 | 68 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpMonitoringDashboard | 3 | 2 | 1 | 0 | 0 | ✅ | — |
+| GcpMonitoringDashboard | 3 | 2 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpMonitoringNotificationChannel | 18 | 9 | 3 | 6 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpMonitoringSlo | 53 | 9 | 44 | 0 | 0 | ✅ | — |
+| GcpMonitoringSlo | 53 | 9 | 44 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpMonitoringUptimeCheck | 38 | 33 | 3 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpProject | 14 | 5 | 5 | 4 | 0 | ✅ | — |
 | GcpProjectIamMember | 6 | 5 | 1 | 0 | 0 | ✅ | — |

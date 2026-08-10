@@ -718,6 +718,10 @@ type GcpMonitoringSloDistributionCut struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// A monitoring filter (https://cloud.google.com/monitoring/api/v3/filters)
 	// selecting a DISTRIBUTION-valued metric, e.g. request latencies.
+	// The filter MUST pin resource.type alongside metric.type: GCP validates
+	// at create that every SLO filter parses to exactly ONE monitored
+	// resource type and rejects anything broader (Error 400 "parses to N
+	// resource types and must parse to 1").
 	DistributionFilter string `protobuf:"bytes,1,opt,name=distribution_filter,json=distributionFilter,proto3" json:"distribution_filter,omitempty"`
 	// The range of values counted as good (e.g. min 0, max 500 for "under
 	// 500ms" when the metric is in milliseconds).
@@ -828,6 +832,12 @@ func (x *GcpMonitoringSloRange) GetMax() float64 {
 }
 
 // A good/total (or good/bad) ratio SLI.
+//
+// Every filter here MUST pin resource.type alongside metric.type: GCP
+// validates at create that an SLO filter parses to exactly ONE monitored
+// resource type and rejects anything broader (Error 400 "parses to N
+// resource types and must parse to 1" — e.g. a serviceruntime metric
+// needs resource.type="consumed_api").
 type GcpMonitoringSloGoodTotalRatio struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// A monitoring filter counting GOOD events (a DELTA metric of int64 or
@@ -899,7 +909,9 @@ type GcpMonitoringSloWindowsBasedSli struct {
 	// (one minute to one week). Empty defers to the GCP API default (60s).
 	WindowPeriod string `protobuf:"bytes,1,opt,name=window_period,json=windowPeriod,proto3" json:"window_period,omitempty"`
 	// A window is good when this filter's BOOLEAN metric is true throughout
-	// the window.
+	// the window. Like every SLO filter, it must pin resource.type
+	// alongside metric.type (GCP requires exactly one monitored resource
+	// type per filter).
 	GoodBadMetricFilter string `protobuf:"bytes,2,opt,name=good_bad_metric_filter,json=goodBadMetricFilter,proto3" json:"good_bad_metric_filter,omitempty"`
 	// A window is good when a request-based criterion (a good/total ratio
 	// or a basic SLI) meets a threshold within the window.

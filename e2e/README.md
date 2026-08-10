@@ -23,6 +23,19 @@ When a component has dependencies (see "Component Dependencies" below), the
 framework wraps this lifecycle with a **DEPENDENCIES-UP** phase before VALIDATE
 and a **DEPENDENCIES-DOWN** phase after VERIFY-CLN (teardown in reverse order).
 
+**IDEMPOTENCY phase (per-provider opt-in):** when a provider's E2E profile
+sets `assert_apply_idempotency: true`, every lifecycle gains an IDEMPOTENCY
+phase right after DEPLOY: the runner re-plans the just-applied configuration
+(`terraform plan -detailed-exitcode` must exit 0 / `pulumi preview
+--expect-no-changes`) and fails the lane on any pending change. A dirty
+second plan means the module and the provider disagree about applied state —
+the send-omitted-value and Optional+Computed echo defect classes, which
+users otherwise meet as a perpetual diff on every re-apply (first live
+catch: the Identity Platform config's server-materialized
+`sign_in.phone_number` block). The gate covers the component under test
+only; prerequisite fixtures belong to other kinds' contracts. Arm it per
+provider after the catalog's known no-op re-plan classes are burned down.
+
 ## Directory Layout
 
 ### Component E2E Structure
@@ -859,6 +872,34 @@ even though the enablement resource completed. When a new service family
 first joins the harness, pre-enable its APIs on the test project once
 (`gcloud services enable <api> --project <test-project>`) before the first
 live run; from then on the in-module enablement carries every future run.
+
+**Some GCP APIs require a quota project on user-credential calls:** the
+Identity Toolkit API (Identity Platform) rejects calls made with plain
+user ADC — 403 "requires a quota project, which is not set by default" —
+and the Terraform provider sends the `X-Goog-User-Project` header ONLY
+when `user_project_override` is armed in the provider config (the ADC
+file's own `quota_project_id` is NOT honored by the provider transport;
+live-verified). Kinds whose APIs carry this requirement wire
+`user_project_override = true` in their TF provider block and build their
+Pulumi provider via `pulumigoogleprovider.GetWithUserProjectOverride` —
+a module-level, customer-facing fix, never a harness export. The typed
+verifier clients are unaffected (google.golang.org/api transports honor
+the ADC quota project).
+
+**Once-only initialization singletons need an adopt arm for every lane
+after the first:** some project singletons initialize exactly once EVER —
+Identity Platform's `initializeAuth` hard-fails a second call with 400
+"Identity Platform has already been enabled for this project"
+(live-verified), and destroy only abandons. The first live lane spends
+the project's single create; every later lane (the same engine's second
+scenario, the other engine, every prerequisite chain) must ADOPT instead.
+The catalog pattern is a spec-level `adopt_existing` switch (TF: a
+for_each-gated `import` block on the deterministic singleton ID; Pulumi:
+a conditional `pulumi.Import` resource option) with the kind's e2e
+fixtures arming it permanently once the test project is initialized —
+Pulumi's import matches because the modules only specify spec-driven
+inputs, and Terraform's config-driven import applies spec drift as an
+update in the same apply.
 
 **Typed-client gaps in the pinned Google API line:** a brand-new GCP service
 may have no typed client in the repo's pinned `google.golang.org/api`

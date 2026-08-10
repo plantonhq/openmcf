@@ -12,6 +12,18 @@ anything. A config applied to the wrong project leaves that project
 Identity-Platform-enabled forever. Treat the first deploy of this kind
 with the same care as creating the project itself.
 
+## Already-initialized projects need adoptExisting
+
+Initialization is also ONCE-ONLY: GCP rejects a second initializeAuth
+with "Identity Platform has already been enabled for this project"
+(live-verified). Any project where Identity Platform was ever enabled —
+a console click, a Firebase Auth setup, a previous deploy of this kind
+(destroy abandons, so a re-deploy hits this too) — needs
+`adoptExisting: true`, which imports the project's config singleton and
+applies your spec as an update. The failure mode without it is loud and
+immediate; the fix is one field. Fresh, never-initialized projects leave
+it unset.
+
 ## The tenant gate lives here
 
 `multiTenant.allowTenants: true` is the prerequisite for every

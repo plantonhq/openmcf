@@ -5,12 +5,14 @@ metadata:
 spec:
   # Registry prerequisite GcpIdentityPlatformConfig: the harness deploys
   # the planton-oss-e2e-gcpidcfg-prereq fixture first, which arms
-  # multiTenant.allowTenants (tenants cannot be created without it).
-  # WATCH (shared with that kind): on an already-initialized project the
-  # fixture's create may hit the config kind's non-idempotent
-  # initializeAuth. Tenants themselves are fully deletable, so
-  # deploy -> verify -> destroy -> verify-gone is clean.
+  # multiTenant.allowTenants (tenants cannot be created without it) and
+  # adoptExisting (the test project is permanently initialized — the
+  # config kind's profile has the story). PROVEN live 4/4 lanes (both
+  # scenarios x both engines), IDEMPOTENCY clean — the server-generated
+  # tenant ID flow (output, never spec) and the tenant-scoped IdP
+  # composition proved on both engines. Tenants themselves are fully
+  # deletable, so deploy -> verify -> destroy -> verify-gone is clean.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

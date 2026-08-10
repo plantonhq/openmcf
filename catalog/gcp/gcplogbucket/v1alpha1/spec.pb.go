@@ -387,9 +387,16 @@ type GcpLogBucketLogView struct {
 	// REPLACES the view (views are immutable in name and home; only filter
 	// and description update in place).
 	ViewId string `protobuf:"bytes,1,opt,name=view_id,json=viewId,proto3" json:"view_id,omitempty"`
-	// The filter selecting which of the bucket's entries this view exposes
-	// (https://cloud.google.com/logging/docs/view/logging-query-language).
+	// The filter selecting which of the bucket's entries this view exposes.
 	// Empty exposes every entry in the bucket.
+	//
+	// View filters speak a RESTRICTED grammar — NOT the general log filter
+	// language: the API accepts only restrictions on log source
+	// (source()), resource type (resource.type=...), apphub fields,
+	// user-defined labels, and log ID (LOG_ID(...)). Severity is NOT a
+	// legal view dimension — GCP rejects it at create with "Invalid view
+	// filter" (live-verified), even though the same expression is legal in
+	// sinks and log-based metrics.
 	Filter string `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
 	// What this view is for and who should be granted it.
 	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`

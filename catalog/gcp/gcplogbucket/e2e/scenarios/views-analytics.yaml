@@ -23,10 +23,14 @@ spec:
   retentionDays: 30
   description: E2E analytics bucket — views + linked dataset; dies with the run.
   enableAnalytics: true
+  # View filters speak a RESTRICTED grammar — only log source, resource
+  # type, apphub fields, user-defined labels, or LOG_ID() restrictions;
+  # severity is NOT a legal view dimension (the API rejects it at create,
+  # live-verified — general log filters accept it, views do not).
   logViews:
-    - viewId: errors-only
-      filter: severity>=ERROR
-      description: E2E view — the errors slice
+    - viewId: run-stderr
+      filter: resource.type="cloud_run_revision" AND LOG_ID("run.googleapis.com/stderr")
+      description: E2E view — the Cloud Run stderr slice
   linkedBigqueryDataset:
     linkId: e2e_logbk_link
     description: E2E linked dataset

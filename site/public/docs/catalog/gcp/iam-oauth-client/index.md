@@ -95,7 +95,7 @@ The InfraPipeline deploys the app first, registers the client with the resolved 
 
 ## Key Configuration
 
-**Client type** -- `PUBLIC_CLIENT` (mobile apps, SPAs — cannot keep a secret; credentials cannot be attached) or `CONFIDENTIAL_CLIENT` (server-side apps — manage secrets via `credentials`). Immutable.
+**Client type** -- only `CONFIDENTIAL_CLIENT` (server-side apps — manage secrets via `credentials`) can be created: GCP's enum lists `PUBLIC_CLIENT` (mobile apps, SPAs) but the service rejects creating one ("Client type is not supported"). Immutable.
 
 **Grant types and scopes** -- Google's API accepts exactly `AUTHORIZATION_CODE_GRANT` and `REFRESH_TOKEN_GRANT`; scopes are the OAuth scopes the client may request during flows. Grant only what the application uses.
 
@@ -127,7 +127,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Server-side web app** -- a confidential client with both grant types and one managed credential; the secret flows to the app through Secret Manager. Start from the **Web App Client** preset.
 
-**Single-page app** -- a public client using the authorization code flow with PKCE; no credentials exist to leak. Start from the **SPA Public Client** preset.
+**Single-page app** -- no workforce-federation path exists today: GCP rejects public-client creation at the API, and a confidential client's secret cannot live in a browser bundle. Until GCP ships public-client support, SPAs authenticate through a confidential backend-for-frontend that holds the credential server-side.
 
 ## Works With
 

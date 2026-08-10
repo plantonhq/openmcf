@@ -30,5 +30,7 @@ through the code flow and keeps sessions alive with refresh tokens.
 ## When to choose something else
 
 If the application runs in a browser or on a device (no place to hide a
-secret), use the **SPA Public Client** preset — public clients cannot
+secret), note that GCP currently rejects public-client creation
+("Client type is not supported") — SPAs go through a confidential
+backend-for-frontend instead; public clients cannot
 carry credentials, by design.

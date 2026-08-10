@@ -1,6 +1,6 @@
 ---
 title: "Analytics And Views"
-description: "The queryable application-log bucket: Log Analytics on, a linked BigQuery dataset for the data team, and an errors-only view for on-call — one bucket serving three audiences with different eyes."
+description: "The queryable application-log bucket: Log Analytics on, a linked BigQuery dataset for the data team, and a stderr view for on-call — one bucket serving three audiences with different eyes."
 type: "preset"
 rank: "02"
 presetSlug: "02-analytics-and-views"
@@ -14,8 +14,8 @@ order: 2
 # Analytics And Views
 
 The queryable application-log bucket: Log Analytics on, a linked
-BigQuery dataset for the data team, and an errors-only view for
-on-call — one bucket serving three audiences with different eyes.
+BigQuery dataset for the data team, and a stderr view for on-call —
+one bucket serving three audiences with different eyes.
 
 ## What it configures
 
@@ -25,8 +25,12 @@ on-call — one bucket serving three audiences with different eyes.
 - `linkedBigqueryDataset` — the bucket appears in BigQuery as a
   read-only dataset named `app_logs`. Every field of the link is
   create-time-only.
-- An `errors-only` view — grant `roles/logging.viewAccessor` on it
-  instead of bucket-wide read.
+- A `run-stderr` view — grant `roles/logging.viewAccessor` on it
+  instead of bucket-wide read. View filters speak a restricted grammar
+  (log source, resource type, apphub fields, user labels, `LOG_ID()`),
+  so the on-call slice cuts by resource type and log ID — a
+  `severity>=ERROR` view is NOT expressible; GCP rejects severity in
+  view filters at create.
 
 ## Adjust before deploying
 

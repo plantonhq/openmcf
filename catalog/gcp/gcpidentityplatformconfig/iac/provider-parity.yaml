@@ -12,6 +12,17 @@
 # match its spec field by exact name. Every exclusion carries its reason:
 # omission is a decision, never an accident.
 
+specExclusions:
+  - field: spec.adopt_existing
+    reason: >-
+      module-behavior lever, not a provider argument: initialization is
+      one-way and once-only (GCP rejects a second initializeAuth with 400
+      "Identity Platform has already been enabled for this project",
+      live-verified), so this switch makes the module IMPORT the
+      deterministic singleton (projects/{project}/config) instead of
+      creating it -- the mechanism it drives is the engines' import path,
+      which has no provider argument.
+
 resources:
   google_identity_platform_config:
     mappings:

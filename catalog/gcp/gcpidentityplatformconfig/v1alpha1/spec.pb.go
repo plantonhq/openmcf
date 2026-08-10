@@ -102,8 +102,20 @@ type GcpIdentityPlatformConfigSpec struct {
 	//	"ABANDON" -- the IdP configs are removed from management but keep
 	//	             working in GCP
 	DeletionPolicy string `protobuf:"bytes,15,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Adopt the project's EXISTING Identity Platform configuration instead
+	// of initializing it. Initialization is one-way and once-only: GCP
+	// rejects a second initializeAuth with 400 "Identity Platform has
+	// already been enabled for this project" (live-verified), and there is
+	// no de-initialize. Set true for any project where Identity Platform
+	// was ever enabled — by a console click, a Firebase Auth setup, or a
+	// previous deployment of this kind (destroy abandons the configuration
+	// in place, so a re-deploy after destroy also needs it). The module
+	// then imports the singleton (projects/{project}/config) and applies
+	// this spec as an update. Leave false only for a project whose
+	// Identity Platform has never been enabled.
+	AdoptExisting bool `protobuf:"varint,16,opt,name=adopt_existing,json=adoptExisting,proto3" json:"adopt_existing,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpIdentityPlatformConfigSpec) Reset() {
@@ -239,6 +251,13 @@ func (x *GcpIdentityPlatformConfigSpec) GetDeletionPolicy() string {
 		return x.DeletionPolicy
 	}
 	return ""
+}
+
+func (x *GcpIdentityPlatformConfigSpec) GetAdoptExisting() bool {
+	if x != nil {
+		return x.AdoptExisting
+	}
+	return false
 }
 
 // First-party sign-in methods.
@@ -1672,7 +1691,7 @@ var File_catalog_gcp_gcpidentityplatformconfig_v1alpha1_spec_proto protoreflect.
 
 const file_catalog_gcp_gcpidentityplatformconfig_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9catalog/gcp/gcpidentityplatformconfig/v1alpha1/spec.proto\x122dev.planton.gcp.gcpidentityplatformconfig.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xbc\x0e\n" +
+	"9catalog/gcp/gcpidentityplatformconfig/v1alpha1/spec.proto\x122dev.planton.gcp.gcpidentityplatformconfig.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe3\x0e\n" +
 	"\x1dGcpIdentityPlatformConfigSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12l\n" +
@@ -1691,7 +1710,8 @@ const file_catalog_gcp_gcpidentityplatformconfig_v1alpha1_spec_proto_rawDesc = "
 	"\x11oauth_idp_configs\x18\r \x03(\v2U.dev.planton.gcp.gcpidentityplatformconfig.v1alpha1.GcpIdentityPlatformConfigOauthIdpR\x0foauthIdpConfigs\x12\x8a\x01\n" +
 	"\x14inbound_saml_configs\x18\x0e \x03(\v2X.dev.planton.gcp.gcpidentityplatformconfig.v1alpha1.GcpIdentityPlatformConfigInboundSamlR\x12inboundSamlConfigs\x12\xbb\x01\n" +
 	"\x0fdeletion_policy\x18\x0f \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
-	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\x1a\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x12%\n" +
+	"\x0eadopt_existing\x18\x10 \x01(\bR\radoptExistingB\x1a\n" +
 	"\x18_request_logging_enabled\"\xc0\x03\n" +
 	"\x1fGcpIdentityPlatformConfigSignIn\x12n\n" +
 	"\x05email\x18\x01 \x01(\v2X.dev.planton.gcp.gcpidentityplatformconfig.v1alpha1.GcpIdentityPlatformConfigSignInEmailR\x05email\x12{\n" +

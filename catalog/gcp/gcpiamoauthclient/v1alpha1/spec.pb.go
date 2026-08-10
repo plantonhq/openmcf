@@ -57,14 +57,13 @@ type GcpIamOauthClientSpec struct {
 	// When true, the client stops accepting new authorizations without
 	// being deleted — the reversible kill switch.
 	Disabled bool `protobuf:"varint,6,opt,name=disabled,proto3" json:"disabled,omitempty"`
-	// The client's confidentiality model (the API's closed set):
-	//
-	//	"PUBLIC_CLIENT"       -- cannot keep a secret (mobile/SPA);
-	//	                         secrets cannot be attached
-	//	"CONFIDENTIAL_CLIENT" -- can keep a secret (server-side apps);
-	//	                         manage secrets via credentials below
-	//
-	// Immutable.
+	// The client's confidentiality model. Only "CONFIDENTIAL_CLIENT"
+	// (server-side apps that can keep a secret; manage secrets via
+	// credentials below) can be created: GCP's enum also lists
+	// PUBLIC_CLIENT (mobile/SPA), but the service rejects creating one
+	// with 400 "Client type is not supported" (live-verified at the raw
+	// API — no field combination unlocks it). Re-admit PUBLIC_CLIENT here
+	// when GCP ships support. Immutable.
 	ClientType string `protobuf:"bytes,7,opt,name=client_type,json=clientType,proto3" json:"client_type,omitempty"`
 	// OAuth grant types the client may use — Google's API accepts exactly
 	// these values (a closed enum in the IAM REST API):
@@ -286,7 +285,7 @@ var File_catalog_gcp_gcpiamoauthclient_v1alpha1_spec_proto protoreflect.FileDesc
 
 const file_catalog_gcp_gcpiamoauthclient_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/gcp/gcpiamoauthclient/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpiamoauthclient.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd0\t\n" +
+	"1catalog/gcp/gcpiamoauthclient/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpiamoauthclient.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xee\t\n" +
 	"\x15GcpIamOauthClientSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12&\n" +
@@ -295,9 +294,9 @@ const file_catalog_gcp_gcpiamoauthclient_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0foauth_client_id\x18\x03 \x01(\tR\roauthClientId\x12!\n" +
 	"\fdisplay_name\x18\x04 \x01(\tR\vdisplayName\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x1a\n" +
-	"\bdisabled\x18\x06 \x01(\bR\bdisabled\x12\xbd\x01\n" +
-	"\vclient_type\x18\a \x01(\tB\x9b\x01\xbaH\x97\x01\xba\x01\x93\x01\n" +
-	"\x11valid_client_type\x12>client_type must be one of: PUBLIC_CLIENT, CONFIDENTIAL_CLIENT\x1a>this == '' || this in ['PUBLIC_CLIENT', 'CONFIDENTIAL_CLIENT']R\n" +
+	"\bdisabled\x18\x06 \x01(\bR\bdisabled\x12\xdb\x01\n" +
+	"\vclient_type\x18\a \x01(\tB\xb9\x01\xbaH\xb5\x01\xba\x01\xb1\x01\n" +
+	"\x11valid_client_type\x12oclient_type must be CONFIDENTIAL_CLIENT — GCP rejects PUBLIC_CLIENT creation (\"Client type is not supported\")\x1a+this == '' || this == 'CONFIDENTIAL_CLIENT'R\n" +
 	"clientType\x12\xe6\x01\n" +
 	"\x13allowed_grant_types\x18\b \x03(\tB\xb5\x01\xbaH\xb1\x01\x92\x01\xad\x01\b\x01\"\xa8\x01\xba\x01\xa4\x01\n" +
 	"\x10valid_grant_type\x12Sallowed_grant_types entries must be AUTHORIZATION_CODE_GRANT or REFRESH_TOKEN_GRANT\x1a;this in ['AUTHORIZATION_CODE_GRANT', 'REFRESH_TOKEN_GRANT']R\x11allowedGrantTypes\x12/\n" +

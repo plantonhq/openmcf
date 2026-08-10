@@ -264,6 +264,10 @@ message GcpMonitoringSloRequestBasedSli {
 message GcpMonitoringSloDistributionCut {
   // A monitoring filter (https://cloud.google.com/monitoring/api/v3/filters)
   // selecting a DISTRIBUTION-valued metric, e.g. request latencies.
+  // The filter MUST pin resource.type alongside metric.type: GCP validates
+  // at create that every SLO filter parses to exactly ONE monitored
+  // resource type and rejects anything broader (Error 400 "parses to N
+  // resource types and must parse to 1").
   string distribution_filter = 1 [(buf.validate.field).required = true];
 
   // The range of values counted as good (e.g. min 0, max 500 for "under
@@ -283,6 +287,12 @@ message GcpMonitoringSloRange {
 }
 
 // A good/total (or good/bad) ratio SLI.
+//
+// Every filter here MUST pin resource.type alongside metric.type: GCP
+// validates at create that an SLO filter parses to exactly ONE monitored
+// resource type and rejects anything broader (Error 400 "parses to N
+// resource types and must parse to 1" — e.g. a serviceruntime metric
+// needs resource.type="consumed_api").
 message GcpMonitoringSloGoodTotalRatio {
   // The GCP API derives the third counter from the other two — exactly
   // two of the three filters must be set (good+total, good+bad, or
@@ -317,7 +327,9 @@ message GcpMonitoringSloWindowsBasedSli {
   string window_period = 1;
 
   // A window is good when this filter's BOOLEAN metric is true throughout
-  // the window.
+  // the window. Like every SLO filter, it must pin resource.type
+  // alongside metric.type (GCP requires exactly one monitored resource
+  // type per filter).
   string good_bad_metric_filter = 2;
 
   // A window is good when a request-based criterion (a good/total ratio

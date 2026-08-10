@@ -15,7 +15,7 @@ presets:
   - slug: "02-analytics-and-views"
     rank: "02"
     title: "Analytics And Views"
-    excerpt: "The queryable application-log bucket: Log Analytics on, a linked BigQuery dataset for the data team, and an errors-only view for on-call — one bucket serving three audiences with different eyes."
+    excerpt: "The queryable application-log bucket: Log Analytics on, a linked BigQuery dataset for the data team, and a stderr view for on-call — one bucket serving three audiences with different eyes."
   - slug: "03-adopt-default-bucket"
     rank: "03"
     title: "Adopt Default Bucket"

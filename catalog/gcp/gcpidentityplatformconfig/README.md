@@ -104,7 +104,8 @@ See [`iac/tf/README.md`](iac/tf/README.md) for Terraform-specific deployment ins
 
 ## Important Notes
 
-- **Initialization is one-way** — the first deploy permanently enables Identity Platform on the project (billing required); there is no de-initialize, and destroy abandons the config in place. Every setting remains freely updatable after initialization.
+- **Initialization is one-way AND once-only** — the first deploy permanently enables Identity Platform on the project (billing required); there is no de-initialize, and destroy abandons the config in place. Every setting remains freely updatable after initialization.
+- **Already-initialized projects need `adoptExisting: true`** — GCP rejects a second initialization ("Identity Platform has already been enabled for this project"), so any project where it was ever enabled (console, Firebase Auth, a prior deploy of this kind) deploys with the adoption switch: the module imports the config singleton and applies the spec as an update.
 - **`deletionPolicy` never touches the singleton** — it applies only to the composed IdP configs. `PREVENT` is the right value once real users sign in through the listed providers.
 - **Sign-in `enabled` flags are sent explicitly** — setting an arm with `enabled: false` actively disables that method; omitting the arm leaves it unmanaged.
 - **IdP client secrets are console artifacts** — no API creates consent-screen OAuth clients (Google closed the last programmatic path in March 2026). Budget a console step per provider.
