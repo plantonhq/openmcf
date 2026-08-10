@@ -1450,6 +1450,9 @@ Allowed values (use exactly as shown):
 - `AzureVpnSite` -- The WAN is the prerequisite: a VPN site is the Virtual WAN world's address-book entry for one branch location (virtual_wan_id is required; the classic-world sibling without a WAN is AzureLocalNetworkGateway). The resource group chains transitively through the WAN.
 - `AzurePointToSiteVpnGateway` -- The hub and the server configuration are both prerequisites: a point-to-site VPN gateway deploys INTO a virtual hub (one P2S gateway per hub, a slot separate from the hub's site-to-site VPN gateway) and is born pointing at the VPN server configuration that defines how its users authenticate -- both ARM-required and fixed at creation. The WAN and resource group chain transitively through the hub.
 - `AzureVpnServerConfiguration` -- Self-contained -- only the resource group is required: a VPN server configuration is the reusable "who may connect and how" authentication policy (Entra ID / certificate / RADIUS) that point-to-site VPN gateways attach to; it references no other Azure resource.
+- `AzureCognitiveAccount` -- Self-contained -- only the resource group is required: an Azure AI services account (Azure OpenAI, the multi-service AIServices account, the single-service accounts) needs no other Azure resource; subnets (network rules), Key Vault keys (CMK), storage accounts and user-assigned identities are optional references.
+- `AzureCognitiveDeployment` -- An ARM child of its account: a model deployment (which model runs, at which throughput class) exists only on an Azure AI services account of kind "OpenAI" or "AIServices".
+- `AzureCognitiveAccountProject` -- An ARM child of its account: an AI Foundry project exists only on an "AIServices"-kind account with project management enabled.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -2245,6 +2248,9 @@ Allowed values (use exactly as shown):
 - `AzureVpnSite` -- The WAN is the prerequisite: a VPN site is the Virtual WAN world's address-book entry for one branch location (virtual_wan_id is required; the classic-world sibling without a WAN is AzureLocalNetworkGateway). The resource group chains transitively through the WAN.
 - `AzurePointToSiteVpnGateway` -- The hub and the server configuration are both prerequisites: a point-to-site VPN gateway deploys INTO a virtual hub (one P2S gateway per hub, a slot separate from the hub's site-to-site VPN gateway) and is born pointing at the VPN server configuration that defines how its users authenticate -- both ARM-required and fixed at creation. The WAN and resource group chain transitively through the hub.
 - `AzureVpnServerConfiguration` -- Self-contained -- only the resource group is required: a VPN server configuration is the reusable "who may connect and how" authentication policy (Entra ID / certificate / RADIUS) that point-to-site VPN gateways attach to; it references no other Azure resource.
+- `AzureCognitiveAccount` -- Self-contained -- only the resource group is required: an Azure AI services account (Azure OpenAI, the multi-service AIServices account, the single-service accounts) needs no other Azure resource; subnets (network rules), Key Vault keys (CMK), storage accounts and user-assigned identities are optional references.
+- `AzureCognitiveDeployment` -- An ARM child of its account: a model deployment (which model runs, at which throughput class) exists only on an Azure AI services account of kind "OpenAI" or "AIServices".
+- `AzureCognitiveAccountProject` -- An ARM child of its account: an AI Foundry project exists only on an "AIServices"-kind account with project management enabled.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -4188,6 +4194,9 @@ Allowed values (use exactly as shown):
 - `AzureVpnSite` -- The WAN is the prerequisite: a VPN site is the Virtual WAN world's address-book entry for one branch location (virtual_wan_id is required; the classic-world sibling without a WAN is AzureLocalNetworkGateway). The resource group chains transitively through the WAN.
 - `AzurePointToSiteVpnGateway` -- The hub and the server configuration are both prerequisites: a point-to-site VPN gateway deploys INTO a virtual hub (one P2S gateway per hub, a slot separate from the hub's site-to-site VPN gateway) and is born pointing at the VPN server configuration that defines how its users authenticate -- both ARM-required and fixed at creation. The WAN and resource group chain transitively through the hub.
 - `AzureVpnServerConfiguration` -- Self-contained -- only the resource group is required: a VPN server configuration is the reusable "who may connect and how" authentication policy (Entra ID / certificate / RADIUS) that point-to-site VPN gateways attach to; it references no other Azure resource.
+- `AzureCognitiveAccount` -- Self-contained -- only the resource group is required: an Azure AI services account (Azure OpenAI, the multi-service AIServices account, the single-service accounts) needs no other Azure resource; subnets (network rules), Key Vault keys (CMK), storage accounts and user-assigned identities are optional references.
+- `AzureCognitiveDeployment` -- An ARM child of its account: a model deployment (which model runs, at which throughput class) exists only on an Azure AI services account of kind "OpenAI" or "AIServices".
+- `AzureCognitiveAccountProject` -- An ARM child of its account: an AI Foundry project exists only on an "AIServices"-kind account with project management enabled.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -4983,6 +4992,9 @@ Allowed values (use exactly as shown):
 - `AzureVpnSite` -- The WAN is the prerequisite: a VPN site is the Virtual WAN world's address-book entry for one branch location (virtual_wan_id is required; the classic-world sibling without a WAN is AzureLocalNetworkGateway). The resource group chains transitively through the WAN.
 - `AzurePointToSiteVpnGateway` -- The hub and the server configuration are both prerequisites: a point-to-site VPN gateway deploys INTO a virtual hub (one P2S gateway per hub, a slot separate from the hub's site-to-site VPN gateway) and is born pointing at the VPN server configuration that defines how its users authenticate -- both ARM-required and fixed at creation. The WAN and resource group chain transitively through the hub.
 - `AzureVpnServerConfiguration` -- Self-contained -- only the resource group is required: a VPN server configuration is the reusable "who may connect and how" authentication policy (Entra ID / certificate / RADIUS) that point-to-site VPN gateways attach to; it references no other Azure resource.
+- `AzureCognitiveAccount` -- Self-contained -- only the resource group is required: an Azure AI services account (Azure OpenAI, the multi-service AIServices account, the single-service accounts) needs no other Azure resource; subnets (network rules), Key Vault keys (CMK), storage accounts and user-assigned identities are optional references.
+- `AzureCognitiveDeployment` -- An ARM child of its account: a model deployment (which model runs, at which throughput class) exists only on an Azure AI services account of kind "OpenAI" or "AIServices".
+- `AzureCognitiveAccountProject` -- An ARM child of its account: an AI Foundry project exists only on an "AIServices"-kind account with project management enabled.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -6967,6 +6979,9 @@ Allowed values (use exactly as shown):
 - `AzureVpnSite` -- The WAN is the prerequisite: a VPN site is the Virtual WAN world's address-book entry for one branch location (virtual_wan_id is required; the classic-world sibling without a WAN is AzureLocalNetworkGateway). The resource group chains transitively through the WAN.
 - `AzurePointToSiteVpnGateway` -- The hub and the server configuration are both prerequisites: a point-to-site VPN gateway deploys INTO a virtual hub (one P2S gateway per hub, a slot separate from the hub's site-to-site VPN gateway) and is born pointing at the VPN server configuration that defines how its users authenticate -- both ARM-required and fixed at creation. The WAN and resource group chain transitively through the hub.
 - `AzureVpnServerConfiguration` -- Self-contained -- only the resource group is required: a VPN server configuration is the reusable "who may connect and how" authentication policy (Entra ID / certificate / RADIUS) that point-to-site VPN gateways attach to; it references no other Azure resource.
+- `AzureCognitiveAccount` -- Self-contained -- only the resource group is required: an Azure AI services account (Azure OpenAI, the multi-service AIServices account, the single-service accounts) needs no other Azure resource; subnets (network rules), Key Vault keys (CMK), storage accounts and user-assigned identities are optional references.
+- `AzureCognitiveDeployment` -- An ARM child of its account: a model deployment (which model runs, at which throughput class) exists only on an Azure AI services account of kind "OpenAI" or "AIServices".
+- `AzureCognitiveAccountProject` -- An ARM child of its account: an AI Foundry project exists only on an "AIServices"-kind account with project management enabled.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -7762,6 +7777,9 @@ Allowed values (use exactly as shown):
 - `AzureVpnSite` -- The WAN is the prerequisite: a VPN site is the Virtual WAN world's address-book entry for one branch location (virtual_wan_id is required; the classic-world sibling without a WAN is AzureLocalNetworkGateway). The resource group chains transitively through the WAN.
 - `AzurePointToSiteVpnGateway` -- The hub and the server configuration are both prerequisites: a point-to-site VPN gateway deploys INTO a virtual hub (one P2S gateway per hub, a slot separate from the hub's site-to-site VPN gateway) and is born pointing at the VPN server configuration that defines how its users authenticate -- both ARM-required and fixed at creation. The WAN and resource group chain transitively through the hub.
 - `AzureVpnServerConfiguration` -- Self-contained -- only the resource group is required: a VPN server configuration is the reusable "who may connect and how" authentication policy (Entra ID / certificate / RADIUS) that point-to-site VPN gateways attach to; it references no other Azure resource.
+- `AzureCognitiveAccount` -- Self-contained -- only the resource group is required: an Azure AI services account (Azure OpenAI, the multi-service AIServices account, the single-service accounts) needs no other Azure resource; subnets (network rules), Key Vault keys (CMK), storage accounts and user-assigned identities are optional references.
+- `AzureCognitiveDeployment` -- An ARM child of its account: a model deployment (which model runs, at which throughput class) exists only on an Azure AI services account of kind "OpenAI" or "AIServices".
+- `AzureCognitiveAccountProject` -- An ARM child of its account: an AI Foundry project exists only on an "AIServices"-kind account with project management enabled.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`

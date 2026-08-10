@@ -798,6 +798,19 @@ const (
 	// point-to-site VPN gateways attach to; it references no other
 	// Azure resource.
 	CloudResourceKind_AzureVpnServerConfiguration CloudResourceKind = 2155
+	// Self-contained -- only the resource group is required: an Azure
+	// AI services account (Azure OpenAI, the multi-service AIServices
+	// account, the single-service accounts) needs no other Azure
+	// resource; subnets (network rules), Key Vault keys (CMK), storage
+	// accounts and user-assigned identities are optional references.
+	CloudResourceKind_AzureCognitiveAccount CloudResourceKind = 2160
+	// An ARM child of its account: a model deployment (which model
+	// runs, at which throughput class) exists only on an Azure AI
+	// services account of kind "OpenAI" or "AIServices".
+	CloudResourceKind_AzureCognitiveDeployment CloudResourceKind = 2161
+	// An ARM child of its account: an AI Foundry project exists only
+	// on an "AIServices"-kind account with project management enabled.
+	CloudResourceKind_AzureCognitiveAccountProject CloudResourceKind = 2162
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
@@ -1548,6 +1561,9 @@ var (
 		2153:  "AzureVpnSite",
 		2154:  "AzurePointToSiteVpnGateway",
 		2155:  "AzureVpnServerConfiguration",
+		2160:  "AzureCognitiveAccount",
+		2161:  "AzureCognitiveDeployment",
+		2162:  "AzureCognitiveAccountProject",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2180,6 +2196,9 @@ var (
 		"AzureVpnSite":                                   2153,
 		"AzurePointToSiteVpnGateway":                     2154,
 		"AzureVpnServerConfiguration":                    2155,
+		"AzureCognitiveAccount":                          2160,
+		"AzureCognitiveDeployment":                       2161,
+		"AzureCognitiveAccountProject":                   2162,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -2845,7 +2864,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xff\x97\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xb6\x99\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3100,7 +3119,10 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x19AzureVpnGatewayConnection\x10\xe8\x10\x1a \xa2\xf7\x04\x1c\b\r\x12\bv1alpha1\"\bazvpngwc:\x04\xe7\x10\xe9\x10\x122\n" +
 	"\fAzureVpnSite\x10\xe9\x10\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\tazvpnsite:\x02\xe4\x10\x12@\n" +
 	"\x1aAzurePointToSiteVpnGateway\x10\xea\x10\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazp2sgw:\x04\xe5\x10\xeb\x10\x12?\n" +
-	"\x1bAzureVpnServerConfiguration\x10\xeb\x10\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazvpnsc:\x02\xd0\x0f\x12:\n" +
+	"\x1bAzureVpnServerConfiguration\x10\xeb\x10\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazvpnsc:\x02\xd0\x0f\x127\n" +
+	"\x15AzureCognitiveAccount\x10\xf0\x10\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azcog:\x02\xd0\x0f\x12;\n" +
+	"\x18AzureCognitiveDeployment\x10\xf1\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azcogd:\x02\xf0\x10\x12?\n" +
+	"\x1cAzureCognitiveAccountProject\x10\xf2\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azcogp:\x02\xf0\x10\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
 	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x124\n" +

@@ -1,0 +1,33 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurecognitiveaccount
+spec:
+  # The account's identity is its full ARM resource ID. Responsible-AI
+  # blocklists and policies are ARM children composed under it, each
+  # keyed by the spec entry's name (the module deploys one child per
+  # entry, addressed by that name).
+  values:
+    - name: cognitive_account_id
+      derivations:
+        - from_stack_output: cognitive_account_id
+      where_to_find: >-
+        Portal -> Azure AI services (search the resource type) -> the
+        account -> Properties -> Resource ID, or `az cognitiveservices
+        account show -g <rg> -n <name> --query id`.
+    - name: rai_blocklist_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The blocklist's name in the spec's raiBlocklists list (the
+        module keys one ARM child per name); `az rest --method get
+        --url "<account-id>/raiBlocklists?api-version=2024-10-01"`
+        shows what exists cloud-side.
+    - name: rai_policy_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The policy's name in the spec's raiPolicies list (the module
+        keys one ARM child per name); `az rest --method get --url
+        "<account-id>/raiPolicies?api-version=2024-10-01"` shows what
+        exists cloud-side.

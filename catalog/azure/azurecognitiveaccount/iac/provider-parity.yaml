@@ -1,0 +1,56 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The related azurerm_cognitive_account_customer_managed_key resource is
+# deliberately NOT consumed by this kind: it writes the SAME ARM
+# encryption property the account's inline customer_managed_key block
+# does (two writers, one collection -- the provider itself warns against
+# mixing them), and the spec models one authoritative shape: the inline
+# block.
+#
+# The five azurerm_cognitive_account_connection_* resources (account
+# key / managed identity / API key / custom keys / Entra ID) are
+# deliberately NOT modeled this wave: the classic Pulumi SDK carries no
+# connection resources at all, so composing them would break
+# cross-engine contract parity at the kind level. The deferral, its
+# unblock condition, and the recorded connection schemas live in the
+# program's wave ledger; the upgrade is additive at v1alpha1.
+
+resources:
+  azurerm_cognitive_account:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (an Azure
+      # region, a resource group), where the provider inherits ARM's
+      # terser property names.
+      - spec: spec.region
+        arg: location
+      - spec: spec.resource_group
+        arg: resource_group_name
+
+  azurerm_cognitive_account_rai_blocklist:
+    # Instantiated per spec.rai_blocklists entry (the account's composed
+    # responsible-AI blocklists, keyed by name into the
+    # rai_blocklist_ids output).
+    specRoot: spec.rai_blocklists
+    exclusions:
+      - arg: cognitive_account_id
+        reason: wired by the module to the account it creates -- never user surface
+
+  azurerm_cognitive_account_rai_policy:
+    # Instantiated per spec.rai_policies entry (the account's composed
+    # responsible-AI content-filter policies, keyed by name into the
+    # rai_policy_ids output).
+    specRoot: spec.rai_policies
+    mappings:
+      # The spec pluralizes repeated fields; the provider names blocks
+      # in the singular.
+      - spec: spec.rai_policies.content_filters
+        arg: content_filter
+    exclusions:
+      - arg: cognitive_account_id
+        reason: wired by the module to the account it creates -- never user surface

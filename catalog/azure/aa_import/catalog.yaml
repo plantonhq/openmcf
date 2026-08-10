@@ -153,3 +153,27 @@ spec:
       id_format: "{vpn_server_configuration_id}/configurationPolicyGroups/{policy_group_name}"
       # The module deploys one group per spec entry, keyed by name --
       # the address's instance key supplies {policy_group_name}.
+    - terraform_type: azurerm_cognitive_account
+      pulumi_type: azure:cognitive/account:Account
+      id_format: "{cognitive_account_id}"
+      # ARM never returns the custom-question-answering Search API key
+      # (the provider's read sets only the endpoint id) -- an imported
+      # account configured with one legitimately plans an in-place
+      # update on exactly that argument.
+      write_normalized_attributes: [custom_question_answering_search_service_key]
+    - terraform_type: azurerm_cognitive_account_rai_blocklist
+      pulumi_type: azure:cognitive/accountRaiBlocklist:AccountRaiBlocklist
+      id_format: "{cognitive_account_id}/raiBlocklists/{rai_blocklist_name}"
+      # The module deploys one blocklist per spec entry, keyed by name --
+      # the address's instance key supplies {rai_blocklist_name}.
+    - terraform_type: azurerm_cognitive_account_rai_policy
+      pulumi_type: azure:cognitive/accountRaiPolicy:AccountRaiPolicy
+      id_format: "{cognitive_account_id}/raiPolicies/{rai_policy_name}"
+      # The module deploys one policy per spec entry, keyed by name --
+      # the address's instance key supplies {rai_policy_name}.
+    - terraform_type: azurerm_cognitive_deployment
+      pulumi_type: azure:cognitive/deployment:Deployment
+      id_format: "{deployment_id}"
+    - terraform_type: azurerm_cognitive_account_project
+      pulumi_type: azure:cognitive/accountProject:AccountProject
+      id_format: "{project_id}"

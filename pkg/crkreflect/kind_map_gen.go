@@ -166,6 +166,9 @@ import (
 	azureapplicationinsightsv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationinsights/v1alpha1"
 	azureapplicationinsightsstandardwebtestv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationinsightsstandardwebtest/v1alpha1"
 	azureapplicationsecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationsecuritygroup/v1alpha1"
+	azurecognitiveaccountv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitiveaccount/v1alpha1"
+	azurecognitiveaccountprojectv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitiveaccountproject/v1alpha1"
+	azurecognitivedeploymentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitivedeployment/v1alpha1"
 	azurecontainerappv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerapp/v1alpha1"
 	azurecontainerappcustomdomainv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerappcustomdomain/v1alpha1"
 	azurecontainerappenvironmentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerappenvironment/v1alpha1"
@@ -825,6 +828,9 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureApplicationInsights:                       &azureapplicationinsightsv1alpha1.AzureApplicationInsights{},
 	cloudresourcekind.CloudResourceKind_AzureApplicationInsightsStandardWebTest:        &azureapplicationinsightsstandardwebtestv1alpha1.AzureApplicationInsightsStandardWebTest{},
 	cloudresourcekind.CloudResourceKind_AzureApplicationSecurityGroup:                  &azureapplicationsecuritygroupv1alpha1.AzureApplicationSecurityGroup{},
+	cloudresourcekind.CloudResourceKind_AzureCognitiveAccount:                          &azurecognitiveaccountv1alpha1.AzureCognitiveAccount{},
+	cloudresourcekind.CloudResourceKind_AzureCognitiveAccountProject:                   &azurecognitiveaccountprojectv1alpha1.AzureCognitiveAccountProject{},
+	cloudresourcekind.CloudResourceKind_AzureCognitiveDeployment:                       &azurecognitivedeploymentv1alpha1.AzureCognitiveDeployment{},
 	cloudresourcekind.CloudResourceKind_AzureContainerApp:                              &azurecontainerappv1alpha1.AzureContainerApp{},
 	cloudresourcekind.CloudResourceKind_AzureContainerAppCustomDomain:                  &azurecontainerappcustomdomainv1alpha1.AzureContainerAppCustomDomain{},
 	cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironment:                   &azurecontainerappenvironmentv1alpha1.AzureContainerAppEnvironment{},

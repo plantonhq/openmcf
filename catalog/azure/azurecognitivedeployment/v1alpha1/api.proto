@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecognitivedeployment.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurecognitivedeployment/v1alpha1/outputs.proto";
+import "catalog/azure/azurecognitivedeployment/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureCognitiveDeployment is the top-level API resource describing a
+// model deployment on an Azure AI services account -- which actual
+// model (gpt-4o, text-embedding-3-large, ...) an application calls,
+// at which throughput class and capacity.
+message AzureCognitiveDeployment {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureCognitiveDeployment".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureCognitiveDeployment'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Model deployment specification.
+  AzureCognitiveDeploymentSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureCognitiveDeploymentStatus status = 5;
+}
+
+// AzureCognitiveDeploymentStatus holds the deployment outputs.
+message AzureCognitiveDeploymentStatus {
+  // Stack outputs from the IaC deployment.
+  AzureCognitiveDeploymentStackOutputs outputs = 1;
+}

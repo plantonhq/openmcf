@@ -85,6 +85,7 @@ Fields on other kinds that can point at this resource:
 | AzureApplicationInsights | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureApplicationInsightsStandardWebTest | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureApplicationSecurityGroup | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureCognitiveAccount | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerApp | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerAppEnvironment | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerAppJob | `spec.resourceGroup` | `status.outputs.resource_group_name` |

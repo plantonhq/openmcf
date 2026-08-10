@@ -145,6 +145,8 @@ Fields on other kinds that can point at this resource:
 | AzureAksCluster | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureAksCluster | `spec.kubeletIdentity.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureApplicationGateway | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureCognitiveAccount | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureCognitiveAccountProject | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureContainerApp | `spec.customScaleRules[].identityId` | `status.outputs.identity_id` |
 | AzureContainerApp | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureContainerAppEnvironment | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |

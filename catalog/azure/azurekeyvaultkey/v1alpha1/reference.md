@@ -302,6 +302,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AzureAksCluster | `spec.keyManagementService.keyVaultKeyId` | `status.outputs.key_id` |
+| AzureCognitiveAccount | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureContainerRegistry | `spec.encryption.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureCosmosdbAccount | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureDiskEncryptionSet | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |

@@ -403,6 +403,33 @@ func TestAzurePointToSiteVpnGateway_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurepointtositevpngateway", "terraform")
 }
 
+// --- Azure Cognitive Account (fixture RG -> an OpenAI-kind S0 account with composed responsible-AI children; 1-3 minutes, no idle cost -- deletion soft-deletes and the module purges the ghost) ---
+
+func TestAzureCognitiveAccount_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecognitiveaccount", "pulumi")
+}
+func TestAzureCognitiveAccount_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecognitiveaccount", "terraform")
+}
+
+// --- Azure Cognitive Deployment (composed: fixture account -> gpt-4o-mini on GlobalStandard; seconds-to-minutes, per-token billing -- the quota/model-availability boundary is the lane's proof point) ---
+
+func TestAzureCognitiveDeployment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecognitivedeployment", "pulumi")
+}
+func TestAzureCognitiveDeployment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecognitivedeployment", "terraform")
+}
+
+// --- Azure Cognitive Account Project (composed: fixture AIServices account -> a free system-identity AI Foundry project; seconds -- no agents or data-plane assets are ever created) ---
+
+func TestAzureCognitiveAccountProject_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecognitiveaccountproject", "pulumi")
+}
+func TestAzureCognitiveAccountProject_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecognitiveaccountproject", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {

@@ -2255,6 +2255,37 @@ enum CloudResourceKind {
     prerequisites: [AzureResourceGroup]
   }];
 
+  // Self-contained -- only the resource group is required: an Azure
+  // AI services account (Azure OpenAI, the multi-service AIServices
+  // account, the single-service accounts) needs no other Azure
+  // resource; subnets (network rules), Key Vault keys (CMK), storage
+  // accounts and user-assigned identities are optional references.
+  AzureCognitiveAccount = 2160 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azcog"
+    prerequisites: [AzureResourceGroup]
+  }];
+
+  // An ARM child of its account: a model deployment (which model
+  // runs, at which throughput class) exists only on an Azure AI
+  // services account of kind "OpenAI" or "AIServices".
+  AzureCognitiveDeployment = 2161 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azcogd"
+    prerequisites: [AzureCognitiveAccount]
+  }];
+
+  // An ARM child of its account: an AI Foundry project exists only
+  // on an "AIServices"-kind account with project management enabled.
+  AzureCognitiveAccountProject = 2162 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azcogp"
+    prerequisites: [AzureCognitiveAccount]
+  }];
+
   // 3000–3999: GCP resources
   GcpArtifactRegistryRepo = 3000 [(kind_meta) = {
     provider: gcp

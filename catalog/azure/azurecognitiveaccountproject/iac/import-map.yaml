@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurecognitiveaccountproject
+spec:
+  # The project's identity is its full ARM resource ID -- an ARM child
+  # of its account (.../accounts/{account}/projects/{name}).
+  values:
+    - name: project_id
+      derivations:
+        - from_stack_output: project_id
+      where_to_find: >-
+        Portal -> the AI Foundry resource -> Projects -> the project
+        (its resource ID is the account's ID + /projects/<name>), or
+        `az rest --method get --url
+        "<account-id>/projects?api-version=2025-06-01"` to list what
+        exists cloud-side.

@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCognitiveAccountProject
+metadata:
+  name: customer-support
+spec:
+  cognitiveAccountId:
+    value: "<your-cognitive-account-id>"
+  name: customer-support
+  region: eastus
+  # Required by Azure: the identity the project's agents and
+  # evaluations act as.
+  identity:
+    type: SYSTEM_ASSIGNED
+  displayName: Customer Support
+  description: Agents and evaluations for the customer-support team.
