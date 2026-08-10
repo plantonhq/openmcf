@@ -606,8 +606,8 @@ resources:
     disposition: model-planned
     reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
   - resource: google_compute_bulk_per_instance_config
-    disposition: model-planned
-    reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
+    disposition: deferred
+    reason: "batch-stamping named instances into a managed instance group is not bridged by the pinned Pulumi SDK, and the capability is reachable through the per-instance configuration surface the managed-instance-group kind models; re-evaluate when the Pulumi bridge ships the resource"
   - resource: google_compute_cross_site_network
     disposition: deferred
     reason: "Cross-Site Interconnect (cross-site networks, wire groups) is specialty networking; deferred pending demand"
@@ -660,17 +660,17 @@ resources:
     disposition: deferred
     reason: "judged to fold into the existing GcpComputeInstance kind's spec (attached disks, from-template creation, and instance settings); the composition is not built"
   - resource: google_compute_instance_group
-    disposition: model-planned
-    reason: "composes into the planned load-balancer facade kinds (unmanaged instance groups as backends)"
+    disposition: deferred
+    reason: "hand-rolled static VM pools exist to serve as load-balancer backends; the capability composes with the backend-service kind's group edge when demand appears, and managed instance groups manage their own membership"
   - resource: google_compute_instance_group_manager
     disposition: model-planned
     reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
   - resource: google_compute_instance_group_membership
-    disposition: model-planned
-    reason: "composes into the planned load-balancer facade kinds (unmanaged instance groups as backends)"
+    disposition: deferred
+    reason: "per-instance membership in a hand-rolled static VM pool; composes with the backend-service kind's group edge when demand appears, and managed instance groups manage their own membership"
   - resource: google_compute_instance_group_named_port
-    disposition: model-planned
-    reason: "composes into the planned load-balancer facade kinds (unmanaged instance groups as backends)"
+    disposition: deferred
+    reason: "attaches a named port to an instance group so a backend service can address it by name; composes with the backend-service kind's group edge when demand appears"
   - resource: google_compute_instance_settings
     disposition: deferred
     reason: "judged to fold into the existing GcpComputeInstance kind's spec (attached disks, from-template creation, and instance settings); the composition is not built"
@@ -1704,8 +1704,8 @@ resources:
     disposition: deferred
     reason: "metric descriptors are rarely hand-managed; deferred"
   - resource: google_monitoring_monitored_project
-    disposition: model-planned
-    reason: "composes into the planned monitoring kinds (metrics-scope management)"
+    disposition: deferred
+    reason: "metrics-scope membership is organization-level observability plumbing with no adopter ask; revisit with a multi-project-monitoring ask"
   - resource: google_monitoring_service
     disposition: model-planned
     reason: "planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources)"
@@ -1789,10 +1789,10 @@ resources:
     reason: "NGFW and TLS policy surface judged as firewall-endpoint, security-profile, address-group, and TLS-policy kinds; deferred pending demand"
   - resource: google_network_security_authz_policy
     disposition: deferred
-    reason: "judged to fold into the load-balancer facade kinds when they are admitted (authorization and backend-authentication policies); deferred"
+    reason: "authorization and backend-authentication policies attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpBackendService and its proxy family) when demand appears; deferred"
   - resource: google_network_security_backend_authentication_config
     disposition: deferred
-    reason: "judged to fold into the load-balancer facade kinds when they are admitted (authorization and backend-authentication policies); deferred"
+    reason: "authorization and backend-authentication policies attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpBackendService and its proxy family) when demand appears; deferred"
   - resource: google_network_security_client_tls_policy
     disposition: deferred
     reason: "NGFW and TLS policy surface judged as firewall-endpoint, security-profile, address-group, and TLS-policy kinds; deferred pending demand"
@@ -1867,7 +1867,7 @@ resources:
     reason: "agent gateways are emerging network-services surface; deferred pending demand"
   - resource: google_network_services_authz_extension
     disposition: deferred
-    reason: "judged to fold into the load-balancer facade kinds when they are admitted (service extensions and callouts); deferred"
+    reason: "service extensions and callouts attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpUrlMap, GcpBackendService, and their proxy family) when demand appears; deferred"
   - resource: google_network_services_edge_cache_keyset
     disposition: deferred
     reason: "Media CDN is allowlist-only; deferred"
@@ -1891,13 +1891,13 @@ resources:
     reason: "Cloud Service Mesh resources; the Kubernetes-native path is preferred today; deferred"
   - resource: google_network_services_lb_edge_extension
     disposition: deferred
-    reason: "judged to fold into the load-balancer facade kinds when they are admitted (service extensions and callouts); deferred"
+    reason: "service extensions and callouts attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpUrlMap, GcpBackendService, and their proxy family) when demand appears; deferred"
   - resource: google_network_services_lb_route_extension
     disposition: deferred
-    reason: "judged to fold into the load-balancer facade kinds when they are admitted (service extensions and callouts); deferred"
+    reason: "service extensions and callouts attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpUrlMap, GcpBackendService, and their proxy family) when demand appears; deferred"
   - resource: google_network_services_lb_traffic_extension
     disposition: deferred
-    reason: "judged to fold into the load-balancer facade kinds when they are admitted (service extensions and callouts); deferred"
+    reason: "service extensions and callouts attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpUrlMap, GcpBackendService, and their proxy family) when demand appears; deferred"
   - resource: google_network_services_mesh
     disposition: deferred
     reason: "Cloud Service Mesh resources; the Kubernetes-native path is preferred today; deferred"
@@ -1936,7 +1936,7 @@ resources:
     reason: "Cloud Service Mesh resources; the Kubernetes-native path is preferred today; deferred"
   - resource: google_network_services_wasm_plugin
     disposition: deferred
-    reason: "judged to fold into the load-balancer facade kinds when they are admitted (service extensions and callouts); deferred"
+    reason: "service extensions and callouts attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpUrlMap, GcpBackendService, and their proxy family) when demand appears; deferred"
   - resource: google_observability_trace_scope
     disposition: deferred
     reason: "observability scopes are console organization, not provisioned infrastructure; deferred"
@@ -2226,8 +2226,8 @@ resources:
     disposition: excluded-deprecated
     reason: "legacy per-object ACL model, superseded by uniform bucket-level IAM (the GcpGcsBucket kind's iam_members)"
   - resource: google_storage_bucket_object
-    disposition: model-planned
-    reason: "planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications)"
+    disposition: deferred
+    reason: "bucket objects carry application content (file contents or a local file path read on the provisioning runner) rather than infrastructure configuration; content uploads belong to deployment pipelines, not infrastructure state — revisit with a content-pipeline ask"
   - resource: google_storage_control_folder_intelligence_config
     disposition: deferred
     reason: "storage intelligence configs are new; deferred"
@@ -2245,10 +2245,10 @@ resources:
     reason: "legacy per-object ACL model, superseded by uniform bucket-level IAM (the GcpGcsBucket kind's iam_members)"
   - resource: google_storage_folder
     disposition: model-planned
-    reason: "planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications)"
+    reason: "planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs)"
   - resource: google_storage_hmac_key
-    disposition: model-planned
-    reason: "planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications)"
+    disposition: deferred
+    reason: "mints a long-lived S3-interoperability credential whose secret lands in provisioning state, and it is project/service-account scoped rather than a bucket child; belongs to a credential-management flow, not the bucket kind — revisit with an interoperability-credential ask"
   - resource: google_storage_insights_dataset_config
     disposition: deferred
     reason: "storage inventory reports are a niche; deferred"
@@ -2257,10 +2257,10 @@ resources:
     reason: "storage inventory reports are a niche; deferred"
   - resource: google_storage_managed_folder
     disposition: model-planned
-    reason: "planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications)"
+    reason: "planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs)"
   - resource: google_storage_notification
     disposition: model-planned
-    reason: "planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications)"
+    reason: "planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs)"
   - resource: google_storage_object_access_control
     disposition: excluded-deprecated
     reason: "legacy per-object ACL model, superseded by uniform bucket-level IAM (the GcpGcsBucket kind's iam_members)"

@@ -148,8 +148,8 @@ All resources of `google@7.43.0` land in exactly one class:
 | Modeled | 117 | consumed by a kind's Terraform module today |
 | IAM-covered | 407 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 6 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 45 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 682 | deliberately not offered, each with the recorded reason |
+| Planned | 38 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 689 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 76 | deprecated or superseded provider surface |
 | **Total** | **1333** | |
 
@@ -703,7 +703,7 @@ rather than trusted.
 | `google_logging_project_exclusion` | GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink |
 | `google_project_iam_member_remove` | declarative member removal is inherent to the additive iam_members reconciliation on the IAM member kinds (GcpProjectIamMember); a dedicated removal escape hatch is redundant |
 
-### Planned (45)
+### Planned (38)
 
 | Resource | Recorded reason |
 |---|---|
@@ -712,11 +712,7 @@ rather than trusted.
 | `google_certificate_manager_certificate_map_entry` | composes into the planned GcpCertificateMap kind |
 | `google_certificate_manager_trust_config` | planned composition into the existing GcpCertManagerCert kind (trust and issuance configuration) |
 | `google_compute_autoscaler` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
-| `google_compute_bulk_per_instance_config` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
-| `google_compute_instance_group` | composes into the planned load-balancer facade kinds (unmanaged instance groups as backends) |
 | `google_compute_instance_group_manager` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
-| `google_compute_instance_group_membership` | composes into the planned load-balancer facade kinds (unmanaged instance groups as backends) |
-| `google_compute_instance_group_named_port` | composes into the planned load-balancer facade kinds (unmanaged instance groups as backends) |
 | `google_compute_instance_template` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
 | `google_compute_per_instance_config` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
 | `google_compute_region_autoscaler` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
@@ -743,17 +739,14 @@ rather than trusted.
 | `google_logging_project_bucket_config` | planned kind GcpLogBucket (bucket configs across scopes, with log views composed) |
 | `google_monitoring_custom_service` | planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources) |
 | `google_monitoring_dashboard` | planned kind GcpMonitoringDashboard |
-| `google_monitoring_monitored_project` | composes into the planned monitoring kinds (metrics-scope management) |
 | `google_monitoring_service` | planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources) |
 | `google_monitoring_slo` | planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources) |
-| `google_storage_bucket_object` | planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications) |
-| `google_storage_folder` | planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications) |
-| `google_storage_hmac_key` | planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications) |
-| `google_storage_managed_folder` | planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications) |
-| `google_storage_notification` | planned composition into the existing GcpGcsBucket kind (bucket companions: objects, folders, HMAC keys, notifications) |
+| `google_storage_folder` | planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs) |
+| `google_storage_managed_folder` | planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs) |
+| `google_storage_notification` | planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs) |
 | `google_workflows_workflow` | planned kind GcpWorkflow |
 
-### Deferred (682)
+### Deferred (689)
 
 | Resource | Recorded reason |
 |---|---|
@@ -933,6 +926,7 @@ rather than trusted.
 | `google_colab_runtime_template` | Colab Enterprise runtimes are a specialty; Workbench covers the mainstream need |
 | `google_colab_schedule` | Colab Enterprise runtimes are a specialty; Workbench covers the mainstream need |
 | `google_compute_attached_disk` | judged to fold into the existing GcpComputeInstance kind's spec (attached disks, from-template creation, and instance settings); the composition is not built |
+| `google_compute_bulk_per_instance_config` | batch-stamping named instances into a managed instance group is not bridged by the pinned Pulumi SDK, and the capability is reachable through the per-instance configuration surface the managed-instance-group kind models; re-evaluate when the Pulumi bridge ships the resource |
 | `google_compute_cross_site_network` | Cross-Site Interconnect (cross-site networks, wire groups) is specialty networking; deferred pending demand |
 | `google_compute_disk_async_replication` | judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built |
 | `google_compute_disk_resource_policy_attachment` | judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built |
@@ -948,6 +942,9 @@ rather than trusted.
 | `google_compute_ha_vpn_gateway` | HA VPN judged as one kind (HA gateway, external gateway, and tunnels composed); deferred pending demand |
 | `google_compute_image` | judged to deserve a compute-image kind (golden images); deferred pending demand |
 | `google_compute_instance_from_template` | judged to fold into the existing GcpComputeInstance kind's spec (attached disks, from-template creation, and instance settings); the composition is not built |
+| `google_compute_instance_group` | hand-rolled static VM pools exist to serve as load-balancer backends; the capability composes with the backend-service kind's group edge when demand appears, and managed instance groups manage their own membership |
+| `google_compute_instance_group_membership` | per-instance membership in a hand-rolled static VM pool; composes with the backend-service kind's group edge when demand appears, and managed instance groups manage their own membership |
+| `google_compute_instance_group_named_port` | attaches a named port to an instance group so a backend service can address it by name; composes with the backend-service kind's group edge when demand appears |
 | `google_compute_instance_settings` | judged to fold into the existing GcpComputeInstance kind's spec (attached disks, from-template creation, and instance settings); the composition is not built |
 | `google_compute_instant_snapshot` | judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built |
 | `google_compute_interconnect` | physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred |
@@ -1242,6 +1239,7 @@ rather than trusted.
 | `google_model_armor_template` | Model Armor prompt-safety templates are new; deferred |
 | `google_monitoring_group` | monitoring groups are a separate grouping resource with no adopter ask; GcpMonitoringAlertPolicy and GcpMonitoringUptimeCheck reference existing groups by ID -- revisit with a grouping-focused ask |
 | `google_monitoring_metric_descriptor` | metric descriptors are rarely hand-managed; deferred |
+| `google_monitoring_monitored_project` | metrics-scope membership is organization-level observability plumbing with no adopter ask; revisit with a multi-project-monitoring ask |
 | `google_netapp_active_directory` | NetApp Volumes judged as storage-pool, volume, backup-vault, and backup-policy kinds (companions composed); deferred pending demand |
 | `google_netapp_backup` | NetApp Volumes judged as storage-pool, volume, backup-vault, and backup-policy kinds (companions composed); deferred pending demand |
 | `google_netapp_backup_policy` | NetApp Volumes judged as storage-pool, volume, backup-vault, and backup-policy kinds (companions composed); deferred pending demand |
@@ -1267,8 +1265,8 @@ rather than trusted.
 | `google_network_management_organization_vpc_flow_logs_config` | organization-scoped VPC flow-logs config is org-admin surface; deferred pending demand |
 | `google_network_management_vpc_flow_logs_config` | judged to fold into the VPC network family's specs (VPC flow-logs configuration); the composition is not built |
 | `google_network_security_address_group` | NGFW and TLS policy surface judged as firewall-endpoint, security-profile, address-group, and TLS-policy kinds; deferred pending demand |
-| `google_network_security_authz_policy` | judged to fold into the load-balancer facade kinds when they are admitted (authorization and backend-authentication policies); deferred |
-| `google_network_security_backend_authentication_config` | judged to fold into the load-balancer facade kinds when they are admitted (authorization and backend-authentication policies); deferred |
+| `google_network_security_authz_policy` | authorization and backend-authentication policies attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpBackendService and its proxy family) when demand appears; deferred |
+| `google_network_security_backend_authentication_config` | authorization and backend-authentication policies attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpBackendService and its proxy family) when demand appears; deferred |
 | `google_network_security_client_tls_policy` | NGFW and TLS policy surface judged as firewall-endpoint, security-profile, address-group, and TLS-policy kinds; deferred pending demand |
 | `google_network_security_dns_threat_detector` | NGFW and TLS policy surface judged as firewall-endpoint, security-profile, address-group, and TLS-policy kinds; deferred pending demand |
 | `google_network_security_firewall_endpoint` | NGFW and TLS policy surface judged as firewall-endpoint, security-profile, address-group, and TLS-policy kinds; deferred pending demand |
@@ -1293,7 +1291,7 @@ rather than trusted.
 | `google_network_security_ull_mirroring_engine` | NGFW and TLS policy surface judged as firewall-endpoint, security-profile, address-group, and TLS-policy kinds; deferred pending demand |
 | `google_network_security_url_lists` | Secure Web Gateway and TLS inspection are a specialty; deferred |
 | `google_network_services_agent_gateway` | agent gateways are emerging network-services surface; deferred pending demand |
-| `google_network_services_authz_extension` | judged to fold into the load-balancer facade kinds when they are admitted (service extensions and callouts); deferred |
+| `google_network_services_authz_extension` | service extensions and callouts attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpUrlMap, GcpBackendService, and their proxy family) when demand appears; deferred |
 | `google_network_services_edge_cache_keyset` | Media CDN is allowlist-only; deferred |
 | `google_network_services_edge_cache_origin` | Media CDN is allowlist-only; deferred |
 | `google_network_services_edge_cache_service` | Media CDN is allowlist-only; deferred |
@@ -1301,9 +1299,9 @@ rather than trusted.
 | `google_network_services_gateway` | Cloud Service Mesh resources; the Kubernetes-native path is preferred today; deferred |
 | `google_network_services_grpc_route` | Cloud Service Mesh resources; the Kubernetes-native path is preferred today; deferred |
 | `google_network_services_http_route` | Cloud Service Mesh resources; the Kubernetes-native path is preferred today; deferred |
-| `google_network_services_lb_edge_extension` | judged to fold into the load-balancer facade kinds when they are admitted (service extensions and callouts); deferred |
-| `google_network_services_lb_route_extension` | judged to fold into the load-balancer facade kinds when they are admitted (service extensions and callouts); deferred |
-| `google_network_services_lb_traffic_extension` | judged to fold into the load-balancer facade kinds when they are admitted (service extensions and callouts); deferred |
+| `google_network_services_lb_edge_extension` | service extensions and callouts attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpUrlMap, GcpBackendService, and their proxy family) when demand appears; deferred |
+| `google_network_services_lb_route_extension` | service extensions and callouts attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpUrlMap, GcpBackendService, and their proxy family) when demand appears; deferred |
+| `google_network_services_lb_traffic_extension` | service extensions and callouts attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpUrlMap, GcpBackendService, and their proxy family) when demand appears; deferred |
 | `google_network_services_mesh` | Cloud Service Mesh resources; the Kubernetes-native path is preferred today; deferred |
 | `google_network_services_multicast_consumer_association` | Multicast networking is specialty; deferred pending demand |
 | `google_network_services_multicast_domain` | Multicast networking is specialty; deferred pending demand |
@@ -1316,7 +1314,7 @@ rather than trusted.
 | `google_network_services_multicast_producer_association` | Multicast networking is specialty; deferred pending demand |
 | `google_network_services_tcp_route` | Cloud Service Mesh resources; the Kubernetes-native path is preferred today; deferred |
 | `google_network_services_tls_route` | Cloud Service Mesh resources; the Kubernetes-native path is preferred today; deferred |
-| `google_network_services_wasm_plugin` | judged to fold into the load-balancer facade kinds when they are admitted (service extensions and callouts); deferred |
+| `google_network_services_wasm_plugin` | service extensions and callouts attach to the modeled load-balancer chain; judged to fold into the owning kinds (GcpUrlMap, GcpBackendService, and their proxy family) when demand appears; deferred |
 | `google_observability_trace_scope` | observability scopes are console organization, not provisioned infrastructure; deferred |
 | `google_oracle_database_autonomous_database` | Oracle Database at Google Cloud is a named niche family (an eventual ~6 kind family); deferred pending demand |
 | `google_oracle_database_cloud_exadata_infrastructure` | Oracle Database at Google Cloud is a named niche family (an eventual ~6 kind family); deferred pending demand |
@@ -1395,9 +1393,11 @@ rather than trusted.
 | `google_sql_ssl_cert` | judged to fold into the existing GcpCloudSql kind's spec (client SSL certificates); the composition is not built |
 | `google_storage_anywhere_cache` | Anywhere Cache is a niche; deferred |
 | `google_storage_batch_operations_job` | batch object operations are imperative; deferred |
+| `google_storage_bucket_object` | bucket objects carry application content (file contents or a local file path read on the provisioning runner) rather than infrastructure configuration; content uploads belong to deployment pipelines, not infrastructure state — revisit with a content-pipeline ask |
 | `google_storage_control_folder_intelligence_config` | storage intelligence configs are new; deferred |
 | `google_storage_control_organization_intelligence_config` | storage intelligence configs are new; deferred |
 | `google_storage_control_project_intelligence_config` | storage intelligence configs are new; deferred |
+| `google_storage_hmac_key` | mints a long-lived S3-interoperability credential whose secret lands in provisioning state, and it is project/service-account scoped rather than a bucket child; belongs to a credential-management flow, not the bucket kind — revisit with an interoperability-credential ask |
 | `google_storage_insights_dataset_config` | storage inventory reports are a niche; deferred |
 | `google_storage_insights_report_config` | storage inventory reports are a niche; deferred |
 | `google_storage_transfer_agent_pool` | judged to deserve a GcpStorageTransferJob kind (agent pools composed); deferred pending demand |
