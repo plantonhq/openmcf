@@ -302,6 +302,7 @@ Fields on other kinds that can point at this resource:
 | AzureApplicationInsightsStandardWebTest | `spec.applicationInsightsId` | `status.outputs.application_insights_id` |
 | AzureFunctionApp | `spec.applicationInsightsConnectionString` | `status.outputs.connection_string` |
 | AzureLinuxWebApp | `spec.applicationInsightsConnectionString` | `status.outputs.connection_string` |
+| AzureMachineLearningWorkspace | `spec.applicationInsightsId` | `status.outputs.application_insights_id` |
 | AzureMonitorMetricAlert | `spec.webTestAvailabilityCriteria.componentId` | `status.outputs.application_insights_id` |
 
 ## See Also

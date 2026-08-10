@@ -430,6 +430,24 @@ func TestAzureCognitiveAccountProject_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurecognitiveaccountproject", "terraform")
 }
 
+// --- Azure Machine Learning Workspace (composed: fixture storage account + key vault + application insights -> a Basic workspace with the managed VNet provisioned at approved-outbound isolation and one outbound rule of each type; the workspace is minutes, the managed network several more -- soft-delete ghosts hold the name, the orphan sweep checks `az ml workspace list --archived`) ---
+
+func TestAzureMachineLearningWorkspace_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningworkspace", "pulumi")
+}
+func TestAzureMachineLearningWorkspace_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningworkspace", "terraform")
+}
+
+// --- Azure Machine Learning Datastore (composed: fixture workspace -> a blob-variant datastore on the scenario-declared fixture container under workspace-identity auth; seconds, free -- the provider skips service-side validation on create, so the lane proves registration, not data access) ---
+
+func TestAzureMachineLearningDatastore_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningdatastore", "pulumi")
+}
+func TestAzureMachineLearningDatastore_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningdatastore", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {

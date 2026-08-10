@@ -307,6 +307,7 @@ Fields on other kinds that can point at this resource:
 | AzureCosmosdbAccount | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureDiskEncryptionSet | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureEventHubNamespaceCustomerManagedKey | `spec.keyVaultKeyIds` | `status.outputs.versionless_id` |
+| AzureMachineLearningWorkspace | `spec.encryption.keyId` | `status.outputs.versionless_id` |
 | AzureManagedRedis | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.key_id` |
 | AzureMssqlDatabase | `spec.transparentDataEncryptionKeyVaultKeyId` | `status.outputs.key_id` |
 | AzureMssqlServer | `spec.transparentDataEncryptionKeyVaultKeyId` | `status.outputs.key_id` |

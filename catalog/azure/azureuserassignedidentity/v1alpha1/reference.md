@@ -172,6 +172,9 @@ Fields on other kinds that can point at this resource:
 | AzureLinuxWebApp | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureLinuxWebApp | `spec.keyVaultReferenceIdentityId` | `status.outputs.identity_id` |
 | AzureLogAnalyticsWorkspace | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
+| AzureMachineLearningWorkspace | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureMachineLearningWorkspace | `spec.primaryUserAssignedIdentity` | `status.outputs.identity_id` |
+| AzureMachineLearningWorkspace | `spec.encryption.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureManagedRedis | `spec.customerManagedKey.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureManagedRedis | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureManagedRedisAccessPolicyAssignment | `spec.objectId` | `status.outputs.principal_id` |

@@ -177,3 +177,39 @@ spec:
     - terraform_type: azurerm_cognitive_account_project
       pulumi_type: azure:cognitive/accountProject:AccountProject
       id_format: "{project_id}"
+
+    # --- AI/ML: the Machine Learning workspace family --------------------
+    - terraform_type: azurerm_machine_learning_workspace
+      pulumi_type: azure:machinelearning/workspace:Workspace
+      id_format: "{machine_learning_workspace_id}"
+    - terraform_type: azurerm_machine_learning_workspace_network_outbound_rule_fqdn
+      pulumi_type: azure:machinelearning/workspaceNetworkOutboundRuleFqdn:WorkspaceNetworkOutboundRuleFqdn
+      id_format: "{machine_learning_workspace_id}/outboundRules/{outbound_rule_name}"
+      # The module deploys one rule per spec entry, keyed by name --
+      # the address's instance key supplies {outbound_rule_name}. All
+      # three rule types share this ARM collection.
+    - terraform_type: azurerm_machine_learning_workspace_network_outbound_rule_private_endpoint
+      pulumi_type: azure:machinelearning/workspaceNetworkOutboundRulePrivateEndpoint:WorkspaceNetworkOutboundRulePrivateEndpoint
+      id_format: "{machine_learning_workspace_id}/outboundRules/{outbound_rule_name}"
+    - terraform_type: azurerm_machine_learning_workspace_network_outbound_rule_service_tag
+      pulumi_type: azure:machinelearning/workspaceNetworkOutboundRuleServiceTag:WorkspaceNetworkOutboundRuleServiceTag
+      id_format: "{machine_learning_workspace_id}/outboundRules/{outbound_rule_name}"
+    # The three datastore variants of AzureMachineLearningDatastore --
+    # one kind, exactly one of these resources per deployment; all
+    # three share the same ARM child collection and id shape. ARM
+    # never returns account keys, SAS tokens, or client secrets (the
+    # provider echoes them from configuration) -- an imported
+    # datastore configured with them legitimately plans an in-place
+    # update on exactly those arguments.
+    - terraform_type: azurerm_machine_learning_datastore_blobstorage
+      pulumi_type: azure:machinelearning/datastoreBlobstorage:DatastoreBlobstorage
+      id_format: "{datastore_id}"
+      write_normalized_attributes: [account_key, shared_access_signature]
+    - terraform_type: azurerm_machine_learning_datastore_datalake_gen2
+      pulumi_type: azure:machinelearning/datastoreDatalakeGen2:DatastoreDatalakeGen2
+      id_format: "{datastore_id}"
+      write_normalized_attributes: [client_secret]
+    - terraform_type: azurerm_machine_learning_datastore_fileshare
+      pulumi_type: azure:machinelearning/datastoreFileshare:DatastoreFileshare
+      id_format: "{datastore_id}"
+      write_normalized_attributes: [account_key, shared_access_signature]

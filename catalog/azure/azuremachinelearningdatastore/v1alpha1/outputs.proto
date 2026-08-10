@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningdatastore.v1alpha1;
+
+// **AzureMachineLearningDatastoreStackOutputs** captures the outputs
+// of provisioning a Machine Learning datastore.
+message AzureMachineLearningDatastoreStackOutputs {
+  // The Azure Resource Manager ID of the datastore.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{ws}/dataStores/{name}
+  string datastore_id = 1;
+
+  // The datastore's name -- what jobs and data assets reference
+  // within the workspace.
+  string datastore_name = 2;
+
+  // Whether this datastore is the workspace's default. Settable only
+  // on the blob variant; the other variants read the service's
+  // answer.
+  bool is_default = 3;
+}

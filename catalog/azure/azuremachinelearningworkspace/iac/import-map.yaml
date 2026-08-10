@@ -1,0 +1,27 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuremachinelearningworkspace
+spec:
+  # The workspace's identity is its full ARM resource ID. The three
+  # outbound-rule types are ARM children composed under it in ONE
+  # shared collection (.../outboundRules/{name}), each keyed by the
+  # spec entry's name (the module deploys one child per entry,
+  # addressed by that name).
+  values:
+    - name: machine_learning_workspace_id
+      derivations:
+        - from_stack_output: machine_learning_workspace_id
+      where_to_find: >-
+        Portal -> Azure Machine Learning -> the workspace ->
+        Properties -> Resource ID, or `az ml workspace show -g <rg>
+        -n <name> --query id`.
+    - name: outbound_rule_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The rule's name in the spec's fqdnOutboundRules /
+        privateEndpointOutboundRules / serviceTagOutboundRules lists
+        (the module keys one ARM child per name; all three types share
+        one collection); `az ml workspace outbound-rule list -g <rg>
+        --workspace-name <name>` shows what exists cloud-side.

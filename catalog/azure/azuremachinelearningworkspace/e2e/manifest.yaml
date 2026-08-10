@@ -1,0 +1,70 @@
+# Offline-plan test manifest. Exercises the deep seams: a user-assigned
+# identity with a primary identity, CMK encryption with service-side
+# CMK, the managed network at approved-outbound isolation with all
+# THREE outbound-rule types (they share one ARM collection -- names are
+# unique across the lists), serverless compute pinned to a subnet, the
+# container-registry attachment, and the high-business-impact flag.
+# storage_account_access_type is deliberately NOT set here: it is the
+# kind's one PARITY-EXCEPTION (Terraform-only), and the canonical
+# manifest stays deployable by both engines.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningWorkspace
+metadata:
+  name: test-ml-workspace
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: test-ml-workspace
+  applicationInsightsId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Insights/components/test-insights
+  keyVaultId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.KeyVault/vaults/test-vault
+  storageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/testmlstorage
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ml-uai
+  primaryUserAssignedIdentity:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ml-uai
+  containerRegistryId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ContainerRegistry/registries/testmlacr
+  description: Offline-plan workspace exercising the deep seams
+  friendlyName: Test ML Workspace
+  encryption:
+    keyVaultId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.KeyVault/vaults/test-vault
+    keyId:
+      value: https://test-vault.vault.azure.net/keys/ml-cmk
+    userAssignedIdentityId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ml-uai
+  serviceSideEncryptionEnabled: true
+  highBusinessImpact: true
+  skuName: Basic
+  managedNetwork:
+    isolationMode: ALLOW_ONLY_APPROVED_OUTBOUND
+    provisionOnCreationEnabled: true
+  imageBuildComputeName: image-builder
+  serverlessCompute:
+    subnetId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/serverless
+    publicIpEnabled: false
+  fqdnOutboundRules:
+    - name: allow-pypi
+      destinationFqdn: pypi.org
+  privateEndpointOutboundRules:
+    - name: to-vault
+      serviceResourceId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.KeyVault/vaults/test-vault
+      subResourceTarget: vault
+      sparkEnabled: true
+  serviceTagOutboundRules:
+    - name: allow-storage
+      serviceTag: Storage
+      protocol: TCP
+      portRanges: "443"
+  tags:
+    cost-center: ml-platform

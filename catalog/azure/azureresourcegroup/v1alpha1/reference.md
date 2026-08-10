@@ -111,6 +111,7 @@ Fields on other kinds that can point at this resource:
 | AzureLoadBalancer | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureLocalNetworkGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureLogAnalyticsWorkspace | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureMachineLearningWorkspace | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureManagedDisk | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureManagedRedis | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureMonitorActionGroup | `spec.resourceGroup` | `status.outputs.resource_group_name` |

@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuremachinelearningdatastore
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, offline tofu plan green); live dual-engine proof has
+  # not yet run. The datastore registers in seconds and is free; the
+  # cost and time live in its chain (the fixture workspace and its
+  # companion services). The scenario proves the blob variant under
+  # workspace-identity auth on the scenario-declared fixture container;
+  # the data-lake and file-share variants are offline-proven only this
+  # wave (their auth grammars are spec/CEL-tested; live variant lanes
+  # follow the same chain when needed). NOTE: the provider creates
+  # datastores with service-side validation skipped -- the live lane
+  # proves registration, not data access.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

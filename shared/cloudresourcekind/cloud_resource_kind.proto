@@ -2285,6 +2285,30 @@ enum CloudResourceKind {
     id_prefix: "azcogp"
     prerequisites: [AzureCognitiveAccount]
   }];
+  // The workspace REQUIRES all three companion services at creation
+  // (default storage, secrets vault, telemetry) -- genuine
+  // deploy-order prerequisites, each with its own fixture profile.
+  AzureMachineLearningWorkspace = 2163 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlw"
+    prerequisites: [
+      AzureResourceGroup,
+      AzureStorageAccount,
+      AzureKeyVault,
+      AzureApplicationInsights
+    ]
+  }];
+  // An ARM child of its workspace. The storage target (container,
+  // filesystem or share) is scenario-declared via the
+  // e2e-prerequisites annotation -- only the blob scenario needs a
+  // container, so it is not a kind-wide prerequisite.
+  AzureMachineLearningDatastore = 2164 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlds"
+    prerequisites: [AzureMachineLearningWorkspace]
+  }];
 
   // 3000–3999: GCP resources
   GcpArtifactRegistryRepo = 3000 [(kind_meta) = {

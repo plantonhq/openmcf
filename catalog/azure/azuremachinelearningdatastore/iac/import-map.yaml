@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuremachinelearningdatastore
+spec:
+  # The datastore's identity is its full ARM resource ID
+  # (.../workspaces/{ws}/dataStores/{name}) -- the same id shape for
+  # all three variant resources; the spec's variant block decides
+  # which one the module created.
+  values:
+    - name: datastore_id
+      derivations:
+        - from_stack_output: datastore_id
+      where_to_find: >-
+        Compose {workspace-id}/dataStores/{datastore-name}, or `az ml
+        datastore show -g <rg> --workspace-name <ws> -n <name>
+        --query id`.

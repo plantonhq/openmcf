@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningdatastore.v1alpha1;
+
+import "catalog/azure/azuremachinelearningdatastore/v1alpha1/api.proto";
+import "catalog/azure/provider.proto";
+
+// AzureMachineLearningDatastoreStackInput is the input to the IaC
+// modules (Pulumi/Terraform). It contains the target resource
+// definition and Azure provider credentials.
+message AzureMachineLearningDatastoreStackInput {
+  // The datastore resource to deploy.
+  AzureMachineLearningDatastore target = 1;
+
+  // Azure provider configuration (credentials).
+  dev.planton.azure.AzureProviderConfig provider_config = 2;
+}
