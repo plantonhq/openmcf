@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpidentityplatformconfig
+spec:
+  # WATCH: creating the config PERMANENTLY initializes Identity Platform
+  # on the test project — there is no de-initialize; destroy abandons it
+  # (kept deliberately). The provider's create is a bare initializeAuth
+  # call with NO already-exists tolerance at the pinned 7.43 line, so a
+  # SECOND create against an already-initialized project (the second
+  # engine's lane, and every tenant lane's prerequisite chain) may
+  # surface an API error — the proof run owns the resolution (candidates:
+  # first-lane-initializes sequencing, provider import, update-path
+  # proof).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

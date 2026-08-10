@@ -1,0 +1,23 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIdentityPlatformTenant
+metadata:
+  name: acme-corp-sso-tenant
+spec:
+  displayName: acme-corp
+  inboundSamlConfigs:
+    - name: saml.acme-okta
+      displayName: Acme Okta
+      idpConfig:
+        # From the customer IdP's metadata XML.
+        idpEntityId: http://www.okta.com/exkexample
+        ssoUrl: https://acme.okta.com/app/example/sso/saml
+        idpCertificates:
+          - x509Certificate: |
+              -----BEGIN CERTIFICATE-----
+              MIIC...placeholder...
+              -----END CERTIFICATE-----
+      # Required at tenant level — both fields (the API's own rule).
+      spConfig:
+        callbackUri: https://app.example.com/__/auth/handler
+        spEntityId: app-example-com-acme
+  deletionPolicy: PREVENT

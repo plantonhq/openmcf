@@ -1,0 +1,481 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpidentityplatformconfig.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpIdentityPlatformConfigSpec defines a project's Identity Platform
+// configuration — the sign-in methods (email/password, phone, anonymous),
+// authorized domains, multi-factor authentication, blocking functions,
+// SMS-region policy, quotas, and the identity providers (Google, Facebook,
+// OIDC, SAML) end users can authenticate with.
+//
+// This is a PROJECT SINGLETON with one-way creation: applying it for the
+// first time permanently initializes Identity Platform on the project
+// (the project must have billing enabled), and GCP provides no way to
+// de-initialize — destroying this resource abandons the configuration in
+// place rather than deleting anything. Every setting remains freely
+// updatable after initialization.
+//
+// The three identity-provider lists compose the project-level IdP config
+// resources, so one manifest takes a project from nothing to a working
+// sign-in surface. Tenant-scoped configuration lives on the separate
+// GcpIdentityPlatformTenant kind (enable multi_tenant.allow_tenants here
+// first).
+message GcpIdentityPlatformConfigSpec {
+  // The GCP project whose Identity Platform is configured. Can be a
+  // literal project ID or a reference to a GcpProject resource. If
+  // omitted, the provider's default project is used. The project must
+  // have BILLING enabled — initialization fails without it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // First-party sign-in methods. Each arm you set is sent explicitly
+  // (including enabled=false) so the project's state always matches the
+  // manifest; arms you omit are left unmanaged.
+  GcpIdentityPlatformConfigSignIn sign_in = 2;
+
+  // Domains authorized for OAuth redirects and hosted sign-in flows
+  // (e.g. "myapp.example.com"). localhost and the project's Firebase
+  // subdomains are authorized by default when this list is left empty.
+  repeated string authorized_domains = 3;
+
+  // Multi-factor authentication policy for the project.
+  GcpIdentityPlatformConfigMfa mfa = 4;
+
+  // Blocking functions — Cloud Functions invoked synchronously during
+  // sign-up/sign-in that can allow, block, or modify the operation
+  // (custom claims, domain allowlists, fraud checks).
+  GcpIdentityPlatformConfigBlockingFunctions blocking_functions = 5;
+
+  // Temporary sign-up quota override — all three fields are set together
+  // (GCP needs the ceiling, the window length, and when it starts).
+  GcpIdentityPlatformConfigSignUpQuota sign_up_quota = 6;
+
+  // Which regions may receive SMS (verification codes, MFA) — the
+  // toll-fraud control. Exactly one policy arm.
+  GcpIdentityPlatformConfigSmsRegionConfig sms_region_config = 7;
+
+  // Restrictions on what client applications can do through the
+  // Identity Toolkit API directly.
+  GcpIdentityPlatformConfigClientPermissions client_permissions = 8;
+
+  // Whether sign-in/sign-up requests are written to Cloud Logging. Sent
+  // explicitly when set (true or false); leave unset to keep GCP's
+  // current value unmanaged.
+  optional bool request_logging_enabled = 9;
+
+  // Multi-tenancy: allow_tenants must be true before any
+  // GcpIdentityPlatformTenant can be created in this project.
+  GcpIdentityPlatformConfigMultiTenant multi_tenant = 10;
+
+  // When true, anonymous users are deleted automatically after ~30 days
+  // of inactivity — keeps abandoned guest sessions from accumulating.
+  bool autodelete_anonymous_users = 11;
+
+  // Default supported identity providers (Google, Facebook, Apple, ...)
+  // enabled for the whole project, each with the OAuth client obtained
+  // from that provider's own developer console.
+  repeated GcpIdentityPlatformConfigDefaultSupportedIdp default_supported_idps = 12;
+
+  // Custom OIDC identity providers for the whole project.
+  repeated GcpIdentityPlatformConfigOauthIdp oauth_idp_configs = 13;
+
+  // Inbound SAML identity providers (enterprise SSO) for the whole
+  // project.
+  repeated GcpIdentityPlatformConfigInboundSaml inbound_saml_configs = 14;
+
+  // Deletion policy for the COMPOSED identity-provider configs (the
+  // default-supported/OIDC/SAML entries above) — the project config
+  // itself cannot be deleted (destroy always abandons it in place):
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the IdP configs are deleted; users can no longer sign
+  //                in through them (accounts themselves are untouched)
+  //   "PREVENT" -- destroy FAILS; protects a live sign-in surface
+  //   "ABANDON" -- the IdP configs are removed from management but keep
+  //                working in GCP
+  string deletion_policy = 15 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+}
+
+// First-party sign-in methods.
+message GcpIdentityPlatformConfigSignIn {
+  // Email/password sign-in.
+  GcpIdentityPlatformConfigSignInEmail email = 1;
+
+  // Phone-number (SMS code) sign-in.
+  GcpIdentityPlatformConfigSignInPhone phone_number = 2;
+
+  // Anonymous (guest) sign-in — accounts created without credentials,
+  // typically upgraded to a real provider later.
+  GcpIdentityPlatformConfigSignInAnonymous anonymous = 3;
+
+  // Whether multiple accounts may share one email address. Most apps
+  // leave this false so an email maps to exactly one account.
+  bool allow_duplicate_emails = 4;
+}
+
+// Email/password sign-in settings.
+message GcpIdentityPlatformConfigSignInEmail {
+  // Whether email sign-in is enabled. Sent explicitly, so setting this
+  // arm with enabled=false actively disables the method.
+  bool enabled = 1;
+
+  // Whether a password is required for email accounts. When false,
+  // users can sign in via email link alone.
+  bool password_required = 2;
+}
+
+// Phone-number sign-in settings.
+message GcpIdentityPlatformConfigSignInPhone {
+  // Whether phone sign-in is enabled. Sent explicitly, so setting this
+  // arm with enabled=false actively disables the method.
+  bool enabled = 1;
+
+  // Test phone numbers mapped to fixed verification codes (e.g.
+  // "+15555550100" -> "123456") — lets CI and reviewers exercise the
+  // phone flow without receiving real SMS. Never ship real numbers here.
+  map<string, string> test_phone_numbers = 2;
+}
+
+// Anonymous sign-in settings.
+message GcpIdentityPlatformConfigSignInAnonymous {
+  // Whether anonymous (guest) sign-in is enabled. Sent explicitly, so
+  // setting this arm with enabled=false actively disables the method.
+  bool enabled = 1;
+}
+
+// Multi-factor authentication policy.
+message GcpIdentityPlatformConfigMfa {
+  // Project-wide MFA state (provider-validated values):
+  //   "DISABLED"  -- MFA cannot be used
+  //   "ENABLED"   -- users may enroll a second factor
+  //   "MANDATORY" -- every user must present a second factor
+  string state = 1 [(buf.validate.field).cel = {
+    id: "valid_mfa_state"
+    message: "mfa.state must be one of: DISABLED, ENABLED, MANDATORY"
+    expression: "this == '' || this in ['DISABLED', 'ENABLED', 'MANDATORY']"
+  }];
+
+  // Usable second factors. The provider accepts only "PHONE_SMS" here;
+  // TOTP is configured through provider_configs.
+  repeated string enabled_providers = 2 [(buf.validate.field).repeated.items.cel = {
+    id: "valid_mfa_provider"
+    message: "mfa.enabled_providers entries must be PHONE_SMS (TOTP is configured via provider_configs)"
+    expression: "this == 'PHONE_SMS'"
+  }];
+
+  // Per-provider MFA configuration (currently TOTP authenticator apps).
+  repeated GcpIdentityPlatformConfigMfaProviderConfig provider_configs = 3;
+}
+
+// One MFA provider configuration.
+message GcpIdentityPlatformConfigMfaProviderConfig {
+  // This provider's state: DISABLED, ENABLED, or MANDATORY.
+  string state = 1 [(buf.validate.field).cel = {
+    id: "valid_mfa_provider_state"
+    message: "provider_configs.state must be one of: DISABLED, ENABLED, MANDATORY"
+    expression: "this == '' || this in ['DISABLED', 'ENABLED', 'MANDATORY']"
+  }];
+
+  // TOTP (authenticator-app) settings.
+  GcpIdentityPlatformConfigMfaTotp totp_provider_config = 2;
+}
+
+// TOTP provider settings.
+message GcpIdentityPlatformConfigMfaTotp {
+  // How many adjacent 30-second code windows are accepted (clock-skew
+  // tolerance). GCP accepts up to 10.
+  int32 adjacent_intervals = 1 [(buf.validate.field).cel = {
+    id: "valid_adjacent_intervals"
+    message: "totp_provider_config.adjacent_intervals must be between 0 and 10"
+    expression: "this >= 0 && this <= 10"
+  }];
+}
+
+// Blocking functions configuration.
+message GcpIdentityPlatformConfigBlockingFunctions {
+  // The trigger points and the Cloud Functions they invoke. GCP supports
+  // the "beforeCreate" (before an account is created) and "beforeSignIn"
+  // (before a sign-in completes) event types.
+  repeated GcpIdentityPlatformConfigBlockingFunctionTrigger triggers = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Which of the user's tokens are forwarded to the blocking function —
+  // grant only what the function's logic actually inspects.
+  GcpIdentityPlatformConfigForwardInboundCredentials forward_inbound_credentials = 2;
+}
+
+// One blocking-function trigger.
+message GcpIdentityPlatformConfigBlockingFunctionTrigger {
+  // The trigger point: "beforeCreate" or "beforeSignIn".
+  string event_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_event_type"
+      message: "event_type must be beforeCreate or beforeSignIn"
+      expression: "this in ['beforeCreate', 'beforeSignIn']"
+    }
+  ];
+
+  // The HTTPS endpoint of the Cloud Function to invoke — a literal URL
+  // or a reference to a GcpCloudFunction resource (its function_url
+  // output is exactly this value).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef function_uri = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpCloudFunction,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_url"
+  ];
+}
+
+// Token-forwarding switches for blocking functions.
+message GcpIdentityPlatformConfigForwardInboundCredentials {
+  // Forward the user's OAuth access token.
+  bool access_token = 1;
+
+  // Forward the user's OIDC ID token.
+  bool id_token = 2;
+
+  // Forward the user's refresh token.
+  bool refresh_token = 3;
+}
+
+// Temporary sign-up quota override. GCP treats the three fields as one
+// unit: the ceiling, the window length, and the window start.
+message GcpIdentityPlatformConfigSignUpQuota {
+  option (buf.validate.message).cel = {
+    id: "quota_fields_set_together"
+    message: "sign_up_quota requires quota, quota_duration, and start_time together — GCP applies the override as one unit"
+    expression: "(this.quota == 0 && this.quota_duration == '' && this.start_time == '') || (this.quota != 0 && this.quota_duration != '' && this.start_time != '')"
+  };
+
+  // Sign-ups allowed during the window — between 1 and 1000 (the API's
+  // documented range).
+  int64 quota = 1 [(buf.validate.field).cel = {
+    id: "valid_quota"
+    message: "sign_up_quota.quota must be between 1 and 1000"
+    expression: "this == 0 || (this >= 1 && this <= 1000)"
+  }];
+
+  // How long the override stays active, as a seconds duration (e.g.
+  // "86400s" for one day).
+  string quota_duration = 2 [(buf.validate.field).cel = {
+    id: "valid_quota_duration"
+    message: "sign_up_quota.quota_duration must be a seconds duration such as 86400s"
+    expression: "this == '' || this.matches('^[0-9]+([.][0-9]+)?s$')"
+  }];
+
+  // When the override takes effect (RFC3339 UTC, e.g.
+  // "2026-09-01T00:00:00Z").
+  string start_time = 3 [(buf.validate.field).cel = {
+    id: "valid_start_time"
+    message: "sign_up_quota.start_time must be an RFC3339 UTC timestamp such as 2026-09-01T00:00:00Z"
+    expression: "this == '' || this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$')"
+  }];
+}
+
+// SMS-region policy: exactly one arm (the API's own rule).
+message GcpIdentityPlatformConfigSmsRegionConfig {
+  option (buf.validate.message).cel = {
+    id: "exactly_one_sms_region_policy"
+    message: "set exactly one of allow_by_default or allowlist_only"
+    expression: "[has(this.allow_by_default), has(this.allowlist_only)].filter(x, x).size() == 1"
+  };
+
+  // Allow SMS to every region EXCEPT the listed ones.
+  GcpIdentityPlatformConfigSmsAllowByDefault allow_by_default = 1;
+
+  // Allow SMS ONLY to the listed regions — the tighter toll-fraud
+  // posture.
+  GcpIdentityPlatformConfigSmsAllowlistOnly allowlist_only = 2;
+}
+
+// Deny-list SMS policy.
+message GcpIdentityPlatformConfigSmsAllowByDefault {
+  // Two-letter CLDR region codes to disallow (e.g. "KP", "RU").
+  repeated string disallowed_regions = 1;
+}
+
+// Allow-list SMS policy.
+message GcpIdentityPlatformConfigSmsAllowlistOnly {
+  // Two-letter CLDR region codes to allow (e.g. "US", "DE").
+  repeated string allowed_regions = 1;
+}
+
+// Client-application permission restrictions.
+message GcpIdentityPlatformConfigClientPermissions {
+  // When true, end users CANNOT sign up themselves through the API —
+  // accounts are created only by your backend (admin SDK).
+  bool disabled_user_signup = 1;
+
+  // When true, end users CANNOT delete their own accounts through the
+  // API — deletion happens only through your backend.
+  bool disabled_user_deletion = 2;
+}
+
+// Multi-tenancy settings.
+message GcpIdentityPlatformConfigMultiTenant {
+  // Whether this project may contain tenants. Must be true before any
+  // GcpIdentityPlatformTenant is created in the project.
+  bool allow_tenants = 1;
+
+  // Default GCP location for tenant data (e.g. "global").
+  string default_tenant_location = 2;
+}
+
+// One default supported identity provider (Google, Facebook, Apple, ...)
+// enabled project-wide.
+message GcpIdentityPlatformConfigDefaultSupportedIdp {
+  // Which provider this is — the provider's canonical IdP ID:
+  // apple.com, facebook.com, gc.apple.com, github.com, google.com,
+  // linkedin.com, microsoft.com, playgames.google.com, twitter.com,
+  // yahoo.com. Immutable: changing it replaces the IdP config.
+  string idp_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_idp_id"
+      message: "idp_id must be one of: apple.com, facebook.com, gc.apple.com, github.com, google.com, linkedin.com, microsoft.com, playgames.google.com, twitter.com, yahoo.com"
+      expression: "this in ['apple.com', 'facebook.com', 'gc.apple.com', 'github.com', 'google.com', 'linkedin.com', 'microsoft.com', 'playgames.google.com', 'twitter.com', 'yahoo.com']"
+    }
+  ];
+
+  // The OAuth client ID issued by the identity provider's own developer
+  // console (e.g. Google Cloud Console for google.com, Meta for
+  // facebook.com). Consent-screen clients have no programmatic creation
+  // path — obtaining these is a documented console step.
+  string client_id = 2 [(buf.validate.field).required = true];
+
+  // The OAuth client secret paired with client_id. A secret value: the
+  // platform stores it as a managed-secret reference and resolves it
+  // just-in-time at deploy — it never sits in plaintext in the control
+  // plane. No Planton resource produces it (it comes from the external
+  // provider's console), so it is a plain secret string.
+  string client_secret = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Whether users can sign in with this provider (default true). Both
+  // IaC engines send the value explicitly so behavior is identical
+  // regardless of engine.
+  optional bool enabled = 4 [(dev.planton.shared.options.default) = "true"];
+}
+
+// One custom OIDC identity provider.
+message GcpIdentityPlatformConfigOauthIdp {
+  // Resource name for this OIDC config — must start with "oidc."
+  // (e.g. "oidc.corp-sso"). The API's naming rule, validated up front.
+  // Immutable.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_oidc_name"
+      message: "oauth_idp_configs.name must start with 'oidc.' — e.g. oidc.corp-sso"
+      expression: "this.startsWith('oidc.')"
+    }
+  ];
+
+  // Human-readable name shown in consoles and sign-in UIs.
+  string display_name = 2;
+
+  // The OIDC issuer URL (e.g. "https://accounts.example.com") — where
+  // Identity Platform fetches the provider's discovery document.
+  string issuer = 3 [(buf.validate.field).required = true];
+
+  // The OAuth client ID registered with the OIDC provider.
+  string client_id = 4 [(buf.validate.field).required = true];
+
+  // The OAuth client secret — required for the authorization-code flow
+  // (response_type.code), unused for the implicit id_token flow. A
+  // secret value handled as a managed-secret reference end to end.
+  string client_secret = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // Whether users can sign in with this provider (default true). Sent
+  // explicitly by both engines.
+  optional bool enabled = 6 [(dev.planton.shared.options.default) = "true"];
+
+  // Which OAuth response type to request from the provider.
+  GcpIdentityPlatformConfigOauthResponseType response_type = 7;
+}
+
+// OIDC response-type selection.
+message GcpIdentityPlatformConfigOauthResponseType {
+  // Authorization-code flow — the provider returns a code exchanged
+  // server-side (requires client_secret). The more secure flow.
+  bool code = 1;
+
+  // Implicit flow — the provider returns an ID token directly.
+  bool id_token = 2;
+}
+
+// One inbound SAML identity provider (enterprise SSO).
+message GcpIdentityPlatformConfigInboundSaml {
+  // Resource name for this SAML config — must start with "saml.",
+  // contain only alphanumerics/hyphens/underscores/periods, and the part
+  // after "saml." must start with a lowercase letter, end alphanumeric,
+  // and be at least 2 characters (the API's naming rule, validated up
+  // front). E.g. "saml.okta-prod". Immutable.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_saml_name"
+      message: "inbound_saml_configs.name must start with 'saml.' followed by a lowercase letter, contain only alphanumerics/hyphens/underscores/periods, end alphanumeric, and have at least 2 characters after the prefix — e.g. saml.okta-prod"
+      expression: "this.matches('^saml[.][a-z][a-zA-Z0-9_.-]*[a-zA-Z0-9]$')"
+    }
+  ];
+
+  // Human-readable name shown in consoles and sign-in UIs.
+  string display_name = 2 [(buf.validate.field).required = true];
+
+  // Whether users can sign in with this provider (default true). Sent
+  // explicitly by both engines.
+  optional bool enabled = 3 [(dev.planton.shared.options.default) = "true"];
+
+  // The external identity provider's side of the SAML exchange.
+  GcpIdentityPlatformConfigSamlIdpConfig idp_config = 4 [(buf.validate.field).required = true];
+
+  // This project's side of the SAML exchange (the service provider).
+  GcpIdentityPlatformConfigSamlSpConfig sp_config = 5;
+}
+
+// The SAML identity provider's settings.
+message GcpIdentityPlatformConfigSamlIdpConfig {
+  // The IdP's entity ID from its metadata XML.
+  string idp_entity_id = 1 [(buf.validate.field).required = true];
+
+  // The IdP's SSO URL — where users are sent to authenticate.
+  string sso_url = 2 [(buf.validate.field).required = true];
+
+  // Whether to sign outbound authentication requests.
+  bool sign_request = 3;
+
+  // The IdP's X.509 signing certificates (PEM) used to verify SAML
+  // responses. Public certificates, not secrets.
+  repeated GcpIdentityPlatformConfigSamlCertificate idp_certificates = 4;
+}
+
+// One X.509 certificate.
+message GcpIdentityPlatformConfigSamlCertificate {
+  // The certificate in PEM format.
+  string x509_certificate = 1;
+}
+
+// The service-provider (this project's) SAML settings.
+message GcpIdentityPlatformConfigSamlSpConfig {
+  // Where the IdP posts SAML responses — must be an https:// URL (the
+  // API's rule, validated up front).
+  string callback_uri = 1 [(buf.validate.field).cel = {
+    id: "valid_callback_uri"
+    message: "sp_config.callback_uri must start with https://"
+    expression: "this == '' || this.startsWith('https://')"
+  }];
+
+  // This project's SP entity ID, as registered with the IdP.
+  string sp_entity_id = 2;
+}

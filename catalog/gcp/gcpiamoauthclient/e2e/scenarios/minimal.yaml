@@ -1,0 +1,30 @@
+# Minimal GcpIamOauthClient scenario: a public client with no
+# credentials — the smallest valid surface. project_id is deliberately
+# omitted: the module falls back to the provider's default project. The
+# cloud-side oauthClientId carries ${E2E_RUN_ID} because deleted clients
+# are soft-deleted ~30 days and their IDs stay reserved — a fixed ID
+# would collide with a prior run's ghost.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIamOauthClient
+metadata:
+  name: planton-oss-e2e-gcpoauthclient-min
+  id: planton-oss-e2e-gcpoauthclient-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpiamoauthclient
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  oauthClientId: e2e-oauth-min-${E2E_RUN_ID}
+  clientType: PUBLIC_CLIENT
+  allowedGrantTypes:
+    - AUTHORIZATION_CODE_GRANT
+  allowedScopes:
+    - openid
+  allowedRedirectUris:
+    - value: https://e2e.example.com/callback
+  description: E2E smoke client — no credentials, no consumers

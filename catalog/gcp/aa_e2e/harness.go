@@ -44,6 +44,8 @@ import (
 	"google.golang.org/api/dns/v1"
 	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
+	iamv2 "google.golang.org/api/iam/v2"
+	identitytoolkit "google.golang.org/api/identitytoolkit/v2"
 	logging "google.golang.org/api/logging/v2"
 	monitoring "google.golang.org/api/monitoring/v3"
 	"google.golang.org/api/networkconnectivity/v1"
@@ -208,6 +210,14 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create logging client")
 	}
+	identityToolkitService, err := identitytoolkit.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create identitytoolkit client")
+	}
+	iamV2Service, err := iamv2.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create iam v2 client")
+	}
 	// ADC-authenticated plain HTTP client for services whose typed Go
 	// client is not in the pinned google.golang.org/api line (Memorystore
 	// for Valkey) — verifiers use it for REST GET probes only.
@@ -254,6 +264,8 @@ func (h *Harness) Setup(ctx context.Context) error {
 		Monitoring:          monitoringService,
 		SecretManager:       secretManagerService,
 		Logging:             loggingService,
+		IdentityToolkit:     identityToolkitService,
+		IamV2:               iamV2Service,
 		RestClient:          restClient,
 	}
 	return nil

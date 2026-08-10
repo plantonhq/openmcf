@@ -2181,6 +2181,68 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpIdentityPlatformConfig: the config's resource name plus the
+			// client-SDK bootstrap pair (API key, Firebase subdomain) both
+			// engines emit must land on StackOutputs. The api_key is a live
+			// credential and rides like any other scalar here (the
+			// GcpServiceAccount key grain).
+			name: "GcpIdentityPlatformConfig",
+			kind: cloudresourcekind.CloudResourceKind_GcpIdentityPlatformConfig,
+			rawOutputs: map[string]interface{}{
+				"config_name":        "projects/my-project/config",
+				"api_key":            "AIzaSyExampleKey123",
+				"firebase_subdomain": "my-project",
+			},
+			mustPopulate: []string{
+				"config_name", "api_key", "firebase_subdomain",
+			},
+		},
+		{
+			// GcpIdentityPlatformTenant: the server-generated tenant ID (the
+			// value client SDKs scope sign-in with) and the full resource
+			// name both engines emit must land on StackOutputs.
+			name: "GcpIdentityPlatformTenant",
+			kind: cloudresourcekind.CloudResourceKind_GcpIdentityPlatformTenant,
+			rawOutputs: map[string]interface{}{
+				"tenant_id":   "acme-corp-x7k2p",
+				"tenant_name": "projects/my-project/tenants/acme-corp-x7k2p",
+			},
+			mustPopulate: []string{
+				"tenant_id", "tenant_name",
+			},
+		},
+		{
+			// GcpIamOauthClient: the system-generated client ID, the full
+			// resource name, the lifecycle state, and the first credential's
+			// secret both engines emit must land on StackOutputs. The secret
+			// rides like any other scalar here (the GcpServiceAccount key
+			// grain).
+			name: "GcpIamOauthClient",
+			kind: cloudresourcekind.CloudResourceKind_GcpIamOauthClient,
+			rawOutputs: map[string]interface{}{
+				"client_id":     "example-client-id",
+				"client_name":   "projects/my-project/locations/global/oauthClients/example-client-id",
+				"state":         "ACTIVE",
+				"client_secret": "generated-secret-value",
+			},
+			mustPopulate: []string{
+				"client_id", "client_name", "state", "client_secret",
+			},
+		},
+		{
+			// GcpIamDenyPolicy: the policy identifier (URL-encoded parent +
+			// name) and the etag both engines emit must land on StackOutputs.
+			name: "GcpIamDenyPolicy",
+			kind: cloudresourcekind.CloudResourceKind_GcpIamDenyPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_name": "cloudresourcemanager.googleapis.com%2Fprojects%2Fmy-project/guard-secrets",
+				"etag":        "BwXhCq4YlSo=",
+			},
+			mustPopulate: []string{
+				"policy_name", "etag",
+			},
+		},
+		{
 			// GcpSslCertificate: flat scalar outputs from both engines
 			// (self-link, name, id, expiry, scope region) must land on
 			// StackOutputs. The private key is write-only and never an output.

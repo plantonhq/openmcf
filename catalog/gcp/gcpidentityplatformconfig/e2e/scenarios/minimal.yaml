@@ -1,0 +1,27 @@
+# Minimal GcpIdentityPlatformConfig scenario: email/password sign-in only
+# — the smallest manifest that initializes a project and produces a
+# working sign-in surface. projectId is deliberately omitted: the module
+# falls back to the provider's default project, which the E2E harness
+# exports as GOOGLE_PROJECT from the resolved test project.
+# deletionPolicy is omitted too — the config singleton is abandoned on
+# destroy regardless (GCP has no de-initialize), and there are no
+# composed IdP configs here for the policy to govern.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIdentityPlatformConfig
+metadata:
+  name: planton-oss-e2e-gcpidcfg-minimal
+  id: planton-oss-e2e-gcpidcfg-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpidentityplatformconfig
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  signIn:
+    email:
+      enabled: true
+      passwordRequired: true

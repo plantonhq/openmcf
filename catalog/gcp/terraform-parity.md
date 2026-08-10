@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `google@7.43.0` |
-| Kinds in the catalog | 84 |
-| Distinct provider resources consumed | 105 |
-| Spec fields authored across all kinds | 3124 |
-| Module pins on `google` | `~> 7.43` × 84 |
+| Kinds in the catalog | 88 |
+| Distinct provider resources consumed | 116 |
+| Spec fields authored across all kinds | 3230 |
+| Module pins on `google` | `~> 7.43` × 88 |
 
 The GA provider is the parity baseline. Capability that exists only in a
 secondary channel (for Google, the `google-beta` provider) enters per kind
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**76 of 84 kinds are at total accounting; 14 proven live.**
+**80 of 88 kinds are at total accounting; 18 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -74,7 +74,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpCloudSqlDatabase | 6 | 4 | 2 | 0 | 0 | ✅ | — |
 | GcpCloudSqlUser | 14 | 10 | 2 | 2 | 0 | ✅ | — |
 | GcpCloudTasksQueue | 29 | 22 | 7 | 0 | 0 | ✅ | — |
-| GcpComputeDisk | 36 | 18 | 14 | 4 | 0 | ✅ | — |
+| GcpComputeDisk | 36 | 18 | 14 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpComputeInstance | 124 | 47 | 64 | 13 | 0 | ✅ | — |
 | GcpDataprocAutoscalingPolicy | 16 | 15 | 1 | 0 | 0 | ✅ | — |
 | GcpDataprocCluster | 148 | 77 | 52 | 19 | 0 | ✅ | — |
@@ -83,9 +83,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpFilestoreInstance | 36 | 14 | 22 | 0 | 0 | ✅ | — |
 | GcpFirestoreBackupSchedule | 5 | 4 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreDatabase | 15 | 11 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | — |
+| GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirewallRule | 20 | 12 | 0 | 0 | 13 | ❌ | ✅ pulumi, terraform |
-| GcpGcsBucket | 64 | 30 | 29 | 5 | 0 | ✅ | — |
+| GcpGcsBucket | 64 | 30 | 29 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGkeCluster | 537 | 61 | 137 | 339 | 0 | ✅ | — |
 | GcpGkeNodePool | 184 | 127 | 51 | 6 | 0 | ✅ | — |
 | GcpGkeWorkloadIdentityBinding | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
@@ -93,6 +93,10 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpGlobalForwardingRule | 23 | 18 | 4 | 1 | 0 | ✅ | — |
 | GcpHealthCheck | 105 | 12 | 0 | 0 | 136 | ❌ | ✅ pulumi, terraform |
 | GcpIamCustomRole | 7 | 6 | 1 | 0 | 0 | ✅ | — |
+| GcpIamDenyPolicy | 13 | 11 | 2 | 0 | 0 | ✅ | — |
+| GcpIamOauthClient | 18 | 12 | 3 | 3 | 0 | ✅ | — |
+| GcpIdentityPlatformConfig | 55 | 42 | 10 | 3 | 0 | ✅ | — |
+| GcpIdentityPlatformTenant | 36 | 24 | 6 | 6 | 0 | ✅ | — |
 | GcpKmsKey | 12 | 10 | 2 | 0 | 0 | ✅ | — |
 | GcpKmsKeyIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpKmsKeyRing | 3 | 1 | 2 | 0 | 0 | ✅ | — |
@@ -112,7 +116,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpRouterNat | 54 | 28 | 21 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpSecretManagerSecret | 61 | 35 | 16 | 10 | 0 | ✅ | — |
 | GcpServerlessVpcConnector | 13 | 9 | 2 | 2 | 0 | ✅ | — |
-| GcpServiceAccount | 26 | 11 | 5 | 10 | 0 | ✅ | — |
+| GcpServiceAccount | 26 | 11 | 5 | 10 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpServiceAccountIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpServiceConnectionPolicy | 12 | 9 | 3 | 0 | 0 | ✅ | — |
 | GcpServiceNetworkingConnection | 5 | 5 | 0 | 0 | 0 | ✅ | — |
@@ -140,10 +144,10 @@ All resources of `google@7.43.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 105 | consumed by a kind's Terraform module today |
+| Modeled | 116 | consumed by a kind's Terraform module today |
 | IAM-covered | 407 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 6 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 57 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 46 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 682 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 76 | deprecated or superseded provider surface |
 | **Total** | **1333** | |
@@ -153,7 +157,7 @@ All resources of `google@7.43.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (105)
+### Modeled (116)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -215,8 +219,19 @@ rather than trusted.
 | `google_firestore_backup_schedule` | consumed by GcpFirestoreBackupSchedule |
 | `google_firestore_database` | consumed by GcpFirestoreDatabase |
 | `google_firestore_index` | consumed by GcpFirestoreIndex |
+| `google_iam_deny_policy` | consumed by GcpIamDenyPolicy |
+| `google_iam_oauth_client` | consumed by GcpIamOauthClient |
+| `google_iam_oauth_client_credential` | consumed by GcpIamOauthClient |
 | `google_iam_workload_identity_pool` | consumed by GcpWorkloadIdentityPool |
 | `google_iam_workload_identity_pool_provider` | consumed by GcpWorkloadIdentityPoolProvider |
+| `google_identity_platform_config` | consumed by GcpIdentityPlatformConfig |
+| `google_identity_platform_default_supported_idp_config` | consumed by GcpIdentityPlatformConfig |
+| `google_identity_platform_inbound_saml_config` | consumed by GcpIdentityPlatformConfig |
+| `google_identity_platform_oauth_idp_config` | consumed by GcpIdentityPlatformConfig |
+| `google_identity_platform_tenant` | consumed by GcpIdentityPlatformTenant |
+| `google_identity_platform_tenant_default_supported_idp_config` | consumed by GcpIdentityPlatformTenant |
+| `google_identity_platform_tenant_inbound_saml_config` | consumed by GcpIdentityPlatformTenant |
+| `google_identity_platform_tenant_oauth_idp_config` | consumed by GcpIdentityPlatformTenant |
 | `google_kms_crypto_key` | consumed by GcpKmsKey |
 | `google_kms_crypto_key_iam_member` | consumed by GcpKmsKeyIamMember |
 | `google_kms_key_ring` | consumed by GcpKmsKeyRing |
@@ -233,7 +248,7 @@ rather than trusted.
 | `google_project` | consumed by GcpProject |
 | `google_project_iam_custom_role` | consumed by GcpIamCustomRole |
 | `google_project_iam_member` | consumed by GcpProjectIamMember, GcpServiceAccount |
-| `google_project_service` | consumed by GcpAddress, GcpAlloydbCluster, GcpAlloydbInstance, GcpAlloydbUser, GcpArtifactRegistryRepo, GcpBackendBucket, GcpBackendService, GcpBigQueryDataset, GcpBigQueryTable, GcpBigtableInstance, GcpBigtableTable, GcpCertManagerCert, GcpCertManagerDnsAuthorization, GcpCloudArmorPolicy, GcpCloudComposerEnvironment, GcpCloudFunction, GcpCloudRun, GcpCloudRunJob, GcpCloudSchedulerJob, GcpCloudSql, GcpCloudTasksQueue, GcpComputeDisk, GcpComputeInstance, GcpDataprocAutoscalingPolicy, GcpDataprocCluster, GcpDnsRecord, GcpDnsZone, GcpFilestoreInstance, GcpFirestoreBackupSchedule, GcpFirestoreDatabase, GcpFirestoreIndex, GcpGcsBucket, GcpGkeCluster, GcpGkeNodePool, GcpGlobalAddress, GcpGlobalForwardingRule, GcpHealthCheck, GcpKmsKey, GcpKmsKeyRing, GcpLoggingSink, GcpManagedSslCertificate, GcpMemorystoreInstance, GcpMonitoringAlertPolicy, GcpMonitoringNotificationChannel, GcpMonitoringUptimeCheck, GcpProject, GcpPubSubSchema, GcpPubSubSubscription, GcpPubSubTopic, GcpRedisInstance, GcpRegionNetworkEndpointGroup, GcpRouterNat, GcpSecretManagerSecret, GcpServerlessVpcConnector, GcpServiceConnectionPolicy, GcpServiceNetworkingConnection, GcpSpannerBackupSchedule, GcpSpannerDatabase, GcpSpannerInstance, GcpSslCertificate, GcpSslPolicy, GcpSubnetwork, GcpTargetHttpProxy, GcpTargetHttpsProxy, GcpUrlMap, GcpVertexAiEndpoint, GcpVertexAiIndex, GcpVertexAiIndexEndpoint, GcpVertexAiNotebook, GcpVpcNetwork |
+| `google_project_service` | consumed by GcpAddress, GcpAlloydbCluster, GcpAlloydbInstance, GcpAlloydbUser, GcpArtifactRegistryRepo, GcpBackendBucket, GcpBackendService, GcpBigQueryDataset, GcpBigQueryTable, GcpBigtableInstance, GcpBigtableTable, GcpCertManagerCert, GcpCertManagerDnsAuthorization, GcpCloudArmorPolicy, GcpCloudComposerEnvironment, GcpCloudFunction, GcpCloudRun, GcpCloudRunJob, GcpCloudSchedulerJob, GcpCloudSql, GcpCloudTasksQueue, GcpComputeDisk, GcpComputeInstance, GcpDataprocAutoscalingPolicy, GcpDataprocCluster, GcpDnsRecord, GcpDnsZone, GcpFilestoreInstance, GcpFirestoreBackupSchedule, GcpFirestoreDatabase, GcpFirestoreIndex, GcpGcsBucket, GcpGkeCluster, GcpGkeNodePool, GcpGlobalAddress, GcpGlobalForwardingRule, GcpHealthCheck, GcpIamOauthClient, GcpIdentityPlatformConfig, GcpIdentityPlatformTenant, GcpKmsKey, GcpKmsKeyRing, GcpLoggingSink, GcpManagedSslCertificate, GcpMemorystoreInstance, GcpMonitoringAlertPolicy, GcpMonitoringNotificationChannel, GcpMonitoringUptimeCheck, GcpProject, GcpPubSubSchema, GcpPubSubSubscription, GcpPubSubTopic, GcpRedisInstance, GcpRegionNetworkEndpointGroup, GcpRouterNat, GcpSecretManagerSecret, GcpServerlessVpcConnector, GcpServiceConnectionPolicy, GcpServiceNetworkingConnection, GcpSpannerBackupSchedule, GcpSpannerDatabase, GcpSpannerInstance, GcpSslCertificate, GcpSslPolicy, GcpSubnetwork, GcpTargetHttpProxy, GcpTargetHttpsProxy, GcpUrlMap, GcpVertexAiEndpoint, GcpVertexAiIndex, GcpVertexAiIndexEndpoint, GcpVertexAiNotebook, GcpVpcNetwork |
 | `google_pubsub_schema` | consumed by GcpPubSubSchema |
 | `google_pubsub_subscription` | consumed by GcpPubSubSubscription |
 | `google_pubsub_topic` | consumed by GcpPubSubTopic |
@@ -686,7 +701,7 @@ rather than trusted.
 | `google_logging_project_exclusion` | GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink |
 | `google_project_iam_member_remove` | declarative member removal is inherent to the additive iam_members reconciliation on the IAM member kinds (GcpProjectIamMember); a dedicated removal escape hatch is redundant |
 
-### Planned (57)
+### Planned (46)
 
 | Resource | Recorded reason |
 |---|---|
@@ -716,17 +731,6 @@ rather than trusted.
 | `google_eventarc_message_bus` | planned kind GcpEventarcMessageBus (Eventarc Advanced) |
 | `google_eventarc_pipeline` | composes into the planned GcpEventarcMessageBus kind (Eventarc Advanced) |
 | `google_eventarc_trigger` | planned kind GcpEventarcTrigger |
-| `google_iam_deny_policy` | planned kind GcpIamDenyPolicy (deny rules that block permissions for every principal regardless of allow bindings, with break-glass exceptions; creating them requires org-level iam.denyAdmin, so live proof carries the org-credential deferral) |
-| `google_iam_oauth_client` | planned kind GcpIamOauthClient |
-| `google_iam_oauth_client_credential` | composes into the planned GcpIamOauthClient kind |
-| `google_identity_platform_config` | planned kind GcpIdentityPlatformConfig |
-| `google_identity_platform_default_supported_idp_config` | composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration) |
-| `google_identity_platform_inbound_saml_config` | composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration) |
-| `google_identity_platform_oauth_idp_config` | composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration) |
-| `google_identity_platform_tenant` | planned kind GcpIdentityPlatformTenant |
-| `google_identity_platform_tenant_default_supported_idp_config` | composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration) |
-| `google_identity_platform_tenant_inbound_saml_config` | composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration) |
-| `google_identity_platform_tenant_oauth_idp_config` | composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration) |
 | `google_logging_billing_account_bucket_config` | planned kind GcpLogBucket (bucket configs across scopes, with log views composed) |
 | `google_logging_folder_bucket_config` | planned kind GcpLogBucket (bucket configs across scopes, with log views composed) |
 | `google_logging_folder_settings` | composes into the planned GcpLogBucket kind (scope-level logging settings) |

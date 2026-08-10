@@ -1508,18 +1508,9 @@ resources:
   - resource: google_iam_access_boundary_policy
     disposition: excluded-deprecated
     reason: "superseded by principal access boundary policies (google_iam_principal_access_boundary_policy)"
-  - resource: google_iam_deny_policy
-    disposition: model-planned
-    reason: "planned kind GcpIamDenyPolicy (deny rules that block permissions for every principal regardless of allow bindings, with break-glass exceptions; creating them requires org-level iam.denyAdmin, so live proof carries the org-credential deferral)"
   - resource: google_iam_folders_policy_binding
     disposition: deferred
     reason: "judged to deserve a GcpPrincipalAccessBoundaryPolicy kind (scope bindings composed); deferred pending demand"
-  - resource: google_iam_oauth_client
-    disposition: model-planned
-    reason: "planned kind GcpIamOauthClient"
-  - resource: google_iam_oauth_client_credential
-    disposition: model-planned
-    reason: "composes into the planned GcpIamOauthClient kind"
   - resource: google_iam_organizations_policy_binding
     disposition: deferred
     reason: "judged to deserve a GcpPrincipalAccessBoundaryPolicy kind (scope bindings composed); deferred pending demand"
@@ -1556,30 +1547,6 @@ resources:
   - resource: google_iap_tunnel_dest_group
     disposition: deferred
     reason: "IAP TCP tunneling destination groups; deferred pending demand — no recorded ask, and the IAP OAuth Admin surface that once anchored a dedicated kind was shut down by Google"
-  - resource: google_identity_platform_config
-    disposition: model-planned
-    reason: "planned kind GcpIdentityPlatformConfig"
-  - resource: google_identity_platform_default_supported_idp_config
-    disposition: model-planned
-    reason: "composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration)"
-  - resource: google_identity_platform_inbound_saml_config
-    disposition: model-planned
-    reason: "composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration)"
-  - resource: google_identity_platform_oauth_idp_config
-    disposition: model-planned
-    reason: "composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration)"
-  - resource: google_identity_platform_tenant
-    disposition: model-planned
-    reason: "planned kind GcpIdentityPlatformTenant"
-  - resource: google_identity_platform_tenant_default_supported_idp_config
-    disposition: model-planned
-    reason: "composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration)"
-  - resource: google_identity_platform_tenant_inbound_saml_config
-    disposition: model-planned
-    reason: "composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration)"
-  - resource: google_identity_platform_tenant_oauth_idp_config
-    disposition: model-planned
-    reason: "composes into the planned GcpIdentityPlatformConfig and GcpIdentityPlatformTenant kinds (identity-provider configuration)"
   - resource: google_integration_connectors_connection
     disposition: deferred
     reason: "Application Integration is a niche; deferred"

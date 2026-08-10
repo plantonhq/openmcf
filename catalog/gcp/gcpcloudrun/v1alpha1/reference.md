@@ -1702,6 +1702,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| GcpIamOauthClient | `spec.allowedRedirectUris` | `status.outputs.url` |
 | GcpPubSubSubscription | `spec.pushConfig.pushEndpoint` | `status.outputs.url` |
 | GcpRegionNetworkEndpointGroup | `spec.cloudRun.service` | `status.outputs.service_name` |
 

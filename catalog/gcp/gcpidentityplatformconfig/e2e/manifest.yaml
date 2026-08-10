@@ -1,0 +1,166 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIdentityPlatformConfig
+metadata:
+  name: my-sample-auth-config
+spec:
+  # GCP project whose Identity Platform is configured. Must have BILLING
+  # enabled — initialization fails without it. Omit to use the provider's
+  # default project. NOTE: the first deploy PERMANENTLY initializes
+  # Identity Platform on this project; there is no de-initialize.
+  projectId:
+    value: my-gcp-project-123
+
+  # First-party sign-in methods. Each arm present here is sent explicitly
+  # (including enabled=false); arms omitted stay unmanaged.
+  signIn:
+    email:
+      # Explicit send — a false here actively disables the method.
+      enabled: true
+      # When false, users can sign in via email link alone.
+      passwordRequired: true
+    phoneNumber:
+      enabled: true
+      # Fixed verification codes for CI and reviewers — no real SMS.
+      # Never ship real numbers here.
+      testPhoneNumbers:
+        "+15555550100": "123456"
+    anonymous:
+      # Guest accounts, typically upgraded to a real provider later.
+      enabled: true
+    # Most apps keep this false so an email maps to exactly one account.
+    allowDuplicateEmails: false
+
+  # Domains authorized for OAuth redirects and hosted sign-in flows.
+  # localhost and the Firebase subdomains are authorized by default when
+  # this list is empty.
+  authorizedDomains:
+    - app.example.com
+
+  # Multi-factor authentication policy.
+  mfa:
+    # DISABLED, ENABLED (users may enroll), or MANDATORY.
+    state: ENABLED
+    # Only PHONE_SMS is accepted here; TOTP goes through providerConfigs.
+    enabledProviders:
+      - PHONE_SMS
+    providerConfigs:
+      - state: ENABLED
+        totpProviderConfig:
+          # Adjacent 30-second code windows accepted (clock-skew
+          # tolerance); GCP allows 0-10.
+          adjacentIntervals: 5
+
+  # Cloud Functions invoked synchronously during sign-up/sign-in — they
+  # can allow, block, or modify the operation. Their latency is added to
+  # every affected authentication.
+  blockingFunctions:
+    triggers:
+      # eventType: beforeCreate (before an account is created) or
+      # beforeSignIn (before a sign-in completes).
+      - eventType: beforeSignIn
+        # A literal HTTPS URL or a GcpCloudFunction reference (its
+        # function_url output is exactly this value).
+        functionUri:
+          value: https://us-central1-my-gcp-project-123.cloudfunctions.net/auth-gatekeeper
+    # Forward only the tokens the function's logic actually inspects.
+    forwardInboundCredentials:
+      accessToken: false
+      idToken: true
+      refreshToken: false
+
+  # Temporary sign-up ceiling — GCP applies the three fields as one unit,
+  # so all are set together (quota 1-1000).
+  signUpQuota:
+    quota: 100
+    # Window length as a seconds duration.
+    quotaDuration: 86400s
+    # When the override takes effect (RFC3339 UTC).
+    startTime: "2026-09-01T00:00:00Z"
+
+  # Which regions may receive SMS — the toll-fraud control. Exactly one
+  # arm: allowlistOnly (allow only these) or allowByDefault (deny these).
+  smsRegionConfig:
+    allowlistOnly:
+      # Two-letter CLDR region codes.
+      allowedRegions:
+        - US
+        - DE
+
+  # Restrictions on what client apps can do through the Identity Toolkit
+  # API directly.
+  clientPermissions:
+    # When true, accounts are created only by your backend (admin SDK).
+    disabledUserSignup: false
+    # When true, account deletion happens only through your backend.
+    disabledUserDeletion: false
+
+  # Whether sign-in/sign-up requests are written to Cloud Logging. Sent
+  # explicitly when set (true AND false reach the API); omit to leave
+  # GCP's current value unmanaged.
+  requestLoggingEnabled: true
+
+  # Multi-tenancy: allowTenants must be true before any
+  # GcpIdentityPlatformTenant can be created in this project.
+  multiTenant:
+    allowTenants: true
+    # Optional GCP location for tenant data:
+    # defaultTenantLocation: global
+
+  # Delete anonymous users automatically after ~30 days of inactivity.
+  autodeleteAnonymousUsers: true
+
+  # Well-known identity providers enabled project-wide. clientId and
+  # clientSecret come from each provider's own developer console —
+  # consent-screen OAuth clients have no programmatic creation path.
+  defaultSupportedIdps:
+    # idpId is one of the ten canonical values (apple.com, facebook.com,
+    # gc.apple.com, github.com, google.com, linkedin.com, microsoft.com,
+    # playgames.google.com, twitter.com, yahoo.com). Immutable.
+    - idpId: google.com
+      clientId: 000000000000-placeholder.apps.googleusercontent.com
+      # Managed secret — stored as a reference, resolved at deploy.
+      clientSecret: GOCSPX-placeholder
+
+  # Custom OIDC identity providers. Names must start with "oidc." and
+  # are immutable.
+  oauthIdpConfigs:
+    - name: oidc.corp-sso
+      displayName: Corporate SSO
+      # Where Identity Platform fetches the provider's discovery document.
+      issuer: https://accounts.example.com
+      clientId: corp-sso-client
+      # Required for the authorization-code flow below; managed secret.
+      clientSecret: placeholder-oidc-secret
+      responseType:
+        # Authorization-code flow — the more secure choice (needs the
+        # clientSecret above).
+        code: true
+        idToken: false
+
+  # Inbound SAML identity providers (enterprise SSO). Names must match
+  # saml.<slug> (lowercase start, alphanumeric end) and are immutable.
+  inboundSamlConfigs:
+    - name: saml.okta-prod
+      displayName: Okta (Production)
+      idpConfig:
+        # Both values come from the IdP's metadata XML.
+        idpEntityId: http://www.okta.com/exkexample
+        ssoUrl: https://example.okta.com/app/example/sso/saml
+        # Whether to sign outbound authentication requests.
+        signRequest: false
+        # The IdP's public signing certificates (PEM) — not secrets.
+        idpCertificates:
+          - x509Certificate: |
+              -----BEGIN CERTIFICATE-----
+              MIIC...placeholder...
+              -----END CERTIFICATE-----
+      spConfig:
+        # Where the IdP posts SAML responses — must be https://.
+        callbackUri: https://app.example.com/__/auth/handler
+        # This project's SP entity ID, as registered with the IdP.
+        spEntityId: app-example-com
+
+  # Governs ONLY the composed IdP configs above — the config singleton
+  # itself cannot be deleted (destroy always abandons it in place).
+  # DELETE (default), PREVENT, or ABANDON.
+  deletionPolicy: DELETE

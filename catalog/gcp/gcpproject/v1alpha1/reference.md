@@ -220,6 +220,10 @@ Fields on other kinds that can point at this resource:
 | GcpGlobalForwardingRule | `spec.projectId` | `status.outputs.project_id` |
 | GcpHealthCheck | `spec.projectId` | `status.outputs.project_id` |
 | GcpIamCustomRole | `spec.projectId` | `status.outputs.project_id` |
+| GcpIamDenyPolicy | `spec.parent.projectId` | `status.outputs.project_id` |
+| GcpIamOauthClient | `spec.projectId` | `status.outputs.project_id` |
+| GcpIdentityPlatformConfig | `spec.projectId` | `status.outputs.project_id` |
+| GcpIdentityPlatformTenant | `spec.projectId` | `status.outputs.project_id` |
 | GcpKmsKeyRing | `spec.projectId` | `status.outputs.project_id` |
 | GcpLoggingSink | `spec.scope.projectId` | `status.outputs.project_id` |
 | GcpManagedSslCertificate | `spec.projectId` | `status.outputs.project_id` |

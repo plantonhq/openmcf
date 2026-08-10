@@ -49,6 +49,7 @@ go_test(
         "import_roundtrip_test.go",
         "outputs_verifier_test.go",
         "refresolve_test.go",
+        "stackname_test.go",
         "tokens_test.go",
     ],
     embed = [":runner"],

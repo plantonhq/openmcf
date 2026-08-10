@@ -812,6 +812,38 @@ func TestGcpSecretManagerSecret_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpsecretmanagersecret", "terraform")
 }
 
+func TestGcpIdentityPlatformConfig_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpidentityplatformconfig", "pulumi")
+}
+
+func TestGcpIdentityPlatformConfig_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpidentityplatformconfig", "terraform")
+}
+
+func TestGcpIdentityPlatformTenant_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpidentityplatformtenant", "pulumi")
+}
+
+func TestGcpIdentityPlatformTenant_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpidentityplatformtenant", "terraform")
+}
+
+func TestGcpIamOauthClient_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpiamoauthclient", "pulumi")
+}
+
+func TestGcpIamOauthClient_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpiamoauthclient", "terraform")
+}
+
+func TestGcpIamDenyPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpiamdenypolicy", "pulumi")
+}
+
+func TestGcpIamDenyPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpiamdenypolicy", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

@@ -1,0 +1,13 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIamOauthClient
+metadata:
+  name: spa-public-client
+spec:
+  clientType: PUBLIC_CLIENT
+  allowedGrantTypes:
+    - AUTHORIZATION_CODE_GRANT
+  allowedScopes:
+    - openid
+  allowedRedirectUris:
+    - value: https://spa.example.com/auth/callback
+  description: Single-page app OAuth registration — no secret exists to leak

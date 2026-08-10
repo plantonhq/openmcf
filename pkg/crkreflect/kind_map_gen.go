@@ -374,6 +374,10 @@ import (
 	gcpglobalforwardingrulev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpglobalforwardingrule/v1alpha1"
 	gcphealthcheckv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcphealthcheck/v1alpha1"
 	gcpiamcustomrolev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpiamcustomrole/v1alpha1"
+	gcpiamdenypolicyv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpiamdenypolicy/v1alpha1"
+	gcpiamoauthclientv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpiamoauthclient/v1alpha1"
+	gcpidentityplatformconfigv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpidentityplatformconfig/v1alpha1"
+	gcpidentityplatformtenantv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpidentityplatformtenant/v1alpha1"
 	gcpkmskeyv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpkmskey/v1alpha1"
 	gcpkmskeyiammemberv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpkmskeyiammember/v1alpha1"
 	gcpkmskeyringv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpkmskeyring/v1alpha1"
@@ -1040,6 +1044,10 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpGlobalForwardingRule:                &gcpglobalforwardingrulev1alpha1.GcpGlobalForwardingRule{},
 	cloudresourcekind.CloudResourceKind_GcpHealthCheck:                         &gcphealthcheckv1alpha1.GcpHealthCheck{},
 	cloudresourcekind.CloudResourceKind_GcpIamCustomRole:                       &gcpiamcustomrolev1alpha1.GcpIamCustomRole{},
+	cloudresourcekind.CloudResourceKind_GcpIamDenyPolicy:                       &gcpiamdenypolicyv1alpha1.GcpIamDenyPolicy{},
+	cloudresourcekind.CloudResourceKind_GcpIamOauthClient:                      &gcpiamoauthclientv1alpha1.GcpIamOauthClient{},
+	cloudresourcekind.CloudResourceKind_GcpIdentityPlatformConfig:              &gcpidentityplatformconfigv1alpha1.GcpIdentityPlatformConfig{},
+	cloudresourcekind.CloudResourceKind_GcpIdentityPlatformTenant:              &gcpidentityplatformtenantv1alpha1.GcpIdentityPlatformTenant{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKey:                              &gcpkmskeyv1alpha1.GcpKmsKey{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKeyIamMember:                     &gcpkmskeyiammemberv1alpha1.GcpKmsKeyIamMember{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKeyRing:                          &gcpkmskeyringv1alpha1.GcpKmsKeyRing{},

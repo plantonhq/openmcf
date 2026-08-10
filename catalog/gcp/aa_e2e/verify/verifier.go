@@ -32,6 +32,8 @@ import (
 	"google.golang.org/api/dns/v1"
 	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
+	iamv2 "google.golang.org/api/iam/v2"
+	identitytoolkit "google.golang.org/api/identitytoolkit/v2"
 	logging "google.golang.org/api/logging/v2"
 	monitoring "google.golang.org/api/monitoring/v3"
 	"google.golang.org/api/networkconnectivity/v1"
@@ -79,6 +81,8 @@ type Services struct {
 	Monitoring          *monitoring.Service
 	SecretManager       *secretmanager.Service
 	Logging             *logging.Service
+	IdentityToolkit     *identitytoolkit.Service
+	IamV2               *iamv2.Service
 
 	// RestClient is an ADC-authenticated HTTP client for GCP services whose
 	// typed Go client is not yet in the pinned google.golang.org/api line
@@ -185,6 +189,10 @@ var verifiers = map[string]Verifier{
 	"gcpmonitoringuptimecheck":               &monitoringUptimeCheckVerifier{},
 	"gcploggingsink":                         &loggingSinkVerifier{},
 	"gcpsecretmanagersecret":                 &secretManagerSecretVerifier{},
+	"gcpidentityplatformconfig":              &identityPlatformConfigVerifier{},
+	"gcpidentityplatformtenant":              &identityPlatformTenantVerifier{},
+	"gcpiamoauthclient":                      &iamOauthClientVerifier{},
+	"gcpiamdenypolicy":                       &iamDenyPolicyVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

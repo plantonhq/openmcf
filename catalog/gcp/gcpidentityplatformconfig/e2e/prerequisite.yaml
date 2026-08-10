@@ -1,0 +1,19 @@
+# GcpIdentityPlatformConfig install profile used when the config is an
+# E2E PREREQUISITE for another component: GcpIdentityPlatformTenant lanes
+# deploy this fixture first (registry prerequisite), because tenants
+# cannot exist unless the project's config has multiTenant.allowTenants
+# armed — which is exactly what this minimal spec does, alongside the
+# smallest working sign-in surface. The config is a ONE-WAY project
+# singleton: this fixture's destroy abandons it in place, and the test
+# project keeps Identity Platform enabled by design. metadata.name stays
+# fixed — prerequisite FK resolution and consumer manifests key off it.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIdentityPlatformConfig
+metadata:
+  name: planton-oss-e2e-gcpidcfg-prereq
+spec:
+  signIn:
+    email:
+      enabled: true
+  multiTenant:
+    allowTenants: true

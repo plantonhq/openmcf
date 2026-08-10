@@ -2718,6 +2718,31 @@ enum CloudResourceKind {
     id_prefix: "gcpsec"
     prerequisites: [GcpServiceAccount]
   }];
+  GcpIdentityPlatformConfig = 3151 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpidcfg"
+  }];
+  // GcpIdentityPlatformConfig is a prerequisite because tenants exist only
+  // in projects whose Identity Platform config enables
+  // multi_tenant.allow_tenants — a tenant without the initialized,
+  // tenant-enabled project config cannot be created at all.
+  GcpIdentityPlatformTenant = 3152 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpidten"
+    prerequisites: [GcpIdentityPlatformConfig]
+  }];
+  GcpIamOauthClient = 3153 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpoauth"
+  }];
+  GcpIamDenyPolicy = 3154 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpdenyp"
+  }];
 
   // 4000–4999: Kubernetes resources, organized in family sub-bands
   // (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts

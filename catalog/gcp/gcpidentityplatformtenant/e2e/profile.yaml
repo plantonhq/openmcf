@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpidentityplatformtenant
+spec:
+  # Registry prerequisite GcpIdentityPlatformConfig: the harness deploys
+  # the planton-oss-e2e-gcpidcfg-prereq fixture first, which arms
+  # multiTenant.allowTenants (tenants cannot be created without it).
+  # WATCH (shared with that kind): on an already-initialized project the
+  # fixture's create may hit the config kind's non-idempotent
+  # initializeAuth. Tenants themselves are fully deletable, so
+  # deploy -> verify -> destroy -> verify-gone is clean.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

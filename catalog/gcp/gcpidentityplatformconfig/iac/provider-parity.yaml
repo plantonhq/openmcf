@@ -1,0 +1,82 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# One kind, four resources: the project-singleton config plus one composed
+# resource per identity provider the spec lists (default-supported / OIDC /
+# SAML). The config resource carries no deletion_policy (provider truth --
+# it is undeletable; destroy abandons it in place); the spec's ONE
+# deletion_policy maps onto each composed IdP config.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_identity_platform_config:
+    mappings:
+      - spec: spec.project_id
+        arg: project
+
+      # The provider nests permissions inside a client wrapper whose other
+      # attributes (api_key, firebase_subdomain) are computed-only outputs;
+      # the spec flattens the one configurable subtree.
+      - spec: spec.client_permissions.disabled_user_signup
+        arg: client.permissions.disabled_user_signup
+      - spec: spec.client_permissions.disabled_user_deletion
+        arg: client.permissions.disabled_user_deletion
+
+      # The provider nests one boolean two wrappers deep; the spec carries
+      # it as a single optional flag (unset = unmanaged, set = sent
+      # explicitly).
+      - spec: spec.request_logging_enabled
+        arg: monitoring.request_logging.enabled
+
+      # The provider wraps the three quota fields in a quota >
+      # sign_up_quota_config double wrapper; the spec flattens to one
+      # message whose CEL enforces the API's all-three-together rule.
+      - spec: spec.sign_up_quota.quota
+        arg: quota.sign_up_quota_config.quota
+      - spec: spec.sign_up_quota.quota_duration
+        arg: quota.sign_up_quota_config.quota_duration
+      - spec: spec.sign_up_quota.start_time
+        arg: quota.sign_up_quota_config.start_time
+
+  # Instantiated per spec.default_supported_idps entry -- one resource per
+  # provider (Google, Facebook, ...) enabled project-wide. The kind-level
+  # deletion_policy maps onto each composed config.
+  google_identity_platform_default_supported_idp_config:
+    specRoot: spec.default_supported_idps
+    mappings:
+      - spec: spec.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      - arg: project
+        reason: wired by the module to the config's project -- never user surface
+
+  # Instantiated per spec.oauth_idp_configs entry (custom OIDC providers).
+  google_identity_platform_oauth_idp_config:
+    specRoot: spec.oauth_idp_configs
+    mappings:
+      - spec: spec.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      - arg: project
+        reason: wired by the module to the config's project -- never user surface
+
+  # Instantiated per spec.inbound_saml_configs entry (enterprise SAML SSO).
+  google_identity_platform_inbound_saml_config:
+    specRoot: spec.inbound_saml_configs
+    mappings:
+      - spec: spec.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      - arg: project
+        reason: wired by the module to the config's project -- never user surface
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      identitytoolkit.googleapis.com with fixed arguments
+      (disable_on_destroy false so destroying this resource never disables
+      authentication project-wide); not spec surface.
