@@ -1439,6 +1439,8 @@ Allowed values (use exactly as shown):
 - `AzureAiFoundry` -- The hub REQUIRES both companion services at creation (secrets vault, default storage) -- genuine deploy-order prerequisites, each with its own fixture profile.
 - `AzureAiFoundryProject` -- Deploys into its hub's resource group (the provider derives the group from the hub reference -- the project spec carries none).
 - `AzureSearchService`
+- `AzureMachineLearningOnlineEndpoint` -- An ARM child of its workspace (.../onlineEndpoints/{name}) -- the stable scoring address applications call. azurerm carries no ML endpoint resources; the modules write the raw ARM shape at a pinned api-version (azapi / azure-native).
+- `AzureMachineLearningOnlineDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the running copy of a model the endpoint's traffic map routes to.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -2244,6 +2246,8 @@ Allowed values (use exactly as shown):
 - `AzureAiFoundry` -- The hub REQUIRES both companion services at creation (secrets vault, default storage) -- genuine deploy-order prerequisites, each with its own fixture profile.
 - `AzureAiFoundryProject` -- Deploys into its hub's resource group (the provider derives the group from the hub reference -- the project spec carries none).
 - `AzureSearchService`
+- `AzureMachineLearningOnlineEndpoint` -- An ARM child of its workspace (.../onlineEndpoints/{name}) -- the stable scoring address applications call. azurerm carries no ML endpoint resources; the modules write the raw ARM shape at a pinned api-version (azapi / azure-native).
+- `AzureMachineLearningOnlineDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the running copy of a model the endpoint's traffic map routes to.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -4200,6 +4204,8 @@ Allowed values (use exactly as shown):
 - `AzureAiFoundry` -- The hub REQUIRES both companion services at creation (secrets vault, default storage) -- genuine deploy-order prerequisites, each with its own fixture profile.
 - `AzureAiFoundryProject` -- Deploys into its hub's resource group (the provider derives the group from the hub reference -- the project spec carries none).
 - `AzureSearchService`
+- `AzureMachineLearningOnlineEndpoint` -- An ARM child of its workspace (.../onlineEndpoints/{name}) -- the stable scoring address applications call. azurerm carries no ML endpoint resources; the modules write the raw ARM shape at a pinned api-version (azapi / azure-native).
+- `AzureMachineLearningOnlineDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the running copy of a model the endpoint's traffic map routes to.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -5005,6 +5011,8 @@ Allowed values (use exactly as shown):
 - `AzureAiFoundry` -- The hub REQUIRES both companion services at creation (secrets vault, default storage) -- genuine deploy-order prerequisites, each with its own fixture profile.
 - `AzureAiFoundryProject` -- Deploys into its hub's resource group (the provider derives the group from the hub reference -- the project spec carries none).
 - `AzureSearchService`
+- `AzureMachineLearningOnlineEndpoint` -- An ARM child of its workspace (.../onlineEndpoints/{name}) -- the stable scoring address applications call. azurerm carries no ML endpoint resources; the modules write the raw ARM shape at a pinned api-version (azapi / azure-native).
+- `AzureMachineLearningOnlineDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the running copy of a model the endpoint's traffic map routes to.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -6999,6 +7007,8 @@ Allowed values (use exactly as shown):
 - `AzureAiFoundry` -- The hub REQUIRES both companion services at creation (secrets vault, default storage) -- genuine deploy-order prerequisites, each with its own fixture profile.
 - `AzureAiFoundryProject` -- Deploys into its hub's resource group (the provider derives the group from the hub reference -- the project spec carries none).
 - `AzureSearchService`
+- `AzureMachineLearningOnlineEndpoint` -- An ARM child of its workspace (.../onlineEndpoints/{name}) -- the stable scoring address applications call. azurerm carries no ML endpoint resources; the modules write the raw ARM shape at a pinned api-version (azapi / azure-native).
+- `AzureMachineLearningOnlineDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the running copy of a model the endpoint's traffic map routes to.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -7804,6 +7814,8 @@ Allowed values (use exactly as shown):
 - `AzureAiFoundry` -- The hub REQUIRES both companion services at creation (secrets vault, default storage) -- genuine deploy-order prerequisites, each with its own fixture profile.
 - `AzureAiFoundryProject` -- Deploys into its hub's resource group (the provider derives the group from the hub reference -- the project spec carries none).
 - `AzureSearchService`
+- `AzureMachineLearningOnlineEndpoint` -- An ARM child of its workspace (.../onlineEndpoints/{name}) -- the stable scoring address applications call. azurerm carries no ML endpoint resources; the modules write the raw ARM shape at a pinned api-version (azapi / azure-native).
+- `AzureMachineLearningOnlineDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the running copy of a model the endpoint's traffic map routes to.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`

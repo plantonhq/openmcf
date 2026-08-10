@@ -1,0 +1,276 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningonlinedeployment.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureMachineLearningOnlineDeploymentSpec** defines a MANAGED
+// online deployment on an Azure Machine Learning online endpoint
+// (ARM: Microsoft.MachineLearningServices/workspaces/{ws}/
+// onlineEndpoints/{endpoint}/deployments/{name}) -- a running copy of
+// a model behind the endpoint's address, on Azure-managed VMs with
+// health probes and request settings. The endpoint's traffic map
+// routes scoring requests to deployments by name.
+//
+// **The contract here is the ARM specification itself** (pinned
+// api-version 2025-06-01): azurerm carries no resource for ML
+// deployments, so both engines write the raw ARM shape and this
+// spec's validation rules carry the full contract burden -- there is
+// no provider-side schema behind them.
+//
+// **This spec models the Managed compute type only.** The Kubernetes
+// and AzureMLCompute variants require attached compute whose
+// supported story does not exist yet -- a recorded deferral, not an
+// oversight. Managed deployments scale by instance_count (the
+// service's Default scale mode); there is no scale-to-zero.
+message AzureMachineLearningOnlineDeploymentSpec {
+  // The online endpoint the deployment serves, by ARM ID. The
+  // deployment's name is what the endpoint's traffic map routes to.
+  // Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef endpoint_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMachineLearningOnlineEndpoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.online_endpoint_id"
+  ];
+
+  // The deployment's name, unique on its endpoint (ARM's own rule,
+  // mirrored from the pinned specification: starts with a letter or
+  // digit, then letters, digits, hyphens and underscores) -- the key
+  // the endpoint's traffic map routes by (e.g. "blue", "green").
+  // Changing the name replaces the deployment.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9-_]{0,254}$"
+  ];
+
+  // The Azure region the deployment lives in, e.g. "eastus". Must be
+  // its endpoint's own region. Fixed at creation.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The VM size each instance runs on, e.g. "Standard_DS3_v2" or
+  // "Standard_F4s_v2". Unset applies the service's default
+  // (Standard_F4s_v2). Managed-endpoint VM quota (separate from
+  // regular compute quota) gates what actually provisions. Fixed at
+  // creation.
+  string instance_type = 4;
+
+  // How many instances serve the deployment. Unspecified applies 1.
+  // This is the scale dial -- the one setting the service updates
+  // without touching the deployment's containers (ARM carries it as
+  // the deployment's SKU capacity). Managed deployments do not scale
+  // to zero.
+  optional int32 instance_count = 5 [
+    (buf.validate.field).int32.gte = 1,
+    (dev.planton.shared.options.default) = "1"
+  ];
+
+  // The model the deployment serves: the ARM ID of a registered
+  // model version (.../workspaces/{ws}/models/{name}/versions/{v})
+  // or an azureml:// asset URI. Unset is legal at the ARM layer for
+  // bring-your-own-container images that embed their model.
+  string model = 6;
+
+  // Where to mount the model inside a custom container image. Only
+  // meaningful with a custom environment.
+  string model_mount_path = 7;
+
+  // The scoring code the deployment runs -- a registered code asset
+  // and the script inside it that answers requests. Unset is legal
+  // for MLflow models (the service generates scoring code) and for
+  // custom containers with an embedded server.
+  AzureMachineLearningOnlineDeploymentCodeConfiguration code_configuration = 8;
+
+  // The environment (container image + dependencies) the scoring
+  // code runs in: the ARM ID of a registered environment version or
+  // an azureml:// asset URI. Unset lets MLflow models infer one.
+  string environment_id = 9;
+
+  // Environment variables set in the scoring container.
+  map<string, string> environment_variables = 10;
+
+  // Whether Application Insights logging is enabled for the
+  // deployment's scoring traffic. ARM's default is false -- the zero
+  // value passes through exactly.
+  bool app_insights_enabled = 11;
+
+  // Whether the deployment's OUTBOUND traffic may reach the public
+  // internet (pulling images and models over public networks).
+  // Unspecified applies true (ARM's default "Enabled"). Set false
+  // for secure egress through the workspace's managed network.
+  optional bool egress_public_network_access_enabled = 12 [(dev.planton.shared.options.default) = "true"];
+
+  // Liveness probe -- when it fails past its threshold, the service
+  // restarts the container.
+  AzureMachineLearningOnlineDeploymentProbeSettings liveness_probe = 13;
+
+  // Readiness probe -- the container receives traffic only while it
+  // passes. Defaults mirror the liveness probe's.
+  AzureMachineLearningOnlineDeploymentProbeSettings readiness_probe = 14;
+
+  // Startup probe -- gates the other probes until the application
+  // inside the container has started.
+  AzureMachineLearningOnlineDeploymentProbeSettings startup_probe = 15;
+
+  // Request handling limits for the deployment.
+  AzureMachineLearningOnlineDeploymentRequestSettings request_settings = 16;
+
+  // Model data collection -- capturing scoring inputs and outputs to
+  // workspace blob storage for monitoring and drift detection.
+  AzureMachineLearningOnlineDeploymentDataCollector data_collector = 17;
+
+  // The deployment's ARM property dictionary -- free-form key/value
+  // pairs some tooling reads. ARM allows ADDING entries but never
+  // removing or altering existing ones (the service's own contract;
+  // removals are ignored on update).
+  map<string, string> properties = 18;
+
+  // What the deployment serves. Updatable in place.
+  string description = 19;
+
+  // Free-form tags applied to the deployment, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins. Updatable in
+  // place.
+  map<string, string> tags = 20;
+}
+
+// The scoring code a deployment runs.
+message AzureMachineLearningOnlineDeploymentCodeConfiguration {
+  // The registered code asset holding the scoring script, by ARM ID
+  // (.../workspaces/{ws}/codes/{name}/versions/{v}). Unset runs the
+  // script from the environment image alone. Fixed at creation (the
+  // ARM contract -- changing the code asset replaces the deployment;
+  // ship new code as a new deployment and shift traffic).
+  string code_id = 1;
+
+  // The script that answers scoring requests, e.g. "score.py" --
+  // required whenever the block is present (ARM's own contract).
+  string scoring_script = 2 [(buf.validate.field).required = true];
+}
+
+// One health probe's settings. All three probes share this shape and
+// these service defaults.
+message AzureMachineLearningOnlineDeploymentProbeSettings {
+  // Consecutive failures before the probe reports unhealthy.
+  // Unspecified applies 30 (the service's default).
+  optional int32 failure_threshold = 1 [
+    (buf.validate.field).int32.gte = 1,
+    (dev.planton.shared.options.default) = "30"
+  ];
+
+  // Consecutive successes before the probe reports healthy.
+  // Unspecified applies 1 (the service's default).
+  optional int32 success_threshold = 2 [
+    (buf.validate.field).int32.gte = 1,
+    (dev.planton.shared.options.default) = "1"
+  ];
+
+  // Delay before the first probe, as an ISO-8601 duration (e.g.
+  // "PT10S"). Unset applies the service default.
+  string initial_delay = 3 [(buf.validate.field).cel = {
+    id: "ml_online_deployment_probe_initial_delay_iso8601"
+    message: "initial_delay must be an ISO-8601 duration, e.g. PT10S"
+    expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+  }];
+
+  // Time between probes, as an ISO-8601 duration. Unset applies the
+  // service default (PT10S).
+  string period = 4 [(buf.validate.field).cel = {
+    id: "ml_online_deployment_probe_period_iso8601"
+    message: "period must be an ISO-8601 duration, e.g. PT10S"
+    expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+  }];
+
+  // Per-probe timeout, as an ISO-8601 duration. Unset applies the
+  // service default (PT2S).
+  string timeout = 5 [(buf.validate.field).cel = {
+    id: "ml_online_deployment_probe_timeout_iso8601"
+    message: "timeout must be an ISO-8601 duration, e.g. PT2S"
+    expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+  }];
+}
+
+// Request handling limits for a deployment.
+message AzureMachineLearningOnlineDeploymentRequestSettings {
+  // Concurrent scoring requests each instance accepts. Unspecified
+  // applies 1 (the service's default) -- raise it only when the
+  // scoring container handles parallel requests.
+  optional int32 max_concurrent_requests_per_instance = 1 [
+    (buf.validate.field).int32.gte = 1,
+    (dev.planton.shared.options.default) = "1"
+  ];
+
+  // Scoring timeout, as an ISO-8601 duration. Unset applies the
+  // service default (PT5S -- 5000 ms).
+  string request_timeout = 2 [(buf.validate.field).cel = {
+    id: "ml_online_deployment_request_timeout_iso8601"
+    message: "request_timeout must be an ISO-8601 duration, e.g. PT5S"
+    expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+  }];
+}
+
+// Model data collection to workspace blob storage.
+message AzureMachineLearningOnlineDeploymentDataCollector {
+  // The collections to capture, keyed by the service's collection
+  // names (e.g. "model_inputs", "model_outputs", "request",
+  // "response"). At least one entry is required whenever the block
+  // is present (ARM's own contract).
+  map<string, AzureMachineLearningOnlineDeploymentDataCollection> collections = 1 [(buf.validate.field).map.min_pairs = 1];
+
+  // How often collected data rolls to a new blob-storage path.
+  // Unset applies the service default (Hour); the service's
+  // vocabulary, exactly.
+  string rolling_rate = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Year",
+        "Month",
+        "Day",
+        "Hour",
+        "Minute"
+      ]
+    }
+  ];
+
+  // Advanced payload-logging settings shared by all collections.
+  AzureMachineLearningOnlineDeploymentRequestLogging request_logging = 3;
+}
+
+// One collection's capture settings.
+message AzureMachineLearningOnlineDeploymentDataCollection {
+  // Whether this collection captures data. ARM's default is
+  // disabled -- an entry usually sets this true (wire values
+  // "Enabled"/"Disabled").
+  bool enabled = 1;
+
+  // The data asset the collection lands in, by ARM ID. Unset lets
+  // the service manage the destination.
+  string data_id = 2;
+
+  // The client ID of the managed identity used to write collected
+  // data to blob storage. Unset uses the service's own path.
+  string client_id = 3;
+
+  // The fraction of traffic collected, 0.0-1.0. Unspecified applies
+  // 1 (collect everything).
+  optional double sampling_rate = 4 [
+    (buf.validate.field).double = {
+      gte: 0
+      lte: 1
+    },
+    (dev.planton.shared.options.default) = "1"
+  ];
+}
+
+// Advanced payload-logging settings for data collection.
+message AzureMachineLearningOnlineDeploymentRequestLogging {
+  // Request headers to capture alongside payloads (payload-only is
+  // the default).
+  repeated string capture_headers = 1;
+}

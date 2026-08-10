@@ -228,6 +228,8 @@ import (
 	azuremachinelearningcomputeclusterv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremachinelearningcomputecluster/v1alpha1"
 	azuremachinelearningcomputeinstancev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremachinelearningcomputeinstance/v1alpha1"
 	azuremachinelearningdatastorev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremachinelearningdatastore/v1alpha1"
+	azuremachinelearningonlinedeploymentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremachinelearningonlinedeployment/v1alpha1"
+	azuremachinelearningonlineendpointv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremachinelearningonlineendpoint/v1alpha1"
 	azuremachinelearningworkspacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremachinelearningworkspace/v1alpha1"
 	azuremanageddiskv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremanageddisk/v1alpha1"
 	azuremanagedredisv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremanagedredis/v1alpha1"
@@ -897,6 +899,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureMachineLearningComputeCluster:             &azuremachinelearningcomputeclusterv1alpha1.AzureMachineLearningComputeCluster{},
 	cloudresourcekind.CloudResourceKind_AzureMachineLearningComputeInstance:            &azuremachinelearningcomputeinstancev1alpha1.AzureMachineLearningComputeInstance{},
 	cloudresourcekind.CloudResourceKind_AzureMachineLearningDatastore:                  &azuremachinelearningdatastorev1alpha1.AzureMachineLearningDatastore{},
+	cloudresourcekind.CloudResourceKind_AzureMachineLearningOnlineDeployment:           &azuremachinelearningonlinedeploymentv1alpha1.AzureMachineLearningOnlineDeployment{},
+	cloudresourcekind.CloudResourceKind_AzureMachineLearningOnlineEndpoint:             &azuremachinelearningonlineendpointv1alpha1.AzureMachineLearningOnlineEndpoint{},
 	cloudresourcekind.CloudResourceKind_AzureMachineLearningWorkspace:                  &azuremachinelearningworkspacev1alpha1.AzureMachineLearningWorkspace{},
 	cloudresourcekind.CloudResourceKind_AzureManagedDisk:                               &azuremanageddiskv1alpha1.AzureManagedDisk{},
 	cloudresourcekind.CloudResourceKind_AzureManagedRedis:                              &azuremanagedredisv1alpha1.AzureManagedRedis{},

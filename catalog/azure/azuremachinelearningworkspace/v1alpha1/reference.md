@@ -720,6 +720,7 @@ Fields on other kinds that can point at this resource:
 | AzureMachineLearningComputeCluster | `spec.workspaceId` | `status.outputs.machine_learning_workspace_id` |
 | AzureMachineLearningComputeInstance | `spec.workspaceId` | `status.outputs.machine_learning_workspace_id` |
 | AzureMachineLearningDatastore | `spec.workspaceId` | `status.outputs.machine_learning_workspace_id` |
+| AzureMachineLearningOnlineEndpoint | `spec.workspaceId` | `status.outputs.machine_learning_workspace_id` |
 
 ## See Also
 

@@ -534,6 +534,8 @@ github.com/pulumi/pulumi-aws-native/sdk v1.14.0 h1:4REFro0ak20+jO++hgBBkQcjEUuFc
 github.com/pulumi/pulumi-aws-native/sdk v1.14.0/go.mod h1:Ol8812Sy9/cBb4gbfspau/cg7ezFJ6kzjTn6I/Ahcvk=
 github.com/pulumi/pulumi-aws/sdk/v7 v7.35.0 h1:jEMspdsuot5yIpvHiaY6q1TbxAQ5neOX3G7tczfJvbE=
 github.com/pulumi/pulumi-aws/sdk/v7 v7.35.0/go.mod h1:jgGcMiHJTSvFB1hHa1Bnc0JmHiCub2RSrTtBPZYfEz4=
+github.com/pulumi/pulumi-azure-native-sdk/machinelearningservices/v3 v3.12.1 h1:me4zI5AUkkHMocV0inoaGJObeqoZLlWEBUoK4cMMdT8=
+github.com/pulumi/pulumi-azure-native-sdk/machinelearningservices/v3 v3.12.1/go.mod h1:ddJlMdAc+P51kmhZlZMqtanxaq/Y/TqoVVa4SCXxUYM=
 github.com/pulumi/pulumi-azure-native-sdk/v3 v3.12.1 h1:eNcgImgdBEKui6H8+TPRr2dhaa6crtcrw1v9aJBdg3w=
 github.com/pulumi/pulumi-azure-native-sdk/v3 v3.12.1/go.mod h1:HScHbMYe8nm60bFgyCdRPZTj/z9yG2hveS9BedJmGP0=
 github.com/pulumi/pulumi-azure/sdk/v6 v6.38.0 h1:Dy27hUjOj545pkCX1+Hk4w69TackbAV0R8O/nHqJ4aI=

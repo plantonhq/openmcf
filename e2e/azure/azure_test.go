@@ -493,6 +493,24 @@ func TestAzureSearchService_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuresearchservice", "terraform")
 }
 
+// --- Azure ML Online Endpoint (composed: the fixture workspace chain -> a key-auth endpoint with a system identity; minutes, no instances -- the endpoint object is free at rest. FIRST raw-API kind: Terraform deploys through azapi, Pulumi through azure-native; scenario endpoint names carry the run-id token, endpoint names are reserved region-wide) ---
+
+func TestAzureMachineLearningOnlineEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningonlineendpoint", "pulumi")
+}
+func TestAzureMachineLearningOnlineEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningonlineendpoint", "terraform")
+}
+
+// --- Azure ML Online Deployment (composed: workspace chain -> fixture endpoint -> one Standard_F2s_v2 managed instance; 10-20 min provisioning, bills until destroy -- no scale-to-zero. Model-less by design: whether the service accepts a bare managed deployment is the lane's proof point; deployment names are endpoint-scoped, so scenarios carry the run-id token because both engines attach to the SAME fixture endpoint) ---
+
+func TestAzureMachineLearningOnlineDeployment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningonlinedeployment", "pulumi")
+}
+func TestAzureMachineLearningOnlineDeployment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningonlinedeployment", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {

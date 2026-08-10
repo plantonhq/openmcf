@@ -2352,6 +2352,24 @@ enum CloudResourceKind {
     id_prefix: "azsrch"
     prerequisites: [AzureResourceGroup]
   }];
+  // An ARM child of its workspace (.../onlineEndpoints/{name}) -- the
+  // stable scoring address applications call. azurerm carries no ML
+  // endpoint resources; the modules write the raw ARM shape at a
+  // pinned api-version (azapi / azure-native).
+  AzureMachineLearningOnlineEndpoint = 2170 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmloe"
+    prerequisites: [AzureMachineLearningWorkspace]
+  }];
+  // An ARM child of its endpoint (.../deployments/{name}) -- the
+  // running copy of a model the endpoint's traffic map routes to.
+  AzureMachineLearningOnlineDeployment = 2171 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlod"
+    prerequisites: [AzureMachineLearningOnlineEndpoint]
+  }];
 
   // 3000–3999: GCP resources
   GcpArtifactRegistryRepo = 3000 [(kind_meta) = {

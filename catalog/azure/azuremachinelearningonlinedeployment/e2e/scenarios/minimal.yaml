@@ -1,0 +1,43 @@
+# Minimal AzureMachineLearningOnlineDeployment scenario: one small
+# managed instance on the fixture endpoint, model-less by design. The
+# ARM contract marks model, environment, and code all OPTIONAL for a
+# managed deployment; whether the SERVICE accepts a bare deployment at
+# provisioning is itself this lane's proof point -- if ARM rejects it,
+# the lane records the boundary and the queue's watch-list carries the
+# fallback (a minimal registered model as a scenario-declared fixture),
+# never a silent skip. The endpoint fixture rides the registry
+# prerequisite chain (workspace -> endpoint -> this).
+#
+# The cloud-side NAME carries ${E2E_RUN_ID} (metadata names stay
+# stable -- prerequisite FK resolution keys off them): deployment names
+# are scoped to their ENDPOINT, and both engine lanes attach to the
+# SAME fixture endpoint -- a fixed name would collide across engines.
+#
+# COST: the single Standard_F2s_v2 instance bills from provisioning to
+# destroy (managed deployments have no scale-to-zero) -- minutes of VM
+# time per lane.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningOnlineDeployment
+metadata:
+  name: planton-oss-e2e-azuremachinelearningonlinedeployment-smoke
+  id: planton-oss-e2e-azuremachinelearningonlinedeployment-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremachinelearningonlinedeployment
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  endpointId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-mloe
+  name: dep-${E2E_RUN_ID}
+  region: eastus
+  instanceType: Standard_F2s_v2
+  instanceCount: 1
+  tags:
+    e2e-suite: azure
+    purpose: smoke

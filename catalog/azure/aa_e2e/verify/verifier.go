@@ -95,6 +95,8 @@ var verifiers = map[string]Verifier{
 	"azureloganalyticsworkspace":                     &logAnalyticsWorkspaceVerifier{},
 	"azuremachinelearningcomputecluster":             &machineLearningComputeClusterVerifier{},
 	"azuremachinelearningcomputeinstance":            &machineLearningComputeInstanceVerifier{},
+	"azuremachinelearningonlineendpoint":             &machineLearningOnlineEndpointVerifier{},
+	"azuremachinelearningonlinedeployment":           &machineLearningOnlineDeploymentVerifier{},
 	"azuremachinelearningdatastore":                  &machineLearningDatastoreVerifier{},
 	"azuremachinelearningworkspace":                  &machineLearningWorkspaceVerifier{},
 	"azuremanageddisk":                               &managedDiskVerifier{},

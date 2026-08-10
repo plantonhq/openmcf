@@ -834,6 +834,14 @@ const (
 	// group from the hub reference -- the project spec carries none).
 	CloudResourceKind_AzureAiFoundryProject CloudResourceKind = 2168
 	CloudResourceKind_AzureSearchService    CloudResourceKind = 2169
+	// An ARM child of its workspace (.../onlineEndpoints/{name}) -- the
+	// stable scoring address applications call. azurerm carries no ML
+	// endpoint resources; the modules write the raw ARM shape at a
+	// pinned api-version (azapi / azure-native).
+	CloudResourceKind_AzureMachineLearningOnlineEndpoint CloudResourceKind = 2170
+	// An ARM child of its endpoint (.../deployments/{name}) -- the
+	// running copy of a model the endpoint's traffic map routes to.
+	CloudResourceKind_AzureMachineLearningOnlineDeployment CloudResourceKind = 2171
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
@@ -1594,6 +1602,8 @@ var (
 		2167:  "AzureAiFoundry",
 		2168:  "AzureAiFoundryProject",
 		2169:  "AzureSearchService",
+		2170:  "AzureMachineLearningOnlineEndpoint",
+		2171:  "AzureMachineLearningOnlineDeployment",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2236,6 +2246,8 @@ var (
 		"AzureAiFoundry":                                 2167,
 		"AzureAiFoundryProject":                          2168,
 		"AzureSearchService":                             2169,
+		"AzureMachineLearningOnlineEndpoint":             2170,
+		"AzureMachineLearningOnlineDeployment":           2171,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -2901,7 +2913,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf5\x9c\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x85\x9e\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3166,7 +3178,9 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"#AzureMachineLearningComputeInstance\x10\xf6\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlci:\x02\xf3\x10\x124\n" +
 	"\x0eAzureAiFoundry\x10\xf7\x10\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\x05azaif:\x06\xd0\x0f\xd5\x0f\xd9\x0f\x128\n" +
 	"\x15AzureAiFoundryProject\x10\xf8\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azaifp:\x02\xf7\x10\x125\n" +
-	"\x12AzureSearchService\x10\xf9\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azsrch:\x02\xd0\x0f\x12:\n" +
+	"\x12AzureSearchService\x10\xf9\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azsrch:\x02\xd0\x0f\x12E\n" +
+	"\"AzureMachineLearningOnlineEndpoint\x10\xfa\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmloe:\x02\xf3\x10\x12G\n" +
+	"$AzureMachineLearningOnlineDeployment\x10\xfb\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlod:\x02\xfa\x10\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
 	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x124\n" +

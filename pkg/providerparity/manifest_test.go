@@ -40,6 +40,8 @@ resources:
         reason: wired by the module to the enclosing widget
   google_project_service:
     internal: API enablement plumbing; arguments are module decisions
+  azapi_resource:
+    external: raw-ARM surface pinned at type@api-version by recorded admission
 specExclusions:
   - field: spec.platform_only
     reason: platform-level concept with no provider counterpart
@@ -48,11 +50,14 @@ specExclusions:
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if len(m.Resources) != 3 || len(m.SpecExclusions) != 1 {
+	if len(m.Resources) != 4 || len(m.SpecExclusions) != 1 {
 		t.Fatalf("parsed shape = %+v", m)
 	}
 	if m.Resources["google_project_service"].Internal == "" {
 		t.Error("internal disposition lost in parsing")
+	}
+	if m.Resources["azapi_resource"].External == "" {
+		t.Error("external disposition lost in parsing")
 	}
 	if m.Resources["google_widget_iam_member"].SpecRoot != "spec.iam_members" {
 		t.Error("specRoot lost in parsing")
@@ -73,6 +78,14 @@ func TestLoadManifest_Rejections(t *testing.T) {
 		"internal plus other judgment": {
 			yaml:    "resources:\n  google_widget:\n    internal: plumbing\n    specRoot: spec.x\n",
 			wantErr: "internal is the whole judgment",
+		},
+		"external plus other judgment": {
+			yaml:    "resources:\n  azapi_resource:\n    external: raw-ARM admission\n    specRoot: spec.x\n",
+			wantErr: "external is the whole judgment",
+		},
+		"internal plus external": {
+			yaml:    "resources:\n  azapi_resource:\n    internal: plumbing\n    external: raw-ARM admission\n",
+			wantErr: "mutually exclusive",
 		},
 		"exclusion without reason": {
 			yaml:    "resources:\n  google_widget:\n    exclusions:\n      - arg: name\n",
