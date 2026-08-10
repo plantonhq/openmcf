@@ -26,3 +26,11 @@ spec:
     - "0.0.0.0/0"
   targetTags:
     - web-server
+  # Resource Manager tags for org-policy conditions and IAM scoping
+  # (tagKeys/tagValues IDs, not short names). Changing them REPLACES the
+  # firewall rule — plan tag changes deliberately.
+  resourceManagerTags:
+    tagKeys/281475123456789: tagValues/281476987654321
+  # Delete the rule on destroy (GCP's default, made explicit). PREVENT
+  # protects a rule other teams' traffic may silently depend on.
+  deletionPolicy: DELETE

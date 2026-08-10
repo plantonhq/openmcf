@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpVertexAiEndpointSpec defines the configuration for a GCP Vertex AI
 Endpoint -- a stable serving surface for deploying machine learning models.
 
@@ -34,9 +36,9 @@ with Private Service Connect.
 Immutable fields (ForceNew): location, network, kms_key_name,
 endpoint_name, and the PSC block's enablement itself. Changing these
 requires destroying and recreating the endpoint. Mutable in place:
-display_name, description, labels, the request/response logging config,
-and the PSC block's project_allowlist (the provider PATCHes them via
-updateMask).
+display_name, description, labels, traffic_split, the request/response
+logging config, and the PSC block's project_allowlist and
+psc_automation_configs (the provider PATCHes them via updateMask).
 
 ## Example
 
@@ -79,12 +81,17 @@ spec:
 | `spec.dedicatedEndpointEnabled` | `bool` |  |  |  |
 | `spec.privateServiceConnectConfig` | `GcpVertexAiEndpointPrivateServiceConnectConfig` |  |  |  |
 | `spec.privateServiceConnectConfig.projectAllowlist` | `[]string` |  |  |  |
+| `spec.privateServiceConnectConfig.pscAutomationConfigs` | `[]GcpVertexAiEndpointPscAutomationConfig` |  |  |  |
+| `spec.privateServiceConnectConfig.pscAutomationConfigs[].network` | `string \| valueFrom` | yes |  | GcpVpcNetwork (`status.outputs.network_self_link`) |
+| `spec.privateServiceConnectConfig.pscAutomationConfigs[].projectId` | `string \| valueFrom` | yes |  | GcpProject (`status.outputs.project_id`) |
 | `spec.endpointName` | `string` |  |  |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
 | `spec.requestResponseLoggingConfig` | `GcpVertexAiEndpointRequestResponseLoggingConfig` |  |  |  |
 | `spec.requestResponseLoggingConfig.enabled` | `bool` |  |  |  |
 | `spec.requestResponseLoggingConfig.samplingRate` | `double` |  |  |  |
 | `spec.requestResponseLoggingConfig.bigqueryDestinationUri` | `string` |  |  |  |
+| `spec.trafficSplit` | `map<string, int32>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -173,6 +180,40 @@ Mutually exclusive with network and dedicated_endpoint_enabled.
 Projects allowed to create forwarding rules targeting this endpoint's
 service attachment. Each entry is a GCP project ID or project number.
 If empty, any project in the same organization can connect.
+Mutable in place.
+
+### spec.privateServiceConnectConfig.pscAutomationConfigs
+
+`[]GcpVertexAiEndpointPscAutomationConfig`
+
+PSC endpoints Vertex AI creates automatically in consumer
+projects/networks (instead of consumers wiring forwarding rules by
+hand). Online-prediction endpoints are exactly the surface Google
+documents this automation for. Mutable in place.
+
+### spec.privateServiceConnectConfig.pscAutomationConfigs[].network
+
+`string | valueFrom` · required
+
+VPC network where the PSC endpoint is created, as the full relative
+resource name projects/{project}/global/networks/{name} (the format
+the Vertex AI API requires) — a GcpVpcNetwork reference's self-link
+output is normalized to that form by both IaC modules.
+
+- references: GcpVpcNetwork (`status.outputs.network_self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpVpcNetwork, name: <that resource's name>, fieldPath: status.outputs.network_self_link}} -- a bare string does not parse
+
+### spec.privateServiceConnectConfig.pscAutomationConfigs[].projectId
+
+`string | valueFrom` · required
+
+Project in which the PSC endpoint (forwarding rule) is created — a
+project ID; a GcpProject reference resolves to it.
+
+- references: GcpProject (`status.outputs.project_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpProject, name: <that resource's name>, fieldPath: status.outputs.project_id}} -- a bare string does not parse
 
 ### spec.endpointName
 
@@ -252,6 +293,36 @@ dataset's project and ID into the URI.
 
 - rule: {"string":{"maxLen":"2000"}}
 
+### spec.trafficSplit
+
+`map<string, int32>`
+
+Traffic routing across the models deployed on this endpoint: a map
+from a DeployedModel's ID (assigned when a model is deployed — an
+operational step outside this resource) to the percentage of traffic
+it receives. GCP requires the values to add up to exactly 100, and
+rejects IDs that are not currently deployed — so leave this EMPTY on
+an endpoint with no deployed models (an empty map means the endpoint
+accepts no traffic). Mutable in place: update it to shift traffic
+between model versions (canary/blue-green serving).
+
+- rule: {"map":{"values":{"int32":{"lte":100,"gte":1}}}}
+
+### spec.deletionPolicy
+
+`string`
+
+What happens to the endpoint in GCP when this resource is destroyed.
+  "DELETE"  -- (GCP's default when unset) the endpoint is deleted;
+               GCP rejects the delete while models are still deployed
+               to it, so undeploy first
+  "PREVENT" -- destroy FAILS; protects a serving URL applications
+               still call
+  "ABANDON" -- the endpoint is removed from management but keeps
+               serving in GCP (deployed models keep billing)
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `network_psc_mutual_exclusion`: network and private_service_connect_config are mutually exclusive; use VPC peering or PSC, not both
@@ -278,6 +349,8 @@ Fields that can point at another resource's outputs:
 | `spec.projectId` | GcpProject | `status.outputs.project_id` |
 | `spec.network` | GcpVpcNetwork | `status.outputs.network_self_link` |
 | `spec.kmsKeyName` | GcpKmsKey | `status.outputs.key_id` |
+| `spec.privateServiceConnectConfig.pscAutomationConfigs[].network` | GcpVpcNetwork | `status.outputs.network_self_link` |
+| `spec.privateServiceConnectConfig.pscAutomationConfigs[].projectId` | GcpProject | `status.outputs.project_id` |
 
 ## Referenced By
 

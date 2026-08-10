@@ -14,8 +14,10 @@ spec:
   # rules are free objects with no deleted-name reservation, so cloud-side
   # names stay fixed.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # pending_proof: the spec grew resource_manager_tags and deletion_policy
+  # (and the dead ambient-credentials wiring left the TF module) — the
+  # prior green described code that no longer exists. Offline-proven-only
+  # arm: resource_manager_tags (needs an org-level tagKeys/tagValues
+  # fixture — the standing item).
+  status: pending_proof
   timeout_minutes: 15

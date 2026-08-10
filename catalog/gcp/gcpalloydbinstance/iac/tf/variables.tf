@@ -14,20 +14,20 @@ variable "metadata" {
 variable "spec" {
   description = "Specification for the GCP AlloyDB instance"
   type = object({
-    project_id   = optional(string, "")
-    cluster      = string
-    instance_id  = string
+    project_id    = optional(string, "")
+    cluster       = string
+    instance_id   = string
     instance_type = optional(string, "READ_POOL")
-    cpu_count    = optional(number, 0)
-    machine_type = optional(string, "")
+    cpu_count     = optional(number, 0)
+    machine_type  = optional(string, "")
 
     read_pool_config = optional(object({
       node_count = number
     }), null)
 
     availability_type = optional(string, "")
-    database_flags      = optional(map(string), {})
-    display_name        = optional(string, "")
+    database_flags    = optional(map(string), {})
+    display_name      = optional(string, "")
 
     query_insights_config = optional(object({
       query_plans_per_minute  = optional(number, 0)
@@ -57,5 +57,28 @@ variable "spec" {
         network_attachment_resource = string
       })), [])
     }), null)
+
+    # User labels; merged beneath the platform attribution labels.
+    labels = optional(map(string), {})
+
+    # Unstructured client metadata (annotations, not labels).
+    annotations = optional(map(string), {})
+
+    # Pin a ZONAL instance to a specific zone (ZONAL instances only).
+    gce_zone = optional(string, "")
+
+    # AlloyDB managed connection pooling (built-in pooler).
+    connection_pool_config = optional(object({
+      enabled = optional(bool, false)
+      flags   = optional(map(string), {})
+    }), null)
+
+    # Draw private IPs from a specific PSA allocated range instead of the
+    # parent cluster's. Immutable.
+    allocated_ip_range_override = optional(string, "")
+
+    # What happens to the instance in GCP on destroy:
+    # DELETE (provider default), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
   })
 }

@@ -10,8 +10,11 @@ spec:
   # pool ID carries the ${E2E_RUN_ID} token — every run and every engine gets
   # a fresh identifier and never collides with a prior run's ghost.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # pending_proof: the spec grew attestation_rules, the default-shared-CA
+  # switches on certificate issuance and trust bundles, and deletion_policy
+  # — the prior green described code that no longer exists.
+  # Offline-proven-only arms: attestation rules and the inline
+  # certificate/trust configs (managed-identity trust domains need a
+  # TRUST_DOMAIN-mode pool and real workload resource names).
+  status: pending_proof
   timeout_minutes: 10

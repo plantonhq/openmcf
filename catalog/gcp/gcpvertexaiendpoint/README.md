@@ -26,7 +26,15 @@ Three mutually exclusive networking modes:
 
 2. **VPC-peered** -- The endpoint is accessible only within a peered VPC network. Requires Private Services Access configured on the VPC. Set the `network` field.
 
-3. **Private Service Connect** -- The endpoint is exposed via a PSC service attachment. Provides the strongest network isolation without VPC peering. Set `privateServiceConnectConfig`.
+3. **Private Service Connect** -- The endpoint is exposed via a PSC service attachment. Provides the strongest network isolation without VPC peering. Set `privateServiceConnectConfig`: `projectAllowlist` names the consumer projects allowed to connect manually, and `pscAutomationConfigs` asks Vertex AI to CREATE the consumer-side PSC endpoints automatically — one forwarding rule + IP per listed project/network pair (each entry references a GcpVpcNetwork and GcpProject). The automation list is mutable in place.
+
+### Traffic Split
+
+`trafficSplit` maps a deployed model's ID to the percentage of traffic it receives — the declarative lever for canary and blue-green serving. GCP requires the values to sum to exactly 100, and rejects IDs not currently deployed, so leave it empty on an endpoint with no deployed models (model deployment itself is an operational step outside this resource). Mutable in place.
+
+### Deletion Policy
+
+`deletionPolicy` controls destroy behavior: `DELETE` (GCP's default) removes the endpoint — the API rejects the delete while models are still deployed, so undeploy first; `PREVENT` fails the destroy to protect a serving URL applications still call; `ABANDON` unmanages the endpoint while it keeps serving (and billing).
 
 ### Dedicated Endpoint DNS
 

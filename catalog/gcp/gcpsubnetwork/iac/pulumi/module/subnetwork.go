@@ -50,16 +50,25 @@ func subnetwork(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) 
 	}
 
 	// Drop entries that arrive as empty objects so the API never sees a blank
-	// secondary range — identical to the Terraform module's filter.
+	// secondary range — identical to the Terraform module's filter. A range
+	// is real when it has a name and either CIDR source (literal or reserved
+	// internal range).
 	var secondaryRanges compute.SubnetworkSecondaryIpRangeArray
 	for _, secondaryRange := range spec.SecondaryIpRanges {
-		if secondaryRange.RangeName == "" || secondaryRange.IpCidrRange == "" {
+		if secondaryRange.RangeName == "" ||
+			(secondaryRange.IpCidrRange == "" && secondaryRange.ReservedInternalRange == "") {
 			continue
 		}
-		secondaryRanges = append(secondaryRanges, &compute.SubnetworkSecondaryIpRangeArgs{
-			RangeName:   pulumi.String(secondaryRange.RangeName),
-			IpCidrRange: pulumi.String(secondaryRange.IpCidrRange),
-		})
+		rangeArgs := &compute.SubnetworkSecondaryIpRangeArgs{
+			RangeName: pulumi.String(secondaryRange.RangeName),
+		}
+		if secondaryRange.IpCidrRange != "" {
+			rangeArgs.IpCidrRange = pulumi.String(secondaryRange.IpCidrRange)
+		}
+		if secondaryRange.ReservedInternalRange != "" {
+			rangeArgs.ReservedInternalRange = pulumi.String(secondaryRange.ReservedInternalRange)
+		}
+		secondaryRanges = append(secondaryRanges, rangeArgs)
 	}
 
 	args := &compute.SubnetworkArgs{
@@ -109,6 +118,35 @@ func subnetwork(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) 
 	}
 	if spec.ExternalIpv6Prefix != "" {
 		args.ExternalIpv6Prefix = pulumi.String(spec.ExternalIpv6Prefix)
+	}
+	// INTERNAL counterpart of external_ipv6_prefix: pin a ULA prefix instead
+	// of letting Google allocate one from the VPC's internal IPv6 range.
+	if spec.InternalIpv6Prefix != "" {
+		args.InternalIpv6Prefix = pulumi.String(spec.InternalIpv6Prefix)
+	}
+	// Alternative primary-CIDR source: a centrally allocated Network
+	// Connectivity internal range (exactly one of the two is set,
+	// spec-enforced).
+	if spec.ReservedInternalRange != "" {
+		args.ReservedInternalRange = pulumi.String(spec.ReservedInternalRange)
+	}
+	// BYOIP: draw the subnet's IPv6 space from a PublicDelegatedPrefix.
+	if spec.IpCollection != "" {
+		args.IpCollection = pulumi.String(spec.IpCollection)
+	}
+	// ARP subnet-mask resolution for appliance/NFV subnets.
+	if spec.ResolveSubnetMask != "" {
+		args.ResolveSubnetMask = pulumi.String(spec.ResolveSubnetMask)
+	}
+	// Create-time Resource Manager tag bindings; the params block is
+	// create-only, so tag changes replace the subnetwork.
+	if len(spec.ResourceManagerTags) > 0 {
+		args.Params = &compute.SubnetworkParamsArgs{
+			ResourceManagerTags: pulumi.ToStringMap(spec.ResourceManagerTags),
+		}
+	}
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 	if spec.ProjectId.GetValue() != "" {
 		args.Project = pulumi.String(spec.ProjectId.GetValue())

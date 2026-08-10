@@ -10,8 +10,9 @@ spec:
   # dependencies — deploy -> compute healthChecks/regionHealthChecks get
   # verify -> destroy -> verify 404, on both provisioners.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # pending_proof: the spec grew deletion_policy fanning to BOTH provider
+  # resources — the prior green described code that no longer exists. The
+  # minimal/grpc-tls scenarios prove the global resource's arm and the
+  # regional scenario proves the regional one.
+  status: pending_proof
   timeout_minutes: 10

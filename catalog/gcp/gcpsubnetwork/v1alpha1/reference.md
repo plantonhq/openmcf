@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpSubnetworkSpec defines a subnetwork in a custom-mode VPC — the regional
 address space workloads actually live in. Subnets carry the IP plan:
 a primary IPv4 range for VM interfaces, optional secondary ranges for
@@ -80,7 +82,8 @@ spec:
 | `spec.role` | `string` |  |  |  |
 | `spec.secondaryIpRanges` | `[]GcpSubnetworkSecondaryRange` |  |  |  |
 | `spec.secondaryIpRanges[].rangeName` | `string` | yes |  |  |
-| `spec.secondaryIpRanges[].ipCidrRange` | `string` | yes |  |  |
+| `spec.secondaryIpRanges[].ipCidrRange` | `string` |  |  |  |
+| `spec.secondaryIpRanges[].reservedInternalRange` | `string` |  |  |  |
 | `spec.privateIpGoogleAccess` | `bool` |  |  |  |
 | `spec.privateIpv6GoogleAccess` | `string` |  |  |  |
 | `spec.stackType` | `string` |  | `IPV4_ONLY` |  |
@@ -94,6 +97,12 @@ spec:
 | `spec.logConfig.metadata` | `string` |  | `INCLUDE_ALL_METADATA` |  |
 | `spec.logConfig.metadataFields` | `[]string` |  |  |  |
 | `spec.logConfig.filterExpr` | `string` |  |  |  |
+| `spec.reservedInternalRange` | `string` |  |  |  |
+| `spec.internalIpv6Prefix` | `string` |  |  |  |
+| `spec.ipCollection` | `string` |  |  |  |
+| `spec.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.resolveSubnetMask` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -149,8 +158,9 @@ Immutable: a subnet cannot move between regions.
 Primary IPv4 CIDR range (e.g. "10.10.0.0/20"). Must not overlap any
 other range in the VPC. Mutable in ONE direction: the range can be
 expanded in place (e.g. /20 → /18), but shrinking it forces destroy and
-recreate — plan for growth up front. Leave empty only for IPV6_ONLY
-subnets, which carry no IPv4 range.
+recreate — plan for growth up front. Leave empty for IPV6_ONLY subnets
+(which carry no IPv4 range) or when reserved_internal_range supplies
+the CIDR from a Network Connectivity internal range.
 
 - rule: ip_cidr_range must be an IPv4 CIDR like 10.10.0.0/20
 
@@ -201,6 +211,8 @@ and service IPs (VPC-native clusters), and any workload that needs
 per-container addresses. Up to 170 per subnet; names are how consumers
 (e.g. a GKE cluster's ip_allocation_policy) select a range.
 
+- rule: each secondary range needs exactly one CIDR source — ip_cidr_range or reserved_internal_range
+
 ### spec.secondaryIpRanges[].rangeName
 
 `string` · required
@@ -213,13 +225,23 @@ characters, RFC1035. Renaming a range in place is not supported by GCP.
 
 ### spec.secondaryIpRanges[].ipCidrRange
 
-`string` · required
+`string`
 
 IPv4 CIDR of this secondary range. Must not overlap any other range in
 the VPC. Size for the consumer: GKE pod ranges are commonly /14-/18,
-service ranges /20.
+service ranges /20. Alternative to reserved_internal_range.
 
-- rule: {"required":true,"string":{"pattern":"^\\d+\\.\\d+\\.\\d+\\.\\d+/\\d+$"}}
+- rule: ip_cidr_range must be an IPv4 CIDR like 10.16.0.0/14
+
+### spec.secondaryIpRanges[].reservedInternalRange
+
+`string`
+
+Source this secondary range's CIDR from a pre-planned Network
+Connectivity internal range instead of a literal ip_cidr_range, e.g.
+"networkconnectivity.googleapis.com/projects/{project}/locations/global/internalRanges/{name}".
+Alternative to ip_cidr_range; unlike the subnet's primary range this
+is mutable in place.
 
 ### spec.privateIpGoogleAccess
 
@@ -352,9 +374,82 @@ connection.dest_port == 443.
 
 - rule: {"string":{"maxLen":"2048"}}
 
+### spec.reservedInternalRange
+
+`string`
+
+Source the primary CIDR from a pre-planned Network Connectivity
+internal range instead of typing a literal ip_cidr_range: the value is
+the range's resource path prefixed with the API host, e.g.
+"networkconnectivity.googleapis.com/projects/{project}/locations/global/internalRanges/{name}".
+The range's CIDR becomes the subnet's primary range — the enterprise
+path for centrally allocated IP plans. Immutable: changing it destroys
+and recreates the subnetwork.
+
+### spec.internalIpv6Prefix
+
+`string`
+
+For INTERNAL IPv6 subnets: pin a specific internal IPv6 prefix (ULA)
+instead of letting Google allocate one from the VPC's internal IPv6
+range. Immutable: the prefix cannot change after creation.
+
+### spec.ipCollection
+
+`string`
+
+BYOIP for IPv6: resource path of a PublicDelegatedPrefix (a sub-PDP in
+EXTERNAL_IPV6_SUBNETWORK_CREATION or INTERNAL_IPV6_SUBNETWORK_CREATION
+mode) the subnet's IPv6 space is drawn from, e.g.
+"projects/{project}/regions/{region}/publicDelegatedPrefixes/{name}".
+Only meaningful on dual-stack or IPv6-only subnets. Mutable.
+
+### spec.resourceManagerTags
+
+`map<string, string>`
+
+Resource Manager tags bound to the subnetwork at create time, for
+org-policy conditions and IAM scoping. Keys are "tagKeys/{tag_key_id}"
+and values "tagValues/{tag_value_id}" (IDs, not short names). Changing
+tags REPLACES the subnetwork (the provider sends them through a
+create-only params block) -- plan tag changes deliberately.
+
+### spec.resolveSubnetMask
+
+`string`
+
+How VMs in this subnet resolve the subnet mask in ARP responses —
+relevant for appliance/NFV subnets whose workloads inspect ARP.
+ARP_ALL_RANGES answers for every range in the subnet;
+ARP_PRIMARY_RANGE answers only for the primary range;
+the ARP_BROADCAST_* modes answer with the broadcast-domain mask
+(WITH_LEARNING additionally learns from observed traffic). Leave unset
+for GCP's default behavior. Immutable: changing it recreates the
+subnetwork.
+
+- rule: resolve_subnet_mask must be one of ARP_ALL_RANGES, ARP_PRIMARY_RANGE, ARP_BROADCAST_PRIMARY_RANGE, or ARP_BROADCAST_PRIMARY_RANGE_WITH_LEARNING
+
+### spec.deletionPolicy
+
+`string`
+
+What happens to the subnetwork in GCP when this resource is destroyed.
+  "DELETE"  -- (GCP's default when unset) the subnet is deleted; GCP
+               rejects the delete while any VM, connector, or proxy
+               still holds an address in it
+  "PREVENT" -- destroy FAILS; protects the address space workloads
+               and peers may still route to
+  "ABANDON" -- the subnet is removed from management but stays in GCP
+               (free at rest; its CIDR stays claimed in the VPC)
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
-- `ipv4_range_required_unless_ipv6_only`: ip_cidr_range is required (only IPV6_ONLY subnets omit it)
+- `ipv4_range_required_unless_ipv6_only`: set ip_cidr_range or reserved_internal_range (only IPV6_ONLY subnets omit both)
+- `primary_range_single_source`: ip_cidr_range and reserved_internal_range are alternative sources for the primary range — set at most one
+- `internal_ipv6_prefix_requires_internal_access`: internal_ipv6_prefix only applies to subnets with ipv6_access_type INTERNAL
+- `ip_collection_requires_ipv6_stack`: ip_collection (BYOIP) only applies to IPV4_IPV6 or IPV6_ONLY subnets
 - `role_requires_managed_proxy_purpose`: role is only valid on REGIONAL_MANAGED_PROXY subnets — remove it or set purpose accordingly
 - `ipv6_access_requires_ipv6_stack`: ipv6_access_type is required for IPV4_IPV6 and IPV6_ONLY subnets, and must be omitted for IPV4_ONLY
 - `external_ipv6_prefix_requires_external_access`: external_ipv6_prefix only applies to subnets with ipv6_access_type EXTERNAL

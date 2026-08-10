@@ -39,4 +39,15 @@ resource "google_compute_firewall" "this" {
       metadata = log_config.value.metadata
     }
   }
+
+  # Create-time Resource Manager tag bindings; the params block is
+  # create-only, so tag changes replace the firewall rule.
+  dynamic "params" {
+    for_each = length(var.spec.resource_manager_tags) > 0 ? [1] : []
+    content {
+      resource_manager_tags = var.spec.resource_manager_tags
+    }
+  }
+
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 }

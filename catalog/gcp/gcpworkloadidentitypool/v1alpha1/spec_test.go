@@ -233,6 +233,75 @@ var _ = ginkgo.Describe("GcpWorkloadIdentityPoolSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("should accept a trust bundle that also trusts the default shared CA", func() {
+		msg := minimal()
+		msg.Spec.InlineTrustConfig = &GcpWorkloadIdentityPoolTrustConfig{
+			AdditionalTrustBundles: []*GcpWorkloadIdentityPoolTrustBundle{{
+				TrustDomain: "example.com",
+				TrustAnchors: []*GcpWorkloadIdentityPoolTrustAnchor{{
+					PemCertificate: "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----",
+				}},
+				TrustDefaultSharedCa: true,
+			}},
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept certificate issuance from the default shared CA", func() {
+		msg := minimal()
+		msg.Spec.InlineCertificateIssuanceConfig = &GcpWorkloadIdentityPoolCertificateIssuance{
+			UseDefaultSharedCa: true,
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject certificate issuance with both CA sources", func() {
+		msg := minimal()
+		msg.Spec.InlineCertificateIssuanceConfig = &GcpWorkloadIdentityPoolCertificateIssuance{
+			CaPools:            map[string]string{"us-central1": "projects/p/locations/us-central1/caPools/pool"},
+			UseDefaultSharedCa: true,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject certificate issuance with no CA source", func() {
+		msg := minimal()
+		msg.Spec.InlineCertificateIssuanceConfig = &GcpWorkloadIdentityPoolCertificateIssuance{}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept attestation rules", func() {
+		msg := minimal()
+		msg.Spec.AttestationRules = []*GcpWorkloadIdentityPoolAttestationRule{{
+			GoogleCloudResource: "//run.googleapis.com/projects/123/type/Service/*",
+		}}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject an attestation rule without a resource", func() {
+		msg := minimal()
+		msg.Spec.AttestationRules = []*GcpWorkloadIdentityPoolAttestationRule{{}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept every deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON", ""} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = v
+			gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should reject an unknown deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "FORCE"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
 })
 
 func int32Ptr(v int32) *int32 {

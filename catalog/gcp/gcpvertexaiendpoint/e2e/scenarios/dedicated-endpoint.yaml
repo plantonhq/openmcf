@@ -26,3 +26,5 @@ spec:
   dedicatedEndpointEnabled: true
   labels:
     e2e: dedicated
+  # Explicit provider default: proves the DELETE round-trip on re-plan.
+  deletionPolicy: DELETE

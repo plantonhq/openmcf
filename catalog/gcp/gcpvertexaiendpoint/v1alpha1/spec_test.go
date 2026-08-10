@@ -355,4 +355,64 @@ var _ = ginkgo.Describe("GcpVertexAiEndpointSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("should accept a traffic split", func() {
+		msg := minimal()
+		msg.Spec.TrafficSplit = map[string]int32{
+			"1234567890": 80,
+			"9876543210": 20,
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject a traffic split percentage above 100", func() {
+		msg := minimal()
+		msg.Spec.TrafficSplit = map[string]int32{"1234567890": 120}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a zero traffic split percentage", func() {
+		msg := minimal()
+		msg.Spec.TrafficSplit = map[string]int32{"1234567890": 0}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept PSC automation configs", func() {
+		msg := minimal()
+		msg.Spec.PrivateServiceConnectConfig = &GcpVertexAiEndpointPrivateServiceConnectConfig{
+			PscAutomationConfigs: []*GcpVertexAiEndpointPscAutomationConfig{{
+				Network:   strRef("projects/p/global/networks/vpc"),
+				ProjectId: strRef("consumer-project"),
+			}},
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject a PSC automation config without a network", func() {
+		msg := minimal()
+		msg.Spec.PrivateServiceConnectConfig = &GcpVertexAiEndpointPrivateServiceConnectConfig{
+			PscAutomationConfigs: []*GcpVertexAiEndpointPscAutomationConfig{{
+				ProjectId: strRef("consumer-project"),
+			}},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept every deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON", ""} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = v
+			gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should reject an unknown deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "FORCE"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
 })

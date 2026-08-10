@@ -8,8 +8,8 @@ variable "spec" {
     project_id = optional(string, "")
     network    = string
     rule_name  = string
-    direction = string
-    action    = string
+    direction  = string
+    action     = string
     rules = list(object({
       protocol = string
       ports    = optional(list(string), [])
@@ -26,15 +26,13 @@ variable "spec" {
     log_config = optional(object({
       metadata = string
     }), null)
-  })
-}
 
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = optional(string, "")
+    # Resource Manager tags bound at create time (tagKeys/... -> tagValues/...).
+    # Changing them replaces the firewall rule (create-only params block).
+    resource_manager_tags = optional(map(string), {})
+
+    # What happens to the firewall rule in GCP on destroy:
+    # DELETE (provider default), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
   })
-  default = {
-    service_account_key = ""
-  }
 }

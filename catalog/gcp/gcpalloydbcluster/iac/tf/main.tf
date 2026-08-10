@@ -15,14 +15,59 @@ resource "google_alloydb_cluster" "cluster" {
   project    = local.project_id
   labels     = local.labels
 
-  # Explicitly false: the provider defaults deletion_protection to true,
-  # which would make every destroy fail until the flag is flipped —
-  # including the platform's own teardown flows. Lifecycle protection is
-  # a platform-level concern (plan review, IAM), not a module default; the
-  # spec deliberately does not model this flag.
-  deletion_protection = false
+  # Always sent explicitly (true or false) so the spec is the single source
+  # of truth for the destroy guard: the provider defaults it to true, and a
+  # send-only-when-set wiring could never turn protection OFF once on.
+  deletion_protection = var.spec.deletion_protection
+
+  # AlloyDB's cluster-level destroy behavior — note the value set differs
+  # from most GCP resources: DEFAULT | FORCE | PREVENT | ABANDON, where
+  # FORCE also deletes any instances still in the cluster.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   skip_await_major_version_upgrade = var.spec.skip_await_major_version_upgrade
+
+  # Dataplex Universal Catalog integration; GCP enables it by default when
+  # the block is absent, so it is only rendered when the spec opts in or
+  # out explicitly.
+  dynamic "dataplex_config" {
+    for_each = var.spec.dataplex_config != null ? [var.spec.dataplex_config] : []
+    content {
+      enabled = dataplex_config.value.enabled
+    }
+  }
+
+  # Restore provenance — at most one source (spec-enforced), all ForceNew:
+  # the restore choice exists only at create time.
+  dynamic "restore_backup_source" {
+    for_each = var.spec.restore_backup_source != null ? [var.spec.restore_backup_source] : []
+    content {
+      backup_name = restore_backup_source.value.backup_name
+    }
+  }
+
+  dynamic "restore_continuous_backup_source" {
+    for_each = var.spec.restore_continuous_backup_source != null ? [var.spec.restore_continuous_backup_source] : []
+    content {
+      cluster       = restore_continuous_backup_source.value.cluster
+      point_in_time = restore_continuous_backup_source.value.point_in_time
+    }
+  }
+
+  dynamic "restore_backupdr_backup_source" {
+    for_each = var.spec.restore_backupdr_backup_source != null ? [var.spec.restore_backupdr_backup_source] : []
+    content {
+      backup = restore_backupdr_backup_source.value.backup
+    }
+  }
+
+  dynamic "restore_backupdr_pitr_source" {
+    for_each = var.spec.restore_backupdr_pitr_source != null ? [var.spec.restore_backupdr_pitr_source] : []
+    content {
+      data_source   = restore_backupdr_pitr_source.value.data_source
+      point_in_time = restore_backupdr_pitr_source.value.point_in_time
+    }
+  }
 
   dynamic "network_config" {
     for_each = var.spec.network != "" ? [1] : []
@@ -69,6 +114,7 @@ resource "google_alloydb_cluster" "cluster" {
       enabled       = automated_backup_policy.value.enabled
       backup_window = automated_backup_policy.value.backup_window != "" ? automated_backup_policy.value.backup_window : null
       location      = automated_backup_policy.value.location != "" ? automated_backup_policy.value.location : null
+      labels        = length(automated_backup_policy.value.labels) > 0 ? automated_backup_policy.value.labels : null
 
       dynamic "quantity_based_retention" {
         for_each = automated_backup_policy.value.quantity_based_retention_count > 0 ? [1] : []
@@ -184,4 +230,71 @@ resource "google_alloydb_instance" "primary" {
       }
     }
   }
+
+  # Stop/start lever: NEVER stops the primary's compute (storage and
+  # configuration survive); ALWAYS restarts it.
+  activation_policy = var.spec.primary_instance.activation_policy != "" ? var.spec.primary_instance.activation_policy : null
+
+  # Client tool metadata, paired with the computed effective_annotations.
+  annotations = length(var.spec.primary_instance.annotations) > 0 ? var.spec.primary_instance.annotations : null
+
+  # ZONAL primaries only — GCP rejects it on REGIONAL instances
+  # (spec-enforced pairing). Changing it live-migrates the primary.
+  gce_zone = var.spec.primary_instance.gce_zone != "" ? var.spec.primary_instance.gce_zone : null
+
+  # AlloyDB managed connection pooling (built-in pooler).
+  dynamic "connection_pool_config" {
+    for_each = var.spec.primary_instance.connection_pool_config != null ? [var.spec.primary_instance.connection_pool_config] : []
+    content {
+      enabled = connection_pool_config.value.enabled
+      flags   = length(connection_pool_config.value.flags) > 0 ? connection_pool_config.value.flags : null
+    }
+  }
+
+  # Public-IP / PSA-range surface on the bundled primary — the same
+  # contract the standalone GcpAlloydbInstance kind models.
+  dynamic "network_config" {
+    for_each = var.spec.primary_instance.enable_public_ip || var.spec.primary_instance.enable_outbound_public_ip || length(var.spec.primary_instance.authorized_external_networks) > 0 || var.spec.primary_instance.allocated_ip_range_override != "" ? [1] : []
+    content {
+      enable_public_ip          = var.spec.primary_instance.enable_public_ip
+      enable_outbound_public_ip = var.spec.primary_instance.enable_outbound_public_ip
+
+      # Immutable: a different PSA range recreates the primary.
+      allocated_ip_range_override = var.spec.primary_instance.allocated_ip_range_override != "" ? var.spec.primary_instance.allocated_ip_range_override : null
+
+      dynamic "authorized_external_networks" {
+        for_each = var.spec.primary_instance.authorized_external_networks
+        content {
+          cidr_range = authorized_external_networks.value.cidr_range
+        }
+      }
+    }
+  }
+
+  # PSC on the bundled primary (meaningful only on PSC clusters).
+  dynamic "psc_instance_config" {
+    for_each = var.spec.primary_instance.psc_instance_config != null ? [var.spec.primary_instance.psc_instance_config] : []
+    content {
+      allowed_consumer_projects = length(psc_instance_config.value.allowed_consumer_projects) > 0 ? psc_instance_config.value.allowed_consumer_projects : null
+
+      dynamic "psc_auto_connections" {
+        for_each = psc_instance_config.value.psc_auto_connections
+        content {
+          consumer_network = psc_auto_connections.value.consumer_network != "" ? psc_auto_connections.value.consumer_network : null
+          consumer_project = psc_auto_connections.value.consumer_project != "" ? psc_auto_connections.value.consumer_project : null
+        }
+      }
+
+      dynamic "psc_interface_configs" {
+        for_each = psc_instance_config.value.psc_interface_configs
+        content {
+          network_attachment_resource = psc_interface_configs.value.network_attachment_resource
+        }
+      }
+    }
+  }
+
+  # The PRIMARY INSTANCE's own destroy behavior (the cluster's
+  # deletion_policy is separate — AlloyDB gives each resource its own).
+  deletion_policy = var.spec.primary_instance.deletion_policy != "" ? var.spec.primary_instance.deletion_policy : null
 }

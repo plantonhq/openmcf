@@ -6,8 +6,11 @@ spec:
   # Composed scenario: deploys the GcpAlloydbCluster prerequisite (itself on
   # the PSA chain) then creates a read pool instance on it.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # pending_proof: the spec grew annotations, gce_zone, managed connection
+  # pooling, allocated_ip_range_override, user labels, and deletion_policy
+  # (and the activation/availability CELs widened to ValidateEnum truth) —
+  # the prior green described code that no longer exists. Offline-proven-only
+  # arms: gce_zone (needs a ZONAL shape), allocated_ip_range_override (needs
+  # a second PSA range fixture), connection pooling live behavior.
+  status: pending_proof
   timeout_minutes: 90

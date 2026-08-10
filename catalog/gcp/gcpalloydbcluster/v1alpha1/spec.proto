@@ -109,6 +109,11 @@ message GcpAlloydbClusterAutomatedBackupPolicy {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
   ];
 
+  // Labels applied to every backup created by this policy — how backup
+  // storage costs are attributed and backup sets are filtered in the
+  // console (distinct from the cluster's own labels).
+  map<string, string> labels = 8;
+
   // Quantity-based and time-based retention are mutually exclusive.
   option (buf.validate.message).cel = {
     id: "retention_mutual_exclusion"
@@ -209,6 +214,118 @@ message GcpAlloydbClusterPscConfig {
   bool psc_enabled = 1;
 }
 
+// GcpAlloydbClusterDataplexConfig controls the cluster's Dataplex Universal
+// Catalog integration (automatic metadata discovery). GCP enables the
+// integration by default when this block is absent — set enabled: false to
+// opt out explicitly.
+message GcpAlloydbClusterDataplexConfig {
+  // Whether Dataplex integration is enabled for the cluster. Mutable.
+  bool enabled = 1;
+}
+
+// GcpAlloydbClusterRestoreBackupSource seeds the new cluster from an
+// AlloyDB backup instead of creating it empty. Create-time only: every
+// restore field is immutable, and changing it destroys and recreates the
+// cluster.
+message GcpAlloydbClusterRestoreBackupSource {
+  // Full resource name of the source backup, e.g.
+  // "projects/{project}/locations/{location}/backups/{backup}".
+  string backup_name = 1 [(buf.validate.field).required = true];
+}
+
+// GcpAlloydbClusterRestoreContinuousBackupSource seeds the new cluster by
+// point-in-time recovery (PITR) from a source cluster's continuous backup
+// stream. Create-time only (immutable; changing it recreates the cluster).
+message GcpAlloydbClusterRestoreContinuousBackupSource {
+  // The source cluster to restore from — its full resource name
+  // "projects/{project}/locations/{location}/clusters/{cluster}", or a
+  // reference to a GcpAlloydbCluster resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpAlloydbCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // The point in time to restore to, in RFC 3339 format (e.g.
+  // "2026-08-01T12:00:00Z"). Must fall inside the source cluster's
+  // continuous-backup recovery window.
+  string point_in_time = 2 [(buf.validate.field).required = true];
+}
+
+// GcpAlloydbClusterRestoreBackupdrBackupSource seeds the new cluster from a
+// Backup and DR Service backup. Create-time only (immutable; changing it
+// recreates the cluster).
+message GcpAlloydbClusterRestoreBackupdrBackupSource {
+  // Full resource name of the Backup and DR backup, in the format
+  // "projects/{project}/locations/{location}/backupVaults/{vault}/dataSources/{dataSource}/backups/{backup}".
+  string backup = 1 [(buf.validate.field).required = true];
+}
+
+// GcpAlloydbClusterRestoreBackupdrPitrSource seeds the new cluster by
+// point-in-time recovery through the Backup and DR Service. Create-time
+// only (immutable; changing it recreates the cluster).
+message GcpAlloydbClusterRestoreBackupdrPitrSource {
+  // Full resource name of the Backup and DR data source, in the format
+  // "projects/{project}/locations/{location}/backupVaults/{vault}/dataSources/{dataSource}".
+  string data_source = 1 [(buf.validate.field).required = true];
+
+  // The point in time to restore to, in RFC 3339 format.
+  string point_in_time = 2 [(buf.validate.field).required = true];
+}
+
+// GcpAlloydbClusterConnectionPoolConfig configures AlloyDB managed
+// connection pooling on the bundled primary — a built-in PgBouncer-style
+// pooler for workloads with many short-lived connections.
+message GcpAlloydbClusterConnectionPoolConfig {
+  // Turn managed connection pooling on or off. Mutable in place.
+  bool enabled = 1;
+
+  // Pooler flags, keyed by flag name WITHOUT the "connection-pooling-"
+  // prefix and with underscores instead of dashes (GCP's documented
+  // convention for this provider surface): e.g. the flag
+  // "connection-pooling-pool-mode" is set as key "pool_mode". Only
+  // applied while enabled is true.
+  map<string, string> flags = 2;
+}
+
+// GcpAlloydbClusterAuthorizedExternalNetwork allows a CIDR range to reach
+// the primary instance's public IP. Only valid when enable_public_ip is
+// true.
+message GcpAlloydbClusterAuthorizedExternalNetwork {
+  string cidr_range = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// GcpAlloydbClusterPscAutoConnection configures PSC service automation for
+// the bundled primary instance.
+message GcpAlloydbClusterPscAutoConnection {
+  // Consumer network, e.g. "projects/vpc-host/global/networks/default".
+  string consumer_network = 1;
+
+  // Consumer project ID (not project number).
+  string consumer_project = 2;
+}
+
+// GcpAlloydbClusterPscInterfaceConfig configures a PSC interface for
+// outbound connectivity from the bundled primary instance.
+message GcpAlloydbClusterPscInterfaceConfig {
+  // Network attachment resource in the consumer project.
+  string network_attachment_resource = 1;
+}
+
+// GcpAlloydbClusterPscInstanceConfig configures Private Service Connect on
+// the bundled primary instance (requires the cluster itself to be a PSC
+// cluster via psc_config.psc_enabled).
+message GcpAlloydbClusterPscInstanceConfig {
+  // Consumer project numbers allowed to create PSC endpoints.
+  repeated string allowed_consumer_projects = 1;
+
+  // PSC service automation connections.
+  repeated GcpAlloydbClusterPscAutoConnection psc_auto_connections = 2;
+
+  // PSC interfaces for outbound connectivity (0 or 1 supported by AlloyDB).
+  repeated GcpAlloydbClusterPscInterfaceConfig psc_interface_configs = 3;
+}
+
 // GcpAlloydbClusterSecondaryConfig configures a cross-region DR secondary
 // cluster. Only valid when cluster_type is SECONDARY.
 message GcpAlloydbClusterSecondaryConfig {
@@ -252,11 +369,11 @@ message GcpAlloydbClusterPrimaryInstance {
   // Availability type controlling the placement of the instance.
   // ZONAL: single-zone deployment (lower cost, single zone of failure).
   // REGIONAL: multi-zone deployment with automatic failover (recommended
-  // for production). Default: determined by GCP.
+  // for production). Default: REGIONAL when unset.
   string availability_type = 4 [(buf.validate.field).cel = {
     id: "availability_type_valid_value"
-    expression: "this == '' || this in ['ZONAL', 'REGIONAL']"
-    message: "availability_type must be ZONAL or REGIONAL"
+    expression: "this == '' || this in ['AVAILABILITY_TYPE_UNSPECIFIED', 'ZONAL', 'REGIONAL']"
+    message: "availability_type must be ZONAL, REGIONAL, or AVAILABILITY_TYPE_UNSPECIFIED"
   }];
 
   // PostgreSQL database flags as key-value pairs.
@@ -287,11 +404,85 @@ message GcpAlloydbClusterPrimaryInstance {
     message: "ssl_mode must be ENCRYPTED_ONLY or ALLOW_UNENCRYPTED_AND_ENCRYPTED"
   }];
 
+  // Instance activation: ALWAYS keeps the primary running (the default
+  // posture); NEVER stops it. Flipping ALWAYS→NEVER→ALWAYS is the
+  // stop/start lever — a stopped primary keeps its configuration and
+  // storage but serves nothing and stops billing for compute. Stop read
+  // pool instances before stopping the primary.
+  string activation_policy = 10 [(buf.validate.field).cel = {
+    id: "activation_policy_valid"
+    message: "activation_policy must be ALWAYS, NEVER, or ACTIVATION_POLICY_UNSPECIFIED"
+    expression: "this == '' || this in ['ACTIVATION_POLICY_UNSPECIFIED', 'ALWAYS', 'NEVER']"
+  }];
+
+  // Unstructured metadata stored on the primary instance (annotations, not
+  // labels — not used for billing filtering). Mutable in place.
+  map<string, string> annotations = 11;
+
+  // Pin a ZONAL primary to a specific Compute Engine zone (e.g.
+  // "us-central1-a"). Only valid when availability_type is ZONAL — GCP
+  // rejects it on REGIONAL instances; leave empty to let GCP pick a zone
+  // with available capacity. Mutable: changing it live-migrates the
+  // primary to the new zone.
+  string gce_zone = 12;
+
+  // AlloyDB managed connection pooling on the primary (built-in pooler).
+  // Mutable in place.
+  GcpAlloydbClusterConnectionPoolConfig connection_pool_config = 13;
+
+  // Enable a public IP on the primary instance. Pair with
+  // authorized_external_networks to control who may reach it.
+  bool enable_public_ip = 14;
+
+  // Enable outbound public IP for the primary instance.
+  bool enable_outbound_public_ip = 15;
+
+  // CIDR ranges allowed to reach the primary's public IP. Requires
+  // enable_public_ip.
+  repeated GcpAlloydbClusterAuthorizedExternalNetwork authorized_external_networks = 16;
+
+  // Draw the primary's private IPs from a specific Private Service Access
+  // allocated range (RFC 1035 name) instead of the range the cluster uses.
+  // Immutable: changing it destroys and recreates the primary instance.
+  string allocated_ip_range_override = 17 [(buf.validate.field).cel = {
+    id: "valid_allocated_ip_range_override"
+    message: "allocated_ip_range_override must be an RFC 1035 range name (1-63 chars: [a-z]([-a-z0-9]*[a-z0-9])?)"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')"
+  }];
+
+  // Private Service Connect configuration for the primary instance —
+  // meaningful only on PSC clusters (psc_config.psc_enabled).
+  GcpAlloydbClusterPscInstanceConfig psc_instance_config = 18;
+
+  // What happens to the PRIMARY INSTANCE in GCP when this resource is
+  // destroyed (the cluster has its own deletion_policy at the spec root).
+  //   "DELETE"  -- (GCP's default when unset) the primary is deleted
+  //   "PREVENT" -- destroy FAILS while the primary exists
+  //   "ABANDON" -- the primary is removed from management but keeps
+  //                running (and billing) in GCP
+  string deletion_policy = 19 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+
   // cpu_count and machine_type are mutually exclusive.
   option (buf.validate.message).cel = {
     id: "machine_config_mutual_exclusion"
     expression: "this.cpu_count == 0 || this.machine_type == ''"
     message: "only one of cpu_count or machine_type may be set"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "authorized_networks_require_public_ip"
+    message: "authorized_external_networks requires enable_public_ip"
+    expression: "size(this.authorized_external_networks) == 0 || this.enable_public_ip"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "gce_zone_requires_zonal"
+    message: "gce_zone can only be set on ZONAL instances — GCP rejects it when availability_type is REGIONAL (the default)"
+    expression: "this.gce_zone == '' || this.availability_type == 'ZONAL'"
   };
 }
 
@@ -432,11 +623,6 @@ message GcpAlloydbClusterSpec {
   ];
 
   // Preferred maintenance window for system updates.
-  //
-  // NOTE: the provider's cluster-level deletion_protection flag is
-  // deliberately not modeled: it is a client-side guard (both modules pin
-  // it false so destroy always works), and deletion safety belongs to the
-  // platform's lifecycle layer rather than a per-resource toggle.
   GcpAlloydbClusterMaintenanceWindow maintenance_window = 12;
 
   // Primary instance configuration. Required -- a cluster without a
@@ -460,4 +646,68 @@ message GcpAlloydbClusterSpec {
   // continues server-side; use for very large clusters where the wait
   // exceeds sane IaC timeouts.
   bool skip_await_major_version_upgrade = 19;
+
+  // User-defined labels on the cluster and its bundled primary instance
+  // (cost attribution, team ownership, environment tagging). Merged with
+  // the platform's attribution labels; on key conflicts the platform
+  // labels win. Mutable in place.
+  map<string, string> labels = 20;
+
+  // Dataplex Universal Catalog integration (automatic metadata discovery).
+  // GCP enables it by default when this block is absent; set
+  // enabled: false to opt out explicitly.
+  GcpAlloydbClusterDataplexConfig dataplex_config = 21;
+
+  // Seed the new cluster from an AlloyDB backup. At most one restore
+  // source may be set; all restore sources are create-time only (changing
+  // one destroys and recreates the cluster).
+  GcpAlloydbClusterRestoreBackupSource restore_backup_source = 22;
+
+  // Seed the new cluster by point-in-time recovery from a source cluster's
+  // continuous backup stream. At most one restore source may be set;
+  // create-time only.
+  GcpAlloydbClusterRestoreContinuousBackupSource restore_continuous_backup_source = 23;
+
+  // Seed the new cluster from a Backup and DR Service backup. At most one
+  // restore source may be set; create-time only.
+  GcpAlloydbClusterRestoreBackupdrBackupSource restore_backupdr_backup_source = 24;
+
+  // Seed the new cluster by point-in-time recovery through the Backup and
+  // DR Service. At most one restore source may be set; create-time only.
+  GcpAlloydbClusterRestoreBackupdrPitrSource restore_backupdr_pitr_source = 25;
+
+  // Client-side destroy guard: while true (GCP's default), any destroy —
+  // including the platform's own teardown flows — FAILS until this field
+  // is flipped to false and applied. Both engines always send the value
+  // explicitly, so the spec is the single source of truth. Note the
+  // ordering quirk in the provider: deletion_policy ABANDON is evaluated
+  // BEFORE this guard, so abandoning a protected cluster still works.
+  optional bool deletion_protection = 26 [(dev.planton.shared.options.default) = "true"];
+
+  // What happens to the CLUSTER in GCP when this resource is destroyed
+  // (the bundled primary has its own deletion_policy under
+  // primary_instance). AlloyDB clusters use a different value set from
+  // most GCP resources:
+  //   "DEFAULT" -- (GCP's default when unset) the cluster is deleted;
+  //                the API rejects the delete while any instance other
+  //                than the bundled primary still exists
+  //   "FORCE"   -- the cluster AND every instance still in it are
+  //                deleted — required when destroying a SECONDARY
+  //                cluster that has a secondary instance
+  //   "PREVENT" -- destroy FAILS; the strongest guard, evaluated even
+  //                before deletion_protection
+  //   "ABANDON" -- the cluster is removed from management but keeps
+  //                running (and billing) in GCP; bypasses
+  //                deletion_protection
+  string deletion_policy = 27 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DEFAULT, FORCE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DEFAULT', 'FORCE', 'PREVENT', 'ABANDON']"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "at_most_one_restore_source"
+    message: "at most one restore source may be set: restore_backup_source, restore_continuous_backup_source, restore_backupdr_backup_source, or restore_backupdr_pitr_source"
+    expression: "[has(this.restore_backup_source), has(this.restore_continuous_backup_source), has(this.restore_backupdr_backup_source), has(this.restore_backupdr_pitr_source)].filter(x, x).size() <= 1"
+  };
 }

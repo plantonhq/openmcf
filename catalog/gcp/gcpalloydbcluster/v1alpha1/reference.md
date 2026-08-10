@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpAlloydbClusterSpec defines the configuration for an AlloyDB cluster
 with a bundled primary instance.
 
@@ -92,6 +94,7 @@ spec:
 | `spec.automatedBackupPolicy.weeklySchedule.daysOfWeek` | `[]string` |  |  |  |
 | `spec.automatedBackupPolicy.weeklySchedule.startHour` | `int32` |  |  |  |
 | `spec.automatedBackupPolicy.encryptionKmsKeyName` | `string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.automatedBackupPolicy.labels` | `map<string, string>` |  |  |  |
 | `spec.continuousBackupConfig` | `GcpAlloydbClusterContinuousBackupConfig` |  |  |  |
 | `spec.continuousBackupConfig.enabled` | `bool` |  |  |  |
 | `spec.continuousBackupConfig.recoveryWindowDays` | `int32` |  |  |  |
@@ -114,9 +117,43 @@ spec:
 | `spec.primaryInstance.queryInsightsConfig.recordClientAddress` | `bool` |  |  |  |
 | `spec.primaryInstance.requireConnectors` | `bool` |  |  |  |
 | `spec.primaryInstance.sslMode` | `string` |  |  |  |
+| `spec.primaryInstance.activationPolicy` | `string` |  |  |  |
+| `spec.primaryInstance.annotations` | `map<string, string>` |  |  |  |
+| `spec.primaryInstance.gceZone` | `string` |  |  |  |
+| `spec.primaryInstance.connectionPoolConfig` | `GcpAlloydbClusterConnectionPoolConfig` |  |  |  |
+| `spec.primaryInstance.connectionPoolConfig.enabled` | `bool` |  |  |  |
+| `spec.primaryInstance.connectionPoolConfig.flags` | `map<string, string>` |  |  |  |
+| `spec.primaryInstance.enablePublicIp` | `bool` |  |  |  |
+| `spec.primaryInstance.enableOutboundPublicIp` | `bool` |  |  |  |
+| `spec.primaryInstance.authorizedExternalNetworks` | `[]GcpAlloydbClusterAuthorizedExternalNetwork` |  |  |  |
+| `spec.primaryInstance.authorizedExternalNetworks[].cidrRange` | `string` | yes |  |  |
+| `spec.primaryInstance.allocatedIpRangeOverride` | `string` |  |  |  |
+| `spec.primaryInstance.pscInstanceConfig` | `GcpAlloydbClusterPscInstanceConfig` |  |  |  |
+| `spec.primaryInstance.pscInstanceConfig.allowedConsumerProjects` | `[]string` |  |  |  |
+| `spec.primaryInstance.pscInstanceConfig.pscAutoConnections` | `[]GcpAlloydbClusterPscAutoConnection` |  |  |  |
+| `spec.primaryInstance.pscInstanceConfig.pscAutoConnections[].consumerNetwork` | `string` |  |  |  |
+| `spec.primaryInstance.pscInstanceConfig.pscAutoConnections[].consumerProject` | `string` |  |  |  |
+| `spec.primaryInstance.pscInstanceConfig.pscInterfaceConfigs` | `[]GcpAlloydbClusterPscInterfaceConfig` |  |  |  |
+| `spec.primaryInstance.pscInstanceConfig.pscInterfaceConfigs[].networkAttachmentResource` | `string` |  |  |  |
+| `spec.primaryInstance.deletionPolicy` | `string` |  |  |  |
 | `spec.annotations` | `map<string, string>` |  |  |  |
 | `spec.subscriptionType` | `string` |  |  |  |
 | `spec.skipAwaitMajorVersionUpgrade` | `bool` |  |  |  |
+| `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.dataplexConfig` | `GcpAlloydbClusterDataplexConfig` |  |  |  |
+| `spec.dataplexConfig.enabled` | `bool` |  |  |  |
+| `spec.restoreBackupSource` | `GcpAlloydbClusterRestoreBackupSource` |  |  |  |
+| `spec.restoreBackupSource.backupName` | `string` | yes |  |  |
+| `spec.restoreContinuousBackupSource` | `GcpAlloydbClusterRestoreContinuousBackupSource` |  |  |  |
+| `spec.restoreContinuousBackupSource.cluster` | `string \| valueFrom` | yes |  | GcpAlloydbCluster (`status.outputs.cluster_id`) |
+| `spec.restoreContinuousBackupSource.pointInTime` | `string` | yes |  |  |
+| `spec.restoreBackupdrBackupSource` | `GcpAlloydbClusterRestoreBackupdrBackupSource` |  |  |  |
+| `spec.restoreBackupdrBackupSource.backup` | `string` | yes |  |  |
+| `spec.restoreBackupdrPitrSource` | `GcpAlloydbClusterRestoreBackupdrPitrSource` |  |  |  |
+| `spec.restoreBackupdrPitrSource.dataSource` | `string` | yes |  |  |
+| `spec.restoreBackupdrPitrSource.pointInTime` | `string` | yes |  |  |
+| `spec.deletionProtection` | `bool` |  | `true` |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -336,6 +373,14 @@ encryption lifecycle management.
 - references: GcpKmsKey (`status.outputs.key_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
 
+### spec.automatedBackupPolicy.labels
+
+`map<string, string>`
+
+Labels applied to every backup created by this policy — how backup
+storage costs are attributed and backup sets are filtered in the
+console (distinct from the cluster's own labels).
+
 ### spec.continuousBackupConfig
 
 `GcpAlloydbClusterContinuousBackupConfig`
@@ -387,11 +432,6 @@ Immutable after creation.
 
 Preferred maintenance window for system updates.
 
-NOTE: the provider's cluster-level deletion_protection flag is
-deliberately not modeled: it is a client-side guard (both modules pin
-it false so destroy always works), and deletion safety belongs to the
-platform's lifecycle layer rather than a per-resource toggle.
-
 ### spec.maintenanceWindow.day
 
 `string` · required
@@ -417,6 +457,8 @@ primary instance cannot serve queries.
 
 - rule: {"required":true}
 - rule: only one of cpu_count or machine_type may be set
+- rule: authorized_external_networks requires enable_public_ip
+- rule: gce_zone can only be set on ZONAL instances — GCP rejects it when availability_type is REGIONAL (the default)
 
 ### spec.primaryInstance.instanceId
 
@@ -452,9 +494,9 @@ Mutually exclusive with cpu_count.
 Availability type controlling the placement of the instance.
 ZONAL: single-zone deployment (lower cost, single zone of failure).
 REGIONAL: multi-zone deployment with automatic failover (recommended
-for production). Default: determined by GCP.
+for production). Default: REGIONAL when unset.
 
-- rule: availability_type must be ZONAL or REGIONAL
+- rule: availability_type must be ZONAL, REGIONAL, or AVAILABILITY_TYPE_UNSPECIFIED
 
 ### spec.primaryInstance.databaseFlags
 
@@ -531,6 +573,150 @@ ALLOW_UNENCRYPTED_AND_ENCRYPTED: both TLS and plaintext allowed.
 
 - rule: ssl_mode must be ENCRYPTED_ONLY or ALLOW_UNENCRYPTED_AND_ENCRYPTED
 
+### spec.primaryInstance.activationPolicy
+
+`string`
+
+Instance activation: ALWAYS keeps the primary running (the default
+posture); NEVER stops it. Flipping ALWAYS→NEVER→ALWAYS is the
+stop/start lever — a stopped primary keeps its configuration and
+storage but serves nothing and stops billing for compute. Stop read
+pool instances before stopping the primary.
+
+- rule: activation_policy must be ALWAYS, NEVER, or ACTIVATION_POLICY_UNSPECIFIED
+
+### spec.primaryInstance.annotations
+
+`map<string, string>`
+
+Unstructured metadata stored on the primary instance (annotations, not
+labels — not used for billing filtering). Mutable in place.
+
+### spec.primaryInstance.gceZone
+
+`string`
+
+Pin a ZONAL primary to a specific Compute Engine zone (e.g.
+"us-central1-a"). Only valid when availability_type is ZONAL — GCP
+rejects it on REGIONAL instances; leave empty to let GCP pick a zone
+with available capacity. Mutable: changing it live-migrates the
+primary to the new zone.
+
+### spec.primaryInstance.connectionPoolConfig
+
+`GcpAlloydbClusterConnectionPoolConfig`
+
+AlloyDB managed connection pooling on the primary (built-in pooler).
+Mutable in place.
+
+### spec.primaryInstance.connectionPoolConfig.enabled
+
+`bool`
+
+Turn managed connection pooling on or off. Mutable in place.
+
+### spec.primaryInstance.connectionPoolConfig.flags
+
+`map<string, string>`
+
+Pooler flags, keyed by flag name WITHOUT the "connection-pooling-"
+prefix and with underscores instead of dashes (GCP's documented
+convention for this provider surface): e.g. the flag
+"connection-pooling-pool-mode" is set as key "pool_mode". Only
+applied while enabled is true.
+
+### spec.primaryInstance.enablePublicIp
+
+`bool`
+
+Enable a public IP on the primary instance. Pair with
+authorized_external_networks to control who may reach it.
+
+### spec.primaryInstance.enableOutboundPublicIp
+
+`bool`
+
+Enable outbound public IP for the primary instance.
+
+### spec.primaryInstance.authorizedExternalNetworks
+
+`[]GcpAlloydbClusterAuthorizedExternalNetwork`
+
+CIDR ranges allowed to reach the primary's public IP. Requires
+enable_public_ip.
+
+### spec.primaryInstance.authorizedExternalNetworks[].cidrRange
+
+`string` · required
+
+- rule: {"string":{"minLen":"1"}}
+
+### spec.primaryInstance.allocatedIpRangeOverride
+
+`string`
+
+Draw the primary's private IPs from a specific Private Service Access
+allocated range (RFC 1035 name) instead of the range the cluster uses.
+Immutable: changing it destroys and recreates the primary instance.
+
+- rule: allocated_ip_range_override must be an RFC 1035 range name (1-63 chars: [a-z]([-a-z0-9]*[a-z0-9])?)
+
+### spec.primaryInstance.pscInstanceConfig
+
+`GcpAlloydbClusterPscInstanceConfig`
+
+Private Service Connect configuration for the primary instance —
+meaningful only on PSC clusters (psc_config.psc_enabled).
+
+### spec.primaryInstance.pscInstanceConfig.allowedConsumerProjects
+
+`[]string`
+
+Consumer project numbers allowed to create PSC endpoints.
+
+### spec.primaryInstance.pscInstanceConfig.pscAutoConnections
+
+`[]GcpAlloydbClusterPscAutoConnection`
+
+PSC service automation connections.
+
+### spec.primaryInstance.pscInstanceConfig.pscAutoConnections[].consumerNetwork
+
+`string`
+
+Consumer network, e.g. "projects/vpc-host/global/networks/default".
+
+### spec.primaryInstance.pscInstanceConfig.pscAutoConnections[].consumerProject
+
+`string`
+
+Consumer project ID (not project number).
+
+### spec.primaryInstance.pscInstanceConfig.pscInterfaceConfigs
+
+`[]GcpAlloydbClusterPscInterfaceConfig`
+
+PSC interfaces for outbound connectivity (0 or 1 supported by AlloyDB).
+
+### spec.primaryInstance.pscInstanceConfig.pscInterfaceConfigs[].networkAttachmentResource
+
+`string`
+
+Network attachment resource in the consumer project.
+
+### spec.primaryInstance.deletionPolicy
+
+`string`
+
+What happens to the PRIMARY INSTANCE in GCP when this resource is
+destroyed (the cluster has its own deletion_policy at the spec root).
+  "DELETE"  -- (GCP's default when unset) the primary is deleted
+  "PREVENT" -- destroy FAILS while the primary exists
+  "ABANDON" -- the primary is removed from management but keeps
+               running (and billing) in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ### spec.annotations
 
 `map<string, string>`
@@ -556,10 +742,156 @@ waiting for the in-place major-version upgrade to finish. The upgrade
 continues server-side; use for very large clusters where the wait
 exceeds sane IaC timeouts.
 
+### spec.labels
+
+`map<string, string>`
+
+User-defined labels on the cluster and its bundled primary instance
+(cost attribution, team ownership, environment tagging). Merged with
+the platform's attribution labels; on key conflicts the platform
+labels win. Mutable in place.
+
+### spec.dataplexConfig
+
+`GcpAlloydbClusterDataplexConfig`
+
+Dataplex Universal Catalog integration (automatic metadata discovery).
+GCP enables it by default when this block is absent; set
+enabled: false to opt out explicitly.
+
+### spec.dataplexConfig.enabled
+
+`bool`
+
+Whether Dataplex integration is enabled for the cluster. Mutable.
+
+### spec.restoreBackupSource
+
+`GcpAlloydbClusterRestoreBackupSource`
+
+Seed the new cluster from an AlloyDB backup. At most one restore
+source may be set; all restore sources are create-time only (changing
+one destroys and recreates the cluster).
+
+### spec.restoreBackupSource.backupName
+
+`string` · required
+
+Full resource name of the source backup, e.g.
+"projects/{project}/locations/{location}/backups/{backup}".
+
+- rule: {"required":true}
+
+### spec.restoreContinuousBackupSource
+
+`GcpAlloydbClusterRestoreContinuousBackupSource`
+
+Seed the new cluster by point-in-time recovery from a source cluster's
+continuous backup stream. At most one restore source may be set;
+create-time only.
+
+### spec.restoreContinuousBackupSource.cluster
+
+`string | valueFrom` · required
+
+The source cluster to restore from — its full resource name
+"projects/{project}/locations/{location}/clusters/{cluster}", or a
+reference to a GcpAlloydbCluster resource.
+
+- references: GcpAlloydbCluster (`status.outputs.cluster_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpAlloydbCluster, name: <that resource's name>, fieldPath: status.outputs.cluster_id}} -- a bare string does not parse
+
+### spec.restoreContinuousBackupSource.pointInTime
+
+`string` · required
+
+The point in time to restore to, in RFC 3339 format (e.g.
+"2026-08-01T12:00:00Z"). Must fall inside the source cluster's
+continuous-backup recovery window.
+
+- rule: {"required":true}
+
+### spec.restoreBackupdrBackupSource
+
+`GcpAlloydbClusterRestoreBackupdrBackupSource`
+
+Seed the new cluster from a Backup and DR Service backup. At most one
+restore source may be set; create-time only.
+
+### spec.restoreBackupdrBackupSource.backup
+
+`string` · required
+
+Full resource name of the Backup and DR backup, in the format
+"projects/{project}/locations/{location}/backupVaults/{vault}/dataSources/{dataSource}/backups/{backup}".
+
+- rule: {"required":true}
+
+### spec.restoreBackupdrPitrSource
+
+`GcpAlloydbClusterRestoreBackupdrPitrSource`
+
+Seed the new cluster by point-in-time recovery through the Backup and
+DR Service. At most one restore source may be set; create-time only.
+
+### spec.restoreBackupdrPitrSource.dataSource
+
+`string` · required
+
+Full resource name of the Backup and DR data source, in the format
+"projects/{project}/locations/{location}/backupVaults/{vault}/dataSources/{dataSource}".
+
+- rule: {"required":true}
+
+### spec.restoreBackupdrPitrSource.pointInTime
+
+`string` · required
+
+The point in time to restore to, in RFC 3339 format.
+
+- rule: {"required":true}
+
+### spec.deletionProtection
+
+`bool` · optional (explicit presence)
+
+Client-side destroy guard: while true (GCP's default), any destroy —
+including the platform's own teardown flows — FAILS until this field
+is flipped to false and applied. Both engines always send the value
+explicitly, so the spec is the single source of truth. Note the
+ordering quirk in the provider: deletion_policy ABANDON is evaluated
+BEFORE this guard, so abandoning a protected cluster still works.
+
+- default: `true`
+
+### spec.deletionPolicy
+
+`string`
+
+What happens to the CLUSTER in GCP when this resource is destroyed
+(the bundled primary has its own deletion_policy under
+primary_instance). AlloyDB clusters use a different value set from
+most GCP resources:
+  "DEFAULT" -- (GCP's default when unset) the cluster is deleted;
+               the API rejects the delete while any instance other
+               than the bundled primary still exists
+  "FORCE"   -- the cluster AND every instance still in it are
+               deleted — required when destroying a SECONDARY
+               cluster that has a secondary instance
+  "PREVENT" -- destroy FAILS; the strongest guard, evaluated even
+               before deletion_protection
+  "ABANDON" -- the cluster is removed from management but keeps
+               running (and billing) in GCP; bypasses
+               deletion_protection
+
+- rule: deletion_policy must be one of: DEFAULT, FORCE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `connectivity_psa_xor_psc`: set network for Private Service Access OR enable psc_config.psc_enabled — not both, not neither
 - `secondary_requires_secondary_config`: cluster_type SECONDARY requires secondary_config.primary_cluster_name
+- `at_most_one_restore_source`: at most one restore source may be set: restore_backup_source, restore_continuous_backup_source, restore_backupdr_backup_source, or restore_backupdr_pitr_source
 
 ## Outputs
 
@@ -585,6 +917,7 @@ Fields that can point at another resource's outputs:
 | `spec.automatedBackupPolicy.encryptionKmsKeyName` | GcpKmsKey | `status.outputs.key_id` |
 | `spec.continuousBackupConfig.encryptionKmsKeyName` | GcpKmsKey | `status.outputs.key_id` |
 | `spec.kmsKeyName` | GcpKmsKey | `status.outputs.key_id` |
+| `spec.restoreContinuousBackupSource.cluster` | GcpAlloydbCluster | `status.outputs.cluster_id` |
 
 ## Referenced By
 
@@ -592,6 +925,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| GcpAlloydbCluster | `spec.restoreContinuousBackupSource.cluster` | `status.outputs.cluster_id` |
 | GcpAlloydbInstance | `spec.cluster` | `status.outputs.cluster_id` |
 | GcpAlloydbUser | `spec.cluster` | `status.outputs.cluster_id` |
 

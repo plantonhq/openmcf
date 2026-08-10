@@ -47,8 +47,18 @@ type GcpAlloydbUserSpec struct {
 	Password string `protobuf:"bytes,5,opt,name=password,proto3" json:"password,omitempty"`
 	// Database roles granted to this user (e.g. "alloydbiamuser", "alloydbsuperuser").
 	DatabaseRoles []string `protobuf:"bytes,6,rep,name=database_roles,json=databaseRoles,proto3" json:"database_roles,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// What happens to the database user in GCP when this resource is destroyed.
+	//
+	//	"DELETE"  -- (GCP's default when unset) the user is dropped from the
+	//	             cluster; objects it owns inside PostgreSQL keep their
+	//	             ownership rows, so reassign ownership first
+	//	"PREVENT" -- destroy FAILS; protects a credential applications still
+	//	             authenticate with
+	//	"ABANDON" -- the user is removed from management but keeps existing
+	//	             (and authenticating) on the cluster
+	DeletionPolicy string `protobuf:"bytes,7,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpAlloydbUserSpec) Reset() {
@@ -123,11 +133,18 @@ func (x *GcpAlloydbUserSpec) GetDatabaseRoles() []string {
 	return nil
 }
 
+func (x *GcpAlloydbUserSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpalloydbuser_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpalloydbuser_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	".catalog/gcp/gcpalloydbuser/v1alpha1/spec.proto\x12'dev.planton.gcp.gcpalloydbuser.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xfc\x05\n" +
+	".catalog/gcp/gcpalloydbuser/v1alpha1/spec.proto\x12'dev.planton.gcp.gcpalloydbuser.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xba\a\n" +
 	"\x12GcpAlloydbUserSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12v\n" +
@@ -137,7 +154,9 @@ const file_catalog_gcp_gcpalloydbuser_v1alpha1_spec_proto_rawDesc = "" +
 	"\tuser_type\x18\x04 \x01(\tB\x95\x01\xbaH~\xba\x01{\n" +
 	"\x0fuser_type_valid\x126user_type must be ALLOYDB_BUILT_IN or ALLOYDB_IAM_USER\x1a0this in ['ALLOYDB_BUILT_IN', 'ALLOYDB_IAM_USER']\x8a\xa6\x1d\x10ALLOYDB_BUILT_INH\x00R\buserType\x88\x01\x01\x12*\n" +
 	"\bpassword\x18\x05 \x01(\tB\x0e\xbaH\a\xd8\x01\x01r\x02\x10\x01\xa0\xa6\x1d\x01R\bpassword\x12%\n" +
-	"\x0edatabase_roles\x18\x06 \x03(\tR\rdatabaseRoles:\xb2\x01\xbaH\xae\x01\x1a\xab\x01\n" +
+	"\x0edatabase_roles\x18\x06 \x03(\tR\rdatabaseRoles\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\a \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy:\xb2\x01\xbaH\xae\x01\x1a\xab\x01\n" +
 	"\x1eiam_user_must_not_set_password\x12LALLOYDB_IAM_USER must not set a password — authentication goes through IAM\x1a;this.user_type != 'ALLOYDB_IAM_USER' || this.password == ''B\f\n" +
 	"\n" +
 	"_user_typeB\xd2\x02\n" +

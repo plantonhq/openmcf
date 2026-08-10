@@ -1,0 +1,144 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# One kind, two provider resources: the cluster is the logical container
+# (backup, encryption, networking) and the bundled PRIMARY instance is the
+# compute that serves queries -- a cluster without one serves nothing,
+# which is why they are one node. The primary's surface lives under
+# spec.primary_instance (specRoot below); read pools and secondary
+# instances are the standalone GcpAlloydbInstance kind.
+
+resources:
+  google_alloydb_cluster:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.cluster_name
+        arg: cluster_id
+      - spec: spec.project_id
+        arg: project
+      # The provider nests PSA connectivity in a block; the spec keeps the
+      # two fields users reason about.
+      - spec: spec.network
+        arg: network_config.network
+      - spec: spec.allocated_ip_range
+        arg: network_config.allocated_ip_range
+      # CMEK: one-field wrapper blocks flattened to the key references.
+      - spec: spec.kms_key_name
+        arg: encryption_config.kms_key_name
+      - spec: spec.automated_backup_policy.encryption_kms_key_name
+        arg: automated_backup_policy.encryption_config.kms_key_name
+      - spec: spec.continuous_backup_config.encryption_kms_key_name
+        arg: continuous_backup_config.encryption_config.kms_key_name
+      # Retention is one choice, not two blocks: the spec's two mutually
+      # exclusive fields map onto the provider's one-field wrapper pair.
+      - spec: spec.automated_backup_policy.quantity_based_retention_count
+        arg: automated_backup_policy.quantity_based_retention.count
+      - spec: spec.automated_backup_policy.time_based_retention_period
+        arg: automated_backup_policy.time_based_retention.retention_period
+      # Schedule times are whole hours (see the sub-minute exclusions).
+      - spec: spec.automated_backup_policy.weekly_schedule.start_hour
+        arg: automated_backup_policy.weekly_schedule.start_times.hours
+      - spec: spec.maintenance_window.day
+        arg: maintenance_update_policy.maintenance_windows.day
+      - spec: spec.maintenance_window.start_hour
+        arg: maintenance_update_policy.maintenance_windows.start_time.hours
+    exclusions:
+      - arg: etag
+        reason: >-
+          AIP-154 request-freshness token -- a per-request optimistic
+          concurrency guard, not declarable desired state: a pinned etag
+          makes every apply after the first mutation fail by design
+      - arg: initial_user.password_wo
+        reason: >-
+          the write-only variant of the modeled initial_user.password --
+          same credential, different plumbing (never enters Terraform
+          state, requires a Terraform/OpenTofu >= 1.11 toolchain, pairs
+          with a manual version counter). Re-evaluate if the catalog
+          declares a >= 1.11 toolchain floor.
+      - arg: initial_user.password_wo_version
+        reason: >-
+          the manual rotation counter that exists only to trigger updates
+          of initial_user.password_wo (see that exclusion);
+          Terraform-state plumbing, not database configuration
+      - arg: automated_backup_policy.weekly_schedule.start_times.minutes
+        reason: >-
+          provider docs -- "Currently, only the value 0 is supported": a
+          permanently-zero field is not configuration surface; the spec's
+          start_hour carries the whole supported schedule. Re-evaluate if
+          AlloyDB ever honors sub-hour backup start times.
+      - arg: automated_backup_policy.weekly_schedule.start_times.seconds
+        reason: >-
+          provider docs -- "Currently, only the value 0 is supported"
+          (see the minutes exclusion)
+      - arg: automated_backup_policy.weekly_schedule.start_times.nanos
+        reason: >-
+          provider docs -- "Currently, only the value 0 is supported"
+          (see the minutes exclusion)
+      - arg: maintenance_update_policy.maintenance_windows.start_time.minutes
+        reason: >-
+          provider docs -- "Currently, only the value 0 is supported": the
+          spec's start_hour carries the whole supported window. Re-evaluate
+          if AlloyDB ever honors sub-hour maintenance start times.
+      - arg: maintenance_update_policy.maintenance_windows.start_time.seconds
+        reason: >-
+          provider docs -- "Currently, only the value 0 is supported"
+          (see the minutes exclusion)
+      - arg: maintenance_update_policy.maintenance_windows.start_time.nanos
+        reason: >-
+          provider docs -- "Currently, only the value 0 is supported"
+          (see the minutes exclusion)
+
+  google_alloydb_instance:
+    # The bundled PRIMARY instance's configuration lives in the spec's
+    # primary_instance message.
+    specRoot: spec.primary_instance
+    mappings:
+      # The cluster kind's ONE user-labels field lands on both resources.
+      - spec: spec.labels
+        arg: labels
+      # The spec flattens the provider's one-field wrapper blocks to the
+      # fields users actually reason about (mirroring the standalone
+      # GcpAlloydbInstance kind's shape).
+      - spec: spec.primary_instance.cpu_count
+        arg: machine_config.cpu_count
+      - spec: spec.primary_instance.machine_type
+        arg: machine_config.machine_type
+      - spec: spec.primary_instance.require_connectors
+        arg: client_connection_config.require_connectors
+      - spec: spec.primary_instance.ssl_mode
+        arg: client_connection_config.ssl_config.ssl_mode
+      - spec: spec.primary_instance.enable_public_ip
+        arg: network_config.enable_public_ip
+      - spec: spec.primary_instance.enable_outbound_public_ip
+        arg: network_config.enable_outbound_public_ip
+      - spec: spec.primary_instance.allocated_ip_range_override
+        arg: network_config.allocated_ip_range_override
+      - spec: spec.primary_instance.authorized_external_networks
+        arg: network_config.authorized_external_networks
+    exclusions:
+      - arg: cluster
+        reason: >-
+          wired by the module to the cluster it creates -- the pair is one
+          node
+      - arg: instance_type
+        reason: >-
+          pinned to PRIMARY by the module: the bundled instance IS the
+          cluster's primary (the kind's contract); READ_POOL and SECONDARY
+          instances are the standalone GcpAlloydbInstance kind
+      - arg: read_pool_config.node_count
+        reason: >-
+          read-pool sizing on a resource this module only ever creates as
+          the PRIMARY; read pools are the standalone GcpAlloydbInstance
+          kind (a recorded composition boundary, not a gap)
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables alloydb.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      cluster never disables the API project-wide); not spec surface.

@@ -58,4 +58,4 @@ the same endpoint ID on either engine.
 
 ## Provider Requirements
 
-- `hashicorp/google` ~> 6.0
+- `hashicorp/google` ~> 7.43

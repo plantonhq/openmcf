@@ -63,4 +63,18 @@ message GcpAlloydbUserSpec {
 
   // Database roles granted to this user (e.g. "alloydbiamuser", "alloydbsuperuser").
   repeated string database_roles = 6;
+
+  // What happens to the database user in GCP when this resource is destroyed.
+  //   "DELETE"  -- (GCP's default when unset) the user is dropped from the
+  //                cluster; objects it owns inside PostgreSQL keep their
+  //                ownership rows, so reassign ownership first
+  //   "PREVENT" -- destroy FAILS; protects a credential applications still
+  //                authenticate with
+  //   "ABANDON" -- the user is removed from management but keeps existing
+  //                (and authenticating) on the cluster
+  string deletion_policy = 7 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

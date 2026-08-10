@@ -23,3 +23,5 @@ spec:
   description: Ephemeral gRPC-TLS health check created by the Planton E2E harness; safe to delete
   grpcTls:
     port: 8443
+  # Explicit provider default: proves the DELETE round-trip on re-plan.
+  deletionPolicy: DELETE

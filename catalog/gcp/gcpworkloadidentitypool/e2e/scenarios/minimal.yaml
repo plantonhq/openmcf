@@ -26,3 +26,5 @@ spec:
   # the GA provider (it is GA on the 7.x line); FEDERATION_ONLY matches the
   # spec default, so the arm adds surface without changing pool behavior.
   mode: FEDERATION_ONLY
+  # Explicit provider default: proves the DELETE (soft-delete) round-trip.
+  deletionPolicy: DELETE

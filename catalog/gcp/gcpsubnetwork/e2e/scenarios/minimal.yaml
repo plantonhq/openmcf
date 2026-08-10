@@ -43,3 +43,5 @@ spec:
     aggregationInterval: INTERVAL_5_MIN
     flowSampling: 0.1
     metadata: EXCLUDE_ALL_METADATA
+  # Explicit provider default: proves the DELETE round-trip on re-plan.
+  deletionPolicy: DELETE

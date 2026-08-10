@@ -25,23 +25,71 @@ func cluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*a
 		return nil, errors.Wrap(err, "failed to enable alloydb.googleapis.com api")
 	}
 
+	// Destroy guard, sent explicitly (true or false) so the spec is the
+	// single source of truth: the provider defaults it to true, and a
+	// send-only-when-set wiring could never turn protection OFF once on.
+	// The spec default is TRUE, so an unset optional field must send true —
+	// GetDeletionProtection() alone would send false. Matches the
+	// Terraform module (variables.tf defaults the field to true).
+	deletionProtection := true
+	if spec.DeletionProtection != nil {
+		deletionProtection = spec.GetDeletionProtection()
+	}
+
 	args := &alloydb.ClusterArgs{
-		ClusterId: pulumi.String(spec.ClusterName),
-		Location:  pulumi.String(spec.Location),
-		Labels:    pulumi.ToStringMap(locals.GcpLabels),
-		// Explicitly false: the provider's client-side deletion_protection
-		// flag defaults TRUE and blocks destroy. Both engines disable it so
-		// destroy semantics stay identical; deletion safety belongs to the
-		// platform's lifecycle layer, not a provider-local flag.
-		DeletionProtection: pulumi.BoolPtr(false),
+		ClusterId:          pulumi.String(spec.ClusterName),
+		Location:           pulumi.String(spec.Location),
+		Labels:             pulumi.ToStringMap(locals.GcpLabels),
+		DeletionProtection: pulumi.BoolPtr(deletionProtection),
 	}
 
 	if spec.ProjectId.GetValue() != "" {
 		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
 	}
 
+	// AlloyDB's cluster-level destroy behavior — note the value set differs
+	// from most GCP resources: DEFAULT | FORCE | PREVENT | ABANDON, where
+	// FORCE also deletes any instances still in the cluster.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	if spec.GetSkipAwaitMajorVersionUpgrade() {
 		args.SkipAwaitMajorVersionUpgrade = pulumi.BoolPtr(true)
+	}
+
+	// Dataplex Universal Catalog integration; GCP enables it by default
+	// when the block is absent, so it is only sent when the spec opts in
+	// or out explicitly.
+	if spec.DataplexConfig != nil {
+		args.DataplexConfig = &alloydb.ClusterDataplexConfigArgs{
+			Enabled: pulumi.Bool(spec.DataplexConfig.Enabled),
+		}
+	}
+
+	// Restore provenance — at most one source (spec-enforced), all
+	// ForceNew: the restore choice exists only at create time.
+	if spec.RestoreBackupSource != nil {
+		args.RestoreBackupSource = &alloydb.ClusterRestoreBackupSourceArgs{
+			BackupName: pulumi.String(spec.RestoreBackupSource.BackupName),
+		}
+	}
+	if spec.RestoreContinuousBackupSource != nil {
+		args.RestoreContinuousBackupSource = &alloydb.ClusterRestoreContinuousBackupSourceArgs{
+			Cluster:     pulumi.String(spec.RestoreContinuousBackupSource.Cluster.GetValue()),
+			PointInTime: pulumi.String(spec.RestoreContinuousBackupSource.PointInTime),
+		}
+	}
+	if spec.RestoreBackupdrBackupSource != nil {
+		args.RestoreBackupdrBackupSource = &alloydb.ClusterRestoreBackupdrBackupSourceArgs{
+			Backup: pulumi.String(spec.RestoreBackupdrBackupSource.Backup),
+		}
+	}
+	if spec.RestoreBackupdrPitrSource != nil {
+		args.RestoreBackupdrPitrSource = &alloydb.ClusterRestoreBackupdrPitrSourceArgs{
+			DataSource:  pulumi.String(spec.RestoreBackupdrPitrSource.DataSource),
+			PointInTime: pulumi.String(spec.RestoreBackupdrPitrSource.PointInTime),
+		}
 	}
 
 	if spec.Network.GetValue() != "" {
@@ -107,6 +155,9 @@ func cluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*a
 		}
 		if spec.AutomatedBackupPolicy.Location != "" {
 			backupArgs.Location = pulumi.StringPtr(spec.AutomatedBackupPolicy.Location)
+		}
+		if len(spec.AutomatedBackupPolicy.Labels) > 0 {
+			backupArgs.Labels = pulumi.ToStringMap(spec.AutomatedBackupPolicy.Labels)
 		}
 
 		if spec.AutomatedBackupPolicy.QuantityBasedRetentionCount > 0 {

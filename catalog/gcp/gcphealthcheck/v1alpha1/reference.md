@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpHealthCheckSpec defines a Compute Engine health check — the probe that
 decides which backends receive load-balancer traffic and which instances a
 managed instance group auto-heals. Health checks are the leaf of the load
@@ -74,6 +76,7 @@ spec:
 | `spec.unhealthyThreshold` | `int32` |  | `2` |  |
 | `spec.enableLogging` | `bool` |  |  |  |
 | `spec.sourceRegions` | `[]string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 | `spec.http` | `GcpHealthCheckHttp` |  |  |  |
 | `spec.http.host` | `string` |  |  |  |
 | `spec.http.port` | `int32` |  |  |  |
@@ -233,6 +236,22 @@ source_regions cannot be used by managed-instance-group auto-healing.
 
 - rule: source_regions must list exactly 3 GCP regions (or be omitted to use Google's default probers)
 - rule: {"repeated":{"items":{"string":{"pattern":"^[a-z]([-a-z0-9]*[a-z0-9])?$"}}}}
+
+### spec.deletionPolicy
+
+`string`
+
+What happens to the health check in GCP when this resource is destroyed.
+Applies to whichever scope the check was created in (global or regional).
+  "DELETE"  -- (GCP's default when unset) the health check is deleted;
+               any backend service still referencing it makes the delete
+               fail on the API side, so tear consumers down first
+  "PREVENT" -- destroy FAILS; protects a probe that many backend
+               services may share
+  "ABANDON" -- the health check is removed from management but keeps
+               probing in GCP (free at rest; clean it up manually)
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ### spec.http
 

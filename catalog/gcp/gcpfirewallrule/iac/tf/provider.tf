@@ -12,6 +12,7 @@ terraform {
   }
 }
 
+# Empty ambient block: the runner injects credentials through the standard
+# GOOGLE_* environment chain, never through module variables.
 provider "google" {
-  credentials = var.provider_config.service_account_key != "" ? var.provider_config.service_account_key : null
 }

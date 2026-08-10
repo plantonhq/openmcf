@@ -38,3 +38,5 @@ spec:
     - "192.0.2.0/24"
   logConfig:
     metadata: INCLUDE_ALL_METADATA
+  # Explicit provider default: proves the DELETE round-trip on re-plan.
+  deletionPolicy: DELETE

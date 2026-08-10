@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 89 |
 | Distinct provider resources consumed | 117 |
-| Spec fields authored across all kinds | 3240 |
+| Spec fields authored across all kinds | 3291 |
 | Module pins on `google` | `~> 7.43` × 89 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,14 +45,14 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**81 of 89 kinds are at total accounting; 24 proven live.**
+**89 of 89 kinds are at total accounting; 16 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
 | GcpAddress | 16 | 14 | 2 | 0 | 0 | ✅ | — |
-| GcpAlloydbCluster | 84 | 19 | 0 | 0 | 89 | ❌ | ✅ pulumi, terraform |
-| GcpAlloydbInstance | 35 | 16 | 0 | 0 | 27 | ❌ | ✅ pulumi, terraform |
-| GcpAlloydbUser | 13 | 5 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
+| GcpAlloydbCluster | 79 | 46 | 21 | 12 | 0 | ✅ | — |
+| GcpAlloydbInstance | 30 | 22 | 8 | 0 | 0 | ✅ | — |
+| GcpAlloydbUser | 8 | 6 | 0 | 2 | 0 | ✅ | — |
 | GcpArtifactRegistryRepo | 52 | 33 | 12 | 7 | 0 | ✅ | — |
 | GcpBackendBucket | 29 | 22 | 6 | 1 | 0 | ✅ | — |
 | GcpBackendService | 116 | 91 | 22 | 3 | 0 | ✅ | — |
@@ -85,14 +85,14 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpFirestoreBackupSchedule | 5 | 4 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreDatabase | 15 | 11 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpFirewallRule | 20 | 12 | 0 | 0 | 13 | ❌ | ✅ pulumi, terraform |
+| GcpFirewallRule | 20 | 13 | 7 | 0 | 0 | ✅ | — |
 | GcpGcsBucket | 64 | 30 | 29 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGkeCluster | 537 | 61 | 137 | 339 | 0 | ✅ | — |
 | GcpGkeNodePool | 184 | 127 | 51 | 6 | 0 | ✅ | — |
 | GcpGkeWorkloadIdentityBinding | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGlobalAddress | 11 | 9 | 2 | 0 | 0 | ✅ | — |
 | GcpGlobalForwardingRule | 23 | 18 | 4 | 1 | 0 | ✅ | — |
-| GcpHealthCheck | 105 | 12 | 0 | 0 | 136 | ❌ | ✅ pulumi, terraform |
+| GcpHealthCheck | 100 | 14 | 86 | 0 | 0 | ✅ | — |
 | GcpIamCustomRole | 7 | 6 | 1 | 0 | 0 | ✅ | — |
 | GcpIamDenyPolicy | 13 | 11 | 2 | 0 | 0 | ✅ | — |
 | GcpIamOauthClient | 18 | 12 | 3 | 3 | 0 | ✅ | — |
@@ -126,17 +126,17 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpSpannerInstance | 28 | 21 | 7 | 0 | 0 | ✅ | — |
 | GcpSslCertificate | 19 | 9 | 4 | 6 | 0 | ✅ | — |
 | GcpSslPolicy | 17 | 13 | 4 | 0 | 0 | ✅ | — |
-| GcpSubnetwork | 34 | 17 | 0 | 0 | 22 | ❌ | ✅ pulumi, terraform |
+| GcpSubnetwork | 29 | 22 | 7 | 0 | 0 | ✅ | — |
 | GcpTargetHttpProxy | 7 | 5 | 2 | 0 | 0 | ✅ | — |
 | GcpTargetHttpsProxy | 14 | 12 | 2 | 0 | 0 | ✅ | — |
 | GcpUrlMap | 333 | 74 | 259 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpVertexAiDeployedIndex | 16 | 12 | 4 | 0 | 0 | ✅ | — |
-| GcpVertexAiEndpoint | 24 | 7 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
+| GcpVertexAiEndpoint | 19 | 8 | 9 | 2 | 0 | ✅ | — |
 | GcpVertexAiIndex | 17 | 5 | 12 | 0 | 0 | ✅ | — |
 | GcpVertexAiIndexEndpoint | 13 | 10 | 3 | 0 | 0 | ✅ | — |
 | GcpVertexAiNotebook | 46 | 8 | 34 | 4 | 0 | ✅ | — |
 | GcpVpcNetwork | 17 | 10 | 6 | 1 | 0 | ✅ | — |
-| GcpWorkloadIdentityPool | 16 | 11 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
+| GcpWorkloadIdentityPool | 16 | 15 | 1 | 0 | 0 | ✅ | — |
 | GcpWorkloadIdentityPoolProvider | 16 | 15 | 1 | 0 | 0 | ✅ | — |
 
 ## Breadth: every GA resource, one disposition

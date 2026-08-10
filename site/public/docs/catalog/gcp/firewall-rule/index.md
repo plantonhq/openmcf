@@ -43,7 +43,7 @@ Open the deployment store, find **GCP Firewall Rule**, and click **Deploy**. The
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirewallRule
 metadata:
   name: allow-web

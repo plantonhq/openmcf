@@ -109,6 +109,21 @@ message GcpHealthCheckSpec {
     (buf.validate.field).repeated.items.string.pattern = "^[a-z]([-a-z0-9]*[a-z0-9])?$"
   ];
 
+  // What happens to the health check in GCP when this resource is destroyed.
+  // Applies to whichever scope the check was created in (global or regional).
+  //   "DELETE"  -- (GCP's default when unset) the health check is deleted;
+  //                any backend service still referencing it makes the delete
+  //                fail on the API side, so tear consumers down first
+  //   "PREVENT" -- destroy FAILS; protects a probe that many backend
+  //                services may share
+  //   "ABANDON" -- the health check is removed from management but keeps
+  //                probing in GCP (free at rest; clean it up manually)
+  string deletion_policy = 18 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+
   // The probe protocol — exactly one. The choice decides which optional
   // request/response knobs apply: HTTP-family checks probe a request_path and
   // can match a response prefix; TCP/SSL checks open a connection and can

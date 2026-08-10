@@ -1,0 +1,38 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_alloydb_user:
+    exclusions:
+      - arg: password_wo
+        reason: >-
+          the write-only variant of the modeled password argument -- same
+          credential, different plumbing (the value never enters Terraform
+          state, requires a Terraform/OpenTofu >= 1.11 toolchain, and pairs
+          with a manual version counter). The spec's password field carries
+          the same capability with the catalog's sensitive-field handling.
+          Re-evaluate if the catalog declares a >= 1.11 toolchain floor.
+      - arg: password_wo_version
+        reason: >-
+          the manual rotation counter that exists only to trigger updates
+          of password_wo (see that exclusion); Terraform-state plumbing,
+          not database configuration
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables alloydb.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      user never disables the API project-wide); not spec surface.
+
+specExclusions:
+  - field: spec.project_id
+    reason: >-
+      names the project only for API enablement (the internal
+      google_project_service): google_alloydb_user itself carries no
+      project argument -- it derives its project from the parent cluster's
+      resource path (spec.cluster)

@@ -162,4 +162,24 @@ message GcpFirewallRuleSpec {
   // Logging configuration. When present, firewall logging is enabled.
   // Omit this field to disable logging (the default).
   GcpFirewallLogConfig log_config = 16;
+
+  // Resource Manager tags bound to the firewall rule at create time, for
+  // org-policy conditions and IAM scoping. Keys are "tagKeys/{tag_key_id}"
+  // and values "tagValues/{tag_value_id}" (IDs, not short names). Changing
+  // tags REPLACES the firewall rule (the provider sends them through a
+  // create-only params block) -- plan tag changes deliberately.
+  map<string, string> resource_manager_tags = 17;
+
+  // What happens to the firewall rule in GCP when this resource is destroyed.
+  //   "DELETE"  -- (GCP's default when unset) the rule is deleted; traffic
+  //                it allowed is cut over to the next matching rule
+  //   "PREVENT" -- destroy FAILS; protects a rule other teams' traffic
+  //                may silently depend on
+  //   "ABANDON" -- the rule is removed from management but keeps enforcing
+  //                in GCP (free at rest; clean it up manually)
+  string deletion_policy = 18 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

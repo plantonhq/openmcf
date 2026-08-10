@@ -278,6 +278,7 @@ Fields on other kinds that can point at this resource:
 | GcpServiceNetworkingConnection | `spec.network` | `status.outputs.network_self_link` |
 | GcpSubnetwork | `spec.vpcSelfLink` | `status.outputs.network_self_link` |
 | GcpVertexAiEndpoint | `spec.network` | `status.outputs.network_self_link` |
+| GcpVertexAiEndpoint | `spec.privateServiceConnectConfig.pscAutomationConfigs[].network` | `status.outputs.network_self_link` |
 | GcpVertexAiIndexEndpoint | `spec.network` | `status.outputs.network_self_link` |
 | GcpVertexAiIndexEndpoint | `spec.privateServiceConnectConfig.pscAutomationConfigs[].network` | `status.outputs.network_self_link` |
 | GcpVertexAiNotebook | `spec.networkInterface.network` | `status.outputs.network_self_link` |

@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpAlloydbUserSpec defines a database user (`google_alloydb_user`) on an
 AlloyDB cluster.
 
@@ -41,6 +43,7 @@ spec:
 | `spec.userType` | `string` |  | `ALLOYDB_BUILT_IN` |  |
 | `spec.password` | `string` (sensitive) | yes |  |  |
 | `spec.databaseRoles` | `[]string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -97,6 +100,21 @@ Never set for ALLOYDB_IAM_USER.
 `[]string`
 
 Database roles granted to this user (e.g. "alloydbiamuser", "alloydbsuperuser").
+
+### spec.deletionPolicy
+
+`string`
+
+What happens to the database user in GCP when this resource is destroyed.
+  "DELETE"  -- (GCP's default when unset) the user is dropped from the
+               cluster; objects it owns inside PostgreSQL keep their
+               ownership rows, so reassign ownership first
+  "PREVENT" -- destroy FAILS; protects a credential applications still
+               authenticate with
+  "ABANDON" -- the user is removed from management but keeps existing
+               (and authenticating) on the cluster
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

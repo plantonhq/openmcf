@@ -25,6 +25,9 @@ spec:
       kind: GcpVpcNetwork
       name: planton-oss-e2e-gcpvpc-prereq
       fieldPath: status.outputs.network_id
+  # The destroy guard defaults TRUE; prerequisite fixtures disarm it so
+  # dependency teardown completes.
+  deletionProtection: false
   primaryInstance:
     instanceId: primary
     cpuCount: 2

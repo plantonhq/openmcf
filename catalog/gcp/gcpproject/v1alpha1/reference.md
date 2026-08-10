@@ -255,6 +255,7 @@ Fields on other kinds that can point at this resource:
 | GcpTargetHttpsProxy | `spec.projectId` | `status.outputs.project_id` |
 | GcpUrlMap | `spec.projectId` | `status.outputs.project_id` |
 | GcpVertexAiEndpoint | `spec.projectId` | `status.outputs.project_id` |
+| GcpVertexAiEndpoint | `spec.privateServiceConnectConfig.pscAutomationConfigs[].projectId` | `status.outputs.project_id` |
 | GcpVertexAiIndex | `spec.projectId` | `status.outputs.project_id` |
 | GcpVertexAiIndexEndpoint | `spec.projectId` | `status.outputs.project_id` |
 | GcpVertexAiIndexEndpoint | `spec.privateServiceConnectConfig.pscAutomationConfigs[].projectId` | `status.outputs.project_id` |
