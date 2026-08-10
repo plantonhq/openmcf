@@ -226,12 +226,16 @@ Fields on other kinds that can point at this resource:
 | GcpIdentityPlatformConfig | `spec.projectId` | `status.outputs.project_id` |
 | GcpIdentityPlatformTenant | `spec.projectId` | `status.outputs.project_id` |
 | GcpKmsKeyRing | `spec.projectId` | `status.outputs.project_id` |
+| GcpLogBucket | `spec.scope.projectId` | `status.outputs.project_id` |
+| GcpLogMetric | `spec.projectId` | `status.outputs.project_id` |
 | GcpLoggingSink | `spec.scope.projectId` | `status.outputs.project_id` |
 | GcpManagedSslCertificate | `spec.projectId` | `status.outputs.project_id` |
 | GcpMemorystoreInstance | `spec.projectId` | `status.outputs.project_id` |
 | GcpMemorystoreInstance | `spec.pscAutoConnections[].projectId` | `status.outputs.project_id` |
 | GcpMonitoringAlertPolicy | `spec.projectId` | `status.outputs.project_id` |
+| GcpMonitoringDashboard | `spec.projectId` | `status.outputs.project_id` |
 | GcpMonitoringNotificationChannel | `spec.projectId` | `status.outputs.project_id` |
+| GcpMonitoringSlo | `spec.projectId` | `status.outputs.project_id` |
 | GcpMonitoringUptimeCheck | `spec.projectId` | `status.outputs.project_id` |
 | GcpProjectIamMember | `spec.projectId` | `status.outputs.project_id` |
 | GcpPubSubSchema | `spec.projectId` | `status.outputs.project_id` |

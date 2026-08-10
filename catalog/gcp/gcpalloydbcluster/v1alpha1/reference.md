@@ -59,10 +59,17 @@ spec:
     value: projects/my-gcp-project/global/networks/default
   databaseVersion: POSTGRES_15
   displayName: Test AlloyDB Cluster
+  # The destroy guard defaults TRUE; the canonical example shows the
+  # disarmed posture a test cluster wants (production keeps the default).
+  deletionProtection: false
+  deletionPolicy: DEFAULT
+  labels:
+    team: data-platform
   primaryInstance:
     instanceId: test-primary
     cpuCount: 2
     availabilityType: ZONAL
+    deletionPolicy: DELETE
 ```
 
 ## Spec Fields

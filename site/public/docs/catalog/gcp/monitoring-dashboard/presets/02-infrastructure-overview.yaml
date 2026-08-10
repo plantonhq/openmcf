@@ -1,0 +1,67 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringDashboard
+metadata:
+  name: infrastructure-overview
+spec:
+  deletionPolicy: PREVENT
+  dashboardJson: |
+    {
+      "displayName": "Infrastructure overview",
+      "gridLayout": {
+        "columns": "2",
+        "widgets": [
+          {
+            "title": "CPU utilization (mean per instance)",
+            "xyChart": {
+              "dataSets": [{
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"compute.googleapis.com/instance/cpu/utilization\" resource.type=\"gce_instance\"",
+                    "aggregation": {"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_MEAN"}
+                  }
+                }
+              }]
+            }
+          },
+          {
+            "title": "Memory utilization (Ops Agent)",
+            "xyChart": {
+              "dataSets": [{
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"agent.googleapis.com/memory/percent_used\" resource.type=\"gce_instance\" metric.labels.state=\"used\"",
+                    "aggregation": {"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_MEAN"}
+                  }
+                }
+              }]
+            }
+          },
+          {
+            "title": "Disk write ops",
+            "xyChart": {
+              "dataSets": [{
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"compute.googleapis.com/instance/disk/write_ops_count\" resource.type=\"gce_instance\"",
+                    "aggregation": {"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_RATE", "crossSeriesReducer": "REDUCE_SUM"}
+                  }
+                }
+              }]
+            }
+          },
+          {
+            "title": "Network egress",
+            "xyChart": {
+              "dataSets": [{
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"compute.googleapis.com/instance/network/sent_bytes_count\" resource.type=\"gce_instance\"",
+                    "aggregation": {"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_RATE", "crossSeriesReducer": "REDUCE_SUM"}
+                  }
+                }
+              }]
+            }
+          }
+        ]
+      }
+    }

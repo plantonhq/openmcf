@@ -1,0 +1,32 @@
+# Minimal GcpMonitoringSlo scenario: a custom service + request-based
+# good/total ratio over a rolling 30 days — the canonical shape, proving
+# the count-gated service creation, the SLI wiring, and both
+# name-derived outputs. Filters are validated syntactically at create
+# (no live metric stream needed). SLOs and services are hard-deleted, so
+# fixed names are safe across runs.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringSlo
+metadata:
+  name: planton-oss-e2e-gcpslo-smoke
+  id: planton-oss-e2e-gcpslo-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmonitoringslo
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  service:
+    customService:
+      displayName: E2E smoke service
+  goal: 0.99
+  rollingPeriodDays: 30
+  sli:
+    requestBasedSli:
+      goodTotalRatio:
+        goodServiceFilter: metric.type="serviceruntime.googleapis.com/api/request_count" metric.labels.response_code_class="2xx"
+        totalServiceFilter: metric.type="serviceruntime.googleapis.com/api/request_count"
+  deletionPolicy: DELETE

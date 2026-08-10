@@ -1,0 +1,78 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# One kind, three resources: the SLO always, plus AT MOST one Monitoring
+# service the module creates when the spec's service arm asks for one
+# (custom_service or basic_service -- count-gated; the service_id arm
+# consumes an existing service and creates nothing).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name (goal, display_name, slo_id,
+# calendar_period, rolling_period_days, and deletion_policy auto-match
+# that way; the three SLI family subtrees resume name-for-name beneath
+# their mappings). Every exclusion carries its reason: omission is a
+# decision, never an accident.
+
+resources:
+  google_monitoring_slo:
+    mappings:
+      - spec: spec.project_id
+        arg: project
+
+      # The service the SLO measures. The direct arm supplies the ID
+      # verbatim; the custom/basic arms feed the same argument through the
+      # service resource the module creates (its service_id output).
+      - spec: spec.service.service_id
+        arg: service
+
+      # user_labels is the freeform metadata map -> the spec's labels (the
+      # catalog-wide labels idiom, merged with platform attribution labels
+      # by the modules).
+      - spec: spec.labels
+        arg: user_labels
+
+      # The spec groups the three SLI families under one sli message (the
+      # API's own oneof shape); matching resumes name-for-name beneath
+      # each family.
+      - spec: spec.sli.basic_sli
+        arg: basic_sli
+      - spec: spec.sli.request_based_sli
+        arg: request_based_sli
+      - spec: spec.sli.windows_based_sli
+        arg: windows_based_sli
+
+  google_monitoring_custom_service:
+    mappings:
+      - spec: spec.service.custom_service.service_id
+        arg: service_id
+      - spec: spec.service.custom_service.display_name
+        arg: display_name
+      # The provider wraps the telemetry association in a block whose only
+      # argument is the resource name; the spec carries it directly.
+      - spec: spec.service.custom_service.telemetry_resource_name
+        arg: telemetry.resource_name
+      - spec: spec.labels
+        arg: user_labels
+      - spec: spec.project_id
+        arg: project
+
+  google_monitoring_service:
+    mappings:
+      - spec: spec.service.basic_service.service_id
+        arg: service_id
+      - spec: spec.service.basic_service.service_type
+        arg: basic_service.service_type
+      - spec: spec.service.basic_service.service_labels
+        arg: basic_service.service_labels
+      - spec: spec.labels
+        arg: user_labels
+      - spec: spec.project_id
+        arg: project
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      monitoring.googleapis.com with fixed arguments (disable_on_destroy
+      false so destroying one SLO never disables monitoring project-wide);
+      not spec surface.

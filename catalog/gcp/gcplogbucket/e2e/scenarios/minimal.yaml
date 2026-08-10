@@ -1,0 +1,29 @@
+# Minimal GcpLogBucket scenario: a project-scope custom bucket with
+# explicit retention and an integer index — the canonical shape, proving
+# the scope-gated create, the explicit-send retention/location posture,
+# and the bucket_name output. The bucket ID carries ${E2E_RUN_ID}: the
+# Logging API holds deleted buckets in a 7-day DELETE_REQUESTED state,
+# so a fixed ID would collide with (or adopt) its own previous run.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLogBucket
+metadata:
+  name: planton-oss-e2e-gcplogbk-smoke
+  id: planton-oss-e2e-gcplogbk-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcplogbucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  bucketId: e2e-logbk-smoke-${E2E_RUN_ID}
+  location: global
+  retentionDays: 45
+  description: E2E smoke bucket — dies with the run.
+  indexConfigs:
+    - fieldPath: jsonPayload.request.status
+      type: INDEX_TYPE_INTEGER
+  deletionPolicy: DELETE

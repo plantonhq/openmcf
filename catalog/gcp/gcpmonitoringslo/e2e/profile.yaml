@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpmonitoringslo
+spec:
+  # Two live scenarios on the custom-service arm: minimal (request-based
+  # good/total ratio, rolling 30d) and calendar-distribution
+  # (distribution cut + calendar MONTH). SLOs are free and create in
+  # seconds; filters are validated syntactically at create, so no live
+  # metric streams are needed. Deploy -> services.serviceLevelObjectives
+  # .get verify -> destroy -> verify gone (the created custom service
+  # destroys with the kind), on both provisioners.
+  # OFFLINE-PROVEN-ONLY arms (recorded): the basic_service (generic
+  # service) arm — GCP validates service_type + labels server-side and
+  # the test tenant carries no auto-detectable workload — and the
+  # windows_based SLI family, which needs live metric streams to
+  # evaluate; both are exercised as offline plan arms with every field
+  # RENDERED. Unblock: a Cloud Run fixture chain for basic_service; a
+  # metric-producing workload for windows arms.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

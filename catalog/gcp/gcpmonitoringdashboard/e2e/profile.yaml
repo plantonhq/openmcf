@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpmonitoringdashboard
+spec:
+  # Two scenarios: minimal (one-chart grid dashboard) and multi-widget
+  # (a mosaic golden-signals page). Dashboards are free, create in
+  # seconds, and hold no data — deploy -> dashboards.get verify ->
+  # destroy -> verify gone, on both provisioners. WATCH: the JSON
+  # normalization echo — the provider diff-suppresses server-added keys;
+  # confirm a second apply after a live create plans clean on BOTH
+  # engines.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

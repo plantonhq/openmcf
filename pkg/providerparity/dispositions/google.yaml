@@ -1583,45 +1583,18 @@ resources:
   - resource: google_license_manager_configuration
     disposition: deferred
     reason: "License Manager is a specialty; deferred pending demand"
-  - resource: google_logging_billing_account_bucket_config
-    disposition: model-planned
-    reason: "planned kind GcpLogBucket (bucket configs across scopes, with log views composed)"
   - resource: google_logging_billing_account_exclusion
     disposition: composed
     reason: "GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink"
-  - resource: google_logging_folder_bucket_config
-    disposition: model-planned
-    reason: "planned kind GcpLogBucket (bucket configs across scopes, with log views composed)"
   - resource: google_logging_folder_exclusion
     disposition: composed
     reason: "GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink"
-  - resource: google_logging_folder_settings
-    disposition: model-planned
-    reason: "composes into the planned GcpLogBucket kind (scope-level logging settings)"
-  - resource: google_logging_linked_dataset
-    disposition: model-planned
-    reason: "composes into the planned GcpLogBucket kind (BigQuery linked datasets)"
   - resource: google_logging_log_scope
     disposition: deferred
     reason: "log scopes are console conveniences, rarely IaC-managed; deferred"
-  - resource: google_logging_log_view
-    disposition: model-planned
-    reason: "planned kind GcpLogBucket (bucket configs across scopes, with log views composed)"
-  - resource: google_logging_metric
-    disposition: model-planned
-    reason: "planned kind GcpLogMetric"
-  - resource: google_logging_organization_bucket_config
-    disposition: model-planned
-    reason: "planned kind GcpLogBucket (bucket configs across scopes, with log views composed)"
   - resource: google_logging_organization_exclusion
     disposition: composed
     reason: "GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink"
-  - resource: google_logging_organization_settings
-    disposition: model-planned
-    reason: "composes into the planned GcpLogBucket kind (scope-level logging settings)"
-  - resource: google_logging_project_bucket_config
-    disposition: model-planned
-    reason: "planned kind GcpLogBucket (bucket configs across scopes, with log views composed)"
   - resource: google_logging_project_exclusion
     disposition: composed
     reason: "GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink"
@@ -1691,12 +1664,6 @@ resources:
   - resource: google_model_armor_template
     disposition: deferred
     reason: "Model Armor prompt-safety templates are new; deferred"
-  - resource: google_monitoring_custom_service
-    disposition: model-planned
-    reason: "planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources)"
-  - resource: google_monitoring_dashboard
-    disposition: model-planned
-    reason: "planned kind GcpMonitoringDashboard"
   - resource: google_monitoring_group
     disposition: deferred
     reason: "monitoring groups are a separate grouping resource with no adopter ask; GcpMonitoringAlertPolicy and GcpMonitoringUptimeCheck reference existing groups by ID -- revisit with a grouping-focused ask"
@@ -1706,12 +1673,6 @@ resources:
   - resource: google_monitoring_monitored_project
     disposition: deferred
     reason: "metrics-scope membership is organization-level observability plumbing with no adopter ask; revisit with a multi-project-monitoring ask"
-  - resource: google_monitoring_service
-    disposition: model-planned
-    reason: "planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources)"
-  - resource: google_monitoring_slo
-    disposition: model-planned
-    reason: "planned kind GcpMonitoringSlo (covers the service, custom-service, and SLO resources)"
   - resource: google_netapp_active_directory
     disposition: deferred
     reason: "NetApp Volumes judged as storage-pool, volume, backup-vault, and backup-policy kinds (companions composed); deferred pending demand"

@@ -1,0 +1,248 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcplogbucket.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpLogBucketSpec defines a Cloud Logging bucket — the container where
+// log entries are STORED: how long they are retained, whether they are
+// indexed for analytics, who can see which slice (log views), and how the
+// data links into BigQuery.
+//
+// One kind covers all four bucket scopes. The `scope` message selects
+// where the bucket lives — a project (the default; an empty scope uses the
+// provider's ambient project), a folder, an organization, or a billing
+// account — and the module creates exactly one of the four provider
+// resources (google_logging_{project|folder|organization|billing_account}
+// _bucket_config).
+//
+// ADOPTION SEMANTICS (provider truth, all scopes): creating a bucket
+// config whose bucket_id matches an EXISTING bucket adopts and patches it
+// rather than failing. That is the only way to manage GCP's built-in
+// `_Default` bucket (every project has one), and the only way at all on
+// folder/organization/billing scopes — the Logging API creates NEW custom
+// buckets only under projects; non-project bucket configs always adopt.
+// The built-in `_Default` and `_Required` buckets are undeletable: a
+// destroy removes them from management and leaves them in GCP.
+message GcpLogBucketSpec {
+  // locked applies only where the provider carries it: the project-scope
+  // resource.
+  option (buf.validate.message).cel = {
+    id: "locked_is_project_scope_only"
+    message: "locked applies only to project-scoped buckets — the folder/organization/billing bucket resources do not carry the argument"
+    expression: "!this.locked || !has(this.scope) || (this.scope.folder_id == '' && this.scope.organization_id == '' && this.scope.billing_account == '')"
+  };
+  // enable_analytics likewise exists only on the project-scope resource.
+  option (buf.validate.message).cel = {
+    id: "analytics_is_project_scope_only"
+    message: "enable_analytics applies only to project-scoped buckets — the folder/organization/billing bucket resources do not carry the argument"
+    expression: "!has(this.enable_analytics) || !has(this.scope) || (this.scope.folder_id == '' && this.scope.organization_id == '' && this.scope.billing_account == '')"
+  };
+  // A linked BigQuery dataset requires Log Analytics on the bucket (the
+  // Logging API's own pairing).
+  option (buf.validate.message).cel = {
+    id: "linked_dataset_requires_analytics"
+    message: "linked_bigquery_dataset requires enable_analytics: true (the Logging API links datasets only to analytics-enabled buckets)"
+    expression: "!has(this.linked_bigquery_dataset) || (has(this.enable_analytics) && this.enable_analytics)"
+  };
+  // The settings resources exist only at folder and organization scope.
+  option (buf.validate.message).cel = {
+    id: "scope_settings_need_folder_or_org_scope"
+    message: "scope_settings applies only to folder or organization scoped buckets (google_logging_{folder|organization}_settings)"
+    expression: "!has(this.scope_settings) || (has(this.scope) && (this.scope.folder_id != '' || this.scope.organization_id != ''))"
+  };
+
+  // Where the bucket lives. Omit entirely for a project bucket in the
+  // provider's default project — the common case. (Folder, organization,
+  // and billing-account scopes take folder_id / organization_id /
+  // billing_account instead.)
+  GcpLogBucketScope scope = 1;
+
+  // The bucket ID (the last segment of the bucket resource name), e.g.
+  // "audit-logs" — or "_Default" to ADOPT the project's built-in default
+  // bucket and manage its retention. Changing it REPLACES the bucket.
+  string bucket_id = 2 [(buf.validate.field).required = true];
+
+  // The bucket location (e.g. "global", "us-central1", "eu"). Immutable —
+  // changing it REPLACES the bucket (and its stored logs). "global" is the
+  // default and the right choice unless data residency demands a region.
+  // Both IaC engines send the value explicitly.
+  string location = 3 [(dev.planton.shared.options.default) = "global"];
+
+  // Why this bucket exists and what lands in it.
+  string description = 4;
+
+  // How many days log entries are kept before automatic deletion. GCP's
+  // default is 30; up to 3650 (10 years). On a LOCKED bucket the retention
+  // period can no longer be changed. Both IaC engines send the value
+  // explicitly so the spec default (30) is what GCP applies rather than a
+  // silently different server-side state.
+  int32 retention_days = 5 [
+    (dev.planton.shared.options.default) = "30",
+    (buf.validate.field).cel = {
+      id: "valid_retention_days"
+      message: "retention_days must be between 1 and 3650"
+      expression: "this == 0 || (this >= 1 && this <= 3650)"
+    }
+  ];
+
+  // Lock the bucket (project scope only). LOCKING IS ONE-WAY: a locked
+  // bucket's retention policy can never be changed or unlocked again, and
+  // the bucket can only be deleted once every entry in it has aged out of
+  // retention. The compliance posture — enable deliberately.
+  bool locked = 6;
+
+  // Enable Log Analytics on the bucket (project scope only): entries
+  // become queryable with SQL from the Log Analytics UI and BigQuery
+  // (via linked_bigquery_dataset). ONE-WAY per the provider: analytics
+  // cannot be disabled once enabled. Left unset, nothing is sent — GCP
+  // keeps its own default (disabled) — because analytics enablement is an
+  // atomic, separate API operation the provider performs only on explicit
+  // configuration.
+  optional bool enable_analytics = 7;
+
+  // Encrypt the bucket with a customer-managed KMS key (CMEK) instead of
+  // Google-managed encryption. The full crypto key resource name
+  // (projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{k}) — a literal
+  // or a reference to a GcpKmsKey resource. ONE-WAY per the provider:
+  // CMEK cannot be disabled once set (rotating to a DIFFERENT key is
+  // allowed). PREREQUISITE: grant the Logging service account
+  // roles/cloudkms.cryptoKeyEncrypterDecrypter on the key first (find the
+  // account with `gcloud logging settings describe`), or bucket creation
+  // fails.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cmek_kms_key = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Indexed LogEntry fields for faster targeted queries — at most 20 (the
+  // provider's own cap).
+  repeated GcpLogBucketIndexConfig index_configs = 9 [(buf.validate.field).repeated.max_items = 20];
+
+  // Log VIEWS on the bucket: named, filtered slices that can be granted
+  // independently (roles/logging.viewAccessor on a view shows a reader
+  // only the entries matching its filter). Each becomes a
+  // google_logging_log_view resource on this bucket.
+  repeated GcpLogBucketLogView log_views = 10;
+
+  // Link a read-only BigQuery dataset to the bucket so its entries are
+  // queryable from BigQuery directly (requires enable_analytics: true).
+  GcpLogBucketLinkedDataset linked_bigquery_dataset = 11;
+
+  // Folder/organization scopes only: the scope's LOGGING SETTINGS —
+  // default-sink disable, default CMEK, and default storage location for
+  // buckets created under the scope. A singleton that always exists in
+  // GCP: creating this surface ADOPTS it, and destroying it is a
+  // state-only no-op (the settings object cannot be deleted).
+  GcpLogBucketScopeSettings scope_settings = 12;
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the bucket (and its stored entries) is deleted; the
+  //                built-in _Default/_Required buckets are undeletable and
+  //                are simply removed from management
+  //   "PREVENT" -- destroy FAILS; protects compliance-mandated log
+  //                storage from accidental teardown
+  //   "ABANDON" -- the bucket is removed from management but keeps
+  //                storing logs in GCP
+  // Also applied to the bucket's log views and linked dataset.
+  string deletion_policy = 13 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+}
+
+// Where the bucket lives. At most one arm; all empty means "project bucket
+// in the provider's default project".
+message GcpLogBucketScope {
+  option (buf.validate.message).cel = {
+    id: "at_most_one_scope"
+    message: "set at most one of project_id, folder_id, organization_id, or billing_account (empty means the provider's default project)"
+    expression: "[has(this.project_id) && (this.project_id.value != '' || has(this.project_id.value_from)), this.folder_id != '', this.organization_id != '', this.billing_account != ''].filter(x, x).size() <= 1"
+  };
+
+  // Project bucket: the owning project — a literal project ID or a
+  // reference to a GcpProject resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Folder bucket: the folder ID (numeric, with or without the "folders/"
+  // prefix). ADOPT-only: the Logging API creates new custom buckets only
+  // under projects.
+  string folder_id = 2;
+
+  // Organization bucket: the numeric organization ID. ADOPT-only.
+  string organization_id = 3;
+
+  // Billing-account bucket: the billing account ID
+  // (e.g. 012345-6789AB-CDEF01). ADOPT-only.
+  string billing_account = 4;
+}
+
+// One indexed LogEntry field.
+message GcpLogBucketIndexConfig {
+  // The LogEntry field path to index, e.g. "jsonPayload.request.status".
+  string field_path = 1 [(buf.validate.field).required = true];
+
+  // The indexed data type: INDEX_TYPE_STRING or INDEX_TYPE_INTEGER (the
+  // Logging API's documented values — server-validated).
+  string type = 2 [(buf.validate.field).required = true];
+}
+
+// One log view on the bucket.
+message GcpLogBucketLogView {
+  // The view ID (the last segment of the view resource name). Changing it
+  // REPLACES the view (views are immutable in name and home; only filter
+  // and description update in place).
+  string view_id = 1 [(buf.validate.field).required = true];
+
+  // The filter selecting which of the bucket's entries this view exposes
+  // (https://cloud.google.com/logging/docs/view/logging-query-language).
+  // Empty exposes every entry in the bucket.
+  string filter = 2;
+
+  // What this view is for and who should be granted it.
+  string description = 3;
+}
+
+// A read-only BigQuery dataset linked to the bucket.
+message GcpLogBucketLinkedDataset {
+  // The link ID — becomes the BigQuery DATASET ID, so it must be a valid
+  // dataset name (letters, numbers, underscores). IMMUTABLE: every field
+  // of a linked dataset (including the description) is create-time-only;
+  // any change REPLACES the link.
+  string link_id = 1 [(buf.validate.field).required = true];
+
+  // What the linked dataset is for. Immutable like the rest of the link.
+  string description = 2;
+}
+
+// Folder/organization logging settings — the scope-level defaults that
+// govern buckets created under the scope. A GCP singleton: adopted on
+// create, patched in place, and left standing on destroy (the API has no
+// delete).
+message GcpLogBucketScopeSettings {
+  // Disable the scope's automatic _Default sink so logs of NEW child
+  // projects are not copied into their _Default buckets — the
+  // centralized-logging posture (pair it with an aggregating
+  // GcpLoggingSink at the same scope).
+  bool disable_default_sink = 1;
+
+  // The default CMEK key applied to buckets created under the scope. The
+  // full crypto key resource name — a literal or a reference to a
+  // GcpKmsKey resource. The same one-way and grant-first caveats as the
+  // bucket-level cmek_kms_key apply.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // The default storage location for buckets created under the scope
+  // (e.g. "us-central1", "eu").
+  string storage_location = 3;
+}

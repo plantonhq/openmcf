@@ -35,6 +35,7 @@ import (
 	iamv2 "google.golang.org/api/iam/v2"
 	identitytoolkit "google.golang.org/api/identitytoolkit/v2"
 	logging "google.golang.org/api/logging/v2"
+	monitoringv1 "google.golang.org/api/monitoring/v1"
 	monitoring "google.golang.org/api/monitoring/v3"
 	"google.golang.org/api/networkconnectivity/v1"
 	pubsub "google.golang.org/api/pubsub/v1"
@@ -79,10 +80,14 @@ type Services struct {
 	ArtifactRegistry    *artifactregistry.Service
 	CertificateManager  *certificatemanager.Service
 	Monitoring          *monitoring.Service
-	SecretManager       *secretmanager.Service
-	Logging             *logging.Service
-	IdentityToolkit     *identitytoolkit.Service
-	IamV2               *iamv2.Service
+	// MonitoringDashboards is the Monitoring API's v1 surface — a
+	// DIFFERENT API version from the v3 client above; dashboards are only
+	// served there.
+	MonitoringDashboards *monitoringv1.Service
+	SecretManager        *secretmanager.Service
+	Logging              *logging.Service
+	IdentityToolkit      *identitytoolkit.Service
+	IamV2                *iamv2.Service
 
 	// RestClient is an ADC-authenticated HTTP client for GCP services whose
 	// typed Go client is not yet in the pinned google.golang.org/api line
@@ -188,7 +193,11 @@ var verifiers = map[string]Verifier{
 	"gcpmonitoringnotificationchannel":       &monitoringNotificationChannelVerifier{},
 	"gcpmonitoringalertpolicy":               &monitoringAlertPolicyVerifier{},
 	"gcpmonitoringuptimecheck":               &monitoringUptimeCheckVerifier{},
+	"gcpmonitoringdashboard":                 &monitoringDashboardVerifier{},
+	"gcpmonitoringslo":                       &monitoringSloVerifier{},
 	"gcploggingsink":                         &loggingSinkVerifier{},
+	"gcplogbucket":                           &logBucketVerifier{},
+	"gcplogmetric":                           &logMetricVerifier{},
 	"gcpsecretmanagersecret":                 &secretManagerSecretVerifier{},
 	"gcpidentityplatformconfig":              &identityPlatformConfigVerifier{},
 	"gcpidentityplatformtenant":              &identityPlatformTenantVerifier{},

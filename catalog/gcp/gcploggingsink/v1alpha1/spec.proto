@@ -179,9 +179,12 @@ message GcpLoggingSinkDestination {
   // {p}/datasets/{d} — the GcpBigQueryDataset self_link output) or a bare
   // projects/{p}/datasets/{d} path; the module normalizes either into the
   // bigquery.googleapis.com/... destination URI. Grant the writer_identity
-  // roles/bigquery.dataEditor on the dataset.
+  // roles/bigquery.dataEditor on the dataset. The reference is
+  // containment-exempt: the sink EXPORTS INTO the dataset, it does not live
+  // inside it (the sink's home is its scope).
   dev.planton.shared.foreignkey.v1.StringValueOrRef bigquery_dataset = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpBigQueryDataset,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
   ];
 

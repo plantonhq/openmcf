@@ -313,7 +313,9 @@ type GcpLoggingSinkDestination struct {
 	// {p}/datasets/{d} — the GcpBigQueryDataset self_link output) or a bare
 	// projects/{p}/datasets/{d} path; the module normalizes either into the
 	// bigquery.googleapis.com/... destination URI. Grant the writer_identity
-	// roles/bigquery.dataEditor on the dataset.
+	// roles/bigquery.dataEditor on the dataset. The reference is
+	// containment-exempt: the sink EXPORTS INTO the dataset, it does not live
+	// inside it (the sink's home is its scope).
 	BigqueryDataset *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=bigquery_dataset,json=bigqueryDataset,proto3" json:"bigquery_dataset,omitempty"`
 	// BigQuery destinations only: write into date-partitioned tables
 	// (recommended — enables partition pruning and expiration) instead of
@@ -511,11 +513,11 @@ const file_catalog_gcp_gcploggingsink_v1alpha1_spec_proto_rawDesc = "" +
 	"\tfolder_id\x18\x02 \x01(\tR\bfolderId\x12'\n" +
 	"\x0forganization_id\x18\x03 \x01(\tR\x0eorganizationId\x12'\n" +
 	"\x0fbilling_account\x18\x04 \x01(\tR\x0ebillingAccount:\xda\x02\xbaH\xd6\x02\x1a\xd3\x02\n" +
-	"\x11at_most_one_scope\x12zset at most one of project_id, folder_id, organization_id, or billing_account (empty means the provider's default project)\x1a\xc1\x01[has(this.project_id) && (this.project_id.value != '' || has(this.project_id.value_from)), this.folder_id != '', this.organization_id != '', this.billing_account != ''].filter(x, x).size() <= 1\"\xf5\x06\n" +
+	"\x11at_most_one_scope\x12zset at most one of project_id, folder_id, organization_id, or billing_account (empty means the provider's default project)\x1a\xc1\x01[has(this.project_id) && (this.project_id.value != '' || has(this.project_id.value_from)), this.folder_id != '', this.organization_id != '', this.billing_account != ''].filter(x, x).size() <= 1\"\xf9\x06\n" +
 	"\x19GcpLoggingSinkDestination\x12t\n" +
 	"\n" +
-	"gcs_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\tgcsBucket\x12\x80\x01\n" +
-	"\x10bigquery_dataset\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xea\x17\x92\xd4a\x18status.outputs.self_linkR\x0fbigqueryDataset\x124\n" +
+	"gcs_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\tgcsBucket\x12\x84\x01\n" +
+	"\x10bigquery_dataset\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xea\x17\x92\xd4a\x18status.outputs.self_link\x98\xd4a\x01R\x0fbigqueryDataset\x124\n" +
 	"\x16use_partitioned_tables\x18\x03 \x01(\bR\x14usePartitionedTables\x12w\n" +
 	"\fpubsub_topic\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf4\x17\x92\xd4a\x17status.outputs.topic_idR\vpubsubTopic\x12\x17\n" +
 	"\araw_uri\x18\x05 \x01(\tR\x06rawUri:\x96\x03\xbaH\x92\x03\x1a\xe7\x01\n" +

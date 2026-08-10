@@ -382,11 +382,15 @@ import (
 	gcpkmskeyv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpkmskey/v1alpha1"
 	gcpkmskeyiammemberv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpkmskeyiammember/v1alpha1"
 	gcpkmskeyringv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpkmskeyring/v1alpha1"
+	gcplogbucketv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcplogbucket/v1alpha1"
 	gcploggingsinkv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcploggingsink/v1alpha1"
+	gcplogmetricv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcplogmetric/v1alpha1"
 	gcpmanagedsslcertificatev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmanagedsslcertificate/v1alpha1"
 	gcpmemorystoreinstancev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmemorystoreinstance/v1alpha1"
 	gcpmonitoringalertpolicyv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmonitoringalertpolicy/v1alpha1"
+	gcpmonitoringdashboardv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmonitoringdashboard/v1alpha1"
 	gcpmonitoringnotificationchannelv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmonitoringnotificationchannel/v1alpha1"
+	gcpmonitoringslov1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmonitoringslo/v1alpha1"
 	gcpmonitoringuptimecheckv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmonitoringuptimecheck/v1alpha1"
 	gcpprojectv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpproject/v1alpha1"
 	gcpprojectiammemberv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpprojectiammember/v1alpha1"
@@ -1053,11 +1057,15 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpKmsKey:                              &gcpkmskeyv1alpha1.GcpKmsKey{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKeyIamMember:                     &gcpkmskeyiammemberv1alpha1.GcpKmsKeyIamMember{},
 	cloudresourcekind.CloudResourceKind_GcpKmsKeyRing:                          &gcpkmskeyringv1alpha1.GcpKmsKeyRing{},
+	cloudresourcekind.CloudResourceKind_GcpLogBucket:                           &gcplogbucketv1alpha1.GcpLogBucket{},
+	cloudresourcekind.CloudResourceKind_GcpLogMetric:                           &gcplogmetricv1alpha1.GcpLogMetric{},
 	cloudresourcekind.CloudResourceKind_GcpLoggingSink:                         &gcploggingsinkv1alpha1.GcpLoggingSink{},
 	cloudresourcekind.CloudResourceKind_GcpManagedSslCertificate:               &gcpmanagedsslcertificatev1alpha1.GcpManagedSslCertificate{},
 	cloudresourcekind.CloudResourceKind_GcpMemorystoreInstance:                 &gcpmemorystoreinstancev1alpha1.GcpMemorystoreInstance{},
 	cloudresourcekind.CloudResourceKind_GcpMonitoringAlertPolicy:               &gcpmonitoringalertpolicyv1alpha1.GcpMonitoringAlertPolicy{},
+	cloudresourcekind.CloudResourceKind_GcpMonitoringDashboard:                 &gcpmonitoringdashboardv1alpha1.GcpMonitoringDashboard{},
 	cloudresourcekind.CloudResourceKind_GcpMonitoringNotificationChannel:       &gcpmonitoringnotificationchannelv1alpha1.GcpMonitoringNotificationChannel{},
+	cloudresourcekind.CloudResourceKind_GcpMonitoringSlo:                       &gcpmonitoringslov1alpha1.GcpMonitoringSlo{},
 	cloudresourcekind.CloudResourceKind_GcpMonitoringUptimeCheck:               &gcpmonitoringuptimecheckv1alpha1.GcpMonitoringUptimeCheck{},
 	cloudresourcekind.CloudResourceKind_GcpProject:                             &gcpprojectv1alpha1.GcpProject{},
 	cloudresourcekind.CloudResourceKind_GcpProjectIamMember:                    &gcpprojectiammemberv1alpha1.GcpProjectIamMember{},

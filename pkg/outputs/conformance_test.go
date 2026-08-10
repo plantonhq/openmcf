@@ -2268,6 +2268,60 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpMonitoringDashboard: the server-assigned dashboard resource
+			// name both engines emit must land on StackOutputs.
+			name: "GcpMonitoringDashboard",
+			kind: cloudresourcekind.CloudResourceKind_GcpMonitoringDashboard,
+			rawOutputs: map[string]interface{}{
+				"dashboard_name": "projects/my-project/dashboards/12345678-abcd-4321-9876-fedcba098765",
+			},
+			mustPopulate: []string{
+				"dashboard_name",
+			},
+		},
+		{
+			// GcpMonitoringSlo: the SLO's resource name (the burn-rate alert
+			// handle) plus the measured service's name — both derived from
+			// the SLO's server-assigned name in both engines — must land on
+			// StackOutputs.
+			name: "GcpMonitoringSlo",
+			kind: cloudresourcekind.CloudResourceKind_GcpMonitoringSlo,
+			rawOutputs: map[string]interface{}{
+				"slo_name":     "projects/my-project/services/checkout/serviceLevelObjectives/availability-slo",
+				"service_name": "projects/my-project/services/checkout",
+			},
+			mustPopulate: []string{
+				"slo_name", "service_name",
+			},
+		},
+		{
+			// GcpLogBucket: the bucket's full resource name (the sink/metric
+			// composition handle) plus the linked BigQuery dataset id (empty
+			// when the link is not armed — both engines emit the empty
+			// string then).
+			name: "GcpLogBucket",
+			kind: cloudresourcekind.CloudResourceKind_GcpLogBucket,
+			rawOutputs: map[string]interface{}{
+				"bucket_name":       "projects/my-project/locations/global/buckets/audit-logs",
+				"linked_dataset_id": "audit_logs",
+			},
+			mustPopulate: []string{
+				"bucket_name", "linked_dataset_id",
+			},
+		},
+		{
+			// GcpLogMetric: the metric name (addressed from Monitoring as
+			// logging.googleapis.com/user/{name}) must land on StackOutputs.
+			name: "GcpLogMetric",
+			kind: cloudresourcekind.CloudResourceKind_GcpLogMetric,
+			rawOutputs: map[string]interface{}{
+				"metric_name": "checkout/error-count",
+			},
+			mustPopulate: []string{
+				"metric_name",
+			},
+		},
+		{
 			// GcpSslCertificate: flat scalar outputs from both engines
 			// (self-link, name, id, expiry, scope region) must land on
 			// StackOutputs. The private key is write-only and never an output.

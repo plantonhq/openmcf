@@ -47,6 +47,7 @@ import (
 	iamv2 "google.golang.org/api/iam/v2"
 	identitytoolkit "google.golang.org/api/identitytoolkit/v2"
 	logging "google.golang.org/api/logging/v2"
+	monitoringv1 "google.golang.org/api/monitoring/v1"
 	monitoring "google.golang.org/api/monitoring/v3"
 	"google.golang.org/api/networkconnectivity/v1"
 	pubsub "google.golang.org/api/pubsub/v1"
@@ -202,6 +203,13 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create monitoring client")
 	}
+	// Dashboards are served by the Monitoring API's v1 surface — a
+	// DIFFERENT API version from the v3 client above, with its own typed
+	// client on the same pinned google.golang.org/api line.
+	monitoringDashboardsService, err := monitoringv1.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create monitoring dashboards (v1) client")
+	}
 	secretManagerService, err := secretmanager.NewService(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to create secretmanager client")
@@ -235,38 +243,39 @@ func (h *Harness) Setup(ctx context.Context) error {
 	fmt.Printf("  [gcp] authenticated against project %s (%s)\n", gotProject.ProjectId, gotProject.LifecycleState)
 
 	h.services = &verify.Services{
-		Project:             project,
-		Crm:                 crmService,
-		Iam:                 iamService,
-		Compute:             computeService,
-		Storage:             storageService,
-		SqlAdmin:            sqlAdminService,
-		Redis:               redisService,
-		Container:           containerService,
-		Run:                 runService,
-		AlloyDB:             alloyDBService,
-		DNS:                 dnsService,
-		Spanner:             spannerService,
-		BigQuery:            bigQueryService,
-		VpcAccess:           vpcAccessService,
-		Functions:           cloudFunctionsService,
-		NetworkConnectivity: networkConnectivityService,
-		BigtableAdmin:       bigtableAdminService,
-		Firestore:           firestoreService,
-		Dataproc:            dataprocService,
-		Composer:            composerService,
-		PubSub:              pubsubService,
-		CloudKms:            cloudKmsService,
-		CloudTasks:          cloudTasksService,
-		CloudScheduler:      cloudSchedulerService,
-		ArtifactRegistry:    artifactRegistryService,
-		CertificateManager:  certificateManagerService,
-		Monitoring:          monitoringService,
-		SecretManager:       secretManagerService,
-		Logging:             loggingService,
-		IdentityToolkit:     identityToolkitService,
-		IamV2:               iamV2Service,
-		RestClient:          restClient,
+		Project:              project,
+		Crm:                  crmService,
+		Iam:                  iamService,
+		Compute:              computeService,
+		Storage:              storageService,
+		SqlAdmin:             sqlAdminService,
+		Redis:                redisService,
+		Container:            containerService,
+		Run:                  runService,
+		AlloyDB:              alloyDBService,
+		DNS:                  dnsService,
+		Spanner:              spannerService,
+		BigQuery:             bigQueryService,
+		VpcAccess:            vpcAccessService,
+		Functions:            cloudFunctionsService,
+		NetworkConnectivity:  networkConnectivityService,
+		BigtableAdmin:        bigtableAdminService,
+		Firestore:            firestoreService,
+		Dataproc:             dataprocService,
+		Composer:             composerService,
+		PubSub:               pubsubService,
+		CloudKms:             cloudKmsService,
+		CloudTasks:           cloudTasksService,
+		CloudScheduler:       cloudSchedulerService,
+		ArtifactRegistry:     artifactRegistryService,
+		CertificateManager:   certificateManagerService,
+		Monitoring:           monitoringService,
+		MonitoringDashboards: monitoringDashboardsService,
+		SecretManager:        secretManagerService,
+		Logging:              loggingService,
+		IdentityToolkit:      identityToolkitService,
+		IamV2:                iamV2Service,
+		RestClient:           restClient,
 	}
 	return nil
 }

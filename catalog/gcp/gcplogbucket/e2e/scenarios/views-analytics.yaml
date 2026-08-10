@@ -1,0 +1,33 @@
+# Views + analytics GcpLogBucket scenario: Log Analytics armed at
+# create, a log view, and a linked BigQuery dataset — proves the
+# analytics send-only-when-set posture, the view fan-out, the
+# analytics-gated linked dataset, and the linked_dataset_id output. The
+# one-way analytics door is armed on a run-scoped bucket that dies with
+# the run, so nothing permanent is committed.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLogBucket
+metadata:
+  name: planton-oss-e2e-gcplogbk-analytics
+  id: planton-oss-e2e-gcplogbk-analytics
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcplogbucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  bucketId: e2e-logbk-an-${E2E_RUN_ID}
+  retentionDays: 30
+  description: E2E analytics bucket — views + linked dataset; dies with the run.
+  enableAnalytics: true
+  logViews:
+    - viewId: errors-only
+      filter: severity>=ERROR
+      description: E2E view — the errors slice
+  linkedBigqueryDataset:
+    linkId: e2e_logbk_link
+    description: E2E linked dataset
+  deletionPolicy: DELETE

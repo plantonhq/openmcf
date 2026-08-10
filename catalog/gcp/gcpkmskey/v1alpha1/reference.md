@@ -328,6 +328,8 @@ Fields on other kinds that can point at this resource:
 | GcpGkeCluster | `spec.userManagedKeys.gkeopsEtcdBackupEncryptionKey` | `status.outputs.key_id` |
 | GcpGkeNodePool | `spec.nodeConfig.bootDiskKmsKey` | `status.outputs.key_id` |
 | GcpKmsKeyIamMember | `spec.cryptoKeyId` | `status.outputs.key_id` |
+| GcpLogBucket | `spec.cmekKmsKey` | `status.outputs.key_id` |
+| GcpLogBucket | `spec.scopeSettings.kmsKey` | `status.outputs.key_id` |
 | GcpMemorystoreInstance | `spec.kmsKey` | `status.outputs.key_id` |
 | GcpPubSubTopic | `spec.kmsKeyName` | `status.outputs.key_id` |
 | GcpRedisInstance | `spec.customerManagedKey` | `status.outputs.key_id` |

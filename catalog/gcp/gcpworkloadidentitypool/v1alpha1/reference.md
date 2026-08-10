@@ -54,6 +54,11 @@ spec:
 
   # Operating mode (default FEDERATION_ONLY; immutable)
   mode: FEDERATION_ONLY
+
+  # Soft-delete the pool on destroy (GCP's default, made explicit): token
+  # exchanges stop immediately, the pool is restorable for ~30 days, and its
+  # ID stays reserved until permanent deletion.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields

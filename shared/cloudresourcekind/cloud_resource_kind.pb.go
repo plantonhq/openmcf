@@ -832,7 +832,11 @@ const (
 	// GcpGcsBucket is a prerequisite because the canonical sink exports to a
 	// Cloud Storage bucket — the cheapest destination that proves the whole
 	// writer-identity grant flow.
-	CloudResourceKind_GcpLoggingSink CloudResourceKind = 3143
+	CloudResourceKind_GcpLoggingSink         CloudResourceKind = 3143
+	CloudResourceKind_GcpMonitoringDashboard CloudResourceKind = 3144
+	CloudResourceKind_GcpMonitoringSlo       CloudResourceKind = 3145
+	CloudResourceKind_GcpLogBucket           CloudResourceKind = 3146
+	CloudResourceKind_GcpLogMetric           CloudResourceKind = 3147
 	// 3150–3159: GCP security & identity
 	// GcpServiceAccount is a prerequisite because the canonical secret grants
 	// secretAccessor to a workload service account — the access story the
@@ -1582,6 +1586,10 @@ var (
 		3141:  "GcpMonitoringAlertPolicy",
 		3142:  "GcpMonitoringUptimeCheck",
 		3143:  "GcpLoggingSink",
+		3144:  "GcpMonitoringDashboard",
+		3145:  "GcpMonitoringSlo",
+		3146:  "GcpLogBucket",
+		3147:  "GcpLogMetric",
 		3150:  "GcpSecretManagerSecret",
 		3151:  "GcpIdentityPlatformConfig",
 		3152:  "GcpIdentityPlatformTenant",
@@ -2211,6 +2219,10 @@ var (
 		"GcpMonitoringAlertPolicy":                       3141,
 		"GcpMonitoringUptimeCheck":                       3142,
 		"GcpLoggingSink":                                 3143,
+		"GcpMonitoringDashboard":                         3144,
+		"GcpMonitoringSlo":                               3145,
+		"GcpLogBucket":                                   3146,
+		"GcpLogMetric":                                   3147,
 		"GcpSecretManagerSecret":                         3150,
 		"GcpIdentityPlatformConfig":                      3151,
 		"GcpIdentityPlatformTenant":                      3152,
@@ -2817,7 +2829,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xb3\x96\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xfa\x97\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3147,7 +3159,11 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	" GcpMonitoringNotificationChannel\x10\xc4\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpntfch\x12<\n" +
 	"\x18GcpMonitoringAlertPolicy\x10\xc5\x18\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpalrt:\x02\xc4\x18\x127\n" +
 	"\x18GcpMonitoringUptimeCheck\x10\xc6\x18\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\bv1alpha1\"\x06gcpupt\x122\n" +
-	"\x0eGcpLoggingSink\x10\xc7\x18\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpsink:\x02\xbe\x17\x129\n" +
+	"\x0eGcpLoggingSink\x10\xc7\x18\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpsink:\x02\xbe\x17\x126\n" +
+	"\x16GcpMonitoringDashboard\x10\xc8\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpdash\x12/\n" +
+	"\x10GcpMonitoringSlo\x10\xc9\x18\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\bv1alpha1\"\x06gcpslo\x12-\n" +
+	"\fGcpLogBucket\x10\xca\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcplogbk\x12-\n" +
+	"\fGcpLogMetric\x10\xcb\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcplogmt\x129\n" +
 	"\x16GcpSecretManagerSecret\x10\xce\x18\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpsec:\x02\xc6\x17\x12:\n" +
 	"\x19GcpIdentityPlatformConfig\x10\xcf\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpidcfg\x12>\n" +
 	"\x19GcpIdentityPlatformTenant\x10\xd0\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpidten:\x02\xcf\x18\x122\n" +

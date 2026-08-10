@@ -60,6 +60,11 @@ spec:
   http:
     portSpecification: USE_SERVING_PORT
     requestPath: /healthz
+
+  # Delete the check on destroy (GCP's default, made explicit; applies to
+  # whichever scope — global or regional — the check was created in). The
+  # API rejects the delete while a backend service still references it.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields

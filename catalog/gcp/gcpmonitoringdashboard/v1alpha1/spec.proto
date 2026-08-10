@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpmonitoringdashboard.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// GcpMonitoringDashboardSpec defines a Cloud Monitoring dashboard — the
+// console page of charts, scorecards, tables, and text widgets a team
+// watches to understand a service's health at a glance.
+//
+// The dashboard body is ONE JSON document (`dashboard_json`) in the
+// Monitoring API's Dashboard format. That is a deliberate design mirroring
+// the GCP Terraform provider's own judgment: the Dashboard object is an
+// enormous, fast-moving schema (dozens of widget types, each with its own
+// options), and the provider models it as a single JSON-string argument
+// rather than inventing a structure that would forever lag the API. This
+// kind does the same — presets carry complete, working dashboards to start
+// from, and any dashboard built in the GCP console can be exported as JSON
+// and pasted here verbatim.
+message GcpMonitoringDashboardSpec {
+  // The GCP project that owns the dashboard. Can be a literal project ID or
+  // a reference to a GcpProject resource. If omitted, the provider's
+  // default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The dashboard as one JSON document, following the Monitoring API's
+  // Dashboard format:
+  // https://cloud.google.com/monitoring/api/ref_v3/rest/v1/projects.dashboards
+  //
+  // The top-level keys are `displayName` plus exactly one layout —
+  // `gridLayout`, `mosaicLayout`, `rowLayout`, or `columnLayout` — whose
+  // widgets carry the charts. A minimal one-chart dashboard:
+  //
+  //   {
+  //     "displayName": "API health",
+  //     "gridLayout": {
+  //       "columns": "2",
+  //       "widgets": [{
+  //         "title": "CPU utilization",
+  //         "xyChart": {
+  //           "dataSets": [{
+  //             "timeSeriesQuery": {
+  //               "timeSeriesFilter": {
+  //                 "filter": "metric.type=\"compute.googleapis.com/instance/cpu/utilization\" resource.type=\"gce_instance\"",
+  //                 "aggregation": {"perSeriesAligner": "ALIGN_MEAN"}
+  //               }
+  //             }
+  //           }]
+  //         }
+  //       }]
+  //     }
+  //   }
+  //
+  // The document must be valid JSON (checked at plan time). Server-assigned
+  // keys (etag, name) are ignored on the way back in, so a dashboard
+  // exported from the console round-trips cleanly. To build visually: edit
+  // the dashboard in the GCP console, then JSON-export it (dashboard
+  // settings -> "JSON editor") and paste the document here.
+  string dashboard_json = 2 [(buf.validate.field).required = true];
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the dashboard is deleted from the project
+  //   "PREVENT" -- destroy FAILS; protects a team's primary operational
+  //                view from accidental teardown
+  //   "ABANDON" -- the dashboard is removed from management but stays
+  //                visible in the GCP console
+  string deletion_policy = 3 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+}

@@ -852,6 +852,42 @@ func TestGcpCloudRunDomainMapping_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpcloudrundomainmapping", "terraform")
 }
 
+func TestGcpMonitoringDashboard_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringdashboard", "pulumi")
+}
+
+func TestGcpMonitoringDashboard_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringdashboard", "terraform")
+}
+
+func TestGcpMonitoringSlo_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringslo", "pulumi")
+}
+
+func TestGcpMonitoringSlo_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringslo", "terraform")
+}
+
+// --- GCP Log Bucket (the views-analytics arm links a BigQuery dataset) ---
+
+func TestGcpLogBucket_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcplogbucket", "pulumi")
+}
+
+func TestGcpLogBucket_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcplogbucket", "terraform")
+}
+
+// --- GCP Log Metric (the bucket-scoped arm composes the log-bucket prerequisite) ---
+
+func TestGcpLogMetric_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcplogmetric", "pulumi")
+}
+
+func TestGcpLogMetric_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcplogmetric", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

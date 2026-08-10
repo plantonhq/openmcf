@@ -2707,6 +2707,26 @@ enum CloudResourceKind {
     id_prefix: "gcpsink"
     prerequisites: [GcpGcsBucket]
   }];
+  GcpMonitoringDashboard = 3144 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpdash"
+  }];
+  GcpMonitoringSlo = 3145 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpslo"
+  }];
+  GcpLogBucket = 3146 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcplogbk"
+  }];
+  GcpLogMetric = 3147 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcplogmt"
+  }];
 
   // 3150–3159: GCP security & identity
   // GcpServiceAccount is a prerequisite because the canonical secret grants

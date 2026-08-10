@@ -191,7 +191,9 @@ dataset SELF LINK (https://bigquery.googleapis.com/bigquery/v2/projects/
 {p}/datasets/{d} — the GcpBigQueryDataset self_link output) or a bare
 projects/{p}/datasets/{d} path; the module normalizes either into the
 bigquery.googleapis.com/... destination URI. Grant the writer_identity
-roles/bigquery.dataEditor on the dataset.
+roles/bigquery.dataEditor on the dataset. The reference is
+containment-exempt: the sink EXPORTS INTO the dataset, it does not live
+inside it (the sink's home is its scope).
 
 - references: GcpBigQueryDataset (`status.outputs.self_link`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpBigQueryDataset, name: <that resource's name>, fieldPath: status.outputs.self_link}} -- a bare string does not parse

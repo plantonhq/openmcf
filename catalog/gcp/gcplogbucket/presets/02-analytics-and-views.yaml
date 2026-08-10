@@ -1,0 +1,16 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLogBucket
+metadata:
+  name: analytics-and-views
+spec:
+  bucketId: app-logs
+  retentionDays: 90
+  description: Application logs — SQL analytics on, errors view granted to on-call
+  enableAnalytics: true
+  logViews:
+    - viewId: errors-only
+      filter: severity>=ERROR
+      description: The on-call slice — errors without the noise
+  linkedBigqueryDataset:
+    linkId: app_logs
+    description: Read-only BigQuery access to the app-logs bucket

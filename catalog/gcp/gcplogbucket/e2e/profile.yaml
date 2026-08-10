@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcplogbucket
+spec:
+  # Two live scenarios on the project scope: minimal (custom bucket,
+  # retention 45, integer index) and views-analytics (enable_analytics +
+  # a log view + a linked BigQuery dataset — the one-way analytics door
+  # is armed on a run-scoped bucket that dies with the run). Bucket IDs
+  # carry ${E2E_RUN_ID}: the Logging API holds deleted buckets in a
+  # 7-day DELETE_REQUESTED state (lifecycle_state), so a fixed name
+  # would collide with its own previous run — WATCH: confirm the
+  # pending-deletion behavior live and land the lesson here.
+  # Deploy -> buckets.get verify -> destroy -> verify gone (pending
+  # deletion counts as gone for management), on both provisioners.
+  # OFFLINE-PROVEN-ONLY arms (recorded): folder/organization/billing
+  # scopes and scope_settings (org credentials — the GcpProject-grain
+  # deferral), cmek (requires the one-time Logging-service-account KMS
+  # grant), locked (one-way; a locked bucket blocks deletion until every
+  # entry ages out), and the _Default adoption arm (adopt-only truths).
+  # Unblock: org-credentialed lane for the scopes; the KMS grant
+  # preflight for cmek.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

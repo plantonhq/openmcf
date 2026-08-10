@@ -66,6 +66,14 @@ spec:
     enabled: true
     samplingRate: 0.25
     bigqueryDestinationUri: bq://my-gcp-project.ml_logging.endpoint_requests
+  # Traffic routing across deployed models (IDs are assigned at model
+  # deployment, an operational step outside this resource); values must sum
+  # to exactly 100. Leave empty on an endpoint with no deployed models.
+  trafficSplit:
+    "1234567890": 100
+  # Delete the endpoint on destroy (GCP's default, made explicit). GCP
+  # rejects the delete while models are still deployed — undeploy first.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields

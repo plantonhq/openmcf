@@ -31,6 +31,9 @@ spec:
   userType: ALLOYDB_BUILT_IN
   databaseRoles:
     - alloydbiamuser
+  # Drop the user on destroy (GCP's default, made explicit). PREVENT guards
+  # a credential apps still use; ABANDON leaves the user on the cluster.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields

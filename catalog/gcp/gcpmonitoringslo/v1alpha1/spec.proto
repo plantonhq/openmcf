@@ -1,0 +1,385 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpmonitoringslo.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpMonitoringSloSpec defines a Cloud Monitoring service-level objective
+// (SLO) — the formal reliability target ("99.9% of requests succeed,
+// measured over a rolling 30 days") that error budgets, burn-rate alerts,
+// and SRE dashboards are built on.
+//
+// An SLO is built from three parts:
+//   1. service -- WHAT is being measured. SLOs always live under a
+//      Monitoring "service": an existing one (GCP auto-detects services for
+//      App Engine, Istio, and friends), a custom service this kind creates,
+//      or a basic service this kind creates from a type + labels.
+//   2. sli     -- HOW good events are counted (the service-level
+//      indicator): a request success ratio, a latency distribution cut, or
+//      windowed criteria.
+//   3. goal + period -- the TARGET: the fraction of good events required,
+//      over a calendar period or a rolling window.
+message GcpMonitoringSloSpec {
+  // The spec models the provider's own requirement: an SLO measures over
+  // exactly one period form.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_period"
+    message: "set exactly one of calendar_period or rolling_period_days"
+    expression: "[this.calendar_period != '', this.rolling_period_days != 0].filter(x, x).size() == 1"
+  };
+
+  // The GCP project that owns the SLO (and any service this kind creates).
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The Monitoring service this SLO measures — exactly one arm. Changing
+  // the resolved service REPLACES the SLO (the GCP API binds an SLO to its
+  // service for life).
+  GcpMonitoringSloService service = 2 [(buf.validate.field).required = true];
+
+  // The SLO identifier within the service (the last path segment of the
+  // SLO resource name). Omit to let GCP assign one. Changing it REPLACES
+  // the SLO.
+  string slo_id = 3 [(buf.validate.field).cel = {
+    id: "valid_slo_id"
+    message: "slo_id may contain only letters, numerals, and the characters - _ : ."
+    expression: "this == '' || this.matches('^[a-zA-Z0-9\\\\-_:.]+$')"
+  }];
+
+  // Human-friendly name shown in the SLO list and on dashboards. Defaults
+  // to metadata.name when left empty.
+  string display_name = 4;
+
+  // The target fraction of good service the SLO demands, e.g. 0.999 for
+  // "three nines". Must be greater than 0 and at most 0.9999 (the GCP
+  // API's own bound — five nines and beyond are not accepted).
+  double goal = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_goal"
+      message: "goal must be greater than 0 and at most 0.9999"
+      expression: "this > 0.0 && this <= 0.9999"
+    }
+  ];
+
+  // Measure over a calendar period: DAY, WEEK, FORTNIGHT, or MONTH. The
+  // error budget resets at each period boundary. Set exactly one of this
+  // and rolling_period_days.
+  string calendar_period = 6 [(buf.validate.field).cel = {
+    id: "valid_calendar_period"
+    message: "calendar_period must be one of: DAY, WEEK, FORTNIGHT, MONTH"
+    expression: "this == '' || this in ['DAY', 'WEEK', 'FORTNIGHT', 'MONTH']"
+  }];
+
+  // Measure over a rolling window of this many days (1 to 30 — the GCP
+  // API's bounds). The classic SRE form is 28 or 30. Set exactly one of
+  // this and calendar_period.
+  int32 rolling_period_days = 7 [(buf.validate.field).cel = {
+    id: "valid_rolling_period_days"
+    message: "rolling_period_days must be between 1 and 30"
+    expression: "this == 0 || (this >= 1 && this <= 30)"
+  }];
+
+  // The service-level indicator — how good service is counted. Exactly one
+  // SLI family.
+  GcpMonitoringSloSli sli = 8 [(buf.validate.field).required = true];
+
+  // User labels attached to the SLO for organizing and identifying it
+  // (maps to the provider's user_labels), merged with Planton's platform
+  // labels (which win on key conflicts). Also applied to any Monitoring
+  // service this kind creates. Keys and values may contain only lowercase
+  // letters, numerals, underscores, and dashes; keys must begin with a
+  // letter.
+  map<string, string> labels = 9;
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the SLO (and any service this kind created) is deleted;
+  //                burn-rate alerts referencing it stop evaluating
+  //   "PREVENT" -- destroy FAILS; protects the reliability contract from
+  //                accidental teardown
+  //   "ABANDON" -- the SLO is removed from management but keeps existing
+  //                in GCP
+  string deletion_policy = 10 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+}
+
+// The Monitoring service the SLO measures — exactly one arm.
+message GcpMonitoringSloService {
+  option (buf.validate.message).cel = {
+    id: "exactly_one_service_arm"
+    message: "set exactly one of: service_id (an existing service), custom_service, or basic_service"
+    expression: "[this.service_id != '', has(this.custom_service), has(this.basic_service)].filter(x, x).size() == 1"
+  };
+
+  // Measure an EXISTING Monitoring service — one GCP auto-detected (App
+  // Engine, Istio canonical services, and friends) or one created outside
+  // this kind. The service ID is the last segment of the service resource
+  // name (projects/{project}/services/{service_id}).
+  string service_id = 1;
+
+  // CREATE a custom service and measure it. The blank-slate form: a custom
+  // service is just a named container for SLOs — the SLIs point at
+  // whatever metrics define the service.
+  GcpMonitoringSloCustomService custom_service = 2;
+
+  // CREATE a basic service from a service type + labels (e.g. a
+  // CLOUD_RUN service named by its service_name and location) and measure
+  // it. GCP wires the telemetry association from the labels.
+  GcpMonitoringSloBasicService basic_service = 3;
+}
+
+// A custom Monitoring service this kind creates.
+message GcpMonitoringSloCustomService {
+  // The service ID (the last segment of the service resource name).
+  // Defaults to metadata.name. Changing it REPLACES the service and the
+  // SLO under it.
+  string service_id = 1;
+
+  // Display name shown in the Monitoring services list. Defaults to
+  // metadata.name.
+  string display_name = 2;
+
+  // The full resource name of the underlying workload this service
+  // represents (e.g. //run.googleapis.com/projects/{p}/locations/{l}/services/{s})
+  // — how the console links the service to its resource. Optional.
+  string telemetry_resource_name = 3;
+}
+
+// A basic Monitoring service this kind creates from a type + labels.
+message GcpMonitoringSloBasicService {
+  // The service ID (the last segment of the service resource name).
+  // Defaults to metadata.name. Changing it REPLACES the service and the
+  // SLO under it.
+  string service_id = 1;
+
+  // The service type, e.g. APP_ENGINE, CLOUD_ENDPOINTS, CLUSTER_ISTIO,
+  // ISTIO_CANONICAL_SERVICE, CLOUD_RUN. The GCP API validates the type
+  // and its required labels server-side (the provider carries no
+  // client-side list — new types appear with new products).
+  string service_type = 2;
+
+  // The labels that identify the concrete service instance for the chosen
+  // type — e.g. for CLOUD_RUN: {"service_name": "checkout",
+  // "location": "us-central1"}. Which keys are required is defined by the
+  // service type (server-validated). Changing labels REPLACES the service.
+  map<string, string> service_labels = 3;
+}
+
+// The service-level indicator — exactly one family.
+message GcpMonitoringSloSli {
+  option (buf.validate.message).cel = {
+    id: "exactly_one_sli_family"
+    message: "set exactly one of: basic_sli, request_based_sli, or windows_based_sli"
+    expression: "[has(this.basic_sli), has(this.request_based_sli), has(this.windows_based_sli)].filter(x, x).size() == 1"
+  };
+
+  // A basic SLI: GCP derives availability or latency from the service's
+  // own telemetry — no filters to write. Only works for service types
+  // whose telemetry GCP understands natively (App Engine, Cloud
+  // Endpoints, Istio); custom services need request_based_sli instead.
+  GcpMonitoringSloBasicSli basic_sli = 1;
+
+  // A request-based SLI: good service counted from metric filters — a
+  // good/total ratio or a latency-distribution cut. The workhorse form
+  // for custom services.
+  GcpMonitoringSloRequestBasedSli request_based_sli = 2;
+
+  // A windows-based SLI: time is divided into windows and each window is
+  // judged good or bad as a whole (e.g. "a window is good when p95
+  // latency stays under 500ms"). For "no bad minutes" style objectives.
+  GcpMonitoringSloWindowsBasedSli windows_based_sli = 3;
+}
+
+// A basic SLI — availability or latency derived from the service's own
+// telemetry. Also used inside windows_based_sli as the per-window
+// criterion (basic_sli_performance).
+message GcpMonitoringSloBasicSli {
+  option (buf.validate.message).cel = {
+    id: "availability_xor_latency"
+    message: "set exactly one of availability or latency"
+    expression: "[has(this.availability), has(this.latency)].filter(x, x).size() == 1"
+  };
+
+  // Narrow the SLI to these locations (e.g. specific regions). Empty means
+  // all locations.
+  repeated string location = 1;
+
+  // Narrow the SLI to these RPC methods. Empty means all methods.
+  repeated string method = 2;
+
+  // Narrow the SLI to these API versions. Empty means all versions.
+  repeated string version = 3;
+
+  // Count availability (successful vs total requests) as good service.
+  GcpMonitoringSloAvailability availability = 4;
+
+  // Count requests faster than a threshold as good service.
+  GcpMonitoringSloLatency latency = 5;
+}
+
+// The availability arm of a basic SLI.
+message GcpMonitoringSloAvailability {
+  // Whether the availability SLI is enabled (the GCP API expects true —
+  // the field exists for API-shape fidelity). Both IaC engines send the
+  // value explicitly so behavior is identical regardless of engine.
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+}
+
+// The latency arm of a basic SLI.
+message GcpMonitoringSloLatency {
+  // The latency threshold below which a response counts as good, as a
+  // duration string (e.g. "1s", "0.5s").
+  string threshold = 1 [(buf.validate.field).required = true];
+}
+
+// A request-based SLI — good service counted from metric filters.
+message GcpMonitoringSloRequestBasedSli {
+  option (buf.validate.message).cel = {
+    id: "distribution_cut_xor_good_total_ratio"
+    message: "set exactly one of distribution_cut or good_total_ratio"
+    expression: "[has(this.distribution_cut), has(this.good_total_ratio)].filter(x, x).size() == 1"
+  };
+
+  // Good service = values of a distribution metric falling inside a range
+  // (the latency-SLO form: requests whose latency lands in [0, 500ms]).
+  GcpMonitoringSloDistributionCut distribution_cut = 1;
+
+  // Good service = ratio of a "good" counter to a "total" counter (or
+  // good vs bad).
+  GcpMonitoringSloGoodTotalRatio good_total_ratio = 2;
+}
+
+// A distribution cut: the fraction of distribution values inside `range`
+// is the SLI.
+message GcpMonitoringSloDistributionCut {
+  // A monitoring filter (https://cloud.google.com/monitoring/api/v3/filters)
+  // selecting a DISTRIBUTION-valued metric, e.g. request latencies.
+  string distribution_filter = 1 [(buf.validate.field).required = true];
+
+  // The range of values counted as good (e.g. min 0, max 500 for "under
+  // 500ms" when the metric is in milliseconds).
+  GcpMonitoringSloRange range = 2;
+}
+
+// A numeric range. Set min, max, or both — an unset side is unbounded
+// (the fields are explicitly optional because 0 is a meaningful bound,
+// distinct from "no bound": min 0 excludes negatives, unset min does not).
+message GcpMonitoringSloRange {
+  // The lower bound of the range. Unset means unbounded below.
+  optional double min = 1;
+
+  // The upper bound of the range. Unset means unbounded above.
+  optional double max = 2;
+}
+
+// A good/total (or good/bad) ratio SLI.
+message GcpMonitoringSloGoodTotalRatio {
+  // The GCP API derives the third counter from the other two — exactly
+  // two of the three filters must be set (good+total, good+bad, or
+  // bad+total).
+  option (buf.validate.message).cel = {
+    id: "exactly_two_ratio_filters"
+    message: "set exactly two of: good_service_filter, bad_service_filter, total_service_filter (GCP derives the third)"
+    expression: "[this.good_service_filter != '', this.bad_service_filter != '', this.total_service_filter != ''].filter(x, x).size() == 2"
+  };
+
+  // A monitoring filter counting GOOD events (a DELTA metric of int64 or
+  // double type).
+  string good_service_filter = 1;
+
+  // A monitoring filter counting BAD events.
+  string bad_service_filter = 2;
+
+  // A monitoring filter counting TOTAL events.
+  string total_service_filter = 3;
+}
+
+// A windows-based SLI — time windows judged good or bad as a whole.
+message GcpMonitoringSloWindowsBasedSli {
+  option (buf.validate.message).cel = {
+    id: "exactly_one_window_criterion"
+    message: "set exactly one window criterion: good_bad_metric_filter, good_total_ratio_threshold, metric_mean_in_range, or metric_sum_in_range"
+    expression: "[this.good_bad_metric_filter != '', has(this.good_total_ratio_threshold), has(this.metric_mean_in_range), has(this.metric_sum_in_range)].filter(x, x).size() == 1"
+  };
+
+  // The window length, as a duration string between "60s" and "604800s"
+  // (one minute to one week). Empty defers to the GCP API default (60s).
+  string window_period = 1;
+
+  // A window is good when this filter's BOOLEAN metric is true throughout
+  // the window.
+  string good_bad_metric_filter = 2;
+
+  // A window is good when a request-based criterion (a good/total ratio
+  // or a basic SLI) meets a threshold within the window.
+  GcpMonitoringSloGoodTotalRatioThreshold good_total_ratio_threshold = 3;
+
+  // A window is good when the MEAN of a metric stays inside a range for
+  // the window.
+  GcpMonitoringSloMetricRange metric_mean_in_range = 4;
+
+  // A window is good when the SUM of a metric stays inside a range for
+  // the window.
+  GcpMonitoringSloMetricRange metric_sum_in_range = 5;
+}
+
+// The good-total-ratio-threshold window criterion.
+message GcpMonitoringSloGoodTotalRatioThreshold {
+  option (buf.validate.message).cel = {
+    id: "basic_sli_performance_xor_performance"
+    message: "set exactly one of basic_sli_performance or performance"
+    expression: "[has(this.basic_sli_performance), has(this.performance)].filter(x, x).size() == 1"
+  };
+
+  // The window is good when the criterion's ratio meets or exceeds this
+  // threshold (0 to 1).
+  double threshold = 1 [(buf.validate.field).cel = {
+    id: "valid_threshold"
+    message: "threshold must be between 0 and 1"
+    expression: "this >= 0.0 && this <= 1.0"
+  }];
+
+  // Judge each window with a basic SLI (availability or latency derived
+  // from service telemetry).
+  GcpMonitoringSloBasicSli basic_sli_performance = 2;
+
+  // Judge each window with a request-based criterion (distribution cut or
+  // good/total ratio).
+  GcpMonitoringSloPerformance performance = 3;
+}
+
+// A request-based per-window criterion.
+message GcpMonitoringSloPerformance {
+  option (buf.validate.message).cel = {
+    id: "distribution_cut_xor_good_total_ratio"
+    message: "set exactly one of distribution_cut or good_total_ratio"
+    expression: "[has(this.distribution_cut), has(this.good_total_ratio)].filter(x, x).size() == 1"
+  };
+
+  // Distribution-cut criterion for the window.
+  GcpMonitoringSloDistributionCut distribution_cut = 1;
+
+  // Good/total ratio criterion for the window.
+  GcpMonitoringSloGoodTotalRatio good_total_ratio = 2;
+}
+
+// A mean/sum-in-range window criterion.
+message GcpMonitoringSloMetricRange {
+  // A monitoring filter selecting the time series whose windowed mean (or
+  // sum) is judged against `range`.
+  string time_series = 1 [(buf.validate.field).required = true];
+
+  // The range the windowed value must stay inside for the window to count
+  // as good.
+  GcpMonitoringSloRange range = 2;
+}

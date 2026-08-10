@@ -1,0 +1,36 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringSlo
+metadata:
+  name: my-sample-slo
+spec:
+  # The Monitoring service the SLO measures — exactly one arm:
+  # serviceId (an existing/auto-detected service), customService (create
+  # a blank-slate container — the right arm for anything GCP does not
+  # auto-detect), or basicService (create from a well-known type +
+  # labels). The created service's id defaults to metadata.name.
+  service:
+    customService:
+      displayName: Checkout
+
+  # The target fraction of good service: three nines. Greater than 0, at
+  # most 0.9999 (the GCP API refuses five nines).
+  goal: 0.999
+
+  # Measured over a rolling 30 days (the classic SRE form). The
+  # alternative is calendarPeriod: DAY | WEEK | FORTNIGHT | MONTH —
+  # exactly one of the two.
+  rollingPeriodDays: 30
+
+  # How good service is counted — exactly one SLI family. The good/total
+  # ratio takes exactly TWO of good/bad/total filters; GCP derives the
+  # third.
+  sli:
+    requestBasedSli:
+      goodTotalRatio:
+        goodServiceFilter: metric.type="serviceruntime.googleapis.com/api/request_count" metric.labels.response_code_class="2xx"
+        totalServiceFilter: metric.type="serviceruntime.googleapis.com/api/request_count"
+
+  # What a destroy does: DELETE (default — the error-budget history dies
+  # with the SLO), PREVENT (the posture once burn-rate alerts reference
+  # it), or ABANDON. Also covers any service this kind created.
+  deletionPolicy: DELETE

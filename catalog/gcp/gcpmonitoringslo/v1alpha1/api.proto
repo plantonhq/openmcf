@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpmonitoringslo.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/gcp/gcpmonitoringslo/v1alpha1/outputs.proto";
+import "catalog/gcp/gcpmonitoringslo/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+//gcp-monitoring-slo
+message GcpMonitoringSlo {
+  string api_version = 1 [(buf.validate.field).string.const = 'gcp.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'GcpMonitoringSlo'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  GcpMonitoringSloSpec spec = 4 [(buf.validate.field).required = true];
+  GcpMonitoringSloStatus status = 5;
+}
+
+message GcpMonitoringSloStatus {
+  GcpMonitoringSloStackOutputs outputs = 1;
+}
