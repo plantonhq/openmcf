@@ -28,6 +28,7 @@ The following GCP resources can be deployed using Planton:
 - [Cloud Composer User Workloads Secret](/docs/catalog/gcp/cloud-composer-user-workloads-secret)
 - [Cloud Function](/docs/catalog/gcp/cloud-function)
 - [Cloud Run](/docs/catalog/gcp/cloud-run)
+- [Cloud Run Domain Mapping](/docs/catalog/gcp/cloud-run-domain-mapping)
 - [Cloud Run Job](/docs/catalog/gcp/cloud-run-job)
 - [Cloud Scheduler Job](/docs/catalog/gcp/cloud-scheduler-job)
 - [Cloud SQL](/docs/catalog/gcp/cloud-sql)

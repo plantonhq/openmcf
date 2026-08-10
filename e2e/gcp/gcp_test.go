@@ -844,6 +844,14 @@ func TestGcpIamDenyPolicy_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpiamdenypolicy", "terraform")
 }
 
+func TestGcpCloudRunDomainMapping_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudrundomainmapping", "pulumi")
+}
+
+func TestGcpCloudRunDomainMapping_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudrundomainmapping", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

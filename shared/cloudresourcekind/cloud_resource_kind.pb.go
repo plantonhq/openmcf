@@ -846,6 +846,11 @@ const (
 	CloudResourceKind_GcpIdentityPlatformTenant CloudResourceKind = 3152
 	CloudResourceKind_GcpIamOauthClient         CloudResourceKind = 3153
 	CloudResourceKind_GcpIamDenyPolicy          CloudResourceKind = 3154
+	// 3160–3169: GCP serverless edge
+	// GcpCloudRun is a prerequisite because a domain mapping exists only to
+	// point a verified domain at a running Cloud Run service — the route it
+	// maps must already exist for the mapping to be created at all.
+	CloudResourceKind_GcpCloudRunDomainMapping CloudResourceKind = 3160
 	// 4000–4999: Kubernetes resources, organized in family sub-bands
 	// (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts
 	// analytics & ML; 4190–4199 reserved for growth)
@@ -1582,6 +1587,7 @@ var (
 		3152:  "GcpIdentityPlatformTenant",
 		3153:  "GcpIamOauthClient",
 		3154:  "GcpIamDenyPolicy",
+		3160:  "GcpCloudRunDomainMapping",
 		4000:  "KubernetesNamespace",
 		4001:  "KubernetesDeployment",
 		4002:  "KubernetesStatefulSet",
@@ -2210,6 +2216,7 @@ var (
 		"GcpIdentityPlatformTenant":                      3152,
 		"GcpIamOauthClient":                              3153,
 		"GcpIamDenyPolicy":                               3154,
+		"GcpCloudRunDomainMapping":                       3160,
 		"KubernetesNamespace":                            4000,
 		"KubernetesDeployment":                           4001,
 		"KubernetesStatefulSet":                          4002,
@@ -2810,7 +2817,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf4\x95\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xb3\x96\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3145,7 +3152,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x19GcpIdentityPlatformConfig\x10\xcf\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpidcfg\x12>\n" +
 	"\x19GcpIdentityPlatformTenant\x10\xd0\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpidten:\x02\xcf\x18\x122\n" +
 	"\x11GcpIamOauthClient\x10\xd1\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpoauth\x121\n" +
-	"\x10GcpIamDenyPolicy\x10\xd2\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpdenyp\x123\n" +
+	"\x10GcpIamDenyPolicy\x10\xd2\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpdenyp\x12=\n" +
+	"\x18GcpCloudRunDomainMapping\x10\xd8\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcprundm:\x02\xbb\x17\x123\n" +
 	"\x13KubernetesNamespace\x10\xa0\x1f\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\bv1alpha1\"\x05k8sns0\x01\x125\n" +
 	"\x14KubernetesDeployment\x10\xa1\x1f\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\bv1alpha1\"\x06k8sdpl(\x01\x126\n" +
 	"\x15KubernetesStatefulSet\x10\xa2\x1f\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\bv1alpha1\"\x06k8ssts(\x01\x121\n" +

@@ -2243,6 +2243,31 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpCloudRunDomainMapping: scalars plus the server-decided DNS
+			// record list. Both engines export resource_records as ONE
+			// structured list (the record count is unknowable at program
+			// time — a root domain gets A/AAAA sets, a subdomain one CNAME),
+			// which the flattener decomposes onto the repeated proto message
+			// by dot-indexed keys.
+			name: "GcpCloudRunDomainMapping",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudRunDomainMapping,
+			rawOutputs: map[string]interface{}{
+				"domain":            "app.example.com",
+				"region":            "us-central1",
+				"mapped_route_name": "my-service",
+				"resource_records": []interface{}{
+					map[string]interface{}{
+						"record_type": "CNAME",
+						"record_name": "app",
+						"rrdata":      "ghs.googlehosted.com.",
+					},
+				},
+			},
+			mustPopulate: []string{
+				"domain", "region", "mapped_route_name",
+			},
+		},
+		{
 			// GcpSslCertificate: flat scalar outputs from both engines
 			// (self-link, name, id, expiry, scope region) must land on
 			// StackOutputs. The private key is write-only and never an output.

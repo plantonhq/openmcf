@@ -533,9 +533,6 @@ resources:
   - resource: google_cloud_quotas_quota_preference
     disposition: deferred
     reason: "quota preferences are rarely IaC-managed; deferred"
-  - resource: google_cloud_run_domain_mapping
-    disposition: model-planned
-    reason: "planned kind GcpCloudRunDomainMapping (Cloud Run custom domains with managed certificates — the scale-appropriate path below a full global HTTPS load balancer; a separate lifecycle from the service, never a toggle on it)"
   - resource: google_cloud_run_service
     disposition: excluded-deprecated
     reason: "first-generation Knative-serving Cloud Run resource, superseded by the v2 API (modeled by GcpCloudRun)"

@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpcloudrundomainmapping
+spec:
+  # One scenario: a subdomain of the owner-verified E2E domain mapped
+  # onto the Cloud Run fixture service (registry prerequisite). The lane
+  # proves create -> run.domainmappings get verify -> destroy -> verify
+  # gone on both provisioners WITHOUT publishing DNS — the provider's
+  # create poll accepts the CertificatePending resting state. Mappings
+  # are free and create in seconds; they hard-delete (no soft-delete
+  # reservation). Requires PLANTON_E2E_VERIFIED_DOMAIN (the scenario's
+  # e2e-required-env annotation): a one-time `gcloud domains verify` by
+  # the E2E identity — lanes skip with the reason where it is absent.
+  #
+  # Offline-proven-only arms (deferred, with unblock conditions):
+  #   - certificate issuance to Ready=True: needs the emitted DNS
+  #     records published in a real zone. Unblock: an e2e DNS zone for
+  #     the verified domain + a GcpDnsRecord chain in a richer scenario.
+  #   - force_override: needs a pre-existing conflicting mapping to
+  #     override — a two-mapping choreography. Unblock: a dedicated
+  #     scenario if adopter demand appears.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

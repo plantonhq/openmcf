@@ -366,6 +366,7 @@ go_library(
         "//catalog/gcp/gcpcloudcomposeruserworkloadssecret/v1alpha1",
         "//catalog/gcp/gcpcloudfunction/v1alpha1",
         "//catalog/gcp/gcpcloudrun/v1alpha1",
+        "//catalog/gcp/gcpcloudrundomainmapping/v1alpha1",
         "//catalog/gcp/gcpcloudrunjob/v1alpha1",
         "//catalog/gcp/gcpcloudschedulerjob/v1alpha1",
         "//catalog/gcp/gcpcloudsql/v1alpha1",

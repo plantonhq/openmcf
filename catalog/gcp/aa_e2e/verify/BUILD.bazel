@@ -19,6 +19,7 @@ go_library(
         "cloud_armor_policy.go",
         "cloud_function.go",
         "cloud_run.go",
+        "cloud_run_domain_mapping.go",
         "cloud_run_job.go",
         "cloud_scheduler_job.go",
         "cloud_sql_database.go",

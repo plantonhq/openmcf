@@ -349,6 +349,7 @@ import (
 	gcpcloudcomposeruserworkloadssecretv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcloudcomposeruserworkloadssecret/v1alpha1"
 	gcpcloudfunctionv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcloudfunction/v1alpha1"
 	gcpcloudrunv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcloudrun/v1alpha1"
+	gcpcloudrundomainmappingv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcloudrundomainmapping/v1alpha1"
 	gcpcloudrunjobv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcloudrunjob/v1alpha1"
 	gcpcloudschedulerjobv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcloudschedulerjob/v1alpha1"
 	gcpcloudsqlv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcloudsql/v1alpha1"
@@ -1019,6 +1020,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpCloudComposerUserWorkloadsSecret:    &gcpcloudcomposeruserworkloadssecretv1alpha1.GcpCloudComposerUserWorkloadsSecret{},
 	cloudresourcekind.CloudResourceKind_GcpCloudFunction:                       &gcpcloudfunctionv1alpha1.GcpCloudFunction{},
 	cloudresourcekind.CloudResourceKind_GcpCloudRun:                            &gcpcloudrunv1alpha1.GcpCloudRun{},
+	cloudresourcekind.CloudResourceKind_GcpCloudRunDomainMapping:               &gcpcloudrundomainmappingv1alpha1.GcpCloudRunDomainMapping{},
 	cloudresourcekind.CloudResourceKind_GcpCloudRunJob:                         &gcpcloudrunjobv1alpha1.GcpCloudRunJob{},
 	cloudresourcekind.CloudResourceKind_GcpCloudSchedulerJob:                   &gcpcloudschedulerjobv1alpha1.GcpCloudSchedulerJob{},
 	cloudresourcekind.CloudResourceKind_GcpCloudSql:                            &gcpcloudsqlv1alpha1.GcpCloudSql{},

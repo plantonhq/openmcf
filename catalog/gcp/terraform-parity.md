@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `google@7.43.0` |
-| Kinds in the catalog | 88 |
-| Distinct provider resources consumed | 116 |
-| Spec fields authored across all kinds | 3230 |
-| Module pins on `google` | `~> 7.43` × 88 |
+| Kinds in the catalog | 89 |
+| Distinct provider resources consumed | 117 |
+| Spec fields authored across all kinds | 3240 |
+| Module pins on `google` | `~> 7.43` × 89 |
 
 The GA provider is the parity baseline. Capability that exists only in a
 secondary channel (for Google, the `google-beta` provider) enters per kind
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**80 of 88 kinds are at total accounting; 24 proven live.**
+**81 of 89 kinds are at total accounting; 24 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -68,6 +68,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpCloudComposerUserWorkloadsSecret | 6 | 4 | 2 | 0 | 0 | ✅ | — |
 | GcpCloudFunction | 65 | 43 | 15 | 7 | 0 | ✅ | — |
 | GcpCloudRun | 129 | 27 | 90 | 12 | 0 | ✅ | — |
+| GcpCloudRunDomainMapping | 10 | 1 | 9 | 0 | 0 | ✅ | — |
 | GcpCloudRunJob | 74 | 10 | 61 | 3 | 0 | ✅ | — |
 | GcpCloudSchedulerJob | 32 | 29 | 3 | 0 | 0 | ✅ | — |
 | GcpCloudSql | 147 | 40 | 97 | 10 | 0 | ✅ | — |
@@ -144,10 +145,10 @@ All resources of `google@7.43.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 116 | consumed by a kind's Terraform module today |
+| Modeled | 117 | consumed by a kind's Terraform module today |
 | IAM-covered | 407 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 6 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 46 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 45 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 682 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 76 | deprecated or superseded provider surface |
 | **Total** | **1333** | |
@@ -157,7 +158,7 @@ All resources of `google@7.43.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (116)
+### Modeled (117)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -173,6 +174,7 @@ rather than trusted.
 | `google_bigtable_table` | consumed by GcpBigtableTable |
 | `google_certificate_manager_certificate` | consumed by GcpCertManagerCert |
 | `google_certificate_manager_dns_authorization` | consumed by GcpCertManagerDnsAuthorization |
+| `google_cloud_run_domain_mapping` | consumed by GcpCloudRunDomainMapping |
 | `google_cloud_run_service_iam_member` | consumed by GcpCloudFunction |
 | `google_cloud_run_v2_job` | consumed by GcpCloudRunJob |
 | `google_cloud_run_v2_service` | consumed by GcpCloudRun |
@@ -248,7 +250,7 @@ rather than trusted.
 | `google_project` | consumed by GcpProject |
 | `google_project_iam_custom_role` | consumed by GcpIamCustomRole |
 | `google_project_iam_member` | consumed by GcpProjectIamMember, GcpServiceAccount |
-| `google_project_service` | consumed by GcpAddress, GcpAlloydbCluster, GcpAlloydbInstance, GcpAlloydbUser, GcpArtifactRegistryRepo, GcpBackendBucket, GcpBackendService, GcpBigQueryDataset, GcpBigQueryTable, GcpBigtableInstance, GcpBigtableTable, GcpCertManagerCert, GcpCertManagerDnsAuthorization, GcpCloudArmorPolicy, GcpCloudComposerEnvironment, GcpCloudFunction, GcpCloudRun, GcpCloudRunJob, GcpCloudSchedulerJob, GcpCloudSql, GcpCloudTasksQueue, GcpComputeDisk, GcpComputeInstance, GcpDataprocAutoscalingPolicy, GcpDataprocCluster, GcpDnsRecord, GcpDnsZone, GcpFilestoreInstance, GcpFirestoreBackupSchedule, GcpFirestoreDatabase, GcpFirestoreIndex, GcpGcsBucket, GcpGkeCluster, GcpGkeNodePool, GcpGlobalAddress, GcpGlobalForwardingRule, GcpHealthCheck, GcpIamOauthClient, GcpIdentityPlatformConfig, GcpIdentityPlatformTenant, GcpKmsKey, GcpKmsKeyRing, GcpLoggingSink, GcpManagedSslCertificate, GcpMemorystoreInstance, GcpMonitoringAlertPolicy, GcpMonitoringNotificationChannel, GcpMonitoringUptimeCheck, GcpProject, GcpPubSubSchema, GcpPubSubSubscription, GcpPubSubTopic, GcpRedisInstance, GcpRegionNetworkEndpointGroup, GcpRouterNat, GcpSecretManagerSecret, GcpServerlessVpcConnector, GcpServiceConnectionPolicy, GcpServiceNetworkingConnection, GcpSpannerBackupSchedule, GcpSpannerDatabase, GcpSpannerInstance, GcpSslCertificate, GcpSslPolicy, GcpSubnetwork, GcpTargetHttpProxy, GcpTargetHttpsProxy, GcpUrlMap, GcpVertexAiEndpoint, GcpVertexAiIndex, GcpVertexAiIndexEndpoint, GcpVertexAiNotebook, GcpVpcNetwork |
+| `google_project_service` | consumed by GcpAddress, GcpAlloydbCluster, GcpAlloydbInstance, GcpAlloydbUser, GcpArtifactRegistryRepo, GcpBackendBucket, GcpBackendService, GcpBigQueryDataset, GcpBigQueryTable, GcpBigtableInstance, GcpBigtableTable, GcpCertManagerCert, GcpCertManagerDnsAuthorization, GcpCloudArmorPolicy, GcpCloudComposerEnvironment, GcpCloudFunction, GcpCloudRun, GcpCloudRunDomainMapping, GcpCloudRunJob, GcpCloudSchedulerJob, GcpCloudSql, GcpCloudTasksQueue, GcpComputeDisk, GcpComputeInstance, GcpDataprocAutoscalingPolicy, GcpDataprocCluster, GcpDnsRecord, GcpDnsZone, GcpFilestoreInstance, GcpFirestoreBackupSchedule, GcpFirestoreDatabase, GcpFirestoreIndex, GcpGcsBucket, GcpGkeCluster, GcpGkeNodePool, GcpGlobalAddress, GcpGlobalForwardingRule, GcpHealthCheck, GcpIamOauthClient, GcpIdentityPlatformConfig, GcpIdentityPlatformTenant, GcpKmsKey, GcpKmsKeyRing, GcpLoggingSink, GcpManagedSslCertificate, GcpMemorystoreInstance, GcpMonitoringAlertPolicy, GcpMonitoringNotificationChannel, GcpMonitoringUptimeCheck, GcpProject, GcpPubSubSchema, GcpPubSubSubscription, GcpPubSubTopic, GcpRedisInstance, GcpRegionNetworkEndpointGroup, GcpRouterNat, GcpSecretManagerSecret, GcpServerlessVpcConnector, GcpServiceConnectionPolicy, GcpServiceNetworkingConnection, GcpSpannerBackupSchedule, GcpSpannerDatabase, GcpSpannerInstance, GcpSslCertificate, GcpSslPolicy, GcpSubnetwork, GcpTargetHttpProxy, GcpTargetHttpsProxy, GcpUrlMap, GcpVertexAiEndpoint, GcpVertexAiIndex, GcpVertexAiIndexEndpoint, GcpVertexAiNotebook, GcpVpcNetwork |
 | `google_pubsub_schema` | consumed by GcpPubSubSchema |
 | `google_pubsub_subscription` | consumed by GcpPubSubSubscription |
 | `google_pubsub_topic` | consumed by GcpPubSubTopic |
@@ -701,7 +703,7 @@ rather than trusted.
 | `google_logging_project_exclusion` | GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink |
 | `google_project_iam_member_remove` | declarative member removal is inherent to the additive iam_members reconciliation on the IAM member kinds (GcpProjectIamMember); a dedicated removal escape hatch is redundant |
 
-### Planned (46)
+### Planned (45)
 
 | Resource | Recorded reason |
 |---|---|
@@ -709,7 +711,6 @@ rather than trusted.
 | `google_certificate_manager_certificate_map` | planned kind GcpCertificateMap |
 | `google_certificate_manager_certificate_map_entry` | composes into the planned GcpCertificateMap kind |
 | `google_certificate_manager_trust_config` | planned composition into the existing GcpCertManagerCert kind (trust and issuance configuration) |
-| `google_cloud_run_domain_mapping` | planned kind GcpCloudRunDomainMapping (Cloud Run custom domains with managed certificates — the scale-appropriate path below a full global HTTPS load balancer; a separate lifecycle from the service, never a toggle on it) |
 | `google_compute_autoscaler` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
 | `google_compute_bulk_per_instance_config` | planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional) |
 | `google_compute_instance_group` | composes into the planned load-balancer facade kinds (unmanaged instance groups as backends) |

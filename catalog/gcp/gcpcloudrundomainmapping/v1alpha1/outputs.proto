@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpcloudrundomainmapping.v1alpha1;
+
+// GcpCloudRunDomainMappingStackOutputs captures the observable results of
+// a deployed domain mapping — above all the DNS records the domain's zone
+// must publish for the mapping to actually serve.
+message GcpCloudRunDomainMappingStackOutputs {
+  // The mapped domain (the mapping's name in GCP) — the join key
+  // consumers and verifiers address the mapping by.
+  string domain = 1;
+
+  // GCP region the mapping lives in (plain region name).
+  string region = 2;
+
+  // The DNS records GCP requires the domain's zone to publish before the
+  // domain resolves to the service: a root domain receives A/AAAA
+  // records, a subdomain one CNAME (ghs.googlehosted.com.). Wire these
+  // into GcpDnsRecord (or your external DNS host) — until they are
+  // published, the mapping exists but the domain does not serve and a
+  // managed certificate cannot be issued.
+  repeated GcpCloudRunDomainMappingResourceRecord resource_records = 3;
+
+  // The Cloud Run route (service) the mapping currently points to, as
+  // reported by GCP.
+  string mapped_route_name = 4;
+}
+
+// One DNS record the domain's zone must publish for the mapping.
+message GcpCloudRunDomainMappingResourceRecord {
+  // DNS record type: "A", "AAAA", or "CNAME".
+  string record_type = 1;
+
+  // Relative name of the record within the zone. Only set for CNAME
+  // records (e.g. "www"); empty for root-domain A/AAAA records.
+  string record_name = 2;
+
+  // The record's value (RFC 1035 rrdata) — an IP address for A/AAAA,
+  // "ghs.googlehosted.com." for CNAME.
+  string rrdata = 3;
+}

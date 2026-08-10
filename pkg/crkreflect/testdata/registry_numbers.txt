@@ -329,6 +329,7 @@ GcpIdentityPlatformConfig=3151
 GcpIdentityPlatformTenant=3152
 GcpIamOauthClient=3153
 GcpIamDenyPolicy=3154
+GcpCloudRunDomainMapping=3160
 KubernetesNamespace=4000
 KubernetesDeployment=4001
 KubernetesStatefulSet=4002

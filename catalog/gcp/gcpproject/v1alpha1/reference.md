@@ -190,6 +190,7 @@ Fields on other kinds that can point at this resource:
 | GcpCloudComposerUserWorkloadsSecret | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudFunction | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudRun | `spec.projectId` | `status.outputs.project_id` |
+| GcpCloudRunDomainMapping | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudRunJob | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudSchedulerJob | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudSql | `spec.projectId` | `status.outputs.project_id` |
