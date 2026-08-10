@@ -8,6 +8,7 @@ package awskmskeyv1alpha1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -57,18 +58,23 @@ type AwsKmsKeySpec struct {
 	// "SYMMETRIC_DEFAULT" (AES-256-GCM -- the default and what AWS
 	// service integrations require), "RSA_2048"/"RSA_3072"/"RSA_4096"
 	// (asymmetric encrypt/decrypt or sign/verify),
-	// "ECC_NIST_P256"/"ECC_NIST_P384"/"ECC_NIST_P521"/"ECC_SECG_P256K1"
-	// (asymmetric sign/verify -- P256K1 is the blockchain curve),
-	// "HMAC_224"/"HMAC_256"/"HMAC_384"/"HMAC_512" (MAC generation), or
-	// "SM2" (China regions). Empty keeps the AWS default
-	// (SYMMETRIC_DEFAULT).
+	// "ECC_NIST_P256"/"ECC_NIST_P384"/"ECC_NIST_P521" (asymmetric
+	// sign/verify or ECDH key agreement),
+	// "ECC_NIST_EDWARDS25519" (Ed25519 sign/verify only),
+	// "ECC_SECG_P256K1" (sign/verify only -- the blockchain curve),
+	// "ML_DSA_44"/"ML_DSA_65"/"ML_DSA_87" (post-quantum ML-DSA
+	// sign/verify only), "HMAC_224"/"HMAC_256"/"HMAC_384"/"HMAC_512"
+	// (MAC generation), or "SM2" (China regions only). Empty keeps the
+	// AWS default (SYMMETRIC_DEFAULT).
 	KeySpec string `protobuf:"bytes,3,opt,name=key_spec,json=keySpec,proto3" json:"key_spec,omitempty"`
 	// What the key is used for, create-time immutable:
 	// "ENCRYPT_DECRYPT" (the default -- required for SYMMETRIC_DEFAULT
 	// and the only usage AWS service integrations support),
-	// "SIGN_VERIFY" (asymmetric RSA/ECC/SM2 keys), or
-	// "GENERATE_VERIFY_MAC" (HMAC keys). Empty keeps the AWS default
-	// (ENCRYPT_DECRYPT).
+	// "SIGN_VERIFY" (asymmetric RSA/ECC/ML-DSA/SM2 signing keys),
+	// "KEY_AGREEMENT" (ECDH shared-secret derivation -- NIST ECC curves
+	// and SM2 only), or "GENERATE_VERIFY_MAC" (HMAC keys). Empty keeps
+	// the AWS default (ENCRYPT_DECRYPT). The cross-field rules below
+	// mirror AWS's own key-spec / key-usage compatibility matrix.
 	KeyUsage string `protobuf:"bytes,4,opt,name=key_usage,json=keyUsage,proto3" json:"key_usage,omitempty"`
 	// The key policy as a JSON document -- the resource-based policy
 	// that is the root of access control on the key (IAM policies only
@@ -117,7 +123,31 @@ type AwsKmsKeySpec struct {
 	// at one key, and each materializes as its own alias resource so
 	// list edits add/remove in place. The "alias/aws/" prefix is
 	// reserved for AWS-managed keys.
-	Aliases       []string `protobuf:"bytes,12,rep,name=aliases,proto3" json:"aliases,omitempty"`
+	Aliases []string `protobuf:"bytes,12,rep,name=aliases,proto3" json:"aliases,omitempty"`
+	// The custom key store to create the key in: a CloudHSM key store
+	// (backed by your CloudHSM cluster) or an external key store (backed
+	// by a key manager outside AWS). Supply a literal key-store id
+	// (cks-...); custom key stores are account-level infrastructure the
+	// catalog does not provision. Create-time immutable. Custom key
+	// store keys must be symmetric encryption keys, never rotate
+	// automatically, and cannot be multi-Region (AWS's contract,
+	// enforced by the rules below). Empty (the default) keeps the key
+	// material in standard AWS KMS.
+	CustomKeyStoreId string `protobuf:"bytes,13,opt,name=custom_key_store_id,json=customKeyStoreId,proto3" json:"custom_key_store_id,omitempty"`
+	// The id of an existing key in the external key manager, for keys
+	// created in an EXTERNAL key store -- KMS forwards cryptographic
+	// operations under this key to that external key. Requires
+	// custom_key_store_id (pointing at an external key store).
+	// Create-time immutable. Up to 128 characters.
+	XksKeyId string `protobuf:"bytes,14,opt,name=xks_key_id,json=xksKeyId,proto3" json:"xks_key_id,omitempty"`
+	// KMS grants on this key: scoped, revocable permissions that let a
+	// principal use the key for specific operations without editing the
+	// key policy -- the mechanism for wiring "this workload role may
+	// encrypt/decrypt under this key" as a first-class dependency, and
+	// for cross-account key usage. Each entry materializes as its own
+	// grant resource; grants are create-time immutable (any change
+	// replaces the grant, which is safe -- grants carry no state).
+	Grants        []*AwsKmsKeyGrant `protobuf:"bytes,15,rep,name=grants,proto3" json:"grants,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -236,16 +266,169 @@ func (x *AwsKmsKeySpec) GetAliases() []string {
 	return nil
 }
 
+func (x *AwsKmsKeySpec) GetCustomKeyStoreId() string {
+	if x != nil {
+		return x.CustomKeyStoreId
+	}
+	return ""
+}
+
+func (x *AwsKmsKeySpec) GetXksKeyId() string {
+	if x != nil {
+		return x.XksKeyId
+	}
+	return ""
+}
+
+func (x *AwsKmsKeySpec) GetGrants() []*AwsKmsKeyGrant {
+	if x != nil {
+		return x.Grants
+	}
+	return nil
+}
+
+// AwsKmsKeyGrant defines one KMS grant on this key: a scoped, revocable
+// permission that lets a principal use the key for specific operations
+// without editing the key policy. Grants are how AWS services and
+// workloads get programmatic key access -- and how cross-account usage
+// is delegated -- while the key policy stays small and auditable.
+//
+// A grant is identified by its generated grant id; every field below is
+// create-time immutable (changing one replaces the grant, which is safe:
+// grants carry no state of their own). The grant token KMS returns at
+// creation is deliberately NOT exposed as an output -- it is a sensitive,
+// short-lived eventual-consistency bridge, and declarative deployments
+// rely on grant propagation (seconds) instead.
+type AwsKmsKeyGrant struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Friendly name for the grant, shown by ListGrants next to the
+	// generated grant id. Optional. Up to 256 characters: letters,
+	// digits, and _:/- .
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The principal the grant permits to use the key: an IAM role (the
+	// mainstream pattern -- reference an AwsIamRole's role_arn output),
+	// an IAM user ARN, or an AWS service principal (e.g.
+	// "logs.amazonaws.com"). Cross-account delegation works by naming a
+	// principal in another account.
+	GranteePrincipal *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=grantee_principal,json=granteePrincipal,proto3" json:"grantee_principal,omitempty"`
+	// The KMS operations the grant allows, at least one. The domain is
+	// AWS's own GrantOperation set; which entries make sense depends on
+	// the key's shape (e.g. Sign/Verify need a signing key, GenerateMac
+	// an HMAC key) -- AWS validates that pairing at grant creation.
+	Operations []string `protobuf:"bytes,3,rep,name=operations,proto3" json:"operations,omitempty"`
+	// The principal allowed to retire the grant when it is no longer
+	// needed (in addition to the key administrators). Reference an
+	// AwsIamRole's role_arn output, or pass a literal role/user ARN or
+	// service principal.
+	RetiringPrincipal *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=retiring_principal,json=retiringPrincipal,proto3" json:"retiring_principal,omitempty"`
+	// Constrain the grant to requests whose encryption context EQUALS
+	// exactly these key-value pairs. Only valid for operations that take
+	// an encryption context (symmetric keys). Mutually exclusive with
+	// encryption_context_subset.
+	EncryptionContextEquals map[string]string `protobuf:"bytes,5,rep,name=encryption_context_equals,json=encryptionContextEquals,proto3" json:"encryption_context_equals,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Constrain the grant to requests whose encryption context CONTAINS
+	// these key-value pairs (a subset match -- the request may carry
+	// more). Mutually exclusive with encryption_context_equals.
+	EncryptionContextSubset map[string]string `protobuf:"bytes,6,rep,name=encryption_context_subset,json=encryptionContextSubset,proto3" json:"encryption_context_subset,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// How teardown releases the grant: false (the default) REVOKES it --
+	// the hard stop that denies all further use immediately; true RETIRES
+	// it -- the graceful path AWS recommends when the grant's work is
+	// done. Both remove the grant; they differ in intent and in the API
+	// permission they exercise (RevokeGrant vs RetireGrant).
+	RetireOnDelete bool `protobuf:"varint,7,opt,name=retire_on_delete,json=retireOnDelete,proto3" json:"retire_on_delete,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AwsKmsKeyGrant) Reset() {
+	*x = AwsKmsKeyGrant{}
+	mi := &file_catalog_aws_awskmskey_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsKmsKeyGrant) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsKmsKeyGrant) ProtoMessage() {}
+
+func (x *AwsKmsKeyGrant) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awskmskey_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsKmsKeyGrant.ProtoReflect.Descriptor instead.
+func (*AwsKmsKeyGrant) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awskmskey_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsKmsKeyGrant) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsKmsKeyGrant) GetGranteePrincipal() *v1.StringValueOrRef {
+	if x != nil {
+		return x.GranteePrincipal
+	}
+	return nil
+}
+
+func (x *AwsKmsKeyGrant) GetOperations() []string {
+	if x != nil {
+		return x.Operations
+	}
+	return nil
+}
+
+func (x *AwsKmsKeyGrant) GetRetiringPrincipal() *v1.StringValueOrRef {
+	if x != nil {
+		return x.RetiringPrincipal
+	}
+	return nil
+}
+
+func (x *AwsKmsKeyGrant) GetEncryptionContextEquals() map[string]string {
+	if x != nil {
+		return x.EncryptionContextEquals
+	}
+	return nil
+}
+
+func (x *AwsKmsKeyGrant) GetEncryptionContextSubset() map[string]string {
+	if x != nil {
+		return x.EncryptionContextSubset
+	}
+	return nil
+}
+
+func (x *AwsKmsKeyGrant) GetRetireOnDelete() bool {
+	if x != nil {
+		return x.RetireOnDelete
+	}
+	return false
+}
+
 var File_catalog_aws_awskmskey_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awskmskey_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	")catalog/aws/awskmskey/v1alpha1/spec.proto\x12\"dev.planton.aws.awskmskey.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cshared/options/options.proto\"\xf1\x0f\n" +
+	")catalog/aws/awskmskey/v1alpha1/spec.proto\x12\"dev.planton.aws.awskmskey.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe1\x1d\n" +
 	"\rAwsKmsKeySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
-	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80@R\vdescription\x12\xc2\x01\n" +
-	"\bkey_spec\x18\x03 \x01(\tB\xa6\x01\xbaH\xa2\x01\xd8\x01\x01r\x9c\x01R\x11SYMMETRIC_DEFAULTR\bRSA_2048R\bRSA_3072R\bRSA_4096R\rECC_NIST_P256R\rECC_NIST_P384R\rECC_NIST_P521R\x0fECC_SECG_P256K1R\bHMAC_224R\bHMAC_256R\bHMAC_384R\bHMAC_512R\x03SM2R\akeySpec\x12X\n" +
-	"\tkey_usage\x18\x04 \x01(\tB;\xbaH8\xd8\x01\x01r3R\x0fENCRYPT_DECRYPTR\vSIGN_VERIFYR\x13GENERATE_VERIFY_MACR\bkeyUsage\x12\x16\n" +
+	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80@R\vdescription\x12\xfa\x01\n" +
+	"\bkey_spec\x18\x03 \x01(\tB\xde\x01\xbaH\xda\x01\xd8\x01\x01r\xd4\x01R\x11SYMMETRIC_DEFAULTR\bRSA_2048R\bRSA_3072R\bRSA_4096R\rECC_NIST_P256R\rECC_NIST_P384R\rECC_NIST_P521R\x15ECC_NIST_EDWARDS25519R\x0fECC_SECG_P256K1R\tML_DSA_44R\tML_DSA_65R\tML_DSA_87R\bHMAC_224R\bHMAC_256R\bHMAC_384R\bHMAC_512R\x03SM2R\akeySpec\x12g\n" +
+	"\tkey_usage\x18\x04 \x01(\tBJ\xbaHG\xd8\x01\x01rBR\x0fENCRYPT_DECRYPTR\vSIGN_VERIFYR\rKEY_AGREEMENTR\x13GENERATE_VERIFY_MACR\bkeyUsage\x12\x16\n" +
 	"\x06policy\x18\x05 \x01(\tR\x06policy\x12J\n" +
 	"\"bypass_policy_lockout_safety_check\x18\x06 \x01(\bR\x1ebypassPolicyLockoutSafetyCheck\x12\x1a\n" +
 	"\bdisabled\x18\a \x01(\bR\bdisabled\x12.\n" +
@@ -255,13 +438,43 @@ const file_catalog_aws_awskmskey_v1alpha1_spec_proto_rawDesc = "" +
 	"\fmulti_region\x18\n" +
 	" \x01(\bR\vmultiRegion\x12D\n" +
 	"\x14deletion_window_days\x18\v \x01(\x05B\x12\xbaH\t\xd8\x01\x01\x1a\x04\x18\x1e(\a\x92\xa6\x1d\x0230R\x12deletionWindowDays\x12?\n" +
-	"\aaliases\x18\f \x03(\tB%\xbaH\"\x92\x01\x1f\x18\x01\"\x1br\x192\x17^alias/[0-9A-Za-z_/-]+$R\aaliases:\xd3\t\xbaH\xcf\t\x1a\xf8\x01\n" +
+	"\aaliases\x18\f \x03(\tB%\xbaH\"\x92\x01\x1f\x18\x01\"\x1br\x192\x17^alias/[0-9A-Za-z_/-]+$R\aaliases\x129\n" +
+	"\x13custom_key_store_id\x18\r \x01(\tB\n" +
+	"\xbaH\a\xd8\x01\x01r\x02\x18\x16R\x10customKeyStoreId\x12)\n" +
+	"\n" +
+	"xks_key_id\x18\x0e \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\x18\x80\x01R\bxksKeyId\x12J\n" +
+	"\x06grants\x18\x0f \x03(\v22.dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrantR\x06grants:\xca\x15\xbaH\xc6\x15\x1a\xf8\x01\n" +
 	"\x1brotation_only_for_symmetric\x12\x7fautomatic rotation is only supported for SYMMETRIC_DEFAULT keys -- asymmetric and HMAC key material never rotates automatically\x1aX!this.enable_key_rotation || this.key_spec == '' || this.key_spec == 'SYMMETRIC_DEFAULT'\x1a\xa9\x01\n" +
 	"!rotation_period_requires_rotation\x12Erotation_period_in_days only applies when enable_key_rotation is true\x1a=this.rotation_period_in_days == 0 || this.enable_key_rotation\x1a\x87\x02\n" +
 	"\x1esymmetric_keys_encrypt_decrypt\x12dSYMMETRIC_DEFAULT keys only support key_usage ENCRYPT_DECRYPT (the default -- leave key_usage empty)\x1a\x7f!(this.key_spec == '' || this.key_spec == 'SYMMETRIC_DEFAULT') || (this.key_usage == '' || this.key_usage == 'ENCRYPT_DECRYPT')\x1a\xd8\x01\n" +
-	"\x1dhmac_keys_generate_verify_mac\x12gHMAC key specs require key_usage GENERATE_VERIFY_MAC, and GENERATE_VERIFY_MAC requires an HMAC key spec\x1aNthis.key_spec.startsWith('HMAC_') == (this.key_usage == 'GENERATE_VERIFY_MAC')\x1a\x99\x01\n" +
-	"\x14ecc_keys_sign_verify\x12;ECC key specs are signing keys -- set key_usage SIGN_VERIFY\x1aD!this.key_spec.startsWith('ECC_') || this.key_usage == 'SIGN_VERIFY'\x1a\xa4\x01\n" +
-	"\x17no_reserved_aws_aliases\x12Wthe alias/aws/ prefix is reserved for AWS-managed keys -- choose a different alias name\x1a0this.aliases.all(a, !a.startsWith('alias/aws/'))B\xaf\x02\n" +
+	"\x1dhmac_keys_generate_verify_mac\x12gHMAC key specs require key_usage GENERATE_VERIFY_MAC, and GENERATE_VERIFY_MAC requires an HMAC key spec\x1aNthis.key_spec.startsWith('HMAC_') == (this.key_usage == 'GENERATE_VERIFY_MAC')\x1a\xe3\x01\n" +
+	"\x15ecc_nist_curves_usage\x12KECC_NIST_P256/P384/P521 keys require key_usage SIGN_VERIFY or KEY_AGREEMENT\x1a}!(this.key_spec in ['ECC_NIST_P256', 'ECC_NIST_P384', 'ECC_NIST_P521']) || this.key_usage in ['SIGN_VERIFY', 'KEY_AGREEMENT']\x1a\xdf\x01\n" +
+	"\x1aecc_sign_only_curves_usage\x12\\ECC_NIST_EDWARDS25519 and ECC_SECG_P256K1 keys are signing keys -- set key_usage SIGN_VERIFY\x1ac!(this.key_spec in ['ECC_NIST_EDWARDS25519', 'ECC_SECG_P256K1']) || this.key_usage == 'SIGN_VERIFY'\x1a\xaa\x01\n" +
+	"\x17ml_dsa_keys_sign_verify\x12FML-DSA post-quantum keys are signing keys -- set key_usage SIGN_VERIFY\x1aG!this.key_spec.startsWith('ML_DSA_') || this.key_usage == 'SIGN_VERIFY'\x1a\xdf\x01\n" +
+	"\x17key_agreement_key_specs\x12Rkey_usage KEY_AGREEMENT is only supported for ECC_NIST_P256/P384/P521 and SM2 keys\x1apthis.key_usage != 'KEY_AGREEMENT' || this.key_spec in ['ECC_NIST_P256', 'ECC_NIST_P384', 'ECC_NIST_P521', 'SM2']\x1a\xcf\x02\n" +
+	"\x1fcustom_key_store_symmetric_only\x12\x86\x01custom key store keys must be symmetric encryption keys -- leave key_spec and key_usage empty (or SYMMETRIC_DEFAULT / ENCRYPT_DECRYPT)\x1a\xa2\x01this.custom_key_store_id == '' || ((this.key_spec == '' || this.key_spec == 'SYMMETRIC_DEFAULT') && (this.key_usage == '' || this.key_usage == 'ENCRYPT_DECRYPT'))\x1a\x9f\x01\n" +
+	"\x1ccustom_key_store_no_rotation\x12Bautomatic rotation is not supported for keys in a custom key store\x1a;this.custom_key_store_id == '' || !this.enable_key_rotation\x1a\x93\x01\n" +
+	" custom_key_store_no_multi_region\x129multi-Region keys cannot be created in a custom key store\x1a4this.custom_key_store_id == '' || !this.multi_region\x1a\xaf\x01\n" +
+	"!xks_key_requires_custom_key_store\x12Qxks_key_id requires custom_key_store_id (the external key store the key lives in)\x1a7this.xks_key_id == '' || this.custom_key_store_id != ''\x1a\xa4\x01\n" +
+	"\x17no_reserved_aws_aliases\x12Wthe alias/aws/ prefix is reserved for AWS-managed keys -- choose a different alias name\x1a0this.aliases.all(a, !a.startsWith('alias/aws/'))\"\xf6\v\n" +
+	"\x0eAwsKmsKeyGrant\x12\xb6\x01\n" +
+	"\x04name\x18\x01 \x01(\tB\xa1\x01\xbaH\x9d\x01\xba\x01\x99\x01\n" +
+	"\x11grant_name_format\x12;name may use letters, digits, and _:/- (max 256 characters)\x1aGthis == '' || (size(this) <= 256 && this.matches('^[0-9A-Za-z_:/-]+$'))R\x04name\x12\x87\x01\n" +
+	"\x11grantee_principal\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x10granteePrincipal\x12\xbc\x02\n" +
+	"\n" +
+	"operations\x18\x03 \x03(\tB\x9b\x02\xbaH\x97\x02\x92\x01\x93\x02\b\x01\x18\x01\"\x8c\x02r\x89\x02R\aDecryptR\aEncryptR\x0fGenerateDataKeyR\x1fGenerateDataKeyWithoutPlaintextR\rReEncryptFromR\vReEncryptToR\x04SignR\x06VerifyR\fGetPublicKeyR\vCreateGrantR\vRetireGrantR\vDescribeKeyR\x13GenerateDataKeyPairR#GenerateDataKeyPairWithoutPlaintextR\vGenerateMacR\tVerifyMacR\x12DeriveSharedSecretR\n" +
+	"operations\x12\x83\x01\n" +
+	"\x12retiring_principal\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x11retiringPrincipal\x12\x8b\x01\n" +
+	"\x19encryption_context_equals\x18\x05 \x03(\v2O.dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrant.EncryptionContextEqualsEntryR\x17encryptionContextEquals\x12\x8b\x01\n" +
+	"\x19encryption_context_subset\x18\x06 \x03(\v2O.dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrant.EncryptionContextSubsetEntryR\x17encryptionContextSubset\x12(\n" +
+	"\x10retire_on_delete\x18\a \x01(\bR\x0eretireOnDelete\x1aJ\n" +
+	"\x1cEncryptionContextEqualsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aJ\n" +
+	"\x1cEncryptionContextSubsetEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xfd\x01\xbaH\xf9\x01\x1a\xf6\x01\n" +
+	"$encryption_context_equals_xor_subset\x12vencryption_context_equals and encryption_context_subset are mutually exclusive -- a grant takes at most one constraint\x1aVsize(this.encryption_context_equals) == 0 || size(this.encryption_context_subset) == 0B\xaf\x02\n" +
 	"&com.dev.planton.aws.awskmskey.v1alpha1B\tSpecProtoP\x01ZMgithub.com/plantonhq/planton/catalog/aws/awskmskey/v1alpha1;awskmskeyv1alpha1\xa2\x02\x04DPAA\xaa\x02\"Dev.Planton.Aws.Awskmskey.V1alpha1\xca\x02\"Dev\\Planton\\Aws\\Awskmskey\\V1alpha1\xe2\x02.Dev\\Planton\\Aws\\Awskmskey\\V1alpha1\\GPBMetadata\xea\x02&Dev::Planton::Aws::Awskmskey::V1alpha1b\x06proto3"
 
 var (
@@ -276,16 +489,25 @@ func file_catalog_aws_awskmskey_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awskmskey_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awskmskey_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awskmskey_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_aws_awskmskey_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsKmsKeySpec)(nil), // 0: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeySpec
+	(*AwsKmsKeySpec)(nil),       // 0: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeySpec
+	(*AwsKmsKeyGrant)(nil),      // 1: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrant
+	nil,                         // 2: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrant.EncryptionContextEqualsEntry
+	nil,                         // 3: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrant.EncryptionContextSubsetEntry
+	(*v1.StringValueOrRef)(nil), // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awskmskey_v1alpha1_spec_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeySpec.grants:type_name -> dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrant
+	4, // 1: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrant.grantee_principal:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 2: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrant.retiring_principal:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 3: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrant.encryption_context_equals:type_name -> dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrant.EncryptionContextEqualsEntry
+	3, // 4: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrant.encryption_context_subset:type_name -> dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyGrant.EncryptionContextSubsetEntry
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awskmskey_v1alpha1_spec_proto_init() }
@@ -299,7 +521,7 @@ func file_catalog_aws_awskmskey_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awskmskey_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awskmskey_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

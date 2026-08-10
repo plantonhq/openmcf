@@ -385,6 +385,8 @@ Fields on other kinds that can point at this resource:
 | AwsKinesisFirehose | `spec.iceberg.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.iceberg.s3Config.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.iceberg.processing.processors[].lambda.roleArn` | `status.outputs.role_arn` |
+| AwsKmsKey | `spec.grants[].granteePrincipal` | `status.outputs.role_arn` |
+| AwsKmsKey | `spec.grants[].retiringPrincipal` | `status.outputs.role_arn` |
 | AwsLambda | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsMwaaEnvironment | `spec.executionRoleArn` | `status.outputs.role_arn` |
 | AwsNeptuneCluster | `spec.iamRoles` | `status.outputs.role_arn` |

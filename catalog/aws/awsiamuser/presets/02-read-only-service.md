@@ -17,7 +17,7 @@ This preset creates an IAM user with broad read-only access and no access keys. 
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<service-user-name>` | IAM user name (e.g., `datadog-readonly`); must match `[a-zA-Z0-9+=,.@_-]{1,64}` | Your team's IAM naming convention |
+| `datadog-readonly` | Rename to your IAM user name; must match `[a-zA-Z0-9+=,.@_-]{1,64}` | Your team's IAM naming convention |
 
 ## Related Presets
 

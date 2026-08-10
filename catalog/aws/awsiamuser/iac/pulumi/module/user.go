@@ -98,10 +98,18 @@ func iamUser(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*IamU
 	var accessKey *iam.AccessKey
 	if !spec.DisableAccessKeys {
 		akName := fmt.Sprintf("%s-ak", userName)
-		var akErr error
-		accessKey, akErr = iam.NewAccessKey(ctx, akName, &iam.AccessKeyArgs{
+		akArgs := &iam.AccessKeyArgs{
 			User: createdUser.Name,
-		}, pulumi.Provider(provider), pulumi.Parent(createdUser))
+		}
+		// Active/Inactive updates in place -- the rotation lever: an Inactive
+		// key keeps its id and secret but AWS rejects requests signed with it.
+		// Unset keeps the AWS default (Active).
+		if spec.AccessKeyStatus != "" {
+			akArgs.Status = pulumi.StringPtr(spec.AccessKeyStatus)
+		}
+		var akErr error
+		accessKey, akErr = iam.NewAccessKey(ctx, akName, akArgs,
+			pulumi.Provider(provider), pulumi.Parent(createdUser))
 		if akErr != nil {
 			return nil, errors.Wrap(akErr, "failed to create access key")
 		}

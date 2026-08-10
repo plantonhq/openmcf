@@ -35,6 +35,20 @@ spec:
   region: us-west-2
   cidrBlock: 10.0.0.0/16
   enableDnsHostnames: true
+  # Additional address space grows in place: an explicit block, an IPAM-sized
+  # allocation, or a pool-pinned block per entry.
+  secondaryIpv4Cidrs:
+    - cidrBlock: 10.1.0.0/16
+    - ipamPoolId:
+        value: ipam-pool-0demo1234abcd
+      netmaskLength: 20
+  # Additional IPv6 ranges: one source per entry (Amazon-provided here).
+  secondaryIpv6Cidrs:
+    - assignGenerated: true
+  # VPC Encryption Control: observe unencrypted traffic paths before
+  # enforcing (move to enforce with exclusions once findings are clean).
+  encryptionControl:
+    mode: monitor
 ```
 
 ## Spec Fields
@@ -43,8 +57,11 @@ spec:
 |---|---|---|---|---|
 | `spec.region` | `string` | yes |  |  |
 | `spec.cidrBlock` | `string` |  |  |  |
-| `spec.secondaryIpv4CidrBlocks` | `[]string` |  |  |  |
-| `spec.ipv4IpamPoolId` | `string` |  |  |  |
+| `spec.secondaryIpv4Cidrs` | `[]AwsVpcSecondaryIpv4Cidr` |  |  |  |
+| `spec.secondaryIpv4Cidrs[].cidrBlock` | `string` |  |  |  |
+| `spec.secondaryIpv4Cidrs[].ipamPoolId` | `string \| valueFrom` |  |  |  |
+| `spec.secondaryIpv4Cidrs[].netmaskLength` | `int32` |  |  |  |
+| `spec.ipv4IpamPoolId` | `string \| valueFrom` |  |  |  |
 | `spec.ipv4NetmaskLength` | `int32` |  |  |  |
 | `spec.instanceTenancy` | `string` |  | `default` |  |
 | `spec.enableDnsSupport` | `bool` |  | `true` |  |
@@ -53,8 +70,24 @@ spec:
 | `spec.assignGeneratedIpv6CidrBlock` | `bool` |  |  |  |
 | `spec.ipv6CidrBlock` | `string` |  |  |  |
 | `spec.ipv6CidrBlockNetworkBorderGroup` | `string` |  |  |  |
-| `spec.ipv6IpamPoolId` | `string` |  |  |  |
+| `spec.ipv6IpamPoolId` | `string \| valueFrom` |  |  |  |
 | `spec.ipv6NetmaskLength` | `int32` |  |  |  |
+| `spec.secondaryIpv6Cidrs` | `[]AwsVpcSecondaryIpv6Cidr` |  |  |  |
+| `spec.secondaryIpv6Cidrs[].assignGenerated` | `bool` |  |  |  |
+| `spec.secondaryIpv6Cidrs[].ipv6Pool` | `string` |  |  |  |
+| `spec.secondaryIpv6Cidrs[].ipamPoolId` | `string \| valueFrom` |  |  |  |
+| `spec.secondaryIpv6Cidrs[].cidrBlock` | `string` |  |  |  |
+| `spec.secondaryIpv6Cidrs[].netmaskLength` | `int32` |  |  |  |
+| `spec.encryptionControl` | `AwsVpcEncryptionControl` |  |  |  |
+| `spec.encryptionControl.mode` | `string` | yes |  |  |
+| `spec.encryptionControl.excludeInternetGateway` | `bool` |  |  |  |
+| `spec.encryptionControl.excludeEgressOnlyInternetGateway` | `bool` |  |  |  |
+| `spec.encryptionControl.excludeNatGateway` | `bool` |  |  |  |
+| `spec.encryptionControl.excludeVirtualPrivateGateway` | `bool` |  |  |  |
+| `spec.encryptionControl.excludeVpcPeering` | `bool` |  |  |  |
+| `spec.encryptionControl.excludeVpcLattice` | `bool` |  |  |  |
+| `spec.encryptionControl.excludeLambda` | `bool` |  |  |  |
+| `spec.encryptionControl.excludeElasticFileSystem` | `bool` |  |  |  |
 
 ## Field Details
 
@@ -80,25 +113,38 @@ addresses. Leave empty only when allocating the primary CIDR from IPAM
 (set ipv4_ipam_pool_id instead); exactly one of cidr_block or
 ipv4_ipam_pool_id must be provided.
 
-### spec.secondaryIpv4CidrBlocks
+### spec.secondaryIpv4Cidrs
 
-`[]string`
+`[]AwsVpcSecondaryIpv4Cidr`
 
-Additional IPv4 CIDR blocks to associate with the VPC beyond the primary
-one (e.g. ["10.1.0.0/16", "100.64.0.0/16"]). Each is associated as its own
-resource and can be added or removed without recreating the VPC. Each block
-must be non-overlapping and within the AWS /16-/28 mask limits. Useful when
-a single /16 runs out of subnet space or when carving a distinct range
-(such as the 100.64.0.0/10 shared space) for specific workloads.
+- rule: set cidr_block or ipam_pool_id (or both, to pin a specific block from the pool)
+- rule: cidr_block must be an IPv4 CIDR with a /16-/28 mask, e.g. 10.1.0.0/16
+- rule: netmask_length must be between 16 and 28, requires ipam_pool_id, and is mutually exclusive with cidr_block
+
+### spec.secondaryIpv4Cidrs[].cidrBlock
+
+`string`
+
+### spec.secondaryIpv4Cidrs[].ipamPoolId
+
+`string | valueFrom`
+
+- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+
+### spec.secondaryIpv4Cidrs[].netmaskLength
+
+`int32`
 
 ### spec.ipv4IpamPoolId
 
-`string`
+`string | valueFrom`
 
 The IPAM (IP Address Manager) pool to allocate the primary IPv4 CIDR from,
 instead of specifying cidr_block directly. Pair with ipv4_netmask_length to
 let IPAM choose a block of the requested size, or with cidr_block to take a
 specific block from the pool. Immutable: changing it replaces the VPC.
+
+- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
 ### spec.ipv4NetmaskLength
 
@@ -180,11 +226,13 @@ with assign_generated_ipv6_cidr_block.
 
 ### spec.ipv6IpamPoolId
 
-`string`
+`string | valueFrom`
 
 The IPAM pool to allocate the IPv6 CIDR from. Pair with ipv6_netmask_length
 (the size to allocate) or ipv6_cidr_block (a specific block). Mutually
 exclusive with assign_generated_ipv6_cidr_block.
+
+- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
 ### spec.ipv6NetmaskLength
 
@@ -194,14 +242,90 @@ The netmask length of the IPv6 CIDR to allocate from ipv6_ipam_pool_id.
 Must be one of 44, 48, 52, 56, or 60. Requires ipv6_ipam_pool_id and is
 mutually exclusive with ipv6_cidr_block.
 
+### spec.secondaryIpv6Cidrs
+
+`[]AwsVpcSecondaryIpv6Cidr`
+
+- rule: set exactly one IPv6 source: assign_generated, ipv6_pool, or ipam_pool_id
+- rule: cidr_block cannot be combined with assign_generated
+- rule: cidr_block must be an IPv6 CIDR with a /44, /48, /52, /56, or /60 prefix
+- rule: netmask_length must be one of 44, 48, 52, 56, 60, requires ipam_pool_id, and is mutually exclusive with cidr_block
+
+### spec.secondaryIpv6Cidrs[].assignGenerated
+
+`bool`
+
+### spec.secondaryIpv6Cidrs[].ipv6Pool
+
+`string`
+
+### spec.secondaryIpv6Cidrs[].ipamPoolId
+
+`string | valueFrom`
+
+- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+
+### spec.secondaryIpv6Cidrs[].cidrBlock
+
+`string`
+
+### spec.secondaryIpv6Cidrs[].netmaskLength
+
+`int32`
+
+### spec.encryptionControl
+
+`AwsVpcEncryptionControl`
+
+- rule: exclusions only apply when mode is 'enforce'
+
+### spec.encryptionControl.mode
+
+`string` · required
+
+- rule: {"required":true,"string":{"in":["monitor","enforce"]}}
+
+### spec.encryptionControl.excludeInternetGateway
+
+`bool`
+
+### spec.encryptionControl.excludeEgressOnlyInternetGateway
+
+`bool`
+
+### spec.encryptionControl.excludeNatGateway
+
+`bool`
+
+### spec.encryptionControl.excludeVirtualPrivateGateway
+
+`bool`
+
+### spec.encryptionControl.excludeVpcPeering
+
+`bool`
+
+### spec.encryptionControl.excludeVpcLattice
+
+`bool`
+
+### spec.encryptionControl.excludeLambda
+
+`bool`
+
+### spec.encryptionControl.excludeElasticFileSystem
+
+`bool`
+
 ## Validation Rules
 
 - `ipv4_primary_source_required`: set exactly one primary IPv4 source: cidr_block or ipv4_ipam_pool_id
 - `ipv4_cidr_block_vs_netmask_exclusive`: cidr_block and ipv4_netmask_length are mutually exclusive
-- `ipv4_cidr_block_format`: cidr_block must be a valid IPv4 CIDR, e.g. 10.0.0.0/16
+- `ipv4_cidr_block_format`: cidr_block must be an IPv4 CIDR with a /16-/28 mask, e.g. 10.0.0.0/16
 - `ipv4_netmask_length_valid`: ipv4_netmask_length must be between 16 and 28 and requires ipv4_ipam_pool_id
 - `ipv6_amazon_vs_ipam_exclusive`: assign_generated_ipv6_cidr_block cannot be combined with the IPAM IPv6 fields (ipv6_ipam_pool_id/ipv6_cidr_block/ipv6_netmask_length)
 - `ipv6_cidr_block_requires_ipam`: ipv6_cidr_block requires ipv6_ipam_pool_id
+- `ipv6_cidr_block_format`: ipv6_cidr_block must be an IPv6 CIDR with a /44, /48, /52, /56, or /60 prefix, e.g. 2600:1f18:abcd:1200::/56
 - `ipv6_netmask_length_valid`: ipv6_netmask_length must be one of 44, 48, 52, 56, 60 and requires ipv6_ipam_pool_id
 - `ipv6_cidr_block_vs_netmask_exclusive`: ipv6_cidr_block and ipv6_netmask_length are mutually exclusive
 - `ipv6_border_group_requires_amazon`: ipv6_cidr_block_network_border_group requires assign_generated_ipv6_cidr_block

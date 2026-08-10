@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 226 |
-| Spec fields authored across all kinds | 4184 |
+| Distinct provider resources consumed | 229 |
+| Spec fields authored across all kinds | 4210 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,11 +47,11 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**26 of 112 kinds are at total accounting; 76 proven live.**
+**30 of 112 kinds are at total accounting; 71 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
-| AwsAlb | 71 | 17 | 12 | 42 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsAlb | 71 | 17 | 12 | 42 | 0 | ✅ | — |
 | AwsAppRunnerAutoScalingConfiguration | 7 | 4 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsAppRunnerObservabilityConfiguration | 5 | 2 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsAppRunnerService | 48 | 5 | 0 | 0 | 74 | ❌ | ✅ pulumi, terraform |
@@ -108,20 +108,20 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsHttpApiVpcLink | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamInstanceProfile | 6 | 2 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
 | AwsIamOidcProvider | 5 | 3 | 0 | 0 | 3 | ❌ | — |
-| AwsIamPolicy | 8 | 2 | 0 | 0 | 8 | ❌ | ✅ pulumi, terraform |
+| AwsIamPolicy | 8 | 2 | 1 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamRole | 16 | 5 | 0 | 0 | 20 | ❌ | — |
-| AwsIamUser | 15 | 3 | 0 | 0 | 17 | ❌ | ✅ pulumi, terraform |
+| AwsIamUser | 15 | 3 | 4 | 8 | 0 | ✅ | — |
 | AwsInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | — |
 | AwsKinesisStream | 17 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
 | AwsKinesisStreamConsumer | 8 | 3 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
-| AwsKmsKey | 19 | 9 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
+| AwsKmsKey | 29 | 15 | 6 | 8 | 0 | ✅ | — |
 | AwsLambda | 108 | 51 | 30 | 27 | 0 | ✅ | — |
 | AwsLambdaEventSourceMapping | 45 | 11 | 31 | 3 | 0 | ✅ | — |
 | AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | — |
 | AwsLbListener | 76 | 13 | 59 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 55 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsLbTargetGroup | 48 | 34 | 7 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsLbTargetGroup | 48 | 34 | 7 | 7 | 0 | ✅ | — |
 | AwsMemcachedElasticache | 48 | 20 | 0 | 0 | 31 | ❌ | ✅ pulumi, terraform |
 | AwsMemorydbAcl | 6 | 2 | 0 | 0 | 4 | ❌ | — |
 | AwsMemorydbCluster | 46 | 31 | 0 | 0 | 18 | ❌ | — |
@@ -158,7 +158,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsTransitGateway | 14 | 12 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsTransitGatewayRouteTable | 21 | 6 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
 | AwsTransitGatewayVpcAttachment | 12 | 8 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
-| AwsVpc | 20 | 17 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
+| AwsVpc | 39 | 16 | 14 | 9 | 0 | ✅ | — |
 | AwsVpcEndpoint | 23 | 17 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
 | AwsWafIpSet | 9 | 5 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
 | AwsWafRegexPatternSet | 8 | 3 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
@@ -170,11 +170,11 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 226 | consumed by a kind's Terraform module today |
+| Modeled | 229 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 3 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 818 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 516 | deliberately not offered, each with the recorded reason |
+| Composed | 4 | capability covered through an existing kind's surface rather than a kind of its own |
+| Planned | 809 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 521 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 128 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -183,7 +183,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (226)
+### Modeled (229)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -318,6 +318,7 @@ rather than trusted.
 | `aws_kinesis_stream` | consumed by AwsKinesisStream |
 | `aws_kinesis_stream_consumer` | consumed by AwsKinesisStreamConsumer |
 | `aws_kms_alias` | consumed by AwsKmsKey |
+| `aws_kms_grant` | consumed by AwsKmsKey |
 | `aws_kms_key` | consumed by AwsKmsKey |
 | `aws_lambda_alias` | consumed by AwsLambda |
 | `aws_lambda_event_source_mapping` | consumed by AwsLambdaEventSourceMapping |
@@ -406,23 +407,26 @@ rather than trusted.
 | `aws_sqs_queue` | consumed by AwsSqsQueue |
 | `aws_subnet` | consumed by AwsSubnet |
 | `aws_vpc` | consumed by AwsVpc |
+| `aws_vpc_encryption_control` | consumed by AwsVpc |
 | `aws_vpc_endpoint` | consumed by AwsVpcEndpoint |
 | `aws_vpc_ipv4_cidr_block_association` | consumed by AwsVpc |
+| `aws_vpc_ipv6_cidr_block_association` | consumed by AwsVpc |
 | `aws_wafv2_ip_set` | consumed by AwsWafIpSet |
 | `aws_wafv2_regex_pattern_set` | consumed by AwsWafRegexPatternSet |
 | `aws_wafv2_web_acl` | consumed by AwsWafWebAcl |
 | `aws_wafv2_web_acl_association` | consumed by AwsAlb, AwsAppRunnerService |
 | `aws_wafv2_web_acl_logging_configuration` | consumed by AwsWafWebAcl |
 
-### Composed (3)
+### Composed (4)
 
 | Resource | Recorded reason |
 |---|---|
 | `aws_autoscaling_attachment` | covered by AwsAutoScalingGroup: target_groups registers ALB/NLB target groups and traffic_sources covers Classic ELBs -- the standalone attachment is the imperative pattern for a group that owns its attachments |
 | `aws_autoscaling_traffic_source_attachment` | covered by AwsAutoScalingGroup.traffic_sources -- the standalone attachment is the imperative pattern for a group that owns its traffic sources |
+| `aws_kms_key_policy` | covered by AwsKmsKey spec.policy -- the standalone resource is the detached-management pattern for keys owned elsewhere |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
 
-### Planned (818)
+### Planned (809)
 
 | Resource | Recorded reason |
 |---|---|
@@ -821,12 +825,8 @@ rather than trusted.
 | `aws_iam_saml_provider` | judged as a planned AwsIamSamlProvider kind |
 | `aws_iam_security_token_service_preferences` | judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features) |
 | `aws_iam_service_linked_role` | role companion surface (exclusive policy lockdown, service-linked roles); folds into the existing AwsIamRole kind as its spec deepens |
-| `aws_iam_service_specific_credential` | user companion surface (exclusive policy lockdown, login profiles, SSH keys, service credentials); folds into the existing AwsIamUser kind as its spec deepens |
+| `aws_iam_service_specific_credential` | user-scoped service credentials (Bedrock API keys, Cassandra, CodeCommit); folds into AwsIamUser with the Bedrock wave, which brings the demand signal (API keys), the per-credential secret-delivery design, and the live fixtures its proof needs |
 | `aws_iam_user_group_membership` | judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments) |
-| `aws_iam_user_login_profile` | user companion surface (exclusive policy lockdown, login profiles, SSH keys, service credentials); folds into the existing AwsIamUser kind as its spec deepens |
-| `aws_iam_user_policies_exclusive` | user companion surface (exclusive policy lockdown, login profiles, SSH keys, service credentials); folds into the existing AwsIamUser kind as its spec deepens |
-| `aws_iam_user_policy_attachments_exclusive` | user companion surface (exclusive policy lockdown, login profiles, SSH keys, service credentials); folds into the existing AwsIamUser kind as its spec deepens |
-| `aws_iam_user_ssh_key` | user companion surface (exclusive policy lockdown, login profiles, SSH keys, service credentials); folds into the existing AwsIamUser kind as its spec deepens |
 | `aws_identitystore_group` | Identity Center directory objects (users, groups, memberships) fold into the planned AwsIdentityCenterAssignment kind family |
 | `aws_identitystore_group_membership` | Identity Center directory objects (users, groups, memberships) fold into the planned AwsIdentityCenterAssignment kind family |
 | `aws_identitystore_user` | Identity Center directory objects (users, groups, memberships) fold into the planned AwsIdentityCenterAssignment kind family |
@@ -851,11 +851,9 @@ rather than trusted.
 | `aws_kinesis_account_settings` | account-level Kinesis settings fold into the existing AwsKinesisStream kind family's account composition |
 | `aws_kinesisanalyticsv2_application` | judged as a planned AwsManagedFlink kind (applications with snapshots) |
 | `aws_kinesisanalyticsv2_application_snapshot` | judged as a planned AwsManagedFlink kind (applications with snapshots) |
-| `aws_kms_external_key` | KMS companion surface (policies, grants, replica and external keys); folds into the existing AwsKmsKey kind as its spec deepens |
-| `aws_kms_grant` | KMS companion surface (policies, grants, replica and external keys); folds into the existing AwsKmsKey kind as its spec deepens |
-| `aws_kms_key_policy` | KMS companion surface (policies, grants, replica and external keys); folds into the existing AwsKmsKey kind as its spec deepens |
-| `aws_kms_replica_external_key` | KMS companion surface (policies, grants, replica and external keys); folds into the existing AwsKmsKey kind as its spec deepens |
-| `aws_kms_replica_key` | KMS companion surface (policies, grants, replica and external keys); folds into the existing AwsKmsKey kind as its spec deepens |
+| `aws_kms_external_key` | judged as a planned AwsKmsExternalKey kind (BYOK imported key material -- its own creation lifecycle with sensitive-material handling, per the provider's own resource split) |
+| `aws_kms_replica_external_key` | judged as a planned AwsKmsReplicaKey kind (the external-material arm of replica keys) |
+| `aws_kms_replica_key` | judged as a planned AwsKmsReplicaKey kind (a replica is its own regional resource referencing a primary key ARN -- a cross-region lifecycle outside the single-region key kind) |
 | `aws_lakeformation_data_cells_filter` | judged as a planned AwsLakeFormation kind (data-lake settings, permissions, resources, LF-tags, opt-ins, Identity Center config) |
 | `aws_lakeformation_data_lake_settings` | judged as a planned AwsLakeFormation kind (data-lake settings, permissions, resources, LF-tags, opt-ins, Identity Center config) |
 | `aws_lakeformation_identity_center_configuration` | judged as a planned AwsLakeFormation kind (data-lake settings, permissions, resources, LF-tags, opt-ins, Identity Center config) |
@@ -1180,11 +1178,10 @@ rather than trusted.
 | `aws_verifiedaccess_instance_trust_provider_attachment` | judged as a planned AwsVerifiedAccess kind (instances, trust providers, groups, endpoints, logging) |
 | `aws_verifiedaccess_trust_provider` | judged as a planned AwsVerifiedAccess kind (instances, trust providers, groups, endpoints, logging) |
 | `aws_volume_attachment` | judged as a planned AwsEbsVolume kind (volumes, copies, attachments) |
-| `aws_vpc_block_public_access_exclusion` | VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens |
-| `aws_vpc_block_public_access_options` | VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens |
+| `aws_vpc_block_public_access_exclusion` | judged as a planned AwsVpcBlockPublicAccess kind (the per-VPC/per-subnet exclusion arm of the regional block-public-access singleton) |
+| `aws_vpc_block_public_access_options` | judged as a planned AwsVpcBlockPublicAccess kind (a REGIONAL account-level singleton -- its id is the region -- paired with per-VPC/subnet exclusions; never per-VPC surface) |
 | `aws_vpc_dhcp_options` | judged as a planned AwsVpcDhcpOptions kind (option sets with associations) |
 | `aws_vpc_dhcp_options_association` | judged as a planned AwsVpcDhcpOptions kind (option sets with associations) |
-| `aws_vpc_encryption_control` | VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens |
 | `aws_vpc_endpoint_connection_accepter` | judged as a planned AwsVpcEndpointService kind (PrivateLink provider side: services, allowed principals, DNS verification, connection accepters/notifications) |
 | `aws_vpc_endpoint_connection_notification` | judged as a planned AwsVpcEndpointService kind (PrivateLink provider side: services, allowed principals, DNS verification, connection accepters/notifications) |
 | `aws_vpc_endpoint_policy` | endpoint companion surface (policies, private DNS, route table/security group/subnet associations); folds into the existing AwsVpcEndpoint kind as its spec deepens |
@@ -1204,8 +1201,6 @@ rather than trusted.
 | `aws_vpc_ipam_resource_discovery` | judged as a planned AwsVpcIpam kind (IPAM, scopes, pools, CIDR allocations, resource discovery, organization admin) |
 | `aws_vpc_ipam_resource_discovery_association` | judged as a planned AwsVpcIpam kind (IPAM, scopes, pools, CIDR allocations, resource discovery, organization admin) |
 | `aws_vpc_ipam_scope` | judged as a planned AwsVpcIpam kind (IPAM, scopes, pools, CIDR allocations, resource discovery, organization admin) |
-| `aws_vpc_ipv6_cidr_block_association` | VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens |
-| `aws_vpc_network_performance_metric_subscription` | VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens |
 | `aws_vpc_peering_connection` | judged as a planned AwsVpcPeering kind (peering connections, accepters, options) |
 | `aws_vpc_peering_connection_accepter` | judged as a planned AwsVpcPeering kind (peering connections, accepters, options) |
 | `aws_vpc_peering_connection_options` | judged as a planned AwsVpcPeering kind (peering connections, accepters, options) |
@@ -1245,7 +1240,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (516)
+### Deferred (521)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1443,6 +1438,10 @@ rather than trusted.
 | `aws_glue_ml_transform` | Glue ML transforms, data-quality rulesets and UDFs are workload content; deferred |
 | `aws_glue_user_defined_function` | Glue ML transforms, data-quality rulesets and UDFs are workload content; deferred |
 | `aws_iam_outbound_web_identity_federation` | human-credential MFA devices and outbound identity federation; deferred pending demand |
+| `aws_iam_user_login_profile` | human console-login credentials (PGP-encrypted passwords) -- the human-credential class alongside aws_iam_virtual_mfa_device; the catalog provisions machine identities; revisit on demand |
+| `aws_iam_user_policies_exclusive` | exclusive-set reconciliation (purges out-of-band inline policies at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamUser already declares its full intended policy set |
+| `aws_iam_user_policy_attachments_exclusive` | exclusive-set reconciliation (purges out-of-band managed-policy attachments at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamUser already declares its full intended policy set |
+| `aws_iam_user_ssh_key` | CodeCommit SSH public keys -- the consuming service closed to new customers in 2024; revisit on demand |
 | `aws_iam_virtual_mfa_device` | human-credential MFA devices and outbound identity federation; deferred pending demand |
 | `aws_internetmonitor_monitor` | Internet Monitor observability; deferred pending demand |
 | `aws_invoicing_invoice_unit` | invoice-unit billing configuration; deferred pending demand |
@@ -1732,6 +1731,7 @@ rather than trusted.
 | `aws_verifiedpermissions_policy_store` | fine-grained authorization stores (Verified Permissions); deferred pending demand |
 | `aws_verifiedpermissions_policy_template` | fine-grained authorization stores (Verified Permissions); deferred pending demand |
 | `aws_verifiedpermissions_schema` | fine-grained authorization stores (Verified Permissions); deferred pending demand |
+| `aws_vpc_network_performance_metric_subscription` | account-scoped AZ-pair network performance monitoring (aggregate-latency metric subscriptions between availability zones) -- never per-VPC surface; revisit on demand |
 | `aws_vpc_route_server` | VPC route servers; deferred pending demand |
 | `aws_vpc_route_server_endpoint` | VPC route servers; deferred pending demand |
 | `aws_vpc_route_server_peer` | VPC route servers; deferred pending demand |

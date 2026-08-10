@@ -5,12 +5,17 @@ metadata:
 spec:
   # An IAM user under live E2E: the harness runs deploy -> GetUser verify ->
   # destroy -> verify-destroyed on both provisioners against the AWS test
-  # account via keyless SSO/OIDC credentials. The scenario creates the default
-  # access key (the usual reason a user exists) and force_destroy guarantees
-  # teardown succeeds. IAM is global and free.
+  # account via keyless SSO/OIDC credentials. The scenario creates the access
+  # key explicitly Inactive (proving the non-default rotation-lever arm at
+  # zero cost), attaches one AWS-managed policy by literal ARN and one
+  # Planton-managed policy by reference (the e2e-prerequisites annotation
+  # composes the AwsIamPolicy install profile -- the first live proof of the
+  # policy_arn reference edge), and force_destroy guarantees teardown
+  # succeeds. IAM is global and free.
+  #
+  # pending_proof: the depth closure added the access-key status arm and the
+  # composed policy-fixture chain -- the prior green proof predates both.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 10

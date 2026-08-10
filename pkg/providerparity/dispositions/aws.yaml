@@ -1939,7 +1939,7 @@ resources:
     reason: "role companion surface (exclusive policy lockdown, service-linked roles); folds into the existing AwsIamRole kind as its spec deepens"
   - resource: aws_iam_service_specific_credential
     disposition: model-planned
-    reason: "user companion surface (exclusive policy lockdown, login profiles, SSH keys, service credentials); folds into the existing AwsIamUser kind as its spec deepens"
+    reason: "user-scoped service credentials (Bedrock API keys, Cassandra, CodeCommit); folds into AwsIamUser with the Bedrock wave, which brings the demand signal (API keys), the per-credential secret-delivery design, and the live fixtures its proof needs"
   - resource: aws_iam_signing_certificate
     disposition: excluded-deprecated
     reason: "IAM-hosted certificates are legacy, superseded by ACM (covered by AwsCertManagerCert)"
@@ -1947,17 +1947,17 @@ resources:
     disposition: model-planned
     reason: "judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments)"
   - resource: aws_iam_user_login_profile
-    disposition: model-planned
-    reason: "user companion surface (exclusive policy lockdown, login profiles, SSH keys, service credentials); folds into the existing AwsIamUser kind as its spec deepens"
+    disposition: deferred
+    reason: "human console-login credentials (PGP-encrypted passwords) -- the human-credential class alongside aws_iam_virtual_mfa_device; the catalog provisions machine identities; revisit on demand"
   - resource: aws_iam_user_policies_exclusive
-    disposition: model-planned
-    reason: "user companion surface (exclusive policy lockdown, login profiles, SSH keys, service credentials); folds into the existing AwsIamUser kind as its spec deepens"
+    disposition: deferred
+    reason: "exclusive-set reconciliation (purges out-of-band inline policies at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamUser already declares its full intended policy set"
   - resource: aws_iam_user_policy_attachments_exclusive
-    disposition: model-planned
-    reason: "user companion surface (exclusive policy lockdown, login profiles, SSH keys, service credentials); folds into the existing AwsIamUser kind as its spec deepens"
+    disposition: deferred
+    reason: "exclusive-set reconciliation (purges out-of-band managed-policy attachments at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamUser already declares its full intended policy set"
   - resource: aws_iam_user_ssh_key
-    disposition: model-planned
-    reason: "user companion surface (exclusive policy lockdown, login profiles, SSH keys, service credentials); folds into the existing AwsIamUser kind as its spec deepens"
+    disposition: deferred
+    reason: "CodeCommit SSH public keys -- the consuming service closed to new customers in 2024; revisit on demand"
   - resource: aws_iam_virtual_mfa_device
     disposition: deferred
     reason: "human-credential MFA devices and outbound identity federation; deferred pending demand"
@@ -2149,19 +2149,16 @@ resources:
     reason: "CloudHSM-backed custom key stores; deferred pending demand"
   - resource: aws_kms_external_key
     disposition: model-planned
-    reason: "KMS companion surface (policies, grants, replica and external keys); folds into the existing AwsKmsKey kind as its spec deepens"
-  - resource: aws_kms_grant
-    disposition: model-planned
-    reason: "KMS companion surface (policies, grants, replica and external keys); folds into the existing AwsKmsKey kind as its spec deepens"
+    reason: "judged as a planned AwsKmsExternalKey kind (BYOK imported key material -- its own creation lifecycle with sensitive-material handling, per the provider's own resource split)"
   - resource: aws_kms_key_policy
-    disposition: model-planned
-    reason: "KMS companion surface (policies, grants, replica and external keys); folds into the existing AwsKmsKey kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsKmsKey spec.policy -- the standalone resource is the detached-management pattern for keys owned elsewhere"
   - resource: aws_kms_replica_external_key
     disposition: model-planned
-    reason: "KMS companion surface (policies, grants, replica and external keys); folds into the existing AwsKmsKey kind as its spec deepens"
+    reason: "judged as a planned AwsKmsReplicaKey kind (the external-material arm of replica keys)"
   - resource: aws_kms_replica_key
     disposition: model-planned
-    reason: "KMS companion surface (policies, grants, replica and external keys); folds into the existing AwsKmsKey kind as its spec deepens"
+    reason: "judged as a planned AwsKmsReplicaKey kind (a replica is its own regional resource referencing a primary key ARN -- a cross-region lifecycle outside the single-region key kind)"
   - resource: aws_lakeformation_data_cells_filter
     disposition: model-planned
     reason: "judged as a planned AwsLakeFormation kind (data-lake settings, permissions, resources, LF-tags, opt-ins, Identity Center config)"
@@ -4012,19 +4009,16 @@ resources:
     reason: "judged as a planned AwsEbsVolume kind (volumes, copies, attachments)"
   - resource: aws_vpc_block_public_access_exclusion
     disposition: model-planned
-    reason: "VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens"
+    reason: "judged as a planned AwsVpcBlockPublicAccess kind (the per-VPC/per-subnet exclusion arm of the regional block-public-access singleton)"
   - resource: aws_vpc_block_public_access_options
     disposition: model-planned
-    reason: "VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens"
+    reason: "judged as a planned AwsVpcBlockPublicAccess kind (a REGIONAL account-level singleton -- its id is the region -- paired with per-VPC/subnet exclusions; never per-VPC surface)"
   - resource: aws_vpc_dhcp_options
     disposition: model-planned
     reason: "judged as a planned AwsVpcDhcpOptions kind (option sets with associations)"
   - resource: aws_vpc_dhcp_options_association
     disposition: model-planned
     reason: "judged as a planned AwsVpcDhcpOptions kind (option sets with associations)"
-  - resource: aws_vpc_encryption_control
-    disposition: model-planned
-    reason: "VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens"
   - resource: aws_vpc_endpoint_connection_accepter
     disposition: model-planned
     reason: "judged as a planned AwsVpcEndpointService kind (PrivateLink provider side: services, allowed principals, DNS verification, connection accepters/notifications)"
@@ -4082,12 +4076,9 @@ resources:
   - resource: aws_vpc_ipam_scope
     disposition: model-planned
     reason: "judged as a planned AwsVpcIpam kind (IPAM, scopes, pools, CIDR allocations, resource discovery, organization admin)"
-  - resource: aws_vpc_ipv6_cidr_block_association
-    disposition: model-planned
-    reason: "VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens"
   - resource: aws_vpc_network_performance_metric_subscription
-    disposition: model-planned
-    reason: "VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens"
+    disposition: deferred
+    reason: "account-scoped AZ-pair network performance monitoring (aggregate-latency metric subscriptions between availability zones) -- never per-VPC surface; revisit on demand"
   - resource: aws_vpc_peering_connection
     disposition: model-planned
     reason: "judged as a planned AwsVpcPeering kind (peering connections, accepters, options)"

@@ -7,9 +7,18 @@ spec:
   # destroy -> verify-destroyed on both provisioners against the AWS test account
   # via keyless SSO/OIDC credentials. AwsVpc has no prerequisites -- it is the root
   # of the networking graph.
+  #
+  # pending_proof: the depth closure added real module surface (the secondary
+  # IPv4 restructure with IPAM arms, secondary IPv6 associations, VPC
+  # Encryption Control, and the SVOR conversion of the primary IPAM pool ids)
+  # -- the prior green proof predates it. The live scenario carries one
+  # literal secondary IPv4 CIDR (free, create-time). Offline-proven only,
+  # never silent skips: the IPAM arms (no IPAM pool fixture exists -- unblock:
+  # a VPC IPAM kind with a shared pool fixture), the BYOIP ipv6_pool arm (no
+  # BYOIP range on the test account), and encryption control (billing
+  # unverified -- unblock: verify pricing, then add a monitor-mode arm; its
+  # delete path waits on AWS state transitions).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 10

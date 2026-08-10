@@ -3,6 +3,7 @@ syntax = "proto3";
 package dev.planton.aws.awskmskey.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
 import "shared/options/options.proto";
 
 // AwsKmsKeySpec defines a customer-managed AWS KMS key: its
@@ -40,11 +41,14 @@ message AwsKmsKeySpec {
   // "SYMMETRIC_DEFAULT" (AES-256-GCM -- the default and what AWS
   // service integrations require), "RSA_2048"/"RSA_3072"/"RSA_4096"
   // (asymmetric encrypt/decrypt or sign/verify),
-  // "ECC_NIST_P256"/"ECC_NIST_P384"/"ECC_NIST_P521"/"ECC_SECG_P256K1"
-  // (asymmetric sign/verify -- P256K1 is the blockchain curve),
-  // "HMAC_224"/"HMAC_256"/"HMAC_384"/"HMAC_512" (MAC generation), or
-  // "SM2" (China regions). Empty keeps the AWS default
-  // (SYMMETRIC_DEFAULT).
+  // "ECC_NIST_P256"/"ECC_NIST_P384"/"ECC_NIST_P521" (asymmetric
+  // sign/verify or ECDH key agreement),
+  // "ECC_NIST_EDWARDS25519" (Ed25519 sign/verify only),
+  // "ECC_SECG_P256K1" (sign/verify only -- the blockchain curve),
+  // "ML_DSA_44"/"ML_DSA_65"/"ML_DSA_87" (post-quantum ML-DSA
+  // sign/verify only), "HMAC_224"/"HMAC_256"/"HMAC_384"/"HMAC_512"
+  // (MAC generation), or "SM2" (China regions only). Empty keeps the
+  // AWS default (SYMMETRIC_DEFAULT).
   string key_spec = 3 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
@@ -56,7 +60,11 @@ message AwsKmsKeySpec {
         "ECC_NIST_P256",
         "ECC_NIST_P384",
         "ECC_NIST_P521",
+        "ECC_NIST_EDWARDS25519",
         "ECC_SECG_P256K1",
+        "ML_DSA_44",
+        "ML_DSA_65",
+        "ML_DSA_87",
         "HMAC_224",
         "HMAC_256",
         "HMAC_384",
@@ -69,15 +77,18 @@ message AwsKmsKeySpec {
   // What the key is used for, create-time immutable:
   // "ENCRYPT_DECRYPT" (the default -- required for SYMMETRIC_DEFAULT
   // and the only usage AWS service integrations support),
-  // "SIGN_VERIFY" (asymmetric RSA/ECC/SM2 keys), or
-  // "GENERATE_VERIFY_MAC" (HMAC keys). Empty keeps the AWS default
-  // (ENCRYPT_DECRYPT).
+  // "SIGN_VERIFY" (asymmetric RSA/ECC/ML-DSA/SM2 signing keys),
+  // "KEY_AGREEMENT" (ECDH shared-secret derivation -- NIST ECC curves
+  // and SM2 only), or "GENERATE_VERIFY_MAC" (HMAC keys). Empty keeps
+  // the AWS default (ENCRYPT_DECRYPT). The cross-field rules below
+  // mirror AWS's own key-spec / key-usage compatibility matrix.
   string key_usage = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
       in: [
         "ENCRYPT_DECRYPT",
         "SIGN_VERIFY",
+        "KEY_AGREEMENT",
         "GENERATE_VERIFY_MAC"
       ]
     }
@@ -157,6 +168,39 @@ message AwsKmsKeySpec {
     }
   ];
 
+  // The custom key store to create the key in: a CloudHSM key store
+  // (backed by your CloudHSM cluster) or an external key store (backed
+  // by a key manager outside AWS). Supply a literal key-store id
+  // (cks-...); custom key stores are account-level infrastructure the
+  // catalog does not provision. Create-time immutable. Custom key
+  // store keys must be symmetric encryption keys, never rotate
+  // automatically, and cannot be multi-Region (AWS's contract,
+  // enforced by the rules below). Empty (the default) keeps the key
+  // material in standard AWS KMS.
+  string custom_key_store_id = 13 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 22
+  ];
+
+  // The id of an existing key in the external key manager, for keys
+  // created in an EXTERNAL key store -- KMS forwards cryptographic
+  // operations under this key to that external key. Requires
+  // custom_key_store_id (pointing at an external key store).
+  // Create-time immutable. Up to 128 characters.
+  string xks_key_id = 14 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // KMS grants on this key: scoped, revocable permissions that let a
+  // principal use the key for specific operations without editing the
+  // key policy -- the mechanism for wiring "this workload role may
+  // encrypt/decrypt under this key" as a first-class dependency, and
+  // for cross-account key usage. Each entry materializes as its own
+  // grant resource; grants are create-time immutable (any change
+  // replaces the grant, which is safe -- grants carry no state).
+  repeated AwsKmsKeyGrant grants = 15;
+
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
   // ---------------------------------------------------------------------------
@@ -185,15 +229,170 @@ message AwsKmsKeySpec {
     expression: "this.key_spec.startsWith('HMAC_') == (this.key_usage == 'GENERATE_VERIFY_MAC')"
   };
 
+  // AWS's CreateKey contract: NIST ECC curve keys sign/verify or derive
+  // shared secrets (ECDH); an explicit usage is required for asymmetric keys.
   option (buf.validate.message).cel = {
-    id: "ecc_keys_sign_verify"
-    message: "ECC key specs are signing keys -- set key_usage SIGN_VERIFY"
-    expression: "!this.key_spec.startsWith('ECC_') || this.key_usage == 'SIGN_VERIFY'"
+    id: "ecc_nist_curves_usage"
+    message: "ECC_NIST_P256/P384/P521 keys require key_usage SIGN_VERIFY or KEY_AGREEMENT"
+    expression: "!(this.key_spec in ['ECC_NIST_P256', 'ECC_NIST_P384', 'ECC_NIST_P521']) || this.key_usage in ['SIGN_VERIFY', 'KEY_AGREEMENT']"
+  };
+
+  // Ed25519 and secp256k1 are signing-only curves in KMS.
+  option (buf.validate.message).cel = {
+    id: "ecc_sign_only_curves_usage"
+    message: "ECC_NIST_EDWARDS25519 and ECC_SECG_P256K1 keys are signing keys -- set key_usage SIGN_VERIFY"
+    expression: "!(this.key_spec in ['ECC_NIST_EDWARDS25519', 'ECC_SECG_P256K1']) || this.key_usage == 'SIGN_VERIFY'"
+  };
+
+  // ML-DSA post-quantum keys are signing-only.
+  option (buf.validate.message).cel = {
+    id: "ml_dsa_keys_sign_verify"
+    message: "ML-DSA post-quantum keys are signing keys -- set key_usage SIGN_VERIFY"
+    expression: "!this.key_spec.startsWith('ML_DSA_') || this.key_usage == 'SIGN_VERIFY'"
+  };
+
+  // KEY_AGREEMENT is legal exactly for the NIST ECC curves and SM2 --
+  // the provider's shared enum admits it more broadly, but AWS rejects
+  // every other pairing at CreateKey.
+  option (buf.validate.message).cel = {
+    id: "key_agreement_key_specs"
+    message: "key_usage KEY_AGREEMENT is only supported for ECC_NIST_P256/P384/P521 and SM2 keys"
+    expression: "this.key_usage != 'KEY_AGREEMENT' || this.key_spec in ['ECC_NIST_P256', 'ECC_NIST_P384', 'ECC_NIST_P521', 'SM2']"
+  };
+
+  // Custom key stores (CloudHSM and external) support only symmetric
+  // encryption keys -- AWS's documented CreateKey contract.
+  option (buf.validate.message).cel = {
+    id: "custom_key_store_symmetric_only"
+    message: "custom key store keys must be symmetric encryption keys -- leave key_spec and key_usage empty (or SYMMETRIC_DEFAULT / ENCRYPT_DECRYPT)"
+    expression: "this.custom_key_store_id == '' || ((this.key_spec == '' || this.key_spec == 'SYMMETRIC_DEFAULT') && (this.key_usage == '' || this.key_usage == 'ENCRYPT_DECRYPT'))"
+  };
+
+  // AWS never rotates key material it does not own generation of.
+  option (buf.validate.message).cel = {
+    id: "custom_key_store_no_rotation"
+    message: "automatic rotation is not supported for keys in a custom key store"
+    expression: "this.custom_key_store_id == '' || !this.enable_key_rotation"
+  };
+
+  // Multi-Region keys cannot live in custom key stores (AWS contract).
+  option (buf.validate.message).cel = {
+    id: "custom_key_store_no_multi_region"
+    message: "multi-Region keys cannot be created in a custom key store"
+    expression: "this.custom_key_store_id == '' || !this.multi_region"
+  };
+
+  // An external-key id is meaningless outside an external key store.
+  option (buf.validate.message).cel = {
+    id: "xks_key_requires_custom_key_store"
+    message: "xks_key_id requires custom_key_store_id (the external key store the key lives in)"
+    expression: "this.xks_key_id == '' || this.custom_key_store_id != ''"
   };
 
   option (buf.validate.message).cel = {
     id: "no_reserved_aws_aliases"
     message: "the alias/aws/ prefix is reserved for AWS-managed keys -- choose a different alias name"
     expression: "this.aliases.all(a, !a.startsWith('alias/aws/'))"
+  };
+}
+
+// AwsKmsKeyGrant defines one KMS grant on this key: a scoped, revocable
+// permission that lets a principal use the key for specific operations
+// without editing the key policy. Grants are how AWS services and
+// workloads get programmatic key access -- and how cross-account usage
+// is delegated -- while the key policy stays small and auditable.
+//
+// A grant is identified by its generated grant id; every field below is
+// create-time immutable (changing one replaces the grant, which is safe:
+// grants carry no state of their own). The grant token KMS returns at
+// creation is deliberately NOT exposed as an output -- it is a sensitive,
+// short-lived eventual-consistency bridge, and declarative deployments
+// rely on grant propagation (seconds) instead.
+message AwsKmsKeyGrant {
+  // Friendly name for the grant, shown by ListGrants next to the
+  // generated grant id. Optional. Up to 256 characters: letters,
+  // digits, and _:/- .
+  string name = 1 [(buf.validate.field).cel = {
+    id: "grant_name_format"
+    message: "name may use letters, digits, and _:/- (max 256 characters)"
+    expression: "this == '' || (size(this) <= 256 && this.matches('^[0-9A-Za-z_:/-]+$'))"
+  }];
+
+  // The principal the grant permits to use the key: an IAM role (the
+  // mainstream pattern -- reference an AwsIamRole's role_arn output),
+  // an IAM user ARN, or an AWS service principal (e.g.
+  // "logs.amazonaws.com"). Cross-account delegation works by naming a
+  // principal in another account.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef grantee_principal = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The KMS operations the grant allows, at least one. The domain is
+  // AWS's own GrantOperation set; which entries make sense depends on
+  // the key's shape (e.g. Sign/Verify need a signing key, GenerateMac
+  // an HMAC key) -- AWS validates that pairing at grant creation.
+  repeated string operations = 3 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items = {
+      string: {
+        in: [
+          "Decrypt",
+          "Encrypt",
+          "GenerateDataKey",
+          "GenerateDataKeyWithoutPlaintext",
+          "ReEncryptFrom",
+          "ReEncryptTo",
+          "Sign",
+          "Verify",
+          "GetPublicKey",
+          "CreateGrant",
+          "RetireGrant",
+          "DescribeKey",
+          "GenerateDataKeyPair",
+          "GenerateDataKeyPairWithoutPlaintext",
+          "GenerateMac",
+          "VerifyMac",
+          "DeriveSharedSecret"
+        ]
+      }
+    }
+  ];
+
+  // The principal allowed to retire the grant when it is no longer
+  // needed (in addition to the key administrators). Reference an
+  // AwsIamRole's role_arn output, or pass a literal role/user ARN or
+  // service principal.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef retiring_principal = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Constrain the grant to requests whose encryption context EQUALS
+  // exactly these key-value pairs. Only valid for operations that take
+  // an encryption context (symmetric keys). Mutually exclusive with
+  // encryption_context_subset.
+  map<string, string> encryption_context_equals = 5;
+
+  // Constrain the grant to requests whose encryption context CONTAINS
+  // these key-value pairs (a subset match -- the request may carry
+  // more). Mutually exclusive with encryption_context_equals.
+  map<string, string> encryption_context_subset = 6;
+
+  // How teardown releases the grant: false (the default) REVOKES it --
+  // the hard stop that denies all further use immediately; true RETIRES
+  // it -- the graceful path AWS recommends when the grant's work is
+  // done. Both remove the grant; they differ in intent and in the API
+  // permission they exercise (RevokeGrant vs RetireGrant).
+  bool retire_on_delete = 7;
+
+  // AWS accepts at most one encryption-context constraint per grant --
+  // the provider only fails this at apply time; we fail at validate.
+  option (buf.validate.message).cel = {
+    id: "encryption_context_equals_xor_subset"
+    message: "encryption_context_equals and encryption_context_subset are mutually exclusive -- a grant takes at most one constraint"
+    expression: "size(this.encryption_context_equals) == 0 || size(this.encryption_context_subset) == 0"
   };
 }

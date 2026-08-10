@@ -26,5 +26,16 @@ variable "spec" {
     multi_region = optional(bool, false)
     deletion_window_days = optional(number, 0)
     aliases = optional(list(string), [])
+    custom_key_store_id = optional(string, "")
+    xks_key_id = optional(string, "")
+    grants = optional(list(object({
+      name = optional(string, "")
+      grantee_principal = string
+      operations = list(string)
+      retiring_principal = optional(string, "")
+      encryption_context_equals = optional(map(string), {})
+      encryption_context_subset = optional(map(string), {})
+      retire_on_delete = optional(bool, false)
+    })), [])
   })
 }

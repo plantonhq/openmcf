@@ -21,11 +21,14 @@ func vpc(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResource) 
 		EnableNetworkAddressUsageMetrics: pulumi.BoolPtr(spec.EnableNetworkAddressUsageMetrics),
 	}
 
+	// The IPAM pool ids are StringValueOrRef spec fields, resolved to plain
+	// strings before the module runs (no IPAM pool catalog kind exists yet,
+	// so today they carry literal pool ids).
 	if spec.CidrBlock != "" {
 		vpcArgs.CidrBlock = pulumi.StringPtr(spec.CidrBlock)
 	}
-	if spec.Ipv4IpamPoolId != "" {
-		vpcArgs.Ipv4IpamPoolId = pulumi.StringPtr(spec.Ipv4IpamPoolId)
+	if spec.Ipv4IpamPoolId.GetValue() != "" {
+		vpcArgs.Ipv4IpamPoolId = pulumi.StringPtr(spec.Ipv4IpamPoolId.GetValue())
 	}
 	if spec.Ipv4NetmaskLength != 0 {
 		vpcArgs.Ipv4NetmaskLength = pulumi.IntPtr(int(spec.Ipv4NetmaskLength))
@@ -48,8 +51,8 @@ func vpc(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResource) 
 	if spec.Ipv6CidrBlockNetworkBorderGroup != "" {
 		vpcArgs.Ipv6CidrBlockNetworkBorderGroup = pulumi.StringPtr(spec.Ipv6CidrBlockNetworkBorderGroup)
 	}
-	if spec.Ipv6IpamPoolId != "" {
-		vpcArgs.Ipv6IpamPoolId = pulumi.StringPtr(spec.Ipv6IpamPoolId)
+	if spec.Ipv6IpamPoolId.GetValue() != "" {
+		vpcArgs.Ipv6IpamPoolId = pulumi.StringPtr(spec.Ipv6IpamPoolId.GetValue())
 	}
 	if spec.Ipv6NetmaskLength != 0 {
 		vpcArgs.Ipv6NetmaskLength = pulumi.IntPtr(int(spec.Ipv6NetmaskLength))
@@ -61,16 +64,89 @@ func vpc(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResource) 
 	}
 
 	// Associate each secondary IPv4 CIDR as its own resource so it can be added
-	// or removed without recreating the VPC.
-	for i, secondaryCidr := range spec.SecondaryIpv4CidrBlocks {
+	// or removed without recreating the VPC. An entry names an explicit CIDR,
+	// an IPAM-sized allocation, or a pool-pinned block (spec CEL enforces the
+	// shapes).
+	for i, entry := range spec.SecondaryIpv4Cidrs {
+		assocArgs := &ec2.VpcIpv4CidrBlockAssociationArgs{
+			VpcId: createdVpc.ID(),
+		}
+		if entry.CidrBlock != "" {
+			assocArgs.CidrBlock = pulumi.StringPtr(entry.CidrBlock)
+		}
+		if entry.IpamPoolId.GetValue() != "" {
+			assocArgs.Ipv4IpamPoolId = pulumi.StringPtr(entry.IpamPoolId.GetValue())
+		}
+		if entry.NetmaskLength != 0 {
+			assocArgs.Ipv4NetmaskLength = pulumi.IntPtr(int(entry.NetmaskLength))
+		}
 		_, err := ec2.NewVpcIpv4CidrBlockAssociation(ctx,
 			fmt.Sprintf("%s-secondary-%d", name, i),
-			&ec2.VpcIpv4CidrBlockAssociationArgs{
-				VpcId:     createdVpc.ID(),
-				CidrBlock: pulumi.String(secondaryCidr),
+			assocArgs, pulumi.Provider(provider), pulumi.Parent(createdVpc))
+		if err != nil {
+			return errors.Wrapf(err, "failed to associate secondary ipv4 cidr %d", i)
+		}
+	}
+
+	// Associate each secondary IPv6 CIDR as its own resource. Exactly one
+	// source per entry (spec CEL): an Amazon-provided block, a BYOIP public
+	// pool, or an IPAM pool.
+	for i, entry := range spec.SecondaryIpv6Cidrs {
+		assocArgs := &ec2.VpcIpv6CidrBlockAssociationArgs{
+			VpcId: createdVpc.ID(),
+		}
+		if entry.AssignGenerated {
+			assocArgs.AssignGeneratedIpv6CidrBlock = pulumi.BoolPtr(true)
+		}
+		if entry.Ipv6Pool != "" {
+			assocArgs.Ipv6Pool = pulumi.StringPtr(entry.Ipv6Pool)
+		}
+		if entry.IpamPoolId.GetValue() != "" {
+			assocArgs.Ipv6IpamPoolId = pulumi.StringPtr(entry.IpamPoolId.GetValue())
+		}
+		if entry.CidrBlock != "" {
+			assocArgs.Ipv6CidrBlock = pulumi.StringPtr(entry.CidrBlock)
+		}
+		if entry.NetmaskLength != 0 {
+			assocArgs.Ipv6NetmaskLength = pulumi.IntPtr(int(entry.NetmaskLength))
+		}
+		_, err := ec2.NewVpcIpv6CidrBlockAssociation(ctx,
+			fmt.Sprintf("%s-secondary-ipv6-%d", name, i),
+			assocArgs, pulumi.Provider(provider), pulumi.Parent(createdVpc))
+		if err != nil {
+			return errors.Wrapf(err, "failed to associate secondary ipv6 cidr %d", i)
+		}
+	}
+
+	// VPC Encryption Control: AWS's VPC-wide monitor/enforce switch for
+	// encryption in transit. Rendered only when configured; exclusions are
+	// sent enable/disable per service and only apply in enforce mode (spec
+	// CEL keeps monitor-mode exclusions out).
+	if spec.EncryptionControl != nil {
+		ec := spec.EncryptionControl
+		exclusion := func(excluded bool) pulumi.StringPtrInput {
+			if excluded {
+				return pulumi.StringPtr("enable")
+			}
+			return pulumi.StringPtr("disable")
+		}
+		_, err := ec2.NewVpcEncryptionControl(ctx, name+"-encryption-control",
+			&ec2.VpcEncryptionControlArgs{
+				VpcId:                              createdVpc.ID(),
+				Mode:                               pulumi.String(ec.Mode),
+				InternetGatewayExclusion:           exclusion(ec.ExcludeInternetGateway),
+				EgressOnlyInternetGatewayExclusion: exclusion(ec.ExcludeEgressOnlyInternetGateway),
+				NatGatewayExclusion:                exclusion(ec.ExcludeNatGateway),
+				VirtualPrivateGatewayExclusion:     exclusion(ec.ExcludeVirtualPrivateGateway),
+				VpcPeeringExclusion:                exclusion(ec.ExcludeVpcPeering),
+				VpcLatticeExclusion:                exclusion(ec.ExcludeVpcLattice),
+				LambdaExclusion:                    exclusion(ec.ExcludeLambda),
+				ElasticFileSystemExclusion:         exclusion(ec.ExcludeElasticFileSystem),
+				Tags: convertstringmaps.ConvertGoStringMapToPulumiStringMap(
+					stringmaps.AddEntry(locals.AwsTags, "Name", name)),
 			}, pulumi.Provider(provider), pulumi.Parent(createdVpc))
 		if err != nil {
-			return errors.Wrapf(err, "failed to associate secondary cidr %s", secondaryCidr)
+			return errors.Wrap(err, "failed to create vpc encryption control")
 		}
 	}
 

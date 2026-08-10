@@ -39,6 +39,9 @@ spec:
           Action:
             - "s3:PutObject"
           Resource: "arn:aws:s3:::demo-bucket/*"
+  # The rotation lever: flip to Inactive to suspend the key without deleting
+  # it (id and secret survive; AWS rejects requests signed with it).
+  accessKeyStatus: Active
 ```
 
 ## Spec Fields
@@ -53,6 +56,7 @@ spec:
 | `spec.permissionsBoundary` | `string \| valueFrom` |  |  | AwsIamPolicy (`status.outputs.policy_arn`) |
 | `spec.disableAccessKeys` | `bool` |  |  |  |
 | `spec.forceDestroy` | `bool` |  |  |  |
+| `spec.accessKeyStatus` | `string` |  |  |  |
 
 ## Field Details
 
@@ -145,10 +149,17 @@ if such artifacts exist, surfacing them instead of silently destroying
 credentials someone may depend on. Turn on for ephemeral or CI-owned
 users where teardown must always succeed.
 
+### spec.accessKeyStatus
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Active","Inactive"]}}
+
 ## Validation Rules
 
 - `path_format`: path must begin and end with '/' and contain no empty segments, e.g. '/' or '/ci/'
 - `path_length`: path must be at most 512 characters
+- `access_key_status_requires_key`: access_key_status has no effect when disable_access_keys is true -- remove one of the two
 
 ## Outputs
 

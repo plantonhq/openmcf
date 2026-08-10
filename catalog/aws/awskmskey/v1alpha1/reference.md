@@ -39,6 +39,21 @@ spec:
   aliases:
     - alias/demo/app-data
   deletionWindowDays: 30
+  # Grants give principals scoped, revocable use of the key without editing
+  # the key policy -- the pattern for wiring "this workload may encrypt and
+  # decrypt under this key".
+  grants:
+    - name: orders-worker-data
+      granteePrincipal:
+        value: arn:aws:iam::123456789012:role/orders-worker
+      operations:
+        - Encrypt
+        - Decrypt
+        - GenerateDataKey
+        - DescribeKey
+      encryptionContextSubset:
+        app: orders
+      retireOnDelete: true
 ```
 
 ## Spec Fields
@@ -57,6 +72,16 @@ spec:
 | `spec.multiRegion` | `bool` |  |  |  |
 | `spec.deletionWindowDays` | `int32` |  | `30` |  |
 | `spec.aliases` | `[]string` |  |  |  |
+| `spec.customKeyStoreId` | `string` |  |  |  |
+| `spec.xksKeyId` | `string` |  |  |  |
+| `spec.grants` | `[]AwsKmsKeyGrant` |  |  |  |
+| `spec.grants[].name` | `string` |  |  |  |
+| `spec.grants[].granteePrincipal` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.grants[].operations` | `[]string` | yes |  |  |
+| `spec.grants[].retiringPrincipal` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.grants[].encryptionContextEquals` | `map<string, string>` |  |  |  |
+| `spec.grants[].encryptionContextSubset` | `map<string, string>` |  |  |  |
+| `spec.grants[].retireOnDelete` | `bool` |  |  |  |
 
 ## Field Details
 
@@ -95,7 +120,7 @@ service integrations require), "RSA_2048"/"RSA_3072"/"RSA_4096"
 "SM2" (China regions). Empty keeps the AWS default
 (SYMMETRIC_DEFAULT).
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["SYMMETRIC_DEFAULT","RSA_2048","RSA_3072","RSA_4096","ECC_NIST_P256","ECC_NIST_P384","ECC_NIST_P521","ECC_SECG_P256K1","HMAC_224","HMAC_256","HMAC_384","HMAC_512","SM2"]}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["SYMMETRIC_DEFAULT","RSA_2048","RSA_3072","RSA_4096","ECC_NIST_P256","ECC_NIST_P384","ECC_NIST_P521","ECC_NIST_EDWARDS25519","ECC_SECG_P256K1","ML_DSA_44","ML_DSA_65","ML_DSA_87","HMAC_224","HMAC_256","HMAC_384","HMAC_512","SM2"]}}
 
 ### spec.keyUsage
 
@@ -108,7 +133,7 @@ and the only usage AWS service integrations support),
 "GENERATE_VERIFY_MAC" (HMAC keys). Empty keeps the AWS default
 (ENCRYPT_DECRYPT).
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ENCRYPT_DECRYPT","SIGN_VERIFY","GENERATE_VERIFY_MAC"]}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ENCRYPT_DECRYPT","SIGN_VERIFY","KEY_AGREEMENT","GENERATE_VERIFY_MAC"]}}
 
 ### spec.policy
 
@@ -197,13 +222,77 @@ reserved for AWS-managed keys.
 
 - rule: {"repeated":{"unique":true,"items":{"string":{"pattern":"^alias/[0-9A-Za-z_/-]+$"}}}}
 
+### spec.customKeyStoreId
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"22"}}
+
+### spec.xksKeyId
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"128"}}
+
+### spec.grants
+
+`[]AwsKmsKeyGrant`
+
+- rule: encryption_context_equals and encryption_context_subset are mutually exclusive -- a grant takes at most one constraint
+
+### spec.grants[].name
+
+`string`
+
+- rule: name may use letters, digits, and _:/- (max 256 characters)
+
+### spec.grants[].granteePrincipal
+
+`string | valueFrom` · required
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.grants[].operations
+
+`[]string` · required
+
+- rule: {"repeated":{"minItems":"1","unique":true,"items":{"string":{"in":["Decrypt","Encrypt","GenerateDataKey","GenerateDataKeyWithoutPlaintext","ReEncryptFrom","ReEncryptTo","Sign","Verify","GetPublicKey","CreateGrant","RetireGrant","DescribeKey","GenerateDataKeyPair","GenerateDataKeyPairWithoutPlaintext","GenerateMac","VerifyMac","DeriveSharedSecret"]}}}}
+
+### spec.grants[].retiringPrincipal
+
+`string | valueFrom`
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.grants[].encryptionContextEquals
+
+`map<string, string>`
+
+### spec.grants[].encryptionContextSubset
+
+`map<string, string>`
+
+### spec.grants[].retireOnDelete
+
+`bool`
+
 ## Validation Rules
 
 - `rotation_only_for_symmetric`: automatic rotation is only supported for SYMMETRIC_DEFAULT keys -- asymmetric and HMAC key material never rotates automatically
 - `rotation_period_requires_rotation`: rotation_period_in_days only applies when enable_key_rotation is true
 - `symmetric_keys_encrypt_decrypt`: SYMMETRIC_DEFAULT keys only support key_usage ENCRYPT_DECRYPT (the default -- leave key_usage empty)
 - `hmac_keys_generate_verify_mac`: HMAC key specs require key_usage GENERATE_VERIFY_MAC, and GENERATE_VERIFY_MAC requires an HMAC key spec
-- `ecc_keys_sign_verify`: ECC key specs are signing keys -- set key_usage SIGN_VERIFY
+- `ecc_nist_curves_usage`: ECC_NIST_P256/P384/P521 keys require key_usage SIGN_VERIFY or KEY_AGREEMENT
+- `ecc_sign_only_curves_usage`: ECC_NIST_EDWARDS25519 and ECC_SECG_P256K1 keys are signing keys -- set key_usage SIGN_VERIFY
+- `ml_dsa_keys_sign_verify`: ML-DSA post-quantum keys are signing keys -- set key_usage SIGN_VERIFY
+- `key_agreement_key_specs`: key_usage KEY_AGREEMENT is only supported for ECC_NIST_P256/P384/P521 and SM2 keys
+- `custom_key_store_symmetric_only`: custom key store keys must be symmetric encryption keys -- leave key_spec and key_usage empty (or SYMMETRIC_DEFAULT / ENCRYPT_DECRYPT)
+- `custom_key_store_no_rotation`: automatic rotation is not supported for keys in a custom key store
+- `custom_key_store_no_multi_region`: multi-Region keys cannot be created in a custom key store
+- `xks_key_requires_custom_key_store`: xks_key_id requires custom_key_store_id (the external key store the key lives in)
 - `no_reserved_aws_aliases`: the alias/aws/ prefix is reserved for AWS-managed keys -- choose a different alias name
 
 ## Outputs
@@ -215,6 +304,15 @@ Reference an output from another manifest as `valueFrom: {kind: AwsKmsKey, name:
 | `status.outputs.key_id` | `string` | The generated key ID (UUID; "mrk-..." for multi-Region keys). |
 | `status.outputs.key_arn` | `string` | The key ARN -- the join key encryption-at-rest fields across the catalog reference (databases, queues, buckets, functions, ...). |
 | `status.outputs.alias_names` | `[]string` | The alias names attached to the key (each "alias/..."), in spec order -- the human-friendly addresses SDK callers may use instead of the key ID. |
+
+## References
+
+Fields that can point at another resource's outputs:
+
+| Field | Kind | Output |
+|---|---|---|
+| `spec.grants[].granteePrincipal` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.grants[].retiringPrincipal` | AwsIamRole | `status.outputs.role_arn` |
 
 ## Referenced By
 

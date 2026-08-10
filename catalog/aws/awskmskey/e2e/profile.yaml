@@ -6,18 +6,21 @@ spec:
   # A customer-managed KMS key under E2E: the harness runs deploy ->
   # DescribeKey verify -> destroy -> verify-destroyed on both
   # provisioners. The scenario is a true leaf (no registry prerequisites)
-  # with one symmetric key and a single alias -- fast and cheap. Deliberately
-  # not in the live scenario: multi-Region primaries, asymmetric/HMAC key
-  # shapes, and custom key policies -- all proven by CEL spec tests and the
-  # offline gate.
+  # with one symmetric key, a single alias, and one grant to an AWS
+  # service principal (grants are free, create-time, and need no
+  # principal fixture). Deliberately not in the live scenario:
+  # multi-Region primaries, asymmetric/HMAC/post-quantum key shapes, and
+  # custom key policies -- all proven by CEL spec tests and the offline
+  # gate.
   #
-  # green: both engines have passed the full live lane -- deploy ->
-  # DescribeKey verify -> destroy -> verify-destroyed (Pulumi ~74s,
-  # Terraform ~44s) -- on top of the standing offline gate (tofu init +
-  # validate, spec/CEL tests, outputs conformance, Pulumi module compile).
+  # pending_proof: the depth closure added real module surface (grants,
+  # custom_key_store_id/xks_key_id) -- the prior green proof predates it.
+  # Offline-proven only, never silent skips: the custom-key-store and XKS
+  # arms need CloudHSM / external-key-store infrastructure no shared test
+  # account can carry (proven via the 03-external-key-store preset's
+  # offline plan and preview; unblock: a dedicated CloudHSM/XKS budget
+  # decision by the owner).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20
