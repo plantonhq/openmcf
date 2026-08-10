@@ -62,6 +62,20 @@ type AwsAlbSpec struct {
 	// with private IPv4 -- avoids public-IPv4 charges for IPv6-capable
 	// clients).
 	IpAddressType string `protobuf:"bytes,5,opt,name=ip_address_type,json=ipAddressType,proto3" json:"ip_address_type,omitempty"`
+	// IPAM pool that allocates the ALB's public IPv4 addresses (instead of
+	// AWS-assigned addresses) -- lets organizations front the ALB with their
+	// own BYOIP ranges managed in VPC IPAM. Supply a literal ipam-pool-id;
+	// there is no IPAM pool catalog kind yet. Only meaningful for
+	// internet-facing ALBs with an IPv4 address family; removing it moves the
+	// ALB back to AWS-assigned addresses in place.
+	Ipv4IpamPoolId *v1.StringValueOrRef `protobuf:"bytes,24,opt,name=ipv4_ipam_pool_id,json=ipv4IpamPoolId,proto3" json:"ipv4_ipam_pool_id,omitempty"`
+	// Reserved load balancer capacity, in Load Balancer Capacity Units (LCUs).
+	// Pre-provisions the ALB for a known traffic surge (product launch, ticket
+	// sale) instead of waiting for organic scaling. BILLS for the reserved
+	// LCUs while set, on top of normal LCU usage -- set it for the event
+	// window, then remove it (0 / unset releases the reservation). Minimum and
+	// maximum reservable units depend on the account's service quotas.
+	MinimumLoadBalancerCapacityUnits int32 `protobuf:"varint,23,opt,name=minimum_load_balancer_capacity_units,json=minimumLoadBalancerCapacityUnits,proto3" json:"minimum_load_balancer_capacity_units,omitempty"`
 	// Prevents deletion of the ALB while enabled. Recommended for production:
 	// deleting an ALB silently orphans every listener and rule attached to it.
 	DeleteProtectionEnabled bool `protobuf:"varint,6,opt,name=delete_protection_enabled,json=deleteProtectionEnabled,proto3" json:"delete_protection_enabled,omitempty"`
@@ -198,6 +212,20 @@ func (x *AwsAlbSpec) GetIpAddressType() string {
 		return x.IpAddressType
 	}
 	return ""
+}
+
+func (x *AwsAlbSpec) GetIpv4IpamPoolId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Ipv4IpamPoolId
+	}
+	return nil
+}
+
+func (x *AwsAlbSpec) GetMinimumLoadBalancerCapacityUnits() int32 {
+	if x != nil {
+		return x.MinimumLoadBalancerCapacityUnits
+	}
+	return 0
 }
 
 func (x *AwsAlbSpec) GetDeleteProtectionEnabled() bool {
@@ -448,14 +476,16 @@ var File_catalog_aws_awsalb_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsalb_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"&catalog/aws/awsalb/v1alpha1/spec.proto\x12\x1fdev.planton.aws.awsalb.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xc0\x14\n" +
+	"&catalog/aws/awsalb/v1alpha1/spec.proto\x12\x1fdev.planton.aws.awsalb.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xf8\x15\n" +
 	"\n" +
 	"AwsAlbSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12z\n" +
 	"\asubnets\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x02\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\asubnets\x12\x86\x01\n" +
 	"\x0fsecurity_groups\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12\x1a\n" +
 	"\binternal\x18\x04 \x01(\bR\binternal\x12&\n" +
-	"\x0fip_address_type\x18\x05 \x01(\tR\ripAddressType\x12:\n" +
+	"\x0fip_address_type\x18\x05 \x01(\tR\ripAddressType\x12]\n" +
+	"\x11ipv4_ipam_pool_id\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x0eipv4IpamPoolId\x12W\n" +
+	"$minimum_load_balancer_capacity_units\x18\x17 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R minimumLoadBalancerCapacityUnits\x12:\n" +
 	"\x19delete_protection_enabled\x18\x06 \x01(\bR\x17deleteProtectionEnabled\x128\n" +
 	"\x14idle_timeout_seconds\x18\a \x01(\x05B\x06\x92\xa6\x1d\x0260R\x12idleTimeoutSeconds\x129\n" +
 	"\x19client_keep_alive_seconds\x18\b \x01(\x05R\x16clientKeepAliveSeconds\x12(\n" +
@@ -510,20 +540,21 @@ var file_catalog_aws_awsalb_v1alpha1_spec_proto_goTypes = []any{
 	(*v1.StringValueOrRef)(nil), // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsalb_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.web_acl_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 3: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.access_logs:type_name -> dev.planton.aws.awsalb.v1alpha1.AwsAlbLogDelivery
-	1, // 4: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.connection_logs:type_name -> dev.planton.aws.awsalb.v1alpha1.AwsAlbLogDelivery
-	1, // 5: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.health_check_logs:type_name -> dev.planton.aws.awsalb.v1alpha1.AwsAlbLogDelivery
-	2, // 6: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.dns:type_name -> dev.planton.aws.awsalb.v1alpha1.AwsAlbDns
-	3, // 7: dev.planton.aws.awsalb.v1alpha1.AwsAlbLogDelivery.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 8: dev.planton.aws.awsalb.v1alpha1.AwsAlbDns.route53_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	3,  // 0: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 1: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 2: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.ipv4_ipam_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 3: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.web_acl_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 4: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.access_logs:type_name -> dev.planton.aws.awsalb.v1alpha1.AwsAlbLogDelivery
+	1,  // 5: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.connection_logs:type_name -> dev.planton.aws.awsalb.v1alpha1.AwsAlbLogDelivery
+	1,  // 6: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.health_check_logs:type_name -> dev.planton.aws.awsalb.v1alpha1.AwsAlbLogDelivery
+	2,  // 7: dev.planton.aws.awsalb.v1alpha1.AwsAlbSpec.dns:type_name -> dev.planton.aws.awsalb.v1alpha1.AwsAlbDns
+	3,  // 8: dev.planton.aws.awsalb.v1alpha1.AwsAlbLogDelivery.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 9: dev.planton.aws.awsalb.v1alpha1.AwsAlbDns.route53_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsalb_v1alpha1_spec_proto_init() }

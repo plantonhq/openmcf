@@ -62,6 +62,12 @@ spec:
   stickiness:
     type: lb_cookie
     cookieDurationSeconds: 3600
+  # ALB Target Optimizer: the agent port on each target. Create-time config
+  # on a group that never registers targets here -- the QUIC-family arms
+  # (protocol QUIC/TCP_QUIC, flow-hash stickiness, quic_server_id) live in
+  # the 04-quic-passthrough preset because protocol is one create-only field
+  # and this fixture proves the ALB family.
+  targetControlPort: 9999
 ```
 
 ## Spec Fields
@@ -113,6 +119,8 @@ spec:
 | `spec.targets[].targetId` | `string \| valueFrom` | yes |  | AwsEc2Instance (`status.outputs.instance_id`) |
 | `spec.targets[].port` | `int32` |  |  |  |
 | `spec.targets[].availabilityZone` | `string` |  |  |  |
+| `spec.targets[].quicServerId` | `string` |  |  |  |
+| `spec.targetControlPort` | `int32` |  |  |  |
 
 ## Field Details
 
@@ -298,7 +306,7 @@ Session stickiness. ALB supports cookie-based stickiness ("lb_cookie",
 "app_cookie"); NLB supports source-IP stickiness ("source_ip"). When
 omitted, stickiness is disabled.
 
-- rule: type must be 'lb_cookie', 'app_cookie', or 'source_ip'
+- rule: type must be 'lb_cookie', 'app_cookie', 'source_ip', 'source_ip_dest_ip', or 'source_ip_dest_ip_proto'
 - rule: cookie_name is required for 'app_cookie' and not valid for other types
 - rule: cookie_duration_seconds only applies to 'lb_cookie' and 'app_cookie'
 - rule: cookie_duration_seconds must be between 1 and 604800 when set
@@ -545,13 +553,23 @@ one host).
 For "ip" targets outside the load balancer's VPC (peered VPC,
 on-premises): the literal string "all". Leave unset for in-VPC targets.
 
+### spec.targets[].quicServerId
+
+`string`
+
+### spec.targetControlPort
+
+`int32`
+
 ## Validation Rules
 
 - `target_type_valid`: target_type must be 'instance', 'ip', 'lambda', or 'alb' when set
-- `protocol_valid`: protocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS
+- `protocol_valid`: protocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS, QUIC, TCP_QUIC
 - `port_protocol_required_unless_lambda`: port and protocol are required unless target_type is 'lambda'
 - `lambda_takes_no_port_or_protocol`: port, protocol, and protocol_version do not apply when target_type is 'lambda'
 - `port_range`: port must be between 1 and 65535 when set
+- `target_control_port_range`: target_control_port must be between 1 and 65535 when set
+- `target_control_port_only_for_alb_protocols`: target_control_port only applies when protocol is 'HTTP' or 'HTTPS'
 - `protocol_version_valid`: protocol_version must be 'HTTP1', 'HTTP2', or 'GRPC' when set
 - `protocol_version_only_for_alb_protocols`: protocol_version only applies when protocol is 'HTTP' or 'HTTPS'
 - `ip_address_type_valid`: ip_address_type must be 'ipv4' or 'ipv6' when set

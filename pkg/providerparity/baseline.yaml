@@ -12,7 +12,6 @@
 # Entry format: kind:<Kind> | resource:<terraform resource type>
 # Regenerate with:  PLANTON_REGEN_PROVIDERPARITY_BASELINE=1 go test ./pkg/providerparity/
 entries:
-  - kind:AwsAlb
   - kind:AwsAppRunnerAutoScalingConfiguration
   - kind:AwsAppRunnerObservabilityConfiguration
   - kind:AwsAppRunnerService
@@ -61,9 +60,6 @@ entries:
   - kind:AwsKinesisStream
   - kind:AwsKinesisStreamConsumer
   - kind:AwsKmsKey
-  - kind:AwsLbListener
-  - kind:AwsLbListenerRule
-  - kind:AwsLbTargetGroup
   - kind:AwsMemcachedElasticache
   - kind:AwsMemorydbAcl
   - kind:AwsMemorydbCluster

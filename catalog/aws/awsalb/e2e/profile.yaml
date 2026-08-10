@@ -12,9 +12,12 @@ spec:
   # declares an AwsWafWebAcl prerequisite (the e2e-prerequisites annotation)
   # and attaches it via web_acl_arn, proving the wafv2 web-ACL association
   # live on both engines (run 2026-07-08: Pulumi 5m35s / Terraform 5m41s).
+  #
+  # Deliberately not in the live lane, each proven by CEL spec tests and
+  # the offline plan/preview gate: the LCU capacity reservation (BILLS for
+  # the reserved units while set) and IPAM-pool addressing (no IPAM pool
+  # fixture exists) -- both render in the canonical e2e/manifest.yaml and
+  # the 03-reserved-capacity preset on both engines.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 30

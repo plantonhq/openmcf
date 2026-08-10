@@ -255,7 +255,7 @@ Match on an arbitrary request header.
 
 The header name to inspect, 1-40 characters (RFC 7230 token characters).
 
-- rule: {"required":true,"string":{"maxLen":"40"}}
+- rule: {"required":true,"string":{"maxLen":"40","pattern":"^[0-9A-Za-z_!#$%&'*+,.^`|~-]{1,40}$"}}
 
 ### spec.conditions[].httpHeader.values
 
@@ -327,6 +327,8 @@ The value pattern (wildcards allowed).
 
 Match on the client source IP (CIDR blocks). Uses the address that
 connected to the ALB, not X-Forwarded-For entries.
+
+- rule: each source_ip value must be an IPv4 or IPv6 CIDR block like 10.0.0.0/8 or 2001:db8::/32
 
 ### spec.conditions[].sourceIp.values
 

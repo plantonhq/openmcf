@@ -58,6 +58,12 @@ func targetGroup(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderRe
 		args.IpAddressType = pulumi.StringPtr(spec.IpAddressType)
 	}
 
+	// ALB Target Optimizer: setting the agent port enables per-target
+	// readiness routing. Create-only, like the group's other identity fields.
+	if spec.TargetControlPort > 0 {
+		args.TargetControlPort = pulumi.IntPtr(int(spec.TargetControlPort))
+	}
+
 	// 0 means "keep the AWS default" (300s) -- the proto zero value is not
 	// distinguishable from unset, so immediate deregistration is expressed as 1.
 	if spec.DeregistrationDelaySeconds > 0 {
@@ -127,6 +133,9 @@ func targetGroup(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderRe
 		}
 		if target.AvailabilityZone != "" {
 			attachmentArgs.AvailabilityZone = pulumi.StringPtr(target.AvailabilityZone)
+		}
+		if target.QuicServerId != "" {
+			attachmentArgs.QuicServerId = pulumi.StringPtr(target.QuicServerId)
 		}
 		if _, err := lb.NewTargetGroupAttachment(ctx,
 			fmt.Sprintf("%s-target-%d", targetGroupName, i),

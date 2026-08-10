@@ -2218,10 +2218,10 @@ resources:
     reason: "Classic Load Balancer surface, superseded by ALB/NLB (covered by AwsAlb and AwsNlb)"
   - resource: aws_lb_trust_store
     disposition: model-planned
-    reason: "listener mTLS trust stores fold into the existing AwsLbListener kind as its spec deepens"
+    reason: "standalone mTLS CA-bundle store with its own ARN, name, tags, revocation sub-resources, and many-listener sharing -- a future AwsLbTrustStore kind (the listener's trust_store_arn reference gains its default kind then); never a fold into AwsLbListener, whose spec records trust stores as deliberately not modeled"
   - resource: aws_lb_trust_store_revocation
     disposition: model-planned
-    reason: "listener mTLS trust stores fold into the existing AwsLbListener kind as its spec deepens"
+    reason: "certificate revocation lists attached to a trust store -- folds into the future AwsLbTrustStore kind as its revocations surface (pure sub-resource of the store, no cross-store identity)"
   - resource: aws_lex_bot
     disposition: excluded-deprecated
     reason: "Lex v1 is superseded by Lex v2 (deferred as a bot-building vertical)"

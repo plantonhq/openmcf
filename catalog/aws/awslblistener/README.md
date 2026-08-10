@@ -19,8 +19,9 @@ own component -- instead of folding it into the load balancer -- lets you:
   listener's `listener_arn` output, so per-service routing composes without
   coordination.
 - **Serve both load balancer families with one kind**: ALB listeners
-  (HTTP/HTTPS) take the full action set; NLB listeners (TCP/UDP/TCP_UDP/TLS)
-  forward only -- exactly the split AWS enforces.
+  (HTTP/HTTPS) take the full action set; NLB listeners
+  (TCP/UDP/TCP_UDP/TLS/QUIC/TCP_QUIC) forward only -- exactly the split AWS
+  enforces.
 
 ## Key Features
 

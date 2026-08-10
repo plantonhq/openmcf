@@ -264,6 +264,7 @@ listener. When omitted, mTLS is off.
 - rule: mode must be 'off', 'verify', or 'passthrough'
 - rule: ignore_client_certificate_expiry only applies when mode is 'verify'
 - rule: advertise_trust_store_ca_names must be 'on' or 'off' when set
+- rule: advertise_trust_store_ca_names only applies when mode is 'verify'
 
 ### spec.mutualAuthentication.mode
 
@@ -862,7 +863,7 @@ X-Frame-Options header value (e.g. "DENY", "SAMEORIGIN").
 
 ## Validation Rules
 
-- `protocol_valid`: protocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS
+- `protocol_valid`: protocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS, QUIC, TCP_QUIC
 - `ssl_policy_only_for_tls_protocols`: ssl_policy only applies when protocol is 'HTTPS' or 'TLS'
 - `alpn_policy_only_for_nlb_tls`: alpn_policy only applies when protocol is 'TLS'
 - `alpn_policy_valid`: alpn_policy must be one of: HTTP1Only, HTTP2Only, HTTP2Optional, HTTP2Preferred, None

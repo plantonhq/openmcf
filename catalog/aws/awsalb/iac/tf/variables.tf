@@ -19,6 +19,8 @@ variable "spec" {
     security_groups = optional(list(string), [])
     internal = optional(bool, false)
     ip_address_type = optional(string, "")
+    ipv4_ipam_pool_id = optional(string, "")
+    minimum_load_balancer_capacity_units = optional(number, 0)
     delete_protection_enabled = optional(bool, false)
     idle_timeout_seconds = optional(number, 0)
     client_keep_alive_seconds = optional(number, 0)

@@ -76,6 +76,23 @@ func alb(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lb.LoadB
 		args.EnableTlsVersionAndCipherSuiteHeaders = pulumi.BoolPtr(true)
 	}
 
+	// LCU reservation: pre-provisioned capacity that bills while set.
+	// Rendered only when reserved so removing the field releases the
+	// reservation.
+	if spec.MinimumLoadBalancerCapacityUnits > 0 {
+		args.MinimumLoadBalancerCapacity = &lb.LoadBalancerMinimumLoadBalancerCapacityArgs{
+			CapacityUnits: pulumi.Int(int(spec.MinimumLoadBalancerCapacityUnits)),
+		}
+	}
+
+	// BYOIP addressing: the ALB's public IPv4 addresses come from the given
+	// VPC IPAM pool instead of AWS's own ranges.
+	if spec.GetIpv4IpamPoolId().GetValue() != "" {
+		args.IpamPools = &lb.LoadBalancerIpamPoolsArgs{
+			Ipv4IpamPoolId: pulumi.String(spec.GetIpv4IpamPoolId().GetValue()),
+		}
+	}
+
 	// The three S3 log streams share one shape; "enabled" is implied by the
 	// block's presence in the spec (a bucket with logging off is meaningless).
 	if spec.AccessLogs != nil {

@@ -6,10 +6,14 @@ spec:
   # A target group under live E2E: the harness deploys the AwsVpc prerequisite,
   # runs deploy -> DescribeTargetGroups verify -> destroy -> verify-destroyed on
   # both provisioners. Target groups are free and create in seconds; the VPC
-  # prerequisite dominates the runtime.
+  # prerequisite dominates the runtime. The minimal scenario carries the ALB
+  # Target Optimizer agent port (free create-time config).
+  #
+  # Deliberately not in the live lane, proven by CEL spec tests and the
+  # offline plan/preview gate: the QUIC family (protocol QUIC/TCP_QUIC,
+  # flow-hash stickiness, per-target quic_server_id) -- protocol is one
+  # create-only field, so the QUIC shape lives in the 04-quic-passthrough
+  # preset, planned and previewed on both engines.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 20

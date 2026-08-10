@@ -32,7 +32,7 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
 | Distinct provider resources consumed | 226 |
-| Spec fields authored across all kinds | 4180 |
+| Spec fields authored across all kinds | 4184 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,11 +47,11 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**22 of 112 kinds are at total accounting; 77 proven live.**
+**26 of 112 kinds are at total accounting; 76 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
-| AwsAlb | 71 | 17 | 0 | 0 | 65 | ❌ | ✅ pulumi, terraform |
+| AwsAlb | 71 | 17 | 12 | 42 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerAutoScalingConfiguration | 7 | 4 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsAppRunnerObservabilityConfiguration | 5 | 2 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsAppRunnerService | 48 | 5 | 0 | 0 | 74 | ❌ | ✅ pulumi, terraform |
@@ -112,16 +112,16 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsIamRole | 16 | 5 | 0 | 0 | 20 | ❌ | — |
 | AwsIamUser | 15 | 3 | 0 | 0 | 17 | ❌ | ✅ pulumi, terraform |
 | AwsInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
-| AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | — |
 | AwsKinesisStream | 17 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
 | AwsKinesisStreamConsumer | 8 | 3 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
 | AwsKmsKey | 19 | 9 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
 | AwsLambda | 108 | 51 | 30 | 27 | 0 | ✅ | — |
 | AwsLambdaEventSourceMapping | 45 | 11 | 31 | 3 | 0 | ✅ | — |
 | AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | — |
-| AwsLbListener | 76 | 14 | 0 | 0 | 121 | ❌ | ✅ pulumi, terraform |
-| AwsLbListenerRule | 61 | 3 | 0 | 0 | 113 | ❌ | ✅ pulumi, terraform |
-| AwsLbTargetGroup | 48 | 31 | 0 | 0 | 26 | ❌ | ✅ pulumi, terraform |
+| AwsLbListener | 76 | 13 | 59 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsLbListenerRule | 61 | 3 | 55 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsLbTargetGroup | 48 | 34 | 7 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsMemcachedElasticache | 48 | 20 | 0 | 0 | 31 | ❌ | ✅ pulumi, terraform |
 | AwsMemorydbAcl | 6 | 2 | 0 | 0 | 4 | ❌ | — |
 | AwsMemorydbCluster | 46 | 31 | 0 | 0 | 18 | ❌ | — |
@@ -870,8 +870,8 @@ rather than trusted.
 | `aws_lambda_code_signing_config` | judged as a planned AwsLambdaCodeSigningConfig kind: a shareable trust policy (allowed signing profiles + enforcement mode) many functions reference -- AwsLambda already models the function-side attachment (code_signing_config_arn) and upgrades it to a reference when the kind ships |
 | `aws_lambda_layer_version` | judged as a planned AwsLambdaLayer kind (layer versions with permissions) |
 | `aws_lambda_layer_version_permission` | judged as a planned AwsLambdaLayer kind (layer versions with permissions) |
-| `aws_lb_trust_store` | listener mTLS trust stores fold into the existing AwsLbListener kind as its spec deepens |
-| `aws_lb_trust_store_revocation` | listener mTLS trust stores fold into the existing AwsLbListener kind as its spec deepens |
+| `aws_lb_trust_store` | standalone mTLS CA-bundle store with its own ARN, name, tags, revocation sub-resources, and many-listener sharing -- a future AwsLbTrustStore kind (the listener's trust_store_arn reference gains its default kind then); never a fold into AwsLbListener, whose spec records trust stores as deliberately not modeled |
+| `aws_lb_trust_store_revocation` | certificate revocation lists attached to a trust store -- folds into the future AwsLbTrustStore kind as its revocations surface (pure sub-resource of the store, no cross-store identity) |
 | `aws_macie2_account` | judged as a planned AwsMacie kind (account enablement, classification jobs, custom identifiers, findings filters, organization administration) |
 | `aws_macie2_classification_export_configuration` | judged as a planned AwsMacie kind (account enablement, classification jobs, custom identifiers, findings filters, organization administration) |
 | `aws_macie2_classification_job` | judged as a planned AwsMacie kind (account enablement, classification jobs, custom identifiers, findings filters, organization administration) |
