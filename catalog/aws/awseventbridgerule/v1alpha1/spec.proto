@@ -120,10 +120,12 @@ message AwsEventBridgeRuleSpec {
   // required. Each target specifies a destination (Lambda, SQS, SNS, Step
   // Functions, etc.), optional input transformation, retry policy, dead
   // letter queue, and an optional service-typed parameter block (SQS,
-  // Kinesis, HTTP/API-destination, Batch, ECS RunTask).
+  // Kinesis, HTTP/API-destination, Batch, ECS RunTask, Redshift Data API,
+  // SSM Run Command, SageMaker Pipelines, AppSync).
   //
-  // AWS limits: maximum 5 targets per rule.
-  repeated AwsEventBridgeTarget targets = 9;
+  // AWS limits: maximum 5 targets per rule (enforced here so the quota
+  // fails at validate time instead of at PutTargets).
+  repeated AwsEventBridgeTarget targets = 9 [(buf.validate.field).repeated.max_items = 5];
 
   // ---------------------------------------------------------------------------
   // CEL validations
@@ -249,6 +251,25 @@ message AwsEventBridgeTarget {
   // the event launches a task from the referenced task definition.
   AwsEventBridgeTargetEcsConfig ecs_target = 13;
 
+  // Redshift Data API parameters. Required when the target arn is a
+  // Redshift cluster — each matched event runs a SQL statement against it.
+  AwsEventBridgeTargetRedshiftConfig redshift_target = 14;
+
+  // SSM Run Command instance selectors. Required when the target arn is a
+  // Systems Manager document — each matched event dispatches the command
+  // to the instances the selectors match. Up to 5 selectors, combined
+  // with AND.
+  repeated AwsEventBridgeTargetRunCommandSelector run_command_targets = 15 [(buf.validate.field).repeated.max_items = 5];
+
+  // SageMaker Pipelines parameters. Set when the target arn is a
+  // SageMaker pipeline — each matched event starts a pipeline execution
+  // with these parameters.
+  AwsEventBridgeTargetSagemakerPipelineConfig sagemaker_pipeline_target = 16;
+
+  // AppSync parameters. Required when the target arn is an AppSync
+  // GraphQL API endpoint — each matched event invokes the operation.
+  AwsEventBridgeTargetAppsyncConfig appsync_target = 17;
+
   // ---------------------------------------------------------------------------
   // CEL validations
   // ---------------------------------------------------------------------------
@@ -262,10 +283,13 @@ message AwsEventBridgeTarget {
 
   // A target invokes exactly one AWS service; multiple typed parameter
   // blocks would describe conflicting invocations of the same arn.
+  // run_command_targets is a repeated selector list but still ONE typed
+  // invocation (its entries jointly select instances for a single Run
+  // Command dispatch), so a non-empty list counts as one block.
   option (buf.validate.message).cel = {
     id: "one_typed_target_block"
-    message: "at most one of sqs_target, kinesis_target, http_target, batch_target, or ecs_target may be set"
-    expression: "(has(this.sqs_target) ? 1 : 0) + (has(this.kinesis_target) ? 1 : 0) + (has(this.http_target) ? 1 : 0) + (has(this.batch_target) ? 1 : 0) + (has(this.ecs_target) ? 1 : 0) <= 1"
+    message: "at most one of sqs_target, kinesis_target, http_target, batch_target, ecs_target, redshift_target, run_command_targets, sagemaker_pipeline_target, or appsync_target may be set"
+    expression: "(has(this.sqs_target) ? 1 : 0) + (has(this.kinesis_target) ? 1 : 0) + (has(this.http_target) ? 1 : 0) + (has(this.batch_target) ? 1 : 0) + (has(this.ecs_target) ? 1 : 0) + (has(this.redshift_target) ? 1 : 0) + (size(this.run_command_targets) > 0 ? 1 : 0) + (has(this.sagemaker_pipeline_target) ? 1 : 0) + (has(this.appsync_target) ? 1 : 0) <= 1"
   };
 }
 
@@ -279,12 +303,12 @@ message AwsEventBridgeTarget {
 message AwsEventBridgeInputTransformer {
   // Map of variable names to JSONPath expressions that extract values from
   // the matched event. Keys become variables available in `input_template`.
-  // Maximum 100 entries. Keys must not start with "AWS".
+  // Maximum 100 entries. Keys must not start with "AWS" (reserved).
   //
   // Example:
   //   instance: "$.detail.instance-id"
   //   state: "$.detail.state"
-  map<string, string> input_paths = 1;
+  map<string, string> input_paths = 1 [(buf.validate.field).map.max_pairs = 100];
 
   // Template that produces the final input for the target. References
   // variables from `input_paths` using angle brackets: <variable>.
@@ -295,6 +319,14 @@ message AwsEventBridgeInputTransformer {
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 8192
   ];
+
+  // AWS reserves the "AWS" variable-name prefix; the API rejects such
+  // keys at PutTargets, so reject them at validate time instead.
+  option (buf.validate.message).cel = {
+    id: "input_path_keys_not_reserved"
+    message: "input_paths keys must not start with 'AWS' -- that prefix is reserved by EventBridge"
+    expression: "this.input_paths.all(k, !k.startsWith('AWS'))"
+  };
 }
 
 // AwsEventBridgeTargetDeadLetterConfig configures a dead letter queue for
@@ -477,6 +509,12 @@ message AwsEventBridgeTargetEcsConfig {
   // Enable ECS Exec on the launched tasks for interactive debugging.
   bool enable_execute_command = 12;
 
+  // Tags applied to the ECS TASKS each event launches (cost allocation,
+  // ownership) — distinct from the rule's own resource tags, which the
+  // module manages from metadata. Merged with the task definition's tags
+  // when propagate_tags is set.
+  map<string, string> tags = 13;
+
   // launch_type must be a valid value when set.
   option (buf.validate.message).cel = {
     id: "launch_type_valid"
@@ -570,6 +608,106 @@ message AwsEventBridgeEcsPlacementStrategy {
     message: "type must be 'random', 'spread', or 'binpack'"
     expression: "this.type in ['random', 'spread', 'binpack']"
   };
+}
+
+// AwsEventBridgeTargetRedshiftConfig runs a SQL statement through the
+// Redshift Data API per matched event. The target's `arn` is the Redshift
+// CLUSTER; the statement and its execution identity live here. The
+// target's `role_arn` is required — EventBridge assumes it to call the
+// Data API.
+message AwsEventBridgeTargetRedshiftConfig {
+  // The database the statement runs in. Maximum 64 characters.
+  string database = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // Authenticate as this database user with temporary credentials
+  // (GetClusterCredentials). Use this OR secrets_manager_arn — AWS
+  // resolves credentials from whichever is provided. Maximum 128
+  // characters.
+  string db_user = 2 [(buf.validate.field).string.max_len = 128];
+
+  // Authenticate with credentials stored in Secrets Manager — the
+  // alternative to db_user temporary credentials. Pass the secret ARN
+  // as a literal, e.g.
+  // "arn:aws:secretsmanager:us-west-2:123456789012:secret:redshift-...".
+  string secrets_manager_arn = 3;
+
+  // The SQL statement each matched event runs. Maximum 100,000
+  // characters.
+  string sql = 4 [(buf.validate.field).string.max_len = 100000];
+
+  // A name for the statement, visible in the Data API's statement
+  // history. Maximum 500 characters.
+  string statement_name = 5 [(buf.validate.field).string.max_len = 500];
+
+  // Deliver the matched event to the statement as execution context
+  // (the Data API's WithEvent flag).
+  bool with_event = 6;
+}
+
+// AwsEventBridgeTargetRunCommandSelector selects the EC2 instances an
+// SSM Run Command target dispatches to — by instance id or by tag. The
+// target's `arn` is the SSM DOCUMENT (e.g.
+// "arn:aws:ssm:us-west-2::document/AWS-RunShellScript"); the target's
+// `role_arn` is required — EventBridge assumes it to call
+// ssm:SendCommand.
+message AwsEventBridgeTargetRunCommandSelector {
+  // The selector key: "InstanceIds" (select by instance id) or
+  // "tag:<tag-key>" (select every instance carrying the tag). Maximum
+  // 128 characters.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // The selector values: instance ids for "InstanceIds", tag values for
+  // a "tag:" key. 1-50 entries, each 1-256 characters.
+  repeated string values = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 50,
+    (buf.validate.field).repeated.items = {
+      string: {
+        min_len: 1
+        max_len: 256
+      }
+    }
+  ];
+}
+
+// AwsEventBridgeTargetSagemakerPipelineConfig starts a SageMaker
+// pipeline execution per matched event. The target's `arn` is the
+// SageMaker PIPELINE; the target's `role_arn` is required — EventBridge
+// assumes it to call sagemaker:StartPipelineExecution.
+message AwsEventBridgeTargetSagemakerPipelineConfig {
+  // Parameters passed to the pipeline execution, up to 200 — each must
+  // be a parameter the pipeline declares.
+  repeated AwsEventBridgeSagemakerPipelineParameter pipeline_parameter_list = 1 [(buf.validate.field).repeated.max_items = 200];
+}
+
+// AwsEventBridgeSagemakerPipelineParameter is one name/value parameter
+// for an event-started SageMaker pipeline execution.
+message AwsEventBridgeSagemakerPipelineParameter {
+  // The parameter name, as declared by the pipeline definition.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The value passed for this execution.
+  string value = 2 [(buf.validate.field).required = true];
+}
+
+// AwsEventBridgeTargetAppsyncConfig invokes an AppSync GraphQL operation
+// per matched event. The target's `arn` is the AppSync API's endpoint
+// ARN (the appsync:endpoints ARN form); the target's `role_arn` is
+// required — EventBridge assumes it to call the API.
+message AwsEventBridgeTargetAppsyncConfig {
+  // The GraphQL operation (typically a mutation) to invoke, with its
+  // selection set — variables are bound from the (transformed) event
+  // input. Maximum 1,048,576 characters.
+  string graphql_operation = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 1048576
+  ];
 }
 
 // AwsEventBridgeEcsPlacementConstraint filters candidate container instances

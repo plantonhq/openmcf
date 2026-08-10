@@ -95,12 +95,17 @@ type AwsLambdaEventSourceMappingSpec struct {
 	// whole batch -- the right setting for almost every SQS and stream
 	// consumer that processes records independently.
 	FunctionResponseTypes []string `protobuf:"bytes,10,rep,name=function_response_types,json=functionResponseTypes,proto3" json:"function_response_types,omitempty"`
-	// Maximum concurrent function invocations this SQS mapping may drive,
-	// 2-1000 -- a per-mapping throttle below the function's own
-	// concurrency. 0 leaves scaling to AWS. SQS sources only.
+	// Maximum concurrent function invocations this SQS mapping may drive
+	// -- a per-mapping throttle below the function's own concurrency.
+	// Minimum 2; the effective ceiling is the function's concurrency
+	// (AWS validates it at deploy time -- it routinely exceeds any fixed
+	// bound, so none is imposed here). 0 leaves scaling to AWS. SQS
+	// sources only.
 	ScalingMaxConcurrency int32 `protobuf:"varint,11,opt,name=scaling_max_concurrency,json=scalingMaxConcurrency,proto3" json:"scaling_max_concurrency,omitempty"`
-	// Emit the mapping's CloudWatch metrics ("EventCount" -- records
-	// delivered to the function). Off by default; metrics are billed.
+	// Emit the mapping's CloudWatch metrics: "EventCount" (records
+	// delivered to the function), "ErrorCount" (records that failed
+	// processing), and/or "KafkaMetrics" (poller/consumer-lag metrics --
+	// Kafka sources only). Off by default; metrics are billed.
 	Metrics []string `protobuf:"bytes,12,rep,name=metrics,proto3" json:"metrics,omitempty"`
 	// Where to start reading a stream source, create-time immutable:
 	// "TRIM_HORIZON" (oldest available record -- process the backlog),
@@ -640,8 +645,13 @@ type AwsLambdaEventSourceMappingProvisionedPollers struct {
 	// The ceiling of pollers AWS may scale to, 1-2000. 0 keeps the AWS
 	// default (200).
 	MaximumPollers int32 `protobuf:"varint,2,opt,name=maximum_pollers,json=maximumPollers,proto3" json:"maximum_pollers,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Share one provisioned poller fleet across mappings by naming a
+	// poller group, 1-128 characters: every mapping naming the same group
+	// draws from (and is jointly capped by) one fleet instead of
+	// provisioning its own -- the cost lever for many low-traffic topics.
+	PollerGroupName string `protobuf:"bytes,3,opt,name=poller_group_name,json=pollerGroupName,proto3" json:"poller_group_name,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *AwsLambdaEventSourceMappingProvisionedPollers) Reset() {
@@ -686,6 +696,13 @@ func (x *AwsLambdaEventSourceMappingProvisionedPollers) GetMaximumPollers() int3
 		return x.MaximumPollers
 	}
 	return 0
+}
+
+func (x *AwsLambdaEventSourceMappingProvisionedPollers) GetPollerGroupName() string {
+	if x != nil {
+		return x.PollerGroupName
+	}
+	return ""
 }
 
 // AwsLambdaEventSourceMappingDocumentDb tunes a DocumentDB change-
@@ -760,7 +777,7 @@ var File_catalog_aws_awslambdaeventsourcemapping_v1alpha1_spec_proto protoreflec
 
 const file_catalog_aws_awslambdaeventsourcemapping_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	";catalog/aws/awslambdaeventsourcemapping/v1alpha1/spec.proto\x124dev.planton.aws.awslambdaeventsourcemapping.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xa1\x1f\n" +
+	";catalog/aws/awslambdaeventsourcemapping/v1alpha1/spec.proto\x124dev.planton.aws.awslambdaeventsourcemapping.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xb8\x1f\n" +
 	"\x1fAwsLambdaEventSourceMappingSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x81\x01\n" +
 	"\ffunction_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\vfunctionArn\x12\x7f\n" +
@@ -776,11 +793,12 @@ const file_catalog_aws_awslambdaeventsourcemapping_v1alpha1_spec_proto_rawDesc =
 	"R\afilters\x12s\n" +
 	"\vkms_key_arn\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12]\n" +
 	"\x17function_response_types\x18\n" +
-	" \x03(\tB%\xbaH\"\x92\x01\x1f\x18\x01\"\x1br\x19R\x17ReportBatchItemFailuresR\x15functionResponseTypes\x12E\n" +
-	"\x17scaling_max_concurrency\x18\v \x01(\x05B\r\xbaH\n" +
-	"\xd8\x01\x01\x1a\x05\x18\xe8\a(\x02R\x15scalingMaxConcurrency\x122\n" +
-	"\ametrics\x18\f \x03(\tB\x18\xbaH\x15\x92\x01\x12\x18\x01\"\x0er\fR\n" +
-	"EventCountR\ametrics\x12Y\n" +
+	" \x03(\tB%\xbaH\"\x92\x01\x1f\x18\x01\"\x1br\x19R\x17ReportBatchItemFailuresR\x15functionResponseTypes\x12B\n" +
+	"\x17scaling_max_concurrency\x18\v \x01(\x05B\n" +
+	"\xbaH\a\xd8\x01\x01\x1a\x02(\x02R\x15scalingMaxConcurrency\x12L\n" +
+	"\ametrics\x18\f \x03(\tB2\xbaH/\x92\x01,\x18\x01\"(r&R\n" +
+	"EventCountR\n" +
+	"ErrorCountR\fKafkaMetricsR\ametrics\x12Y\n" +
 	"\x11starting_position\x18\r \x01(\tB,\xbaH)\xd8\x01\x01r$R\fTRIM_HORIZONR\x06LATESTR\fAT_TIMESTAMPR\x10startingPosition\x12>\n" +
 	"\x1bstarting_position_timestamp\x18\x0e \x01(\tR\x19startingPositionTimestamp\x12C\n" +
 	"\x16parallelization_factor\x18\x0f \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18\n" +
@@ -820,12 +838,14 @@ const file_catalog_aws_awslambdaeventsourcemapping_v1alpha1_spec_proto_rawDesc =
 	"\x03uri\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x03uri\x12F\n" +
 	"\x13event_record_format\x18\x02 \x01(\tB\x16\xbaH\x13\xc8\x01\x01r\x0eR\x04JSONR\x06SOURCER\x11eventRecordFormat\x12M\n" +
 	"\x15validation_attributes\x18\x03 \x03(\tB\x18\xbaH\x15\x92\x01\x12\x18\x01\"\x0er\fR\x03KEYR\x05VALUER\x14validationAttributes\x12\x92\x01\n" +
-	"\x15access_configurations\x18\x04 \x03(\v2].dev.planton.aws.awslambdaeventsourcemapping.v1alpha1.AwsLambdaEventSourceMappingSourceAccessR\x14accessConfigurations\"\xea\x02\n" +
+	"\x15access_configurations\x18\x04 \x03(\v2].dev.planton.aws.awslambdaeventsourcemapping.v1alpha1.AwsLambdaEventSourceMappingSourceAccessR\x14accessConfigurations\"\xa5\x03\n" +
 	"-AwsLambdaEventSourceMappingProvisionedPollers\x126\n" +
 	"\x0fminimum_pollers\x18\x01 \x01(\x05B\r\xbaH\n" +
 	"\xd8\x01\x01\x1a\x05\x18\xc8\x01(\x01R\x0eminimumPollers\x126\n" +
 	"\x0fmaximum_pollers\x18\x02 \x01(\x05B\r\xbaH\n" +
-	"\xd8\x01\x01\x1a\x05\x18\xd0\x0f(\x01R\x0emaximumPollers:\xc8\x01\xbaH\xc4\x01\x1a\xc1\x01\n" +
+	"\xd8\x01\x01\x1a\x05\x18\xd0\x0f(\x01R\x0emaximumPollers\x129\n" +
+	"\x11poller_group_name\x18\x03 \x01(\tB\r\xbaH\n" +
+	"\xd8\x01\x01r\x05\x10\x01\x18\x80\x01R\x0fpollerGroupName:\xc8\x01\xbaH\xc4\x01\x1a\xc1\x01\n" +
 	"\x15poller_bounds_ordered\x12@maximum_pollers must be greater than or equal to minimum_pollers\x1afthis.minimum_pollers == 0 || this.maximum_pollers == 0 || this.maximum_pollers >= this.minimum_pollers\"\xcf\x01\n" +
 	"%AwsLambdaEventSourceMappingDocumentDb\x12.\n" +
 	"\rdatabase_name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18?R\fdatabaseName\x120\n" +

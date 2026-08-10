@@ -7,17 +7,23 @@ spec:
   # prerequisite, composes the versioned S3 bucket and zip-staging object-set
   # fixtures via the scenario's e2e-prerequisites annotation, then runs
   # deploy -> GetFunction verify -> destroy -> verify-destroyed on both
-  # provisioners. The scenario is a minimal zip-backed Node.js function --
-  # no VPC attachment, aliases, or function URL -- so the lane stays fast.
+  # provisioners. The scenario is a zip-backed Node.js function that also
+  # publishes a version, maintains the $LATEST.PUBLISHED head (publish_to),
+  # and serves an alias-qualified function URL -- all free arms.
   # Deliberately not in the live scenario: container images, provisioned
-  # concurrency, weighted alias routing, and resource policies -- all proven
-  # by CEL spec tests and the offline gate.
-  # green: both engines have passed the full live lane -- deploy ->
-  # GetFunction verify -> destroy -> verify-destroyed (Pulumi ~3m37s,
-  # Terraform ~3m53s) -- on top of the standing offline gate.
+  # concurrency, weighted alias routing, resource policies (proven by CEL
+  # spec tests and the offline gate), plus the platform arms that need
+  # unavailable or billable backing -- capacity_provider_config (no Lambda
+  # capacity provider exists to reference until that kind ships),
+  # durable_config and tenancy_config (regional/feature availability on the
+  # test account unverified) -- all proven by offline plans and previews on
+  # both engines, never silent skips.
+  # pending_proof: the depth-closure wave added the Managed Instances /
+  # durable / tenancy platform arms, publish_to, code_sha256, per-qualifier
+  # satellite targeting, and per-qualifier scaling configs; the prior green
+  # badge predates this surface, so it is revoked until the proof lane
+  # re-earns it live.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

@@ -55,6 +55,38 @@ func TestCollectSpecPaths_HermeticFixture(t *testing.T) {
 	}
 }
 
+// TestCollectSpecPaths_StructIsOneLeaf proves the well-known-value-type
+// rule against a live spec that carries a google.protobuf.Struct field
+// (AwsEventBridgeRule's event_pattern): the Struct is ONE leaf the author
+// writes as YAML -- the walk must never descend into its descriptor
+// internals (fields.bool_value and siblings are protobuf plumbing, not
+// configurable surface).
+func TestCollectSpecPaths_StructIsOneLeaf(t *testing.T) {
+	msg, err := crkreflect.NewInstance(cloudresourcekind.CloudResourceKind_AwsEventBridgeRule)
+	if err != nil {
+		t.Fatalf("new instance: %v", err)
+	}
+	specField := msg.ProtoReflect().Descriptor().Fields().ByName("spec")
+	if specField == nil {
+		t.Fatal("AwsEventBridgeRule has no spec field")
+	}
+
+	got := CollectSpecPaths(specField.Message(), "spec")
+	var sawLeaf bool
+	for _, p := range got {
+		if p == "spec.event_pattern" {
+			sawLeaf = true
+			continue
+		}
+		if len(p) > len("spec.event_pattern") && p[:len("spec.event_pattern.")] == "spec.event_pattern." {
+			t.Errorf("walk descended into the Struct's internals: %s", p)
+		}
+	}
+	if !sawLeaf {
+		t.Error("spec.event_pattern is missing from the census -- the Struct field should be one leaf")
+	}
+}
+
 // TestSpecCensusGcp is the live-catalog smoke test: every implemented GCP
 // kind is censused and none has an empty spec surface (a kind an author
 // cannot configure at all would be a registry error, not a real component).

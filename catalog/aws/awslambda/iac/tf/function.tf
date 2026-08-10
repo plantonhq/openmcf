@@ -23,6 +23,11 @@ resource "aws_lambda_function" "this" {
   # unchanged value is a no-op.
   source_code_hash = var.spec.source_code_hash != "" ? var.spec.source_code_hash : null
 
+  # The deploy-side digest (what GetFunction reports) -- detects and
+  # rolls out-of-band code changes when only the deployed artifact's
+  # digest is known.
+  code_sha256 = var.spec.code_sha256 != "" ? var.spec.code_sha256 : null
+
   # BYOK for the deployment package itself -- distinct from
   # kms_key_arn, which encrypts environment variables.
   source_kms_key_arn = var.spec.source_kms_key_arn != "" ? var.spec.source_kms_key_arn : null
@@ -46,6 +51,11 @@ resource "aws_lambda_function" "this" {
   reserved_concurrent_executions = var.spec.reserved_concurrent_executions != null ? var.spec.reserved_concurrent_executions : -1
 
   publish = var.spec.publish
+
+  # Maintain the $LATEST.PUBLISHED head pointer (the qualifier
+  # scaling configs and qualified invocations pin without naming
+  # version numbers).
+  publish_to = var.spec.publish_to != "" ? var.spec.publish_to : null
 
   kms_key_arn = var.spec.kms_key_arn != "" ? var.spec.kms_key_arn : null
 
@@ -130,6 +140,40 @@ resource "aws_lambda_function" "this" {
       application_log_level = var.spec.logging_config.application_log_level != "" ? var.spec.logging_config.application_log_level : null
       system_log_level      = var.spec.logging_config.system_log_level != "" ? var.spec.logging_config.system_log_level : null
       log_group             = var.spec.logging_config.log_group != "" ? var.spec.logging_config.log_group : null
+    }
+  }
+
+  # Lambda Managed Instances: run on a dedicated capacity provider
+  # instead of the on-demand fleet. The provider double-nests the
+  # config under a required single-entry wrapper; the spec flattens it.
+  dynamic "capacity_provider_config" {
+    for_each = var.spec.managed_instances != null ? [1] : []
+    content {
+      lambda_managed_instances_capacity_provider_config {
+        capacity_provider_arn                     = var.spec.managed_instances.capacity_provider_arn
+        execution_environment_memory_gib_per_vcpu = var.spec.managed_instances.memory_gib_per_vcpu != 0 ? var.spec.managed_instances.memory_gib_per_vcpu : null
+        per_execution_environment_max_concurrency = var.spec.managed_instances.max_concurrency_per_environment != 0 ? var.spec.managed_instances.max_concurrency_per_environment : null
+      }
+    }
+  }
+
+  # Durable execution. ADDING or REMOVING this block replaces the
+  # function (provider ForceNew on the block); the values inside
+  # update in place.
+  dynamic "durable_config" {
+    for_each = var.spec.durable_config != null ? [1] : []
+    content {
+      execution_timeout = var.spec.durable_config.execution_timeout_seconds
+      retention_period  = var.spec.durable_config.retention_period_days != 0 ? var.spec.durable_config.retention_period_days : null
+    }
+  }
+
+  # Per-tenant execution-environment isolation. Create-time immutable:
+  # changing it replaces the function.
+  dynamic "tenancy_config" {
+    for_each = var.spec.tenant_isolation_mode != "" ? [1] : []
+    content {
+      tenant_isolation_mode = var.spec.tenant_isolation_mode
     }
   }
 }

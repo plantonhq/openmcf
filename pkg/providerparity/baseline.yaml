@@ -45,7 +45,6 @@ entries:
   - kind:AwsElasticacheUser
   - kind:AwsElasticacheUserGroup
   - kind:AwsEventBridgeBus
-  - kind:AwsEventBridgeRule
   - kind:AwsFsxDataRepositoryAssociation
   - kind:AwsFsxLustreFileSystem
   - kind:AwsFsxOntapFileSystem
@@ -65,8 +64,6 @@ entries:
   - kind:AwsKinesisStream
   - kind:AwsKinesisStreamConsumer
   - kind:AwsKmsKey
-  - kind:AwsLambda
-  - kind:AwsLambdaEventSourceMapping
   - kind:AwsLbListener
   - kind:AwsLbListenerRule
   - kind:AwsLbTargetGroup

@@ -8,9 +8,11 @@ terraform {
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
       #
-      # Feature floor (v6 family baseline): the rule + target surface this module renders
-      # predates 6.0, so the floor is the family baseline rather than a
-      # feature-driven minimum.
+      # Feature floor (v6 family baseline): the rule + target surface this
+      # module renders predates 6.0 -- including the full typed-target set
+      # (the newest arrivals were appsync_target 5.72.0 and
+      # sagemaker_pipeline_target 5.12.0) -- so the floor is the family
+      # baseline rather than a feature-driven minimum.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

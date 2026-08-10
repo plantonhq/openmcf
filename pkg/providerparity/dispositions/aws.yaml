@@ -2197,13 +2197,10 @@ resources:
     reason: "judged as a planned AwsLakeFormation kind (data-lake settings, permissions, resources, LF-tags, opt-ins, Identity Center config)"
   - resource: aws_lambda_capacity_provider
     disposition: model-planned
-    reason: "Lambda companion surface (code signing, capacity providers, scaling configs); folds into the existing AwsLambda kind as its spec deepens"
+    reason: "judged as a planned AwsLambdaCapacityProvider kind: account-scoped shared infrastructure (own VPC config, scaling policies, KMS key, tags, 30-minute delete) that many functions reference by ARN -- AwsLambda models the function-side attachment (managed_instances.capacity_provider_arn) and upgrades it to a reference when the kind ships"
   - resource: aws_lambda_code_signing_config
     disposition: model-planned
-    reason: "Lambda companion surface (code signing, capacity providers, scaling configs); folds into the existing AwsLambda kind as its spec deepens"
-  - resource: aws_lambda_function_scaling_config
-    disposition: model-planned
-    reason: "Lambda companion surface (code signing, capacity providers, scaling configs); folds into the existing AwsLambda kind as its spec deepens"
+    reason: "judged as a planned AwsLambdaCodeSigningConfig kind: a shareable trust policy (allowed signing profiles + enforcement mode) many functions reference -- AwsLambda already models the function-side attachment (code_signing_config_arn) and upgrades it to a reference when the kind ships"
   - resource: aws_lambda_invocation
     disposition: deferred
     reason: "function invocation is an imperative operation, a poor declarative fit"

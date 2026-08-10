@@ -381,4 +381,161 @@ var _ = ginkgo.Describe("AwsLambdaSpec validations", func() {
 		}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
+
+	// -----------------------------------------------------------------
+	// Execution platform: Managed Instances, durability, tenancy
+	// -----------------------------------------------------------------
+
+	ginkgo.It("accepts a Managed Instances function with environment sizing", func() {
+		spec.ManagedInstances = &AwsLambdaManagedInstances{
+			CapacityProviderArn:          "arn:aws:lambda:us-west-2:123456789012:capacity-provider:steady",
+			MemoryGibPerVcpu:             4.0,
+			MaxConcurrencyPerEnvironment: 8,
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects managed_instances without a capacity provider ARN", func() {
+		spec.ManagedInstances = &AwsLambdaManagedInstances{MemoryGibPerVcpu: 4.0}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts memory above the standard ceiling for Managed Instances sizes", func() {
+		spec.MemorySizeMb = 32768
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects memory above the platform maximum", func() {
+		spec.MemorySizeMb = 32769
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a durable function with retention", func() {
+		spec.DurableConfig = &AwsLambdaDurableConfig{
+			ExecutionTimeoutSeconds: 86400,
+			RetentionPeriodDays:     30,
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a durable config without an execution timeout", func() {
+		spec.DurableConfig = &AwsLambdaDurableConfig{RetentionPeriodDays: 30}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a durable execution timeout beyond 366 days", func() {
+		spec.DurableConfig = &AwsLambdaDurableConfig{ExecutionTimeoutSeconds: 31622401}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a durable retention period beyond 90 days", func() {
+		spec.DurableConfig = &AwsLambdaDurableConfig{
+			ExecutionTimeoutSeconds: 3600,
+			RetentionPeriodDays:     91,
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts PER_TENANT isolation and rejects unknown modes", func() {
+		spec.TenantIsolationMode = "PER_TENANT"
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		spec.TenantIsolationMode = "SHARED"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -----------------------------------------------------------------
+	// publish_to, code_sha256, and per-qualifier scaling configs
+	// -----------------------------------------------------------------
+
+	ginkgo.It("accepts publish_to LATEST_PUBLISHED and rejects other values", func() {
+		spec.PublishTo = "LATEST_PUBLISHED"
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		spec.PublishTo = "LATEST"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a deployed-package digest", func() {
+		spec.CodeSha256 = "q0Wep3z1sTImroLBJKcRuBIfqkKing9UVePUFmSpjKQ="
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts scaling configs for a version and the published head", func() {
+		spec.ScalingConfigs = []*AwsLambdaScalingConfig{
+			{Qualifier: "3", MinExecutionEnvironments: intPtr(1)},
+			{Qualifier: "$LATEST.PUBLISHED", MaxExecutionEnvironments: intPtr(20)},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a scaling config qualified by alias name", func() {
+		spec.ScalingConfigs = []*AwsLambdaScalingConfig{
+			{Qualifier: "live", MinExecutionEnvironments: intPtr(1)},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an empty scaling config", func() {
+		spec.ScalingConfigs = []*AwsLambdaScalingConfig{{Qualifier: "3"}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects scaling bounds out of order", func() {
+		spec.ScalingConfigs = []*AwsLambdaScalingConfig{{
+			Qualifier:                "3",
+			MinExecutionEnvironments: intPtr(10),
+			MaxExecutionEnvironments: intPtr(5),
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects duplicate scaling config qualifiers", func() {
+		spec.ScalingConfigs = []*AwsLambdaScalingConfig{
+			{Qualifier: "3", MinExecutionEnvironments: intPtr(1)},
+			{Qualifier: "3", MaxExecutionEnvironments: intPtr(5)},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -----------------------------------------------------------------
+	// Per-qualifier satellite targeting
+	// -----------------------------------------------------------------
+
+	ginkgo.It("accepts a function URL qualified by a declared alias", func() {
+		spec.Publish = true
+		spec.Aliases = []*AwsLambdaAlias{{Name: "live", FunctionVersion: "1"}}
+		spec.FunctionUrl = &AwsLambdaFunctionUrl{
+			AuthorizationType: "AWS_IAM",
+			Qualifier:         "live",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a function URL qualifier that names no alias", func() {
+		spec.Publish = true
+		spec.Aliases = []*AwsLambdaAlias{{Name: "live", FunctionVersion: "1"}}
+		spec.FunctionUrl = &AwsLambdaFunctionUrl{
+			AuthorizationType: "AWS_IAM",
+			Qualifier:         "staging",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts qualified permissions, async config, and runtime management", func() {
+		spec.InvokePermissions = []*AwsLambdaInvokePermission{{
+			StatementId:           "allow-alexa",
+			Principal:             "alexa-appkit.amazon.com",
+			Qualifier:             "live",
+			EventSourceToken:      "amzn1.ask.skill.12345678-1234-1234-1234-123456789012",
+			InvokedViaFunctionUrl: false,
+		}}
+		spec.AsyncInvokeConfig = &AwsLambdaAsyncInvokeConfig{
+			MaximumRetryAttempts: intPtr(1),
+			Qualifier:            "live",
+		}
+		spec.RuntimeManagement = &AwsLambdaRuntimeManagement{
+			UpdateRuntimeOn: "FunctionUpdate",
+			Qualifier:       "live",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
 })

@@ -57,6 +57,13 @@ func function(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lam
 		args.SourceCodeHash = pulumi.String(spec.SourceCodeHash)
 	}
 
+	// The deploy-side digest (what GetFunction reports) -- detects and
+	// rolls out-of-band code changes when only the deployed artifact's
+	// digest is known.
+	if spec.CodeSha256 != "" {
+		args.CodeSha256 = pulumi.String(spec.CodeSha256)
+	}
+
 	// BYOK for the deployment package itself -- distinct from
 	// KmsKeyArn, which encrypts environment variables.
 	if spec.SourceKmsKeyArn.GetValue() != "" {
@@ -92,6 +99,13 @@ func function(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lam
 	}
 
 	args.Publish = pulumi.Bool(spec.Publish)
+
+	// Maintain the $LATEST.PUBLISHED head pointer (the qualifier
+	// scaling configs and qualified invocations pin without naming
+	// version numbers).
+	if spec.PublishTo != "" {
+		args.PublishTo = pulumi.String(spec.PublishTo)
+	}
 
 	if len(spec.Environment) > 0 {
 		args.Environment = &lambda.FunctionEnvironmentArgs{
@@ -185,6 +199,47 @@ func function(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lam
 			loggingArgs.LogGroup = pulumi.String(spec.LoggingConfig.LogGroup.GetValue())
 		}
 		args.LoggingConfig = loggingArgs
+	}
+
+	// Lambda Managed Instances: run on a dedicated capacity provider
+	// instead of the on-demand fleet. The provider double-nests the
+	// config under a required single-entry wrapper; the spec flattens
+	// it. Input forms follow the SDK doc examples (&XArgs{}) -- the
+	// generated XPtr() constructors can panic the runtime marshaler.
+	if spec.ManagedInstances != nil {
+		miArgs := &lambda.FunctionCapacityProviderConfigLambdaManagedInstancesCapacityProviderConfigArgs{
+			CapacityProviderArn: pulumi.String(spec.ManagedInstances.CapacityProviderArn),
+		}
+		if spec.ManagedInstances.MemoryGibPerVcpu != 0 {
+			miArgs.ExecutionEnvironmentMemoryGibPerVcpu = pulumi.Float64(spec.ManagedInstances.MemoryGibPerVcpu)
+		}
+		if spec.ManagedInstances.MaxConcurrencyPerEnvironment != 0 {
+			miArgs.PerExecutionEnvironmentMaxConcurrency = pulumi.Int(int(spec.ManagedInstances.MaxConcurrencyPerEnvironment))
+		}
+		args.CapacityProviderConfig = &lambda.FunctionCapacityProviderConfigArgs{
+			LambdaManagedInstancesCapacityProviderConfig: miArgs,
+		}
+	}
+
+	// Durable execution. ADDING or REMOVING this block replaces the
+	// function (provider ForceNew on the block); the values inside
+	// update in place.
+	if spec.DurableConfig != nil {
+		durableArgs := &lambda.FunctionDurableConfigArgs{
+			ExecutionTimeout: pulumi.Int(int(spec.DurableConfig.ExecutionTimeoutSeconds)),
+		}
+		if spec.DurableConfig.RetentionPeriodDays != 0 {
+			durableArgs.RetentionPeriod = pulumi.Int(int(spec.DurableConfig.RetentionPeriodDays))
+		}
+		args.DurableConfig = durableArgs
+	}
+
+	// Per-tenant execution-environment isolation. Create-time
+	// immutable: changing it replaces the function.
+	if spec.TenantIsolationMode != "" {
+		args.TenancyConfig = &lambda.FunctionTenancyConfigArgs{
+			TenantIsolationMode: pulumi.String(spec.TenantIsolationMode),
+		}
 	}
 
 	createdFunction, err := lambda.NewFunction(ctx, "function", args, pulumi.Provider(provider))

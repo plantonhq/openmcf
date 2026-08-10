@@ -6,6 +6,12 @@
 # The e2e-prerequisites annotation composes the object-set fixture, which
 # pulls in its bucket through its own registry prerequisite (AwsS3Bucket);
 # the execution role is a registry prerequisite (AwsIamRole).
+#
+# Free versioning arms (versions, aliases, function URLs, and the
+# $LATEST.PUBLISHED head pointer bill nothing): the function publishes,
+# maintains the published head, and serves an alias-qualified URL -- the
+# live proof that publish_to and alias-qualified satellites render on both
+# engines.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLambda
 metadata:
@@ -40,3 +46,11 @@ spec:
   handler: index.handler
   memorySizeMb: 128
   timeoutSeconds: 3
+  publish: true
+  publishTo: LATEST_PUBLISHED
+  aliases:
+    - name: live
+      functionVersion: "1"
+  functionUrl:
+    authorizationType: AWS_IAM
+    qualifier: live

@@ -34,6 +34,11 @@ OS-level packages, or teams standardized on image pipelines.
 ## Example
 
 ```yaml
+# Canonical validated example: a zip-backed function exercising the full
+# modern surface -- versioning with the $LATEST.PUBLISHED head, an alias
+# with a qualified function URL and qualified satellites, per-qualifier
+# scaling bounds, and the Managed Instances / durable-execution /
+# per-tenant-isolation platform arms.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLambda
 metadata:
@@ -47,6 +52,7 @@ spec:
     bucket:
       value: my-bucket
     key: lambda/hello.zip
+  codeSha256: "q0Wep3z1sTImroLBJKcRuBIfqkKing9UVePUFmSpjKQ="
   runtime: nodejs22.x
   handler: index.handler
   architecture: x86_64
@@ -54,6 +60,42 @@ spec:
   timeoutSeconds: 10
   environment:
     EXAMPLE: "true"
+  publish: true
+  publishTo: LATEST_PUBLISHED
+  managedInstances:
+    capacityProviderArn: arn:aws:lambda:us-west-2:123456789012:capacity-provider:steady-fleet
+    memoryGibPerVcpu: 4
+    maxConcurrencyPerEnvironment: 8
+  durableConfig:
+    executionTimeoutSeconds: 86400
+    retentionPeriodDays: 30
+  tenantIsolationMode: PER_TENANT
+  aliases:
+    - name: live
+      functionVersion: "1"
+  functionUrl:
+    authorizationType: AWS_IAM
+    qualifier: live
+  invokePermissions:
+    - statementId: allow-url-account-callers
+      principal: "123456789012"
+      action: lambda:InvokeFunctionUrl
+      functionUrlAuthType: AWS_IAM
+      invokedViaFunctionUrl: true
+      qualifier: live
+    - statementId: allow-alexa-skill
+      principal: alexa-appkit.amazon.com
+      eventSourceToken: amzn1.ask.skill.12345678-1234-1234-1234-123456789012
+  asyncInvokeConfig:
+    maximumRetryAttempts: 1
+    qualifier: live
+  runtimeManagement:
+    updateRuntimeOn: FunctionUpdate
+    qualifier: live
+  scalingConfigs:
+    - qualifier: "$LATEST.PUBLISHED"
+      minExecutionEnvironments: 1
+      maxExecutionEnvironments: 20
 ```
 
 ## Spec Fields
@@ -69,6 +111,7 @@ spec:
 | `spec.s3.objectVersion` | `string` |  |  |  |
 | `spec.imageUri` | `string` |  |  |  |
 | `spec.sourceCodeHash` | `string` |  |  |  |
+| `spec.codeSha256` | `string` |  |  |  |
 | `spec.sourceKmsKeyArn` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.runtime` | `string` |  |  |  |
 | `spec.handler` | `string` |  |  |  |
@@ -92,8 +135,17 @@ spec:
 | `spec.imageConfig.workingDirectory` | `string` |  |  |  |
 | `spec.layerArns` | `[]string \| valueFrom` |  |  |  |
 | `spec.publish` | `bool` |  |  |  |
+| `spec.publishTo` | `string` |  |  |  |
 | `spec.reservedConcurrentExecutions` | `int32` |  |  |  |
 | `spec.snapStart` | `bool` |  |  |  |
+| `spec.managedInstances` | `AwsLambdaManagedInstances` |  |  |  |
+| `spec.managedInstances.capacityProviderArn` | `string` | yes |  |  |
+| `spec.managedInstances.memoryGibPerVcpu` | `double` |  |  |  |
+| `spec.managedInstances.maxConcurrencyPerEnvironment` | `int32` |  |  |  |
+| `spec.durableConfig` | `AwsLambdaDurableConfig` |  |  |  |
+| `spec.durableConfig.executionTimeoutSeconds` | `int32` |  |  |  |
+| `spec.durableConfig.retentionPeriodDays` | `int32` |  |  |  |
+| `spec.tenantIsolationMode` | `string` |  |  |  |
 | `spec.loggingConfig` | `AwsLambdaLoggingConfig` |  |  |  |
 | `spec.loggingConfig.logFormat` | `string` |  |  |  |
 | `spec.loggingConfig.applicationLogLevel` | `string` |  |  |  |
@@ -116,6 +168,7 @@ spec:
 | `spec.functionUrl.cors.allowHeaders` | `[]string` |  |  |  |
 | `spec.functionUrl.cors.exposeHeaders` | `[]string` |  |  |  |
 | `spec.functionUrl.cors.maxAgeSeconds` | `int32` |  |  |  |
+| `spec.functionUrl.qualifier` | `string` |  |  |  |
 | `spec.invokePermissions` | `[]AwsLambdaInvokePermission` |  |  |  |
 | `spec.invokePermissions[].statementId` | `string` | yes |  |  |
 | `spec.invokePermissions[].principal` | `string` | yes |  |  |
@@ -124,15 +177,24 @@ spec:
 | `spec.invokePermissions[].sourceAccount` | `string` |  |  |  |
 | `spec.invokePermissions[].principalOrgId` | `string` |  |  |  |
 | `spec.invokePermissions[].functionUrlAuthType` | `string` |  |  |  |
+| `spec.invokePermissions[].qualifier` | `string` |  |  |  |
+| `spec.invokePermissions[].eventSourceToken` | `string` |  |  |  |
+| `spec.invokePermissions[].invokedViaFunctionUrl` | `bool` |  |  |  |
 | `spec.asyncInvokeConfig` | `AwsLambdaAsyncInvokeConfig` |  |  |  |
 | `spec.asyncInvokeConfig.maximumRetryAttempts` | `int32` |  |  |  |
 | `spec.asyncInvokeConfig.maximumEventAgeSeconds` | `int32` |  |  |  |
 | `spec.asyncInvokeConfig.onSuccessDestinationArn` | `string \| valueFrom` |  |  | AwsSqsQueue (`status.outputs.queue_arn`) |
 | `spec.asyncInvokeConfig.onFailureDestinationArn` | `string \| valueFrom` |  |  | AwsSqsQueue (`status.outputs.queue_arn`) |
+| `spec.asyncInvokeConfig.qualifier` | `string` |  |  |  |
 | `spec.recursiveLoop` | `string` |  |  |  |
 | `spec.runtimeManagement` | `AwsLambdaRuntimeManagement` |  |  |  |
 | `spec.runtimeManagement.updateRuntimeOn` | `string` | yes |  |  |
 | `spec.runtimeManagement.runtimeVersionArn` | `string` |  |  |  |
+| `spec.runtimeManagement.qualifier` | `string` |  |  |  |
+| `spec.scalingConfigs` | `[]AwsLambdaScalingConfig` |  |  |  |
+| `spec.scalingConfigs[].qualifier` | `string` | yes |  |  |
+| `spec.scalingConfigs[].minExecutionEnvironments` | `int32` |  |  |  |
+| `spec.scalingConfigs[].maxExecutionEnvironments` | `int32` |  |  |  |
 
 ## Field Details
 
@@ -228,6 +290,10 @@ hash rolls the function, an unchanged hash is a no-op even when
 the S3 object is rewritten in place. Leave empty to update only
 when the S3 key or object version changes.
 
+### spec.codeSha256
+
+`string`
+
 ### spec.sourceKmsKeyArn
 
 `string | valueFrom`
@@ -286,7 +352,7 @@ so raising memory is also how you buy CPU -- for CPU-bound code a
 larger size often costs LESS overall by finishing sooner. 0 keeps
 the AWS default (128 MB).
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":10240,"gte":128}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":32768,"gte":128}}
 
 ### spec.timeoutSeconds
 
@@ -468,6 +534,12 @@ change. Versions are what aliases route to -- enable this when
 using aliases for traffic shifting or SnapStart (which only
 applies to published versions).
 
+### spec.publishTo
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["LATEST_PUBLISHED"]}}
+
 ### spec.reservedConcurrentExecutions
 
 `int32` · optional (explicit presence)
@@ -489,6 +561,48 @@ snapshot instead of running init from scratch -- order-of-magnitude
 cold-start reduction for JVM and other slow-init runtimes. Applies
 to published versions only (enable publish and invoke through a
 version or alias to benefit).
+
+### spec.managedInstances
+
+`AwsLambdaManagedInstances`
+
+### spec.managedInstances.capacityProviderArn
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.managedInstances.memoryGibPerVcpu
+
+`double`
+
+### spec.managedInstances.maxConcurrencyPerEnvironment
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.durableConfig
+
+`AwsLambdaDurableConfig`
+
+### spec.durableConfig.executionTimeoutSeconds
+
+`int32`
+
+- rule: {"int32":{"lte":31622400,"gte":1}}
+
+### spec.durableConfig.retentionPeriodDays
+
+`int32`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":90,"gte":1}}
+
+### spec.tenantIsolationMode
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["PER_TENANT"]}}
 
 ### spec.loggingConfig
 
@@ -697,6 +811,12 @@ up to 86400 (24h). 0 keeps the AWS default (0 -- no caching).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":86400,"gte":1}}
 
+### spec.functionUrl.qualifier
+
+`string`
+
+- rule: {"string":{"maxLen":"128","pattern":"^[a-zA-Z0-9-_]*$"}}
+
 ### spec.invokePermissions
 
 `[]AwsLambdaInvokePermission`
@@ -770,6 +890,22 @@ Required auth type when granting "lambda:InvokeFunctionUrl":
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["AWS_IAM","NONE"]}}
 
+### spec.invokePermissions[].qualifier
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.invokePermissions[].eventSourceToken
+
+`string`
+
+- rule: {"string":{"maxLen":"256"}}
+
+### spec.invokePermissions[].invokedViaFunctionUrl
+
+`bool`
+
 ### spec.asyncInvokeConfig
 
 `AwsLambdaAsyncInvokeConfig`
@@ -821,6 +957,12 @@ exhausted -- same target types as on_success_destination_arn.
 - references: AwsSqsQueue (`status.outputs.queue_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSqsQueue, name: <that resource's name>, fieldPath: status.outputs.queue_arn}} -- a bare string does not parse
 
+### spec.asyncInvokeConfig.qualifier
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
 ### spec.recursiveLoop
 
 `string`
@@ -861,6 +1003,37 @@ The exact runtime version ARN to pin, required with (and only
 meaningful for) "Manual". Obtain it from the function's runtime
 update events or the Lambda console.
 
+### spec.runtimeManagement.qualifier
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.scalingConfigs
+
+`[]AwsLambdaScalingConfig`
+
+- rule: set at least one of min_execution_environments or max_execution_environments -- an empty scaling config is a reset, not a resource
+- rule: max_execution_environments must be >= min_execution_environments
+
+### spec.scalingConfigs[].qualifier
+
+`string` · required
+
+- rule: {"required":true,"string":{"pattern":"^(\\$LATEST\\.PUBLISHED|[0-9]+)$"}}
+
+### spec.scalingConfigs[].minExecutionEnvironments
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"gte":0}}
+
+### spec.scalingConfigs[].maxExecutionEnvironments
+
+`int32` · optional (explicit presence)
+
+- rule: {"int32":{"gte":1}}
+
 ## Validation Rules
 
 - `exactly_one_code_source`: provide the function code as exactly one of s3 (zip archive) or image_uri (container image)
@@ -875,6 +1048,8 @@ update events or the Lambda console.
 - `aliases_require_publish`: aliases point at published versions -- enable publish so versions exist to route to
 - `alias_names_unique`: each alias name must be unique -- aliases materialize per-name
 - `permission_statement_ids_unique`: each invoke permission statement_id must be unique -- permissions materialize per statement
+- `function_url_qualifier_names_alias`: function_url.qualifier must name one of this spec's aliases -- AWS only qualifies function URLs by alias
+- `scaling_config_qualifiers_unique`: each scaling config qualifier must be unique -- configs materialize per qualifier
 
 ## Outputs
 

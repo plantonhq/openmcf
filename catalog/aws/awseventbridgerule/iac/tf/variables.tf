@@ -1,35 +1,35 @@
 variable "metadata" {
   description = "Cloud resource metadata"
   type = object({
-    name = string
-    id = optional(string, "")
-    org = optional(string, "")
-    env = optional(string, "")
-    labels = optional(map(string), {})
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
     annotations = optional(map(string), {})
-    tags = optional(list(string), [])
+    tags        = optional(list(string), [])
   })
 }
 
 variable "spec" {
   description = "AwsEventBridgeRule specification"
   type = object({
-    region = string
-    event_bus_name = optional(string, "")
-    description = optional(string, "")
-    event_pattern = optional(any)
+    region              = string
+    event_bus_name      = optional(string, "")
+    description         = optional(string, "")
+    event_pattern       = optional(any)
     schedule_expression = optional(string, "")
-    state = optional(string, "")
-    role_arn = optional(string, "")
-    force_destroy = optional(bool, false)
+    state               = optional(string, "")
+    role_arn            = optional(string, "")
+    force_destroy       = optional(bool, false)
     targets = optional(list(object({
-      name = string
-      arn = string
-      role_arn = optional(string, "")
-      input = optional(string, "")
+      name       = string
+      arn        = string
+      role_arn   = optional(string, "")
+      input      = optional(string, "")
       input_path = optional(string, "")
       input_transformer = optional(object({
-        input_paths = optional(map(string), {})
+        input_paths    = optional(map(string), {})
         input_template = string
       }))
       dead_letter_config = optional(object({
@@ -37,7 +37,7 @@ variable "spec" {
       }))
       retry_policy = optional(object({
         maximum_event_age_in_seconds = optional(number)
-        maximum_retry_attempts = optional(number)
+        maximum_retry_attempts       = optional(number)
       }))
       sqs_target = optional(object({
         message_group_id = optional(string, "")
@@ -46,43 +46,65 @@ variable "spec" {
         partition_key_path = optional(string, "")
       }))
       http_target = optional(object({
-        path_parameter_values = optional(list(string), [])
+        path_parameter_values   = optional(list(string), [])
         query_string_parameters = optional(map(string), {})
-        header_parameters = optional(map(string), {})
+        header_parameters       = optional(map(string), {})
       }))
       batch_target = optional(object({
         job_definition = string
-        job_name = string
-        array_size = optional(number, 0)
-        job_attempts = optional(number, 0)
+        job_name       = string
+        array_size     = optional(number, 0)
+        job_attempts   = optional(number, 0)
       }))
       ecs_target = optional(object({
         task_definition_arn = string
-        task_count = optional(number, 0)
-        launch_type = optional(string, "")
-        platform_version = optional(string, "")
-        group = optional(string, "")
+        task_count          = optional(number, 0)
+        launch_type         = optional(string, "")
+        platform_version    = optional(string, "")
+        group               = optional(string, "")
         capacity_provider_strategy = optional(list(object({
           capacity_provider = string
-          base = optional(number, 0)
-          weight = optional(number, 0)
+          base              = optional(number, 0)
+          weight            = optional(number, 0)
         })), [])
         network_configuration = optional(object({
-          subnets = list(string)
-          security_groups = optional(list(string), [])
+          subnets          = list(string)
+          security_groups  = optional(list(string), [])
           assign_public_ip = optional(bool, false)
         }))
         ordered_placement_strategy = optional(list(object({
-          type = string
+          type  = string
           field = optional(string, "")
         })), [])
         placement_constraints = optional(list(object({
-          type = string
+          type       = string
           expression = optional(string, "")
         })), [])
-        propagate_tags = optional(string, "")
+        propagate_tags          = optional(string, "")
         enable_ecs_managed_tags = optional(bool, false)
-        enable_execute_command = optional(bool, false)
+        enable_execute_command  = optional(bool, false)
+        tags                    = optional(map(string), {})
+      }))
+      redshift_target = optional(object({
+        database            = string
+        db_user             = optional(string, "")
+        secrets_manager_arn = optional(string, "")
+        sql                 = optional(string, "")
+        statement_name      = optional(string, "")
+        with_event          = optional(bool, false)
+      }))
+      run_command_targets = optional(list(object({
+        key    = string
+        values = list(string)
+      })), [])
+      sagemaker_pipeline_target = optional(object({
+        pipeline_parameter_list = optional(list(object({
+          name  = string
+          value = string
+        })), [])
+      }))
+      appsync_target = optional(object({
+        graphql_operation = string
       }))
     })), [])
   })

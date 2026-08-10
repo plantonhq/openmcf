@@ -26,6 +26,25 @@ import (
 // field, never as the message's internals.
 const stringValueOrRefFullName = "dev.planton.shared.foreignkey.v1.StringValueOrRef"
 
+// wellKnownValueLeafFullNames are well-known types whose descriptor
+// internals are protobuf plumbing, never configurable surface: a
+// google.protobuf.Struct field is ONE structured value the author writes
+// (e.g. an event pattern authored as YAML), so it counts as one leaf --
+// the same treatment as StringValueOrRef. Walking into these would emit
+// meaningless paths like "spec.event_pattern.fields.bool_value" that no
+// manifest could honestly account.
+var wellKnownValueLeafFullNames = map[string]bool{
+	"google.protobuf.Struct":    true,
+	"google.protobuf.Value":     true,
+	"google.protobuf.ListValue": true,
+}
+
+// isOpaqueLeafMessage reports whether a message-typed field is recorded as
+// one leaf instead of being walked into.
+func isOpaqueLeafMessage(fullName string) bool {
+	return fullName == stringValueOrRefFullName || wellKnownValueLeafFullNames[fullName]
+}
+
 // KindCensus is one kind's spec surface.
 type KindCensus struct {
 	// Kind is the registry name, e.g. "GcpGcsBucket".
@@ -92,13 +111,13 @@ func walkSpec(md protoreflect.MessageDescriptor, prefix string, visited map[prot
 		case fd.IsMap():
 			// The author configures one map field; message values recurse
 			// because each value's shape is itself configurable surface.
-			if v := fd.MapValue(); v.Kind() == protoreflect.MessageKind && string(v.Message().FullName()) != stringValueOrRefFullName {
+			if v := fd.MapValue(); v.Kind() == protoreflect.MessageKind && !isOpaqueLeafMessage(string(v.Message().FullName())) {
 				walkSpec(v.Message(), path, visited, out)
 			} else {
 				*out = append(*out, path)
 			}
 		case fd.Kind() == protoreflect.MessageKind:
-			if string(fd.Message().FullName()) == stringValueOrRefFullName {
+			if isOpaqueLeafMessage(string(fd.Message().FullName())) {
 				*out = append(*out, path)
 			} else {
 				walkSpec(fd.Message(), path, visited, out)

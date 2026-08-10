@@ -10,17 +10,16 @@ spec:
   # both provisioners. The scenario wires one standard queue into the shared
   # smoke function -- the smallest honest SQS worker surface. Deliberately not
   # in the live scenario: Kinesis, DynamoDB streams, MSK, and self-managed
-  # Kafka sources -- all proven by CEL spec tests, presets, and the offline
-  # gate.
-  #
-  # green: both engines have passed the full live lane -- prerequisite chain
-  # (7 roles -> bucket -> object set -> function -> queue) deploy -> mapping
-  # deploy -> GetEventSourceMapping verify -> destroy -> verify-destroyed
-  # (~6-8 min/lane, dominated by the prerequisite chain) -- on top of the
-  # standing offline gate.
+  # Kafka sources (proven by CEL spec tests, presets, and the offline gate),
+  # including the Kafka-only provisioned-poller group arm
+  # (poller_group_name) -- no MSK fixture exists and clusters bill hourly;
+  # proven by offline plans and previews of the msk-shared-pollers preset
+  # on both engines, never a silent skip.
+  # pending_proof: the depth-closure wave added poller_group_name, the
+  # ErrorCount/KafkaMetrics metrics values, and lifted the
+  # scaling_max_concurrency ceiling; the prior green badge predates this
+  # surface, so it is revoked until the proof lane re-earns it live.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

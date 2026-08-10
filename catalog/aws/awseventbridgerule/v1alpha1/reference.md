@@ -29,6 +29,11 @@ Notes:
 ## Example
 
 ```yaml
+# Canonical validated example: a scheduled operations rule fanning out to
+# the full typed-target spread -- Redshift Data API, SSM Run Command,
+# SageMaker Pipelines, AppSync, and ECS RunTask with task tags (AWS caps a
+# rule at 5 targets). Each service-typed target carries the role
+# EventBridge assumes to invoke it.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
@@ -43,12 +48,70 @@ metadata:
     pulumi.planton.dev/stack.name: dev.AwsEventBridgeRule.test-rule
 spec:
   region: us-east-1
-  description: Test rule for local development
+  description: Nightly operations fan-out for local development
   scheduleExpression: "rate(1 hour)"
   targets:
-    - name: test-target
+    - name: warehouse-refresh
       arn:
-        value: arn:aws:lambda:us-east-1:123456789012:function:test-function
+        value: arn:aws:redshift:us-east-1:123456789012:cluster:analytics-warehouse
+      roleArn:
+        value: arn:aws:iam::123456789012:role/events-redshift-data
+      redshiftTarget:
+        database: analytics
+        dbUser: etl_maintenance
+        sql: "REFRESH MATERIALIZED VIEW mv_hourly_orders;"
+        statementName: hourly-mv-refresh
+        withEvent: true
+    - name: fleet-log-rotate
+      arn:
+        value: arn:aws:ssm:us-east-1::document/AWS-RunShellScript
+      roleArn:
+        value: arn:aws:iam::123456789012:role/events-run-command
+      runCommandTargets:
+        - key: tag:Environment
+          values:
+            - production
+        - key: tag:Role
+          values:
+            - app-server
+      input: '{"commands":["logrotate -f /etc/logrotate.conf"]}'
+    - name: model-retrain
+      arn:
+        value: arn:aws:sagemaker:us-east-1:123456789012:pipeline/churn-retrain
+      roleArn:
+        value: arn:aws:iam::123456789012:role/events-sagemaker-pipeline
+      sagemakerPipelineTarget:
+        pipelineParameterList:
+          - name: InputDataS3Uri
+            value: s3://training-data/hourly/
+    - name: cache-invalidate
+      arn:
+        value: arn:aws:appsync:us-east-1:123456789012:endpoints/graphql-api/abcdef123456
+      roleArn:
+        value: arn:aws:iam::123456789012:role/events-appsync-invoke
+      appsyncTarget:
+        graphqlOperation: "mutation InvalidateCache($ts:String){ invalidateCache(timestamp:$ts){ ok } }"
+      inputTransformer:
+        inputPaths:
+          ts: "$.time"
+        inputTemplate: '{"ts": <ts>}'
+    - name: batch-compaction-task
+      arn:
+        value: arn:aws:ecs:us-east-1:123456789012:cluster/ops-cluster
+      roleArn:
+        value: arn:aws:iam::123456789012:role/events-ecs-run-task
+      ecsTarget:
+        taskDefinitionArn:
+          value: arn:aws:ecs:us-east-1:123456789012:task-definition/compaction:5
+        launchType: FARGATE
+        networkConfiguration:
+          subnets:
+            - value: subnet-0a1b2c3d4e5f60718
+          securityGroups:
+            - value: sg-0a1b2c3d4e5f60718
+        tags:
+          team: data-platform
+          cost-center: warehouse-ops
 ```
 
 ## Spec Fields
@@ -113,6 +176,23 @@ spec:
 | `spec.targets[].ecsTarget.propagateTags` | `string` |  |  |  |
 | `spec.targets[].ecsTarget.enableEcsManagedTags` | `bool` |  |  |  |
 | `spec.targets[].ecsTarget.enableExecuteCommand` | `bool` |  |  |  |
+| `spec.targets[].ecsTarget.tags` | `map<string, string>` |  |  |  |
+| `spec.targets[].redshiftTarget` | `AwsEventBridgeTargetRedshiftConfig` |  |  |  |
+| `spec.targets[].redshiftTarget.database` | `string` | yes |  |  |
+| `spec.targets[].redshiftTarget.dbUser` | `string` |  |  |  |
+| `spec.targets[].redshiftTarget.secretsManagerArn` | `string` |  |  |  |
+| `spec.targets[].redshiftTarget.sql` | `string` |  |  |  |
+| `spec.targets[].redshiftTarget.statementName` | `string` |  |  |  |
+| `spec.targets[].redshiftTarget.withEvent` | `bool` |  |  |  |
+| `spec.targets[].runCommandTargets` | `[]AwsEventBridgeTargetRunCommandSelector` |  |  |  |
+| `spec.targets[].runCommandTargets[].key` | `string` | yes |  |  |
+| `spec.targets[].runCommandTargets[].values` | `[]string` | yes |  |  |
+| `spec.targets[].sagemakerPipelineTarget` | `AwsEventBridgeTargetSagemakerPipelineConfig` |  |  |  |
+| `spec.targets[].sagemakerPipelineTarget.pipelineParameterList` | `[]AwsEventBridgeSagemakerPipelineParameter` |  |  |  |
+| `spec.targets[].sagemakerPipelineTarget.pipelineParameterList[].name` | `string` | yes |  |  |
+| `spec.targets[].sagemakerPipelineTarget.pipelineParameterList[].value` | `string` | yes |  |  |
+| `spec.targets[].appsyncTarget` | `AwsEventBridgeTargetAppsyncConfig` |  |  |  |
+| `spec.targets[].appsyncTarget.graphqlOperation` | `string` | yes |  |  |
 
 ## Field Details
 
@@ -232,8 +312,9 @@ Kinesis, HTTP/API-destination, Batch, ECS RunTask).
 
 AWS limits: maximum 5 targets per rule.
 
+- rule: {"repeated":{"maxItems":"5"}}
 - rule: only one of input, input_path, or input_transformer may be set
-- rule: at most one of sqs_target, kinesis_target, http_target, batch_target, or ecs_target may be set
+- rule: at most one of sqs_target, kinesis_target, http_target, batch_target, ecs_target, redshift_target, run_command_targets, sagemaker_pipeline_target, or appsync_target may be set
 
 ### spec.targets[].name
 
@@ -305,6 +386,8 @@ Example: "$.detail" extracts the detail object from the event.
 Input transformer to reshape the matched event before passing to the
 target. Mutually exclusive with `input` and `input_path`.
 
+- rule: input_paths keys must not start with 'AWS' -- that prefix is reserved by EventBridge
+
 ### spec.targets[].inputTransformer.inputPaths
 
 `map<string, string>`
@@ -316,6 +399,8 @@ Maximum 100 entries. Keys must not start with "AWS".
 Example:
   instance: "$.detail.instance-id"
   state: "$.detail.state"
+
+- rule: {"map":{"maxPairs":"100"}}
 
 ### spec.targets[].inputTransformer.inputTemplate
 
@@ -690,6 +775,96 @@ aws:ecs:clusterName / aws:ecs:serviceName tag pair).
 `bool`
 
 Enable ECS Exec on the launched tasks for interactive debugging.
+
+### spec.targets[].ecsTarget.tags
+
+`map<string, string>`
+
+### spec.targets[].redshiftTarget
+
+`AwsEventBridgeTargetRedshiftConfig`
+
+### spec.targets[].redshiftTarget.database
+
+`string` · required
+
+- rule: {"required":true,"string":{"maxLen":"64"}}
+
+### spec.targets[].redshiftTarget.dbUser
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.targets[].redshiftTarget.secretsManagerArn
+
+`string`
+
+### spec.targets[].redshiftTarget.sql
+
+`string`
+
+- rule: {"string":{"maxLen":"100000"}}
+
+### spec.targets[].redshiftTarget.statementName
+
+`string`
+
+- rule: {"string":{"maxLen":"500"}}
+
+### spec.targets[].redshiftTarget.withEvent
+
+`bool`
+
+### spec.targets[].runCommandTargets
+
+`[]AwsEventBridgeTargetRunCommandSelector`
+
+- rule: {"repeated":{"maxItems":"5"}}
+
+### spec.targets[].runCommandTargets[].key
+
+`string` · required
+
+- rule: {"required":true,"string":{"maxLen":"128"}}
+
+### spec.targets[].runCommandTargets[].values
+
+`[]string` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"50","items":{"string":{"minLen":"1","maxLen":"256"}}}}
+
+### spec.targets[].sagemakerPipelineTarget
+
+`AwsEventBridgeTargetSagemakerPipelineConfig`
+
+### spec.targets[].sagemakerPipelineTarget.pipelineParameterList
+
+`[]AwsEventBridgeSagemakerPipelineParameter`
+
+- rule: {"repeated":{"maxItems":"200"}}
+
+### spec.targets[].sagemakerPipelineTarget.pipelineParameterList[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.targets[].sagemakerPipelineTarget.pipelineParameterList[].value
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.targets[].appsyncTarget
+
+`AwsEventBridgeTargetAppsyncConfig`
+
+### spec.targets[].appsyncTarget.graphqlOperation
+
+`string` · required
+
+- rule: {"required":true,"string":{"maxLen":"1048576"}}
 
 ## Validation Rules
 

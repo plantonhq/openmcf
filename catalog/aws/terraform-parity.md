@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 224 |
-| Spec fields authored across all kinds | 4177 |
+| Distinct provider resources consumed | 225 |
+| Spec fields authored across all kinds | 4135 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**16 of 112 kinds are at total accounting; 83 proven live.**
+**19 of 112 kinds are at total accounting; 82 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -67,8 +67,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCloudFront | 124 | 28 | 0 | 0 | 171 | ❌ | ✅ pulumi, terraform |
 | AwsCloudwatchAlarm | 39 | 24 | 0 | 0 | 27 | ❌ | ✅ pulumi, terraform |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
-| AwsCloudwatchLogGroup | 36 | 9 | 0 | 0 | 51 | ❌ | ✅ pulumi, terraform |
-| AwsCodeBuildProject | 115 | 90 | 0 | 0 | 47 | ❌ | ✅ pulumi, terraform |
+| AwsCloudwatchLogGroup | 36 | 9 | 0 | 0 | 45 | ❌ | ✅ pulumi, terraform |
+| AwsCodeBuildProject | 115 | 90 | 0 | 0 | 44 | ❌ | ✅ pulumi, terraform |
 | AwsCodePipeline | 84 | 4 | 0 | 0 | 151 | ❌ | ✅ pulumi, terraform |
 | AwsCognitoIdentityProvider | 7 | 6 | 0 | 0 | 32 | ❌ | — |
 | AwsCognitoResourceServer | 6 | 4 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
@@ -77,7 +77,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsDocumentDb | 74 | 34 | 0 | 0 | 56 | ❌ | ✅ pulumi, terraform |
 | AwsDynamodb | 71 | 27 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
 | AwsEc2Instance | 92 | 39 | 0 | 0 | 94 | ❌ | ✅ pulumi, terraform |
-| AwsEcrRepo | 17 | 5 | 0 | 0 | 28 | ❌ | ✅ pulumi, terraform |
+| AwsEcrRepo | 17 | 5 | 0 | 0 | 25 | ❌ | ✅ pulumi, terraform |
 | AwsEcsCluster | 80 | 7 | 64 | 9 | 0 | ✅ | — |
 | AwsEcsService | 98 | 53 | 34 | 11 | 0 | ✅ | — |
 | AwsEcsTaskDefinition | 56 | 13 | 22 | 21 | 0 | ✅ | — |
@@ -88,12 +88,12 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsEksCluster | 38 | 8 | 20 | 10 | 0 | ✅ | — |
 | AwsEksFargateProfile | 9 | 4 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEksNodeGroup | 43 | 26 | 12 | 5 | 0 | ✅ | — |
-| AwsElasticFileSystem | 34 | 12 | 0 | 0 | 40 | ❌ | ✅ pulumi, terraform |
+| AwsElasticFileSystem | 34 | 13 | 0 | 0 | 35 | ❌ | ✅ pulumi, terraform |
 | AwsElasticIp | 12 | 4 | 0 | 0 | 8 | ❌ | — |
 | AwsElasticacheUser | 13 | 6 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
 | AwsElasticacheUserGroup | 6 | 3 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
-| AwsEventBridgeBus | 13 | 8 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
-| AwsEventBridgeRule | 65 | 11 | 0 | 0 | 95 | ❌ | ✅ pulumi, terraform |
+| AwsEventBridgeBus | 13 | 8 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
+| AwsEventBridgeRule | 65 | 53 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsFsxDataRepositoryAssociation | 11 | 7 | 0 | 0 | 6 | ❌ | — |
 | AwsFsxLustreFileSystem | 34 | 29 | 0 | 0 | 8 | ❌ | — |
 | AwsFsxOntapFileSystem | 21 | 18 | 0 | 0 | 4 | ❌ | — |
@@ -103,21 +103,21 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsFsxWindowsFileSystem | 34 | 28 | 0 | 0 | 8 | ❌ | — |
 | AwsGlobalAccelerator | 28 | 3 | 0 | 0 | 48 | ❌ | ✅ pulumi, terraform |
 | AwsGlueCatalogDatabase | 15 | 10 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
-| AwsHttpApiDomain | 26 | 7 | 11 | 8 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsHttpApiDomain | 26 | 7 | 11 | 8 | 0 | ✅ | — |
 | AwsHttpApiGateway | 91 | 42 | 11 | 38 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiVpcLink | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamInstanceProfile | 6 | 2 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
 | AwsIamOidcProvider | 5 | 3 | 0 | 0 | 3 | ❌ | — |
-| AwsIamPolicy | 8 | 2 | 0 | 0 | 11 | ❌ | ✅ pulumi, terraform |
-| AwsIamRole | 16 | 5 | 0 | 0 | 26 | ❌ | — |
-| AwsIamUser | 15 | 3 | 0 | 0 | 20 | ❌ | ✅ pulumi, terraform |
+| AwsIamPolicy | 8 | 2 | 0 | 0 | 8 | ❌ | ✅ pulumi, terraform |
+| AwsIamRole | 16 | 5 | 0 | 0 | 20 | ❌ | — |
+| AwsIamUser | 15 | 3 | 0 | 0 | 17 | ❌ | ✅ pulumi, terraform |
 | AwsInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsKinesisFirehose | 337 | 1 | 0 | 0 | 676 | ❌ | ✅ pulumi, terraform |
-| AwsKinesisStream | 17 | 8 | 0 | 0 | 15 | ❌ | ✅ pulumi, terraform |
-| AwsKinesisStreamConsumer | 8 | 3 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
+| AwsKinesisStream | 17 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
+| AwsKinesisStreamConsumer | 8 | 3 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
 | AwsKmsKey | 19 | 9 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
-| AwsLambda | 103 | 28 | 0 | 0 | 118 | ❌ | ✅ pulumi, terraform |
-| AwsLambdaEventSourceMapping | 45 | 11 | 0 | 0 | 58 | ❌ | ✅ pulumi, terraform |
+| AwsLambda | 108 | 51 | 30 | 27 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsLambdaEventSourceMapping | 45 | 11 | 31 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | — |
 | AwsLbListener | 76 | 14 | 0 | 0 | 121 | ❌ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 0 | 0 | 113 | ❌ | ✅ pulumi, terraform |
@@ -132,7 +132,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsNatGateway | 15 | 10 | 3 | 2 | 0 | ✅ | — |
 | AwsNeptuneCluster | 70 | 34 | 0 | 0 | 52 | ❌ | ✅ pulumi, terraform |
 | AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | — |
-| AwsOpenSearchDomain | 77 | 50 | 0 | 0 | 53 | ❌ | partial: pulumi, terraform |
+| AwsOpenSearchDomain | 77 | 51 | 0 | 0 | 48 | ❌ | partial: pulumi, terraform |
 | AwsPlantonRunner | 216 | 9 | 0 | 0 | 216 | ❌ | ✅ pulumi, terraform |
 | AwsRdsCluster | 126 | 69 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
 | AwsRdsInstance | 88 | 57 | 0 | 0 | 41 | ❌ | ✅ pulumi, terraform |
@@ -143,17 +143,17 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsRoute53DnsRecord | 25 | 7 | 0 | 0 | 36 | ❌ | ✅ pulumi, terraform |
 | AwsRoute53HealthCheck | 23 | 17 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
 | AwsRoute53Zone | 17 | 4 | 0 | 0 | 20 | ❌ | ✅ pulumi, terraform |
-| AwsS3Bucket | 163 | 22 | 0 | 0 | 233 | ❌ | ✅ pulumi, terraform |
+| AwsS3Bucket | 163 | 23 | 0 | 0 | 228 | ❌ | ✅ pulumi, terraform |
 | AwsS3ObjectSet | 28 | 3 | 0 | 0 | 46 | ❌ | ✅ pulumi, terraform |
 | AwsSagemakerDomain | 159 | 93 | 0 | 0 | 126 | ❌ | ✅ pulumi, terraform |
 | AwsSecurityGroup | 10 | 4 | 0 | 0 | 26 | ❌ | ✅ pulumi, terraform |
 | AwsServerlessElasticache | 19 | 12 | 0 | 0 | 11 | ❌ | ✅ pulumi, terraform |
 | AwsSesConfigurationSet | 27 | 7 | 0 | 0 | 36 | ❌ | ✅ pulumi, terraform |
-| AwsSesEmailIdentity | 19 | 9 | 0 | 0 | 21 | ❌ | ✅ pulumi, terraform |
-| AwsSnsSubscription | 13 | 9 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
-| AwsSnsTopic | 33 | 9 | 0 | 0 | 52 | ❌ | ✅ pulumi, terraform |
-| AwsSqsQueue | 20 | 11 | 0 | 0 | 19 | ❌ | ✅ pulumi, terraform |
-| AwsStepFunction | 16 | 4 | 0 | 0 | 22 | ❌ | ✅ pulumi, terraform |
+| AwsSesEmailIdentity | 19 | 9 | 0 | 0 | 18 | ❌ | ✅ pulumi, terraform |
+| AwsSnsSubscription | 13 | 11 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
+| AwsSnsTopic | 33 | 12 | 0 | 0 | 38 | ❌ | ✅ pulumi, terraform |
+| AwsSqsQueue | 20 | 12 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
+| AwsStepFunction | 16 | 5 | 0 | 0 | 17 | ❌ | ✅ pulumi, terraform |
 | AwsSubnet | 33 | 22 | 0 | 11 | 0 | ✅ | — |
 | AwsTransitGateway | 14 | 12 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsTransitGatewayRouteTable | 21 | 6 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
@@ -162,7 +162,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsVpcEndpoint | 23 | 17 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
 | AwsWafIpSet | 9 | 5 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
 | AwsWafRegexPatternSet | 8 | 3 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
-| AwsWafWebAcl | 9727 | 8 | 0 | 0 | 10022 | ❌ | ✅ pulumi, terraform |
+| AwsWafWebAcl | 9727 | 8 | 0 | 0 | 10019 | ❌ | ✅ pulumi, terraform |
 
 ## Breadth: every GA resource, one disposition
 
@@ -170,10 +170,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 224 | consumed by a kind's Terraform module today |
+| Modeled | 225 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 3 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 820 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 819 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 516 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 128 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -183,7 +183,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (224)
+### Modeled (225)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -323,6 +323,7 @@ rather than trusted.
 | `aws_lambda_function` | consumed by AwsLambda |
 | `aws_lambda_function_event_invoke_config` | consumed by AwsLambda |
 | `aws_lambda_function_recursion_config` | consumed by AwsLambda |
+| `aws_lambda_function_scaling_config` | consumed by AwsLambda |
 | `aws_lambda_function_url` | consumed by AwsLambda |
 | `aws_lambda_permission` | consumed by AwsLambda |
 | `aws_lambda_provisioned_concurrency_config` | consumed by AwsLambda |
@@ -420,7 +421,7 @@ rather than trusted.
 | `aws_autoscaling_traffic_source_attachment` | covered by AwsAutoScalingGroup.traffic_sources -- the standalone attachment is the imperative pattern for a group that owns its traffic sources |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
 
-### Planned (820)
+### Planned (819)
 
 | Resource | Recorded reason |
 |---|---|
@@ -865,9 +866,8 @@ rather than trusted.
 | `aws_lakeformation_resource` | judged as a planned AwsLakeFormation kind (data-lake settings, permissions, resources, LF-tags, opt-ins, Identity Center config) |
 | `aws_lakeformation_resource_lf_tag` | judged as a planned AwsLakeFormation kind (data-lake settings, permissions, resources, LF-tags, opt-ins, Identity Center config) |
 | `aws_lakeformation_resource_lf_tags` | judged as a planned AwsLakeFormation kind (data-lake settings, permissions, resources, LF-tags, opt-ins, Identity Center config) |
-| `aws_lambda_capacity_provider` | Lambda companion surface (code signing, capacity providers, scaling configs); folds into the existing AwsLambda kind as its spec deepens |
-| `aws_lambda_code_signing_config` | Lambda companion surface (code signing, capacity providers, scaling configs); folds into the existing AwsLambda kind as its spec deepens |
-| `aws_lambda_function_scaling_config` | Lambda companion surface (code signing, capacity providers, scaling configs); folds into the existing AwsLambda kind as its spec deepens |
+| `aws_lambda_capacity_provider` | judged as a planned AwsLambdaCapacityProvider kind: account-scoped shared infrastructure (own VPC config, scaling policies, KMS key, tags, 30-minute delete) that many functions reference by ARN -- AwsLambda models the function-side attachment (managed_instances.capacity_provider_arn) and upgrades it to a reference when the kind ships |
+| `aws_lambda_code_signing_config` | judged as a planned AwsLambdaCodeSigningConfig kind: a shareable trust policy (allowed signing profiles + enforcement mode) many functions reference -- AwsLambda already models the function-side attachment (code_signing_config_arn) and upgrades it to a reference when the kind ships |
 | `aws_lambda_layer_version` | judged as a planned AwsLambdaLayer kind (layer versions with permissions) |
 | `aws_lambda_layer_version_permission` | judged as a planned AwsLambdaLayer kind (layer versions with permissions) |
 | `aws_lb_trust_store` | listener mTLS trust stores fold into the existing AwsLbListener kind as its spec deepens |

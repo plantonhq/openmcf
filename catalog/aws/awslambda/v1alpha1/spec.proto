@@ -4,6 +4,7 @@ package dev.planton.aws.awslambda.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
 
 // AwsLambdaSpec defines an AWS Lambda function: its code source (an S3
 // zip archive or an ECR container image), execution environment
@@ -74,6 +75,15 @@ message AwsLambdaSpec {
   // when the S3 key or object version changes.
   string source_code_hash = 6;
 
+  // Base64-encoded SHA256 of the DEPLOYED package as AWS reports it
+  // (the digest GetFunction returns). Set it to detect and roll
+  // out-of-band code changes from the deployed artifact's own digest —
+  // the deploy-side complement to source_code_hash, which hashes the
+  // artifact you upload. Most configurations want source_code_hash;
+  // use this when the artifact is published by a pipeline you don't
+  // control and only the deployed digest is known.
+  string code_sha256 = 39;
+
   // The KMS key that encrypts the deployment package in S3 (bring-
   // your-own-key for the code artifact itself -- distinct from
   // kms_key_arn, which encrypts environment variables). Only
@@ -116,16 +126,18 @@ message AwsLambdaSpec {
     }
   ];
 
-  // Memory in MB, 128-10240 for standard functions. CPU and network
-  // scale linearly with memory (a full vCPU arrives around 1769 MB),
-  // so raising memory is also how you buy CPU -- for CPU-bound code a
-  // larger size often costs LESS overall by finishing sooner. 0 keeps
-  // the AWS default (128 MB).
+  // Memory in MB: 128-10240 for standard functions, up to 32768 when
+  // the function runs on Lambda Managed Instances (managed_instances)
+  // -- AWS enforces the per-platform ceiling at deploy time. CPU and
+  // network scale linearly with memory (a full vCPU arrives around
+  // 1769 MB), so raising memory is also how you buy CPU -- for
+  // CPU-bound code a larger size often costs LESS overall by finishing
+  // sooner. 0 keeps the AWS default (128 MB).
   int32 memory_size_mb = 11 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).int32 = {
       gte: 128
-      lte: 10240
+      lte: 32768
     }
   ];
 
@@ -250,6 +262,19 @@ message AwsLambdaSpec {
   // applies to published versions).
   bool publish = 24;
 
+  // Maintain the "$LATEST.PUBLISHED" head pointer: "LATEST_PUBLISHED"
+  // (the only value AWS currently accepts) keeps a moving qualifier
+  // that always resolves to the newest published version -- the
+  // addressable target scaling_configs and qualified invocations can
+  // pin without naming version numbers. Empty leaves the head pointer
+  // unmanaged.
+  string publish_to = 38 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["LATEST_PUBLISHED"]
+    }
+  ];
+
   // Reserved concurrency for this function. Unset: the function draws
   // from the account's unreserved pool (no dedicated cap). 0: all
   // invocations are throttled -- an operational kill switch. Positive:
@@ -263,6 +288,35 @@ message AwsLambdaSpec {
   // to published versions only (enable publish and invoke through a
   // version or alias to benefit).
   bool snap_start = 26;
+
+  // --- Execution platform (Managed Instances, durability, tenancy) ---
+
+  // Run the function on a Lambda Managed Instances capacity provider --
+  // dedicated EC2 capacity AWS manages on the function's behalf --
+  // instead of the on-demand fleet. The platform for steady
+  // high-throughput workloads, memory above 10 GB, and per-tenant
+  // isolation.
+  AwsLambdaManagedInstances managed_instances = 35;
+
+  // Durable execution: AWS checkpoints the function's progress so
+  // long-running workflows survive interruption and resume where they
+  // stopped, far beyond the classic 15-minute cap. ADDING OR REMOVING
+  // this block REPLACES the function (an AWS constraint); the values
+  // inside update in place.
+  AwsLambdaDurableConfig durable_config = 36;
+
+  // Isolate execution environments per tenant: "PER_TENANT" (the only
+  // mode AWS currently accepts) dedicates environments to the tenant id
+  // callers pass at invoke time -- no cross-tenant reuse of warm
+  // state. Create-time immutable: CHANGING it REPLACES the function.
+  // Empty keeps the AWS default (environments shared across all
+  // invocations).
+  string tenant_isolation_mode = 37 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["PER_TENANT"]
+    }
+  ];
 
   // --- Logging ---
 
@@ -326,6 +380,13 @@ message AwsLambdaSpec {
   // How runtime patches roll out to the function: automatically, only
   // on function updates, or pinned to a specific runtime version.
   AwsLambdaRuntimeManagement runtime_management = 34;
+
+  // Per-qualifier execution-environment scaling bounds for functions on
+  // Lambda Managed Instances: pin a published version's (or the
+  // "$LATEST.PUBLISHED" head's) environment fleet between a floor and a
+  // ceiling. Each entry materializes as its own scaling-config resource
+  // keyed by qualifier, so list edits update in place.
+  repeated AwsLambdaScalingConfig scaling_configs = 40;
 
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
@@ -401,6 +462,18 @@ message AwsLambdaSpec {
     id: "permission_statement_ids_unique"
     message: "each invoke permission statement_id must be unique -- permissions materialize per statement"
     expression: "this.invoke_permissions.all(p, this.invoke_permissions.filter(q, q.statement_id == p.statement_id).size() == 1)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "function_url_qualifier_names_alias"
+    message: "function_url.qualifier must name one of this spec's aliases -- AWS only qualifies function URLs by alias"
+    expression: "!has(this.function_url) || this.function_url.qualifier == '' || this.aliases.exists(a, a.name == this.function_url.qualifier)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "scaling_config_qualifiers_unique"
+    message: "each scaling config qualifier must be unique -- configs materialize per qualifier"
+    expression: "this.scaling_configs.all(s, this.scaling_configs.filter(t, t.qualifier == s.qualifier).size() == 1)"
   };
 }
 
@@ -614,6 +687,15 @@ message AwsLambdaFunctionUrl {
 
   // Cross-origin resource sharing for browser callers.
   AwsLambdaFunctionUrlCors cors = 3;
+
+  // Attach the URL to one of this spec's aliases instead of $LATEST --
+  // the URL then serves whatever version the alias routes (including
+  // canary weights), so traffic shifting applies to URL callers too.
+  // Must name an entry in aliases; empty serves the unpublished head.
+  string qualifier = 4 [
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9-_]*$"
+  ];
 }
 
 // AwsLambdaFunctionUrlCors configures CORS on the function URL.
@@ -698,6 +780,22 @@ message AwsLambdaInvokePermission {
     }
   ];
 
+  // Scope the grant to one qualified ARN: a published version number
+  // ("3") or an alias name ("live"). The principal may then invoke only
+  // that version/alias. Empty grants on the unqualified function.
+  string qualifier = 8 [(buf.validate.field).string.max_len = 128];
+
+  // Token the caller must present with the invocation -- used by Alexa
+  // Skills (the skill id) to pin the grant to one skill.
+  string event_source_token = 9 [
+    (dev.planton.shared.options.sensitive_exempt_reason) = "An Alexa skill id (amzn1.ask.skill...) pinning the grant to one skill -- an identifier readable in the function's resource policy, never credential material.",
+    (buf.validate.field).string.max_len = 256
+  ];
+
+  // Restrict the grant to invocations that arrive THROUGH the function
+  // URL (rejects direct Invoke calls under this statement).
+  bool invoked_via_function_url = 10;
+
   option (buf.validate.message).cel = {
     id: "url_auth_type_requires_url_action"
     message: "function_url_auth_type only applies when action is lambda:InvokeFunctionUrl"
@@ -744,6 +842,12 @@ message AwsLambdaAsyncInvokeConfig {
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSqsQueue,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_arn"
   ];
+
+  // Apply this config to one qualified scope instead of the whole
+  // function: a published version number ("3") or an alias name
+  // ("live"). Async invocations through other qualifiers then keep the
+  // AWS defaults. Empty applies at function scope.
+  string qualifier = 5 [(buf.validate.field).string.max_len = 128];
 }
 
 // AwsLambdaRuntimeManagement controls how AWS rolls runtime patches to
@@ -770,9 +874,92 @@ message AwsLambdaRuntimeManagement {
   // update events or the Lambda console.
   string runtime_version_arn = 2;
 
+  // Apply the policy to one qualified scope instead of the whole
+  // function: a published version number ("3") or an alias name
+  // ("live"). Empty applies at function scope ($LATEST).
+  string qualifier = 3 [(buf.validate.field).string.max_len = 128];
+
   option (buf.validate.message).cel = {
     id: "manual_pin_requires_version_arn"
     message: "update_runtime_on Manual requires runtime_version_arn (the exact runtime build to pin); other modes must leave it empty"
     expression: "(this.update_runtime_on == 'Manual') == (this.runtime_version_arn != '')"
+  };
+}
+
+// AwsLambdaManagedInstances runs the function on a Lambda Managed
+// Instances capacity provider -- dedicated EC2 capacity AWS provisions
+// and manages on the function's behalf -- instead of the shared
+// on-demand fleet.
+message AwsLambdaManagedInstances {
+  // The Lambda capacity provider supplying the managed EC2 capacity.
+  // Pass the capacity provider ARN as a literal, e.g.
+  // "arn:aws:lambda:us-west-2:123456789012:capacity-provider:my-cp".
+  string capacity_provider_arn = 1 [(buf.validate.field).required = true];
+
+  // Memory (GiB) provisioned per vCPU in each execution environment --
+  // how compute-heavy vs memory-heavy the environments are sized.
+  // 0 keeps the AWS default sizing.
+  double memory_gib_per_vcpu = 2;
+
+  // Maximum concurrent invocations one execution environment may serve.
+  // 0 keeps the AWS default.
+  int32 max_concurrency_per_environment = 3 [(buf.validate.field).int32.gte = 0];
+}
+
+// AwsLambdaDurableConfig makes invocations durable: AWS checkpoints the
+// function's progress so long-running workflows survive interruption
+// and resume where they stopped.
+message AwsLambdaDurableConfig {
+  // Maximum end-to-end time of one durable invocation in seconds,
+  // 1-31622400 (up to 366 days) -- checkpointing is what lets it far
+  // exceed the classic 15-minute cap.
+  int32 execution_timeout_seconds = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 31622400
+  }];
+
+  // How long (days, 1-90) AWS retains each durable execution's state
+  // and history after it completes. 0 keeps the AWS default (14).
+  int32 retention_period_days = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 90
+    }
+  ];
+}
+
+// AwsLambdaScalingConfig pins one qualifier's execution-environment
+// fleet (Lambda Managed Instances functions) between a floor and a
+// ceiling. Both bounds are optional individually, but an entry must set
+// at least one -- an empty config is a reset, not a resource.
+message AwsLambdaScalingConfig {
+  // The qualifier the bounds apply to: a published version number
+  // ("3") or "$LATEST.PUBLISHED" (the newest published version --
+  // maintained by publish_to). Alias names are NOT accepted here (an
+  // AWS constraint specific to scaling configs).
+  string qualifier = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^(\\$LATEST\\.PUBLISHED|[0-9]+)$"
+  ];
+
+  // The floor of always-provisioned execution environments. Unset
+  // leaves the floor to AWS.
+  optional int32 min_execution_environments = 2 [(buf.validate.field).int32.gte = 0];
+
+  // The ceiling of execution environments AWS may scale to. Unset
+  // leaves the ceiling to AWS.
+  optional int32 max_execution_environments = 3 [(buf.validate.field).int32.gte = 1];
+
+  option (buf.validate.message).cel = {
+    id: "scaling_bounds_present"
+    message: "set at least one of min_execution_environments or max_execution_environments -- an empty scaling config is a reset, not a resource"
+    expression: "has(this.min_execution_environments) || has(this.max_execution_environments)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "scaling_bounds_ordered"
+    message: "max_execution_environments must be >= min_execution_environments"
+    expression: "!has(this.min_execution_environments) || !has(this.max_execution_environments) || this.max_execution_environments >= this.min_execution_environments"
   };
 }
