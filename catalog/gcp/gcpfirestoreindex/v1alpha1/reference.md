@@ -130,7 +130,9 @@ ANY_API: Firestore Native queries (the default).
 DATASTORE_MODE_API: Datastore Mode queries.
 MONGODB_COMPATIBLE_API: Firestore Enterprise (MongoDB-compatible)
   queries — required for multikey and search-config indexes, and
-  only valid on an ENTERPRISE-edition database.
+  only valid on an ENTERPRISE-edition database. Requires
+  query_scope COLLECTION_GROUP explicitly (the API rejects the
+  COLLECTION default for this scope).
 
 - default: `ANY_API`
 - rule: api_scope must be ANY_API, DATASTORE_MODE_API, or MONGODB_COMPATIBLE_API
@@ -204,7 +206,9 @@ Text or geo search index configuration for the field — the
 Firestore Enterprise search surface. Requires an ENTERPRISE-edition
 database (GcpFirestoreDatabase database_edition: ENTERPRISE); text
 search additionally pairs with api_scope MONGODB_COMPATIBLE_API,
-while geo search works under the default scope.
+while geo search works under the default scope. Search and
+non-search fields cannot mix in one index (API-enforced): when any
+field carries search_config, every field must.
 
 - rule: search_config must declare text_spec and/or geo_spec
 
@@ -289,6 +293,8 @@ Deletion policy — what happens when this resource is destroyed:
 ## Validation Rules
 
 - `multikey_requires_mongodb_scope`: multikey indexes require api_scope MONGODB_COMPATIBLE_API
+- `mongodb_scope_requires_collection_group`: api_scope MONGODB_COMPATIBLE_API requires query_scope COLLECTION_GROUP (set it explicitly; the COLLECTION default is rejected by the API)
+- `search_and_non_search_fields_dont_mix`: an index is either a search index (every field carries search_config) or a non-search index (no field does) — the API rejects mixed indexes
 
 ## Outputs
 
