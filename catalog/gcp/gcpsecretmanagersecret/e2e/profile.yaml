@@ -7,13 +7,20 @@ spec:
   # prerequisite) into a secret-scoped secretAccessor grant — the
   # one-manifest-to-readable-secret shape. disable-destroy-window proves
   # the version-lifecycle levers (version_destroy_ttl DISABLE-then-
-  # destroy, base64 payload, alias, ttl expiry). regional proves the
-  # second API surface (regional trio, no CMEK). deploy -> secretmanager
+  # destroy, base64 payload, ttl expiry). regional proves the second API
+  # surface (regional trio, no CMEK). deploy -> secretmanager
   # secrets.get / versions.get verify -> destroy -> verify gone, on both
   # provisioners. Secrets are free-tier at this volume and create in
   # seconds; secret IDs hard-delete (no soft-delete reservation), so
   # fixed names are safe across engines.
+  #
+  # Offline-proven-only arm (deferred, with unblock condition):
+  #   - version_aliases: update-only by API decree — GCP validates aliases
+  #     against EXISTING versions at secret create ("Aliases cannot be
+  #     assigned to versions that don't exist", live-caught on both
+  #     engines), so a single-apply lane that seeds the version cannot
+  #     also alias it. Unblock: a harness re-apply/update phase.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

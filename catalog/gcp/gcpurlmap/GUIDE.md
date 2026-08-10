@@ -25,6 +25,12 @@ tolerates, the per-try to the backend's honest p99, and let the quotient
 decide how many retries are real. Unset means the backend service's own
 timeout governs.
 
+`maxStreamDuration` is the third clock, for streams that outlive a
+request/response exchange — and it is Traffic Director-only, live-verified:
+the API rejects it unless the backend service's load-balancing scheme is
+INTERNAL_SELF_MANAGED. On URL maps serving external application load
+balancers, leave it unset.
+
 ## URL-map cachePolicy vs backend cdnPolicy
 
 Two layers, one CDN: the backend service's `cdnPolicy` is the fleet-wide

@@ -825,6 +825,22 @@ kind exists; that is design, not a defect). Pre-existing findings live in
 a manifest fix, never a new baseline entry. Run it with
 `go test ./e2e/framework/runner/ -run TestCatalogFixtureIntegrity`.
 
+**Inherited fixture orphans 409 the whole chain — sweep the fixture
+families, not just the kinds' own objects:** prerequisite fixtures use
+FIXED names by design (FK resolution keys off `metadata.name`), so a
+leftover fixture from ANY earlier era — a crashed run, a pre-harness
+experiment — collides with a fresh chain as `Error 409: already exists`
+at DEPENDENCIES-UP, from a run-scoped backend that has no state for it.
+Live-caught with a month-old `planton-oss-e2e-gcphc-prereq` health check
+plus its backend service and a serverless NEG: three sequential 409s,
+each surfacing only after the previous one was cleared. The fix is
+always to DELETE the leftover (a pre-existing fixture object is by
+definition unmanaged — no lane is running when a session starts), and
+the honest end-of-session sweep must enumerate every fixture FAMILY the
+session's chains deployed (for LB chains: health checks, backend
+services, NEGs, URL maps, proxies, addresses), not only the proven
+kinds' own resource classes.
+
 **Named image families are a staleness trap in scenarios:** GCP retires
 image families (the deep-learning-VM notebook families like
 `common-cpu-notebooks` no longer resolve), and a scenario pinned to one

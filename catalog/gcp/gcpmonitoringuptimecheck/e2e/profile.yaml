@@ -10,6 +10,6 @@ spec:
   # provisioners. Uptime checks are free-tier objects that create in
   # seconds.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

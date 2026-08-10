@@ -23,6 +23,13 @@ versions from tooling or pipelines, `versionAliases` re-pointing
 consumers atomically. Editing the manifest's payload expecting an
 update is the classic misread; the field is immutable by design.
 
+One sequencing rule for aliases: GCP validates them against versions
+that already EXIST, at secret create/update time. A first apply that
+both seeds `initialVersion` and declares a `versionAliases` entry for
+it is rejected ("Aliases cannot be assigned to versions that don't
+exist") because the version lands after the secret. Deploy first;
+add the alias on the next apply.
+
 ## GCP's rotation "feature" rotates nothing
 
 `rotation` + `topics` publishes REMINDERS to Pub/Sub on a schedule. The

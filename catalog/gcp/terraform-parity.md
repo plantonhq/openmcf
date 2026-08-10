@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**80 of 88 kinds are at total accounting; 18 proven live.**
+**80 of 88 kinds are at total accounting; 24 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -100,12 +100,12 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpKmsKey | 12 | 10 | 2 | 0 | 0 | ✅ | — |
 | GcpKmsKeyIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpKmsKeyRing | 3 | 1 | 2 | 0 | 0 | ✅ | — |
-| GcpLoggingSink | 54 | 38 | 16 | 0 | 0 | ✅ | — |
+| GcpLoggingSink | 54 | 38 | 16 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpManagedSslCertificate | 6 | 2 | 3 | 1 | 0 | ✅ | — |
 | GcpMemorystoreInstance | 38 | 29 | 7 | 2 | 0 | ✅ | — |
-| GcpMonitoringAlertPolicy | 70 | 68 | 2 | 0 | 0 | ✅ | — |
-| GcpMonitoringNotificationChannel | 18 | 9 | 3 | 6 | 0 | ✅ | — |
-| GcpMonitoringUptimeCheck | 38 | 33 | 3 | 2 | 0 | ✅ | — |
+| GcpMonitoringAlertPolicy | 70 | 68 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpMonitoringNotificationChannel | 18 | 9 | 3 | 6 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpMonitoringUptimeCheck | 38 | 33 | 3 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpProject | 14 | 5 | 5 | 4 | 0 | ✅ | — |
 | GcpProjectIamMember | 6 | 5 | 1 | 0 | 0 | ✅ | — |
 | GcpPubSubSchema | 5 | 3 | 2 | 0 | 0 | ✅ | — |
@@ -114,7 +114,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpRedisInstance | 32 | 24 | 6 | 2 | 0 | ✅ | — |
 | GcpRegionNetworkEndpointGroup | 18 | 16 | 2 | 0 | 0 | ✅ | — |
 | GcpRouterNat | 54 | 28 | 21 | 5 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpSecretManagerSecret | 61 | 35 | 16 | 10 | 0 | ✅ | — |
+| GcpSecretManagerSecret | 61 | 35 | 16 | 10 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpServerlessVpcConnector | 13 | 9 | 2 | 2 | 0 | ✅ | — |
 | GcpServiceAccount | 26 | 11 | 5 | 10 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpServiceAccountIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
@@ -128,7 +128,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpSubnetwork | 34 | 17 | 0 | 0 | 22 | ❌ | ✅ pulumi, terraform |
 | GcpTargetHttpProxy | 7 | 5 | 2 | 0 | 0 | ✅ | — |
 | GcpTargetHttpsProxy | 14 | 12 | 2 | 0 | 0 | ✅ | — |
-| GcpUrlMap | 333 | 74 | 259 | 0 | 0 | ✅ | — |
+| GcpUrlMap | 333 | 74 | 259 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpVertexAiDeployedIndex | 16 | 12 | 4 | 0 | 0 | ✅ | — |
 | GcpVertexAiEndpoint | 24 | 7 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
 | GcpVertexAiIndex | 17 | 5 | 12 | 0 | 0 | ✅ | — |

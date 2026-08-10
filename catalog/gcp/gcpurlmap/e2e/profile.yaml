@@ -12,10 +12,14 @@ spec:
   # injection). Deploy -> compute urlMaps.get verify -> destroy -> verify
   # 404, on both provisioners.
   #
-  # pending_proof: the spec and both modules were expanded to the full
-  # provider surface; the prior green proof predates the redesign and no
-  # longer vouches for it. Proof rides the program's E2E lane.
+  #
+  # Offline-proven-only arm (deferred, with unblock condition):
+  #   - max_stream_duration: LIVE-VERIFIED rejection — the API refuses it
+  #     unless the backend service's load-balancing scheme is
+  #     INTERNAL_SELF_MANAGED (Traffic Director), and the harness has no
+  #     Traffic Director fixture chain. Unblock: an INTERNAL_SELF_MANAGED
+  #     backend + URL map lane.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

@@ -77,6 +77,10 @@ func globalSecret(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider
 	if spec.Ttl != "" {
 		args.Ttl = pulumi.StringPtr(spec.Ttl)
 	}
+	// GCP validates aliases against EXISTING versions at create/update, so an
+	// alias cannot land in the same apply that seeds its version — add aliases
+	// on a subsequent apply (live API: "Aliases cannot be assigned to versions
+	// that don't exist").
 	if len(spec.VersionAliases) > 0 {
 		args.VersionAliases = pulumi.ToStringMap(spec.VersionAliases)
 	}
@@ -200,6 +204,7 @@ func regionalSecret(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provid
 	if spec.Ttl != "" {
 		args.Ttl = pulumi.StringPtr(spec.Ttl)
 	}
+	// Same alias temporal constraint as the global variant above.
 	if len(spec.VersionAliases) > 0 {
 		args.VersionAliases = pulumi.ToStringMap(spec.VersionAliases)
 	}

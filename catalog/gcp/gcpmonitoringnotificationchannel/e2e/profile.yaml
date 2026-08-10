@@ -10,6 +10,6 @@ spec:
   # verify gone, on both provisioners. Channels are free and create in
   # seconds.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

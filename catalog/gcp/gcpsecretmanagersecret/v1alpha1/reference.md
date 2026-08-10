@@ -333,6 +333,12 @@ Lifetime after which the secret auto-DELETES, as a seconds duration
 Version aliases: friendly name -> version NUMBER (e.g. "prod" -> "3").
 Consumers can then address projects/{p}/secrets/{id}/versions/prod and
 re-pointing the alias re-targets every consumer without touching them.
+TEMPORAL CONSTRAINT (live API truth): GCP validates aliases against
+EXISTING versions at secret create/update ("Aliases cannot be assigned
+to versions that don't exist"). A first apply that both seeds
+initial_version and aliases it is therefore rejected — the version is
+created after the secret. Deploy first, then add the alias on a
+subsequent apply once the version exists.
 
 ### spec.versionDestroyTtl
 

@@ -1085,7 +1085,12 @@ Percentage of requests delayed (0.0-100.0).
 
 Upper bound on how long a STREAM on this route may stay open
 (gRPC/long-poll streams — distinct from timeout, which bounds a
-request/response exchange).
+request/response exchange). Live API truth: GCP rejects this field
+unless the URL map's backend service uses the INTERNAL_SELF_MANAGED
+(Traffic Director) load-balancing scheme ("Max stream duration is
+only supported when UrlMap is used with BackendService whose Load
+Balancing Scheme is INTERNAL_SELF_MANAGED") — leave it unset on
+external application load balancers.
 
 ### spec.defaultRouteAction.maxStreamDuration.seconds
 
@@ -2010,7 +2015,12 @@ Percentage of requests delayed (0.0-100.0).
 
 Upper bound on how long a STREAM on this route may stay open
 (gRPC/long-poll streams — distinct from timeout, which bounds a
-request/response exchange).
+request/response exchange). Live API truth: GCP rejects this field
+unless the URL map's backend service uses the INTERNAL_SELF_MANAGED
+(Traffic Director) load-balancing scheme ("Max stream duration is
+only supported when UrlMap is used with BackendService whose Load
+Balancing Scheme is INTERNAL_SELF_MANAGED") — leave it unset on
+external application load balancers.
 
 ### spec.pathMatchers[].defaultRouteAction.maxStreamDuration.seconds
 
@@ -2849,7 +2859,12 @@ Percentage of requests delayed (0.0-100.0).
 
 Upper bound on how long a STREAM on this route may stay open
 (gRPC/long-poll streams — distinct from timeout, which bounds a
-request/response exchange).
+request/response exchange). Live API truth: GCP rejects this field
+unless the URL map's backend service uses the INTERNAL_SELF_MANAGED
+(Traffic Director) load-balancing scheme ("Max stream duration is
+only supported when UrlMap is used with BackendService whose Load
+Balancing Scheme is INTERNAL_SELF_MANAGED") — leave it unset on
+external application load balancers.
 
 ### spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration.seconds
 
@@ -3855,7 +3870,12 @@ Percentage of requests delayed (0.0-100.0).
 
 Upper bound on how long a STREAM on this route may stay open
 (gRPC/long-poll streams — distinct from timeout, which bounds a
-request/response exchange).
+request/response exchange). Live API truth: GCP rejects this field
+unless the URL map's backend service uses the INTERNAL_SELF_MANAGED
+(Traffic Director) load-balancing scheme ("Max stream duration is
+only supported when UrlMap is used with BackendService whose Load
+Balancing Scheme is INTERNAL_SELF_MANAGED") — leave it unset on
+external application load balancers.
 
 ### spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration.seconds
 

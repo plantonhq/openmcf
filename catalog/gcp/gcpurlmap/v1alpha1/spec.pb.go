@@ -501,7 +501,12 @@ type GcpUrlMapRouteAction struct {
 	FaultInjectionPolicy *GcpUrlMapFaultInjectionPolicy `protobuf:"bytes,7,opt,name=fault_injection_policy,json=faultInjectionPolicy,proto3" json:"fault_injection_policy,omitempty"`
 	// Upper bound on how long a STREAM on this route may stay open
 	// (gRPC/long-poll streams — distinct from timeout, which bounds a
-	// request/response exchange).
+	// request/response exchange). Live API truth: GCP rejects this field
+	// unless the URL map's backend service uses the INTERNAL_SELF_MANAGED
+	// (Traffic Director) load-balancing scheme ("Max stream duration is
+	// only supported when UrlMap is used with BackendService whose Load
+	// Balancing Scheme is INTERNAL_SELF_MANAGED") — leave it unset on
+	// external application load balancers.
 	MaxStreamDuration *GcpUrlMapDuration `protobuf:"bytes,8,opt,name=max_stream_duration,json=maxStreamDuration,proto3" json:"max_stream_duration,omitempty"`
 	// Cloud CDN caching for the routes using this action — overrides the
 	// backend service's cdn_policy for matching traffic only. Takes effect

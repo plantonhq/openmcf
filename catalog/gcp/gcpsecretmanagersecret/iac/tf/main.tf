@@ -66,8 +66,12 @@ resource "google_secret_manager_secret" "this" {
     }
   }
 
-  expire_time         = var.spec.expire_time != "" ? var.spec.expire_time : null
-  ttl                 = var.spec.ttl != "" ? var.spec.ttl : null
+  expire_time = var.spec.expire_time != "" ? var.spec.expire_time : null
+  ttl         = var.spec.ttl != "" ? var.spec.ttl : null
+  # GCP validates aliases against EXISTING versions at create/update, so an
+  # alias cannot land in the same apply that seeds its version — add aliases
+  # on a subsequent apply (live API: "Aliases cannot be assigned to versions
+  # that don't exist").
   version_aliases     = length(var.spec.version_aliases) > 0 ? var.spec.version_aliases : null
   version_destroy_ttl = var.spec.version_destroy_ttl != "" ? var.spec.version_destroy_ttl : null
 
@@ -114,8 +118,9 @@ resource "google_secret_manager_regional_secret" "this" {
     }
   }
 
-  expire_time         = var.spec.expire_time != "" ? var.spec.expire_time : null
-  ttl                 = var.spec.ttl != "" ? var.spec.ttl : null
+  expire_time = var.spec.expire_time != "" ? var.spec.expire_time : null
+  ttl         = var.spec.ttl != "" ? var.spec.ttl : null
+  # Same alias temporal constraint as the global variant above.
   version_aliases     = length(var.spec.version_aliases) > 0 ? var.spec.version_aliases : null
   version_destroy_ttl = var.spec.version_destroy_ttl != "" ? var.spec.version_destroy_ttl : null
 

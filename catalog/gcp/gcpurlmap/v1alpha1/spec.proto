@@ -248,7 +248,12 @@ message GcpUrlMapRouteAction {
 
   // Upper bound on how long a STREAM on this route may stay open
   // (gRPC/long-poll streams — distinct from timeout, which bounds a
-  // request/response exchange).
+  // request/response exchange). Live API truth: GCP rejects this field
+  // unless the URL map's backend service uses the INTERNAL_SELF_MANAGED
+  // (Traffic Director) load-balancing scheme ("Max stream duration is
+  // only supported when UrlMap is used with BackendService whose Load
+  // Balancing Scheme is INTERNAL_SELF_MANAGED") — leave it unset on
+  // external application load balancers.
   GcpUrlMapDuration max_stream_duration = 8;
 
   // Cloud CDN caching for the routes using this action — overrides the

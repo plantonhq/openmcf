@@ -9,9 +9,12 @@ import (
 
 // monitoringNotificationChannelVerifier probes a Cloud Monitoring
 // notification channel by its server-assigned resource name and confirms
-// the enablement posture landed — the disabled-channel scenario exists to
-// prove an explicit enabled=false reached the API, so the verifier asserts
-// the API's view matches the manifest rather than only existence.
+// the channel exists with a concrete type. Verifiers are outputs-driven
+// and scenario-agnostic, so the disabled-channel scenario's enabled=false
+// posture is proven by a live API read during the proof lane, not here —
+// enabled is deliberately NOT a stack output (outputs are composition
+// handles, not test hooks). Never assert verification_status: email
+// channels report UNVERIFIED until a human verifies, by design.
 type monitoringNotificationChannelVerifier struct{}
 
 func (v *monitoringNotificationChannelVerifier) IDOutputKey() string { return "channel_name" }
