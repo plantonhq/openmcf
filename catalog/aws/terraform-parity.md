@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 225 |
-| Spec fields authored across all kinds | 4135 |
+| Distinct provider resources consumed | 226 |
+| Spec fields authored across all kinds | 4156 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**19 of 112 kinds are at total accounting; 82 proven live.**
+**21 of 112 kinds are at total accounting; 77 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -62,9 +62,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsBatchJobDefinition | 67 | 12 | 0 | 0 | 98 | ❌ | ✅ pulumi, terraform |
 | AwsBatchJobQueue | 12 | 5 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
 | AwsBatchSchedulingPolicy | 8 | 1 | 0 | 0 | 11 | ❌ | ✅ pulumi, terraform |
-| AwsCertManagerCert | 46 | 7 | 0 | 0 | 48 | ❌ | ✅ pulumi, terraform |
+| AwsCertManagerCert | 18 | 7 | 7 | 4 | 0 | ✅ | — |
 | AwsClientVpn | 47 | 28 | 0 | 0 | 32 | ❌ | — |
-| AwsCloudFront | 124 | 28 | 0 | 0 | 171 | ❌ | ✅ pulumi, terraform |
+| AwsCloudFront | 126 | 32 | 88 | 6 | 0 | ✅ | — |
 | AwsCloudwatchAlarm | 39 | 24 | 0 | 0 | 27 | ❌ | ✅ pulumi, terraform |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsCloudwatchLogGroup | 36 | 9 | 0 | 0 | 45 | ❌ | ✅ pulumi, terraform |
@@ -93,7 +93,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsElasticacheUser | 13 | 6 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
 | AwsElasticacheUserGroup | 6 | 3 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsEventBridgeBus | 13 | 8 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
-| AwsEventBridgeRule | 65 | 53 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEventBridgeRule | 65 | 53 | 5 | 7 | 0 | ✅ | — |
 | AwsFsxDataRepositoryAssociation | 11 | 7 | 0 | 0 | 6 | ❌ | — |
 | AwsFsxLustreFileSystem | 34 | 29 | 0 | 0 | 8 | ❌ | — |
 | AwsFsxOntapFileSystem | 21 | 18 | 0 | 0 | 4 | ❌ | — |
@@ -116,8 +116,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsKinesisStream | 17 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
 | AwsKinesisStreamConsumer | 8 | 3 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
 | AwsKmsKey | 19 | 9 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
-| AwsLambda | 108 | 51 | 30 | 27 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsLambdaEventSourceMapping | 45 | 11 | 31 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsLambda | 108 | 51 | 30 | 27 | 0 | ✅ | — |
+| AwsLambdaEventSourceMapping | 45 | 11 | 31 | 3 | 0 | ✅ | — |
 | AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | — |
 | AwsLbListener | 76 | 14 | 0 | 0 | 121 | ❌ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 0 | 0 | 113 | ❌ | ✅ pulumi, terraform |
@@ -170,10 +170,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 225 | consumed by a kind's Terraform module today |
+| Modeled | 226 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 3 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 819 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 818 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 516 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 128 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -183,7 +183,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (225)
+### Modeled (226)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -215,6 +215,7 @@ rather than trusted.
 | `aws_batch_job_definition` | consumed by AwsBatchJobDefinition |
 | `aws_batch_job_queue` | consumed by AwsBatchJobQueue |
 | `aws_batch_scheduling_policy` | consumed by AwsBatchSchedulingPolicy |
+| `aws_cloudfront_continuous_deployment_policy` | consumed by AwsCloudFront |
 | `aws_cloudfront_distribution` | consumed by AwsCloudFront |
 | `aws_cloudfront_monitoring_subscription` | consumed by AwsCloudFront |
 | `aws_cloudfront_origin_access_control` | consumed by AwsCloudFront |
@@ -421,7 +422,7 @@ rather than trusted.
 | `aws_autoscaling_traffic_source_attachment` | covered by AwsAutoScalingGroup.traffic_sources -- the standalone attachment is the imperative pattern for a group that owns its traffic sources |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
 
-### Planned (819)
+### Planned (818)
 
 | Resource | Recorded reason |
 |---|---|
@@ -555,21 +556,20 @@ rather than trusted.
 | `aws_ce_anomaly_subscription` | judged as a planned AwsCostAnomalyMonitor kind (monitors with subscriptions) |
 | `aws_ce_cost_allocation_tag` | judged as a planned AwsCostCategory kind (cost categories with allocation tags) |
 | `aws_ce_cost_category` | judged as a planned AwsCostCategory kind (cost categories with allocation tags) |
-| `aws_cloudfront_anycast_ip_list` | CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens |
-| `aws_cloudfront_cache_policy` | CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens |
-| `aws_cloudfront_connection_function` | judged as a planned AwsCloudFrontFunction kind (edge functions incl. connection functions and the key-value store) |
-| `aws_cloudfront_continuous_deployment_policy` | CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens |
-| `aws_cloudfront_field_level_encryption_config` | CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens |
-| `aws_cloudfront_field_level_encryption_profile` | CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens |
-| `aws_cloudfront_function` | judged as a planned AwsCloudFrontFunction kind (edge functions incl. connection functions and the key-value store) |
-| `aws_cloudfront_key_group` | judged as part of the planned AwsCloudFrontFunction kind (key-value stores and keys) |
+| `aws_cloudfront_anycast_ip_list` | account-scoped shared Anycast static IP list referenced by many distributions; judged as a planned AwsCloudFrontAnycastIpList kind -- AwsCloudFront models the attachment (anycast_ip_list_id) today |
+| `aws_cloudfront_cache_policy` | account-scoped shared cache policy referenced by many behaviors across distributions; judged as a planned AwsCloudFrontCachePolicy kind -- AwsCloudFront behaviors model the attachment (cache_policy_id) today |
+| `aws_cloudfront_connection_function` | judged as a planned AwsCloudFrontFunction kind (edge functions incl. connection functions and the key-value store); AwsCloudFront models the attachment (connection_function_id) today |
+| `aws_cloudfront_field_level_encryption_config` | account-scoped shared field-level-encryption configuration referenced by many behaviors; judged as a planned AwsCloudFrontFieldLevelEncryption kind together with its profile resource -- AwsCloudFront behaviors model the attachment (field_level_encryption_id) today |
+| `aws_cloudfront_field_level_encryption_profile` | account-scoped shared field-level-encryption profile (the public-key-to-field binding the config consumes); judged as part of the planned AwsCloudFrontFieldLevelEncryption kind |
+| `aws_cloudfront_function` | judged as a planned AwsCloudFrontFunction kind (edge functions incl. connection functions and the key-value store); AwsCloudFront behaviors model the attachment (function_associations) today |
+| `aws_cloudfront_key_group` | account-scoped signed-URL/signed-cookie key group referenced by many behaviors (the private-content mechanism, not edge-function surface); judged as a planned AwsCloudFrontKeyGroup kind together with its public keys -- AwsCloudFront behaviors model the attachment (trusted_key_group_ids) today |
 | `aws_cloudfront_key_value_store` | judged as part of the planned AwsCloudFrontFunction kind (key-value stores and keys) |
-| `aws_cloudfront_origin_request_policy` | CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens |
-| `aws_cloudfront_public_key` | CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens |
-| `aws_cloudfront_realtime_log_config` | CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens |
-| `aws_cloudfront_response_headers_policy` | CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens |
-| `aws_cloudfront_trust_store` | CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens |
-| `aws_cloudfront_vpc_origin` | CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens |
+| `aws_cloudfront_origin_request_policy` | account-scoped shared origin-request policy referenced by many behaviors across distributions; judged as a planned AwsCloudFrontOriginRequestPolicy kind -- AwsCloudFront behaviors model the attachment (origin_request_policy_id) today |
+| `aws_cloudfront_public_key` | account-scoped public key consumed by key groups (signed URLs) and field-level encryption profiles; judged as part of the planned AwsCloudFrontKeyGroup kind |
+| `aws_cloudfront_realtime_log_config` | account-scoped shared real-time log configuration (Kinesis-backed) referenced by many behaviors; judged as a planned AwsCloudFrontRealtimeLogConfig kind -- AwsCloudFront behaviors model the attachment (realtime_log_config_arn) today |
+| `aws_cloudfront_response_headers_policy` | account-scoped shared response-headers policy referenced by many behaviors across distributions; judged as a planned AwsCloudFrontResponseHeadersPolicy kind -- AwsCloudFront behaviors model the attachment (response_headers_policy_id) today |
+| `aws_cloudfront_trust_store` | account-scoped shared CA-bundle trust store referenced by many distributions' viewer-mTLS configurations; judged as a planned AwsCloudFrontTrustStore kind -- AwsCloudFront models the attachment (viewer_mtls.trust_store_id) today |
+| `aws_cloudfront_vpc_origin` | account-scoped provisioned VPC origin shareable across distributions (and cross-account); judged as a planned AwsCloudFrontVpcOrigin kind -- AwsCloudFront models the attachment (origins[].vpc_origin.vpc_origin_id) today |
 | `aws_cloudfrontkeyvaluestore_key` | judged as part of the planned AwsCloudFrontFunction kind (key-value stores and keys) |
 | `aws_cloudfrontkeyvaluestore_keys_exclusive` | judged as part of the planned AwsCloudFrontFunction kind (key-value stores and keys) |
 | `aws_cloudtrail` | judged as a planned AwsCloudTrail kind (trails, event data stores, organization delegated admin) |

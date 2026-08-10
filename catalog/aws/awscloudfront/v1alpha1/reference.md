@@ -47,12 +47,28 @@ metadata:
   name: awscloudfront-demo
 spec:
   region: us-east-1
-  comment: Demo distribution on the default CloudFront certificate
+  comment: Demo distribution exercising the full edge-delivery surface
+  aliases:
+    - cdn.example.com
   origins:
     - originId: s3-assets
       domainName: demo-assets.s3.us-east-1.amazonaws.com
       s3Origin:
         createOriginAccessControl: true
+    - originId: api-backend
+      domainName: api.example.com
+      # Cap the complete origin response (headers + body) at two minutes;
+      # must be >= the read timeout below.
+      responseCompletionTimeoutSeconds: 120
+      customOrigin:
+        protocolPolicy: https-only
+        readTimeoutSeconds: 60
+        # Resolve the origin over IPv6 with IPv4 fallback.
+        ipAddressType: dualstack
+        # Origin-side mTLS: CloudFront presents this client certificate, so
+        # only CloudFront (never the open internet) can reach the backend.
+        mtlsClientCertificateArn:
+          value: "arn:aws:acm:us-east-1:123456789012:certificate/2f3a4b5c-6d7e-8f90-a1b2-c3d4e5f6a7b8"
   defaultCacheBehavior:
     targetOriginId: s3-assets
     viewerProtocolPolicy: redirect-to-https
@@ -60,6 +76,43 @@ spec:
     # Managed-CachingOptimized: the AWS managed cache policy for static
     # content (respects origin cache headers, compresses the cache key).
     cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+  orderedCacheBehaviors:
+    - pathPattern: /api/*
+      behavior:
+        targetOriginId: api-backend
+        viewerProtocolPolicy: https-only
+        # Managed-CachingDisabled -- APIs are not cached.
+        cachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+  viewerCertificate:
+    acmCertificateArn:
+      value: "arn:aws:acm:us-east-1:123456789012:certificate/9e8d7c6b-5a49-3827-1605-f4e3d2c1b0a9"
+    minimumProtocolVersion: TLSv1.2_2021
+  # Viewer-side mutual TLS: request client certificates and validate them
+  # against a CloudFront trust store; unauthenticated viewers still pass
+  # ("optional" mode) and origins see the validation result in headers.
+  viewerMtls:
+    mode: optional
+    trustStoreId: ts-0a1b2c3d4e5f6a7b8
+    advertiseTrustStoreCaNames: true
+  # Tag-based invalidation: origin responses label objects through this
+  # header; an invalidation by tag purges every object carrying the label.
+  cacheTagHeaderName: Cache-Tag
+  # A connection function runs at TCP establishment -- the earliest
+  # programmable point in the request path.
+  connectionFunctionId: EDFDVBD632BHDS5
+  # Dedicated static edge IPs from a provisioned Anycast list (paid).
+  anycastIpListId: aip-0a1b2c3d4e5f6a7b8
+  # Blue/green rollout: send 10% of production traffic to the staging
+  # distribution (one deployed with staging: true), pinning each viewer to
+  # one side for their session.
+  continuousDeployment:
+    stagingDistributionDnsNames:
+      - value: "d111111abcdef8.cloudfront.net"
+    singleWeight:
+      weight: 0.10
+      sessionStickiness:
+        idleTtlSeconds: 300
+        maximumTtlSeconds: 600
   defaultRootObject: index.html
 ```
 
@@ -89,7 +142,6 @@ spec:
 | `spec.origins[].originShield.originShieldRegion` | `string` | yes |  |  |
 | `spec.origins[].s3Origin` | `AwsCloudFrontS3Origin` |  |  |  |
 | `spec.origins[].s3Origin.createOriginAccessControl` | `bool` |  |  |  |
-| `spec.origins[].s3Origin.originAccessControlId` | `string` |  |  |  |
 | `spec.origins[].s3Origin.originAccessIdentity` | `string` |  |  |  |
 | `spec.origins[].customOrigin` | `AwsCloudFrontCustomOrigin` |  |  |  |
 | `spec.origins[].customOrigin.protocolPolicy` | `string` | yes |  |  |
@@ -98,10 +150,15 @@ spec:
 | `spec.origins[].customOrigin.sslProtocols` | `[]string` |  |  |  |
 | `spec.origins[].customOrigin.keepaliveTimeoutSeconds` | `int32` |  |  |  |
 | `spec.origins[].customOrigin.readTimeoutSeconds` | `int32` |  |  |  |
+| `spec.origins[].customOrigin.ipAddressType` | `string` |  |  |  |
+| `spec.origins[].customOrigin.mtlsClientCertificateArn` | `string \| valueFrom` |  |  | AwsCertManagerCert (`status.outputs.cert_arn`) |
 | `spec.origins[].vpcOrigin` | `AwsCloudFrontVpcOrigin` |  |  |  |
 | `spec.origins[].vpcOrigin.vpcOriginId` | `string` | yes |  |  |
 | `spec.origins[].vpcOrigin.keepaliveTimeoutSeconds` | `int32` |  |  |  |
 | `spec.origins[].vpcOrigin.readTimeoutSeconds` | `int32` |  |  |  |
+| `spec.origins[].vpcOrigin.ownerAccountId` | `string` |  |  |  |
+| `spec.origins[].originAccessControlId` | `string` |  |  |  |
+| `spec.origins[].responseCompletionTimeoutSeconds` | `int32` |  |  |  |
 | `spec.originGroups` | `[]AwsCloudFrontOriginGroup` |  |  |  |
 | `spec.originGroups[].originGroupId` | `string` | yes |  |  |
 | `spec.originGroups[].memberOriginIds` | `[]string` | yes |  |  |
@@ -184,12 +241,33 @@ spec:
 | `spec.geoRestriction.restrictionType` | `string` | yes |  |  |
 | `spec.geoRestriction.locations` | `[]string` | yes |  |  |
 | `spec.logging` | `AwsCloudFrontLogging` |  |  |  |
-| `spec.logging.bucket` | `string` | yes |  |  |
+| `spec.logging.bucket` | `string` |  |  |  |
 | `spec.logging.prefix` | `string` |  |  |  |
 | `spec.logging.includeCookies` | `bool` |  |  |  |
 | `spec.waitForDeployment` | `bool` |  | `true` |  |
 | `spec.retainOnDelete` | `bool` |  |  |  |
 | `spec.enableAdditionalMetrics` | `bool` |  |  |  |
+| `spec.staging` | `bool` |  |  |  |
+| `spec.continuousDeploymentPolicyId` | `string` |  |  |  |
+| `spec.continuousDeployment` | `AwsCloudFrontContinuousDeployment` |  |  |  |
+| `spec.continuousDeployment.enabled` | `bool` |  | `true` |  |
+| `spec.continuousDeployment.stagingDistributionDnsNames` | `[]string \| valueFrom` | yes |  | AwsCloudFront (`status.outputs.domain_name`) |
+| `spec.continuousDeployment.singleWeight` | `AwsCloudFrontContinuousDeploymentSingleWeight` |  |  |  |
+| `spec.continuousDeployment.singleWeight.weight` | `float` | yes |  |  |
+| `spec.continuousDeployment.singleWeight.sessionStickiness` | `AwsCloudFrontSessionStickiness` |  |  |  |
+| `spec.continuousDeployment.singleWeight.sessionStickiness.idleTtlSeconds` | `int32` | yes |  |  |
+| `spec.continuousDeployment.singleWeight.sessionStickiness.maximumTtlSeconds` | `int32` | yes |  |  |
+| `spec.continuousDeployment.singleHeader` | `AwsCloudFrontContinuousDeploymentSingleHeader` |  |  |  |
+| `spec.continuousDeployment.singleHeader.header` | `string` | yes |  |  |
+| `spec.continuousDeployment.singleHeader.value` | `string` | yes |  |  |
+| `spec.anycastIpListId` | `string` |  |  |  |
+| `spec.cacheTagHeaderName` | `string` |  |  |  |
+| `spec.connectionFunctionId` | `string` |  |  |  |
+| `spec.viewerMtls` | `AwsCloudFrontViewerMtls` |  |  |  |
+| `spec.viewerMtls.mode` | `string` |  |  |  |
+| `spec.viewerMtls.trustStoreId` | `string` |  |  |  |
+| `spec.viewerMtls.advertiseTrustStoreCaNames` | `bool` |  |  |  |
+| `spec.viewerMtls.ignoreCertificateExpiry` | `bool` |  |  |  |
 
 ## Field Details
 
@@ -302,6 +380,8 @@ groups target it by that ID.
 
 - rule: {"repeated":{"minItems":"1"}}
 - rule: set at most one of s3_origin, custom_origin, or vpc_origin -- an origin has exactly one type
+- rule: origin_access_control_id attaches an existing OAC -- it cannot be combined with s3_origin.create_origin_access_control, which creates one
+- rule: response_completion_timeout_seconds must be >= the origin's read_timeout_seconds
 
 ### spec.origins[].originId
 
@@ -404,7 +484,7 @@ region). Example: "us-west-2".
 
 S3 REST origin arm: access control for a private bucket.
 
-- rule: set at most one of create_origin_access_control, origin_access_control_id, or origin_access_identity
+- rule: set at most one of create_origin_access_control or origin_access_identity
 
 ### spec.origins[].s3Origin.createOriginAccessControl
 
@@ -415,13 +495,6 @@ modern way to serve a private bucket (SigV4 signing, works with
 SSE-KMS and all regions). The distribution's ARN must be allowed
 in the bucket policy ("AWS:SourceArn" condition on the
 "cloudfront.amazonaws.com" principal).
-
-### spec.origins[].s3Origin.originAccessControlId
-
-`string`
-
-Attach an EXISTING Origin Access Control by ID instead of
-creating one -- for sharing one OAC across distributions.
 
 ### spec.origins[].s3Origin.originAccessIdentity
 
@@ -498,6 +571,19 @@ take before viewers see a 504. 0 keeps the AWS default (30).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":180,"gte":1}}
 
+### spec.origins[].customOrigin.ipAddressType
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ipv4","ipv6","dualstack"]}}
+
+### spec.origins[].customOrigin.mtlsClientCertificateArn
+
+`string | valueFrom`
+
+- references: AwsCertManagerCert (`status.outputs.cert_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsCertManagerCert, name: <that resource's name>, fieldPath: status.outputs.cert_arn}} -- a bare string does not parse
+
 ### spec.origins[].vpcOrigin
 
 `AwsCloudFrontVpcOrigin`
@@ -532,6 +618,22 @@ Seconds CloudFront waits for a response, 1-180. 0 keeps the AWS
 default (30).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":180,"gte":1}}
+
+### spec.origins[].vpcOrigin.ownerAccountId
+
+`string`
+
+- rule: {"string":{"pattern":"^$|^[0-9]{12}$"}}
+
+### spec.origins[].originAccessControlId
+
+`string`
+
+### spec.origins[].responseCompletionTimeoutSeconds
+
+`int32`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"gte":1}}
 
 ### spec.originGroups
 
@@ -1173,7 +1275,7 @@ How CloudFront serves HTTPS for custom certificates: "sni-only"
 (dedicated IPs at significant monthly cost, for ancient non-SNI
 clients). Empty keeps sni-only.
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["sni-only","vip"]}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["sni-only","static-ip","vip"]}}
 
 ### spec.viewerCertificate.minimumProtocolVersion
 
@@ -1184,7 +1286,7 @@ The minimum TLS version viewers must speak, e.g. "TLSv1.2_2021"
 certificates), "TLSv1.2_2019", "TLSv1.1_2016", "TLSv1_2016",
 "TLSv1". Empty keeps TLSv1.2_2021.
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["TLSv1","TLSv1_2016","TLSv1.1_2016","TLSv1.2_2018","TLSv1.2_2019","TLSv1.2_2021"]}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["SSLv3","TLSv1","TLSv1_2016","TLSv1.1_2016","TLSv1.2_2018","TLSv1.2_2019","TLSv1.2_2021","TLSv1.2_2025","TLSv1.3_2025"]}}
 
 ### spec.customErrorResponses
 
@@ -1265,14 +1367,14 @@ delivery, typically within minutes). Absent disables logging.
 
 ### spec.logging.bucket
 
-`string` · required
+`string`
 
 The S3 bucket receiving logs, as a bucket DOMAIN NAME
 ("my-logs.s3.amazonaws.com"). The bucket must have ACLs enabled
 (object ownership "Bucket owner preferred") -- CloudFront writes
 logs via the awslogsdelivery canonical user.
 
-- rule: {"required":true,"string":{"pattern":"^[A-Za-z0-9\\-\\.]+\\.s3(\\.[a-z0-9-]+)?\\.amazonaws\\.com$"}}
+- rule: {"string":{"pattern":"^$|^[A-Za-z0-9\\-\\.]+\\.s3(\\.[a-z0-9-]+)?\\.amazonaws\\.com$"}}
 
 ### spec.logging.prefix
 
@@ -1317,6 +1419,116 @@ latency, error rates by status code) for the distribution. Billed
 per the CloudWatch custom-metric rate; indispensable for
 production cache tuning.
 
+### spec.staging
+
+`bool`
+
+### spec.continuousDeploymentPolicyId
+
+`string`
+
+### spec.continuousDeployment
+
+`AwsCloudFrontContinuousDeployment`
+
+- rule: set exactly one of single_weight (percentage-based routing) or single_header (header-based routing)
+
+### spec.continuousDeployment.enabled
+
+`bool` · optional (explicit presence)
+
+- default: `true`
+
+### spec.continuousDeployment.stagingDistributionDnsNames
+
+`[]string | valueFrom` · required
+
+- references: AwsCloudFront (`status.outputs.domain_name`)
+- rule: {"repeated":{"minItems":"1"}}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsCloudFront, name: <that resource's name>, fieldPath: status.outputs.domain_name}} -- a bare string does not parse
+
+### spec.continuousDeployment.singleWeight
+
+`AwsCloudFrontContinuousDeploymentSingleWeight`
+
+### spec.continuousDeployment.singleWeight.weight
+
+`float` · required
+
+- rule: {"required":true,"float":{"lte":0.15,"gt":0}}
+
+### spec.continuousDeployment.singleWeight.sessionStickiness
+
+`AwsCloudFrontSessionStickiness`
+
+- rule: idle_ttl_seconds must be less than or equal to maximum_ttl_seconds
+
+### spec.continuousDeployment.singleWeight.sessionStickiness.idleTtlSeconds
+
+`int32` · required
+
+- rule: {"required":true,"int32":{"lte":3600,"gte":300}}
+
+### spec.continuousDeployment.singleWeight.sessionStickiness.maximumTtlSeconds
+
+`int32` · required
+
+- rule: {"required":true,"int32":{"lte":3600,"gte":300}}
+
+### spec.continuousDeployment.singleHeader
+
+`AwsCloudFrontContinuousDeploymentSingleHeader`
+
+### spec.continuousDeployment.singleHeader.header
+
+`string` · required
+
+- rule: {"required":true,"string":{"pattern":"^aws-cf-cd-.+$"}}
+
+### spec.continuousDeployment.singleHeader.value
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.anycastIpListId
+
+`string`
+
+### spec.cacheTagHeaderName
+
+`string`
+
+### spec.connectionFunctionId
+
+`string`
+
+- rule: {"string":{"maxLen":"64","pattern":"^$|^[A-Za-z0-9\\-\\_]+$"}}
+
+### spec.viewerMtls
+
+`AwsCloudFrontViewerMtls`
+
+- rule: advertise_trust_store_ca_names and ignore_certificate_expiry require trust_store_id
+
+### spec.viewerMtls.mode
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["required","optional","passthrough"]}}
+
+### spec.viewerMtls.trustStoreId
+
+`string`
+
+### spec.viewerMtls.advertiseTrustStoreCaNames
+
+`bool`
+
+### spec.viewerMtls.ignoreCertificateExpiry
+
+`bool`
+
 ## Validation Rules
 
 - `aliases_require_certificate`: serving aliases requires viewer_certificate with the ACM or IAM arm set -- the default *.cloudfront.net certificate cannot cover custom domains
@@ -1324,6 +1536,7 @@ production cache tuning.
 - `default_behavior_target_resolves`: default_cache_behavior.target_origin_id must match the origin_id of a declared origin or the origin_group_id of a declared origin group
 - `ordered_behavior_targets_resolve`: every ordered_cache_behaviors[].behavior.target_origin_id must match the origin_id of a declared origin or the origin_group_id of a declared origin group
 - `origin_group_members_resolve`: every origin_groups[].member_origin_ids entry must match the origin_id of a declared origin
+- `continuous_deployment_arms_exclusive`: set at most one of continuous_deployment (this resource creates and attaches the policy) or continuous_deployment_policy_id (attach an externally managed policy)
 
 ## Outputs
 
@@ -1344,7 +1557,17 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.webAclArn` | AwsWafWebAcl | `status.outputs.web_acl_arn` |
+| `spec.origins[].customOrigin.mtlsClientCertificateArn` | AwsCertManagerCert | `status.outputs.cert_arn` |
 | `spec.viewerCertificate.acmCertificateArn` | AwsCertManagerCert | `status.outputs.cert_arn` |
+| `spec.continuousDeployment.stagingDistributionDnsNames` | AwsCloudFront | `status.outputs.domain_name` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsCloudFront | `spec.continuousDeployment.stagingDistributionDnsNames` | `status.outputs.domain_name` |
 
 ## See Also
 

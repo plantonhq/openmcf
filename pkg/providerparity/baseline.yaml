@@ -22,9 +22,7 @@ entries:
   - kind:AwsBatchJobDefinition
   - kind:AwsBatchJobQueue
   - kind:AwsBatchSchedulingPolicy
-  - kind:AwsCertManagerCert
   - kind:AwsClientVpn
-  - kind:AwsCloudFront
   - kind:AwsCloudwatchAlarm
   - kind:AwsCloudwatchCompositeAlarm
   - kind:AwsCloudwatchLogGroup

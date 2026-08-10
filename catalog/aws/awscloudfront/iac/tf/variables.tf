@@ -38,7 +38,6 @@ variable "spec" {
       }))
       s3_origin = optional(object({
         create_origin_access_control = optional(bool, false)
-        origin_access_control_id = optional(string, "")
         origin_access_identity = optional(string, "")
       }))
       custom_origin = optional(object({
@@ -48,12 +47,17 @@ variable "spec" {
         ssl_protocols = optional(list(string), [])
         keepalive_timeout_seconds = optional(number, 0)
         read_timeout_seconds = optional(number, 0)
+        ip_address_type = optional(string, "")
+        mtls_client_certificate_arn = optional(string, "")
       }))
       vpc_origin = optional(object({
         vpc_origin_id = string
         keepalive_timeout_seconds = optional(number, 0)
         read_timeout_seconds = optional(number, 0)
+        owner_account_id = optional(string, "")
       }))
+      origin_access_control_id = optional(string, "")
+      response_completion_timeout_seconds = optional(number, 0)
     }))
     origin_groups = optional(list(object({
       origin_group_id = string
@@ -150,12 +154,38 @@ variable "spec" {
       locations = list(string)
     }))
     logging = optional(object({
-      bucket = string
+      bucket = optional(string, "")
       prefix = optional(string, "")
       include_cookies = optional(bool, false)
     }))
     wait_for_deployment = optional(bool)
     retain_on_delete = optional(bool, false)
     enable_additional_metrics = optional(bool, false)
+    staging = optional(bool, false)
+    continuous_deployment_policy_id = optional(string, "")
+    continuous_deployment = optional(object({
+      enabled = optional(bool)
+      staging_distribution_dns_names = list(string)
+      single_weight = optional(object({
+        weight = number
+        session_stickiness = optional(object({
+          idle_ttl_seconds = number
+          maximum_ttl_seconds = number
+        }))
+      }))
+      single_header = optional(object({
+        header = string
+        value = string
+      }))
+    }))
+    anycast_ip_list_id = optional(string, "")
+    cache_tag_header_name = optional(string, "")
+    connection_function_id = optional(string, "")
+    viewer_mtls = optional(object({
+      mode = optional(string, "")
+      trust_store_id = optional(string, "")
+      advertise_trust_store_ca_names = optional(bool, false)
+      ignore_certificate_expiry = optional(bool, false)
+    }))
   })
 }

@@ -14,6 +14,49 @@ resource "aws_cloudfront_origin_access_control" "this" {
   signing_protocol                  = "sigv4"
 }
 
+# The continuous-deployment policy this (primary) distribution owns: routes a
+# weighted or header-selected slice of production traffic to a STAGING
+# distribution (one deployed with staging: true, addressed by its CloudFront
+# domain name). CEL guarantees exactly one routing arm, so the provider's
+# required type discriminator is derived from arm presence.
+resource "aws_cloudfront_continuous_deployment_policy" "this" {
+  count = var.spec.continuous_deployment != null ? 1 : 0
+
+  enabled = coalesce(var.spec.continuous_deployment.enabled, true)
+
+  staging_distribution_dns_names {
+    items    = var.spec.continuous_deployment.staging_distribution_dns_names
+    quantity = length(var.spec.continuous_deployment.staging_distribution_dns_names)
+  }
+
+  traffic_config {
+    type = var.spec.continuous_deployment.single_weight != null ? "SingleWeight" : "SingleHeader"
+
+    dynamic "single_weight_config" {
+      for_each = var.spec.continuous_deployment.single_weight != null ? [var.spec.continuous_deployment.single_weight] : []
+      content {
+        weight = single_weight_config.value.weight
+
+        dynamic "session_stickiness_config" {
+          for_each = single_weight_config.value.session_stickiness != null ? [single_weight_config.value.session_stickiness] : []
+          content {
+            idle_ttl    = session_stickiness_config.value.idle_ttl_seconds
+            maximum_ttl = session_stickiness_config.value.maximum_ttl_seconds
+          }
+        }
+      }
+    }
+
+    dynamic "single_header_config" {
+      for_each = var.spec.continuous_deployment.single_header != null ? [var.spec.continuous_deployment.single_header] : []
+      content {
+        header = single_header_config.value.header
+        value  = single_header_config.value.value
+      }
+    }
+  }
+}
+
 resource "aws_cloudfront_distribution" "this" {
   # enabled/wait_for_deployment resolve to their annotated defaults (true) at
   # manifest load. A disabled distribution stays deployed-but-dark -- also the
@@ -30,6 +73,60 @@ resource "aws_cloudfront_distribution" "this" {
   price_class         = var.spec.price_class != "" ? var.spec.price_class : null
   web_acl_id          = local.web_acl_arn != "" ? local.web_acl_arn : null
 
+  # Changing the staging flag REPLACES the distribution (AWS makes it
+  # immutable after create).
+  staging = var.spec.staging
+
+  # Either the policy this resource created (the continuous_deployment
+  # block) or an externally managed one by ID -- CEL keeps the arms
+  # exclusive.
+  continuous_deployment_policy_id = (
+    var.spec.continuous_deployment != null
+    ? aws_cloudfront_continuous_deployment_policy.this[0].id
+    : (var.spec.continuous_deployment_policy_id != "" ? var.spec.continuous_deployment_policy_id : null)
+  )
+
+  # Dedicated static edge IPs -- the list must already be provisioned in
+  # the account (a paid feature).
+  anycast_ip_list_id = var.spec.anycast_ip_list_id != "" ? var.spec.anycast_ip_list_id : null
+
+  # Tag-based invalidation: origin responses label objects via this
+  # header; invalidations by tag purge every object carrying the label.
+  dynamic "cache_tag_config" {
+    for_each = var.spec.cache_tag_header_name != "" ? [1] : []
+    content {
+      header_name = var.spec.cache_tag_header_name
+    }
+  }
+
+  # A connection function runs at TCP establishment, before any HTTP
+  # parsing -- the earliest programmable point in the request path.
+  dynamic "connection_function_association" {
+    for_each = var.spec.connection_function_id != "" ? [1] : []
+    content {
+      id = var.spec.connection_function_id
+    }
+  }
+
+  # Viewer-side mutual TLS: client certificates validated against a
+  # CloudFront trust store ("passthrough" forwards them unvalidated, so
+  # it renders without the trust-store wrapper).
+  dynamic "viewer_mtls_config" {
+    for_each = var.spec.viewer_mtls != null ? [var.spec.viewer_mtls] : []
+    content {
+      mode = viewer_mtls_config.value.mode != "" ? viewer_mtls_config.value.mode : null
+
+      dynamic "trust_store_config" {
+        for_each = viewer_mtls_config.value.trust_store_id != "" ? [1] : []
+        content {
+          trust_store_id                 = var.spec.viewer_mtls.trust_store_id
+          advertise_trust_store_ca_names = var.spec.viewer_mtls.advertise_trust_store_ca_names
+          ignore_certificate_expiry      = var.spec.viewer_mtls.ignore_certificate_expiry
+        }
+      }
+    }
+  }
+
   # --- Origins ------------------------------------------------------------
   # Exactly one origin-type block renders per origin (CEL enforces the arm
   # exclusivity). An origin with no arm at all is a plain public S3 REST
@@ -45,16 +142,18 @@ resource "aws_cloudfront_distribution" "this" {
       connection_attempts = origin.value.connection_attempts != 0 ? origin.value.connection_attempts : null
       connection_timeout  = origin.value.connection_timeout_seconds != 0 ? origin.value.connection_timeout_seconds : null
 
-      # The OAC attaches at the origin level: either the one this module
-      # created for the origin, or an externally shared one by ID.
+      # Zero leaves the completion cap unenforced (the AWS default). AWS
+      # requires the cap to be >= the origin read timeout.
+      response_completion_timeout = origin.value.response_completion_timeout_seconds != 0 ? origin.value.response_completion_timeout_seconds : null
+
+      # The OAC attaches at the origin level and works with any origin
+      # type (S3, Lambda URL, MediaPackage v2, MediaStore): either the
+      # s3-type one this module created for the origin, or an existing
+      # one attached by ID (CEL keeps the two exclusive).
       origin_access_control_id = (
         try(origin.value.s3_origin.create_origin_access_control, false)
         ? aws_cloudfront_origin_access_control.this[origin.key].id
-        : (
-          try(origin.value.s3_origin.origin_access_control_id, "") != ""
-          ? origin.value.s3_origin.origin_access_control_id
-          : null
-        )
+        : (origin.value.origin_access_control_id != "" ? origin.value.origin_access_control_id : null)
       )
 
       dynamic "custom_header" {
@@ -75,16 +174,19 @@ resource "aws_cloudfront_distribution" "this" {
 
       # Legacy OAI path: only for S3 origins already wired to an existing
       # identity -- this module never creates one (OAC supersedes it). A
-      # bare s3_origin with no access arm renders the empty identity, the
-      # provider's public-bucket shape.
+      # bare s3_origin with no access arm -- or an origin with no type arm
+      # at all -- renders the empty identity, the provider's public-bucket
+      # shape. An origin served through an OAC (created here or attached
+      # by ID) skips the block entirely.
       dynamic "s3_origin_config" {
         for_each = (
-          try(origin.value.s3_origin, null) != null &&
+          origin.value.custom_origin == null &&
+          origin.value.vpc_origin == null &&
           !try(origin.value.s3_origin.create_origin_access_control, false) &&
-          try(origin.value.s3_origin.origin_access_control_id, "") == ""
-        ) ? [origin.value.s3_origin] : []
+          origin.value.origin_access_control_id == ""
+        ) ? [1] : []
         content {
-          origin_access_identity = s3_origin_config.value.origin_access_identity
+          origin_access_identity = try(origin.value.s3_origin.origin_access_identity, "")
         }
       }
 
@@ -98,6 +200,18 @@ resource "aws_cloudfront_distribution" "this" {
           origin_ssl_protocols     = length(custom_origin_config.value.ssl_protocols) > 0 ? custom_origin_config.value.ssl_protocols : ["TLSv1.2"]
           origin_keepalive_timeout = custom_origin_config.value.keepalive_timeout_seconds != 0 ? custom_origin_config.value.keepalive_timeout_seconds : null
           origin_read_timeout      = custom_origin_config.value.read_timeout_seconds != 0 ? custom_origin_config.value.read_timeout_seconds : null
+          # Empty keeps ipv4 (the AWS default).
+          ip_address_type = custom_origin_config.value.ip_address_type != "" ? custom_origin_config.value.ip_address_type : null
+
+          # Origin-side mTLS: CloudFront presents this ACM client
+          # certificate (us-east-1) to the origin, so only CloudFront can
+          # reach the backend.
+          dynamic "origin_mtls_config" {
+            for_each = custom_origin_config.value.mtls_client_certificate_arn != "" ? [1] : []
+            content {
+              client_certificate_arn = custom_origin_config.value.mtls_client_certificate_arn
+            }
+          }
         }
       }
 
@@ -107,6 +221,8 @@ resource "aws_cloudfront_distribution" "this" {
           vpc_origin_id            = vpc_origin_config.value.vpc_origin_id
           origin_keepalive_timeout = vpc_origin_config.value.keepalive_timeout_seconds != 0 ? vpc_origin_config.value.keepalive_timeout_seconds : null
           origin_read_timeout      = vpc_origin_config.value.read_timeout_seconds != 0 ? vpc_origin_config.value.read_timeout_seconds : null
+          # Empty means the VPC origin belongs to this account.
+          owner_account_id = vpc_origin_config.value.owner_account_id != "" ? vpc_origin_config.value.owner_account_id : null
         }
       }
     }
@@ -313,11 +429,14 @@ resource "aws_cloudfront_distribution" "this" {
     }
   }
 
-  # --- Standard access logs ----------------------------------------------------
+  # --- Standard (v1) access logs ------------------------------------------------
+  # An empty bucket keeps v1 log DELIVERY off while still recording the
+  # cookie preference -- the transition shape for distributions moving to
+  # v2 (CloudWatch-delivered) access logs.
   dynamic "logging_config" {
     for_each = var.spec.logging != null ? [var.spec.logging] : []
     content {
-      bucket          = logging_config.value.bucket
+      bucket          = logging_config.value.bucket != "" ? logging_config.value.bucket : null
       prefix          = logging_config.value.prefix != "" ? logging_config.value.prefix : null
       include_cookies = logging_config.value.include_cookies
     }

@@ -12,17 +12,35 @@ spec:
   # and no traffic ever flows (zero cost). The lane is slow by nature:
   # create + disable-then-delete each propagate to every edge location
   # (~5-15 minutes per phase), which is why the timeout is generous.
-  # Deliberately not in the live scenario: custom domains (needs an issued
-  # us-east-1 certificate), origin groups, ordered behaviors, and edge
-  # functions -- all proven by CEL spec tests and the offline gate.
-  # green: Pulumi passed the full live lane (~5m40s deploy+destroy); Terraform
-  # lane validated after fixing HCL try() null-deref guards in locals.tf/main.tf.
-  # Deliberately not in the live scenario: custom domains (needs an issued
-  # us-east-1 certificate), origin groups, ordered behaviors, and edge
-  # functions -- all proven by CEL spec tests and the offline gate.
+  #
+  # pending_proof: the depth-closure wave added the 2025/26 edge surface
+  # (viewer/origin mTLS, connection functions, cache-tag invalidation,
+  # blue/green continuous deployment with the folded policy resource,
+  # anycast, staging, per-origin completion timeouts, origin-level OAC
+  # attach) -- the prior green predates it. The live scenario carries the
+  # free arms (cache-tag header, response-completion timeout, dualstack
+  # origin resolution).
+  #
+  # Offline-proven-only arms (recorded deferrals, never silent skips):
+  # - viewer mTLS: needs a CloudFront trust store; that kind
+  #   (AwsCloudFrontTrustStore) is model-planned, unbuilt. Unblocks when
+  #   it ships.
+  # - connection functions: the AwsCloudFrontFunction kind is
+  #   model-planned, unbuilt.
+  # - origin mTLS: needs an mTLS-capable ACM client certificate fixture
+  #   (TLS Client Authentication EKU) the chain cannot honestly mint.
+  # - anycast: paid, account-allowlisted feature.
+  # - cross-account VPC origin: needs a second account.
+  # - staging + continuous deployment: free in dollars, but the arm needs
+  #   a second distribution and doubles the lane's edge-propagation
+  #   wall-clock; proven by offline plan/preview on both engines with the
+  #   policy resource rendered. Revisit as a dedicated blue-green scenario
+  #   when the proof lane's time budget allows.
+  # Also deliberately not in the live scenario (pre-existing): custom
+  # domains (needs an issued us-east-1 certificate), origin groups,
+  # ordered behaviors, and edge functions -- proven by CEL spec tests and
+  # the offline gate.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 60

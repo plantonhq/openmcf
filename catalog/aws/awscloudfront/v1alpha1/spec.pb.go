@@ -151,8 +151,49 @@ type AwsCloudFrontSpec struct {
 	// per the CloudWatch custom-metric rate; indispensable for
 	// production cache tuning.
 	EnableAdditionalMetrics bool `protobuf:"varint,20,opt,name=enable_additional_metrics,json=enableAdditionalMetrics,proto3" json:"enable_additional_metrics,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// Mark this distribution as a STAGING distribution -- the target of a
+	// blue/green rollout. A staging distribution serves no viewer traffic
+	// of its own; a primary distribution's continuous-deployment policy
+	// routes a slice of traffic to it by its domain name. Changing this
+	// flag REPLACES the distribution (AWS makes it immutable). Staging
+	// distributions cannot have aliases -- they are reached only through
+	// the primary.
+	Staging bool `protobuf:"varint,21,opt,name=staging,proto3" json:"staging,omitempty"`
+	// Attach an EXISTING continuous-deployment policy by ID -- for a
+	// policy managed outside this resource. To have this distribution
+	// own its blue/green policy, use continuous_deployment instead; the
+	// two are mutually exclusive.
+	ContinuousDeploymentPolicyId string `protobuf:"bytes,22,opt,name=continuous_deployment_policy_id,json=continuousDeploymentPolicyId,proto3" json:"continuous_deployment_policy_id,omitempty"`
+	// Create and attach a continuous-deployment policy: route a slice of
+	// production traffic to a STAGING distribution (one deployed with
+	// staging: true) to validate a configuration change on real traffic
+	// before promoting it. The policy is created by this resource and
+	// attached to this (primary) distribution.
+	ContinuousDeployment *AwsCloudFrontContinuousDeployment `protobuf:"bytes,23,opt,name=continuous_deployment,json=continuousDeployment,proto3" json:"continuous_deployment,omitempty"`
+	// The Anycast static IP list this distribution serves from, by ID.
+	// Anycast lists give a distribution a small set of dedicated static
+	// IPs (for allowlist-style network controls); the feature carries a
+	// significant fixed monthly charge and requires the list to be
+	// provisioned in the account first.
+	AnycastIpListId string `protobuf:"bytes,24,opt,name=anycast_ip_list_id,json=anycastIpListId,proto3" json:"anycast_ip_list_id,omitempty"`
+	// The request header CloudFront reads cache tags from (for tag-based
+	// invalidation): origin responses carry tags in this header, and an
+	// invalidation by tag purges every object labeled with it -- far
+	// cheaper than path invalidations for content that clusters by
+	// topic. Example: "Cache-Tag".
+	CacheTagHeaderName string `protobuf:"bytes,25,opt,name=cache_tag_header_name,json=cacheTagHeaderName,proto3" json:"cache_tag_header_name,omitempty"`
+	// The CloudFront connection function attached to the distribution,
+	// by ID. Connection functions run at TCP-connection establishment
+	// (before any HTTP parsing) -- the earliest programmable point in
+	// the request path.
+	ConnectionFunctionId string `protobuf:"bytes,26,opt,name=connection_function_id,json=connectionFunctionId,proto3" json:"connection_function_id,omitempty"`
+	// Mutual TLS for VIEWERS: require or accept client certificates on
+	// viewer connections, validated against a CloudFront trust store.
+	// The zero-trust front door for machine-to-machine APIs served
+	// through CloudFront.
+	ViewerMtls    *AwsCloudFrontViewerMtls `protobuf:"bytes,27,opt,name=viewer_mtls,json=viewerMtls,proto3" json:"viewer_mtls,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsCloudFrontSpec) Reset() {
@@ -325,6 +366,55 @@ func (x *AwsCloudFrontSpec) GetEnableAdditionalMetrics() bool {
 	return false
 }
 
+func (x *AwsCloudFrontSpec) GetStaging() bool {
+	if x != nil {
+		return x.Staging
+	}
+	return false
+}
+
+func (x *AwsCloudFrontSpec) GetContinuousDeploymentPolicyId() string {
+	if x != nil {
+		return x.ContinuousDeploymentPolicyId
+	}
+	return ""
+}
+
+func (x *AwsCloudFrontSpec) GetContinuousDeployment() *AwsCloudFrontContinuousDeployment {
+	if x != nil {
+		return x.ContinuousDeployment
+	}
+	return nil
+}
+
+func (x *AwsCloudFrontSpec) GetAnycastIpListId() string {
+	if x != nil {
+		return x.AnycastIpListId
+	}
+	return ""
+}
+
+func (x *AwsCloudFrontSpec) GetCacheTagHeaderName() string {
+	if x != nil {
+		return x.CacheTagHeaderName
+	}
+	return ""
+}
+
+func (x *AwsCloudFrontSpec) GetConnectionFunctionId() string {
+	if x != nil {
+		return x.ConnectionFunctionId
+	}
+	return ""
+}
+
+func (x *AwsCloudFrontSpec) GetViewerMtls() *AwsCloudFrontViewerMtls {
+	if x != nil {
+		return x.ViewerMtls
+	}
+	return nil
+}
+
 // One content source the distribution can route to. Set at most one
 // origin type arm: s3_origin (bucket via REST endpoint -- pair with
 // origin access control), custom_origin (anything HTTP: load
@@ -372,9 +462,23 @@ type AwsCloudFrontOrigin struct {
 	// VPC origin arm: route to a provisioned CloudFront VPC origin that
 	// reaches a private ALB/NLB/instance inside your VPC without any
 	// public exposure.
-	VpcOrigin     *AwsCloudFrontVpcOrigin `protobuf:"bytes,10,opt,name=vpc_origin,json=vpcOrigin,proto3" json:"vpc_origin,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	VpcOrigin *AwsCloudFrontVpcOrigin `protobuf:"bytes,10,opt,name=vpc_origin,json=vpcOrigin,proto3" json:"vpc_origin,omitempty"`
+	// Attach an EXISTING Origin Access Control to this origin, by ID.
+	// OAC signs origin requests with SigV4 and works with S3, Lambda
+	// function URL, MediaPackage v2, and MediaStore origins -- attach a
+	// matching-type OAC regardless of which origin arm is set. For S3
+	// origins that should get their own OAC created here, use
+	// s3_origin.create_origin_access_control instead.
+	OriginAccessControlId string `protobuf:"bytes,11,opt,name=origin_access_control_id,json=originAccessControlId,proto3" json:"origin_access_control_id,omitempty"`
+	// Seconds CloudFront keeps the origin connection open waiting for
+	// the COMPLETE response (headers plus body). Distinct from the
+	// per-read timeout: this caps the whole transfer, catching origins
+	// that stream slowly forever. AWS requires it to be >= the origin's
+	// read timeout (30 when the read timeout is unset). 0 keeps the AWS
+	// default: no completion cap is enforced.
+	ResponseCompletionTimeoutSeconds int32 `protobuf:"varint,12,opt,name=response_completion_timeout_seconds,json=responseCompletionTimeoutSeconds,proto3" json:"response_completion_timeout_seconds,omitempty"`
+	unknownFields                    protoimpl.UnknownFields
+	sizeCache                        protoimpl.SizeCache
 }
 
 func (x *AwsCloudFrontOrigin) Reset() {
@@ -475,6 +579,20 @@ func (x *AwsCloudFrontOrigin) GetVpcOrigin() *AwsCloudFrontVpcOrigin {
 		return x.VpcOrigin
 	}
 	return nil
+}
+
+func (x *AwsCloudFrontOrigin) GetOriginAccessControlId() string {
+	if x != nil {
+		return x.OriginAccessControlId
+	}
+	return ""
+}
+
+func (x *AwsCloudFrontOrigin) GetResponseCompletionTimeoutSeconds() int32 {
+	if x != nil {
+		return x.ResponseCompletionTimeoutSeconds
+	}
+	return 0
 }
 
 // A header CloudFront adds to every request sent to the origin.
@@ -581,11 +699,12 @@ func (x *AwsCloudFrontOriginShield) GetOriginShieldRegion() string {
 	return ""
 }
 
-// Access control for an S3 REST origin. Set at most one arm; the
-// recommended shape is create_origin_access_control: true, which
-// provisions an Origin Access Control (SigV4 request signing) so the
-// bucket can stay fully private -- pair it with a bucket policy that
-// allows the distribution's ARN.
+// Access control for an S3 REST origin. The recommended shape is
+// create_origin_access_control: true, which provisions an Origin
+// Access Control (SigV4 request signing) so the bucket can stay fully
+// private -- pair it with a bucket policy that allows the
+// distribution's ARN. To attach an EXISTING OAC instead (S3 or any
+// other origin type), use the origin-level origin_access_control_id.
 type AwsCloudFrontS3Origin struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Create and attach an Origin Access Control for this origin -- the
@@ -594,15 +713,12 @@ type AwsCloudFrontS3Origin struct {
 	// in the bucket policy ("AWS:SourceArn" condition on the
 	// "cloudfront.amazonaws.com" principal).
 	CreateOriginAccessControl bool `protobuf:"varint,1,opt,name=create_origin_access_control,json=createOriginAccessControl,proto3" json:"create_origin_access_control,omitempty"`
-	// Attach an EXISTING Origin Access Control by ID instead of
-	// creating one -- for sharing one OAC across distributions.
-	OriginAccessControlId string `protobuf:"bytes,2,opt,name=origin_access_control_id,json=originAccessControlId,proto3" json:"origin_access_control_id,omitempty"`
 	// Attach an existing legacy Origin Access Identity, as the full
 	// "origin-access-identity/cloudfront/<ID>" path. OAI is the
 	// predecessor of OAC (no SSE-KMS support, not recommended for new
 	// configurations) -- accepted here for buckets already wired to
 	// one, never created.
-	OriginAccessIdentity string `protobuf:"bytes,3,opt,name=origin_access_identity,json=originAccessIdentity,proto3" json:"origin_access_identity,omitempty"`
+	OriginAccessIdentity string `protobuf:"bytes,2,opt,name=origin_access_identity,json=originAccessIdentity,proto3" json:"origin_access_identity,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -644,13 +760,6 @@ func (x *AwsCloudFrontS3Origin) GetCreateOriginAccessControl() bool {
 	return false
 }
 
-func (x *AwsCloudFrontS3Origin) GetOriginAccessControlId() string {
-	if x != nil {
-		return x.OriginAccessControlId
-	}
-	return ""
-}
-
 func (x *AwsCloudFrontS3Origin) GetOriginAccessIdentity() string {
 	if x != nil {
 		return x.OriginAccessIdentity
@@ -681,8 +790,20 @@ type AwsCloudFrontCustomOrigin struct {
 	// by AWS quota increase). Also the cap on how long a slow API may
 	// take before viewers see a 504. 0 keeps the AWS default (30).
 	ReadTimeoutSeconds int32 `protobuf:"varint,6,opt,name=read_timeout_seconds,json=readTimeoutSeconds,proto3" json:"read_timeout_seconds,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// How CloudFront resolves the origin's DNS name: "ipv4" (the AWS
+	// default), "ipv6", or "dualstack" (prefer IPv6, fall back to
+	// IPv4). Set ipv6/dualstack only for origins that actually publish
+	// AAAA records. Empty keeps ipv4.
+	IpAddressType string `protobuf:"bytes,7,opt,name=ip_address_type,json=ipAddressType,proto3" json:"ip_address_type,omitempty"`
+	// Mutual TLS toward the ORIGIN: the ACM certificate CloudFront
+	// presents as its client certificate when connecting to this origin,
+	// by ARN -- the origin verifies it, so only CloudFront (not the open
+	// internet) can reach the backend. The certificate must live in
+	// us-east-1. Can reference an AwsCertManagerCert resource. Distinct
+	// from viewer_mtls, which authenticates VIEWERS to CloudFront.
+	MtlsClientCertificateArn *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=mtls_client_certificate_arn,json=mtlsClientCertificateArn,proto3" json:"mtls_client_certificate_arn,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *AwsCloudFrontCustomOrigin) Reset() {
@@ -757,6 +878,20 @@ func (x *AwsCloudFrontCustomOrigin) GetReadTimeoutSeconds() int32 {
 	return 0
 }
 
+func (x *AwsCloudFrontCustomOrigin) GetIpAddressType() string {
+	if x != nil {
+		return x.IpAddressType
+	}
+	return ""
+}
+
+func (x *AwsCloudFrontCustomOrigin) GetMtlsClientCertificateArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.MtlsClientCertificateArn
+	}
+	return nil
+}
+
 // Routing to a provisioned CloudFront VPC origin -- reach a private
 // ALB/NLB/EC2 instance inside your VPC with zero public exposure.
 type AwsCloudFrontVpcOrigin struct {
@@ -770,8 +905,13 @@ type AwsCloudFrontVpcOrigin struct {
 	// Seconds CloudFront waits for a response, 1-180. 0 keeps the AWS
 	// default (30).
 	ReadTimeoutSeconds int32 `protobuf:"varint,3,opt,name=read_timeout_seconds,json=readTimeoutSeconds,proto3" json:"read_timeout_seconds,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The AWS account that owns the VPC origin, for CROSS-ACCOUNT
+	// origins (the VPC origin lives in another account that shared it
+	// with this one). Empty means the VPC origin belongs to this
+	// account.
+	OwnerAccountId string `protobuf:"bytes,4,opt,name=owner_account_id,json=ownerAccountId,proto3" json:"owner_account_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AwsCloudFrontVpcOrigin) Reset() {
@@ -823,6 +963,13 @@ func (x *AwsCloudFrontVpcOrigin) GetReadTimeoutSeconds() int32 {
 		return x.ReadTimeoutSeconds
 	}
 	return 0
+}
+
+func (x *AwsCloudFrontVpcOrigin) GetOwnerAccountId() string {
+	if x != nil {
+		return x.OwnerAccountId
+	}
+	return ""
 }
 
 // A primary/failover pair of origins. Behaviors target the group's ID
@@ -1445,14 +1592,20 @@ type AwsCloudFrontViewerCertificate struct {
 	// regions/paths where ACM is unavailable.
 	IamCertificateId string `protobuf:"bytes,2,opt,name=iam_certificate_id,json=iamCertificateId,proto3" json:"iam_certificate_id,omitempty"`
 	// How CloudFront serves HTTPS for custom certificates: "sni-only"
-	// (the default -- free, supported by every modern client) or "vip"
-	// (dedicated IPs at significant monthly cost, for ancient non-SNI
-	// clients). Empty keeps sni-only.
+	// (the default -- free, supported by every modern client),
+	// "static-ip" (dedicated static IPs for clients that must pin
+	// addresses; contact AWS support to enable, billed), or "vip" (the
+	// legacy dedicated-IP tier at significant monthly cost, for ancient
+	// non-SNI clients). Empty keeps sni-only.
 	SslSupportMethod string `protobuf:"bytes,3,opt,name=ssl_support_method,json=sslSupportMethod,proto3" json:"ssl_support_method,omitempty"`
-	// The minimum TLS version viewers must speak, e.g. "TLSv1.2_2021"
-	// (the recommended modern floor, and the module default for custom
-	// certificates), "TLSv1.2_2019", "TLSv1.1_2016", "TLSv1_2016",
-	// "TLSv1". Empty keeps TLSv1.2_2021.
+	// The minimum TLS version viewers must speak -- an AWS security
+	// policy name. "TLSv1.2_2021" is the module default for custom
+	// certificates; "TLSv1.3_2025" (TLS 1.3 only) and "TLSv1.2_2025"
+	// are the current-generation policies. "TLSv1.2_2019",
+	// "TLSv1.2_2018", "TLSv1.1_2016", "TLSv1_2016", and "TLSv1" remain
+	// for older clients, and "SSLv3" exists ONLY for the legacy
+	// dedicated-IP tier serving ancient clients -- never choose it for
+	// new configurations. Empty keeps TLSv1.2_2021.
 	MinimumProtocolVersion string `protobuf:"bytes,4,opt,name=minimum_protocol_version,json=minimumProtocolVersion,proto3" json:"minimum_protocol_version,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
@@ -1650,13 +1803,17 @@ func (x *AwsCloudFrontGeoRestriction) GetLocations() []string {
 	return nil
 }
 
-// Standard access logs to S3.
+// Standard (v1) access logs to S3.
 type AwsCloudFrontLogging struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The S3 bucket receiving logs, as a bucket DOMAIN NAME
 	// ("my-logs.s3.amazonaws.com"). The bucket must have ACLs enabled
 	// (object ownership "Bucket owner preferred") -- CloudFront writes
-	// logs via the awslogsdelivery canonical user.
+	// logs via the awslogsdelivery canonical user. May be left empty to
+	// keep v1 log DELIVERY off while still recording the cookie
+	// preference -- the transition shape for distributions moving to
+	// v2 (CloudWatch-delivered) access logs, which are configured
+	// outside the distribution.
 	Bucket string `protobuf:"bytes,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
 	// Key prefix for log objects, e.g. "cdn/".
 	Prefix string `protobuf:"bytes,2,opt,name=prefix,proto3" json:"prefix,omitempty"`
@@ -1717,11 +1874,360 @@ func (x *AwsCloudFrontLogging) GetIncludeCookies() bool {
 	return false
 }
 
+// A continuous-deployment policy owned by this (primary) distribution:
+// the blue/green rollout mechanism. CloudFront routes a slice of
+// production traffic -- selected by weight or by a request header --
+// to a STAGING distribution carrying the candidate configuration;
+// promote by copying the staging configuration to the primary, then
+// drop the slice.
+type AwsCloudFrontContinuousDeployment struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether the policy is in effect. True (the default) shifts
+	// traffic per the routing choice below; false keeps the policy
+	// attached but dormant -- the pause button for a rollout.
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// The CloudFront domain names of the staging distributions
+	// receiving the traffic slice (e.g. "d111111abcdef8.cloudfront.net"
+	// -- the domain_name output of a distribution deployed with
+	// staging: true). CloudFront currently supports one staging
+	// distribution per policy.
+	StagingDistributionDnsNames []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=staging_distribution_dns_names,json=stagingDistributionDnsNames,proto3" json:"staging_distribution_dns_names,omitempty"`
+	// Weight-based routing: send a fixed percentage of ALL traffic to
+	// staging. The canary shape. Set exactly one of single_weight or
+	// single_header.
+	SingleWeight *AwsCloudFrontContinuousDeploymentSingleWeight `protobuf:"bytes,3,opt,name=single_weight,json=singleWeight,proto3" json:"single_weight,omitempty"`
+	// Header-based routing: send only requests carrying a specific
+	// header/value pair to staging. The team-testing shape -- testers
+	// opt in by sending the header; regular viewers never hit staging.
+	SingleHeader  *AwsCloudFrontContinuousDeploymentSingleHeader `protobuf:"bytes,4,opt,name=single_header,json=singleHeader,proto3" json:"single_header,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudFrontContinuousDeployment) Reset() {
+	*x = AwsCloudFrontContinuousDeployment{}
+	mi := &file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudFrontContinuousDeployment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudFrontContinuousDeployment) ProtoMessage() {}
+
+func (x *AwsCloudFrontContinuousDeployment) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudFrontContinuousDeployment.ProtoReflect.Descriptor instead.
+func (*AwsCloudFrontContinuousDeployment) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AwsCloudFrontContinuousDeployment) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *AwsCloudFrontContinuousDeployment) GetStagingDistributionDnsNames() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.StagingDistributionDnsNames
+	}
+	return nil
+}
+
+func (x *AwsCloudFrontContinuousDeployment) GetSingleWeight() *AwsCloudFrontContinuousDeploymentSingleWeight {
+	if x != nil {
+		return x.SingleWeight
+	}
+	return nil
+}
+
+func (x *AwsCloudFrontContinuousDeployment) GetSingleHeader() *AwsCloudFrontContinuousDeploymentSingleHeader {
+	if x != nil {
+		return x.SingleHeader
+	}
+	return nil
+}
+
+// Percentage-based staging traffic.
+type AwsCloudFrontContinuousDeploymentSingleWeight struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The fraction of traffic sent to staging, as a decimal between 0
+	// and 0.15 (AWS caps staged traffic at 15%). Example: 0.10 sends
+	// 10% of requests to the staging distribution.
+	Weight float32 `protobuf:"fixed32,1,opt,name=weight,proto3" json:"weight,omitempty"`
+	// Pin each viewer to one side for the session, so a user does not
+	// bounce between primary and staging responses mid-visit. Absent
+	// means requests are split without stickiness.
+	SessionStickiness *AwsCloudFrontSessionStickiness `protobuf:"bytes,2,opt,name=session_stickiness,json=sessionStickiness,proto3" json:"session_stickiness,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AwsCloudFrontContinuousDeploymentSingleWeight) Reset() {
+	*x = AwsCloudFrontContinuousDeploymentSingleWeight{}
+	mi := &file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudFrontContinuousDeploymentSingleWeight) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudFrontContinuousDeploymentSingleWeight) ProtoMessage() {}
+
+func (x *AwsCloudFrontContinuousDeploymentSingleWeight) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudFrontContinuousDeploymentSingleWeight.ProtoReflect.Descriptor instead.
+func (*AwsCloudFrontContinuousDeploymentSingleWeight) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *AwsCloudFrontContinuousDeploymentSingleWeight) GetWeight() float32 {
+	if x != nil {
+		return x.Weight
+	}
+	return 0
+}
+
+func (x *AwsCloudFrontContinuousDeploymentSingleWeight) GetSessionStickiness() *AwsCloudFrontSessionStickiness {
+	if x != nil {
+		return x.SessionStickiness
+	}
+	return nil
+}
+
+// Session stickiness for weight-based staging traffic.
+type AwsCloudFrontSessionStickiness struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Seconds of inactivity after which a viewer's session ends,
+	// 300-3600. Must not exceed maximum_ttl_seconds.
+	IdleTtlSeconds int32 `protobuf:"varint,1,opt,name=idle_ttl_seconds,json=idleTtlSeconds,proto3" json:"idle_ttl_seconds,omitempty"`
+	// The longest a viewer's requests count as one session regardless
+	// of activity, 300-3600 seconds.
+	MaximumTtlSeconds int32 `protobuf:"varint,2,opt,name=maximum_ttl_seconds,json=maximumTtlSeconds,proto3" json:"maximum_ttl_seconds,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AwsCloudFrontSessionStickiness) Reset() {
+	*x = AwsCloudFrontSessionStickiness{}
+	mi := &file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudFrontSessionStickiness) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudFrontSessionStickiness) ProtoMessage() {}
+
+func (x *AwsCloudFrontSessionStickiness) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudFrontSessionStickiness.ProtoReflect.Descriptor instead.
+func (*AwsCloudFrontSessionStickiness) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AwsCloudFrontSessionStickiness) GetIdleTtlSeconds() int32 {
+	if x != nil {
+		return x.IdleTtlSeconds
+	}
+	return 0
+}
+
+func (x *AwsCloudFrontSessionStickiness) GetMaximumTtlSeconds() int32 {
+	if x != nil {
+		return x.MaximumTtlSeconds
+	}
+	return 0
+}
+
+// Header-based staging traffic.
+type AwsCloudFrontContinuousDeploymentSingleHeader struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The request header that opts a request into staging. AWS requires
+	// the "aws-cf-cd-" prefix. Example: "aws-cf-cd-canary".
+	Header string `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
+	// The header value that must match exactly for the request to route
+	// to staging.
+	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudFrontContinuousDeploymentSingleHeader) Reset() {
+	*x = AwsCloudFrontContinuousDeploymentSingleHeader{}
+	mi := &file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudFrontContinuousDeploymentSingleHeader) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudFrontContinuousDeploymentSingleHeader) ProtoMessage() {}
+
+func (x *AwsCloudFrontContinuousDeploymentSingleHeader) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudFrontContinuousDeploymentSingleHeader.ProtoReflect.Descriptor instead.
+func (*AwsCloudFrontContinuousDeploymentSingleHeader) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AwsCloudFrontContinuousDeploymentSingleHeader) GetHeader() string {
+	if x != nil {
+		return x.Header
+	}
+	return ""
+}
+
+func (x *AwsCloudFrontContinuousDeploymentSingleHeader) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+// Mutual TLS for viewer connections: CloudFront requests (or
+// requires) a client certificate during the TLS handshake and
+// validates it against a CloudFront trust store. Requires a custom
+// viewer certificate (aliases + viewer_certificate); the default
+// *.cloudfront.net certificate cannot serve mTLS viewers.
+type AwsCloudFrontViewerMtls struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The enforcement mode: "required" (reject connections without a
+	// valid client certificate), "optional" (request one, admit
+	// connections either way -- origins see the validation result in
+	// headers), or "passthrough" (forward the certificate to the origin
+	// without CloudFront validating it). Empty keeps the AWS default
+	// (required).
+	Mode string `protobuf:"bytes,1,opt,name=mode,proto3" json:"mode,omitempty"`
+	// The CloudFront trust store holding the CA bundle that client
+	// certificates are validated against, by ID. Required for the
+	// "required" and "optional" modes; "passthrough" needs no trust
+	// store (the origin does the validating).
+	TrustStoreId string `protobuf:"bytes,2,opt,name=trust_store_id,json=trustStoreId,proto3" json:"trust_store_id,omitempty"`
+	// Advertise the trust store's CA names in the TLS handshake, so
+	// clients holding multiple certificates can pick the right one.
+	AdvertiseTrustStoreCaNames bool `protobuf:"varint,3,opt,name=advertise_trust_store_ca_names,json=advertiseTrustStoreCaNames,proto3" json:"advertise_trust_store_ca_names,omitempty"`
+	// Accept client certificates past their expiry date -- a migration
+	// escape hatch while a client fleet rotates certificates, never a
+	// steady state.
+	IgnoreCertificateExpiry bool `protobuf:"varint,4,opt,name=ignore_certificate_expiry,json=ignoreCertificateExpiry,proto3" json:"ignore_certificate_expiry,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *AwsCloudFrontViewerMtls) Reset() {
+	*x = AwsCloudFrontViewerMtls{}
+	mi := &file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudFrontViewerMtls) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudFrontViewerMtls) ProtoMessage() {}
+
+func (x *AwsCloudFrontViewerMtls) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudFrontViewerMtls.ProtoReflect.Descriptor instead.
+func (*AwsCloudFrontViewerMtls) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *AwsCloudFrontViewerMtls) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *AwsCloudFrontViewerMtls) GetTrustStoreId() string {
+	if x != nil {
+		return x.TrustStoreId
+	}
+	return ""
+}
+
+func (x *AwsCloudFrontViewerMtls) GetAdvertiseTrustStoreCaNames() bool {
+	if x != nil {
+		return x.AdvertiseTrustStoreCaNames
+	}
+	return false
+}
+
+func (x *AwsCloudFrontViewerMtls) GetIgnoreCertificateExpiry() bool {
+	if x != nil {
+		return x.IgnoreCertificateExpiry
+	}
+	return false
+}
+
 var File_catalog_aws_awscloudfront_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-catalog/aws/awscloudfront/v1alpha1/spec.proto\x12&dev.planton.aws.awscloudfront.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xbc\x1b\n" +
+	"-catalog/aws/awscloudfront/v1alpha1/spec.proto\x12&dev.planton.aws.awscloudfront.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd4!\n" +
 	"\x11AwsCloudFrontSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12'\n" +
 	"\aenabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12J\n" +
@@ -1744,15 +2250,24 @@ const file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDesc = "" +
 	"\alogging\x18\x11 \x01(\v2<.dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontLoggingR\alogging\x12=\n" +
 	"\x13wait_for_deployment\x18\x12 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x11waitForDeployment\x88\x01\x01\x12(\n" +
 	"\x10retain_on_delete\x18\x13 \x01(\bR\x0eretainOnDelete\x12:\n" +
-	"\x19enable_additional_metrics\x18\x14 \x01(\bR\x17enableAdditionalMetrics:\xfd\r\xbaH\xf9\r\x1a\xd6\x02\n" +
+	"\x19enable_additional_metrics\x18\x14 \x01(\bR\x17enableAdditionalMetrics\x12\x18\n" +
+	"\astaging\x18\x15 \x01(\bR\astaging\x12E\n" +
+	"\x1fcontinuous_deployment_policy_id\x18\x16 \x01(\tR\x1ccontinuousDeploymentPolicyId\x12~\n" +
+	"\x15continuous_deployment\x18\x17 \x01(\v2I.dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeploymentR\x14continuousDeployment\x12+\n" +
+	"\x12anycast_ip_list_id\x18\x18 \x01(\tR\x0fanycastIpListId\x121\n" +
+	"\x15cache_tag_header_name\x18\x19 \x01(\tR\x12cacheTagHeaderName\x12T\n" +
+	"\x16connection_function_id\x18\x1a \x01(\tB\x1e\xbaH\x1br\x19\x18@2\x15^$|^[A-Za-z0-9\\-\\_]+$R\x14connectionFunctionId\x12`\n" +
+	"\vviewer_mtls\x18\x1b \x01(\v2?.dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontViewerMtlsR\n" +
+	"viewerMtls:\x9c\x10\xbaH\x98\x10\x1a\xd6\x02\n" +
 	"\x1baliases_require_certificate\x12\x8f\x01serving aliases requires viewer_certificate with the ACM or IAM arm set -- the default *.cloudfront.net certificate cannot cover custom domains\x1a\xa4\x01this.aliases.size() == 0 || (has(this.viewer_certificate) && (has(this.viewer_certificate.acm_certificate_arn) || this.viewer_certificate.iam_certificate_id != ''))\x1a\xa0\x03\n" +
 	"\x11origin_ids_unique\x12eorigin_id values must be unique across origins and origin_groups -- cache behaviors target them by ID\x1a\xa3\x02!this.origins.exists(o, this.origins.filter(x, x.origin_id == o.origin_id).size() > 1) && !this.origin_groups.exists(g, this.origin_groups.filter(x, x.origin_group_id == g.origin_group_id).size() > 1) && !this.origin_groups.exists(g, this.origins.exists(o, o.origin_id == g.origin_group_id))\x1a\x8a\x03\n" +
 	" default_behavior_target_resolves\x12\x87\x01default_cache_behavior.target_origin_id must match the origin_id of a declared origin or the origin_group_id of a declared origin group\x1a\xdb\x01!has(this.default_cache_behavior) || this.origins.exists(o, o.origin_id == this.default_cache_behavior.target_origin_id) || this.origin_groups.exists(g, g.origin_group_id == this.default_cache_behavior.target_origin_id)\x1a\x8e\x03\n" +
 	" ordered_behavior_targets_resolve\x12\x99\x01every ordered_cache_behaviors[].behavior.target_origin_id must match the origin_id of a declared origin or the origin_group_id of a declared origin group\x1a\xcd\x01this.ordered_cache_behaviors.all(b, !has(b.behavior) || this.origins.exists(o, o.origin_id == b.behavior.target_origin_id) || this.origin_groups.exists(g, g.origin_group_id == b.behavior.target_origin_id))\x1a\xdc\x01\n" +
-	"\x1corigin_group_members_resolve\x12[every origin_groups[].member_origin_ids entry must match the origin_id of a declared origin\x1a_this.origin_groups.all(g, g.member_origin_ids.all(m, this.origins.exists(o, o.origin_id == m)))B\n" +
+	"\x1corigin_group_members_resolve\x12[every origin_groups[].member_origin_ids entry must match the origin_id of a declared origin\x1a_this.origin_groups.all(g, g.member_origin_ids.all(m, this.origins.exists(o, o.origin_id == m)))\x1a\x9c\x02\n" +
+	"$continuous_deployment_arms_exclusive\x12\xa1\x01set at most one of continuous_deployment (this resource creates and attaches the policy) or continuous_deployment_policy_id (attach an externally managed policy)\x1aP!(has(this.continuous_deployment) && this.continuous_deployment_policy_id != '')B\n" +
 	"\n" +
 	"\b_enabledB\x16\n" +
-	"\x14_wait_for_deployment\"\xec\b\n" +
+	"\x14_wait_for_deployment\"\x82\x10\n" +
 	"\x13AwsCloudFrontOrigin\x12@\n" +
 	"\torigin_id\x18\x01 \x01(\tB#\xbaH \xc8\x01\x01r\x1b\x10\x01\x18\x80\x012\x14^[A-Za-z0-9\\-\\_\\.]+$R\boriginId\x12N\n" +
 	"\vdomain_name\x18\x02 \x01(\tB-\xbaH*\xc8\x01\x01r%2#^[A-Za-z0-9\\-\\.]+\\.[A-Za-z0-9]{2,}$R\n" +
@@ -1768,18 +2283,22 @@ const file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDesc = "" +
 	"\rcustom_origin\x18\t \x01(\v2A.dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCustomOriginR\fcustomOrigin\x12]\n" +
 	"\n" +
 	"vpc_origin\x18\n" +
-	" \x01(\v2>.dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontVpcOriginR\tvpcOrigin:\xe7\x01\xbaH\xe3\x01\x1a\xe0\x01\n" +
-	"\x17at_most_one_origin_type\x12\\set at most one of s3_origin, custom_origin, or vpc_origin -- an origin has exactly one type\x1ag(has(this.s3_origin) ? 1 : 0) + (has(this.custom_origin) ? 1 : 0) + (has(this.vpc_origin) ? 1 : 0) <= 1\"[\n" +
+	" \x01(\v2>.dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontVpcOriginR\tvpcOrigin\x127\n" +
+	"\x18origin_access_control_id\x18\v \x01(\tR\x15originAccessControlId\x12Y\n" +
+	"#response_completion_timeout_seconds\x18\f \x01(\x05B\n" +
+	"\xbaH\a\xd8\x01\x01\x1a\x02(\x01R responseCompletionTimeoutSeconds:\xe9\a\xbaH\xe5\a\x1a\xe0\x01\n" +
+	"\x17at_most_one_origin_type\x12\\set at most one of s3_origin, custom_origin, or vpc_origin -- an origin has exactly one type\x1ag(has(this.s3_origin) ? 1 : 0) + (has(this.custom_origin) ? 1 : 0) + (has(this.vpc_origin) ? 1 : 0) <= 1\x1a\x8f\x02\n" +
+	"\x14oac_attach_or_create\x12\x89\x01origin_access_control_id attaches an existing OAC -- it cannot be combined with s3_origin.create_origin_access_control, which creates one\x1akthis.origin_access_control_id == '' || !has(this.s3_origin) || !this.s3_origin.create_origin_access_control\x1a\xed\x03\n" +
+	"&completion_timeout_covers_read_timeout\x12Presponse_completion_timeout_seconds must be >= the origin's read_timeout_seconds\x1a\xf0\x02this.response_completion_timeout_seconds == 0 || ((!has(this.custom_origin) || this.custom_origin.read_timeout_seconds == 0 || this.response_completion_timeout_seconds >= this.custom_origin.read_timeout_seconds) && (!has(this.vpc_origin) || this.vpc_origin.read_timeout_seconds == 0 || this.response_completion_timeout_seconds >= this.vpc_origin.read_timeout_seconds))\"[\n" +
 	"\x1fAwsCloudFrontOriginCustomHeader\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +
 	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\"U\n" +
 	"\x19AwsCloudFrontOriginShield\x128\n" +
-	"\x14origin_shield_region\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x12originShieldRegion\"\x99\x04\n" +
+	"\x14origin_shield_region\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x12originShieldRegion\"\xff\x02\n" +
 	"\x15AwsCloudFrontS3Origin\x12?\n" +
-	"\x1ccreate_origin_access_control\x18\x01 \x01(\bR\x19createOriginAccessControl\x127\n" +
-	"\x18origin_access_control_id\x18\x02 \x01(\tR\x15originAccessControlId\x12m\n" +
-	"\x16origin_access_identity\x18\x03 \x01(\tB7\xbaH4r220^$|^origin-access-identity/cloudfront/[A-Z0-9]+$R\x14originAccessIdentity:\x96\x02\xbaH\x92\x02\x1a\x8f\x02\n" +
-	"\x16at_most_one_access_arm\x12dset at most one of create_origin_access_control, origin_access_control_id, or origin_access_identity\x1a\x8e\x01(this.create_origin_access_control ? 1 : 0) + (this.origin_access_control_id != '' ? 1 : 0) + (this.origin_access_identity != '' ? 1 : 0) <= 1\"\xad\x03\n" +
+	"\x1ccreate_origin_access_control\x18\x01 \x01(\bR\x19createOriginAccessControl\x12m\n" +
+	"\x16origin_access_identity\x18\x02 \x01(\tB7\xbaH4r220^$|^origin-access-identity/cloudfront/[A-Z0-9]+$R\x14originAccessIdentity:\xb5\x01\xbaH\xb1\x01\x1a\xae\x01\n" +
+	"\x16at_most_one_access_arm\x12Iset at most one of create_origin_access_control or origin_access_identity\x1aI!(this.create_origin_access_control && this.origin_access_identity != '')\"\x8c\x05\n" +
 	"\x19AwsCloudFrontCustomOrigin\x12V\n" +
 	"\x0fprotocol_policy\x18\x01 \x01(\tB-\xbaH*\xc8\x01\x01r%R\thttp-onlyR\n" +
 	"https-onlyR\fmatch-viewerR\x0eprotocolPolicy\x12+\n" +
@@ -1789,12 +2308,15 @@ const file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDesc = "" +
 	"\rssl_protocols\x18\x04 \x03(\tB,\xbaH)\x92\x01&\x18\x01\"\"r R\x05SSLv3R\x05TLSv1R\aTLSv1.1R\aTLSv1.2R\fsslProtocols\x12H\n" +
 	"\x19keepalive_timeout_seconds\x18\x05 \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18x(\x01R\x17keepaliveTimeoutSeconds\x12?\n" +
 	"\x14read_timeout_seconds\x18\x06 \x01(\x05B\r\xbaH\n" +
-	"\xd8\x01\x01\x1a\x05\x18\xb4\x01(\x01R\x12readTimeoutSeconds\"\xcf\x01\n" +
+	"\xd8\x01\x01\x1a\x05\x18\xb4\x01(\x01R\x12readTimeoutSeconds\x12G\n" +
+	"\x0fip_address_type\x18\a \x01(\tB\x1f\xbaH\x1c\xd8\x01\x01r\x17R\x04ipv4R\x04ipv6R\tdualstackR\ripAddressType\x12\x93\x01\n" +
+	"\x1bmtls_client_certificate_arn\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x18mtlsClientCertificateArn\"\x90\x02\n" +
 	"\x16AwsCloudFrontVpcOrigin\x12*\n" +
 	"\rvpc_origin_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vvpcOriginId\x12H\n" +
 	"\x19keepalive_timeout_seconds\x18\x02 \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18x(\x01R\x17keepaliveTimeoutSeconds\x12?\n" +
 	"\x14read_timeout_seconds\x18\x03 \x01(\x05B\r\xbaH\n" +
-	"\xd8\x01\x01\x1a\x05\x18\xb4\x01(\x01R\x12readTimeoutSeconds\"\xfd\x01\n" +
+	"\xd8\x01\x01\x1a\x05\x18\xb4\x01(\x01R\x12readTimeoutSeconds\x12?\n" +
+	"\x10owner_account_id\x18\x04 \x01(\tB\x15\xbaH\x12r\x102\x0e^$|^[0-9]{12}$R\x0eownerAccountId\"\xfd\x01\n" +
 	"\x18AwsCloudFrontOriginGroup\x12K\n" +
 	"\x0forigin_group_id\x18\x01 \x01(\tB#\xbaH \xc8\x01\x01r\x1b\x10\x01\x18\x80\x012\x14^[A-Za-z0-9\\-\\_\\.]+$R\roriginGroupId\x128\n" +
 	"\x11member_origin_ids\x18\x02 \x03(\tB\f\xbaH\t\x92\x01\x06\b\x02\x10\x02\x18\x01R\x0fmemberOriginIds\x12Z\n" +
@@ -1843,13 +2365,13 @@ const file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDesc = "" +
 	"event_type\x18\x01 \x01(\tBJ\xbaHG\xc8\x01\x01rBR\x0eviewer-requestR\x0fviewer-responseR\x0eorigin-requestR\x0forigin-responseR\teventType\x12m\n" +
 	"\n" +
 	"lambda_arn\x18\x02 \x01(\tBN\xbaHK\xc8\x01\x01rF2D^arn:aws[a-zA-Z-]*:lambda:us-east-1:[0-9]{12}:function:[^:]+:[0-9]+$R\tlambdaArn\x12!\n" +
-	"\finclude_body\x18\x03 \x01(\bR\vincludeBody\"\xd4\x04\n" +
+	"\finclude_body\x18\x03 \x01(\bR\vincludeBody\"\x82\x05\n" +
 	"\x1eAwsCloudFrontViewerCertificate\x12\x84\x01\n" +
 	"\x13acm_certificate_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x11acmCertificateArn\x12,\n" +
-	"\x12iam_certificate_id\x18\x02 \x01(\tR\x10iamCertificateId\x12E\n" +
-	"\x12ssl_support_method\x18\x03 \x01(\tB\x17\xbaH\x14\xd8\x01\x01r\x0fR\bsni-onlyR\x03vipR\x10sslSupportMethod\x12\x8d\x01\n" +
-	"\x18minimum_protocol_version\x18\x04 \x01(\tBS\xbaHP\xd8\x01\x01rKR\x05TLSv1R\n" +
-	"TLSv1_2016R\fTLSv1.1_2016R\fTLSv1.2_2018R\fTLSv1.2_2019R\fTLSv1.2_2021R\x16minimumProtocolVersion:\xa5\x01\xbaH\xa1\x01\x1a\x9e\x01\n" +
+	"\x12iam_certificate_id\x18\x02 \x01(\tR\x10iamCertificateId\x12P\n" +
+	"\x12ssl_support_method\x18\x03 \x01(\tB\"\xbaH\x1f\xd8\x01\x01r\x1aR\bsni-onlyR\tstatic-ipR\x03vipR\x10sslSupportMethod\x12\xb0\x01\n" +
+	"\x18minimum_protocol_version\x18\x04 \x01(\tBv\xbaHs\xd8\x01\x01rnR\x05SSLv3R\x05TLSv1R\n" +
+	"TLSv1_2016R\fTLSv1.1_2016R\fTLSv1.2_2018R\fTLSv1.2_2019R\fTLSv1.2_2021R\fTLSv1.2_2025R\fTLSv1.3_2025R\x16minimumProtocolVersion:\xa5\x01\xbaH\xa1\x01\x1a\x9e\x01\n" +
 	"\x1bat_most_one_certificate_arm\x12<set at most one of acm_certificate_arn or iam_certificate_id\x1aA!(has(this.acm_certificate_arn) && this.iam_certificate_id != '')\"\xb7\x03\n" +
 	" AwsCloudFrontCustomErrorResponse\x12H\n" +
 	"\n" +
@@ -1864,9 +2386,35 @@ const file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDesc = "" +
 	"\tlocations\x18\x02 \x03(\tB\x1a\xbaH\x17\x92\x01\x14\b\x01\x18\x01\"\x0er\f2\n" +
 	"^[A-Z]{2}$R\tlocations\"\xb0\x01\n" +
 	"\x14AwsCloudFrontLogging\x12W\n" +
-	"\x06bucket\x18\x01 \x01(\tB?\xbaH<\xc8\x01\x01r725^[A-Za-z0-9\\-\\.]+\\.s3(\\.[a-z0-9-]+)?\\.amazonaws\\.com$R\x06bucket\x12\x16\n" +
+	"\x06bucket\x18\x01 \x01(\tB?\xbaH<r:28^$|^[A-Za-z0-9\\-\\.]+\\.s3(\\.[a-z0-9-]+)?\\.amazonaws\\.com$R\x06bucket\x12\x16\n" +
 	"\x06prefix\x18\x02 \x01(\tR\x06prefix\x12'\n" +
-	"\x0finclude_cookies\x18\x03 \x01(\bR\x0eincludeCookiesB\xcb\x02\n" +
+	"\x0finclude_cookies\x18\x03 \x01(\bR\x0eincludeCookies\"\xb3\x05\n" +
+	"!AwsCloudFrontContinuousDeployment\x12'\n" +
+	"\aenabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12\xa4\x01\n" +
+	"\x1estaging_distribution_dns_names\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xea\a\x92\xd4a\x1astatus.outputs.domain_nameR\x1bstagingDistributionDnsNames\x12z\n" +
+	"\rsingle_weight\x18\x03 \x01(\v2U.dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeploymentSingleWeightR\fsingleWeight\x12z\n" +
+	"\rsingle_header\x18\x04 \x01(\v2U.dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeploymentSingleHeaderR\fsingleHeader:\xb9\x01\xbaH\xb5\x01\x1a\xb2\x01\n" +
+	"\x17exactly_one_traffic_arm\x12cset exactly one of single_weight (percentage-based routing) or single_header (header-based routing)\x1a2has(this.single_weight) != has(this.single_header)B\n" +
+	"\n" +
+	"\b_enabled\"\xd2\x01\n" +
+	"-AwsCloudFrontContinuousDeploymentSingleWeight\x12*\n" +
+	"\x06weight\x18\x01 \x01(\x02B\x12\xbaH\x0f\xc8\x01\x01\n" +
+	"\n" +
+	"\x1d\x9a\x99\x19>%\x00\x00\x00\x00R\x06weight\x12u\n" +
+	"\x12session_stickiness\x18\x02 \x01(\v2F.dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSessionStickinessR\x11sessionStickiness\"\xb0\x02\n" +
+	"\x1eAwsCloudFrontSessionStickiness\x128\n" +
+	"\x10idle_ttl_seconds\x18\x01 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\x90\x1c(\xac\x02R\x0eidleTtlSeconds\x12>\n" +
+	"\x13maximum_ttl_seconds\x18\x02 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\x90\x1c(\xac\x02R\x11maximumTtlSeconds:\x93\x01\xbaH\x8f\x01\x1a\x8c\x01\n" +
+	"\x13idle_within_maximum\x12Bidle_ttl_seconds must be less than or equal to maximum_ttl_seconds\x1a1this.idle_ttl_seconds <= this.maximum_ttl_seconds\"\x7f\n" +
+	"-AwsCloudFrontContinuousDeploymentSingleHeader\x120\n" +
+	"\x06header\x18\x01 \x01(\tB\x18\xbaH\x15\xc8\x01\x01r\x102\x0e^aws-cf-cd-.+$R\x06header\x12\x1c\n" +
+	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\"\xec\x03\n" +
+	"\x17AwsCloudFrontViewerMtls\x12=\n" +
+	"\x04mode\x18\x01 \x01(\tB)\xbaH&\xd8\x01\x01r!R\brequiredR\boptionalR\vpassthroughR\x04mode\x12$\n" +
+	"\x0etrust_store_id\x18\x02 \x01(\tR\ftrustStoreId\x12B\n" +
+	"\x1eadvertise_trust_store_ca_names\x18\x03 \x01(\bR\x1aadvertiseTrustStoreCaNames\x12:\n" +
+	"\x19ignore_certificate_expiry\x18\x04 \x01(\bR\x17ignoreCertificateExpiry:\xeb\x01\xbaH\xe7\x01\x1a\xe4\x01\n" +
+	"%trust_store_knobs_require_trust_store\x12Sadvertise_trust_store_ca_names and ignore_certificate_expiry require trust_store_id\x1afthis.trust_store_id != '' || (!this.advertise_trust_store_ca_names && !this.ignore_certificate_expiry)B\xcb\x02\n" +
 	"*com.dev.planton.aws.awscloudfront.v1alpha1B\tSpecProtoP\x01ZUgithub.com/plantonhq/planton/catalog/aws/awscloudfront/v1alpha1;awscloudfrontv1alpha1\xa2\x02\x04DPAA\xaa\x02&Dev.Planton.Aws.Awscloudfront.V1alpha1\xca\x02&Dev\\Planton\\Aws\\Awscloudfront\\V1alpha1\xe2\x022Dev\\Planton\\Aws\\Awscloudfront\\V1alpha1\\GPBMetadata\xea\x02*Dev::Planton::Aws::Awscloudfront::V1alpha1b\x06proto3"
 
 var (
@@ -1881,29 +2429,34 @@ func file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_catalog_aws_awscloudfront_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsCloudFrontSpec)(nil),                      // 0: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSpec
-	(*AwsCloudFrontOrigin)(nil),                    // 1: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin
-	(*AwsCloudFrontOriginCustomHeader)(nil),        // 2: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOriginCustomHeader
-	(*AwsCloudFrontOriginShield)(nil),              // 3: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOriginShield
-	(*AwsCloudFrontS3Origin)(nil),                  // 4: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontS3Origin
-	(*AwsCloudFrontCustomOrigin)(nil),              // 5: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCustomOrigin
-	(*AwsCloudFrontVpcOrigin)(nil),                 // 6: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontVpcOrigin
-	(*AwsCloudFrontOriginGroup)(nil),               // 7: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOriginGroup
-	(*AwsCloudFrontCacheBehavior)(nil),             // 8: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCacheBehavior
-	(*AwsCloudFrontOrderedCacheBehavior)(nil),      // 9: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrderedCacheBehavior
-	(*AwsCloudFrontForwardedValues)(nil),           // 10: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontForwardedValues
-	(*AwsCloudFrontFunctionAssociation)(nil),       // 11: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontFunctionAssociation
-	(*AwsCloudFrontLambdaFunctionAssociation)(nil), // 12: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontLambdaFunctionAssociation
-	(*AwsCloudFrontViewerCertificate)(nil),         // 13: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontViewerCertificate
-	(*AwsCloudFrontCustomErrorResponse)(nil),       // 14: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCustomErrorResponse
-	(*AwsCloudFrontGeoRestriction)(nil),            // 15: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontGeoRestriction
-	(*AwsCloudFrontLogging)(nil),                   // 16: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontLogging
-	(*v1.StringValueOrRef)(nil),                    // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsCloudFrontSpec)(nil),                             // 0: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSpec
+	(*AwsCloudFrontOrigin)(nil),                           // 1: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin
+	(*AwsCloudFrontOriginCustomHeader)(nil),               // 2: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOriginCustomHeader
+	(*AwsCloudFrontOriginShield)(nil),                     // 3: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOriginShield
+	(*AwsCloudFrontS3Origin)(nil),                         // 4: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontS3Origin
+	(*AwsCloudFrontCustomOrigin)(nil),                     // 5: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCustomOrigin
+	(*AwsCloudFrontVpcOrigin)(nil),                        // 6: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontVpcOrigin
+	(*AwsCloudFrontOriginGroup)(nil),                      // 7: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOriginGroup
+	(*AwsCloudFrontCacheBehavior)(nil),                    // 8: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCacheBehavior
+	(*AwsCloudFrontOrderedCacheBehavior)(nil),             // 9: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrderedCacheBehavior
+	(*AwsCloudFrontForwardedValues)(nil),                  // 10: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontForwardedValues
+	(*AwsCloudFrontFunctionAssociation)(nil),              // 11: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontFunctionAssociation
+	(*AwsCloudFrontLambdaFunctionAssociation)(nil),        // 12: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontLambdaFunctionAssociation
+	(*AwsCloudFrontViewerCertificate)(nil),                // 13: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontViewerCertificate
+	(*AwsCloudFrontCustomErrorResponse)(nil),              // 14: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCustomErrorResponse
+	(*AwsCloudFrontGeoRestriction)(nil),                   // 15: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontGeoRestriction
+	(*AwsCloudFrontLogging)(nil),                          // 16: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontLogging
+	(*AwsCloudFrontContinuousDeployment)(nil),             // 17: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeployment
+	(*AwsCloudFrontContinuousDeploymentSingleWeight)(nil), // 18: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeploymentSingleWeight
+	(*AwsCloudFrontSessionStickiness)(nil),                // 19: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSessionStickiness
+	(*AwsCloudFrontContinuousDeploymentSingleHeader)(nil), // 20: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeploymentSingleHeader
+	(*AwsCloudFrontViewerMtls)(nil),                       // 21: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontViewerMtls
+	(*v1.StringValueOrRef)(nil),                           // 22: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awscloudfront_v1alpha1_spec_proto_depIdxs = []int32{
-	17, // 0: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSpec.web_acl_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 0: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSpec.web_acl_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 1: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSpec.origins:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin
 	7,  // 2: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSpec.origin_groups:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOriginGroup
 	8,  // 3: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSpec.default_cache_behavior:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCacheBehavior
@@ -1912,21 +2465,28 @@ var file_catalog_aws_awscloudfront_v1alpha1_spec_proto_depIdxs = []int32{
 	14, // 6: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSpec.custom_error_responses:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCustomErrorResponse
 	15, // 7: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSpec.geo_restriction:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontGeoRestriction
 	16, // 8: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSpec.logging:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontLogging
-	2,  // 9: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin.custom_headers:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOriginCustomHeader
-	3,  // 10: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin.origin_shield:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOriginShield
-	4,  // 11: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin.s3_origin:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontS3Origin
-	5,  // 12: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin.custom_origin:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCustomOrigin
-	6,  // 13: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin.vpc_origin:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontVpcOrigin
-	10, // 14: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCacheBehavior.forwarded_values:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontForwardedValues
-	11, // 15: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCacheBehavior.function_associations:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontFunctionAssociation
-	12, // 16: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCacheBehavior.lambda_function_associations:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontLambdaFunctionAssociation
-	8,  // 17: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrderedCacheBehavior.behavior:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCacheBehavior
-	17, // 18: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontViewerCertificate.acm_certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	17, // 9: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSpec.continuous_deployment:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeployment
+	21, // 10: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSpec.viewer_mtls:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontViewerMtls
+	2,  // 11: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin.custom_headers:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOriginCustomHeader
+	3,  // 12: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin.origin_shield:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOriginShield
+	4,  // 13: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin.s3_origin:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontS3Origin
+	5,  // 14: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin.custom_origin:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCustomOrigin
+	6,  // 15: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrigin.vpc_origin:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontVpcOrigin
+	22, // 16: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCustomOrigin.mtls_client_certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 17: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCacheBehavior.forwarded_values:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontForwardedValues
+	11, // 18: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCacheBehavior.function_associations:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontFunctionAssociation
+	12, // 19: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCacheBehavior.lambda_function_associations:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontLambdaFunctionAssociation
+	8,  // 20: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontOrderedCacheBehavior.behavior:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontCacheBehavior
+	22, // 21: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontViewerCertificate.acm_certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 22: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeployment.staging_distribution_dns_names:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 23: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeployment.single_weight:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeploymentSingleWeight
+	20, // 24: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeployment.single_header:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeploymentSingleHeader
+	19, // 25: dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeploymentSingleWeight.session_stickiness:type_name -> dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontSessionStickiness
+	26, // [26:26] is the sub-list for method output_type
+	26, // [26:26] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awscloudfront_v1alpha1_spec_proto_init() }
@@ -1935,13 +2495,14 @@ func file_catalog_aws_awscloudfront_v1alpha1_spec_proto_init() {
 		return
 	}
 	file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_catalog_aws_awscloudfront_v1alpha1_spec_proto_msgTypes[17].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

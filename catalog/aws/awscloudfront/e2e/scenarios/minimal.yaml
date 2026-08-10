@@ -4,6 +4,13 @@
 # reachability, so no real backend is needed and no traffic ever flows --
 # the lane's only cost is propagation time. Full metadata is supplied for
 # tagging/orphan cleanup.
+#
+# Free arms exercised live: the cache-tag invalidation header, the origin
+# response-completion cap, and dualstack origin DNS resolution -- all pure
+# create-time configuration on a distribution that bills per request only.
+# The staging/continuous-deployment, viewer/origin mTLS, connection
+# function, and anycast arms are offline-proven (see the profile comment
+# for reasons and unblock conditions).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudFront
 metadata:
@@ -24,13 +31,20 @@ spec:
   origins:
     - originId: placeholder-origin
       domainName: e2e-smoke.planton-oss-e2e.example.com
+      # Complete-response cap; must be >= the read timeout (default 30).
+      responseCompletionTimeoutSeconds: 60
       customOrigin:
         protocolPolicy: https-only
+        # Resolve the origin over IPv6 with IPv4 fallback -- validated at
+        # create time regardless of the placeholder domain's records.
+        ipAddressType: dualstack
   defaultCacheBehavior:
     targetOriginId: placeholder-origin
     viewerProtocolPolicy: redirect-to-https
     compress: true
     # Managed-CachingOptimized -- the AWS managed static-content policy.
     cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+  # Tag-based invalidation header -- free create-time configuration.
+  cacheTagHeaderName: Cache-Tag
   # PriceClass_100 keeps propagation to the smallest edge set.
   priceClass: PriceClass_100

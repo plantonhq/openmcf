@@ -60,6 +60,13 @@ func certManagerCert(ctx *pulumi.Context, locals *Locals, provider *aws.Provider
 			// Private-CA issuance is authorized by the CA itself -- passing a
 			// validation method alongside the CA ARN is rejected by AWS.
 			args.CertificateAuthorityArn = pulumi.String(spec.CertificateAuthorityArn)
+			// Managed early renewal -- a private-CA mechanism (ACM's
+			// RenewCertificate is private-certificate-only; CEL ties the
+			// field to the private arm). Durations under 60 days have no
+			// effect.
+			if spec.EarlyRenewalDuration != "" {
+				args.EarlyRenewalDuration = pulumi.String(spec.EarlyRenewalDuration)
+			}
 		} else {
 			args.ValidationMethod = pulumi.String(validationMethod)
 		}

@@ -10,13 +10,28 @@ spec:
   # ownership, deletion is immediate. Requested DNS/EMAIL validation on
   # unowned domains fails at the AWS API (ValidationStatus FAILED with no
   # DVO records) and blocks the provider create waiter, so the live leaf
-  # uses imported mode. Deliberately not in the live scenario: managed
+  # uses imported mode.
+  #
+  # pending_proof: the depth-closure wave added early_renewal_duration
+  # (private-CA managed renewal) and the HTTP validation method, and the
+  # module's certificate arguments were re-wired for them -- the prior
+  # green predates the change.
+  #
+  # Offline-proven-only arms (recorded deferrals, never silent skips):
+  # - early_renewal_duration: private-CA-only (it conflicts with both the
+  #   imported material and validation_method), so the imported-mode live
+  #   scenario cannot carry it and a live lane would need a real ACM-PCA
+  #   authority (~$400/month) -- proven by offline plan/preview on both
+  #   engines against the 04-private-ca-internal-tls preset. Unblocks if
+  #   an AwsPrivateCa kind ships with a shared test authority.
+  # - HTTP validation: a validation-METHOD value on the requested arm;
+  #   the imported live leaf never validates. Proven offline; exercised
+  #   live only when a real owned domain joins the fixture chain.
+  # Also deliberately not in the live scenario (pre-existing): managed
   # Route53 validation + the issuance waiter (needs a real owned domain)
-  # and private-CA issuance -- all proven by CEL spec tests and the offline
+  # and private-CA issuance -- proven by CEL spec tests and the offline
   # gate.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

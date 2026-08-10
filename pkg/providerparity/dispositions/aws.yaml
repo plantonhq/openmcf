@@ -646,34 +646,31 @@ resources:
     reason: "driving CloudFormation stacks through the catalog's own IaC engines is meta-IaC recursion, contrary to catalog doctrine"
   - resource: aws_cloudfront_anycast_ip_list
     disposition: model-planned
-    reason: "CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens"
+    reason: "account-scoped shared Anycast static IP list referenced by many distributions; judged as a planned AwsCloudFrontAnycastIpList kind -- AwsCloudFront models the attachment (anycast_ip_list_id) today"
   - resource: aws_cloudfront_cache_policy
     disposition: model-planned
-    reason: "CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens"
+    reason: "account-scoped shared cache policy referenced by many behaviors across distributions; judged as a planned AwsCloudFrontCachePolicy kind -- AwsCloudFront behaviors model the attachment (cache_policy_id) today"
   - resource: aws_cloudfront_connection_function
     disposition: model-planned
-    reason: "judged as a planned AwsCloudFrontFunction kind (edge functions incl. connection functions and the key-value store)"
+    reason: "judged as a planned AwsCloudFrontFunction kind (edge functions incl. connection functions and the key-value store); AwsCloudFront models the attachment (connection_function_id) today"
   - resource: aws_cloudfront_connection_group
     disposition: deferred
     reason: "CloudFront multi-tenant distribution set; deferred pending demand"
-  - resource: aws_cloudfront_continuous_deployment_policy
-    disposition: model-planned
-    reason: "CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens"
   - resource: aws_cloudfront_distribution_tenant
     disposition: deferred
     reason: "CloudFront multi-tenant distribution set; deferred pending demand"
   - resource: aws_cloudfront_field_level_encryption_config
     disposition: model-planned
-    reason: "CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens"
+    reason: "account-scoped shared field-level-encryption configuration referenced by many behaviors; judged as a planned AwsCloudFrontFieldLevelEncryption kind together with its profile resource -- AwsCloudFront behaviors model the attachment (field_level_encryption_id) today"
   - resource: aws_cloudfront_field_level_encryption_profile
     disposition: model-planned
-    reason: "CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens"
+    reason: "account-scoped shared field-level-encryption profile (the public-key-to-field binding the config consumes); judged as part of the planned AwsCloudFrontFieldLevelEncryption kind"
   - resource: aws_cloudfront_function
     disposition: model-planned
-    reason: "judged as a planned AwsCloudFrontFunction kind (edge functions incl. connection functions and the key-value store)"
+    reason: "judged as a planned AwsCloudFrontFunction kind (edge functions incl. connection functions and the key-value store); AwsCloudFront behaviors model the attachment (function_associations) today"
   - resource: aws_cloudfront_key_group
     disposition: model-planned
-    reason: "judged as part of the planned AwsCloudFrontFunction kind (key-value stores and keys)"
+    reason: "account-scoped signed-URL/signed-cookie key group referenced by many behaviors (the private-content mechanism, not edge-function surface); judged as a planned AwsCloudFrontKeyGroup kind together with its public keys -- AwsCloudFront behaviors model the attachment (trusted_key_group_ids) today"
   - resource: aws_cloudfront_key_value_store
     disposition: model-planned
     reason: "judged as part of the planned AwsCloudFrontFunction kind (key-value stores and keys)"
@@ -685,22 +682,22 @@ resources:
     reason: "superseded by origin access control, already consumed by AwsCloudFront"
   - resource: aws_cloudfront_origin_request_policy
     disposition: model-planned
-    reason: "CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens"
+    reason: "account-scoped shared origin-request policy referenced by many behaviors across distributions; judged as a planned AwsCloudFrontOriginRequestPolicy kind -- AwsCloudFront behaviors model the attachment (origin_request_policy_id) today"
   - resource: aws_cloudfront_public_key
     disposition: model-planned
-    reason: "CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens"
+    reason: "account-scoped public key consumed by key groups (signed URLs) and field-level encryption profiles; judged as part of the planned AwsCloudFrontKeyGroup kind"
   - resource: aws_cloudfront_realtime_log_config
     disposition: model-planned
-    reason: "CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens"
+    reason: "account-scoped shared real-time log configuration (Kinesis-backed) referenced by many behaviors; judged as a planned AwsCloudFrontRealtimeLogConfig kind -- AwsCloudFront behaviors model the attachment (realtime_log_config_arn) today"
   - resource: aws_cloudfront_response_headers_policy
     disposition: model-planned
-    reason: "CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens"
+    reason: "account-scoped shared response-headers policy referenced by many behaviors across distributions; judged as a planned AwsCloudFrontResponseHeadersPolicy kind -- AwsCloudFront behaviors model the attachment (response_headers_policy_id) today"
   - resource: aws_cloudfront_trust_store
     disposition: model-planned
-    reason: "CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens"
+    reason: "account-scoped shared CA-bundle trust store referenced by many distributions' viewer-mTLS configurations; judged as a planned AwsCloudFrontTrustStore kind -- AwsCloudFront models the attachment (viewer_mtls.trust_store_id) today"
   - resource: aws_cloudfront_vpc_origin
     disposition: model-planned
-    reason: "CloudFront companion surface (policies, key groups, public keys, realtime logs, VPC origins, anycast lists, trust stores, field-level encryption); folds into the existing AwsCloudFront kind as its spec deepens"
+    reason: "account-scoped provisioned VPC origin shareable across distributions (and cross-account); judged as a planned AwsCloudFrontVpcOrigin kind -- AwsCloudFront models the attachment (origins[].vpc_origin.vpc_origin_id) today"
   - resource: aws_cloudfrontkeyvaluestore_key
     disposition: model-planned
     reason: "judged as part of the planned AwsCloudFrontFunction kind (key-value stores and keys)"

@@ -19,10 +19,11 @@ Exactly one of `primary_domain_name` / `imported` drives the mode; validation ru
 
 - **`region`** — where the certificate lives. Regional consumers (ALB, API Gateway, OpenSearch) need it in their own region; **CloudFront only accepts certificates from `us-east-1`**.
 - **`primary_domain_name`** / **`alternate_domain_names`** — the domains covered; wildcards (`*.example.com`) cover one label level. A common pairing is the apex plus its wildcard.
-- **`validation_method`** — `DNS` (recommended; renewals are automatic) or `EMAIL` (re-approval on every renewal). Empty keeps DNS.
+- **`validation_method`** — `DNS` (recommended; renewals are automatic), `EMAIL` (re-approval on every renewal), or `HTTP` (serve a validation token — for domains whose DNS you cannot touch). Empty keeps DNS.
 - **`key_algorithm`** — `RSA_2048` (default), `RSA_3072`, `RSA_4096`, `EC_prime256v1`, `EC_secp384r1`, `EC_secp521r1`. Create-time immutable.
 - **`options`** — Certificate Transparency logging preference (`ENABLED`/`DISABLED`) and exportability (`export: ENABLED` allows exporting the private key for use off-AWS, at an additional AWS charge).
 - **`validation_options`** — per-domain overrides of where the validation request is sent (e.g. EMAIL-validating a subdomain at its parent domain).
+- **`early_renewal_duration`** — for PRIVATE (ACM-PCA) certificates only: start ACM's managed renewal this long before expiry (`P90D` or `2160h`; durations under 60 days have no effect). The certificate ARN stays stable across renewals. Publicly validated certificates renew on ACM's own schedule, and imported certificates never renew.
 
 ## Stack Outputs
 
@@ -34,7 +35,6 @@ Exactly one of `primary_domain_name` / `imported` drives the mode; validation ru
 
 ## Deliberately Not Modeled
 
-- **Terraform's `early_renewal_duration`** — a provisioner-side trigger for ACM's managed renewal; renewal automation belongs to ACM itself, not the resource shape.
 - **Write-only private-key arms** (`private_key_wo`) — the `imported.private_key` field is marked sensitive and handled by the platform's secret machinery; a second write-only arm would be redundant surface.
 
 ## Important Notes
