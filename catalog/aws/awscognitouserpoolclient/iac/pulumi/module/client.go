@@ -7,29 +7,27 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func client(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
+func client(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*cognito.UserPoolClient, error) {
 	spec := locals.Spec
 
 	// The client's cloud name is metadata.name -- the cross-engine naming
-	// basis. Note the client is NOT a taggable AWS resource.
+	// basis. Note the client is NOT a taggable AWS resource. The two booleans
+	// are always sent (both engines state-pin them) so a true->false edit
+	// takes effect instead of silently no-opping.
 	args := &cognito.UserPoolClientArgs{
 		Name:       pulumi.String(locals.Target.Metadata.Name),
 		UserPoolId: pulumi.String(spec.UserPoolId.GetValue()),
-	}
 
-	// ForceNew: confidential (secret-holding) vs public (PKCE) is decided at
-	// creation.
-	if spec.GenerateSecret {
-		args.GenerateSecret = pulumi.BoolPtr(true)
+		// ForceNew: confidential (secret-holding) vs public (PKCE) is decided
+		// at creation.
+		GenerateSecret: pulumi.BoolPtr(spec.GenerateSecret),
+
+		AllowedOauthFlowsUserPoolClient: pulumi.BoolPtr(spec.AllowedOauthFlowsUserPoolClient),
 	}
 
 	// ---------------------------------------------------------------------------
 	// OAuth 2.0 / OIDC contract
 	// ---------------------------------------------------------------------------
-
-	if spec.AllowedOauthFlowsUserPoolClient {
-		args.AllowedOauthFlowsUserPoolClient = pulumi.BoolPtr(true)
-	}
 	if len(spec.AllowedOauthFlows) > 0 {
 		args.AllowedOauthFlows = pulumi.ToStringArray(spec.AllowedOauthFlows)
 	}
@@ -101,8 +99,11 @@ func client(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 		rotation := &cognito.UserPoolClientRefreshTokenRotationArgs{
 			Feature: pulumi.String(spec.RefreshTokenRotation.Feature),
 		}
-		if spec.RefreshTokenRotation.RetryGracePeriodSeconds > 0 {
-			rotation.RetryGracePeriodSeconds = pulumi.IntPtr(int(spec.RefreshTokenRotation.RetryGracePeriodSeconds))
+		// Tri-state: unset leaves the choice to AWS, explicit 0 pins
+		// immediate retirement (grace disabled), 1-60 grants that many
+		// seconds of grace.
+		if spec.RefreshTokenRotation.RetryGracePeriodSeconds != nil {
+			rotation.RetryGracePeriodSeconds = pulumi.IntPtr(int(*spec.RefreshTokenRotation.RetryGracePeriodSeconds))
 		}
 		args.RefreshTokenRotation = rotation
 	}
@@ -151,9 +152,9 @@ func client(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 			analytics.ExternalId = pulumi.StringPtr(ac.ExternalId)
 			analytics.RoleArn = pulumi.StringPtr(ac.RoleArn.GetValue())
 		}
-		if ac.UserDataShared {
-			analytics.UserDataShared = pulumi.BoolPtr(true)
-		}
+		// Always sent (both engines state-pin it) so a true->false edit stops
+		// sharing user data instead of silently no-opping.
+		analytics.UserDataShared = pulumi.BoolPtr(ac.UserDataShared)
 		args.AnalyticsConfiguration = analytics
 	}
 
@@ -163,7 +164,7 @@ func client(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 
 	created, err := cognito.NewUserPoolClient(ctx, locals.Target.Metadata.Name, args, pulumi.Provider(provider))
 	if err != nil {
-		return errors.Wrap(err, "failed to create Cognito user pool client")
+		return nil, errors.Wrap(err, "failed to create Cognito user pool client")
 	}
 
 	// ---------------------------------------------------------------------------
@@ -177,5 +178,5 @@ func client(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	// application configs typically need the pair together.
 	ctx.Export(OpUserPoolId, created.UserPoolId)
 
-	return nil
+	return created, nil
 }

@@ -59,6 +59,14 @@ spec:
     - ALLOW_USER_SRP_AUTH
     - ALLOW_REFRESH_TOKEN_AUTH
   preventUserExistenceErrors: ENABLED
+  riskConfiguration:
+    accountTakeover:
+      highAction:
+        eventAction: MFA_REQUIRED
+        notify: false
+    riskException:
+      skippedIpRanges:
+        - 10.0.0.0/8
 ```
 
 ## Spec Fields
@@ -98,6 +106,39 @@ spec:
 | `spec.analyticsConfiguration.externalId` | `string` |  |  |  |
 | `spec.analyticsConfiguration.roleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.analyticsConfiguration.userDataShared` | `bool` |  |  |  |
+| `spec.riskConfiguration` | `AwsCognitoUserPoolClientRiskConfiguration` |  |  |  |
+| `spec.riskConfiguration.accountTakeover` | `AwsCognitoUserPoolClientAccountTakeoverConfig` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.lowAction` | `AwsCognitoUserPoolClientAccountTakeoverAction` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.lowAction.eventAction` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.lowAction.notify` | `bool` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.mediumAction` | `AwsCognitoUserPoolClientAccountTakeoverAction` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.mediumAction.eventAction` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.mediumAction.notify` | `bool` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.highAction` | `AwsCognitoUserPoolClientAccountTakeoverAction` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.highAction.eventAction` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.highAction.notify` | `bool` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration` | `AwsCognitoUserPoolClientRiskNotifyConfig` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.sourceArn` | `string \| valueFrom` | yes |  | AwsSesEmailIdentity (`status.outputs.identity_arn`) |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.from` | `string` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.replyTo` | `string` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail` | `AwsCognitoUserPoolClientRiskNotifyEmail` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.subject` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.htmlBody` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.textBody` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail` | `AwsCognitoUserPoolClientRiskNotifyEmail` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.subject` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.htmlBody` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.textBody` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail` | `AwsCognitoUserPoolClientRiskNotifyEmail` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.subject` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.htmlBody` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.textBody` | `string` | yes |  |  |
+| `spec.riskConfiguration.compromisedCredentials` | `AwsCognitoUserPoolClientCompromisedCredentialsConfig` |  |  |  |
+| `spec.riskConfiguration.compromisedCredentials.eventAction` | `string` | yes |  |  |
+| `spec.riskConfiguration.compromisedCredentials.eventFilter` | `[]string` |  |  |  |
+| `spec.riskConfiguration.riskException` | `AwsCognitoUserPoolClientRiskExceptionConfig` |  |  |  |
+| `spec.riskConfiguration.riskException.blockedIpRanges` | `[]string` |  |  |  |
+| `spec.riskConfiguration.riskException.skippedIpRanges` | `[]string` |  |  |  |
 
 ## Field Details
 
@@ -306,7 +347,7 @@ rejects the combination.
 
 ### spec.refreshTokenRotation.retryGracePeriodSeconds
 
-`int32`
+`int32` · optional (explicit presence)
 
 How long (seconds) the RETIRED refresh token keeps working after a
 rotation, absorbing clients that lose the response carrying the new token.
@@ -400,6 +441,189 @@ direct role ARN or a reference to an AwsIamRole resource.
 Whether Cognito includes user data (endpoint attributes) in the events
 it publishes.
 
+### spec.riskConfiguration
+
+`AwsCognitoUserPoolClientRiskConfiguration`
+
+- rule: set at least one of account_takeover, compromised_credentials, or risk_exception
+
+### spec.riskConfiguration.accountTakeover
+
+`AwsCognitoUserPoolClientAccountTakeoverConfig`
+
+- rule: set at least one of low_action, medium_action, or high_action
+- rule: notify_configuration requires at least one action with notify enabled
+
+### spec.riskConfiguration.accountTakeover.lowAction
+
+`AwsCognitoUserPoolClientAccountTakeoverAction`
+
+- rule: event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'
+
+### spec.riskConfiguration.accountTakeover.lowAction.eventAction
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.riskConfiguration.accountTakeover.lowAction.notify
+
+`bool`
+
+### spec.riskConfiguration.accountTakeover.mediumAction
+
+`AwsCognitoUserPoolClientAccountTakeoverAction`
+
+- rule: event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'
+
+### spec.riskConfiguration.accountTakeover.mediumAction.eventAction
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.riskConfiguration.accountTakeover.mediumAction.notify
+
+`bool`
+
+### spec.riskConfiguration.accountTakeover.highAction
+
+`AwsCognitoUserPoolClientAccountTakeoverAction`
+
+- rule: event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'
+
+### spec.riskConfiguration.accountTakeover.highAction.eventAction
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.riskConfiguration.accountTakeover.highAction.notify
+
+`bool`
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration
+
+`AwsCognitoUserPoolClientRiskNotifyConfig`
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.sourceArn
+
+`string | valueFrom` · required
+
+- references: AwsSesEmailIdentity (`status.outputs.identity_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSesEmailIdentity, name: <that resource's name>, fieldPath: status.outputs.identity_arn}} -- a bare string does not parse
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.from
+
+`string`
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.replyTo
+
+`string`
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail
+
+`AwsCognitoUserPoolClientRiskNotifyEmail`
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.subject
+
+`string` · required
+
+- rule: {"string":{"minLen":"1","maxLen":"140"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.htmlBody
+
+`string` · required
+
+- rule: {"string":{"minLen":"6","maxLen":"20000"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.textBody
+
+`string` · required
+
+- rule: {"string":{"minLen":"6","maxLen":"20000"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail
+
+`AwsCognitoUserPoolClientRiskNotifyEmail`
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.subject
+
+`string` · required
+
+- rule: {"string":{"minLen":"1","maxLen":"140"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.htmlBody
+
+`string` · required
+
+- rule: {"string":{"minLen":"6","maxLen":"20000"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.textBody
+
+`string` · required
+
+- rule: {"string":{"minLen":"6","maxLen":"20000"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail
+
+`AwsCognitoUserPoolClientRiskNotifyEmail`
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.subject
+
+`string` · required
+
+- rule: {"string":{"minLen":"1","maxLen":"140"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.htmlBody
+
+`string` · required
+
+- rule: {"string":{"minLen":"6","maxLen":"20000"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.textBody
+
+`string` · required
+
+- rule: {"string":{"minLen":"6","maxLen":"20000"}}
+
+### spec.riskConfiguration.compromisedCredentials
+
+`AwsCognitoUserPoolClientCompromisedCredentialsConfig`
+
+- rule: event_action must be 'BLOCK' or 'NO_ACTION'
+- rule: event_filter must contain only 'SIGN_IN', 'PASSWORD_CHANGE', and/or 'SIGN_UP'
+
+### spec.riskConfiguration.compromisedCredentials.eventAction
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.riskConfiguration.compromisedCredentials.eventFilter
+
+`[]string`
+
+### spec.riskConfiguration.riskException
+
+`AwsCognitoUserPoolClientRiskExceptionConfig`
+
+- rule: set at least one of blocked_ip_ranges or skipped_ip_ranges
+- rule: blocked_ip_ranges and skipped_ip_ranges entries must be CIDR notation (e.g. '192.0.2.0/24' or '2001:db8::/32')
+
+### spec.riskConfiguration.riskException.blockedIpRanges
+
+`[]string`
+
+- rule: {"repeated":{"maxItems":"200","items":{"string":{"minLen":"1"}}}}
+
+### spec.riskConfiguration.riskException.skippedIpRanges
+
+`[]string`
+
+- rule: {"repeated":{"maxItems":"200","items":{"string":{"minLen":"1"}}}}
+
 ## Validation Rules
 
 - `allowed_oauth_flows_valid`: allowed_oauth_flows must contain only 'code', 'implicit', or 'client_credentials'
@@ -434,6 +658,7 @@ Fields that can point at another resource's outputs:
 | `spec.userPoolId` | AwsCognitoUserPool | `status.outputs.user_pool_id` |
 | `spec.supportedIdentityProviders` | AwsCognitoIdentityProvider | `status.outputs.provider_name` |
 | `spec.analyticsConfiguration.roleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.sourceArn` | AwsSesEmailIdentity | `status.outputs.identity_arn` |
 
 ## Referenced By
 

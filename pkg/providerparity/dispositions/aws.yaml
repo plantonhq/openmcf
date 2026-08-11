@@ -886,25 +886,19 @@ resources:
     reason: "judged as a planned AwsCognitoIdentityPool kind (identity pools with roles attachments and provider principal tags)"
   - resource: aws_cognito_managed_login_branding
     disposition: model-planned
-    reason: "user-pool companion surface; folds into the existing AwsCognitoUserPool kind as its spec deepens"
+    reason: "judged as a planned AwsCognitoManagedLoginBranding kind: client-scoped managed-login design assets (smithy-JSON settings plus up to 40 binary asset payloads with whole-set replacement semantics) -- a distinct artifact lifecycle, not pool or client configuration"
   - resource: aws_cognito_managed_user_pool_client
     disposition: model-planned
-    reason: "managed clients fold into the existing AwsCognitoUserPoolClient kind as its spec deepens"
-  - resource: aws_cognito_risk_configuration
-    disposition: model-planned
-    reason: "user-pool companion surface; folds into the existing AwsCognitoUserPool kind as its spec deepens"
+    reason: "judged as a planned AwsCognitoManagedUserPoolClient kind: ADOPTS an app client AWS created on the account's behalf (discovers by name pattern, updates in place, no-op delete) -- an adoption lifecycle distinct from AwsCognitoUserPoolClient's create-own lifecycle (the transit-gateway accepter class)"
   - resource: aws_cognito_user
     disposition: deferred
     reason: "Cognito user records are data-plane identity content, not infrastructure"
-  - resource: aws_cognito_user_group
-    disposition: model-planned
-    reason: "user-pool companion surface; folds into the existing AwsCognitoUserPool kind as its spec deepens"
   - resource: aws_cognito_user_in_group
     disposition: deferred
     reason: "Cognito user records are data-plane identity content, not infrastructure"
   - resource: aws_cognito_user_pool_ui_customization
-    disposition: model-planned
-    reason: "user-pool companion surface; folds into the existing AwsCognitoUserPool kind as its spec deepens"
+    disposition: deferred
+    reason: "CSS/image customization for the CLASSIC hosted UI -- AWS's current path is managed login (v2) with its branding designer; the legacy skin surface has no demand signal (revisit on classic-hosted-UI demand)"
   - resource: aws_comprehend_document_classifier
     disposition: deferred
     reason: "Comprehend custom NLP models are imperative training artifacts; deferred"

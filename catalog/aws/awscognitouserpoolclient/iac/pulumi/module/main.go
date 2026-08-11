@@ -18,8 +18,15 @@ func Resources(ctx *pulumi.Context, stackInput *awscognitouserpoolclientv1alpha1
 		return errors.Wrap(err, "failed to create AWS provider")
 	}
 
-	if err := client(ctx, locals, provider); err != nil {
+	createdClient, err := client(ctx, locals, provider)
+	if err != nil {
 		return errors.Wrap(err, "cognito user pool client")
+	}
+
+	// Client-scoped risk configuration (threat protection's automated
+	// responses for this client only)
+	if err := riskConfiguration(ctx, locals, createdClient, provider); err != nil {
+		return errors.Wrap(err, "cognito user pool client risk configuration")
 	}
 
 	return nil

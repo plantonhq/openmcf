@@ -91,7 +91,7 @@ var _ = ginkgo.Describe("AwsCognitoUserPoolClientSpec validations", func() {
 	ginkgo.It("accepts refresh-token rotation with a grace period", func() {
 		spec.RefreshTokenRotation = &AwsCognitoUserPoolClientRefreshTokenRotation{
 			Feature:                 "ENABLED",
-			RetryGracePeriodSeconds: 30,
+			RetryGracePeriodSeconds: proto.Int32(30),
 		}
 		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
@@ -232,9 +232,17 @@ var _ = ginkgo.Describe("AwsCognitoUserPoolClientSpec validations", func() {
 	ginkgo.It("fails when the rotation grace period exceeds 60 seconds", func() {
 		spec.RefreshTokenRotation = &AwsCognitoUserPoolClientRefreshTokenRotation{
 			Feature:                 "ENABLED",
-			RetryGracePeriodSeconds: 61,
+			RetryGracePeriodSeconds: proto.Int32(61),
 		}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts an explicit zero rotation grace period (immediate retirement)", func() {
+		spec.RefreshTokenRotation = &AwsCognitoUserPoolClientRefreshTokenRotation{
+			Feature:                 "ENABLED",
+			RetryGracePeriodSeconds: proto.Int32(0),
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 
 	ginkgo.It("fails when rotation is ENABLED alongside ALLOW_REFRESH_TOKEN_AUTH", func() {
@@ -265,6 +273,53 @@ var _ = ginkgo.Describe("AwsCognitoUserPoolClientSpec validations", func() {
 	ginkgo.It("fails when analytics application ID lacks role wiring", func() {
 		spec.AnalyticsConfiguration = &AwsCognitoUserPoolClientAnalyticsConfig{
 			ApplicationId: "abc123",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Client-scoped risk configuration
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a client-scoped risk configuration", func() {
+		spec.RiskConfiguration = &AwsCognitoUserPoolClientRiskConfiguration{
+			AccountTakeover: &AwsCognitoUserPoolClientAccountTakeoverConfig{
+				HighAction: &AwsCognitoUserPoolClientAccountTakeoverAction{EventAction: "MFA_REQUIRED", Notify: true},
+				NotifyConfiguration: &AwsCognitoUserPoolClientRiskNotifyConfig{
+					SourceArn: strRef("arn:aws:ses:us-west-2:123456789012:identity/security@example.com"),
+				},
+			},
+			RiskException: &AwsCognitoUserPoolClientRiskExceptionConfig{
+				SkippedIpRanges: []string{"10.0.0.0/8"},
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an empty client-scoped risk configuration", func() {
+		spec.RiskConfiguration = &AwsCognitoUserPoolClientRiskConfiguration{}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an account takeover config with no actions", func() {
+		spec.RiskConfiguration = &AwsCognitoUserPoolClientRiskConfiguration{
+			AccountTakeover: &AwsCognitoUserPoolClientAccountTakeoverConfig{},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an invalid client risk event_action", func() {
+		spec.RiskConfiguration = &AwsCognitoUserPoolClientRiskConfiguration{
+			CompromisedCredentials: &AwsCognitoUserPoolClientCompromisedCredentialsConfig{EventAction: "DENY"},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on a non-CIDR client risk exception entry", func() {
+		spec.RiskConfiguration = &AwsCognitoUserPoolClientRiskConfiguration{
+			RiskException: &AwsCognitoUserPoolClientRiskExceptionConfig{
+				BlockedIpRanges: []string{"not-a-cidr"},
+			},
 		}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})

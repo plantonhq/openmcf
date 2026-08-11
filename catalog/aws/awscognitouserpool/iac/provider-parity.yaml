@@ -1,0 +1,146 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_cognito_user_pool:
+    mappings:
+      # The spec hoists single-leaf provider blocks to readable fields; the
+      # wrapper blocks carry no information of their own.
+      - spec: spec.username_case_sensitive
+        arg: username_configuration.case_sensitive
+      - spec: spec.allowed_first_auth_factors
+        arg: sign_in_policy.allowed_first_auth_factors
+      - spec: spec.software_token_mfa_enabled
+        arg: software_token_mfa_configuration.enabled
+      - spec: spec.attributes_require_verification_before_update
+        arg: user_attribute_update_settings.attributes_require_verification_before_update
+      - spec: spec.user_pool_add_ons.custom_auth_mode
+        arg: user_pool_add_ons.advanced_security_additional_flows.custom_auth_mode
+      - spec: spec.allow_admin_create_user_only
+        arg: admin_create_user_config.allow_admin_create_user_only
+      # The spec names blocks for what they carry; exact matching resumes
+      # below each subtree.
+      - spec: spec.account_recovery_mechanisms
+        arg: account_recovery_setting.recovery_mechanism
+      - spec: spec.invite_message_template
+        arg: admin_create_user_config.invite_message_template
+      - spec: spec.email_mfa
+        arg: email_mfa_configuration
+      - spec: spec.web_authn
+        arg: web_authn_configuration
+      - spec: spec.custom_attributes
+        arg: schema
+      # The constraint pairs flatten the provider's per-type wrapper blocks
+      # onto typed leaves (the type gate lives in the module).
+      - spec: spec.custom_attributes.string_min_length
+        arg: schema.string_attribute_constraints.min_length
+      - spec: spec.custom_attributes.string_max_length
+        arg: schema.string_attribute_constraints.max_length
+      - spec: spec.custom_attributes.number_min_value
+        arg: schema.number_attribute_constraints.min_value
+      - spec: spec.custom_attributes.number_max_value
+        arg: schema.number_attribute_constraints.max_value
+    exclusions:
+      # Identity is the kind's own contract.
+      - arg: name
+        reason: derived from metadata.name -- never free-form user surface
+      # The legacy top-level verification trio predates
+      # verification_message_template and the provider declares them
+      # ConflictsWith its fields -- one spelling is modeled, the modern one.
+      - arg: email_verification_message
+        reason: legacy duplicate of verification_message_template.email_message (provider-declared conflict) -- the template block is the single modeled spelling
+      - arg: email_verification_subject
+        reason: legacy duplicate of verification_message_template.email_subject (provider-declared conflict) -- the template block is the single modeled spelling
+      - arg: sms_verification_message
+        reason: legacy duplicate of verification_message_template.sms_message (provider-declared conflict) -- the template block is the single modeled spelling
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  # Hosted-UI domain -- one per pool, folded (the domain string is its
+  # identity and it shares the pool's lifecycle).
+  aws_cognito_user_pool_domain:
+    specRoot: spec.domain
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: user_pool_id
+        reason: module-wired to the pool this kind creates -- never free-form user surface
+
+  # Log delivery -- AWS models it as ONE pool-scoped configuration carrying
+  # every route; the spec's per-entry destination leaves flatten the
+  # provider's single-member destination blocks.
+  aws_cognito_log_delivery_configuration:
+    mappings:
+      - spec: spec.log_configurations.cloudwatch_log_group_arn
+        arg: log_configurations.cloud_watch_logs_configuration.log_group_arn
+      - spec: spec.log_configurations.firehose_stream_arn
+        arg: log_configurations.firehose_configuration.stream_arn
+      - spec: spec.log_configurations.s3_bucket_arn
+        arg: log_configurations.s3_configuration.bucket_arn
+    exclusions:
+      - arg: user_pool_id
+        reason: module-wired to the pool this kind creates -- never free-form user surface
+
+  # User groups -- one aws_cognito_user_group per spec.user_groups entry.
+  # Pool-scoped configuration with no independent lifecycle; membership is
+  # data-plane content (aws_cognito_user / aws_cognito_user_in_group stay
+  # deferred in the dispositions ledger).
+  aws_cognito_user_group:
+    specRoot: spec.user_groups
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: user_pool_id
+        reason: module-wired to the pool this kind creates -- never free-form user surface
+
+  # Threat protection's automated responses. This kind is the PRIMARY owner
+  # of aws_cognito_risk_configuration and renders the POOL-WIDE configuration
+  # (no client_id); the client-scoped configuration is delivered by the
+  # AwsCognitoUserPoolClient kind from its own spec.
+  aws_cognito_risk_configuration:
+    specRoot: spec.risk_configuration
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The spec flattens the provider's single-purpose actions wrapper; the
+      # per-level actions and the notify templates keep their shape below
+      # each subtree.
+      - spec: spec.risk_configuration.account_takeover.low_action
+        arg: account_takeover_risk_configuration.actions.low_action
+      - spec: spec.risk_configuration.account_takeover.medium_action
+        arg: account_takeover_risk_configuration.actions.medium_action
+      - spec: spec.risk_configuration.account_takeover.high_action
+        arg: account_takeover_risk_configuration.actions.high_action
+      - spec: spec.risk_configuration.account_takeover.notify_configuration
+        arg: account_takeover_risk_configuration.notify_configuration
+      - spec: spec.risk_configuration.compromised_credentials.event_action
+        arg: compromised_credentials_risk_configuration.actions.event_action
+      - spec: spec.risk_configuration.compromised_credentials.event_filter
+        arg: compromised_credentials_risk_configuration.event_filter
+      # The spec names the lists for what they hold; the provider suffixes
+      # "_list".
+      - spec: spec.risk_configuration.risk_exception.blocked_ip_ranges
+        arg: risk_exception_configuration.blocked_ip_range_list
+      - spec: spec.risk_configuration.risk_exception.skipped_ip_ranges
+        arg: risk_exception_configuration.skipped_ip_range_list
+    exclusions:
+      - arg: user_pool_id
+        reason: module-wired to the pool this kind creates -- never free-form user surface
+      - arg: client_id
+        reason: scope selector -- this kind renders the pool-wide configuration (client_id absent by AWS's contract); client-scoped configurations are the AwsCognitoUserPoolClient kind's surface, rendered from its own spec with its own client ID

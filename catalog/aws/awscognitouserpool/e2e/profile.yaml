@@ -8,13 +8,19 @@ spec:
   # itself is seconds; the prefix domain resolves in about a minute), verify
   # (DescribeUserPool), destroy (the module removes the domain before the
   # pool; Cognito deletes are synchronous), and verify-destroyed on both
-  # provisioners. SES-dependent arms (DEVELOPER email, email MFA), SMS arms
-  # (SNS caller role), PLUS-tier threat protection, log delivery, and the
-  # custom-domain arm (needs owned DNS + a us-east-1 ACM certificate) are
-  # excluded from the live lane; their wiring is proven by the offline gate.
+  # provisioners. The user-groups fold is a live arm (free, dependency-free
+  # without role ARNs). SES-dependent arms (DEVELOPER email, email MFA), SMS
+  # arms (SNS caller role), the custom-domain arm (needs owned DNS + a
+  # us-east-1 ACM certificate), log delivery, and the PLUS-tier threat
+  # protection + risk-configuration arm (billing posture unverified; the
+  # 04-threat-protected preset is its offline fixture) are excluded from the
+  # live lane; their wiring is proven by the offline gate.
+  #
+  # pending_proof: the Cognito family depth closure landed the user-groups
+  # and pool-wide risk-configuration folds, three Pulumi send-convergence
+  # repairs (deletion_protection, schema.required, allow_admin_create_user_only
+  # now state-pinned), and the SES reference wiring -- the live lane must
+  # re-prove both engines at the new surface.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 20

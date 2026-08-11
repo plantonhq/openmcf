@@ -7,6 +7,7 @@ go_library(
         "locals.go",
         "main.go",
         "outputs.go",
+        "risk_configuration.go",
     ],
     importpath = "github.com/plantonhq/planton/catalog/aws/awscognitouserpoolclient/iac/pulumi/module",
     visibility = ["//visibility:public"],

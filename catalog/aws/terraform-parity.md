@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 243 |
-| Spec fields authored across all kinds | 4316 |
+| Distinct provider resources consumed | 245 |
+| Spec fields authored across all kinds | 4364 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**63 of 112 kinds are at total accounting; 75 proven live.**
+**67 of 112 kinds are at total accounting; 78 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -62,18 +62,18 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsBatchJobDefinition | 67 | 12 | 0 | 0 | 98 | ❌ | ✅ pulumi, terraform |
 | AwsBatchJobQueue | 12 | 5 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
 | AwsBatchSchedulingPolicy | 8 | 1 | 0 | 0 | 11 | ❌ | ✅ pulumi, terraform |
-| AwsCertManagerCert | 18 | 7 | 7 | 4 | 0 | ✅ | — |
+| AwsCertManagerCert | 18 | 7 | 7 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsClientVpn | 47 | 28 | 0 | 0 | 32 | ❌ | — |
-| AwsCloudFront | 126 | 32 | 88 | 6 | 0 | ✅ | — |
+| AwsCloudFront | 126 | 32 | 88 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudwatchAlarm | 39 | 24 | 0 | 0 | 27 | ❌ | ✅ pulumi, terraform |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsCloudwatchLogGroup | 36 | 9 | 0 | 0 | 45 | ❌ | ✅ pulumi, terraform |
 | AwsCodeBuildProject | 115 | 97 | 11 | 7 | 0 | ✅ | — |
 | AwsCodePipeline | 84 | 4 | 75 | 5 | 0 | ✅ | — |
-| AwsCognitoIdentityProvider | 7 | 6 | 0 | 0 | 32 | ❌ | ✅ pulumi, terraform |
-| AwsCognitoResourceServer | 6 | 4 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
-| AwsCognitoUserPool | 91 | 53 | 0 | 0 | 68 | ❌ | ✅ pulumi, terraform |
-| AwsCognitoUserPoolClient | 31 | 30 | 0 | 0 | 1 | ❌ | ✅ pulumi, terraform |
+| AwsCognitoIdentityProvider | 7 | 6 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCognitoResourceServer | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCognitoUserPool | 122 | 59 | 52 | 11 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCognitoUserPoolClient | 56 | 30 | 23 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | — |
 | AwsDynamodb | 71 | 27 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
 | AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | — |
@@ -112,7 +112,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsIamRole | 16 | 5 | 0 | 0 | 20 | ❌ | ✅ pulumi, terraform |
 | AwsIamUser | 15 | 3 | 4 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
-| AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | — |
+| AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsKinesisStream | 17 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
 | AwsKinesisStreamConsumer | 8 | 3 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
 | AwsKmsKey | 29 | 15 | 6 | 8 | 0 | ✅ | ✅ pulumi, terraform |
@@ -170,11 +170,11 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 243 | consumed by a kind's Terraform module today |
+| Modeled | 245 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 12 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 779 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 528 | deliberately not offered, each with the recorded reason |
+| Planned | 776 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 529 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -183,7 +183,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (243)
+### Modeled (245)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -238,6 +238,8 @@ rather than trusted.
 | `aws_cognito_identity_provider` | consumed by AwsCognitoIdentityProvider |
 | `aws_cognito_log_delivery_configuration` | consumed by AwsCognitoUserPool |
 | `aws_cognito_resource_server` | consumed by AwsCognitoResourceServer |
+| `aws_cognito_risk_configuration` | consumed by AwsCognitoUserPool, AwsCognitoUserPoolClient |
+| `aws_cognito_user_group` | consumed by AwsCognitoUserPool |
 | `aws_cognito_user_pool` | consumed by AwsCognitoUserPool |
 | `aws_cognito_user_pool_client` | consumed by AwsCognitoUserPoolClient |
 | `aws_cognito_user_pool_domain` | consumed by AwsCognitoUserPool |
@@ -448,7 +450,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (779)
+### Planned (776)
 
 | Resource | Recorded reason |
 |---|---|
@@ -634,11 +636,8 @@ rather than trusted.
 | `aws_cognito_identity_pool` | judged as a planned AwsCognitoIdentityPool kind (identity pools with roles attachments and provider principal tags) |
 | `aws_cognito_identity_pool_provider_principal_tag` | judged as a planned AwsCognitoIdentityPool kind (identity pools with roles attachments and provider principal tags) |
 | `aws_cognito_identity_pool_roles_attachment` | judged as a planned AwsCognitoIdentityPool kind (identity pools with roles attachments and provider principal tags) |
-| `aws_cognito_managed_login_branding` | user-pool companion surface; folds into the existing AwsCognitoUserPool kind as its spec deepens |
-| `aws_cognito_managed_user_pool_client` | managed clients fold into the existing AwsCognitoUserPoolClient kind as its spec deepens |
-| `aws_cognito_risk_configuration` | user-pool companion surface; folds into the existing AwsCognitoUserPool kind as its spec deepens |
-| `aws_cognito_user_group` | user-pool companion surface; folds into the existing AwsCognitoUserPool kind as its spec deepens |
-| `aws_cognito_user_pool_ui_customization` | user-pool companion surface; folds into the existing AwsCognitoUserPool kind as its spec deepens |
+| `aws_cognito_managed_login_branding` | judged as a planned AwsCognitoManagedLoginBranding kind: client-scoped managed-login design assets (smithy-JSON settings plus up to 40 binary asset payloads with whole-set replacement semantics) -- a distinct artifact lifecycle, not pool or client configuration |
+| `aws_cognito_managed_user_pool_client` | judged as a planned AwsCognitoManagedUserPoolClient kind: ADOPTS an app client AWS created on the account's behalf (discovers by name pattern, updates in place, no-op delete) -- an adoption lifecycle distinct from AwsCognitoUserPoolClient's create-own lifecycle (the transit-gateway accepter class) |
 | `aws_config_aggregate_authorization` | judged as a planned AwsConfigRecorder kind (recorders, delivery channels, retention, aggregators) |
 | `aws_config_config_rule` | judged as a planned AwsConfigRule kind (managed/custom/organization rules, remediation, conformance packs) |
 | `aws_config_configuration_aggregator` | judged as a planned AwsConfigRecorder kind (recorders, delivery channels, retention, aggregators) |
@@ -1232,7 +1231,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (528)
+### Deferred (529)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1306,6 +1305,7 @@ rather than trusted.
 | `aws_codepipeline_webhook` | the legacy V1 webhook trigger mechanism (per-pipeline GitHub-OAuth/HMAC push endpoint); V2 pipelines use native CodeConnections triggers, which AwsCodePipeline models in full -- the spec records webhooks as deliberately excluded; revisit only on V1-pipeline demand |
 | `aws_cognito_user` | Cognito user records are data-plane identity content, not infrastructure |
 | `aws_cognito_user_in_group` | Cognito user records are data-plane identity content, not infrastructure |
+| `aws_cognito_user_pool_ui_customization` | CSS/image customization for the CLASSIC hosted UI -- AWS's current path is managed login (v2) with its branding designer; the legacy skin surface has no demand signal (revisit on classic-hosted-UI demand) |
 | `aws_comprehend_document_classifier` | Comprehend custom NLP models are imperative training artifacts; deferred |
 | `aws_comprehend_entity_recognizer` | Comprehend custom NLP models are imperative training artifacts; deferred |
 | `aws_computeoptimizer_enrollment_status` | Compute Optimizer is a read-mostly advisory service; deferred |

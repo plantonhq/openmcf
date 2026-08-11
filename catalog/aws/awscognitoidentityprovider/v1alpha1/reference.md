@@ -451,6 +451,7 @@ Maximum 50 identifiers, each 1-40 characters.
 - `saml_metadata_required`: SAML providers must set metadata_file or metadata_url
 - `saml_metadata_exclusive`: SAML providers must set only one of metadata_file or metadata_url, not both
 - `oidc_attributes_request_method_valid`: OIDC attributes_request_method must be 'GET' or 'POST'
+- `social_provider_name_matches_type`: for social provider types the provider_name must equal the provider_type (e.g. type 'Google' requires name 'Google'); custom names are only supported for OIDC and SAML providers
 
 ## Outputs
 

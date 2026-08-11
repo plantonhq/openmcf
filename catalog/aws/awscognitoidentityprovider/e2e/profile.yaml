@@ -12,9 +12,12 @@ spec:
   # performs live discovery against oidc_issuer at create, which needs a real
   # issuer); its wiring is proven by the offline gate and the SAML/OIDC CEL
   # spec tests.
+  #
+  # pending_proof: the Cognito family depth closure added the Pulumi
+  # ignore-changes guard on the AWS-auto-populated SAML
+  # ActiveEncryptionCertificate key (mirroring Terraform's lifecycle rule)
+  # and the social-name CEL -- the live lane must re-prove both engines
+  # (first live pass of the ignoreChanges map-key property path).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 20

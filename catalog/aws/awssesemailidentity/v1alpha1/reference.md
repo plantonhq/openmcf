@@ -246,6 +246,16 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.configurationSet` | AwsSesConfigurationSet | `status.outputs.configuration_set_name` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsCognitoUserPool | `spec.emailConfiguration.sourceArn` | `status.outputs.identity_arn` |
+| AwsCognitoUserPool | `spec.riskConfiguration.accountTakeover.notifyConfiguration.sourceArn` | `status.outputs.identity_arn` |
+| AwsCognitoUserPoolClient | `spec.riskConfiguration.accountTakeover.notifyConfiguration.sourceArn` | `status.outputs.identity_arn` |
+
 ## See Also
 
 - [Overview](../README.md)

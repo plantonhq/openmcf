@@ -232,6 +232,15 @@ message AwsCognitoUserPoolSpec {
   // audit-only logging this requires the PLUS feature tier.
   AwsCognitoUserPoolAddOns user_pool_add_ons = 25;
 
+  // Pool-wide risk configuration for threat protection: automated responses
+  // to account-takeover and compromised-credentials risk, notification
+  // templates, and IP allow/block exceptions. Applies to every app client
+  // that does not carry its own client-scoped risk configuration (a client
+  // sets that on the AwsCognitoUserPoolClient spec). Requires threat
+  // protection to be active (`user_pool_add_ons.advanced_security_mode` of
+  // "AUDIT" or "ENFORCED"); automated responses act only in ENFORCED mode.
+  AwsCognitoUserPoolRiskConfiguration risk_configuration = 28;
+
   // ---------------------------------------------------------------------------
   // Log delivery
   // ---------------------------------------------------------------------------
@@ -256,8 +265,37 @@ message AwsCognitoUserPoolSpec {
   AwsCognitoUserPoolDomainConfig domain = 27;
 
   // ---------------------------------------------------------------------------
+  // User groups
+  // ---------------------------------------------------------------------------
+
+  // User groups in this pool. Groups organize users for authorization: a
+  // user's group memberships appear in the "cognito:groups" claim of their
+  // tokens, and a group's IAM role flows into credentials vended through
+  // identity-pool federation. Groups are pool-scoped configuration with no
+  // independent AWS lifecycle, so they live here rather than as a separate
+  // component. Users are ASSIGNED to groups at runtime (admin API) -- group
+  // membership is data-plane content, not infrastructure.
+  repeated AwsCognitoUserPoolUserGroup user_groups = 29;
+
+  // ---------------------------------------------------------------------------
   // CEL validations
   // ---------------------------------------------------------------------------
+
+  // Group names must be unique within the pool.
+  option (buf.validate.message).cel = {
+    id: "user_group_names_unique"
+    message: "user_groups must have unique name values"
+    expression: "this.user_groups.map(g, g.name).unique()"
+  };
+
+  // Risk configuration is dead config without threat protection active --
+  // AWS evaluates risk (and honors this configuration) only when advanced
+  // security is AUDIT or ENFORCED.
+  option (buf.validate.message).cel = {
+    id: "risk_configuration_requires_threat_protection"
+    message: "risk_configuration requires user_pool_add_ons.advanced_security_mode to be 'AUDIT' or 'ENFORCED'"
+    expression: "!has(this.risk_configuration) || (has(this.user_pool_add_ons) && this.user_pool_add_ons.advanced_security_mode in ['AUDIT', 'ENFORCED'])"
+  };
 
   // username_attributes and alias_attributes are mutually exclusive.
   option (buf.validate.message).cel = {
@@ -401,16 +439,19 @@ message AwsCognitoUserPoolPasswordPolicy {
   // Require at least one special character.
   bool require_symbols = 5;
 
-  // Number of previous passwords a new password must differ from. Range: 0-24
-  // (0 disables history checking). Password history requires the pool to be on
-  // the ESSENTIALS tier or higher.
+  // Number of previous passwords a new password must differ from. Range: 0-24.
+  // 0 is AWS's default posture (history checking off), so leaving this unset
+  // and setting 0 are the same policy. Password history requires the pool to
+  // be on the ESSENTIALS tier or higher.
   int32 password_history_size = 6 [(buf.validate.field).int32 = {
     gte: 0
     lte: 24
   }];
 
-  // Number of days temporary passwords (admin-created) are valid.
-  // Range: 0-365 (0 means no expiration). AWS default: 7.
+  // Number of days temporary passwords (admin-created) are valid. Range:
+  // 0-365. AWS default: 7 -- and AWS treats a submitted 0 as null, applying
+  // that default, so 0 is NOT "no expiration"; there is no way to make
+  // temporary passwords permanent. Leaving this unset keeps the 7-day default.
   int32 temporary_password_validity_days = 7 [(buf.validate.field).int32 = {
     gte: 0
     lte: 365
@@ -508,9 +549,13 @@ message AwsCognitoUserPoolEmailConfig {
   string email_sending_account = 1;
 
   // SES verified identity ARN for sending emails. Required when
-  // `email_sending_account` is "DEVELOPER". Example:
+  // `email_sending_account` is "DEVELOPER". Accepts a direct identity ARN or
+  // a reference to an AwsSesEmailIdentity resource. Example:
   // "arn:aws:ses:us-east-1:123456789012:identity/noreply@example.com"
-  dev.planton.shared.foreignkey.v1.StringValueOrRef source_arn = 2;
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSesEmailIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_arn"
+  ];
 
   // "From" email address shown to recipients. Only applicable when using
   // DEVELOPER mode with SES. Example: "No Reply <noreply@example.com>"
@@ -520,8 +565,13 @@ message AwsCognitoUserPoolEmailConfig {
   // instead of the "from" address.
   string reply_to_email_address = 4;
 
-  // SES configuration set name for tracking email delivery metrics.
-  string configuration_set = 5;
+  // SES configuration set for tracking email delivery metrics (opens, bounces,
+  // complaints). Accepts a direct configuration-set name or a reference to an
+  // AwsSesConfigurationSet resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef configuration_set = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSesConfigurationSet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.configuration_set_name"
+  ];
 
   // email_sending_account valid values.
   option (buf.validate.message).cel = {
@@ -973,4 +1023,236 @@ message AwsCognitoUserPoolDomainConfig {
     gte: 1
     lte: 2
   }];
+}
+
+// AwsCognitoUserPoolUserGroup defines one user group in the pool. Group
+// membership surfaces in the "cognito:groups" token claim, and the group's
+// IAM role is the role identity-pool federation vends to members.
+message AwsCognitoUserPoolUserGroup {
+  // Group name. Unique within the pool. 1-128 characters. Renaming a group
+  // replaces it (AWS has no rename API) -- memberships do not survive.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // Human-readable purpose of the group. Up to 2048 characters.
+  string description = 2 [(buf.validate.field).string.max_len = 2048];
+
+  // Priority when a user belongs to multiple groups: the LOWEST value wins
+  // for the "cognito:preferred_role" claim. Note an AWS/provider asymmetry:
+  // AWS accepts precedence 0 (the strongest priority) and defaults to null,
+  // but the Terraform provider's zero-value gating cannot send an explicit 0
+  // -- through either engine -- so 0 here means "no precedence" (AWS null).
+  // Use 1 as the strongest expressible priority.
+  int32 precedence = 3 [(buf.validate.field).int32.gte = 0];
+
+  // The IAM role whose ARN lands in members' "cognito:roles" and
+  // "cognito:preferred_role" claims (and is assumable through identity-pool
+  // federation). Accepts a direct role ARN or a reference to an AwsIamRole
+  // resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+}
+
+// AwsCognitoUserPoolRiskConfiguration configures threat protection's
+// automated responses. AWS applies a pool-wide configuration (this message)
+// to every app client unless a client carries its own client-scoped
+// configuration (set on the AwsCognitoUserPoolClient spec). At least one of
+// the three arms must be configured.
+message AwsCognitoUserPoolRiskConfiguration {
+  // Automated responses to sign-in attempts Cognito assesses as possible
+  // account takeover, by risk level, plus the notification templates for
+  // "notify the user" actions.
+  AwsCognitoUserPoolAccountTakeoverConfig account_takeover = 1;
+
+  // Automated response when Cognito detects the presented credentials in a
+  // known-compromised set.
+  AwsCognitoUserPoolCompromisedCredentialsConfig compromised_credentials = 2;
+
+  // IP-range exceptions that bypass or force the risk decision.
+  AwsCognitoUserPoolRiskExceptionConfig risk_exception = 3;
+
+  // AWS requires at least one arm in a risk configuration.
+  option (buf.validate.message).cel = {
+    id: "risk_configuration_at_least_one_arm"
+    message: "set at least one of account_takeover, compromised_credentials, or risk_exception"
+    expression: "has(this.account_takeover) || has(this.compromised_credentials) || has(this.risk_exception)"
+  };
+}
+
+// AwsCognitoUserPoolAccountTakeoverConfig assigns an automated response to
+// each account-takeover risk level and configures the notification emails
+// those responses can send.
+message AwsCognitoUserPoolAccountTakeoverConfig {
+  // Response to a LOW-risk assessment.
+  AwsCognitoUserPoolAccountTakeoverAction low_action = 1;
+
+  // Response to a MEDIUM-risk assessment.
+  AwsCognitoUserPoolAccountTakeoverAction medium_action = 2;
+
+  // Response to a HIGH-risk assessment.
+  AwsCognitoUserPoolAccountTakeoverAction high_action = 3;
+
+  // SES sending configuration and message templates for the notification
+  // emails sent when an action has notify enabled. Required by AWS when any
+  // action notifies the user.
+  AwsCognitoUserPoolRiskNotifyConfig notify_configuration = 4;
+
+  // An account-takeover configuration with no action assigned is dead
+  // config -- AWS evaluates risk but has nothing to do with the verdict.
+  option (buf.validate.message).cel = {
+    id: "account_takeover_at_least_one_action"
+    message: "set at least one of low_action, medium_action, or high_action"
+    expression: "has(this.low_action) || has(this.medium_action) || has(this.high_action)"
+  };
+
+  // Notification templates without a notifying action are dead config.
+  option (buf.validate.message).cel = {
+    id: "notify_configuration_requires_notifying_action"
+    message: "notify_configuration requires at least one action with notify enabled"
+    expression: "!has(this.notify_configuration) || (has(this.low_action) && this.low_action.notify) || (has(this.medium_action) && this.medium_action.notify) || (has(this.high_action) && this.high_action.notify)"
+  };
+}
+
+// AwsCognitoUserPoolAccountTakeoverAction is the automated response for one
+// account-takeover risk level.
+message AwsCognitoUserPoolAccountTakeoverAction {
+  // The response Cognito takes (acts only in ENFORCED mode; AUDIT gathers
+  // metrics without acting):
+  // - "BLOCK": reject the sign-in attempt.
+  // - "MFA_IF_CONFIGURED": require MFA when the user has a factor set up,
+  //   otherwise allow the attempt.
+  // - "MFA_REQUIRED": require MFA; users without a factor are blocked.
+  // - "NO_ACTION": allow the attempt (pair with notify to warn the user).
+  string event_action = 1 [(buf.validate.field).required = true];
+
+  // Whether Cognito emails the user about the event using the templates in
+  // notify_configuration.
+  bool notify = 2;
+
+  // event_action valid values.
+  option (buf.validate.message).cel = {
+    id: "account_takeover_event_action_valid"
+    message: "event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'"
+    expression: "this.event_action in ['BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', 'NO_ACTION']"
+  };
+}
+
+// AwsCognitoUserPoolRiskNotifyConfig configures the SES identity and message
+// templates threat protection uses to notify users of risky sign-in events.
+message AwsCognitoUserPoolRiskNotifyConfig {
+  // The SES identity Cognito sends notification emails from. Accepts a
+  // direct identity ARN or a reference to an AwsSesEmailIdentity resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSesEmailIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_arn"
+  ];
+
+  // "From" address shown on notification emails. When omitted, AWS derives
+  // it from the source identity.
+  string from = 2;
+
+  // Reply-to address on notification emails.
+  string reply_to = 3;
+
+  // Template for the "we blocked a sign-in attempt" notification.
+  AwsCognitoUserPoolRiskNotifyEmail block_email = 4;
+
+  // Template for the "we required MFA on a sign-in attempt" notification.
+  AwsCognitoUserPoolRiskNotifyEmail mfa_email = 5;
+
+  // Template for the "we observed a risky sign-in attempt" (no action taken)
+  // notification.
+  AwsCognitoUserPoolRiskNotifyEmail no_action_email = 6;
+}
+
+// AwsCognitoUserPoolRiskNotifyEmail is one notification email template.
+message AwsCognitoUserPoolRiskNotifyEmail {
+  // Email subject. 1-140 characters.
+  string subject = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 140
+  }];
+
+  // HTML email body. 6-20000 characters.
+  string html_body = 2 [(buf.validate.field).string = {
+    min_len: 6
+    max_len: 20000
+  }];
+
+  // Plain-text email body. 6-20000 characters.
+  string text_body = 3 [(buf.validate.field).string = {
+    min_len: 6
+    max_len: 20000
+  }];
+}
+
+// AwsCognitoUserPoolCompromisedCredentialsConfig configures the automated
+// response when a user signs in (or up, or changes their password) with
+// credentials Cognito finds in a known-compromised set.
+message AwsCognitoUserPoolCompromisedCredentialsConfig {
+  // The response Cognito takes (acts only in ENFORCED mode):
+  // - "BLOCK": reject the attempt.
+  // - "NO_ACTION": allow the attempt (still logged/audited).
+  string event_action = 1 [(buf.validate.field).required = true];
+
+  // Which authentication events are checked against the compromised set.
+  // When empty, AWS checks all supported events. Valid values: "SIGN_IN",
+  // "PASSWORD_CHANGE", "SIGN_UP".
+  repeated string event_filter = 2;
+
+  // event_action valid values.
+  option (buf.validate.message).cel = {
+    id: "compromised_credentials_event_action_valid"
+    message: "event_action must be 'BLOCK' or 'NO_ACTION'"
+    expression: "this.event_action in ['BLOCK', 'NO_ACTION']"
+  };
+
+  // event_filter valid values.
+  option (buf.validate.message).cel = {
+    id: "compromised_credentials_event_filter_valid"
+    message: "event_filter must contain only 'SIGN_IN', 'PASSWORD_CHANGE', and/or 'SIGN_UP'"
+    expression: "this.event_filter.all(f, f in ['SIGN_IN', 'PASSWORD_CHANGE', 'SIGN_UP'])"
+  };
+}
+
+// AwsCognitoUserPoolRiskExceptionConfig lists IP ranges that override risk
+// evaluation entirely.
+message AwsCognitoUserPoolRiskExceptionConfig {
+  // Always-BLOCK list: authentication requests from these CIDR ranges are
+  // rejected regardless of risk assessment. Up to 200 entries.
+  repeated string blocked_ip_ranges = 1 [(buf.validate.field).repeated = {
+    max_items: 200
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // Always-ALLOW list: risk detection is skipped for these CIDR ranges.
+  // Up to 200 entries.
+  repeated string skipped_ip_ranges = 2 [(buf.validate.field).repeated = {
+    max_items: 200
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // A risk-exception arm with neither list is dead config.
+  option (buf.validate.message).cel = {
+    id: "risk_exception_at_least_one_list"
+    message: "set at least one of blocked_ip_ranges or skipped_ip_ranges"
+    expression: "this.blocked_ip_ranges.size() > 0 || this.skipped_ip_ranges.size() > 0"
+  };
+
+  // Entries must be CIDR notation (IPv4 or IPv6) -- an address with a
+  // prefix length.
+  option (buf.validate.message).cel = {
+    id: "risk_exception_cidr_format"
+    message: "blocked_ip_ranges and skipped_ip_ranges entries must be CIDR notation (e.g. '192.0.2.0/24' or '2001:db8::/32')"
+    expression: "this.blocked_ip_ranges.all(c, c.matches('^[0-9a-fA-F:.]+/[0-9]{1,3}$')) && this.skipped_ip_ranges.all(c, c.matches('^[0-9a-fA-F:.]+/[0-9]{1,3}$'))"
+  };
 }

@@ -439,6 +439,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsCognitoUserPool | `spec.emailConfiguration.configurationSet` | `status.outputs.configuration_set_name` |
 | AwsSesEmailIdentity | `spec.configurationSet` | `status.outputs.configuration_set_name` |
 
 ## See Also

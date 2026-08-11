@@ -466,6 +466,25 @@ var _ = ginkgo.Describe("AwsCognitoUserPoolSpec validations", func() {
 	})
 
 	// -------------------------------------------------------------------------
+	// CEL: log delivery value domains
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails on an invalid log_level", func() {
+		spec.LogConfigurations = []*AwsCognitoUserPoolLogConfiguration{
+			{EventSource: "userNotification", LogLevel: "DEBUG", CloudwatchLogGroupArn: strRef("arn:aws:logs:us-west-2:1:log-group:x")},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an invalid custom_auth_mode value", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{
+			AdvancedSecurityMode: "ENFORCED",
+			CustomAuthMode:       "OFF",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
 	// CEL: domain
 	// -------------------------------------------------------------------------
 
@@ -477,5 +496,156 @@ var _ = ginkgo.Describe("AwsCognitoUserPoolSpec validations", func() {
 	ginkgo.It("accepts a prefix domain without a certificate", func() {
 		spec.Domain = &AwsCognitoUserPoolDomainConfig{Domain: "myapp-auth"}
 		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// User groups
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts user groups with roles and precedence", func() {
+		spec.UserGroups = []*AwsCognitoUserPoolUserGroup{
+			{Name: "admins", Description: "Administrators", Precedence: 1, RoleArn: strRef("arn:aws:iam::123456789012:role/admins")},
+			{Name: "readers"},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on duplicate user group names", func() {
+		spec.UserGroups = []*AwsCognitoUserPoolUserGroup{
+			{Name: "admins"},
+			{Name: "admins"},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an empty user group name", func() {
+		spec.UserGroups = []*AwsCognitoUserPoolUserGroup{{Name: ""}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Risk configuration
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a full risk configuration with threat protection active", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{AdvancedSecurityMode: "ENFORCED"}
+		spec.RiskConfiguration = &AwsCognitoUserPoolRiskConfiguration{
+			AccountTakeover: &AwsCognitoUserPoolAccountTakeoverConfig{
+				HighAction:   &AwsCognitoUserPoolAccountTakeoverAction{EventAction: "BLOCK", Notify: true},
+				MediumAction: &AwsCognitoUserPoolAccountTakeoverAction{EventAction: "MFA_IF_CONFIGURED", Notify: true},
+				NotifyConfiguration: &AwsCognitoUserPoolRiskNotifyConfig{
+					SourceArn: strRef("arn:aws:ses:us-west-2:123456789012:identity/security@example.com"),
+					BlockEmail: &AwsCognitoUserPoolRiskNotifyEmail{
+						Subject:  "Sign-in attempt blocked",
+						HtmlBody: "<p>We blocked a risky sign-in attempt on your account.</p>",
+						TextBody: "We blocked a risky sign-in attempt on your account.",
+					},
+				},
+			},
+			CompromisedCredentials: &AwsCognitoUserPoolCompromisedCredentialsConfig{
+				EventAction: "BLOCK",
+				EventFilter: []string{"SIGN_IN", "SIGN_UP"},
+			},
+			RiskException: &AwsCognitoUserPoolRiskExceptionConfig{
+				BlockedIpRanges: []string{"192.0.2.0/24"},
+				SkippedIpRanges: []string{"2001:db8::/32"},
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when risk configuration is set without threat protection", func() {
+		spec.RiskConfiguration = &AwsCognitoUserPoolRiskConfiguration{
+			CompromisedCredentials: &AwsCognitoUserPoolCompromisedCredentialsConfig{EventAction: "BLOCK"},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an empty risk configuration", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{AdvancedSecurityMode: "AUDIT"}
+		spec.RiskConfiguration = &AwsCognitoUserPoolRiskConfiguration{}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an account takeover config with no actions", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{AdvancedSecurityMode: "ENFORCED"}
+		spec.RiskConfiguration = &AwsCognitoUserPoolRiskConfiguration{
+			AccountTakeover: &AwsCognitoUserPoolAccountTakeoverConfig{},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on notify templates without a notifying action", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{AdvancedSecurityMode: "ENFORCED"}
+		spec.RiskConfiguration = &AwsCognitoUserPoolRiskConfiguration{
+			AccountTakeover: &AwsCognitoUserPoolAccountTakeoverConfig{
+				HighAction: &AwsCognitoUserPoolAccountTakeoverAction{EventAction: "BLOCK", Notify: false},
+				NotifyConfiguration: &AwsCognitoUserPoolRiskNotifyConfig{
+					SourceArn: strRef("arn:aws:ses:us-west-2:123456789012:identity/security@example.com"),
+				},
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an invalid account takeover event_action", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{AdvancedSecurityMode: "ENFORCED"}
+		spec.RiskConfiguration = &AwsCognitoUserPoolRiskConfiguration{
+			AccountTakeover: &AwsCognitoUserPoolAccountTakeoverConfig{
+				HighAction: &AwsCognitoUserPoolAccountTakeoverAction{EventAction: "DENY"},
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an invalid compromised credentials event_action", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{AdvancedSecurityMode: "ENFORCED"}
+		spec.RiskConfiguration = &AwsCognitoUserPoolRiskConfiguration{
+			CompromisedCredentials: &AwsCognitoUserPoolCompromisedCredentialsConfig{EventAction: "MFA_REQUIRED"},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on an invalid compromised credentials event_filter", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{AdvancedSecurityMode: "ENFORCED"}
+		spec.RiskConfiguration = &AwsCognitoUserPoolRiskConfiguration{
+			CompromisedCredentials: &AwsCognitoUserPoolCompromisedCredentialsConfig{
+				EventAction: "BLOCK",
+				EventFilter: []string{"SIGN_OUT"},
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on a risk exception with neither list", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{AdvancedSecurityMode: "ENFORCED"}
+		spec.RiskConfiguration = &AwsCognitoUserPoolRiskConfiguration{
+			RiskException: &AwsCognitoUserPoolRiskExceptionConfig{},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on a non-CIDR risk exception entry", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{AdvancedSecurityMode: "ENFORCED"}
+		spec.RiskConfiguration = &AwsCognitoUserPoolRiskConfiguration{
+			RiskException: &AwsCognitoUserPoolRiskExceptionConfig{
+				BlockedIpRanges: []string{"192.0.2.1"},
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on a notify email with a too-short body", func() {
+		spec.UserPoolAddOns = &AwsCognitoUserPoolAddOns{AdvancedSecurityMode: "ENFORCED"}
+		spec.RiskConfiguration = &AwsCognitoUserPoolRiskConfiguration{
+			AccountTakeover: &AwsCognitoUserPoolAccountTakeoverConfig{
+				HighAction: &AwsCognitoUserPoolAccountTakeoverAction{EventAction: "BLOCK", Notify: true},
+				NotifyConfiguration: &AwsCognitoUserPoolRiskNotifyConfig{
+					SourceArn:  strRef("arn:aws:ses:us-west-2:123456789012:identity/security@example.com"),
+					BlockEmail: &AwsCognitoUserPoolRiskNotifyEmail{Subject: "Blocked", HtmlBody: "short", TextBody: "long enough body"},
+				},
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 })

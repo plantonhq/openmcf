@@ -1,0 +1,88 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_cognito_identity_provider:
+    mappings:
+      # ONE provider argument, many spec homes (the SQS redrive-policy
+      # class): provider_details is a free-form map whose legal keys depend
+      # entirely on provider_type, and the spec expands it into typed
+      # per-provider configs (google/facebook/login_with_amazon/
+      # sign_in_with_apple/oidc/saml) so manifests are validated instead of
+      # stringly-typed. The Google arm's identity member carries the
+      # mapping; every sibling member is a specExclusion below naming the
+      # map key it renders to. Arbitrary undocumented keys are deliberately
+      # not expressible -- the typed surface IS the modeled contract.
+      - spec: spec.google.client_id
+        arg: provider_details
+
+specExclusions:
+  # Typed expansions of the same aws_cognito_identity_provider
+  # provider_details map argument (the mapping above carries the judgment).
+  # OAuth-family arms use snake_case map keys; the SAML arm uses AWS's
+  # PascalCase keys -- a documented AWS API asymmetry.
+  - field: spec.google.client_secret
+    reason: renders into the same provider_details map as google.client_id (key client_secret)
+  - field: spec.google.authorize_scopes
+    reason: renders into the same provider_details map as google.client_id (key authorize_scopes)
+  - field: spec.facebook.client_id
+    reason: renders into the same provider_details map as google.client_id (key client_id, Facebook arm)
+  - field: spec.facebook.client_secret
+    reason: renders into the same provider_details map as google.client_id (key client_secret, Facebook arm)
+  - field: spec.facebook.authorize_scopes
+    reason: renders into the same provider_details map as google.client_id (key authorize_scopes, Facebook arm)
+  - field: spec.facebook.api_version
+    reason: renders into the same provider_details map as google.client_id (key api_version, Facebook arm)
+  - field: spec.login_with_amazon.client_id
+    reason: renders into the same provider_details map as google.client_id (key client_id, LoginWithAmazon arm)
+  - field: spec.login_with_amazon.client_secret
+    reason: renders into the same provider_details map as google.client_id (key client_secret, LoginWithAmazon arm)
+  - field: spec.login_with_amazon.authorize_scopes
+    reason: renders into the same provider_details map as google.client_id (key authorize_scopes, LoginWithAmazon arm)
+  - field: spec.sign_in_with_apple.client_id
+    reason: renders into the same provider_details map as google.client_id (key client_id, SignInWithApple arm)
+  - field: spec.sign_in_with_apple.team_id
+    reason: renders into the same provider_details map as google.client_id (key team_id, SignInWithApple arm)
+  - field: spec.sign_in_with_apple.key_id
+    reason: renders into the same provider_details map as google.client_id (key key_id, SignInWithApple arm)
+  - field: spec.sign_in_with_apple.private_key
+    reason: renders into the same provider_details map as google.client_id (key private_key, SignInWithApple arm)
+  - field: spec.sign_in_with_apple.authorize_scopes
+    reason: renders into the same provider_details map as google.client_id (key authorize_scopes, SignInWithApple arm)
+  - field: spec.oidc.client_id
+    reason: renders into the same provider_details map as google.client_id (key client_id, OIDC arm)
+  - field: spec.oidc.client_secret
+    reason: renders into the same provider_details map as google.client_id (key client_secret, OIDC arm)
+  - field: spec.oidc.oidc_issuer
+    reason: renders into the same provider_details map as google.client_id (key oidc_issuer, OIDC arm)
+  - field: spec.oidc.authorize_scopes
+    reason: renders into the same provider_details map as google.client_id (key authorize_scopes, OIDC arm)
+  - field: spec.oidc.attributes_request_method
+    reason: renders into the same provider_details map as google.client_id (key attributes_request_method, OIDC arm)
+  - field: spec.oidc.authorize_url
+    reason: renders into the same provider_details map as google.client_id (key authorize_url, OIDC arm)
+  - field: spec.oidc.token_url
+    reason: renders into the same provider_details map as google.client_id (key token_url, OIDC arm)
+  - field: spec.oidc.attributes_url
+    reason: renders into the same provider_details map as google.client_id (key attributes_url, OIDC arm)
+  - field: spec.oidc.jwks_uri
+    reason: renders into the same provider_details map as google.client_id (key jwks_uri, OIDC arm)
+  - field: spec.oidc.attributes_url_add_attributes
+    reason: renders into the same provider_details map as google.client_id (key attributes_url_add_attributes, OIDC arm)
+  - field: spec.saml.metadata_file
+    reason: renders into the same provider_details map as google.client_id (key MetadataFile, SAML arm -- PascalCase per AWS's API)
+  - field: spec.saml.metadata_url
+    reason: renders into the same provider_details map as google.client_id (key MetadataURL, SAML arm -- PascalCase per AWS's API)
+  - field: spec.saml.idp_sign_out
+    reason: renders into the same provider_details map as google.client_id (key IDPSignout, SAML arm -- PascalCase per AWS's API)
+  - field: spec.saml.idp_init
+    reason: renders into the same provider_details map as google.client_id (key IDPInit, SAML arm -- PascalCase per AWS's API)
+  - field: spec.saml.encrypted_responses
+    reason: renders into the same provider_details map as google.client_id (key EncryptedResponses, SAML arm -- PascalCase per AWS's API)
+  - field: spec.saml.request_signing_algorithm
+    reason: renders into the same provider_details map as google.client_id (key RequestSigningAlgorithm, SAML arm -- PascalCase per AWS's API)
