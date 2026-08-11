@@ -41,7 +41,7 @@ login needs to exist where you run:
   tool-for-command.
 - **Identity adapts**: instead of an AWS profile or kubectl context, say
   which ORGANIZATION and which connection you are reading through — the org
-  comes from your standing session context, and exploring the wrong org
+  comes from your standing context, and exploring the wrong org
   produces confidently wrong charts just the same.
 
 Rules that keep exploration honest:

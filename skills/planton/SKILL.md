@@ -126,7 +126,7 @@ missing instrument is a fact you adapt to, not a problem you report.
    and cloud exploration ride the equivalent tools
    (`references/cloud-exploration.md`), and schema grounding rides the
    component reference pages (`references/component-grounding.md`). The
-   organization the tools ask for comes from your standing session context
+   organization the tools ask for comes from your standing context
    -- never ask the user for an identifier the session already carries.
 3. **Neither** -- compose from this skill, the catalog research layer, and
    the workspace, and say plainly at the end what could not be verified
