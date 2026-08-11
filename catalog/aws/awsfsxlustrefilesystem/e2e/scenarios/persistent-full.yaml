@@ -5,6 +5,9 @@
 # maintenance window. Excluded arms are recorded in profile.yaml
 # (INTELLIGENT_TIERING, HDD/drive-cache, EFA, backup restore, the legacy S3
 # link, CloudWatch logging).
+# The e2e-prerequisites annotation composes the security-group fixture this
+# manifest references (security_group_ids is optional on the kind, so it is
+# deliberately NOT a registry prerequisite).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxLustreFileSystem
 metadata:
@@ -17,6 +20,7 @@ metadata:
     e2e-component: awsfsxlustrefilesystem
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsSecurityGroup"
   tags:
     - planton-e2e
 spec:

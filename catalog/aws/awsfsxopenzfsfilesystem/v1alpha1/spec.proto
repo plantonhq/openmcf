@@ -145,7 +145,15 @@ message AwsFsxOpenzfsFileSystemSpec {
   // deployment. ForceNew. Must be a CIDR block within the VPC's CIDR range
   // that does not overlap with any existing subnets; AWS assigns floating IPs
   // from this range for seamless failover. When omitted, AWS picks a range.
-  string endpoint_ip_address_range = 10;
+  //
+  // The provider does not validate this field's format for OpenZFS (unlike its
+  // ONTAP sibling) — the CEL below mirrors the ONTAP kind so a malformed range
+  // fails at validate instead of at the AWS API.
+  string endpoint_ip_address_range = 10 [(buf.validate.field).cel = {
+    id: "endpoint_ip_range_cidr_format"
+    message: "endpoint_ip_address_range must be an IPv4 CIDR block (e.g., '198.19.0.0/24')"
+    expression: "this == '' || this.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/[0-9]{1,2}$')"
+  }];
 
   // Route tables in which AWS manages routes to the floating file-system
   // endpoints of a MULTI_AZ_1 deployment. Specify every VPC route table

@@ -301,6 +301,8 @@ deployment. ForceNew. Must be a CIDR block within the VPC's CIDR range
 that does not overlap with any existing subnets; AWS assigns floating IPs
 from this range for seamless failover. When omitted, AWS picks a range.
 
+- rule: endpoint_ip_address_range must be an IPv4 CIDR block (e.g., '198.19.0.0/24')
+
 ### spec.routeTableIds
 
 `[]string | valueFrom`

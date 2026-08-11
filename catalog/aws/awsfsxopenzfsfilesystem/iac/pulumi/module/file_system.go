@@ -110,9 +110,11 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 			rootVolArgs.DataCompressionType = pulumi.StringPtr(spec.RootVolumeConfiguration.GetDataCompressionType())
 		}
 
-		if spec.RootVolumeConfiguration.ReadOnly {
-			rootVolArgs.ReadOnly = pulumi.BoolPtr(true)
-		}
+		// Always sent (matching the Terraform module): the provider attribute
+		// is Optional+Computed, so an omitted read_only would let out-of-band
+		// flips to read-only be adopted silently instead of reverted. An
+		// explicit resolved value keeps drift correction on both engines.
+		rootVolArgs.ReadOnly = pulumi.BoolPtr(spec.RootVolumeConfiguration.ReadOnly)
 
 		if spec.RootVolumeConfiguration.GetRecordSizeKib() > 0 {
 			rootVolArgs.RecordSizeKib = pulumi.IntPtr(int(spec.RootVolumeConfiguration.GetRecordSizeKib()))

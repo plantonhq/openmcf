@@ -1,9 +1,11 @@
 # Minimal AwsFsxLustreFileSystem scenario: the cheapest creatable shape.
 # SCRATCH_2 (the spec default, exercised by omission) at the 1200 GiB SSD
-# floor on the shared subnet + security-group fixtures. Defaults exercised
-# by omission: deployment_type, storage_type, data_compression_type,
-# skip_final_backup, and every backup/maintenance dial. Full metadata is
-# supplied for tagging/orphan cleanup.
+# floor on the shared subnet + security-group fixtures. The e2e-prerequisites
+# annotation composes the security-group fixture (security_group_ids is
+# optional on the kind, so it is deliberately NOT a registry prerequisite).
+# Defaults exercised by omission: deployment_type, storage_type,
+# data_compression_type, skip_final_backup, and every backup/maintenance
+# dial. Full metadata is supplied for tagging/orphan cleanup.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxLustreFileSystem
 metadata:
@@ -16,6 +18,7 @@ metadata:
     e2e-component: awsfsxlustrefilesystem
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsSecurityGroup"
   tags:
     - planton-e2e
 spec:

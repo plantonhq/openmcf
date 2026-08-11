@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**42 of 112 kinds are at total accounting; 72 proven live.**
+**49 of 112 kinds are at total accounting; 76 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -57,7 +57,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsAppRunnerService | 48 | 5 | 0 | 0 | 74 | ❌ | ✅ pulumi, terraform |
 | AwsAppRunnerVpcConnector | 6 | 1 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
 | AwsAthenaWorkgroup | 37 | 4 | 0 | 0 | 59 | ❌ | ✅ pulumi, terraform |
-| AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | — |
+| AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchComputeEnvironment | 33 | 20 | 0 | 0 | 19 | ❌ | ✅ pulumi, terraform |
 | AwsBatchJobDefinition | 67 | 12 | 0 | 0 | 98 | ❌ | ✅ pulumi, terraform |
 | AwsBatchJobQueue | 12 | 5 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
@@ -68,8 +68,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCloudwatchAlarm | 39 | 24 | 0 | 0 | 27 | ❌ | ✅ pulumi, terraform |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsCloudwatchLogGroup | 36 | 9 | 0 | 0 | 45 | ❌ | ✅ pulumi, terraform |
-| AwsCodeBuildProject | 115 | 97 | 11 | 7 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCodePipeline | 84 | 4 | 75 | 5 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCodeBuildProject | 115 | 97 | 11 | 7 | 0 | ✅ | — |
+| AwsCodePipeline | 84 | 4 | 75 | 5 | 0 | ✅ | — |
 | AwsCognitoIdentityProvider | 7 | 6 | 0 | 0 | 32 | ❌ | ✅ pulumi, terraform |
 | AwsCognitoResourceServer | 6 | 4 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
 | AwsCognitoUserPool | 91 | 53 | 0 | 0 | 68 | ❌ | ✅ pulumi, terraform |
@@ -78,9 +78,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsDynamodb | 71 | 27 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
 | AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | — |
 | AwsEcrRepo | 17 | 5 | 0 | 0 | 25 | ❌ | ✅ pulumi, terraform |
-| AwsEcsCluster | 80 | 7 | 64 | 9 | 0 | ✅ | — |
-| AwsEcsService | 98 | 53 | 34 | 11 | 0 | ✅ | — |
-| AwsEcsTaskDefinition | 56 | 13 | 22 | 21 | 0 | ✅ | — |
+| AwsEcsCluster | 80 | 7 | 64 | 9 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEcsService | 98 | 53 | 34 | 11 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEcsTaskDefinition | 56 | 13 | 22 | 21 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEfsAccessPoint | 11 | 9 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsEgressOnlyInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsEksAccessEntry | 14 | 9 | 0 | 5 | 0 | ✅ | ✅ pulumi, terraform |
@@ -94,16 +94,16 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsElasticacheUserGroup | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEventBridgeBus | 13 | 8 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
 | AwsEventBridgeRule | 65 | 53 | 5 | 7 | 0 | ✅ | — |
-| AwsFsxDataRepositoryAssociation | 11 | 7 | 0 | 0 | 6 | ❌ | — |
-| AwsFsxLustreFileSystem | 34 | 29 | 0 | 0 | 8 | ❌ | — |
-| AwsFsxOntapFileSystem | 21 | 18 | 0 | 0 | 4 | ❌ | — |
-| AwsFsxOntapStorageVirtualMachine | 14 | 6 | 0 | 0 | 14 | ❌ | — |
-| AwsFsxOntapVolume | 34 | 31 | 0 | 0 | 3 | ❌ | — |
-| AwsFsxOpenzfsFileSystem | 35 | 31 | 0 | 0 | 6 | ❌ | — |
-| AwsFsxWindowsFileSystem | 34 | 28 | 0 | 0 | 8 | ❌ | — |
+| AwsFsxDataRepositoryAssociation | 11 | 7 | 2 | 2 | 0 | ✅ | — |
+| AwsFsxLustreFileSystem | 34 | 29 | 3 | 2 | 0 | ✅ | — |
+| AwsFsxOntapFileSystem | 21 | 18 | 1 | 2 | 0 | ✅ | — |
+| AwsFsxOntapStorageVirtualMachine | 14 | 6 | 6 | 2 | 0 | ✅ | — |
+| AwsFsxOntapVolume | 34 | 31 | 0 | 3 | 0 | ✅ | — |
+| AwsFsxOpenzfsFileSystem | 35 | 31 | 2 | 2 | 0 | ✅ | — |
+| AwsFsxWindowsFileSystem | 34 | 28 | 2 | 4 | 0 | ✅ | — |
 | AwsGlobalAccelerator | 28 | 3 | 0 | 0 | 48 | ❌ | ✅ pulumi, terraform |
 | AwsGlueCatalogDatabase | 15 | 10 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
-| AwsHttpApiDomain | 26 | 7 | 11 | 8 | 0 | ✅ | — |
+| AwsHttpApiDomain | 26 | 7 | 11 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiGateway | 91 | 42 | 11 | 38 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiVpcLink | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamInstanceProfile | 6 | 2 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
@@ -118,7 +118,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsKmsKey | 29 | 15 | 6 | 8 | 0 | ✅ | — |
 | AwsLambda | 108 | 51 | 30 | 27 | 0 | ✅ | — |
 | AwsLambdaEventSourceMapping | 45 | 11 | 31 | 3 | 0 | ✅ | — |
-| AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | — |
+| AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListener | 76 | 13 | 59 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 55 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbTargetGroup | 48 | 34 | 7 | 7 | 0 | ✅ | — |
@@ -173,8 +173,8 @@ All resources of `aws@6.58.0` land in exactly one class:
 | Modeled | 235 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 5 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 799 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 523 | deliberately not offered, each with the recorded reason |
+| Planned | 797 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 525 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -433,7 +433,7 @@ rather than trusted.
 | `aws_kms_key_policy` | covered by AwsKmsKey spec.policy -- the standalone resource is the detached-management pattern for keys owned elsewhere |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
 
-### Planned (799)
+### Planned (797)
 
 | Resource | Recorded reason |
 |---|---|
@@ -772,10 +772,8 @@ rather than trusted.
 | `aws_emrcontainers_virtual_cluster` | EMR on EKS folds into the planned AwsEmrCluster kind family |
 | `aws_emrserverless_application` | EMR Serverless folds into the planned AwsEmrCluster kind family |
 | `aws_flow_log` | VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens |
-| `aws_fsx_backup` | FSx companion surface (OpenZFS volumes/snapshots, S3 access point attachments, backups); folds into the existing FSx kinds as their specs deepen |
-| `aws_fsx_openzfs_snapshot` | FSx companion surface (OpenZFS volumes/snapshots, S3 access point attachments, backups); folds into the existing FSx kinds as their specs deepen |
-| `aws_fsx_openzfs_volume` | FSx companion surface (OpenZFS volumes/snapshots, S3 access point attachments, backups); folds into the existing FSx kinds as their specs deepen |
-| `aws_fsx_s3_access_point_attachment` | FSx companion surface (OpenZFS volumes/snapshots, S3 access point attachments, backups); folds into the existing FSx kinds as their specs deepen |
+| `aws_fsx_openzfs_volume` | judged as a planned AwsFsxOpenzfsVolume kind (child-volume hierarchy, NFS exports, quotas, clone-from-snapshot origin) -- standalone lifecycle on the AwsFsxOntapVolume precedent; the AwsFsxOpenzfsFileSystem spec records child volumes as out of its scope |
+| `aws_fsx_s3_access_point_attachment` | attaches an S3 access point to an OpenZFS volume -- satellite of the planned AwsFsxOpenzfsVolume kind; judged with that kind's family |
 | `aws_globalaccelerator_cross_account_attachment` | cross-account attachments fold into the existing AwsGlobalAccelerator kind as its spec deepens |
 | `aws_glue_catalog` | Glue catalog-level surface (policies, encryption, security configs); folds into the existing AwsGlueCatalogDatabase kind as its spec deepens |
 | `aws_glue_catalog_table` | judged as a planned AwsGlueCatalogTable kind (tables, partitions, indexes, optimizers) |
@@ -1237,7 +1235,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (523)
+### Deferred (525)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1420,7 +1418,9 @@ rather than trusted.
 | `aws_fms_admin_account` | Firewall Manager organization-scale policy administration; deferred pending demand |
 | `aws_fms_policy` | Firewall Manager organization-scale policy administration; deferred pending demand |
 | `aws_fms_resource_set` | Firewall Manager organization-scale policy administration; deferred pending demand |
+| `aws_fsx_backup` | one-shot point-in-time backup of a file system or volume (only source ids are configurable) -- an imperative backup action, a poor declarative fit (the aws_db_snapshot class); the FSx kinds model AUTOMATIC backups (retention, start time, final-backup controls) in-spec |
 | `aws_fsx_file_cache` | FSx File Cache (HPC burst cache); deferred pending demand |
+| `aws_fsx_openzfs_snapshot` | one-shot point-in-time snapshot of an OpenZFS volume (name + volume id only) -- an imperative snapshot action, a poor declarative fit (the aws_db_snapshot class); unlike EBS there is no snapshot-management family to justify a kind |
 | `aws_gamelift_alias` | game-server hosting vertical (GameLift); deferred pending demand |
 | `aws_gamelift_build` | game-server hosting vertical (GameLift); deferred pending demand |
 | `aws_gamelift_fleet` | game-server hosting vertical (GameLift); deferred pending demand |

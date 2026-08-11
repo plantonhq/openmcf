@@ -5,6 +5,9 @@
 # backups with a pinned window, and a maintenance window. Excluded arms are
 # recorded in profile.yaml (route_table_ids, customer-managed KMS,
 # scale-out ha_pairs).
+# The e2e-prerequisites annotation composes the security-group fixture this
+# manifest references (security_group_ids is optional on the kind, so it is
+# deliberately NOT a registry prerequisite).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapFileSystem
 metadata:
@@ -17,6 +20,7 @@ metadata:
     e2e-component: awsfsxontapfilesystem
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsSecurityGroup"
   tags:
     - planton-e2e
 spec:

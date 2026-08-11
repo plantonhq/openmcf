@@ -1707,20 +1707,20 @@ resources:
     disposition: deferred
     reason: "Firewall Manager organization-scale policy administration; deferred pending demand"
   - resource: aws_fsx_backup
-    disposition: model-planned
-    reason: "FSx companion surface (OpenZFS volumes/snapshots, S3 access point attachments, backups); folds into the existing FSx kinds as their specs deepen"
+    disposition: deferred
+    reason: "one-shot point-in-time backup of a file system or volume (only source ids are configurable) -- an imperative backup action, a poor declarative fit (the aws_db_snapshot class); the FSx kinds model AUTOMATIC backups (retention, start time, final-backup controls) in-spec"
   - resource: aws_fsx_file_cache
     disposition: deferred
     reason: "FSx File Cache (HPC burst cache); deferred pending demand"
   - resource: aws_fsx_openzfs_snapshot
-    disposition: model-planned
-    reason: "FSx companion surface (OpenZFS volumes/snapshots, S3 access point attachments, backups); folds into the existing FSx kinds as their specs deepen"
+    disposition: deferred
+    reason: "one-shot point-in-time snapshot of an OpenZFS volume (name + volume id only) -- an imperative snapshot action, a poor declarative fit (the aws_db_snapshot class); unlike EBS there is no snapshot-management family to justify a kind"
   - resource: aws_fsx_openzfs_volume
     disposition: model-planned
-    reason: "FSx companion surface (OpenZFS volumes/snapshots, S3 access point attachments, backups); folds into the existing FSx kinds as their specs deepen"
+    reason: "judged as a planned AwsFsxOpenzfsVolume kind (child-volume hierarchy, NFS exports, quotas, clone-from-snapshot origin) -- standalone lifecycle on the AwsFsxOntapVolume precedent; the AwsFsxOpenzfsFileSystem spec records child volumes as out of its scope"
   - resource: aws_fsx_s3_access_point_attachment
     disposition: model-planned
-    reason: "FSx companion surface (OpenZFS volumes/snapshots, S3 access point attachments, backups); folds into the existing FSx kinds as their specs deepen"
+    reason: "attaches an S3 access point to an OpenZFS volume -- satellite of the planned AwsFsxOpenzfsVolume kind; judged with that kind's family"
   - resource: aws_gamelift_alias
     disposition: deferred
     reason: "game-server hosting vertical (GameLift); deferred pending demand"

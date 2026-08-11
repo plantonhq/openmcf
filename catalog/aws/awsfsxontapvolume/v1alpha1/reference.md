@@ -481,8 +481,7 @@ for the specified duration are automatically transitioned to WORM state.
 This eliminates the need for applications to explicitly commit files.
 
 - rule: autocommit period type must be 'NONE', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', or 'YEARS'
-- rule: autocommit period value must be >= 1 when type is not 'NONE'
-- rule: autocommit period value must be between 1 and 65535
+- rule: autocommit value must match its unit's AWS range (MINUTES 5-65535, HOURS 1-65535, DAYS 1-3650, MONTHS 1-120, YEARS 1-10) and must be unset for NONE
 
 ### spec.snaplockConfiguration.autocommitPeriod.type
 
@@ -521,6 +520,7 @@ The default retention period applied to files committed to WORM state
 without an explicit retention period.
 
 - rule: retention duration type must be 'SECONDS', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS', 'INFINITE', or 'UNSPECIFIED'
+- rule: retention value must match its unit's AWS range (SECONDS/MINUTES 0-65535, HOURS 0-24, DAYS 0-365, MONTHS 0-12, YEARS 0-100) and must be unset for INFINITE/UNSPECIFIED
 
 ### spec.snaplockConfiguration.retentionPeriod.defaultRetention.type
 
@@ -552,6 +552,7 @@ The minimum retention period. Files cannot have retention periods shorter
 than this value.
 
 - rule: retention duration type must be 'SECONDS', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS', 'INFINITE', or 'UNSPECIFIED'
+- rule: retention value must match its unit's AWS range (SECONDS/MINUTES 0-65535, HOURS 0-24, DAYS 0-365, MONTHS 0-12, YEARS 0-100) and must be unset for INFINITE/UNSPECIFIED
 
 ### spec.snaplockConfiguration.retentionPeriod.minimumRetention.type
 
@@ -583,6 +584,7 @@ The maximum retention period. Files cannot have retention periods longer
 than this value.
 
 - rule: retention duration type must be 'SECONDS', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS', 'INFINITE', or 'UNSPECIFIED'
+- rule: retention value must match its unit's AWS range (SECONDS/MINUTES 0-65535, HOURS 0-24, DAYS 0-365, MONTHS 0-12, YEARS 0-100) and must be unset for INFINITE/UNSPECIFIED
 
 ### spec.snaplockConfiguration.retentionPeriod.maximumRetention.type
 

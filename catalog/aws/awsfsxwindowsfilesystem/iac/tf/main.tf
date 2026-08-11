@@ -49,7 +49,7 @@ resource "aws_fsx_windows_file_system" "this" {
       username                               = self_managed_active_directory.value.username != "" ? self_managed_active_directory.value.username : null
       password                               = self_managed_active_directory.value.password != "" ? self_managed_active_directory.value.password : null
       domain_join_service_account_secret     = self_managed_active_directory.value.domain_join_service_account_secret_arn != "" ? self_managed_active_directory.value.domain_join_service_account_secret_arn : null
-      file_system_administrators_group       = self_managed_active_directory.value.file_system_administrators_group
+      file_system_administrators_group       = self_managed_active_directory.value.file_system_administrators_group != "" ? self_managed_active_directory.value.file_system_administrators_group : null
       organizational_unit_distinguished_name = self_managed_active_directory.value.organizational_unit_distinguished_name != "" ? self_managed_active_directory.value.organizational_unit_distinguished_name : null
     }
   }

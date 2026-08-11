@@ -295,6 +295,7 @@ Use this when your AD domain controller runs outside AWS Directory Service
 
 - rule: specify either username/password or domain_join_service_account_secret_arn, not both
 - rule: when using direct credentials, both username and password must be provided
+- rule: file_system_administrators_group must be 1-256 characters when provided
 
 ### spec.selfManagedActiveDirectory.domainName
 
