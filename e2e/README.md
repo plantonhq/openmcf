@@ -708,6 +708,17 @@ preflight passed. Export `AWS_PROFILE` for the test process (as above) so the
 CLI preflight, the harness, and both engines' providers all resolve the same
 identity, and preflight with that same environment.
 
+**A passing CLI preflight can still hide an expired SSO REFRESH token.** The
+CLI serves `get-caller-identity` from its cached SSO access token, but the Go
+SDK inside the harness refreshes the token itself — and when the sso-session's
+refresh token has expired, the harness fails its very first call with
+`InvalidGrantException` ("refresh cached SSO token failed") seconds after the
+CLI preflight passed on the same profile. The signature is exactly that pair:
+CLI preflight green, harness Setup red with InvalidGrantException. The fix is
+a fresh `aws sso login --sso-session <name>` (a browser approval); re-run the
+preflight afterward and start the lanes while the session is young rather
+than letting a stale login sit ahead of a multi-hour suite.
+
 Timing observed live (us-west-2): IAM/EIP/Cognito lanes run 30-90s per
 engine; a zonal NAT gateway scenario ~7 min per engine end-to-end (create
 ~2 min, delete ~1 min, fixture chain ~1.5 min up + ~2 min down); a regional
@@ -735,6 +746,32 @@ gates never produced, probe the contract directly with the AWS CLI on
 throwaway resources (the default VPC makes MI-class probes fixture-free)
 before touching the module — ten minutes of probing settled both the
 defect and the correct design.
+
+**Values that advance monotonically across same-name recreates cannot be
+pinned literally in scenarios.** Lambda never reuses version numbers for a
+function NAME — a recreated function's first publish CONTINUES the deleted
+predecessor's numbering. The dual-engine runner recreates every fixed-name
+scenario back-to-back, so an alias pinned to version "1" passes on the
+first engine (publishes 1) and 404s at CreateAlias on the second (publishes
+2): "Function not found ...:function:<name>:1". Point scenario aliases at
+"$LATEST" (deterministic regardless of history) and prove the publish arm
+through the version OUTPUT, which carries whatever number AWS actually
+assigned. The class is any property whose value depends on a name's
+history rather than the current resource.
+
+**A 4xx from a create call does not mean nothing was created — sweep before
+re-running.** Some AWS creates are not atomic: the service materializes the
+resource, then validates a later parameter and answers 4xx (first hit:
+CreateFunction with `publish_to` in a region where `$LATEST.PUBLISHED` has
+not rolled out — the 400 named the parameter, yet the function came up
+Active). The engine treats the create as failed, so the resource exists
+OUTSIDE engine state: the lane's own destroy cannot remove it, and the
+dual-engine runner's second engine then fails its create with a 409
+"already exist" on the fixed cloud-side name. The 400-then-409 pair across
+engines IS the signature; the recovery is deleting the half-created
+resource with the CLI before re-running — and the arm that triggered the
+rejection gets trimmed with a recorded deferral, not retried against the
+same endpoint.
 
 **ECS Managed Instances provider deletion can FAIL SILENTLY, and the
 cluster cannot delete until every MI provider is INACTIVE.**

@@ -8,11 +8,7 @@ spec:
   # the slowest single resource in the AWS suite -- AWS takes ~10-15 minutes
   # to create one and ~10 to delete it -- so the timeout is sized for a full
   # cycle plus the subnet/role prerequisite chain.
-  # pending_proof: the depth-closure wave added the provisioned scaling
-  # tier, hybrid-node remote networks, and the Pulumi engine's first
-  # control_plane_egress_mode wiring -- the prior green predates this
-  # surface, so the badge is revoked until the proof lane re-earns it.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

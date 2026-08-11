@@ -233,6 +233,9 @@ generate-kubernetes-types:
 # `planton explain` serves offline. Generated protobuf code strips comments,
 # so the prose is distilled from a descriptor image built with source info.
 # Deterministic: unchanged protos regenerate a byte-identical artifact.
+# If `buf build` fails with "symbol already defined at bazel-<repo>/...",
+# stale Bazel output symlinks at the repo root are leaking a duplicate
+# proto tree into the module walk -- delete the bazel-* symlinks and rerun.
 .PHONY: generate-proto-docs
 generate-proto-docs:
 	mkdir -p build

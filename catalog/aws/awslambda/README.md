@@ -43,7 +43,7 @@ The function name is `metadata.name` (create-time immutable in AWS). There is no
 - `file_system_config` — EFS access point mount (requires VPC)
 - `image_config` — container entrypoint overrides
 - `publish` — publish version on each change
-- `publish_to` — maintain the `$LATEST.PUBLISHED` head pointer (`LATEST_PUBLISHED`)
+- `publish_to` — maintain the `$LATEST.PUBLISHED` head pointer (`LATEST_PUBLISHED`; still rolling out — regions/accounts without the feature reject it at create)
 - `reserved_concurrent_executions` — concurrency cap/reservation
 - `snap_start` — SnapStart (requires `publish`)
 - `logging_config` — log format, levels, optional `log_group` ref

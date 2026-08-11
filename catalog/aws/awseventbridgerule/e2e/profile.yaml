@@ -16,11 +16,7 @@ spec:
   # invocation-role fixtures do not exist in the test account (the role
   # fixture home is the awsiamrole prerequisite profile); all proven by
   # offline plans and previews on both engines, never silent skips.
-  # pending_proof: the depth-closure wave added the four typed targets, ECS
-  # task tags, and target-level force_destroy wiring; the prior green badge
-  # predates this surface, so it is revoked until the proof lane re-earns
-  # it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

@@ -15,11 +15,7 @@ spec:
   # (poller_group_name) -- no MSK fixture exists and clusters bill hourly;
   # proven by offline plans and previews of the msk-shared-pollers preset
   # on both engines, never a silent skip.
-  # pending_proof: the depth-closure wave added poller_group_name, the
-  # ErrorCount/KafkaMetrics metrics values, and lifted the
-  # scaling_max_concurrency ceiling; the prior green badge predates this
-  # surface, so it is revoked until the proof lane re-earns it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

@@ -197,7 +197,13 @@ type AwsLambdaSpec struct {
 	// that always resolves to the newest published version -- the
 	// addressable target scaling_configs and qualified invocations can
 	// pin without naming version numbers. Empty leaves the head pointer
-	// unmanaged.
+	// unmanaged. Rollout caveat (live-verified us-west-2, 2026-08-11):
+	// regions/accounts where the $LATEST.PUBLISHED feature has not rolled
+	// out reject the value at CreateFunction with
+	// InvalidParameterValueException ("isn't a valid value for this
+	// field") -- and AWS creates the function BEFORE rejecting this
+	// parameter, so a failed create can leave a live function behind.
+	// Set this field only where the feature is available.
 	PublishTo string `protobuf:"bytes,38,opt,name=publish_to,json=publishTo,proto3" json:"publish_to,omitempty"`
 	// Reserved concurrency for this function. Unset: the function draws
 	// from the account's unreserved pool (no dedicated cap). 0: all
@@ -882,6 +888,13 @@ type AwsLambdaAlias struct {
 	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 	// The published version this alias points to, e.g. "1", or "$LATEST"
 	// (unpublished head -- fine for dev aliases, avoid for production).
+	// Numbering caveat (live-verified 2026-08-11): AWS never reuses
+	// version numbers for a function NAME, even across delete/recreate --
+	// a recreated function's first publish continues the old numbering,
+	// so a literal pin like "1" that worked on the first deployment 404s
+	// at CreateAlias ("Function not found ...:1") on a recreate. Pin
+	// literal numbers only against a function whose publish history you
+	// know; use "$LATEST" where the alias just needs to exist.
 	FunctionVersion string `protobuf:"bytes,3,opt,name=function_version,json=functionVersion,proto3" json:"function_version,omitempty"`
 	// Canary routing: additional version(s) receiving a fraction of this
 	// alias's traffic, as version -> weight (0.0-1.0). E.g. {"2": 0.1}

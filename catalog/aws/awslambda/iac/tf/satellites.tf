@@ -51,8 +51,9 @@ resource "aws_lambda_function_url" "this" {
   authorization_type = var.spec.function_url.authorization_type
   invoke_mode        = var.spec.function_url.invoke_mode != "" ? var.spec.function_url.invoke_mode : null
 
-  # Attach to an alias (CEL guarantees it names a declared alias); the
-  # explicit dependency makes the alias exist before the URL targets it.
+  # Attach to an alias (CEL guarantees it names a declared alias);
+  # referencing the alias resource's name attribute gives Terraform the
+  # graph edge that makes the alias exist before the URL targets it.
   qualifier = var.spec.function_url.qualifier != "" ? aws_lambda_alias.this[var.spec.function_url.qualifier].name : null
 
   dynamic "cors" {
