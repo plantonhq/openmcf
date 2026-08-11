@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurebackupprotectedvm.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurebackupprotectedvm/v1alpha1/outputs.proto";
+import "catalog/azure/azurebackupprotectedvm/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureBackupProtectedVm is the top-level API resource describing a
+// protected VM registration -- the binding that puts one virtual
+// machine under a backup policy's protection in a Recovery Services
+// vault.
+message AzureBackupProtectedVm {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureBackupProtectedVm".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureBackupProtectedVm'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Protected VM specification.
+  AzureBackupProtectedVmSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureBackupProtectedVmStatus status = 5;
+}
+
+// AzureBackupProtectedVmStatus holds the deployment outputs.
+message AzureBackupProtectedVmStatus {
+  // Stack outputs from the IaC deployment.
+  AzureBackupProtectedVmStackOutputs outputs = 1;
+}

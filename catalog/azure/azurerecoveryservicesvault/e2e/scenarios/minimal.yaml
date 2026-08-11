@@ -1,0 +1,41 @@
+# Minimal AzureRecoveryServicesVault scenario: a locally-redundant
+# vault with the built-in monitoring block configured through its two
+# engine-portable switches. Deliberately NOT the fixture's plain shape:
+# the smoke proves the non-default redundancy wire value, the
+# public-network toggle, and the monitoring block render -- the deep
+# arms an empty vault can prove at zero cost. Immutability, CMK, and
+# the Resource Guard are offline-proven only this wave (immutability
+# transitions and CMK ratchets are one-way doors a smoke lane should
+# not walk through; the guard needs a Data Protection resource the
+# catalog has not modeled yet).
+#
+# Vault names are unique per resource group only (no global or
+# soft-delete reservation) -- a fixed name is safe.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureRecoveryServicesVault
+metadata:
+  name: planton-oss-e2e-azurerecoveryservicesvault-smoke
+  id: planton-oss-e2e-azurerecoveryservicesvault-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurerecoveryservicesvault
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-rsv-smoke
+  storageModeType: LocallyRedundant
+  publicNetworkAccessEnabled: true
+  monitoring:
+    alertsForAllJobFailuresEnabled: true
+    alertsForCriticalOperationFailuresEnabled: false
+  tags:
+    e2e-suite: azure
+    purpose: smoke

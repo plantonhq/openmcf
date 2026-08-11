@@ -1,0 +1,295 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurerecoveryservicesvault.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureRecoveryServicesVaultSpec** defines a Recovery Services vault
+// (ARM: Microsoft.RecoveryServices/vaults) -- the safe that classic
+// Azure Backup data (VM and file-share backups) and Site Recovery
+// configuration live in. Backup policies and protected items are ARM
+// children of a vault; one vault typically serves a whole
+// region-of-workloads.
+//
+// A vault is FREE at rest -- cost accrues per protected instance and
+// per GB of backup storage, not for the vault object itself.
+//
+// **Deleting a vault fails while protected items remain inside it**
+// (Azure's own guard; the provider purges them first only when the
+// engine-level `purge_protected_items_from_vault_on_destroy` feature
+// is enabled, which these modules deliberately leave OFF). Stop and
+// delete the protections first, then delete the vault.
+message AzureRecoveryServicesVaultSpec {
+  // The Azure region the vault lives in, e.g. "eastus". Backup data
+  // is stored in this region (and its pair, under geo-redundant
+  // storage). Changing the region replaces the vault.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the vault is created in. Can be a
+  // literal resource-group name or a reference to an
+  // AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The vault's name, unique within its resource group: 2-50
+  // characters, letters, digits and hyphens, starting with a letter
+  // (the provider's own rule). Backup policies and protected items
+  // address the vault by this name. Changing the name replaces the
+  // vault.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z][-a-zA-Z0-9]{1,49}$"
+  ];
+
+  // The vault's SKU (the wire values). "Standard" and "RS0" are the
+  // only values ARM accepts, and they price identically -- "RS0" is
+  // the legacy tier-style name (the provider pins its tier to
+  // "Standard"). Unspecified applies "Standard". NOTE: once
+  // customer-managed-key encryption is enabled the SKU can no longer
+  // be changed (the provider's own update guard).
+  optional string sku = 4 [
+    (dev.planton.shared.options.default) = "Standard",
+    (buf.validate.field).string = {
+      in: [
+        "Standard",
+        "RS0"
+      ]
+    }
+  ];
+
+  // How the vault's backup storage replicates (the provider's
+  // storage_mode_type). GeoRedundant keeps a copy in the paired
+  // region (the default and the recommended posture for production);
+  // LocallyRedundant is the cheapest; ZoneRedundant replicates across
+  // availability zones in-region. Unspecified applies GeoRedundant.
+  // Switch it ONLY while the vault protects nothing -- Azure locks
+  // redundancy once items are protected (an apply-time contract the
+  // service enforces).
+  optional string storage_mode_type = 5 [
+    (dev.planton.shared.options.default) = "GeoRedundant",
+    (buf.validate.field).string = {
+      in: [
+        "GeoRedundant",
+        "LocallyRedundant",
+        "ZoneRedundant"
+      ]
+    }
+  ];
+
+  // Whether backup data can be restored in the paired region
+  // (cross-region restore). Requires geo-redundant storage. Enabling
+  // is an in-place update; DISABLING it replaces the vault (the
+  // provider's one-way ForceNew).
+  bool cross_region_restore_enabled = 6;
+
+  // Whether the vault's endpoints answer the public internet.
+  // Unspecified applies true (the provider's default). Set false for
+  // the private-endpoint-only posture.
+  optional bool public_network_access_enabled = 7 [(dev.planton.shared.options.default) = "true"];
+
+  // The vault's immutability posture (the wire values). Immutability
+  // stops backup data being deleted or retention being reduced --
+  // ransomware protection. Transitions are one-way at the end:
+  // Disabled <-> Unlocked -> Locked, and LOCKED IS PERMANENT (leaving
+  // Locked replaces the vault). Setting Locked directly is staged by
+  // the provider through Unlocked automatically. Unspecified leaves
+  // the service default (Disabled).
+  string immutability = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Locked",
+        "Unlocked",
+        "Disabled"
+      ]
+    }
+  ];
+
+  // The vault's managed identity -- required for customer-managed-key
+  // encryption and used for private-endpoint integrations. NOTE: once
+  // an identity is set it must never be removed or switched to the
+  // opposite flavor alone (the provider rejects the downgrade --
+  // Azure's CMK guidance).
+  AzureRecoveryServicesVaultIdentity identity = 9;
+
+  // Encryption of backup data with your OWN Key Vault key
+  // (customer-managed key) instead of Microsoft-managed keys. Requires
+  // the identity block. Once enabled it can never be disabled, and
+  // infrastructure_encryption_enabled can never change afterwards
+  // (the provider's own update guards).
+  AzureRecoveryServicesVaultEncryption encryption = 10;
+
+  // The vault's built-in Azure Monitor alert settings. Every switch
+  // defaults to ON (the provider's and the service's own posture);
+  // configure the block only to turn specific alert classes off.
+  AzureRecoveryServicesVaultMonitoring monitoring = 11;
+
+  // The ARM ID of a Resource Guard to associate with the vault --
+  // Multi-User Authorization: privileged vault operations (disabling
+  // soft delete, reducing retention) then require an approval through
+  // the guard, which typically lives in a DIFFERENT administrator's
+  // scope. The guard is a Data Protection family resource; reference
+  // it by its ARM ID. Fixed at creation of the association.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_guard_id = 12;
+
+  // Whether the vault is configured for classic VMware-to-Azure
+  // replication (Site Recovery's legacy VMware flow). Fixed at
+  // creation.
+  bool classic_vmware_replication_enabled = 13;
+
+  // Free-form tags applied to the vault, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins.
+  map<string, string> tags = 14;
+
+  // The provider enforces this pairing at apply time; front-loaded so
+  // the error lands in seconds instead of minutes into a deploy.
+  option (buf.validate.message).cel = {
+    id: "rsv_crr_requires_geo_redundant"
+    message: "cross_region_restore_enabled requires storage_mode_type GeoRedundant (the default) -- cross-region restore only exists on geo-redundant backup storage"
+    expression: "!this.cross_region_restore_enabled || !has(this.storage_mode_type) || this.storage_mode_type == 'GeoRedundant'"
+  };
+
+  // The provider's RequiredWith: customer-managed-key encryption
+  // needs a vault identity to reach the Key Vault key.
+  option (buf.validate.message).cel = {
+    id: "rsv_encryption_requires_identity"
+    message: "encryption requires the identity block -- the vault needs a managed identity to read your Key Vault key"
+    expression: "!has(this.encryption) || has(this.identity)"
+  };
+}
+
+// The vault's managed identity.
+message AzureRecoveryServicesVaultIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the vault (the common choice for CMK); USER_ASSIGNED brings
+  // identities you manage (grantable Key Vault access BEFORE the
+  // vault exists); SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureRecoveryServicesVaultIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the vault, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so Key Vault grants can be
+  // composed before the vault is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The vault's managed-identity flavor.
+enum AzureRecoveryServicesVaultIdentityType {
+  // Not specified: rejected -- an identity block requires a flavor.
+  azure_recovery_services_vault_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the vault.
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// Customer-managed-key encryption of the vault's backup data.
+message AzureRecoveryServicesVaultEncryption {
+  // The Key Vault KEY that encrypts the vault's backup data.
+  // Versionless and versioned key URIs are BOTH accepted by the
+  // provider; the versionless form (this reference's default) is the
+  // right choice -- key rotation then propagates automatically,
+  // without touching the vault. The vault's identity needs
+  // wrap/unwrap access on the key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+
+  // Whether backup data is encrypted a SECOND time at the
+  // infrastructure layer (double encryption). Decide at creation --
+  // once encryption is enabled this can NEVER change (the provider's
+  // own update guard). ARM requires an explicit choice, so this plain
+  // bool always ships on the wire.
+  bool infrastructure_encryption_enabled = 2;
+
+  // Whether the vault's SYSTEM-assigned identity unwraps the key.
+  // Unspecified applies true. Set false to use a user-assigned
+  // identity instead (user_assigned_identity_id then becomes
+  // required).
+  optional bool use_system_assigned_identity = 3 [(dev.planton.shared.options.default) = "true"];
+
+  // For use_system_assigned_identity false: the user-assigned
+  // identity that unwraps the key, by ARM ID. Must also be attached
+  // in the vault's identity block.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // The provider's own create-time rule, front-loaded: exactly one
+  // identity source unwraps the key.
+  option (buf.validate.message).cel = {
+    id: "rsv_encryption_one_identity_source"
+    message: "set use_system_assigned_identity: false when user_assigned_identity_id is set -- the key is unwrapped by exactly one identity"
+    expression: "!has(this.user_assigned_identity_id) || (has(this.use_system_assigned_identity) && !this.use_system_assigned_identity)"
+  };
+  option (buf.validate.message).cel = {
+    id: "rsv_encryption_uai_required_when_system_off"
+    message: "user_assigned_identity_id is required when use_system_assigned_identity is false"
+    expression: "!has(this.use_system_assigned_identity) || this.use_system_assigned_identity || has(this.user_assigned_identity_id)"
+  };
+}
+
+// The vault's built-in Azure Monitor alert settings. All five
+// switches default to ON -- both the provider's defaults and the
+// service's own posture when nothing is sent.
+message AzureRecoveryServicesVaultMonitoring {
+  // Alerts for ALL backup job failures (not just critical ones).
+  // Unspecified applies true.
+  optional bool alerts_for_all_job_failures_enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  // Alerts for all Site Recovery FAILOVER issues. Unspecified applies
+  // true (the service's own default).
+  //
+  // PARITY-EXCEPTION: this switch is new in azurerm v5 and absent
+  // from the classic Pulumi SDK -- the Pulumi module rejects an
+  // explicit FALSE loudly (leave it unset, or use the terraform
+  // module to turn it off). An explicit true is wire-equivalent to
+  // the default and passes on both engines.
+  optional bool alerts_for_all_failover_issues_enabled = 2;
+
+  // Alerts for all Site Recovery REPLICATION issues. Unspecified
+  // applies true (the service's own default).
+  //
+  // PARITY-EXCEPTION: new in azurerm v5, absent from the classic
+  // Pulumi SDK -- the Pulumi module rejects an explicit FALSE loudly
+  // (leave it unset, or use the terraform module to turn it off).
+  optional bool alerts_for_all_replication_issues_enabled = 3;
+
+  // Alerts for critical operations (deleting backup data, disabling
+  // protection). Unspecified applies true.
+  optional bool alerts_for_critical_operation_failures_enabled = 4 [(dev.planton.shared.options.default) = "true"];
+
+  // Email notifications to subscription owners for Site Recovery
+  // events. Unspecified applies true (the service's own default).
+  //
+  // PARITY-EXCEPTION: new in azurerm v5, absent from the classic
+  // Pulumi SDK -- the Pulumi module rejects an explicit FALSE loudly
+  // (leave it unset, or use the terraform module to turn it off).
+  optional bool email_notifications_for_site_recovery_enabled = 5;
+}

@@ -2390,6 +2390,38 @@ enum CloudResourceKind {
     prerequisites: [AzureMachineLearningBatchEndpoint]
   }];
 
+  // --- Backup and data protection (2175-2182) ---
+
+  // The Recovery Services vault (Microsoft.RecoveryServices/vaults) --
+  // the safe that classic Azure Backup data and Site Recovery
+  // configuration live in. Backup policies and protected items are
+  // ARM children of a vault.
+  AzureRecoveryServicesVault = 2175 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azrsv"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // An ARM child of its vault (.../backupPolicies/{name}) -- the
+  // schedule and retention rules that govern IaaS VM backups.
+  AzureBackupPolicyVm = 2176 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azbpv"
+    prerequisites: [AzureRecoveryServicesVault]
+  }];
+  // An ARM child of its vault (.../protectedItems/...) -- the binding
+  // that puts one virtual machine under a backup policy's protection.
+  AzureBackupProtectedVm = 2177 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azbprv"
+    prerequisites: [
+      AzureBackupPolicyVm,
+      AzureVirtualMachine
+    ]
+  }];
+
   // 3000–3999: GCP resources
   GcpArtifactRegistryRepo = 3000 [(kind_meta) = {
     provider: gcp

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurebackuppolicyvm.v1alpha1;
+
+// **AzureBackupPolicyVmStackOutputs** captures the outputs of
+// provisioning a VM backup policy.
+message AzureBackupPolicyVmStackOutputs {
+  // The Azure Resource Manager ID of the backup policy.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.RecoveryServices/vaults/{vault}/backupPolicies/{name}
+  string backup_policy_id = 1;
+
+  // The policy's name -- unique on its vault.
+  string backup_policy_name = 2;
+}

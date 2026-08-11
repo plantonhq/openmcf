@@ -1,0 +1,14 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurebackuppolicyvm
+spec:
+  # The policy's identity is its full ARM resource ID
+  # (.../vaults/{vault}/backupPolicies/{name}).
+  values:
+    - name: backup_policy_id
+      derivations:
+        - from_stack_output: backup_policy_id
+      where_to_find: >-
+        `az backup policy show -g <rg> -v <vault> -n <name> --query id`,
+        or compose {vault-id}/backupPolicies/{policy-name}.

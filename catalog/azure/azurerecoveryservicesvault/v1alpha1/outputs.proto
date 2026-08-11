@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurerecoveryservicesvault.v1alpha1;
+
+// **AzureRecoveryServicesVaultStackOutputs** captures the outputs of
+// provisioning a Recovery Services vault.
+message AzureRecoveryServicesVaultStackOutputs {
+  // The Azure Resource Manager ID of the vault.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.RecoveryServices/vaults/{name}
+  string recovery_services_vault_id = 1;
+
+  // The vault's name -- what backup policies and protected items
+  // address their vault by (ARM child addressing).
+  string recovery_services_vault_name = 2;
+
+  // The principal (object) ID of the vault's system-assigned
+  // identity, when one is enabled -- what Key Vault access policies
+  // and RBAC grants bind to for customer-managed-key encryption.
+  string system_assigned_identity_principal_id = 3;
+
+  // The ARM ID of the vault's Resource Guard association, when
+  // spec.resource_guard_id composes one. Empty otherwise.
+  string resource_guard_association_id = 4;
+}

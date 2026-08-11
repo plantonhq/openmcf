@@ -316,6 +316,7 @@ Fields on other kinds that can point at this resource:
 | AzureMysqlFlexibleServer | `spec.customerManagedKey.geoBackupKeyVaultKeyId` | `status.outputs.versionless_id` |
 | AzurePostgresqlFlexibleServer | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzurePostgresqlFlexibleServer | `spec.customerManagedKey.geoBackupKeyVaultKeyId` | `status.outputs.versionless_id` |
+| AzureRecoveryServicesVault | `spec.encryption.keyId` | `status.outputs.versionless_id` |
 | AzureServiceBusNamespace | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureStorageAccount | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureStorageEncryptionScope | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |

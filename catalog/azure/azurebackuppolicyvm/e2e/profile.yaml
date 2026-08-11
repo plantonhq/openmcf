@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurebackuppolicyvm
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests,
+  # both engine builds, offline tofu plan green); live dual-engine
+  # proof has not yet run. The policy is a FREE configuration object
+  # on the fixture vault -- the lane's time is the fixture chain
+  # (resource group + vault, both fast). The smoke proves a V2 daily
+  # policy with the full retention ladder; the hourly window, tiering,
+  # and instant-restore arms are offline-proven this wave (rendered
+  # and inspected in the offline plan -- a second policy shape would
+  # re-prove the same ARM collection).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

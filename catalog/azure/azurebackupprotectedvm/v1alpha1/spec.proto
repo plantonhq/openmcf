@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurebackupprotectedvm.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureBackupProtectedVmSpec** defines a protected VM registration
+// (ARM: Microsoft.RecoveryServices/vaults/{vault}/.../protectedItems/
+// VM;iaasvmcontainerv2;{vm-rg};{vm-name}) -- the binding that puts one
+// virtual machine under a backup policy's protection. Creating it only
+// REGISTERS protection: the first backup runs on the policy's
+// schedule, not immediately.
+//
+// **Destroying this resource stops protection AND deletes the backup
+// data** (the modules keep the engines' default destroy behavior).
+// The provider offers retain-on-destroy switches at the engine level
+// (`vm_backup_stop_protection_and_retain_data_on_destroy` /
+// `vm_backup_suspend_protection_and_retain_data_on_destroy` in the
+// azurerm features block) for teams that need the data to outlive the
+// binding.
+//
+// The spec requires the source VM -- the provider technically allows
+// clearing it on update (retaining data without a VM link), but that
+// flow is protection_state's job here (a recorded tightening).
+message AzureBackupProtectedVmSpec {
+  // The Azure resource group the protecting VAULT lives in (NOT
+  // necessarily the VM's group). Can be a literal resource-group name
+  // or a reference to an AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The Recovery Services vault that protects the VM, by NAME (ARM
+  // addresses protected items as children of a vault). Fixed at
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef recovery_vault_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureRecoveryServicesVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.recovery_services_vault_name"
+  ];
+
+  // The virtual machine to protect, by ARM ID. The VM must live in
+  // the vault's region. Changing it replaces the protection (a new
+  // protected item; the old VM's backup data follows the vault's
+  // soft-delete rules).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_vm_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualMachine,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vm_id"
+  ];
+
+  // The VM backup policy that governs schedule and retention, by ARM
+  // ID. Re-pointing to a different policy updates in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef backup_policy_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureBackupPolicyVm,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.backup_policy_id"
+  ];
+
+  // Disk LUNs (logical unit numbers) EXCLUDED from backup -- back up
+  // the whole VM except these data disks. Mutually exclusive with
+  // include_disk_luns.
+  repeated int32 exclude_disk_luns = 5 [(buf.validate.field).repeated.items.int32.gte = 0];
+
+  // Disk LUNs INCLUDED in backup -- back up ONLY the OS disk and
+  // these data disks. Mutually exclusive with exclude_disk_luns.
+  repeated int32 include_disk_luns = 6 [(buf.validate.field).repeated.items.int32.gte = 0];
+
+  // The desired protection posture (the wire values). Unset lets
+  // Azure manage it (normally "Protected"; Azure also reports
+  // transient states like IRPending which the modules treat as
+  // Protected). ProtectionStopped halts backups and retains data;
+  // BackupsSuspended does the same but ONLY works while the vault is
+  // immutable (Unlocked/Locked) -- an apply-time contract Azure
+  // enforces against the live vault.
+  string protection_state = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Protected",
+        "BackupsSuspended",
+        "ProtectionStopped"
+      ]
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "bprv_disk_luns_exclusive"
+    message: "exclude_disk_luns and include_disk_luns are mutually exclusive -- pick the disks to skip OR the disks to keep, not both"
+    expression: "this.exclude_disk_luns.size() == 0 || this.include_disk_luns.size() == 0"
+  };
+}

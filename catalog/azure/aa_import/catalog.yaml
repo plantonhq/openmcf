@@ -258,3 +258,19 @@ spec:
       id_format: "{search_service_id}/sharedPrivateLinkResources/{shared_private_link_name}"
       # The module deploys one link per spec entry, keyed by name --
       # the address's instance key supplies {shared_private_link_name}.
+    # --- Classic Azure Backup (Recovery Services) --------------------------
+    - terraform_type: azurerm_recovery_services_vault
+      pulumi_type: azure:recoveryservices/vault:Vault
+      id_format: "{recovery_services_vault_id}"
+    - terraform_type: azurerm_recovery_services_vault_resource_guard_association
+      pulumi_type: azure:recoveryservices/vaultResourceGuardAssociation:VaultResourceGuardAssociation
+      id_format: "{recovery_services_vault_id}/backupResourceGuardProxies/VaultProxy"
+      # ARM pins the association's proxy segment to the literal
+      # "VaultProxy" -- one guard per vault, so the id composes wholly
+      # from the vault's own id.
+    - terraform_type: azurerm_backup_policy_vm
+      pulumi_type: azure:backup/policyVM:PolicyVM
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_backup_protected_vm
+      pulumi_type: azure:backup/protectedVM:ProtectedVM
+      id_format: "{backup_protected_vm_id}"

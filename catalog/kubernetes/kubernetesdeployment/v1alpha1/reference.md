@@ -1464,6 +1464,9 @@ Allowed values (use exactly as shown):
 - `AzureMachineLearningOnlineDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the running copy of a model the endpoint's traffic map routes to.
 - `AzureMachineLearningBatchEndpoint` -- An ARM child of its workspace (.../batchEndpoints/{name}) -- the stable address batch scoring jobs are submitted to. azurerm carries no ML endpoint resources; the modules write the raw ARM shape at a pinned api-version (azapi / azure-native).
 - `AzureMachineLearningBatchDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the job recipe (model, compute, batching behavior) the endpoint's default-deployment pointer routes submissions to.
+- `AzureRecoveryServicesVault` -- The Recovery Services vault (Microsoft.RecoveryServices/vaults) -- the safe that classic Azure Backup data and Site Recovery configuration live in. Backup policies and protected items are ARM children of a vault.
+- `AzureBackupPolicyVm` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern IaaS VM backups.
+- `AzureBackupProtectedVm` -- An ARM child of its vault (.../protectedItems/...) -- the binding that puts one virtual machine under a backup policy's protection.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -2273,6 +2276,9 @@ Allowed values (use exactly as shown):
 - `AzureMachineLearningOnlineDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the running copy of a model the endpoint's traffic map routes to.
 - `AzureMachineLearningBatchEndpoint` -- An ARM child of its workspace (.../batchEndpoints/{name}) -- the stable address batch scoring jobs are submitted to. azurerm carries no ML endpoint resources; the modules write the raw ARM shape at a pinned api-version (azapi / azure-native).
 - `AzureMachineLearningBatchDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the job recipe (model, compute, batching behavior) the endpoint's default-deployment pointer routes submissions to.
+- `AzureRecoveryServicesVault` -- The Recovery Services vault (Microsoft.RecoveryServices/vaults) -- the safe that classic Azure Backup data and Site Recovery configuration live in. Backup policies and protected items are ARM children of a vault.
+- `AzureBackupPolicyVm` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern IaaS VM backups.
+- `AzureBackupProtectedVm` -- An ARM child of its vault (.../protectedItems/...) -- the binding that puts one virtual machine under a backup policy's protection.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -4230,6 +4236,9 @@ Allowed values (use exactly as shown):
 - `AzureMachineLearningOnlineDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the running copy of a model the endpoint's traffic map routes to.
 - `AzureMachineLearningBatchEndpoint` -- An ARM child of its workspace (.../batchEndpoints/{name}) -- the stable address batch scoring jobs are submitted to. azurerm carries no ML endpoint resources; the modules write the raw ARM shape at a pinned api-version (azapi / azure-native).
 - `AzureMachineLearningBatchDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the job recipe (model, compute, batching behavior) the endpoint's default-deployment pointer routes submissions to.
+- `AzureRecoveryServicesVault` -- The Recovery Services vault (Microsoft.RecoveryServices/vaults) -- the safe that classic Azure Backup data and Site Recovery configuration live in. Backup policies and protected items are ARM children of a vault.
+- `AzureBackupPolicyVm` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern IaaS VM backups.
+- `AzureBackupProtectedVm` -- An ARM child of its vault (.../protectedItems/...) -- the binding that puts one virtual machine under a backup policy's protection.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -5039,6 +5048,9 @@ Allowed values (use exactly as shown):
 - `AzureMachineLearningOnlineDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the running copy of a model the endpoint's traffic map routes to.
 - `AzureMachineLearningBatchEndpoint` -- An ARM child of its workspace (.../batchEndpoints/{name}) -- the stable address batch scoring jobs are submitted to. azurerm carries no ML endpoint resources; the modules write the raw ARM shape at a pinned api-version (azapi / azure-native).
 - `AzureMachineLearningBatchDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the job recipe (model, compute, batching behavior) the endpoint's default-deployment pointer routes submissions to.
+- `AzureRecoveryServicesVault` -- The Recovery Services vault (Microsoft.RecoveryServices/vaults) -- the safe that classic Azure Backup data and Site Recovery configuration live in. Backup policies and protected items are ARM children of a vault.
+- `AzureBackupPolicyVm` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern IaaS VM backups.
+- `AzureBackupProtectedVm` -- An ARM child of its vault (.../protectedItems/...) -- the binding that puts one virtual machine under a backup policy's protection.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -7037,6 +7049,9 @@ Allowed values (use exactly as shown):
 - `AzureMachineLearningOnlineDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the running copy of a model the endpoint's traffic map routes to.
 - `AzureMachineLearningBatchEndpoint` -- An ARM child of its workspace (.../batchEndpoints/{name}) -- the stable address batch scoring jobs are submitted to. azurerm carries no ML endpoint resources; the modules write the raw ARM shape at a pinned api-version (azapi / azure-native).
 - `AzureMachineLearningBatchDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the job recipe (model, compute, batching behavior) the endpoint's default-deployment pointer routes submissions to.
+- `AzureRecoveryServicesVault` -- The Recovery Services vault (Microsoft.RecoveryServices/vaults) -- the safe that classic Azure Backup data and Site Recovery configuration live in. Backup policies and protected items are ARM children of a vault.
+- `AzureBackupPolicyVm` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern IaaS VM backups.
+- `AzureBackupProtectedVm` -- An ARM child of its vault (.../protectedItems/...) -- the binding that puts one virtual machine under a backup policy's protection.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`
@@ -7846,6 +7861,9 @@ Allowed values (use exactly as shown):
 - `AzureMachineLearningOnlineDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the running copy of a model the endpoint's traffic map routes to.
 - `AzureMachineLearningBatchEndpoint` -- An ARM child of its workspace (.../batchEndpoints/{name}) -- the stable address batch scoring jobs are submitted to. azurerm carries no ML endpoint resources; the modules write the raw ARM shape at a pinned api-version (azapi / azure-native).
 - `AzureMachineLearningBatchDeployment` -- An ARM child of its endpoint (.../deployments/{name}) -- the job recipe (model, compute, batching behavior) the endpoint's default-deployment pointer routes submissions to.
+- `AzureRecoveryServicesVault` -- The Recovery Services vault (Microsoft.RecoveryServices/vaults) -- the safe that classic Azure Backup data and Site Recovery configuration live in. Backup policies and protected items are ARM children of a vault.
+- `AzureBackupPolicyVm` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern IaaS VM backups.
+- `AzureBackupProtectedVm` -- An ARM child of its vault (.../protectedItems/...) -- the binding that puts one virtual machine under a backup policy's protection.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy`
 - `GcpCloudFunction`

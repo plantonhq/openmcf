@@ -201,6 +201,8 @@ Fields on other kinds that can point at this resource:
 | AzurePostgresqlFlexibleServer | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzurePostgresqlFlexibleServer | `spec.customerManagedKey.primaryUserAssignedIdentityId` | `status.outputs.identity_id` |
 | AzurePostgresqlFlexibleServer | `spec.customerManagedKey.geoBackupUserAssignedIdentityId` | `status.outputs.identity_id` |
+| AzureRecoveryServicesVault | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureRecoveryServicesVault | `spec.encryption.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureRedisCache | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureRedisCacheAccessPolicyAssignment | `spec.objectId` | `status.outputs.principal_id` |
 | AzureRoleAssignment | `spec.principalId` | `status.outputs.principal_id` |

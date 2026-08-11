@@ -168,6 +168,8 @@ import (
 	azureapplicationinsightsv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationinsights/v1alpha1"
 	azureapplicationinsightsstandardwebtestv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationinsightsstandardwebtest/v1alpha1"
 	azureapplicationsecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationsecuritygroup/v1alpha1"
+	azurebackuppolicyvmv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurebackuppolicyvm/v1alpha1"
+	azurebackupprotectedvmv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurebackupprotectedvm/v1alpha1"
 	azurecognitiveaccountv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitiveaccount/v1alpha1"
 	azurecognitiveaccountprojectv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitiveaccountproject/v1alpha1"
 	azurecognitivedeploymentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitivedeployment/v1alpha1"
@@ -258,6 +260,7 @@ import (
 	azureprivatelinkservicev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatelinkservice/v1alpha1"
 	azurepublicipv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepublicip/v1alpha1"
 	azurepublicipprefixv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepublicipprefix/v1alpha1"
+	azurerecoveryservicesvaultv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurerecoveryservicesvault/v1alpha1"
 	azurerediscachev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurerediscache/v1alpha1"
 	azurerediscacheaccesspolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurerediscacheaccesspolicy/v1alpha1"
 	azurerediscacheaccesspolicyassignmentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurerediscacheaccesspolicyassignment/v1alpha1"
@@ -841,6 +844,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureApplicationInsights:                       &azureapplicationinsightsv1alpha1.AzureApplicationInsights{},
 	cloudresourcekind.CloudResourceKind_AzureApplicationInsightsStandardWebTest:        &azureapplicationinsightsstandardwebtestv1alpha1.AzureApplicationInsightsStandardWebTest{},
 	cloudresourcekind.CloudResourceKind_AzureApplicationSecurityGroup:                  &azureapplicationsecuritygroupv1alpha1.AzureApplicationSecurityGroup{},
+	cloudresourcekind.CloudResourceKind_AzureBackupPolicyVm:                            &azurebackuppolicyvmv1alpha1.AzureBackupPolicyVm{},
+	cloudresourcekind.CloudResourceKind_AzureBackupProtectedVm:                         &azurebackupprotectedvmv1alpha1.AzureBackupProtectedVm{},
 	cloudresourcekind.CloudResourceKind_AzureCognitiveAccount:                          &azurecognitiveaccountv1alpha1.AzureCognitiveAccount{},
 	cloudresourcekind.CloudResourceKind_AzureCognitiveAccountProject:                   &azurecognitiveaccountprojectv1alpha1.AzureCognitiveAccountProject{},
 	cloudresourcekind.CloudResourceKind_AzureCognitiveDeployment:                       &azurecognitivedeploymentv1alpha1.AzureCognitiveDeployment{},
@@ -931,6 +936,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzurePrivateLinkService:                        &azureprivatelinkservicev1alpha1.AzurePrivateLinkService{},
 	cloudresourcekind.CloudResourceKind_AzurePublicIp:                                  &azurepublicipv1alpha1.AzurePublicIp{},
 	cloudresourcekind.CloudResourceKind_AzurePublicIpPrefix:                            &azurepublicipprefixv1alpha1.AzurePublicIpPrefix{},
+	cloudresourcekind.CloudResourceKind_AzureRecoveryServicesVault:                     &azurerecoveryservicesvaultv1alpha1.AzureRecoveryServicesVault{},
 	cloudresourcekind.CloudResourceKind_AzureRedisCache:                                &azurerediscachev1alpha1.AzureRedisCache{},
 	cloudresourcekind.CloudResourceKind_AzureRedisCacheAccessPolicy:                    &azurerediscacheaccesspolicyv1alpha1.AzureRedisCacheAccessPolicy{},
 	cloudresourcekind.CloudResourceKind_AzureRedisCacheAccessPolicyAssignment:          &azurerediscacheaccesspolicyassignmentv1alpha1.AzureRedisCacheAccessPolicyAssignment{},

@@ -1,0 +1,42 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupPolicyVm
+metadata:
+  name: hourly-enhanced-policy
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "<your-resource-group>"
+      fieldPath: status.outputs.resource_group_name
+  recoveryVaultName:
+    valueFrom:
+      kind: AzureRecoveryServicesVault
+      name: "<your-recovery-services-vault>"
+      fieldPath: status.outputs.recovery_services_vault_name
+  name: hourly-enhanced-policy
+  # Hourly schedules exist only on V2 (enhanced) policies.
+  policyType: V2
+  # A backup every 4 hours inside a 12-hour window starting 08:00 --
+  # three points a day, churn kept inside working hours. The window
+  # (hourDuration) must be a multiple of the interval.
+  backup:
+    frequency: Hourly
+    time: "08:00"
+    hourInterval: 4
+    hourDuration: 12
+  timezone: UTC
+  # V2 allows up to 30 instant-restore days (V1 caps at 5) -- fast
+  # snapshot-based restores without a vault round-trip.
+  instantRestoreRetentionDays: 7
+  # Aged points move to archive-tier prices after 3 months.
+  tieringPolicy:
+    archivedRestorePoint:
+      mode: TierAfter
+      duration: 3
+      durationType: Months
+  retentionDaily:
+    count: 30
+  retentionMonthly:
+    count: 24
+    days: [1]
+    includeLastDays: false

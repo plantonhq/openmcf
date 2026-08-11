@@ -529,6 +529,33 @@ func TestAzureMachineLearningBatchDeployment_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningbatchdeployment", "terraform")
 }
 
+// --- Azure Recovery Services Vault (composed: fixture RG -> a locally-redundant vault with the monitoring block; FREE at rest, creates in minutes. Immutability/CMK are one-way doors deliberately left to offline proof) ---
+
+func TestAzureRecoveryServicesVault_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurerecoveryservicesvault", "pulumi")
+}
+func TestAzureRecoveryServicesVault_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurerecoveryservicesvault", "terraform")
+}
+
+// --- Azure Backup Policy VM (composed: fixture RG -> fixture vault -> a V2 daily policy with the full retention ladder; a FREE configuration object) ---
+
+func TestAzureBackupPolicyVm_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackuppolicyvm", "pulumi")
+}
+func TestAzureBackupPolicyVm_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackuppolicyvm", "terraform")
+}
+
+// --- Azure Backup Protected VM (composed: the trio's deepest chain -- policy -> fixture vault, plus the fixture VM's NIC/subnet/VNet/disk chain; creation only REGISTERS protection, so no backup storage accrues and the cost is the fixture VM's hour. The smoke also proves the LUN-exclusion seam against the VM's data disk) ---
+
+func TestAzureBackupProtectedVm_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackupprotectedvm", "pulumi")
+}
+func TestAzureBackupProtectedVm_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackupprotectedvm", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {
