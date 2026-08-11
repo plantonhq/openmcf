@@ -6,9 +6,13 @@
 # by its fixed name inside the free-form configuration map (plain strings by
 # AWS's design), while the artifact store location resolves as a reference.
 # QUEUED execution mode, a pipeline variable, a namespaced source action,
-# and ROLLBACK failure handling on the Build stage exercise the V2 surface
-# live. (No action timeout override: AWS only supports it on Manual Approval
-# actions — the spec CEL enforces this.)
+# ROLLBACK failure handling on the Build stage, and a Compute action with
+# inline commands, an exported variable, and a file-based output artifact
+# exercise the V2 surface live. Compute actions are free at create time --
+# they bill CodeBuild compute only when an execution actually runs the
+# commands, which this lane's failing execution never reaches. (No action
+# timeout override: AWS only supports it on Manual Approval actions — the
+# spec CEL enforces this.)
 #
 # The pipeline's first execution starts automatically and fails on the
 # missing source object -- expected and harmless: execution outcomes are
@@ -79,5 +83,26 @@ spec:
             - SourceOutput
           configuration:
             ProjectName: planton-oss-e2e-awscodebuild-prereq
+        # The Compute-action arm: accepted (and verifiable via GetPipeline)
+        # at create time; the commands never run in this lane because the
+        # execution fails at the Source stage.
+        - name: InlineChecks
+          category: Compute
+          owner: AWS
+          provider: Commands
+          version: "1"
+          runOrder: 2
+          namespace: ComputeVars
+          inputArtifacts:
+            - SourceOutput
+          commands:
+            - export CHECK_STATUS=ok
+            - echo "planton e2e inline check $CHECK_STATUS" > check-report.txt
+          outputVariables:
+            - CHECK_STATUS
+          outputArtifactsForComputeAction:
+            - name: CheckReports
+              files:
+                - check-report.txt
       onFailure:
         result: ROLLBACK

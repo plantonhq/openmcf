@@ -80,6 +80,7 @@ variable "spec" {
         security_group_ids = optional(list(string), [])
       }))
       fleet_arn = optional(string, "")
+      host_kernel = optional(string, "")
     })
     artifacts = object({
       type = string

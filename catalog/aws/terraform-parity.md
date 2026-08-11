@@ -32,7 +32,7 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
 | Distinct provider resources consumed | 235 |
-| Spec fields authored across all kinds | 4259 |
+| Spec fields authored across all kinds | 4264 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**40 of 112 kinds are at total accounting; 72 proven live.**
+**42 of 112 kinds are at total accounting; 72 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -68,8 +68,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCloudwatchAlarm | 39 | 24 | 0 | 0 | 27 | ❌ | ✅ pulumi, terraform |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsCloudwatchLogGroup | 36 | 9 | 0 | 0 | 45 | ❌ | ✅ pulumi, terraform |
-| AwsCodeBuildProject | 115 | 90 | 0 | 0 | 44 | ❌ | ✅ pulumi, terraform |
-| AwsCodePipeline | 84 | 4 | 0 | 0 | 151 | ❌ | ✅ pulumi, terraform |
+| AwsCodeBuildProject | 115 | 97 | 11 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCodePipeline | 84 | 4 | 75 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoIdentityProvider | 7 | 6 | 0 | 0 | 32 | ❌ | ✅ pulumi, terraform |
 | AwsCognitoResourceServer | 6 | 4 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
 | AwsCognitoUserPool | 91 | 53 | 0 | 0 | 68 | ❌ | ✅ pulumi, terraform |
@@ -173,8 +173,8 @@ All resources of `aws@6.58.0` land in exactly one class:
 | Modeled | 235 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 5 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 800 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 522 | deliberately not offered, each with the recorded reason |
+| Planned | 799 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 523 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -433,7 +433,7 @@ rather than trusted.
 | `aws_kms_key_policy` | covered by AwsKmsKey spec.policy -- the standalone resource is the detached-management pattern for keys owned elsewhere |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
 
-### Planned (800)
+### Planned (799)
 
 | Resource | Recorded reason |
 |---|---|
@@ -611,14 +611,13 @@ rather than trusted.
 | `aws_codeartifact_domain_permissions_policy` | judged as a planned AwsCodeArtifact kind (domains and repositories with permission policies) |
 | `aws_codeartifact_repository` | judged as a planned AwsCodeArtifact kind (domains and repositories with permission policies) |
 | `aws_codeartifact_repository_permissions_policy` | judged as a planned AwsCodeArtifact kind (domains and repositories with permission policies) |
-| `aws_codebuild_fleet` | CodeBuild fleets and source credentials fold into the existing AwsCodebuildProject kind as its spec deepens |
-| `aws_codebuild_source_credential` | CodeBuild fleets and source credentials fold into the existing AwsCodebuildProject kind as its spec deepens |
+| `aws_codebuild_fleet` | a future AwsCodeBuildFleet kind: reserved-capacity fleets are account-scoped shared compute pools with their own scaling/VPC/compute-configuration surface, referenced by many projects -- AwsCodeBuildProject models the attachment (environment.fleet_arn) and records the fleet itself as deliberately excluded |
+| `aws_codebuild_source_credential` | a future AwsCodeBuildSourceCredential kind: the account/region-wide git credential store (one per server type, shared by every project; secret-bearing token) -- AwsCodeBuildProject records it as deliberately excluded and carries per-source auth via source.auth |
 | `aws_codeconnections_connection` | judged as a planned AwsCodeConnection kind (connections and hosts to external SCM providers) |
 | `aws_codeconnections_host` | judged as a planned AwsCodeConnection kind (connections and hosts to external SCM providers) |
 | `aws_codedeploy_app` | judged as a planned AwsCodeDeployApp kind (applications with deployment groups and configs) |
 | `aws_codedeploy_deployment_config` | judged as a planned AwsCodeDeployApp kind (applications with deployment groups and configs) |
 | `aws_codedeploy_deployment_group` | judged as a planned AwsCodeDeployApp kind (applications with deployment groups and configs) |
-| `aws_codepipeline_webhook` | pipeline webhooks fold into the existing AwsCodepipeline kind as its spec deepens |
 | `aws_cognito_identity_pool` | judged as a planned AwsCognitoIdentityPool kind (identity pools with roles attachments and provider principal tags) |
 | `aws_cognito_identity_pool_provider_principal_tag` | judged as a planned AwsCognitoIdentityPool kind (identity pools with roles attachments and provider principal tags) |
 | `aws_cognito_identity_pool_roles_attachment` | judged as a planned AwsCognitoIdentityPool kind (identity pools with roles attachments and provider principal tags) |
@@ -1238,7 +1237,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (522)
+### Deferred (523)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1302,13 +1301,14 @@ rather than trusted.
 | `aws_cloudwatch_contributor_managed_insight_rule` | Contributor Insights rules; deferred pending demand |
 | `aws_cloudwatch_event_endpoint` | EventBridge global endpoints (multi-region failover); deferred pending demand |
 | `aws_cloudwatch_otel_enrichment` | OpenTelemetry enrichment is newly introduced account telemetry plumbing; deferred pending maturity |
-| `aws_codebuild_report_group` | CodeBuild report groups are test-report content, not build infrastructure; deferred |
+| `aws_codebuild_report_group` | standalone report-export destination referenced from buildspec report sections (never project configuration); niche CI-analytics surface, deferred pending demand |
 | `aws_codecatalyst_dev_environment` | CodeCatalyst vertical; deferred pending demand |
 | `aws_codecatalyst_project` | CodeCatalyst vertical; deferred pending demand |
 | `aws_codecatalyst_source_repository` | CodeCatalyst vertical; deferred pending demand |
 | `aws_codeguruprofiler_profiling_group` | CodeGuru profiling/review services; deferred pending demand |
 | `aws_codegurureviewer_repository_association` | CodeGuru profiling/review services; deferred pending demand |
-| `aws_codepipeline_custom_action_type` | custom pipeline action types; deferred pending demand |
+| `aws_codepipeline_custom_action_type` | account-level custom action-type registration with an independent lifecycle (the AwsCodePipeline spec's recorded exclusion); pipeline actions reference custom types by owner/provider/version today -- a future kind on demand |
+| `aws_codepipeline_webhook` | the legacy V1 webhook trigger mechanism (per-pipeline GitHub-OAuth/HMAC push endpoint); V2 pipelines use native CodeConnections triggers, which AwsCodePipeline models in full -- the spec records webhooks as deliberately excluded; revisit only on V1-pipeline demand |
 | `aws_cognito_user` | Cognito user records are data-plane identity content, not infrastructure |
 | `aws_cognito_user_in_group` | Cognito user records are data-plane identity content, not infrastructure |
 | `aws_comprehend_document_classifier` | Comprehend custom NLP models are imperative training artifacts; deferred |

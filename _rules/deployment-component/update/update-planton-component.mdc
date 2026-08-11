@@ -216,10 +216,12 @@ misconfigurations fail at validation rather than at deploy.
    that need a newer provider. Finally verify the test-manifest anatomy exists:
    `e2e/manifest.yaml` at the component root (a component can lack it — and
    without it the offline `tofu plan` proof has NO input, so that gate silently
-   never runs for the kind) and `iac/pulumi/stack-input.yaml` (the local-run
-   entrypoint file the anatomy carries). Create both from the current
-   spec when missing; make the e2e manifest exercise the full surface so the
-   plan proof covers arms the live lanes exclude.
+   never runs for the kind). Create it from the current spec when missing;
+   make the e2e manifest exercise the full surface so the plan proof covers
+   arms the live lanes exclude. (`iac/pulumi/stack-input.yaml` is NOT
+   committed anatomy — the repo gitignores that path catalog-wide; it is
+   CLI-written preview output that doubles as a local-run convenience.
+   Never create or commit one.)
    The tofu plan proof itself: `cd iac/tf && planton tofu init --manifest
    ../../e2e/manifest.yaml --module-dir .` then `planton tofu plan --manifest
    ../../e2e/manifest.yaml --module-dir .`. The CLI renders the manifest into
@@ -230,6 +232,13 @@ misconfigurations fail at validation rather than at deploy.
    "Failed to read variables file ... does not exist" even though the CLI just
    wrote that file (tofu resolves the relative path against the module dir,
    doubling it).
+   Before the Pulumi proof, check the e2e manifest for legacy
+   `pulumi.planton.dev/*` annotations (organization/project/stack.name):
+   the CLI prefers an annotation-derived stack over `--stack`, so a
+   manifest carrying them hijacks the proof onto a stack FQDN a local
+   backend rejects ("organization name must be 'organization'"). The
+   current canonical-manifest convention carries NO pulumi annotations —
+   strip them as part of the update.
    The Pulumi side has an equivalent offline proof — run it whenever the live
    lanes are deferred (it is what catches the `options.binary` class above,
    which `go build` cannot):

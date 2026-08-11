@@ -44,8 +44,16 @@ func project(
 	if env.PrivilegedMode {
 		envArgs.PrivilegedMode = pulumi.BoolPtr(true)
 	}
-	if env.GetImagePullCredentialsType() != "" && env.GetImagePullCredentialsType() != "CODEBUILD" {
+	// Faithful pass-through (matches the Terraform engine): the platform
+	// materializes the spec default at manifest load, and the module sends
+	// what the spec says instead of re-deciding which values are "defaults".
+	if env.GetImagePullCredentialsType() != "" {
 		envArgs.ImagePullCredentialsType = pulumi.StringPtr(env.GetImagePullCredentialsType())
+	}
+	// Kernel selection is Linux container/EC2 surface (the spec's CEL scopes
+	// it); omitted, AWS chooses (the argument is Optional+Computed).
+	if env.HostKernel != "" {
+		envArgs.HostKernel = pulumi.StringPtr(env.HostKernel)
 	}
 	if len(env.EnvironmentVariables) > 0 {
 		var envVars codebuild.ProjectEnvironmentEnvironmentVariableArray
@@ -54,7 +62,8 @@ func project(
 				Name:  pulumi.String(ev.Name),
 				Value: pulumi.String(ev.Value),
 			}
-			if ev.GetType() != "" && ev.GetType() != "PLAINTEXT" {
+			// Faithful pass-through (matches the Terraform engine).
+			if ev.GetType() != "" {
 				evArgs.Type = pulumi.StringPtr(ev.GetType())
 			}
 			envVars = append(envVars, evArgs)
@@ -161,8 +170,10 @@ func project(
 	// Public visibility is managed by a separate AWS API call under the hood
 	// (UpdateProjectVisibility); the provider sequences it after project
 	// create/update. The resource access role is what CodeBuild uses to read
-	// the logs/artifacts it re-exposes publicly.
-	if spec.GetProjectVisibility() != "" && spec.GetProjectVisibility() != "PRIVATE" {
+	// the logs/artifacts it re-exposes publicly. Faithful pass-through
+	// (matches the Terraform engine): PRIVATE is sent explicitly, not
+	// re-derived as "the default" here.
+	if spec.GetProjectVisibility() != "" {
 		args.ProjectVisibility = pulumi.StringPtr(spec.GetProjectVisibility())
 	}
 	if spec.ResourceAccessRole != nil && spec.ResourceAccessRole.GetValue() != "" {
@@ -249,10 +260,18 @@ func project(
 		var fsLocations codebuild.ProjectFileSystemLocationArray
 		for _, fs := range spec.FileSystemLocations {
 			fsArgs := &codebuild.ProjectFileSystemLocationArgs{
-				Type:       pulumi.StringPtr(fs.GetType()),
 				Identifier: pulumi.StringPtr(fs.Identifier),
 				Location:   pulumi.StringPtr(fs.Location),
 				MountPoint: pulumi.StringPtr(fs.MountPoint),
+			}
+			// Sent only when set: an unconditional send renders "" when the
+			// entry omits type (defaults are not materialized inside
+			// repeated nested messages), and the provider rejects anything
+			// but "EFS" -- omitted, the provider's own EFS default applies
+			// (the Terraform twin gets EFS from its generated
+			// optional(string, "EFS") variable declaration).
+			if fs.GetType() != "" {
+				fsArgs.Type = pulumi.StringPtr(fs.GetType())
 			}
 			if fs.MountOptions != "" {
 				fsArgs.MountOptions = pulumi.StringPtr(fs.MountOptions)

@@ -814,13 +814,13 @@ resources:
     reason: "judged as a planned AwsCodeArtifact kind (domains and repositories with permission policies)"
   - resource: aws_codebuild_fleet
     disposition: model-planned
-    reason: "CodeBuild fleets and source credentials fold into the existing AwsCodebuildProject kind as its spec deepens"
+    reason: "a future AwsCodeBuildFleet kind: reserved-capacity fleets are account-scoped shared compute pools with their own scaling/VPC/compute-configuration surface, referenced by many projects -- AwsCodeBuildProject models the attachment (environment.fleet_arn) and records the fleet itself as deliberately excluded"
   - resource: aws_codebuild_report_group
     disposition: deferred
-    reason: "CodeBuild report groups are test-report content, not build infrastructure; deferred"
+    reason: "standalone report-export destination referenced from buildspec report sections (never project configuration); niche CI-analytics surface, deferred pending demand"
   - resource: aws_codebuild_source_credential
     disposition: model-planned
-    reason: "CodeBuild fleets and source credentials fold into the existing AwsCodebuildProject kind as its spec deepens"
+    reason: "a future AwsCodeBuildSourceCredential kind: the account/region-wide git credential store (one per server type, shared by every project; secret-bearing token) -- AwsCodeBuildProject records it as deliberately excluded and carries per-source auth via source.auth"
   - resource: aws_codecatalyst_dev_environment
     disposition: deferred
     reason: "CodeCatalyst vertical; deferred pending demand"
@@ -865,10 +865,10 @@ resources:
     reason: "CodeGuru profiling/review services; deferred pending demand"
   - resource: aws_codepipeline_custom_action_type
     disposition: deferred
-    reason: "custom pipeline action types; deferred pending demand"
+    reason: "account-level custom action-type registration with an independent lifecycle (the AwsCodePipeline spec's recorded exclusion); pipeline actions reference custom types by owner/provider/version today -- a future kind on demand"
   - resource: aws_codepipeline_webhook
-    disposition: model-planned
-    reason: "pipeline webhooks fold into the existing AwsCodepipeline kind as its spec deepens"
+    disposition: deferred
+    reason: "the legacy V1 webhook trigger mechanism (per-pipeline GitHub-OAuth/HMAC push endpoint); V2 pipelines use native CodeConnections triggers, which AwsCodePipeline models in full -- the spec records webhooks as deliberately excluded; revisit only on V1-pipeline demand"
   - resource: aws_codestarconnections_connection
     disposition: excluded-deprecated
     reason: "codestarconnections is the superseded name of codeconnections (planned AwsCodeConnection kind)"

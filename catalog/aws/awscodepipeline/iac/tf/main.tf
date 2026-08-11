@@ -5,8 +5,14 @@
 # with a bounded retry on create.
 
 resource "aws_codepipeline" "this" {
-  name           = local.pipeline_name
-  role_arn       = var.spec.role_arn
+  name     = local.pipeline_name
+  role_arn = var.spec.role_arn
+  # pipeline_type/execution_mode pass through unmodified: the spec's
+  # V2/SUPERSEDED defaults are materialized by the platform when the
+  # manifest is loaded, so the module never re-derives them (one source of
+  # truth; same pass-through in the Pulumi module). A raw tfvars invocation
+  # that bypasses manifest loading and omits pipeline_type gets the
+  # PROVIDER default, which is V1.
   pipeline_type  = var.spec.pipeline_type
   execution_mode = var.spec.execution_mode
   tags           = local.tags
@@ -72,6 +78,21 @@ resource "aws_codepipeline" "this" {
           run_order        = action.value.run_order > 0 ? action.value.run_order : null
           # Per-action timeout override (omit for the provider default).
           timeout_in_minutes = action.value.timeout_in_minutes > 0 ? action.value.timeout_in_minutes : null
+
+          # Compute-action surface: inline shell commands with exported
+          # variables and file-based output artifacts (Compute actions use
+          # these INSTEAD of plain output_artifacts — the spec's CEL
+          # enforces the split before the provider's plan-time check).
+          commands         = length(action.value.commands) > 0 ? action.value.commands : null
+          output_variables = length(action.value.output_variables) > 0 ? action.value.output_variables : null
+
+          dynamic "output_artifacts_for_compute_action" {
+            for_each = action.value.output_artifacts_for_compute_action
+            content {
+              name  = output_artifacts_for_compute_action.value.name
+              files = length(output_artifacts_for_compute_action.value.files) > 0 ? output_artifacts_for_compute_action.value.files : null
+            }
+          }
         }
       }
 

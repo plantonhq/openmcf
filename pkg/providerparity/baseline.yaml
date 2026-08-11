@@ -25,8 +25,6 @@ entries:
   - kind:AwsCloudwatchAlarm
   - kind:AwsCloudwatchCompositeAlarm
   - kind:AwsCloudwatchLogGroup
-  - kind:AwsCodeBuildProject
-  - kind:AwsCodePipeline
   - kind:AwsCognitoIdentityProvider
   - kind:AwsCognitoResourceServer
   - kind:AwsCognitoUserPool

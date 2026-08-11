@@ -126,6 +126,9 @@ resource "aws_codebuild_project" "this" {
     certificate                 = var.spec.environment.certificate != "" ? var.spec.environment.certificate : null
     privileged_mode             = var.spec.environment.privileged_mode
     image_pull_credentials_type = var.spec.environment.image_pull_credentials_type
+    # Kernel selection is Linux container/EC2 surface (the spec's CEL scopes
+    # it); omitted, AWS chooses (the argument is Optional+Computed).
+    host_kernel = var.spec.environment.host_kernel != "" ? var.spec.environment.host_kernel : null
 
     dynamic "environment_variable" {
       for_each = var.spec.environment.environment_variables

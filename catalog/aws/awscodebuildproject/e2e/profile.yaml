@@ -9,10 +9,13 @@ spec:
   #
   # - full-surface: NO_SOURCE + inline buildspec (standalone -- no
   #   repository, connection, or bucket), environment variables incl. an SSM
-  #   Parameter Store reference, governance dials (timeouts, concurrency
-  #   cap, automatic retry), and CloudWatch logging via the managed default
-  #   log group. The service role resolves from the shared IAM role fixture
-  #   (registry prerequisite).
+  #   Parameter Store reference, the non-default kernel-6 host kernel
+  #   (verify BatchGetProjects reports hostKernel back -- if AWS rejects
+  #   the explicit selection for this image/region, trim the arm and record
+  #   the deferral), governance dials (timeouts, concurrency cap, automatic
+  #   retry), and CloudWatch logging via the managed default log group. The
+  #   service role resolves from the shared IAM role fixture (registry
+  #   prerequisite).
   #
   # Excluded from the live lane with reasons (proven by spec tests + the
   # offline plan gate against e2e/manifest.yaml, which exercises every
@@ -40,9 +43,13 @@ spec:
   # the project deploy itself took 14s) / Terraform 5m20s total (deploy
   # 10s). The project resource is near-instant either way; the fixture
   # chain dominates.
+  #
+  # pending_proof: environment.host_kernel landed in the spec and both
+  # engines, and the Pulumi module converged three defaulted sends
+  # (image_pull_credentials_type, env-var type, project_visibility) to
+  # faithful pass-through after the last live proof; the prior green
+  # predates this surface.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

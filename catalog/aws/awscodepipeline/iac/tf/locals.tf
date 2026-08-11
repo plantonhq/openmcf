@@ -21,11 +21,4 @@ locals {
   # pipeline). The spec's CEL enforces the shape; the module only needs to
   # know which arm it is rendering.
   is_single_region = length(var.spec.artifact_stores) == 1 && var.spec.artifact_stores[0].region == ""
-
-  # The spec defaults to V2/SUPERSEDED, while the PROVIDER defaults
-  # pipeline_type to V1 -- an omitted value must deploy the same pipeline an
-  # explicit V2 would, so the spec defaults are applied here, never left to
-  # the provider.
-  pipeline_type  = var.spec.pipeline_type != null && var.spec.pipeline_type != "" ? var.spec.pipeline_type : "V2"
-  execution_mode = var.spec.execution_mode != null && var.spec.execution_mode != "" ? var.spec.execution_mode : "SUPERSEDED"
 }
