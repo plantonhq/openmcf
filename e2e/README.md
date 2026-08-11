@@ -837,7 +837,27 @@ model is stale, read the evidence through this repo's own pinned
 `aws-sdk-go-v2` (a `go doc` check plus a small probe) or through the
 engine's refresh diff — the same stale-local-tooling class as the
 installed `planton` binary misreporting new spec fields (use the
-working-tree CLI).
+working-tree CLI). **Check the OUTPUT skeleton, not just the input one**
+(`--generate-cli-skeleton output` on the describe/get op): the two halves
+of the CLI's model update independently, and a CLI that ACCEPTS a new
+field on create can still DROP it from describe output (live hit
+2026-08-12: aws-cli 2.33.24 knew `TargetControlPort` in
+`create-target-group` input while `describe-target-groups` output
+silently omitted it — the pinned elbv2 SDK read it fine).
+
+**Short-lived resources need a PRE-ARMED evidence watcher, not an
+after-the-fact probe.** Target groups, IAM objects, and other
+seconds-scale resources are deployed, verified, and destroyed faster
+than a human-in-the-loop probe can react — a mid-lane evidence capture
+attempted after noticing the deploy line typically answers NotFound
+(live hit 2026-08-12: a target group's whole lifecycle ran in ~70s and
+the first probe missed the window). Start a background poller BEFORE
+launching the lane — poll the resource's fixed cloud-side name (or its
+`planton.ai/resource-id` tag) every few seconds, capture the evidence
+calls the moment it exists, and let it idle through both engines' windows
+so each lane's instance is sampled independently. The poller doubles as
+per-engine attribution: two capture blocks with different resource IDs
+prove BOTH engines' instances carried the arm.
 
 ## GCP E2E
 

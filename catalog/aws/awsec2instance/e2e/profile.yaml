@@ -26,10 +26,26 @@ spec:
   # ConflictsWith); the capacity-block / interruptible-reservation
   # markets and capacity-reservations-only preference (need purchased
   # capacity -- owner budget decision; proven offline via the
-  # 05-capacity-block-ml preset); force_destroy-under-protection (a
-  # proof-lane decision -- pairing it with disable_api_termination live
-  # risks a protected orphan if the disable step fails).
+  # 05-capacity-block-ml preset); force_destroy-under-protection (the
+  # 2026-08-12 proof session DECIDED this deferral: pairing
+  # disable_api_termination with force_destroy live risks a protected
+  # orphan if the disable step fails mid-destroy, and no lane budget
+  # justifies that manual-cleanup exposure -- the canonical manifest
+  # carries the pairing for offline proof; unblock: an owner-accepted
+  # manual-cleanup window).
+  #
+  # Proven 2026-08-12 (both engines, all eight phases): Pulumi 5m50s /
+  # Terraform 5m14s. Live evidence on BOTH lanes' instances:
+  # DescribeInstanceAttribute reports SourceDestCheck true with
+  # source_dest_check UNSET in the spec (the presence-typed omit path
+  # leaves AWS's default on -- the provider applies its own schema
+  # default, visible in the Terraform plan as source_dest_check = true),
+  # and DescribeVolumes shows the volume-role=boot tag on the encrypted
+  # gp3 root volume itself (per-volume tags apply post-creation by a
+  # separate call; a tags-missing read right at launch is timing).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 20

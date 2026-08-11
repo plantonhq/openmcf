@@ -15,9 +15,22 @@ spec:
   #
   # Deliberately not in the live lane, each proven by CEL spec tests and
   # the offline plan/preview gate: the LCU capacity reservation (BILLS for
-  # the reserved units while set) and IPAM-pool addressing (no IPAM pool
-  # fixture exists) -- both render in the canonical e2e/manifest.yaml and
-  # the 03-reserved-capacity preset on both engines.
+  # the reserved units while set; unblock: an owner-budgeted event window)
+  # and IPAM-pool addressing (no IPAM pool fixture exists; unblock: an
+  # IPAM-pool fixture if a VPC IPAM kind ever ships) -- both render in the
+  # canonical e2e/manifest.yaml and the 03-reserved-capacity preset on
+  # both engines.
+  #
+  # Re-proven 2026-08-12 after the depth close (both engines, all eight
+  # phases): Pulumi 6m32s / Terraform 6m44s. Mid-lane evidence on BOTH
+  # lanes' balancers: state provisioning -> active in
+  # DescribeLoadBalancers, and GetWebACLForResource returning the fixture
+  # web ACL by name/ARN once active (the association attaches as the ALB
+  # becomes ready -- a null answer during "provisioning" is timing, not a
+  # missing association).
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 30

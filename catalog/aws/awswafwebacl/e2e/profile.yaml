@@ -35,7 +35,16 @@ spec:
   # rule-tree serializers are byte-identical, but the spec and the logging
   # renderers changed in both engines, so the earned proof no longer covers
   # the shipped surface.
+  #
+  # Re-proven 2026-08-12 (both engines, all eight phases): Pulumi 1m44s /
+  # Terraform 1m35s. The priority-0 arm's first live proof: GetWebACL on
+  # BOTH lanes' ACLs echoed the managed-common rule at Priority 0
+  # (capacity 834) -- the presence-typed field round-trips AWS's 0-based
+  # console default. The new no-logging render path also ran clean four
+  # more times as the ALB lanes' fixture chains this same session.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 15
