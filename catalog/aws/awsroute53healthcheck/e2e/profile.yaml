@@ -4,20 +4,30 @@ metadata:
   name: awsroute53healthcheck
 spec:
   # A Route 53 health check under live E2E: the harness runs deploy ->
-  # GetHealthCheck verify -> destroy -> verify-destroyed on both
-  # provisioners. The check is a true leaf (no prerequisites), creates in
-  # seconds, and the scenario ships DISABLED so the global checker fleet
-  # never probes the placeholder endpoint — the resource surface (type,
-  # probe tuning, checker regions, state shaping) is fully exercised with
-  # zero external traffic. Deliberately not in the live scenario:
-  # CALCULATED aggregation (child checks compose by ID — the ref wiring is
-  # a plain string pass-through), CLOUDWATCH_METRIC (needs an alarm
-  # fixture), and RECOVERY_CONTROL (needs the Application Recovery
-  # Controller control plane, a separate service surface). All proven by
+  # GetHealthCheck verify (incl. calculated-posture coherence: a CALCULATED
+  # check must report its child set) -> destroy -> verify-destroyed on both
+  # provisioners. The check is a registry leaf (no prerequisites); the
+  # https-endpoint scenario ships DISABLED so the global checker fleet
+  # never probes the placeholder endpoint, and the calculated-aggregate
+  # scenario composes a same-kind child fixture via the PATH-form
+  # e2e-prerequisites annotation (an extra instance — the kind-name form is
+  # for other kinds' install profiles) and carries an EXPLICIT-ZERO
+  # child_health_threshold (AWS's always-healthy contract; the
+  # presence-typed send path is the arm under proof). Checks create in
+  # seconds at ~$0.50/month prorated. Deliberately not in the live
+  # scenarios: CLOUDWATCH_METRIC (needs an alarm fixture; unblock: an
+  # AwsCloudwatchAlarm prerequisite fixture when that kind's depth wave
+  # lands one) and RECOVERY_CONTROL (needs the Application Recovery
+  # Controller control plane, a separate service surface). Both proven by
   # CEL spec tests and the offline gate.
+  #
+  # pending_proof: the depth closure converged the engines (Pulumi now
+  # state-pins invert_healthcheck/disabled/measure_latency and type-gates
+  # probe tuning like Terraform), presence-typed child_health_threshold,
+  # and dropped the two materialized probe-tuning defaults — the prior
+  # green proof predates all of it, and the CALCULATED model has never run
+  # live.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
-  timeout_minutes: 10
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

@@ -27,3 +27,22 @@ spec:
   checkType: TCP
   ipAddress: 192.0.2.10
   port: 5432
+
+---
+# CALCULATED check aggregating per-endpoint checks into service health.
+# childHealthThreshold is by PRESENCE: 2 here means "at least two children
+# healthy"; an explicit 0 means "always healthy" (AWS's contract); omitting
+# it lets AWS apply its server-side default.
+
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53HealthCheck
+metadata:
+  name: service-calculated-check
+spec:
+  region: us-west-2
+  checkType: CALCULATED
+  childHealthChecks:
+    - value: abcdef11-2222-3333-4444-555555fedcba
+    - value: fedcba55-4444-3333-2222-11fedcbaabcd
+    - value: 12345678-90ab-cdef-1234-567890abcdef
+  childHealthThreshold: 2

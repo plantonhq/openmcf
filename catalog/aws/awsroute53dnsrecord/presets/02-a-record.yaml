@@ -6,8 +6,8 @@ spec:
   region: us-east-1
   zoneId:
     value: "<route53-hosted-zone-id>"
-  name: <your-subdomain.your-domain.com>
+  name: app.example.com  # replace with your record's fully qualified name
   type: A
-  ttl: 300  # 5 minutes; standard default for most records
+  ttl: 300  # 5 minutes; a sensible default for most records (0 = never cache; AWS accepts up to 2147483647)
   values:
-    - <ipv4-address>
+    - 192.0.2.10  # replace with your endpoint's IPv4 address

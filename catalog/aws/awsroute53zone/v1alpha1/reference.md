@@ -64,6 +64,32 @@ spec:
     - vpcId:
         value: vpc-0fedcba9876543210
       vpcRegion: eu-west-1
+
+---
+# DNSSEC-signed public zone with accelerated recovery: the full
+# security/resilience shape. The KMS key must live in us-east-1 with key
+# spec ECC_NIST_P256 and the dnssec-route53.amazonaws.com key policy (see
+# the spec docs). The ds_record output carries the value to register at
+# the registrar — signing without the parent DS protects nobody.
+# keySigningKeyStatus defaults to ACTIVE; INACTIVE is the documented
+# diagnostics lever.
+
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53Zone
+metadata:
+  name: secure.example.com
+spec:
+  region: us-east-1
+  comment: DNSSEC-signed zone
+  enableAcceleratedRecovery: true
+  dnssec:
+    kmsKeyArn:
+      value: arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+    keySigningKeyName: secure-example-ksk
+    keySigningKeyStatus: ACTIVE
+  queryLogging:
+    cloudwatchLogGroupArn:
+      value: arn:aws:logs:us-east-1:123456789012:log-group:/aws/route53/secure.example.com
 ```
 
 ## Spec Fields
@@ -84,6 +110,7 @@ spec:
 | `spec.dnssec` | `AwsRoute53ZoneDnssec` |  |  |  |
 | `spec.dnssec.kmsKeyArn` | `string \| valueFrom` | yes |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.dnssec.keySigningKeyName` | `string` |  |  |  |
+| `spec.dnssec.keySigningKeyStatus` | `string` |  |  |  |
 
 ## Field Details
 
@@ -173,7 +200,7 @@ still carries live records from accidental teardown.
 
 ### spec.enableAcceleratedRecovery
 
-`bool`
+`bool` · optional (explicit presence)
 
 Enables accelerated recovery for the hosted zone: Route 53 pre-stages
 the zone's data so control-plane changes propagate faster during
@@ -232,6 +259,12 @@ numbers, "._-"). Defaults to a name derived from the zone when omitted.
 
 - rule: {"string":{"pattern":"^$|^[0-9A-Za-z._-]{3,128}$"}}
 
+### spec.dnssec.keySigningKeyStatus
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ACTIVE","INACTIVE"]}}
+
 ## Validation Rules
 
 - `private_zone_requires_vpc`: at least one vpc_associations entry is required when is_private is true (AWS creates a private zone attached to its first VPC)
@@ -252,6 +285,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRoute53Zone, 
 | `status.outputs.nameservers` | `[]string` | The four authoritative name servers assigned to the zone. For a public zone, these are the values to set as the domain's NS delegation at the registrar. |
 | `status.outputs.primary_name_server` | `string` | The first (primary) name server of the zone's delegation set — the one used as the SOA MNAME. |
 | `status.outputs.zone_arn` | `string` | The Amazon Resource Name of the hosted zone (arn:aws:route53:::hostedzone/<zone_id>). Used in IAM policies scoping route53:ChangeResourceRecordSets to specific zones. |
+| `status.outputs.ds_record` | `string` |  |
+| `status.outputs.dnskey_record` | `string` |  |
+| `status.outputs.key_signing_key_tag` | `string` |  |
 
 ## References
 

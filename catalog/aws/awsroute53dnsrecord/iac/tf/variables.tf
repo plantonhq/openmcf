@@ -18,7 +18,7 @@ variable "spec" {
     zone_id = string
     name = string
     type = string
-    ttl = optional(number, 0)
+    ttl = optional(number)
     values = optional(list(string), [])
     alias_target = optional(object({
       dns_name = string

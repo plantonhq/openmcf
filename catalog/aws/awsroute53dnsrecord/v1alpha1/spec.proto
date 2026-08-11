@@ -100,13 +100,15 @@ message AwsRoute53DnsRecordSpec {
 
   // Time to live in seconds — how long resolvers cache the record. Required
   // for standard records; must be omitted for alias records (the target's
-  // TTL applies).
-  // Common values: 60 (fast cutover during incidents), 300 (general
-  // default), 86400 (static records like MX/NS).
-  int32 ttl = 5 [(buf.validate.field).cel = {
+  // TTL applies). AWS accepts 0 to 2147483647; an explicit 0 means "never
+  // cache" (every lookup hits Route 53 — valid, but billed per query).
+  // Common values: 60 (fast cutover during incidents, and the recommended
+  // ceiling for health-checked records), 300 (general default), 86400
+  // (static records like MX/NS).
+  optional int32 ttl = 5 [(buf.validate.field).cel = {
     id: "ttl.valid_range"
-    message: "ttl must be 0 (alias records) or between 1 and 604800 seconds (1 week max)"
-    expression: "this >= 0 && this <= 604800"
+    message: "ttl must be between 0 and 2147483647 seconds (AWS's contract; 0 = never cache)"
+    expression: "this >= 0 && this <= 2147483647"
   }];
 
   // The record data for standard records. Format depends on type:
@@ -115,9 +117,10 @@ message AwsRoute53DnsRecordSpec {
   //   - CNAME: one target hostname (e.g. ["target.example.com"])
   //   - MX: priority + mail server (e.g. ["10 mail1.example.com"])
   //   - TXT: text values (e.g. ["v=spf1 include:_spf.google.com ~all"])
+  // Each value is at most 4,000 characters (AWS's per-value limit).
   // Mutually exclusive with alias_target — a record is standard or alias,
   // never both.
-  repeated string values = 6;
+  repeated string values = 6 [(buf.validate.field).repeated.items.string.max_len = 4000];
 
   // Alias target for A/AAAA alias records: point this name at an AWS
   // resource (ALB, NLB, CloudFront, S3 website, API Gateway, another record
@@ -174,14 +177,15 @@ message AwsRoute53DnsRecordSpec {
   option (buf.validate.message).cel = {
     id: "alias_forbids_ttl"
     message: "ttl cannot be set on alias records (Route 53 uses the alias target's TTL)"
-    expression: "!has(this.alias_target) || this.ttl == 0"
+    expression: "!has(this.alias_target) || !has(this.ttl)"
   };
 
-  // Standard records need a TTL (AWS requires it alongside values).
+  // Standard records need a TTL (AWS requires it alongside values). An
+  // explicit 0 is a valid TTL (never cache), so presence is what counts.
   option (buf.validate.message).cel = {
     id: "values_require_ttl"
-    message: "ttl is required for standard records (set 300 if unsure)"
-    expression: "this.values.size() == 0 || this.ttl > 0"
+    message: "ttl is required for standard records (set 300 if unsure; 0 means never cache)"
+    expression: "this.values.size() == 0 || has(this.ttl)"
   };
 
   // Every routing policy needs a set_identifier to distinguish group members.
@@ -189,6 +193,15 @@ message AwsRoute53DnsRecordSpec {
     id: "set_identifier_for_routing_policy"
     message: "set_identifier is required when a routing_policy is set (it distinguishes this record within its routing group)"
     expression: "!has(this.routing_policy) || this.set_identifier != ''"
+  };
+
+  // ... and a set_identifier without a routing policy is dead configuration:
+  // AWS scopes SetIdentifier to "resource record sets that have a routing
+  // policy other than simple" and rejects it on simple records.
+  option (buf.validate.message).cel = {
+    id: "set_identifier_requires_routing_policy"
+    message: "set_identifier is only valid with a routing_policy (AWS rejects it on simple records)"
+    expression: "this.set_identifier == '' || has(this.routing_policy)"
   };
 
   // AWS does not support alias multivalue-answer records.
@@ -288,7 +301,15 @@ message AwsRoute53LatencyPolicy {
   // The AWS region this record's resource lives in — the region whose
   // latency measurements represent this group member.
   // Example: "us-east-1", "eu-west-1", "ap-southeast-1"
-  string region = 1 [(buf.validate.field).required = true];
+  //
+  // Format-checked rather than enumerated on purpose: the provider's region
+  // enum grows with every AWS region launch, and freezing today's list here
+  // would reject tomorrow's regions until the next pin sweep. AWS itself
+  // rejects unknown regions at change time.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {pattern: "^[a-z]{2,4}(-[a-z]+)+-[0-9]+$"}
+  ];
 }
 
 // AwsRoute53FailoverPolicy implements active-passive failover. A routing
@@ -313,17 +334,34 @@ message AwsRoute53FailoverPolicy {
 // picks the most specific match (subdivision > country > continent); create
 // a default member (country "*") to catch unmatched locations.
 message AwsRoute53GeolocationPolicy {
-  // Two-letter continent code: "AF", "AN", "AS", "EU", "OC", "NA", "SA".
-  // Use continent OR country, not both.
-  string continent = 1;
+  // Two-letter continent code: "AF", "AN", "AS", "EU", "OC", "NA", "SA"
+  // (a frozen set — continents don't churn). Use continent OR country, not
+  // both.
+  string continent = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AF",
+        "AN",
+        "AS",
+        "EU",
+        "OC",
+        "NA",
+        "SA"
+      ]
+    }
+  ];
 
   // Two-letter ISO 3166-1 alpha-2 country code (e.g. "US", "GB", "DE"), or
   // "*" for the default record that answers unmatched locations.
-  string country = 2;
+  string country = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {pattern: "^(\\*|[A-Z]{2})$"}
+  ];
 
   // Subdivision code — US states only (e.g. "CA", "NY"); requires country
-  // "US".
-  string subdivision = 3;
+  // "US". At most 3 characters (AWS's limit).
+  string subdivision = 3 [(buf.validate.field).string.max_len = 3];
 
   // Geolocation needs at least one location dimension.
   option (buf.validate.message).cel = {
@@ -340,7 +378,12 @@ message AwsRoute53GeolocationPolicy {
 // resource is.
 message AwsRoute53GeoproximityPolicy {
   // The AWS region hosting the resource (for resources in AWS regions).
-  string aws_region = 1;
+  // Format-checked rather than enumerated (the region list grows; AWS
+  // rejects unknown regions at change time).
+  string aws_region = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {pattern: "^[a-z]{2,4}(-[a-z]+)+-[0-9]+$"}
+  ];
 
   // Latitude/longitude of the resource (for resources outside AWS).
   AwsRoute53Coordinates coordinates = 2;

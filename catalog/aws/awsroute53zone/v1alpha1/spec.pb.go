@@ -83,7 +83,12 @@ type AwsRoute53ZoneSpec struct {
 	// Enables accelerated recovery for the hosted zone: Route 53 pre-stages
 	// the zone's data so control-plane changes propagate faster during
 	// regional recovery events. Public zones only.
-	EnableAcceleratedRecovery bool `protobuf:"varint,7,opt,name=enable_accelerated_recovery,json=enableAcceleratedRecovery,proto3" json:"enable_accelerated_recovery,omitempty"`
+	//
+	// Tri-state on purpose: AWS keeps the feature's CURRENT state when the
+	// field is omitted, so switching it off requires an EXPLICIT false — the
+	// provider documents that removing the argument does not disable it.
+	// Unset = leave as-is (off for new zones), true = enable, false = disable.
+	EnableAcceleratedRecovery *bool `protobuf:"varint,7,opt,name=enable_accelerated_recovery,json=enableAcceleratedRecovery,proto3,oneof" json:"enable_accelerated_recovery,omitempty"`
 	// DNS query logging to CloudWatch Logs — who is querying which names, with
 	// response codes. Used for security monitoring, debugging resolution
 	// issues, and understanding query patterns. Public zones only.
@@ -174,8 +179,8 @@ func (x *AwsRoute53ZoneSpec) GetForceDestroy() bool {
 }
 
 func (x *AwsRoute53ZoneSpec) GetEnableAcceleratedRecovery() bool {
-	if x != nil {
-		return x.EnableAcceleratedRecovery
+	if x != nil && x.EnableAcceleratedRecovery != nil {
+		return *x.EnableAcceleratedRecovery
 	}
 	return false
 }
@@ -331,8 +336,22 @@ type AwsRoute53ZoneDnssec struct {
 	// Name of the key-signing key inside Route 53 (3–128 characters; letters,
 	// numbers, "._-"). Defaults to a name derived from the zone when omitted.
 	KeySigningKeyName string `protobuf:"bytes,2,opt,name=key_signing_key_name,json=keySigningKeyName,proto3" json:"key_signing_key_name,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Operational status of the key-signing key: "ACTIVE" (default when
+	// omitted) or "INACTIVE". Deactivating the KSK stops Route 53 from using
+	// it to sign — the monitoring/troubleshooting lever AWS documents for
+	// investigating signing problems without tearing the DNSSEC config down.
+	// Updatable in place.
+	//
+	// Note: while signing is enabled, an INACTIVE KSK means signatures cannot
+	// refresh — deactivate only while diagnosing, or after a replacement KSK
+	// is active. AWS allows at most two KSKs per hosted zone (the rotation
+	// pair); this resource models the one steady-state KSK, so a
+	// zero-downtime rotation (create second KSK, retire the first) is
+	// performed with AWS tooling and then reconciled here by pointing
+	// kms_key_arn/key_signing_key_name at the new key.
+	KeySigningKeyStatus string `protobuf:"bytes,3,opt,name=key_signing_key_status,json=keySigningKeyStatus,proto3" json:"key_signing_key_status,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AwsRoute53ZoneDnssec) Reset() {
@@ -379,11 +398,18 @@ func (x *AwsRoute53ZoneDnssec) GetKeySigningKeyName() string {
 	return ""
 }
 
+func (x *AwsRoute53ZoneDnssec) GetKeySigningKeyStatus() string {
+	if x != nil {
+		return x.KeySigningKeyStatus
+	}
+	return ""
+}
+
 var File_catalog_aws_awsroute53zone_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsroute53zone_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	".catalog/aws/awsroute53zone/v1alpha1/spec.proto\x12'dev.planton.aws.awsroute53zone.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x84\r\n" +
+	".catalog/aws/awsroute53zone/v1alpha1/spec.proto\x12'dev.planton.aws.awsroute53zone.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xae\r\n" +
 	"\x12AwsRoute53ZoneSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\"\n" +
 	"\acomment\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\acomment\x12\x1d\n" +
@@ -391,25 +417,27 @@ const file_catalog_aws_awsroute53zone_v1alpha1_spec_proto_rawDesc = "" +
 	"is_private\x18\x03 \x01(\bR\tisPrivate\x12p\n" +
 	"\x10vpc_associations\x18\x04 \x03(\v2E.dev.planton.aws.awsroute53zone.v1alpha1.AwsRoute53ZoneVpcAssociationR\x0fvpcAssociations\x123\n" +
 	"\x11delegation_set_id\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x18 R\x0fdelegationSetId\x12#\n" +
-	"\rforce_destroy\x18\x06 \x01(\bR\fforceDestroy\x12>\n" +
-	"\x1benable_accelerated_recovery\x18\a \x01(\bR\x19enableAcceleratedRecovery\x12h\n" +
+	"\rforce_destroy\x18\x06 \x01(\bR\fforceDestroy\x12C\n" +
+	"\x1benable_accelerated_recovery\x18\a \x01(\bH\x00R\x19enableAcceleratedRecovery\x88\x01\x01\x12h\n" +
 	"\rquery_logging\x18\b \x01(\v2C.dev.planton.aws.awsroute53zone.v1alpha1.AwsRoute53ZoneQueryLoggingR\fqueryLogging\x12U\n" +
-	"\x06dnssec\x18\t \x01(\v2=.dev.planton.aws.awsroute53zone.v1alpha1.AwsRoute53ZoneDnssecR\x06dnssec:\xbc\b\xbaH\xb8\b\x1a\xd1\x01\n" +
+	"\x06dnssec\x18\t \x01(\v2=.dev.planton.aws.awsroute53zone.v1alpha1.AwsRoute53ZoneDnssecR\x06dnssec:\xc1\b\xbaH\xbd\b\x1a\xd1\x01\n" +
 	"\x19private_zone_requires_vpc\x12~at least one vpc_associations entry is required when is_private is true (AWS creates a private zone attached to its first VPC)\x1a4!this.is_private || this.vpc_associations.size() > 0\x1a\xbf\x01\n" +
 	" vpc_associations_require_private\x12evpc_associations can only be set when is_private is true (public zones resolve globally, not per-VPC)\x1a4this.is_private || this.vpc_associations.size() == 0\x1a\xb7\x01\n" +
-	"\x1adelegation_set_public_only\x12gdelegation_set_id cannot be set for private zones (reusable delegation sets apply to public zones only)\x1a0!this.is_private || this.delegation_set_id == ''\x1a\x96\x01\n" +
-	" accelerated_recovery_public_only\x12;enable_accelerated_recovery cannot be set for private zones\x1a5!this.is_private || !this.enable_accelerated_recovery\x1a\xb3\x01\n" +
+	"\x1adelegation_set_public_only\x12gdelegation_set_id cannot be set for private zones (reusable delegation sets apply to public zones only)\x1a0!this.is_private || this.delegation_set_id == ''\x1a\x9b\x01\n" +
+	" accelerated_recovery_public_only\x12;enable_accelerated_recovery cannot be set for private zones\x1a:!this.is_private || !has(this.enable_accelerated_recovery)\x1a\xb3\x01\n" +
 	"\x19query_logging_public_only\x12hquery_logging cannot be set for private zones (Route 53 query logging supports public hosted zones only)\x1a,!this.is_private || !has(this.query_logging)\x1a\x96\x01\n" +
-	"\x12dnssec_public_only\x12Ydnssec cannot be set for private zones (DNSSEC signing supports public hosted zones only)\x1a%!this.is_private || !has(this.dnssec)\"\xb2\x01\n" +
+	"\x12dnssec_public_only\x12Ydnssec cannot be set for private zones (DNSSEC signing supports public hosted zones only)\x1a%!this.is_private || !has(this.dnssec)B\x1e\n" +
+	"\x1c_enable_accelerated_recovery\"\xb2\x01\n" +
 	"\x1cAwsRoute53ZoneVpcAssociation\x12s\n" +
 	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_id\x98\xd4a\x01R\x05vpcId\x12\x1d\n" +
 	"\n" +
 	"vpc_region\x18\x02 \x01(\tR\tvpcRegion\"\xb7\x01\n" +
 	"\x1aAwsRoute53ZoneQueryLogging\x12\x98\x01\n" +
-	"\x18cloudwatch_log_group_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\b\x92\xd4a\x1cstatus.outputs.log_group_arnR\x15cloudwatchLogGroupArn\"\xe5\x01\n" +
+	"\x18cloudwatch_log_group_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\b\x92\xd4a\x1cstatus.outputs.log_group_arnR\x15cloudwatchLogGroupArn\"\xb6\x02\n" +
 	"\x14AwsRoute53ZoneDnssec\x12y\n" +
 	"\vkms_key_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12R\n" +
-	"\x14key_signing_key_name\x18\x02 \x01(\tB!\xbaH\x1er\x1c2\x1a^$|^[0-9A-Za-z._-]{3,128}$R\x11keySigningKeyNameB\xd2\x02\n" +
+	"\x14key_signing_key_name\x18\x02 \x01(\tB!\xbaH\x1er\x1c2\x1a^$|^[0-9A-Za-z._-]{3,128}$R\x11keySigningKeyName\x12O\n" +
+	"\x16key_signing_key_status\x18\x03 \x01(\tB\x1a\xbaH\x17\xd8\x01\x01r\x12R\x06ACTIVER\bINACTIVER\x13keySigningKeyStatusB\xd2\x02\n" +
 	"+com.dev.planton.aws.awsroute53zone.v1alpha1B\tSpecProtoP\x01ZWgithub.com/plantonhq/planton/catalog/aws/awsroute53zone/v1alpha1;awsroute53zonev1alpha1\xa2\x02\x04DPAA\xaa\x02'Dev.Planton.Aws.Awsroute53zone.V1alpha1\xca\x02'Dev\\Planton\\Aws\\Awsroute53zone\\V1alpha1\xe2\x023Dev\\Planton\\Aws\\Awsroute53zone\\V1alpha1\\GPBMetadata\xea\x02+Dev::Planton::Aws::Awsroute53zone::V1alpha1b\x06proto3"
 
 var (
@@ -451,6 +479,7 @@ func file_catalog_aws_awsroute53zone_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awsroute53zone_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_aws_awsroute53zone_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

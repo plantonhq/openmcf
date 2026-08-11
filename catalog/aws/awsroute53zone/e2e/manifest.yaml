@@ -33,3 +33,29 @@ spec:
     - vpcId:
         value: vpc-0fedcba9876543210
       vpcRegion: eu-west-1
+
+---
+# DNSSEC-signed public zone with accelerated recovery: the full
+# security/resilience shape. The KMS key must live in us-east-1 with key
+# spec ECC_NIST_P256 and the dnssec-route53.amazonaws.com key policy (see
+# the spec docs). The ds_record output carries the value to register at
+# the registrar — signing without the parent DS protects nobody.
+# keySigningKeyStatus defaults to ACTIVE; INACTIVE is the documented
+# diagnostics lever.
+
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53Zone
+metadata:
+  name: secure.example.com
+spec:
+  region: us-east-1
+  comment: DNSSEC-signed zone
+  enableAcceleratedRecovery: true
+  dnssec:
+    kmsKeyArn:
+      value: arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+    keySigningKeyName: secure-example-ksk
+    keySigningKeyStatus: ACTIVE
+  queryLogging:
+    cloudwatchLogGroupArn:
+      value: arn:aws:logs:us-east-1:123456789012:log-group:/aws/route53/secure.example.com

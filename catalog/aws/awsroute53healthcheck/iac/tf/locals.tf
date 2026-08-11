@@ -32,10 +32,11 @@ locals {
   enable_sni        = local.is_endpoint_check ? var.spec.enable_sni : null
 
   # CALCULATED aggregation — the generator flattens the child refs to plain
-  # strings. A zero threshold means "all children must be healthy" (the AWS
-  # default when the parameter is omitted).
+  # strings. The threshold passes through by PRESENCE: an explicit 0 means
+  # "always healthy" per AWS's contract (a different configuration from
+  # omitting it, which lets AWS apply its server-side default).
   child_healthchecks     = length(var.spec.child_health_checks) > 0 ? var.spec.child_health_checks : null
-  child_health_threshold = var.spec.child_health_threshold != 0 ? var.spec.child_health_threshold : null
+  child_health_threshold = var.spec.child_health_threshold
 
   # CLOUDWATCH_METRIC mirroring.
   cloudwatch_alarm_name           = var.spec.cloudwatch_alarm_name != "" ? var.spec.cloudwatch_alarm_name : null

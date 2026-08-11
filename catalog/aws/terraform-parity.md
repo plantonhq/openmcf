@@ -32,7 +32,7 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
 | Distinct provider resources consumed | 243 |
-| Spec fields authored across all kinds | 4315 |
+| Spec fields authored across all kinds | 4316 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**60 of 112 kinds are at total accounting; 74 proven live.**
+**63 of 112 kinds are at total accounting; 75 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -110,12 +110,12 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsIamOidcProvider | 5 | 3 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsIamPolicy | 8 | 2 | 1 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamRole | 16 | 5 | 0 | 0 | 20 | ❌ | ✅ pulumi, terraform |
-| AwsIamUser | 15 | 3 | 4 | 8 | 0 | ✅ | — |
+| AwsIamUser | 15 | 3 | 4 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | — |
 | AwsKinesisStream | 17 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
 | AwsKinesisStreamConsumer | 8 | 3 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
-| AwsKmsKey | 29 | 15 | 6 | 8 | 0 | ✅ | — |
+| AwsKmsKey | 29 | 15 | 6 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLambda | 108 | 51 | 30 | 27 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLambdaEventSourceMapping | 45 | 11 | 31 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | ✅ pulumi, terraform |
@@ -140,10 +140,10 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsRedshiftCluster | 67 | 40 | 0 | 0 | 39 | ❌ | ✅ pulumi, terraform |
 | AwsRedshiftServerlessNamespace | 15 | 10 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
 | AwsRedshiftServerlessWorkgroup | 17 | 12 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
-| AwsRoute53DnsRecord | 25 | 7 | 0 | 0 | 36 | ❌ | ✅ pulumi, terraform |
-| AwsRoute53HealthCheck | 23 | 17 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
-| AwsRoute53Zone | 17 | 4 | 0 | 0 | 20 | ❌ | ✅ pulumi, terraform |
-| AwsS3Bucket | 204 | 24 | 102 | 78 | 0 | ✅ | — |
+| AwsRoute53DnsRecord | 25 | 7 | 17 | 1 | 0 | ✅ | — |
+| AwsRoute53HealthCheck | 23 | 17 | 2 | 4 | 0 | ✅ | — |
+| AwsRoute53Zone | 17 | 5 | 5 | 7 | 0 | ✅ | — |
+| AwsS3Bucket | 204 | 24 | 102 | 78 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3ObjectSet | 28 | 3 | 0 | 0 | 46 | ❌ | ✅ pulumi, terraform |
 | AwsSagemakerDomain | 159 | 93 | 0 | 0 | 126 | ❌ | ✅ pulumi, terraform |
 | AwsSecurityGroup | 10 | 4 | 0 | 0 | 26 | ❌ | ✅ pulumi, terraform |
@@ -158,7 +158,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsTransitGateway | 14 | 12 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsTransitGatewayRouteTable | 27 | 11 | 6 | 10 | 0 | ✅ | — |
 | AwsTransitGatewayVpcAttachment | 12 | 8 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsVpc | 39 | 16 | 14 | 9 | 0 | ✅ | — |
+| AwsVpc | 39 | 16 | 14 | 9 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsVpcEndpoint | 23 | 17 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
 | AwsWafIpSet | 9 | 5 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsWafRegexPatternSet | 8 | 3 | 1 | 4 | 0 | ✅ | ✅ pulumi, terraform |
@@ -173,8 +173,8 @@ All resources of `aws@6.58.0` land in exactly one class:
 | Modeled | 243 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 12 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 780 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 527 | deliberately not offered, each with the recorded reason |
+| Planned | 779 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 528 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -448,7 +448,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (780)
+### Planned (779)
 
 | Resource | Recorded reason |
 |---|---|
@@ -982,10 +982,9 @@ rather than trusted.
 | `aws_redshiftserverless_resource_policy` | serverless companion surface (custom domains, endpoint access, resource policies, usage limits); folds into the existing AwsRedshiftServerlessNamespace/AwsRedshiftServerlessWorkgroup kinds as their specs deepen |
 | `aws_redshiftserverless_usage_limit` | serverless companion surface (custom domains, endpoint access, resource policies, usage limits); folds into the existing AwsRedshiftServerlessNamespace/AwsRedshiftServerlessWorkgroup kinds as their specs deepen |
 | `aws_route` | VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens |
-| `aws_route53_cidr_collection` | CIDR-routing collections and locations; fold into the existing AwsRoute53DnsRecord kind as its spec deepens |
-| `aws_route53_cidr_location` | CIDR-routing collections and locations; fold into the existing AwsRoute53DnsRecord kind as its spec deepens |
-| `aws_route53_delegation_set` | hosted-zone companion surface (exclusive record lockdown, delegation sets, VPC associations); folds into the existing AwsRoute53Zone kind as its spec deepens |
-| `aws_route53_records_exclusive` | hosted-zone companion surface (exclusive record lockdown, delegation sets, VPC associations); folds into the existing AwsRoute53Zone kind as its spec deepens |
+| `aws_route53_cidr_collection` | account-scoped container of CIDR blocks for IP-based routing, referenced by many records across zones -- an owning collection, never one record's satellite; judged as a planned AwsRoute53CidrCollection kind (AwsRoute53DnsRecord.spec.routing_policy.cidr already composes onto it by collection id + location name) |
+| `aws_route53_cidr_location` | a named group of CIDR blocks INSIDE a collection (collection-scoped child, the only updatable part); folds into the planned AwsRoute53CidrCollection kind as its entries |
+| `aws_route53_delegation_set` | account-scoped reusable delegation set: one fixed four-name-server set shared by MANY zones (white-label/vanity name servers, bulk migrations) -- an account object zones reference, never one zone's satellite; judged as a planned AwsRoute53DelegationSet kind (AwsRoute53Zone.spec.delegation_set_id already composes onto it by id) |
 | `aws_route53_resolver_config` | per-VPC resolver settings; fold into the existing AwsVpc kind as its spec deepens |
 | `aws_route53_resolver_dnssec_config` | per-VPC resolver settings; fold into the existing AwsVpc kind as its spec deepens |
 | `aws_route53_resolver_endpoint` | judged as a planned AwsRoute53ResolverEndpoint kind (endpoints, forwarding rules, rule associations) |
@@ -998,8 +997,8 @@ rather than trusted.
 | `aws_route53_resolver_query_log_config_association` | judged as a planned AwsRoute53ResolverQueryLog kind (configs with associations) |
 | `aws_route53_resolver_rule` | judged as a planned AwsRoute53ResolverEndpoint kind (endpoints, forwarding rules, rule associations) |
 | `aws_route53_resolver_rule_association` | judged as a planned AwsRoute53ResolverEndpoint kind (endpoints, forwarding rules, rule associations) |
-| `aws_route53_vpc_association_authorization` | hosted-zone companion surface (exclusive record lockdown, delegation sets, VPC associations); folds into the existing AwsRoute53Zone kind as its spec deepens |
-| `aws_route53_zone_association` | hosted-zone companion surface (exclusive record lockdown, delegation sets, VPC associations); folds into the existing AwsRoute53Zone kind as its spec deepens |
+| `aws_route53_vpc_association_authorization` | zone-owner side of the CROSS-ACCOUNT private-zone handshake (authorizes another account's VPC to associate; runs with the zone owner's credentials); same-account associations are modeled on AwsRoute53Zone.spec.vpc_associations -- judged as a planned AwsRoute53VpcAssociationAuthorization kind (the cross-account-half class, the TGW vpc-attachment-accepter precedent) |
+| `aws_route53_zone_association` | VPC-owner side of the CROSS-ACCOUNT private-zone handshake (associates a foreign account's authorized zone; runs with the VPC owner's credentials); same-account associations are modeled on AwsRoute53Zone.spec.vpc_associations -- judged as a planned AwsRoute53ZoneAssociation kind pairing with AwsRoute53VpcAssociationAuthorization |
 | `aws_route53domains_delegation_signer_record` | judged as a planned AwsRoute53Domain kind (registered domains, delegation signer records) |
 | `aws_route53domains_domain` | judged as a planned AwsRoute53Domain kind (registered domains, delegation signer records) |
 | `aws_route53domains_registered_domain` | judged as a planned AwsRoute53Domain kind (registered domains, delegation signer records) |
@@ -1233,7 +1232,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (527)
+### Deferred (528)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1642,6 +1641,7 @@ rather than trusted.
 | `aws_resourcegroups_resource` | resource-group organization helpers; deferred pending demand |
 | `aws_rolesanywhere_profile` | IAM Roles Anywhere certificate-based access; deferred pending demand |
 | `aws_rolesanywhere_trust_anchor` | IAM Roles Anywhere certificate-based access; deferred pending demand |
+| `aws_route53_records_exclusive` | exclusive-management lockdown of a zone's COMPLETE record set (declares the authoritative set, prunes anything undeclared, no-op delete); the catalog's per-record AwsRoute53DnsRecord model composes freely with out-of-band records -- the whole-zone lockdown is the exclusive-management class (the IAM exclusive-lockdown precedent), deferred pending demand |
 | `aws_route53_traffic_policy` | Route 53 Traffic Flow policies are the legacy routing-policy path; deferred |
 | `aws_route53_traffic_policy_instance` | Route 53 Traffic Flow policies are the legacy routing-policy path; deferred |
 | `aws_route53profiles_association` | Route 53 Profiles DNS-config sharing; deferred pending demand |

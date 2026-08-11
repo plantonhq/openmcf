@@ -10,17 +10,27 @@ spec:
   # composing the shared AwsVpc fixture via the e2e-prerequisites annotation
   # (the kind itself honestly requires nothing — public zones are leaves).
   # Zones create in seconds at $0.50/month prorated-to-minutes cost.
-  # Deliberately not in the live scenarios: DNSSEC signing (the KSK demands
-  # a us-east-1 ECC_NIST_P256 KMS key carrying the dnssec-route53 service
-  # key policy — a key-policy-prepared fixture the shared KMS fixture does
-  # not model), query logging (delivery requires an ACCOUNT-level CloudWatch
-  # Logs resource policy — max 10 per region, shared across zones — which a
-  # per-lane fixture must not own), and reusable delegation sets (account
-  # objects with no kind to compose from). All three arms are proven by CEL
-  # spec tests, both engines' builds, and the offline gate.
+  # The public scenario carries an EXPLICIT-FALSE enable_accelerated_recovery
+  # (the tri-state disable send path; a fresh zone is off by default, so the
+  # arm engages nothing billed).
+  # Deliberately not in the live scenarios: DNSSEC signing incl. the
+  # key-signing-key status lever and the ds_record/dnskey_record/key-tag
+  # outputs (the KSK demands a us-east-1 ECC_NIST_P256 KMS key carrying the
+  # dnssec-route53 service key policy — a key-policy-prepared fixture the
+  # shared KMS fixture does not model; unblock: a prepared DNSSEC key
+  # fixture or an owner-budgeted arm), query logging (delivery requires an
+  # ACCOUNT-level CloudWatch Logs resource policy — max 10 per region,
+  # shared across zones — which a per-lane fixture must not own), and
+  # reusable delegation sets (account objects with no kind to compose
+  # from). All arms are proven by CEL spec tests, both engines' builds, and
+  # the offline gate (tofu plan + Pulumi preview render the full DNSSEC
+  # shape arm-for-arm).
+  #
+  # pending_proof: the depth closure made the accelerated-recovery flag
+  # tri-state (explicit-false send paths in both engines), made the KSK
+  # status configurable, and added the DNSSEC chain-of-trust outputs — the
+  # prior green proof predates all of it.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 10

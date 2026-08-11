@@ -19,12 +19,24 @@ type route53HealthCheckVerifier struct{}
 func (*route53HealthCheckVerifier) IDOutputKey() string { return "health_check_id" }
 
 func (*route53HealthCheckVerifier) VerifyExists(ctx context.Context, cfg aws.Config, id, region string) error {
-	exists, err := route53HealthCheckExists(ctx, cfg, id)
+	client := route53.NewFromConfig(cfg)
+	out, err := client.GetHealthCheck(ctx, &route53.GetHealthCheckInput{HealthCheckId: aws.String(id)})
 	if err != nil {
+		var notFound *route53types.NoSuchHealthCheck
+		if errors.As(err, &notFound) {
+			return pkgerrors.Errorf("awsroute53healthcheck %q not found after deploy", id)
+		}
 		return pkgerrors.Wrapf(err, "awsroute53healthcheck verify-exists failed for %q", id)
 	}
-	if !exists {
-		return pkgerrors.Errorf("awsroute53healthcheck %q not found after deploy", id)
+
+	// Posture coherence from the resource's own state: a CALCULATED check
+	// exists only as an aggregation, so AWS must be storing the child set it
+	// was sent (the threshold's exact value — including the always-healthy
+	// explicit 0 — is lane evidence via GetHealthCheck snapshots).
+	if hcConfig := out.HealthCheck.HealthCheckConfig; hcConfig != nil && hcConfig.Type == route53types.HealthCheckTypeCalculated {
+		if len(hcConfig.ChildHealthChecks) == 0 {
+			return pkgerrors.Errorf("awsroute53healthcheck %q is CALCULATED but AWS reports no child health checks", id)
+		}
 	}
 	return nil
 }

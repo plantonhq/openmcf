@@ -3079,16 +3079,16 @@ resources:
     reason: "VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens"
   - resource: aws_route53_cidr_collection
     disposition: model-planned
-    reason: "CIDR-routing collections and locations; fold into the existing AwsRoute53DnsRecord kind as its spec deepens"
+    reason: "account-scoped container of CIDR blocks for IP-based routing, referenced by many records across zones -- an owning collection, never one record's satellite; judged as a planned AwsRoute53CidrCollection kind (AwsRoute53DnsRecord.spec.routing_policy.cidr already composes onto it by collection id + location name)"
   - resource: aws_route53_cidr_location
     disposition: model-planned
-    reason: "CIDR-routing collections and locations; fold into the existing AwsRoute53DnsRecord kind as its spec deepens"
+    reason: "a named group of CIDR blocks INSIDE a collection (collection-scoped child, the only updatable part); folds into the planned AwsRoute53CidrCollection kind as its entries"
   - resource: aws_route53_delegation_set
     disposition: model-planned
-    reason: "hosted-zone companion surface (exclusive record lockdown, delegation sets, VPC associations); folds into the existing AwsRoute53Zone kind as its spec deepens"
+    reason: "account-scoped reusable delegation set: one fixed four-name-server set shared by MANY zones (white-label/vanity name servers, bulk migrations) -- an account object zones reference, never one zone's satellite; judged as a planned AwsRoute53DelegationSet kind (AwsRoute53Zone.spec.delegation_set_id already composes onto it by id)"
   - resource: aws_route53_records_exclusive
-    disposition: model-planned
-    reason: "hosted-zone companion surface (exclusive record lockdown, delegation sets, VPC associations); folds into the existing AwsRoute53Zone kind as its spec deepens"
+    disposition: deferred
+    reason: "exclusive-management lockdown of a zone's COMPLETE record set (declares the authoritative set, prunes anything undeclared, no-op delete); the catalog's per-record AwsRoute53DnsRecord model composes freely with out-of-band records -- the whole-zone lockdown is the exclusive-management class (the IAM exclusive-lockdown precedent), deferred pending demand"
   - resource: aws_route53_resolver_config
     disposition: model-planned
     reason: "per-VPC resolver settings; fold into the existing AwsVpc kind as its spec deepens"
@@ -3133,10 +3133,10 @@ resources:
     reason: "Route 53 Traffic Flow policies are the legacy routing-policy path; deferred"
   - resource: aws_route53_vpc_association_authorization
     disposition: model-planned
-    reason: "hosted-zone companion surface (exclusive record lockdown, delegation sets, VPC associations); folds into the existing AwsRoute53Zone kind as its spec deepens"
+    reason: "zone-owner side of the CROSS-ACCOUNT private-zone handshake (authorizes another account's VPC to associate; runs with the zone owner's credentials); same-account associations are modeled on AwsRoute53Zone.spec.vpc_associations -- judged as a planned AwsRoute53VpcAssociationAuthorization kind (the cross-account-half class, the TGW vpc-attachment-accepter precedent)"
   - resource: aws_route53_zone_association
     disposition: model-planned
-    reason: "hosted-zone companion surface (exclusive record lockdown, delegation sets, VPC associations); folds into the existing AwsRoute53Zone kind as its spec deepens"
+    reason: "VPC-owner side of the CROSS-ACCOUNT private-zone handshake (associates a foreign account's authorized zone; runs with the VPC owner's credentials); same-account associations are modeled on AwsRoute53Zone.spec.vpc_associations -- judged as a planned AwsRoute53ZoneAssociation kind pairing with AwsRoute53VpcAssociationAuthorization"
   - resource: aws_route53domains_delegation_signer_record
     disposition: model-planned
     reason: "judged as a planned AwsRoute53Domain kind (registered domains, delegation signer records)"

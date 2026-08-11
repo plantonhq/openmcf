@@ -4,7 +4,6 @@ package dev.planton.aws.awsroute53healthcheck.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
-import "shared/options/options.proto";
 
 // AwsRoute53HealthCheckSpec defines an Amazon Route 53 health check — the
 // availability probe that DNS records reference (via health_check_id) to keep
@@ -75,7 +74,10 @@ message AwsRoute53HealthCheckSpec {
   // IPv4 or IPv6 address of the endpoint to probe. Use for endpoints whose
   // address is static; use fqdn alone when the address changes (e.g. behind
   // DNS-based scaling).
-  string ip_address = 4 [(buf.validate.field).string.max_len = 45];
+  string ip_address = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {ip: true}
+  ];
 
   // TCP port of the endpoint. Defaults: 80 for HTTP/HTTP_STR_MATCH, 443 for
   // HTTPS/HTTPS_STR_MATCH. Required for TCP checks (there is no default).
@@ -92,28 +94,25 @@ message AwsRoute53HealthCheckSpec {
   // Required for (and only valid with) HTTP_STR_MATCH / HTTPS_STR_MATCH.
   string search_string = 7 [(buf.validate.field).string.max_len = 255];
 
-  // Seconds between probes from each checker: 10 or 30 (default 30).
-  // Create-time immutable (ForceNew). Fast (10s) checks cost more but detect
-  // failures ~3x sooner.
-  optional int32 request_interval = 8 [
-    (dev.planton.shared.options.default) = "30",
-    (buf.validate.field).int32 = {
-      in: [
-        10,
-        30
-      ]
-    }
-  ];
+  // Seconds between probes from each checker: 10 or 30. AWS defaults to 30
+  // when omitted — no default is materialized here, because the field only
+  // exists for endpoint checks and a manufactured value would be dead
+  // configuration on every other type. Create-time immutable (ForceNew).
+  // Fast (10s) checks cost more but detect failures ~3x sooner.
+  optional int32 request_interval = 8 [(buf.validate.field).int32 = {
+    in: [
+      10,
+      30
+    ]
+  }];
 
-  // Consecutive probe results required to flip the health state (1–10,
-  // default 3). Lower reacts faster; higher rides out blips.
-  optional int32 failure_threshold = 9 [
-    (dev.planton.shared.options.default) = "3",
-    (buf.validate.field).int32 = {
-      gte: 1
-      lte: 10
-    }
-  ];
+  // Consecutive probe results required to flip the health state (1–10; AWS
+  // defaults to 3 when omitted). Lower reacts faster; higher rides out
+  // blips. Endpoint checks only.
+  optional int32 failure_threshold = 9 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10
+  }];
 
   // Measure and graph endpoint latency in the Route 53 console.
   // Create-time immutable (ForceNew); small extra cost.
@@ -172,12 +171,15 @@ message AwsRoute53HealthCheckSpec {
   ];
 
   // Minimum number of healthy children for this check to report healthy
-  // (1–256). Defaults to the number of children when omitted (all must be
-  // healthy).
-  int32 child_health_threshold = 16 [
-    (buf.validate.field).int32.gte = 0,
-    (buf.validate.field).int32.lte = 256
-  ];
+  // (0–256). AWS's contract (per the CreateHealthCheck API): an explicit 0
+  // makes the check ALWAYS HEALTHY; a value greater than the number of
+  // children makes it always unhealthy; when omitted, Route 53 applies its
+  // own server-side default. Explicit 0 and omitted are therefore different
+  // configurations — presence carries the distinction.
+  optional int32 child_health_threshold = 16 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 256
+  }];
 
   // ---------------------------------------------------------------------------
   // CLOUDWATCH_METRIC checks
@@ -188,7 +190,12 @@ message AwsRoute53HealthCheckSpec {
 
   // Region the CloudWatch alarm lives in (alarms are regional even though
   // the health check is global). Example: "us-west-2".
-  string cloudwatch_alarm_region = 18;
+  // Format-checked rather than enumerated on purpose: the provider's region
+  // enum grows with every AWS region launch; AWS rejects unknown regions.
+  string cloudwatch_alarm_region = 18 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {pattern: "^[a-z]{2,4}(-[a-z]+)+-[0-9]+$"}
+  ];
 
   // What to report while the alarm is in INSUFFICIENT_DATA state:
   // "Healthy", "Unhealthy", or "LastKnownStatus".
@@ -207,7 +214,10 @@ message AwsRoute53HealthCheckSpec {
 
   // ARN of the Application Recovery Controller routing control whose state
   // this check mirrors. Create-time immutable (ForceNew).
-  string routing_control_arn = 20;
+  string routing_control_arn = 20 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {pattern: "^arn:[^:]+:[^:]+:[^:]*:[^:]*:.+$"}
+  ];
 
   // ---------------------------------------------------------------------------
   // CEL validations (the per-type contracts, enforced at authoring time)
@@ -252,7 +262,7 @@ message AwsRoute53HealthCheckSpec {
   option (buf.validate.message).cel = {
     id: "calculated_requires_children"
     message: "child_health_checks (at least one) is required for CALCULATED checks and not valid for any other type"
-    expression: "this.check_type == 'CALCULATED' ? this.child_health_checks.size() > 0 : (this.child_health_checks.size() == 0 && this.child_health_threshold == 0)"
+    expression: "this.check_type == 'CALCULATED' ? this.child_health_checks.size() > 0 : (this.child_health_checks.size() == 0 && !has(this.child_health_threshold))"
   };
 
   // The alarm pair defines a CLOUDWATCH_METRIC check.
@@ -272,8 +282,8 @@ message AwsRoute53HealthCheckSpec {
   // Probe tuning only makes sense where probing happens.
   option (buf.validate.message).cel = {
     id: "probe_tuning_endpoint_only"
-    message: "regions, measure_latency, and enable_sni only apply to endpoint checks (HTTP, HTTPS, HTTP_STR_MATCH, HTTPS_STR_MATCH, TCP)"
-    expression: "this.check_type in ['HTTP', 'HTTPS', 'HTTP_STR_MATCH', 'HTTPS_STR_MATCH', 'TCP'] || (this.regions.size() == 0 && !this.measure_latency && !has(this.enable_sni))"
+    message: "regions, request_interval, failure_threshold, measure_latency, and enable_sni only apply to endpoint checks (HTTP, HTTPS, HTTP_STR_MATCH, HTTPS_STR_MATCH, TCP)"
+    expression: "this.check_type in ['HTTP', 'HTTPS', 'HTTP_STR_MATCH', 'HTTPS_STR_MATCH', 'TCP'] || (this.regions.size() == 0 && !has(this.request_interval) && !has(this.failure_threshold) && !this.measure_latency && !has(this.enable_sni))"
   };
 
   // AWS requires at least 3 checker regions when the list is customized.

@@ -78,7 +78,19 @@ var _ = ginkgo.Describe("AwsRoute53HealthCheckSpec validations", func() {
 				strRef("abcdef11-2222-3333-4444-555555fedcba"),
 				strRef("fedcba55-4444-3333-2222-11fedcbaabcd"),
 			},
-			ChildHealthThreshold: 1,
+			ChildHealthThreshold: proto.Int32(1),
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts an explicit zero child threshold on a calculated check", func() {
+		// AWS's contract: an explicit 0 means the check is ALWAYS healthy —
+		// a different configuration from omitting the threshold.
+		spec = &AwsRoute53HealthCheckSpec{
+			Region:               "us-west-2",
+			CheckType:            "CALCULATED",
+			ChildHealthChecks:    []*foreignkeyv1.StringValueOrRef{strRef("abcdef11-2222-3333-4444-555555fedcba")},
+			ChildHealthThreshold: proto.Int32(0),
 		}
 		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
 	})
@@ -196,6 +208,28 @@ var _ = ginkgo.Describe("AwsRoute53HealthCheckSpec validations", func() {
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
 	})
 
+	ginkgo.It("rejects a request interval on a calculated check", func() {
+		// The probes-only tuning family is endpoint-scoped: on any other
+		// type the two engines would disagree about sending it.
+		spec = &AwsRoute53HealthCheckSpec{
+			Region:            "us-west-2",
+			CheckType:         "CALCULATED",
+			ChildHealthChecks: []*foreignkeyv1.StringValueOrRef{strRef("abc")},
+			RequestInterval:   proto.Int32(10),
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a failure threshold on a recovery-control check", func() {
+		spec = &AwsRoute53HealthCheckSpec{
+			Region:            "us-west-2",
+			CheckType:         "RECOVERY_CONTROL",
+			RoutingControlArn: "arn:aws:route53-recovery-control::123456789012:controlpanel/abc/routingcontrol/def",
+			FailureThreshold:  proto.Int32(3),
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
 	// -------------------------------------------------------------------------
 	// CALCULATED contracts
 	// -------------------------------------------------------------------------
@@ -210,6 +244,12 @@ var _ = ginkgo.Describe("AwsRoute53HealthCheckSpec validations", func() {
 
 	ginkgo.It("rejects children on a non-calculated check", func() {
 		spec.ChildHealthChecks = []*foreignkeyv1.StringValueOrRef{strRef("abc")}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a child threshold on a non-calculated check", func() {
+		// Even an explicit 0 is dead configuration outside CALCULATED.
+		spec.ChildHealthThreshold = proto.Int32(0)
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
 	})
 
@@ -251,6 +291,41 @@ var _ = ginkgo.Describe("AwsRoute53HealthCheckSpec validations", func() {
 
 	ginkgo.It("rejects a routing control ARN on an endpoint check", func() {
 		spec.RoutingControlArn = "arn:aws:route53-recovery-control::123456789012:controlpanel/abc/routingcontrol/def"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	// -------------------------------------------------------------------------
+	// Format guards
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("rejects a malformed ip_address", func() {
+		spec.IpAddress = "not-an-ip"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts IPv4 and IPv6 endpoint addresses", func() {
+		for _, ip := range []string{"192.0.2.44", "2001:db8::1"} {
+			spec.IpAddress = ip
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed(), "ip %q should be valid", ip)
+		}
+	})
+
+	ginkgo.It("rejects a malformed CloudWatch alarm region", func() {
+		spec = &AwsRoute53HealthCheckSpec{
+			Region:                "us-west-2",
+			CheckType:             "CLOUDWATCH_METRIC",
+			CloudwatchAlarmName:   "api-5xx-rate",
+			CloudwatchAlarmRegion: "US-WEST-2",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a malformed routing control ARN", func() {
+		spec = &AwsRoute53HealthCheckSpec{
+			Region:            "us-west-2",
+			CheckType:         "RECOVERY_CONTROL",
+			RoutingControlArn: "not-an-arn",
+		}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
 	})
 

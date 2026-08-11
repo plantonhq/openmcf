@@ -86,10 +86,12 @@ type AwsRoute53DnsRecordSpec struct {
 	Type string `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
 	// Time to live in seconds — how long resolvers cache the record. Required
 	// for standard records; must be omitted for alias records (the target's
-	// TTL applies).
-	// Common values: 60 (fast cutover during incidents), 300 (general
-	// default), 86400 (static records like MX/NS).
-	Ttl int32 `protobuf:"varint,5,opt,name=ttl,proto3" json:"ttl,omitempty"`
+	// TTL applies). AWS accepts 0 to 2147483647; an explicit 0 means "never
+	// cache" (every lookup hits Route 53 — valid, but billed per query).
+	// Common values: 60 (fast cutover during incidents, and the recommended
+	// ceiling for health-checked records), 300 (general default), 86400
+	// (static records like MX/NS).
+	Ttl *int32 `protobuf:"varint,5,opt,name=ttl,proto3,oneof" json:"ttl,omitempty"`
 	// The record data for standard records. Format depends on type:
 	//   - A: IPv4 addresses (e.g. ["192.0.2.1", "192.0.2.2"])
 	//   - AAAA: IPv6 addresses (e.g. ["2001:db8::1"])
@@ -97,6 +99,7 @@ type AwsRoute53DnsRecordSpec struct {
 	//   - MX: priority + mail server (e.g. ["10 mail1.example.com"])
 	//   - TXT: text values (e.g. ["v=spf1 include:_spf.google.com ~all"])
 	//
+	// Each value is at most 4,000 characters (AWS's per-value limit).
 	// Mutually exclusive with alias_target — a record is standard or alias,
 	// never both.
 	Values []string `protobuf:"bytes,6,rep,name=values,proto3" json:"values,omitempty"`
@@ -188,8 +191,8 @@ func (x *AwsRoute53DnsRecordSpec) GetType() string {
 }
 
 func (x *AwsRoute53DnsRecordSpec) GetTtl() int32 {
-	if x != nil {
-		return x.Ttl
+	if x != nil && x.Ttl != nil {
+		return *x.Ttl
 	}
 	return 0
 }
@@ -551,6 +554,11 @@ type AwsRoute53LatencyPolicy struct {
 	// The AWS region this record's resource lives in — the region whose
 	// latency measurements represent this group member.
 	// Example: "us-east-1", "eu-west-1", "ap-southeast-1"
+	//
+	// Format-checked rather than enumerated on purpose: the provider's region
+	// enum grows with every AWS region launch, and freezing today's list here
+	// would reject tomorrow's regions until the next pin sweep. AWS itself
+	// rejects unknown regions at change time.
 	Region        string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -648,14 +656,15 @@ func (x *AwsRoute53FailoverPolicy) GetFailoverType() string {
 // a default member (country "*") to catch unmatched locations.
 type AwsRoute53GeolocationPolicy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Two-letter continent code: "AF", "AN", "AS", "EU", "OC", "NA", "SA".
-	// Use continent OR country, not both.
+	// Two-letter continent code: "AF", "AN", "AS", "EU", "OC", "NA", "SA"
+	// (a frozen set — continents don't churn). Use continent OR country, not
+	// both.
 	Continent string `protobuf:"bytes,1,opt,name=continent,proto3" json:"continent,omitempty"`
 	// Two-letter ISO 3166-1 alpha-2 country code (e.g. "US", "GB", "DE"), or
 	// "*" for the default record that answers unmatched locations.
 	Country string `protobuf:"bytes,2,opt,name=country,proto3" json:"country,omitempty"`
 	// Subdivision code — US states only (e.g. "CA", "NY"); requires country
-	// "US".
+	// "US". At most 3 characters (AWS's limit).
 	Subdivision   string `protobuf:"bytes,3,opt,name=subdivision,proto3" json:"subdivision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -720,6 +729,8 @@ func (x *AwsRoute53GeolocationPolicy) GetSubdivision() string {
 type AwsRoute53GeoproximityPolicy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region hosting the resource (for resources in AWS regions).
+	// Format-checked rather than enumerated (the region list grows; AWS
+	// rejects unknown regions at change time).
 	AwsRegion string `protobuf:"bytes,1,opt,name=aws_region,json=awsRegion,proto3" json:"aws_region,omitempty"`
 	// Latitude/longitude of the resource (for resources outside AWS).
 	Coordinates *AwsRoute53Coordinates `protobuf:"bytes,2,opt,name=coordinates,proto3" json:"coordinates,omitempty"`
@@ -952,27 +963,30 @@ var File_catalog_aws_awsroute53dnsrecord_v1alpha1_spec_proto protoreflect.FileDe
 
 const file_catalog_aws_awsroute53dnsrecord_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/aws/awsroute53dnsrecord/v1alpha1/spec.proto\x12,dev.planton.aws.awsroute53dnsrecord.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x82\x10\n" +
+	"3catalog/aws/awsroute53dnsrecord/v1alpha1/spec.proto\x12,dev.planton.aws.awsroute53dnsrecord.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xf9\x11\n" +
 	"\x17AwsRoute53DnsRecordSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12r\n" +
 	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xf4\a\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12k\n" +
 	"\x04name\x18\x03 \x01(\tBW\xbaHT\xc8\x01\x01rO2M^(?:\\*\\.[A-Za-z0-9_\\-\\.]+|[A-Za-z0-9_\\-\\.]+\\.[A-Za-z]{2,}|[A-Za-z0-9_\\-\\.]+)$R\x04name\x12w\n" +
-	"\x04type\x18\x04 \x01(\tBc\xbaH`\xc8\x01\x01r[R\x01AR\x04AAAAR\x03CAAR\x05CNAMER\x02DSR\x05HTTPSR\x02MXR\x05NAPTRR\x02NSR\x03PTRR\x03SOAR\x03SPFR\x03SRVR\x05SSHFPR\x04SVCBR\x04TLSAR\x03TXTR\x04type\x12\x93\x01\n" +
-	"\x03ttl\x18\x05 \x01(\x05B\x80\x01\xbaH}\xba\x01z\n" +
-	"\x0fttl.valid_range\x12Jttl must be 0 (alias records) or between 1 and 604800 seconds (1 week max)\x1a\x1bthis >= 0 && this <= 604800R\x03ttl\x12\x16\n" +
-	"\x06values\x18\x06 \x03(\tR\x06values\x12f\n" +
+	"\x04type\x18\x04 \x01(\tBc\xbaH`\xc8\x01\x01r[R\x01AR\x04AAAAR\x03CAAR\x05CNAMER\x02DSR\x05HTTPSR\x02MXR\x05NAPTRR\x02NSR\x03PTRR\x03SOAR\x03SPFR\x03SRVR\x05SSHFPR\x04SVCBR\x04TLSAR\x03TXTR\x04type\x12\xa2\x01\n" +
+	"\x03ttl\x18\x05 \x01(\x05B\x8a\x01\xbaH\x86\x01\xba\x01\x82\x01\n" +
+	"\x0fttl.valid_range\x12Nttl must be between 0 and 2147483647 seconds (AWS's contract; 0 = never cache)\x1a\x1fthis >= 0 && this <= 2147483647H\x00R\x03ttl\x88\x01\x01\x12%\n" +
+	"\x06values\x18\x06 \x03(\tB\r\xbaH\n" +
+	"\x92\x01\a\"\x05r\x03\x18\xa0\x1fR\x06values\x12f\n" +
 	"\falias_target\x18\a \x01(\v2C.dev.planton.aws.awsroute53dnsrecord.v1alpha1.AwsRoute53AliasTargetR\valiasTarget\x12l\n" +
 	"\x0erouting_policy\x18\b \x01(\v2E.dev.planton.aws.awsroute53dnsrecord.v1alpha1.AwsRoute53RoutingPolicyR\rroutingPolicy\x12\x83\x01\n" +
 	"\x0fhealth_check_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\x98\t\x92\xd4a\x1estatus.outputs.health_check_idR\rhealthCheckId\x12/\n" +
 	"\x0eset_identifier\x18\n" +
 	" \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\rsetIdentifier\x12'\n" +
-	"\x0fallow_overwrite\x18\v \x01(\bR\x0eallowOverwrite:\x87\b\xbaH\x83\b\x1a\xbc\x01\n" +
+	"\x0fallow_overwrite\x18\v \x01(\bR\x0eallowOverwrite:\xd8\t\xbaH\xd4\t\x1a\xbc\x01\n" +
 	"\x19values_or_alias_exclusive\x12jvalues and alias_target are mutually exclusive — a record is either a standard record or an alias record\x1a3!(this.values.size() > 0 && has(this.alias_target))\x1a\x9e\x01\n" +
-	"\x18values_or_alias_required\x12Peither values (standard record) or alias_target (alias record) must be specified\x1a0this.values.size() > 0 || has(this.alias_target)\x1a\x88\x01\n" +
-	"\x11alias_forbids_ttl\x12Ittl cannot be set on alias records (Route 53 uses the alias target's TTL)\x1a(!has(this.alias_target) || this.ttl == 0\x1aw\n" +
-	"\x12values_require_ttl\x128ttl is required for standard records (set 300 if unsure)\x1a'this.values.size() == 0 || this.ttl > 0\x1a\xcc\x01\n" +
-	"!set_identifier_for_routing_policy\x12oset_identifier is required when a routing_policy is set (it distinguishes this record within its routing group)\x1a6!has(this.routing_policy) || this.set_identifier != ''\x1a\xcd\x01\n" +
-	"\x18multivalue_forbids_alias\x12Lmultivalue answer routing cannot be used with alias records (AWS limitation)\x1ac!(has(this.routing_policy) && has(this.routing_policy.multivalue_answer) && has(this.alias_target))\"\xdd\x02\n" +
+	"\x18values_or_alias_required\x12Peither values (standard record) or alias_target (alias record) must be specified\x1a0this.values.size() > 0 || has(this.alias_target)\x1a\x89\x01\n" +
+	"\x11alias_forbids_ttl\x12Ittl cannot be set on alias records (Route 53 uses the alias target's TTL)\x1a)!has(this.alias_target) || !has(this.ttl)\x1a\x8d\x01\n" +
+	"\x12values_require_ttl\x12Mttl is required for standard records (set 300 if unsure; 0 means never cache)\x1a(this.values.size() == 0 || has(this.ttl)\x1a\xcc\x01\n" +
+	"!set_identifier_for_routing_policy\x12oset_identifier is required when a routing_policy is set (it distinguishes this record within its routing group)\x1a6!has(this.routing_policy) || this.set_identifier != ''\x1a\xb6\x01\n" +
+	"&set_identifier_requires_routing_policy\x12Uset_identifier is only valid with a routing_policy (AWS rejects it on simple records)\x1a5this.set_identifier == '' || has(this.routing_policy)\x1a\xcd\x01\n" +
+	"\x18multivalue_forbids_alias\x12Lmultivalue answer routing cannot be used with alias records (AWS limitation)\x1ac!(has(this.routing_policy) && has(this.routing_policy.multivalue_answer) && has(this.alias_target))B\x06\n" +
+	"\x04_ttl\"\xdd\x02\n" +
 	"\x15AwsRoute53AliasTarget\x12\x83\x01\n" +
 	"\bdns_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\xe8\a\x92\xd4a%status.outputs.load_balancer_dns_nameR\adnsName\x12\x87\x01\n" +
 	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB:\xbaH\x03\xc8\x01\x01\x88\xd4a\xe8\a\x92\xd4a+status.outputs.load_balancer_hosted_zone_idR\x06zoneId\x124\n" +
@@ -988,19 +1002,19 @@ const file_catalog_aws_awsroute53dnsrecord_v1alpha1_spec_proto_rawDesc = "" +
 	"\x06policy\">\n" +
 	"\x18AwsRoute53WeightedPolicy\x12\"\n" +
 	"\x06weight\x18\x01 \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xff\x01(\x00R\x06weight\"9\n" +
-	"\x17AwsRoute53LatencyPolicy\x12\x1e\n" +
-	"\x06region\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\"]\n" +
+	"\xbaH\a\x1a\x05\x18\xff\x01(\x00R\x06weight\"Z\n" +
+	"\x17AwsRoute53LatencyPolicy\x12?\n" +
+	"\x06region\x18\x01 \x01(\tB'\xbaH$\xc8\x01\x01r\x1f2\x1d^[a-z]{2,4}(-[a-z]+)+-[0-9]+$R\x06region\"]\n" +
 	"\x18AwsRoute53FailoverPolicy\x12A\n" +
-	"\rfailover_type\x18\x01 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14R\aPRIMARYR\tSECONDARYR\ffailoverType\"\xa7\x02\n" +
-	"\x1bAwsRoute53GeolocationPolicy\x12\x1c\n" +
-	"\tcontinent\x18\x01 \x01(\tR\tcontinent\x12\x18\n" +
-	"\acountry\x18\x02 \x01(\tR\acountry\x12 \n" +
-	"\vsubdivision\x18\x03 \x01(\tR\vsubdivision:\xad\x01\xbaH\xa9\x01\x1a\xa6\x01\n" +
-	"\x1dgeolocation_location_required\x12?geolocation routing requires continent, country, or subdivision\x1aDthis.continent != '' || this.country != '' || this.subdivision != ''\"\xe8\x03\n" +
-	"\x1cAwsRoute53GeoproximityPolicy\x12\x1d\n" +
+	"\rfailover_type\x18\x01 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14R\aPRIMARYR\tSECONDARYR\ffailoverType\"\xf1\x02\n" +
+	"\x1bAwsRoute53GeolocationPolicy\x12B\n" +
+	"\tcontinent\x18\x01 \x01(\tB$\xbaH!\xd8\x01\x01r\x1cR\x02AFR\x02ANR\x02ASR\x02EUR\x02OCR\x02NAR\x02SAR\tcontinent\x123\n" +
+	"\acountry\x18\x02 \x01(\tB\x19\xbaH\x16\xd8\x01\x01r\x112\x0f^(\\*|[A-Z]{2})$R\acountry\x12)\n" +
+	"\vsubdivision\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18\x03R\vsubdivision:\xad\x01\xbaH\xa9\x01\x1a\xa6\x01\n" +
+	"\x1dgeolocation_location_required\x12?geolocation routing requires continent, country, or subdivision\x1aDthis.continent != '' || this.country != '' || this.subdivision != ''\"\x91\x04\n" +
+	"\x1cAwsRoute53GeoproximityPolicy\x12F\n" +
 	"\n" +
-	"aws_region\x18\x01 \x01(\tR\tawsRegion\x12e\n" +
+	"aws_region\x18\x01 \x01(\tB'\xbaH$\xd8\x01\x01r\x1f2\x1d^[a-z]{2,4}(-[a-z]+)+-[0-9]+$R\tawsRegion\x12e\n" +
 	"\vcoordinates\x18\x02 \x01(\v2C.dev.planton.aws.awsroute53dnsrecord.v1alpha1.AwsRoute53CoordinatesR\vcoordinates\x12(\n" +
 	"\x10local_zone_group\x18\x03 \x01(\tR\x0elocalZoneGroup\x12&\n" +
 	"\x04bias\x18\x04 \x01(\x05B\x12\xbaH\x0f\x1a\r\x18c(\x9d\xff\xff\xff\xff\xff\xff\xff\xff\x01R\x04bias:\xef\x01\xbaH\xeb\x01\x1a\xe8\x01\n" +
@@ -1068,6 +1082,7 @@ func file_catalog_aws_awsroute53dnsrecord_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awsroute53dnsrecord_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_aws_awsroute53dnsrecord_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_catalog_aws_awsroute53dnsrecord_v1alpha1_spec_proto_msgTypes[2].OneofWrappers = []any{
 		(*AwsRoute53RoutingPolicy_Weighted)(nil),
 		(*AwsRoute53RoutingPolicy_Latency)(nil),

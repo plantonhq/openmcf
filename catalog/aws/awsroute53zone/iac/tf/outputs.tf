@@ -22,3 +22,18 @@ output "zone_arn" {
   description = "The ARN of the hosted zone, for IAM policies scoping route53:ChangeResourceRecordSets."
   value       = aws_route53_zone.this.arn
 }
+
+output "ds_record" {
+  description = "The key-signing key's DS record — register it with the parent zone (the registrar) to complete the DNSSEC chain of trust. Empty when DNSSEC is not enabled."
+  value       = local.dnssec_enabled ? aws_route53_key_signing_key.this[0].ds_record : ""
+}
+
+output "dnskey_record" {
+  description = "The key-signing key's DNSKEY record (the public key in DNS record form). Empty when DNSSEC is not enabled."
+  value       = local.dnssec_enabled ? aws_route53_key_signing_key.this[0].dnskey_record : ""
+}
+
+output "key_signing_key_tag" {
+  description = "The key-signing key's key tag — the short identifier registrars display next to a DS record. Empty when DNSSEC is not enabled."
+  value       = local.dnssec_enabled ? tostring(aws_route53_key_signing_key.this[0].key_tag) : ""
+}

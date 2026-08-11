@@ -54,9 +54,6 @@ entries:
   - kind:AwsRedshiftCluster
   - kind:AwsRedshiftServerlessNamespace
   - kind:AwsRedshiftServerlessWorkgroup
-  - kind:AwsRoute53DnsRecord
-  - kind:AwsRoute53HealthCheck
-  - kind:AwsRoute53Zone
   - kind:AwsS3ObjectSet
   - kind:AwsSagemakerDomain
   - kind:AwsSecurityGroup
