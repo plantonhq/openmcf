@@ -1,0 +1,202 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurenetworkwatcherflowlog.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureNetworkWatcherFlowLogSpec** defines a Network Watcher flow
+// log -- the recorder that writes network traffic metadata (source,
+// destination, port, protocol, allow/deny verdict) for ONE target (a
+// virtual network, subnet, or network interface) into a storage
+// account, optionally enriched by Traffic Analytics in a Log Analytics
+// workspace.
+//
+// **The regional Network Watcher**: every flow log is a child of the
+// region's Network Watcher. Azure creates that watcher AUTOMATICALLY
+// (named "NetworkWatcher_{region}" in the "NetworkWatcherRG" resource
+// group) the moment the region hosts a virtual network, and allows
+// exactly one per region per subscription -- so this spec references
+// the watcher rather than creating one. Leave network_watcher_name and
+// network_watcher_resource_group unset to use the auto-created
+// singleton (derived from region); set both only when the subscription
+// runs a self-managed watcher.
+//
+// **Targets**: virtual network (records ALL flows in the network),
+// subnet, or network interface -- pick the narrowest scope that
+// answers your audit question. NSG-targeted flow logs are NOT modeled:
+// Azure stopped accepting new NSG flow logs on 2025-06-30 (full
+// retirement 2027-09-30) -- target the network scope instead.
+//
+// **The storage lifecycle-rule side effect**: creating a flow log
+// writes a lifecycle-management rule on the target storage account
+// that OVERWRITES any existing lifecycle rules -- point flow logs at a
+// storage account that carries no hand-managed lifecycle policy.
+message AzureNetworkWatcherFlowLogSpec {
+  // The Azure region, e.g. "eastus" -- the region of the flow log AND
+  // of the regional Network Watcher it attaches to. Must be the region
+  // the TARGET resource lives in (flow logging is regional; ARM
+  // rejects a cross-region pairing at deploy time). Changing the
+  // region replaces the flow log.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The flow log's name, unique within the Network Watcher. 1-80
+  // characters of letters, numbers, underscores, periods, and hyphens;
+  // starts with a letter or number, ends with a letter, number, or
+  // underscore. Changing the name replaces the flow log.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 80,
+    (buf.validate.field).cel = {
+      id: "flow_log_name_format"
+      message: "Flow log names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens (1-80 characters)"
+      expression: "this == '' || this.matches('^[^\\\\W_]$|^[^\\\\W_][\\\\w.\\\\-]{0,78}[\\\\w]$')"
+    }
+  ];
+
+  // The resource whose traffic is recorded: a virtual network, subnet,
+  // or network interface, by ARM resource ID. Reference the owning
+  // kind's id output (AzureVirtualNetwork's virtual_network_id,
+  // AzureSubnet's subnet_id, or AzureNetworkInterface's
+  // network_interface_id) or pass a literal ID. Retargeting updates
+  // the flow log in place. NSG targets are rejected -- Azure stopped
+  // accepting new NSG flow logs on 2025-06-30.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_resource_id = 3 [(buf.validate.field).required = true];
+
+  // The storage account flow-log files land in -- references an
+  // AzureStorageAccount's ARM id. Creating the flow log writes a
+  // lifecycle-management rule on this account that OVERWRITES existing
+  // rules (see the spec note). Updatable in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // Whether the flow log actively records. Unspecified applies true --
+  // a flow log exists to record; set false to pause collection while
+  // keeping the configuration (and the already-written logs) in place.
+  optional bool enabled = 5 [(dev.planton.shared.options.default) = "true"];
+
+  // The flow-log schema version: 2 adds flow state and byte/packet
+  // counters per flow (and is what Traffic Analytics consumes best);
+  // 1 is the legacy record shape. Unspecified applies 1, the
+  // provider's default -- prefer 2 for anything new. Updatable in
+  // place.
+  optional int32 version = 6 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 2
+    }
+  ];
+
+  // How long flow-log files stay in the storage account before Azure
+  // deletes them. Required by the service on every flow log.
+  AzureNetworkWatcherFlowLogRetentionPolicy retention_policy = 7 [(buf.validate.field).required = true];
+
+  // Traffic Analytics: pipe the flow records into a Log Analytics
+  // workspace for query, topology, and threat views. Leave unset to
+  // write raw files only.
+  AzureNetworkWatcherFlowLogTrafficAnalytics traffic_analytics = 8;
+
+  // The Network Watcher the flow log attaches to, by name. Leave unset
+  // to use the region's AUTO-CREATED watcher ("NetworkWatcher_{region}"
+  // -- the shape virtually every subscription runs); set it (with
+  // network_watcher_resource_group) only for a self-managed watcher.
+  // Fixed at creation.
+  string network_watcher_name = 9;
+
+  // The resource group the Network Watcher lives in (NOT the target's
+  // resource group). Leave unset to use "NetworkWatcherRG", the group
+  // Azure auto-creates its watchers in; set it together with
+  // network_watcher_name for a self-managed watcher. Fixed at
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network_watcher_resource_group = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // Free-form tags applied to the flow log, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins.
+  map<string, string> tags = 11;
+
+  // Azure rejects NEW NSG-targeted flow logs (retired for creates
+  // 2025-06-30; the resource class retires fully 2027-09-30). The
+  // provider blocks them before touching ARM; mirrored here for
+  // literal IDs so the failure is instant.
+  option (buf.validate.message).cel = {
+    id: "nsg_targets_are_retired"
+    message: "Azure no longer accepts NEW NSG-targeted flow logs (retired 2025-06-30; NSG flow logs retire fully 2027-09-30) -- target the virtual network, subnet, or network interface instead"
+    expression: "!has(this.target_resource_id.value) || !this.target_resource_id.value.lowerAscii().contains('/networksecuritygroups/')"
+  };
+  // A self-managed watcher is addressed by name AND resource group --
+  // half an address silently lands on the wrong watcher.
+  option (buf.validate.message).cel = {
+    id: "custom_watcher_addressed_completely"
+    message: "network_watcher_name and network_watcher_resource_group are set together (leave BOTH unset to use the region's auto-created watcher)"
+    expression: "(this.network_watcher_name == '') == !has(this.network_watcher_resource_group)"
+  };
+}
+
+// How long flow-log files stay in the storage account.
+message AzureNetworkWatcherFlowLogRetentionPolicy {
+  // Whether Azure prunes flow-log files after `days`. False keeps
+  // files forever (delete them yourself or via storage lifecycle
+  // policy).
+  bool enabled = 1;
+
+  // Days each file is kept before deletion. 0 with enabled=false
+  // means keep forever. Meaningful (non-zero) only when enabled.
+  int32 days = 2 [(buf.validate.field).int32.gte = 0];
+}
+
+// Traffic Analytics enrichment into a Log Analytics workspace.
+message AzureNetworkWatcherFlowLogTrafficAnalytics {
+  // Whether Traffic Analytics processing is on. Unspecified applies
+  // true -- a configured block exists to analyze; set false to pause
+  // processing while keeping the wiring.
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  // The Log Analytics workspace's GUID (its "customer id", NOT the ARM
+  // resource ID) -- references an AzureLogAnalyticsWorkspace's
+  // workspace_customer_id output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workspace_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLogAnalyticsWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workspace_customer_id"
+  ];
+
+  // The region the Log Analytics workspace lives in (which may differ
+  // from the flow log's region), e.g. "eastus".
+  string workspace_region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Log Analytics workspace's ARM resource ID -- references an
+  // AzureLogAnalyticsWorkspace's workspace_id output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workspace_resource_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLogAnalyticsWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workspace_id"
+  ];
+
+  // How often Traffic Analytics processes accumulated flow logs: every
+  // 60 minutes (the default) or every 10 (faster insight, higher
+  // workspace ingestion). Unspecified applies 60.
+  optional int32 interval_in_minutes = 5 [
+    (dev.planton.shared.options.default) = "60",
+    (buf.validate.field).int32 = {
+      in: [
+        10,
+        60
+      ]
+    }
+  ];
+}

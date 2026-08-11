@@ -2495,6 +2495,40 @@ enum CloudResourceKind {
       AzureDataProtectionBackupPolicy
     ]
   }];
+  // AzureSubnet and AzurePublicIp are prerequisites because a
+  // dedicated-infrastructure Bastion host (Basic/Standard/Premium --
+  // the default shapes) deploys into a subnet named exactly
+  // "AzureBastionSubnet" and binds a Standard static public IP
+  // EXCLUSIVELY (the virtual network and resource group chain
+  // transitively through the subnet). The Developer SKU instead
+  // attaches to a virtual network directly and uses neither.
+  AzureBastionHost = 2184 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azbastion"
+    prerequisites: [
+      AzureSubnet,
+      AzurePublicIp
+    ]
+  }];
+  // AzureVirtualNetwork and AzureStorageAccount are prerequisites
+  // because a flow log records a network-scoped target (a virtual
+  // network in the common case; subnets and network interfaces chain
+  // through the network) into a referenced storage account. The
+  // regional Network Watcher parent is NOT a prerequisite: Azure
+  // auto-creates it ("NetworkWatcher_{region}" in "NetworkWatcherRG")
+  // the moment the region hosts a virtual network, and the flow log
+  // references it by name. Traffic Analytics' Log Analytics workspace
+  // is an optional arm, declared by scenarios that use it.
+  AzureNetworkWatcherFlowLog = 2185 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azfwlog"
+    prerequisites: [
+      AzureVirtualNetwork,
+      AzureStorageAccount
+    ]
+  }];
   // Registers a storage account with a Recovery Services vault as a
   // backup container (.../protectionContainers/StorageContainer;...)
   // -- one registration per storage-account-and-vault pair, required

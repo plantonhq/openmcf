@@ -173,6 +173,7 @@ import (
 	azurebackuppolicyvmv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurebackuppolicyvm/v1alpha1"
 	azurebackupprotectedfilesharev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurebackupprotectedfileshare/v1alpha1"
 	azurebackupprotectedvmv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurebackupprotectedvm/v1alpha1"
+	azurebastionhostv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurebastionhost/v1alpha1"
 	azurecognitiveaccountv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitiveaccount/v1alpha1"
 	azurecognitiveaccountprojectv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitiveaccountproject/v1alpha1"
 	azurecognitivedeploymentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitivedeployment/v1alpha1"
@@ -260,6 +261,7 @@ import (
 	azurenatgatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenatgateway/v1alpha1"
 	azurenetworkinterfacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworkinterface/v1alpha1"
 	azurenetworksecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworksecuritygroup/v1alpha1"
+	azurenetworkwatcherflowlogv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworkwatcherflowlog/v1alpha1"
 	azurepointtositevpngatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepointtositevpngateway/v1alpha1"
 	azurepostgresqlflexibleserverv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepostgresqlflexibleserver/v1alpha1"
 	azureprivatednszonev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednszone/v1alpha1"
@@ -857,6 +859,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureBackupPolicyVm:                            &azurebackuppolicyvmv1alpha1.AzureBackupPolicyVm{},
 	cloudresourcekind.CloudResourceKind_AzureBackupProtectedFileShare:                  &azurebackupprotectedfilesharev1alpha1.AzureBackupProtectedFileShare{},
 	cloudresourcekind.CloudResourceKind_AzureBackupProtectedVm:                         &azurebackupprotectedvmv1alpha1.AzureBackupProtectedVm{},
+	cloudresourcekind.CloudResourceKind_AzureBastionHost:                               &azurebastionhostv1alpha1.AzureBastionHost{},
 	cloudresourcekind.CloudResourceKind_AzureCognitiveAccount:                          &azurecognitiveaccountv1alpha1.AzureCognitiveAccount{},
 	cloudresourcekind.CloudResourceKind_AzureCognitiveAccountProject:                   &azurecognitiveaccountprojectv1alpha1.AzureCognitiveAccountProject{},
 	cloudresourcekind.CloudResourceKind_AzureCognitiveDeployment:                       &azurecognitivedeploymentv1alpha1.AzureCognitiveDeployment{},
@@ -944,6 +947,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureNatGateway:                                &azurenatgatewayv1alpha1.AzureNatGateway{},
 	cloudresourcekind.CloudResourceKind_AzureNetworkInterface:                          &azurenetworkinterfacev1alpha1.AzureNetworkInterface{},
 	cloudresourcekind.CloudResourceKind_AzureNetworkSecurityGroup:                      &azurenetworksecuritygroupv1alpha1.AzureNetworkSecurityGroup{},
+	cloudresourcekind.CloudResourceKind_AzureNetworkWatcherFlowLog:                     &azurenetworkwatcherflowlogv1alpha1.AzureNetworkWatcherFlowLog{},
 	cloudresourcekind.CloudResourceKind_AzurePointToSiteVpnGateway:                     &azurepointtositevpngatewayv1alpha1.AzurePointToSiteVpnGateway{},
 	cloudresourcekind.CloudResourceKind_AzurePostgresqlFlexibleServer:                  &azurepostgresqlflexibleserverv1alpha1.AzurePostgresqlFlexibleServer{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsZone:                            &azureprivatednszonev1alpha1.AzurePrivateDnsZone{},

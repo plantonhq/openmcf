@@ -385,6 +385,7 @@ Fields on other kinds that can point at this resource:
 | AzureApplicationGateway | `spec.subnetId` | `status.outputs.subnet_id` |
 | AzureApplicationGateway | `spec.frontendIpConfigurations[].subnetId` | `status.outputs.subnet_id` |
 | AzureApplicationGateway | `spec.privateLinkConfigurations[].ipConfigurations[].subnetId` | `status.outputs.subnet_id` |
+| AzureBastionHost | `spec.ipConfiguration.subnetId` | `status.outputs.subnet_id` |
 | AzureCognitiveAccount | `spec.networkAcls.virtualNetworkRules[].subnetId` | `status.outputs.subnet_id` |
 | AzureCognitiveAccount | `spec.networkInjection.subnetId` | `status.outputs.subnet_id` |
 | AzureContainerAppEnvironment | `spec.infrastructureSubnetId` | `status.outputs.subnet_id` |

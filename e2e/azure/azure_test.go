@@ -187,6 +187,24 @@ func TestAzurePublicIpPrefix_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurepublicipprefix", "terraform")
 }
 
+// --- Azure Bastion Host (composed: fixture AzureBastionSubnet + the lane's own fixture public IP -> Basic host; ~10-minute create class, ~$0.19/h while up) ---
+
+func TestAzureBastionHost_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebastionhost", "pulumi")
+}
+func TestAzureBastionHost_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebastionhost", "terraform")
+}
+
+// --- Azure Network Watcher Flow Log (composed: fixture VNet's flows -> fixture storage account + Traffic Analytics on the fixture workspace; attaches to the AUTO-CREATED regional Network Watcher) ---
+
+func TestAzureNetworkWatcherFlowLog_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurenetworkwatcherflowlog", "pulumi")
+}
+func TestAzureNetworkWatcherFlowLog_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurenetworkwatcherflowlog", "terraform")
+}
+
 // --- Azure Application Security Group (empty micro-segmentation anchor in the fixture RG) ---
 
 func TestAzureApplicationSecurityGroup_Pulumi(t *testing.T) {

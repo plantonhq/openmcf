@@ -91,6 +91,7 @@ Fields on other kinds that can point at this resource:
 | AzureBackupPolicyVm | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureBackupProtectedFileShare | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureBackupProtectedVm | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureBastionHost | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureCognitiveAccount | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerApp | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerAppEnvironment | `spec.resourceGroup` | `status.outputs.resource_group_name` |
@@ -134,6 +135,7 @@ Fields on other kinds that can point at this resource:
 | AzureNatGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureNetworkInterface | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureNetworkSecurityGroup | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureNetworkWatcherFlowLog | `spec.networkWatcherResourceGroup` | `status.outputs.resource_group_name` |
 | AzurePointToSiteVpnGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePostgresqlFlexibleServer | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePrivateDnsZone | `spec.resourceGroup` | `status.outputs.resource_group_name` |

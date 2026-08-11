@@ -1801,6 +1801,7 @@ Fields on other kinds that can point at this resource:
 | AzureLinuxWebApp | `spec.storageMounts[].accessKey` | `status.outputs.primary_access_key` |
 | AzureMachineLearningWorkspace | `spec.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureMonitorDiagnosticSetting | `spec.storageAccountId` | `status.outputs.storage_account_id` |
+| AzureNetworkWatcherFlowLog | `spec.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureStorageContainer | `spec.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureStorageDataLakeGen2Filesystem | `spec.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureStorageEncryptionScope | `spec.storageAccountId` | `status.outputs.storage_account_id` |

@@ -300,6 +300,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureBastionHost | `spec.virtualNetworkId` | `status.outputs.virtual_network_id` |
 | AzureLoadBalancer | `spec.backendPools[].virtualNetworkId` | `status.outputs.virtual_network_id` |
 | AzurePrivateDnsZoneVirtualNetworkLink | `spec.virtualNetworkId` | `status.outputs.virtual_network_id` |
 | AzureSubnet | `spec.virtualNetworkId` | `status.outputs.virtual_network_id` |

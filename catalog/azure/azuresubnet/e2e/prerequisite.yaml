@@ -121,3 +121,33 @@ spec:
   addressPrefixes:
     - "10.240.247.0/24"
   privateLinkServiceNetworkPoliciesEnabled: false
+---
+# A fifth, bastion-shaped subnet instance: Azure Bastion's dedicated
+# infrastructure only deploys into a subnet whose ARM name is EXACTLY
+# "AzureBastionSubnet" with at least a /26 prefix, so no fixture above
+# can serve it. Consumers address this instance by its metadata name
+# (planton-oss-e2e-azure-fixture-bastion-subnet); the extra instance is
+# harmless for consumers that only use the generic one (subnets are
+# free and provision in seconds). The /26 is carved below the PLS
+# fixture's prefix to stay clear of scenario subnets.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureSubnet
+metadata:
+  name: planton-oss-e2e-azure-fixture-bastion-subnet
+  id: planton-oss-e2e-azure-fixture-bastion-subnet
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuresubnet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  virtualNetworkId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vnet
+  name: AzureBastionSubnet
+  addressPrefixes:
+    - "10.240.246.0/26"

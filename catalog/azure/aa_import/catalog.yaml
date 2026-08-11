@@ -354,3 +354,17 @@ spec:
     - terraform_type: azurerm_key_vault_secret
       pulumi_type: azure:keyvault/secret:Secret
       id_format: "{secret_id}"
+
+    # --- Network access and observability -----------------------------------
+    # The classic SDK's bridge parks BastionHost in the COMPUTE module
+    # (a historical upstream placement) -- the token is correct as
+    # written, never a typo to fix.
+    - terraform_type: azurerm_bastion_host
+      pulumi_type: azure:compute/bastionHost:BastionHost
+      id_format: "{bastion_host_id}"
+    # The flow log is a child of the regional Network Watcher; its ARM
+    # ID carries the watcher segment
+    # (.../networkWatchers/{watcher}/flowLogs/{name}).
+    - terraform_type: azurerm_network_watcher_flow_log
+      pulumi_type: azure:network/networkWatcherFlowLog:NetworkWatcherFlowLog
+      id_format: "{flow_log_id}"

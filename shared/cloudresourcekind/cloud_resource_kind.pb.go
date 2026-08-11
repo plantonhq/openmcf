@@ -899,6 +899,24 @@ const (
 	// blocks. The vault's managed identity must hold the datasource
 	// roles Azure Backup requires BEFORE the instance is created.
 	CloudResourceKind_AzureDataProtectionBackupInstance CloudResourceKind = 2182
+	// AzureSubnet and AzurePublicIp are prerequisites because a
+	// dedicated-infrastructure Bastion host (Basic/Standard/Premium --
+	// the default shapes) deploys into a subnet named exactly
+	// "AzureBastionSubnet" and binds a Standard static public IP
+	// EXCLUSIVELY (the virtual network and resource group chain
+	// transitively through the subnet). The Developer SKU instead
+	// attaches to a virtual network directly and uses neither.
+	CloudResourceKind_AzureBastionHost CloudResourceKind = 2184
+	// AzureVirtualNetwork and AzureStorageAccount are prerequisites
+	// because a flow log records a network-scoped target (a virtual
+	// network in the common case; subnets and network interfaces chain
+	// through the network) into a referenced storage account. The
+	// regional Network Watcher parent is NOT a prerequisite: Azure
+	// auto-creates it ("NetworkWatcher_{region}" in "NetworkWatcherRG")
+	// the moment the region hosts a virtual network, and the flow log
+	// references it by name. Traffic Analytics' Log Analytics workspace
+	// is an optional arm, declared by scenarios that use it.
+	CloudResourceKind_AzureNetworkWatcherFlowLog CloudResourceKind = 2185
 	// Registers a storage account with a Recovery Services vault as a
 	// backup container (.../protectionContainers/StorageContainer;...)
 	// -- one registration per storage-account-and-vault pair, required
@@ -1688,6 +1706,8 @@ var (
 		2180:  "AzureDataProtectionBackupVault",
 		2181:  "AzureDataProtectionBackupPolicy",
 		2182:  "AzureDataProtectionBackupInstance",
+		2184:  "AzureBastionHost",
+		2185:  "AzureNetworkWatcherFlowLog",
 		2213:  "AzureBackupContainerStorageAccount",
 		2214:  "AzureDataProtectionResourceGuard",
 		3000:  "GcpArtifactRegistryRepo",
@@ -2345,6 +2365,8 @@ var (
 		"AzureDataProtectionBackupVault":                 2180,
 		"AzureDataProtectionBackupPolicy":                2181,
 		"AzureDataProtectionBackupInstance":              2182,
+		"AzureBastionHost":                               2184,
+		"AzureNetworkWatcherFlowLog":                     2185,
 		"AzureBackupContainerStorageAccount":             2213,
 		"AzureDataProtectionResourceGuard":               2214,
 		"GcpArtifactRegistryRepo":                        3000,
@@ -3012,7 +3034,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe4\xa4\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe0\xa5\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3291,7 +3313,9 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1dAzureBackupProtectedFileShare\x10\x83\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\aazbprfs:\x06\xa5\x11\x82\x11\xab\x10\x12A\n" +
 	"\x1eAzureDataProtectionBackupVault\x10\x84\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbv:\x02\xd0\x0f\x12B\n" +
 	"\x1fAzureDataProtectionBackupPolicy\x10\x85\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbp:\x02\x84\x11\x12F\n" +
-	"!AzureDataProtectionBackupInstance\x10\x86\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azdpbi:\x04\x84\x11\x85\x11\x12G\n" +
+	"!AzureDataProtectionBackupInstance\x10\x86\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azdpbi:\x04\x84\x11\x85\x11\x128\n" +
+	"\x10AzureBastionHost\x10\x88\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\tazbastion:\x04\xdb\x0f\xdd\x0f\x12@\n" +
+	"\x1aAzureNetworkWatcherFlowLog\x10\x89\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazfwlog:\x04\xd6\x0f\xd9\x0f\x12G\n" +
 	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +
 	" AzureDataProtectionResourceGuard\x10\xa6\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdprg:\x02\xd0\x0f\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +

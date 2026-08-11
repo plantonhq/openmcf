@@ -1,0 +1,53 @@
+# Minimal AzureNetworkWatcherFlowLog scenario: record the fixture
+# virtual network's flows into the fixture storage account, enriched by
+# Traffic Analytics on the fixture Log Analytics workspace (declared via
+# the e2e-prerequisites annotation -- the workspace is an OPTIONAL arm,
+# never a registry prerequisite). The watcher fields stay unset: the
+# lane proves the auto-created-singleton addressing
+# (NetworkWatcher_eastus in NetworkWatcherRG -- Azure creates it when
+# the fixture network exists; the orphan sweep deletes NetworkWatcherRG
+# at session end and Azure recreates on demand). Version 2 explicitly
+# -- the schema Traffic Analytics consumes best. Retention is short:
+# the fixture account holds throwaway records, and the flow log's
+# lifecycle rule OVERWRITES any lifecycle rules on the account (the
+# fixture account carries none -- verified at authoring).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureNetworkWatcherFlowLog
+metadata:
+  name: planton-oss-e2e-azurenetworkwatcherflowlog-smoke
+  id: planton-oss-e2e-azurenetworkwatcherflowlog-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurenetworkwatcherflowlog
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureLogAnalyticsWorkspace"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  name: planton-oss-e2e-flowlog-smoke
+  targetResourceId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: planton-oss-e2e-azure-fixture-vnet
+      fieldPath: status.outputs.virtual_network_id
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sa
+  version: 2
+  retentionPolicy:
+    enabled: true
+    days: 7
+  trafficAnalytics:
+    workspaceId:
+      valueFrom:
+        name: planton-oss-e2e-azure-fixture-law
+        fieldPath: status.outputs.workspace_customer_id
+    workspaceRegion: eastus
+    workspaceResourceId:
+      valueFrom:
+        name: planton-oss-e2e-azure-fixture-law
+        fieldPath: status.outputs.workspace_id
