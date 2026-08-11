@@ -792,6 +792,34 @@ DELETE_FAILED rather than trusting the delete call's answer. A zero-orphan
 sweep that finds an ECS cluster lingering should check its capacity
 providers' status before suspecting a failed teardown.
 
+**A committed fixed S3 bucket name is a lane time bomb — the namespace is
+global and this repo is public.** A scenario's fixed bucket name can be
+claimed by ANY AWS account (the repo publishes it), and a recently-deleted
+name can sit in a propagation window where CreateBucket answers 409
+`BucketAlreadyExists` while HeadBucket answers 404 and `list-buckets`
+proves the account owns nothing by that name (live-hit 2026-08-11: the
+awss3bucket full-surface name 409'd across retries with no visible owner).
+The signature is exactly that 404-but-409 pair; the recovery is NOT
+waiting out the window but making the class impossible: put
+`${E2E_RUN_ID}` in the scenario's metadata.name so every run's bucket name
+is globally fresh. S3 is the recorded exception to the
+names-stay-stable token guidance — its cloud identifier IS the metadata
+name (the module derives the bucket name from it) — legitimate only for
+scenarios no prerequisite chain references by name.
+
+**Fixed-name shared fixtures collide across CONCURRENT sessions on one
+account.** IAM roles are account-global and the shared install profiles
+(e.g. the 13-role `awsiamrole` prerequisite set) use fixed names by
+design, so two sessions' lanes composing the same fixture race:
+the second `CreateRole` fails 409 `EntityAlreadyExists` while the first
+session's lane holds the deployment (its teardown removes the set at
+DEPENDENCIES-DOWN). Diagnose with the role's `CreateDate` (minutes old =
+a live sibling lane, not an orphan) before deleting ANYTHING — deleting a
+concurrent lane's live fixture wrecks that lane's destroy. The recovery
+is to wait for the holder's teardown window (poll `get-role` until
+NoSuchEntity) and launch immediately; the collision recurs at most until
+the sibling session's lanes finish.
+
 ## GCP E2E
 
 GCP tests live under `e2e/gcp/` and use the shared `aa_e2e` harness with

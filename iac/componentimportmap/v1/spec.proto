@@ -141,6 +141,20 @@ message ImportValueDerivation {
     // is SECRET MATERIAL: it exists to feed the import command and must
     // never be logged or persisted by the resolving context.
     FromClusterSecretKey from_cluster_secret_key = 9;
+    // A map-valued stack output whose entries the module keys by the SAME
+    // key it uses for the resource's for_each instances -- for
+    // CLOUD-GENERATED per-instance identifiers of keyed satellite
+    // resources, where the instance key is config-time identity but the
+    // import ID is assigned by the cloud (a VPC secondary CIDR's
+    // "vpc-cidr-assoc-..." association id keyed by the CIDR, a KMS
+    // grant's generated grant id keyed by list position). from_address_key
+    // cannot serve these (the key is not the ID), and a plain
+    // from_stack_output cannot either (one static key cannot vary per
+    // instance). Resolves as the flattened output entry
+    // "<output>.<address key>" per the platform's dot-path output
+    // flattening; resolves empty for addresses without an instance key,
+    // falling back to the next derivation or where_to_find.
+    string from_stack_output_keyed_by_address = 10;
   }
 }
 

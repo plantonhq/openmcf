@@ -13,9 +13,11 @@ spec:
   # policy_arn reference edge), and force_destroy guarantees teardown
   # succeeds. IAM is global and free.
   #
-  # pending_proof: the depth closure added the access-key status arm and the
-  # composed policy-fixture chain -- the prior green proof predates both.
+  # Proven 2026-08-11 (both engines): the composed policy-fixture chain
+  # resolved and tore down cleanly, and the verifier asserts the access key
+  # exists AND its status matches the access_key_status output against
+  # ListAccessKeys (the Inactive rotation-lever arm's API evidence).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

@@ -25,6 +25,7 @@ func Resources(ctx *pulumi.Context, stackInput *awskmskeyv1alpha1.AwsKmsKeyStack
 	ctx.Export(OpKeyId, result.KeyId)
 	ctx.Export(OpKeyArn, result.KeyArn)
 	ctx.Export(OpAliasNames, result.AliasNames)
+	ctx.Export(OpGrantIds, result.GrantIds)
 
 	return nil
 }

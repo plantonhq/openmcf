@@ -3,19 +3,22 @@ kind: ComponentE2EProfile
 metadata:
   name: awss3bucket
 spec:
-  # Flipped to pending_proof by the depth-closure wave that folded the five
-  # governance companions (ABAC, analytics, inventory, metrics, S3 Metadata)
-  # and added blocked encryption types, the account-regional namespace, and
-  # day-zero transitions. The PRIOR green covered both provisioners across
-  # two scenarios (minimal + full-surface); the full-surface scenario now
-  # carries the new free arms (ABAC, analytics, self-delivered inventory,
-  # request metrics, blocked SSE-C, day-zero tiering) and must be re-proven.
+  # Proven 2026-08-11 (both scenarios x both engines + blind import
+  # round-trips: the full-surface lane re-imported 14 resources blind,
+  # incl. the ABAC row and the three new analytics/inventory/metric
+  # composites, with a zero-change plan -- the machine proof of the new
+  # governance arms incl. the day-zero transition and blocked SSE-C).
+  # Scenario bucket names are run-scoped (${E2E_RUN_ID}): S3's global
+  # namespace makes a committed fixed name squattable, and a deleted name
+  # can 409 CreateBucket while HeadBucket 404s (live-hit this session;
+  # the class is in e2e/README.md's AWS section).
   # Deliberately not run live: replication and Object Lock (see the
   # full-surface scenario header) and the S3 Metadata configuration (the
   # provider's own create timeout is 30 minutes against this profile's
   # 15-minute budget -- proven offline via the canonical manifest and the
-  # 04-governed-data-lake preset; the proof lane may choose to raise the
+  # 04-governed-data-lake preset; a future proof lane may raise the
   # timeout and prove it live instead).
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

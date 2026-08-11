@@ -43,6 +43,19 @@ cluster-scoped documents). Per-document literals cannot serve there: the
 bundle spans many apiVersion/kind pairs. Single-GVK typed-CR modules keep
 their literal declarations — the segment arm exists for the bundle class.
 
+A keyed satellite whose import ID is CLOUD-GENERATED — the instance key is
+config-time identity but the ID is assigned at creation (a VPC secondary
+CIDR's `vpc-cidr-assoc-...` association id keyed by the CIDR, a KMS grant's
+generated grant id keyed by list position) — derives via
+`from_stack_output_keyed_by_address`: the module exports a map output keyed
+by the SAME key as the resource's `for_each` instances, and the enumerated
+address selects the entry (the flattened `<output>.<address key>` lookup).
+`from_address_key` cannot serve these (the key is not the ID), and a plain
+`from_stack_output` cannot either (one static key cannot vary per
+instance). The offline guard requires the named output field to exist on
+the kind's StackOutputs AND be a map; keep a `where_to_find` paste fallback
+for fresh adoption, where no prior deploy's outputs exist.
+
 An import ID that IS secret material — the canonical case is a
 `random_password` resource, whose provider import ID is the password value
 itself — derives through `from_cluster_secret_key`: the module materialized
@@ -128,8 +141,8 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 
 | Component | Live round-trip | Tolerated declared updates / notes |
 |-----------|-----------------|------------------------------------|
-| `awss3bucket` | 2026-07-09, both scenarios (13 resources incl. `for_each` keys + the `{bucket}:{intelligent_tiering_name}` composite). RE-PROOF PENDING: the depth closure added five resource types (abac, analytics/inventory/metric named configs, metadata configuration) with three new `from_address_key` composites — conformance green, live round-trip queued | `aws_s3_bucket.force_destroy` (config-only) |
-| `awsvpc` | 2026-07-10, minimal | `aws_vpc_ipv4_cidr_block_association` is user-supplied by design (no blind derivation), offline-validated only |
+| `awss3bucket` | 2026-08-11, both scenarios re-proven post-depth-closure (full-surface: 14 resources blind incl. the abac row and the three new `{bucket}:{name}` composites — analytics/inventory/metric — via `for_each` keys; run-scoped bucket names via `${E2E_RUN_ID}`) | `aws_s3_bucket.force_destroy` (config-only); the metadata-configuration row is offline-validated only (its arm is a recorded live deferral) |
+| `awsvpc` | 2026-08-11, minimal re-proven post-depth-closure — the ipv4 association id derives BLIND via `from_stack_output_keyed_by_address` over the module's association-id map output (previously user-supplied/offline-only) | ipv6-association and encryption-control rows offline-validated only (no scenario deploys those arms; recorded deferrals) |
 | `awssecuritygroup` | 2026-07-10, rules-rich | `aws_security_group.revoke_rules_on_delete` (config-only) |
 | `awsecrrepo` | 2026-07-10, full-surface (repository + lifecycle policy) | `aws_ecr_repository.force_delete` (config-only) |
 | `awssubnet` | 2026-07-10, minimal + routed (subnet + route table + `{subnet_id}/{route_table_id}` association composite) | — |
@@ -139,7 +152,7 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `awsdynamodb` | 2026-07-10, on-demand-full-surface (table + resource policy + table- and GSI-level contributor insights incl. the optional `{index_name?}` segment and account id) | `aws_dynamodb_resource_policy.policy`/`revision_id` (write-normalized); `aws_dynamodb_kinesis_streaming_destination` not composed by the scenario, offline-validated only |
 | `awssqsqueue` | 2026-07-10, fifo-full-surface (queue URL id) | — |
 | `awssnstopic` | 2026-07-10, standard-topic (topic ARN id) | `aws_sns_topic_data_protection_policy` not composed by the scenario, offline-validated only |
-| `awskmskey` | 2026-07-10, minimal (key UUID + `alias/...` via `for_each` key) | `aws_kms_key.deletion_window_in_days` declared (provider-documented config-only; scenario does not set it) |
+| `awskmskey` | 2026-08-11, minimal re-proven post-depth-closure (key UUID + `alias/...` via `for_each` key + the NEW `{kms_key_id}:{grant_id}` composite — the cloud-generated grant id derives BLIND via `from_stack_output_keyed_by_address` over the grant_ids output) | `aws_kms_key.deletion_window_in_days` declared (provider-documented config-only; scenario does not set it) |
 | `kubernetesdeployment` | 2026-07-21, all 13 scenarios (workload + service + HPA + PDB + env Secret + created namespace) | `kubernetes_deployment_v1.wait_for_rollout`, `kubernetes_service_v1.wait_for_load_balancer`, `kubernetes_secret_v1.wait_for_service_account_token` (config-only) |
 | `kubernetesstatefulset` | 2026-07-21, all 13 scenarios | same config-only knobs; `kubernetes_stateful_set_v1` `spec.update_strategy` (write-normalized dotted sub-path: the provider importer does not read the block back) |
 | `kubernetesdaemonset` | 2026-07-21, all 5 scenarios | `kubernetes_daemon_set_v1.wait_for_rollout` (config-only) |

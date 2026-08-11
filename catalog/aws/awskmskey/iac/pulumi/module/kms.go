@@ -13,6 +13,11 @@ type KmsKeyResult struct {
 	KeyId      pulumi.StringOutput
 	KeyArn     pulumi.StringOutput
 	AliasNames pulumi.StringArrayOutput
+	// AWS-generated grant IDs keyed by the grant's position in spec.grants
+	// ("0", "1", ...) -- the same key the Terraform module's for_each uses,
+	// so the import recipes resolve per-instance IDs identically on both
+	// engines.
+	GrantIds pulumi.StringMap
 }
 
 func kmsKey(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*KmsKeyResult, error) {
@@ -89,6 +94,7 @@ func kmsKey(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*KmsKe
 	// grants carry no state). Entries are keyed by list position; grant
 	// identity lives in AWS's generated grant id. valueFrom principal
 	// references were resolved to ARNs before the module ran.
+	grantIds := pulumi.StringMap{}
 	for idx, grant := range spec.Grants {
 		grantArgs := &kms.GrantArgs{
 			KeyId:            createdKey.KeyId,
@@ -121,17 +127,19 @@ func kmsKey(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*KmsKe
 			grantArgs.Constraints = kms.GrantConstraintArray{constraint}
 		}
 		grantName := fmt.Sprintf("%s-grant-%d", locals.AwsKmsKey.Metadata.Name, idx)
-		_, err := kms.NewGrant(ctx, grantName, grantArgs,
+		createdGrant, err := kms.NewGrant(ctx, grantName, grantArgs,
 			pulumi.Provider(provider), pulumi.Parent(createdKey))
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to create kms grant %d", idx)
 		}
+		grantIds[fmt.Sprintf("%d", idx)] = createdGrant.GrantId
 	}
 
 	return &KmsKeyResult{
 		KeyId:      createdKey.KeyId,
 		KeyArn:     createdKey.Arn,
 		AliasNames: pulumi.ToStringArray(spec.Aliases).ToStringArrayOutput(),
+		GrantIds:   grantIds,
 	}, nil
 }
 

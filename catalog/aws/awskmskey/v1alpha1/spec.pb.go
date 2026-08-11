@@ -305,21 +305,28 @@ type AwsKmsKeyGrant struct {
 	// generated grant id. Optional. Up to 256 characters: letters,
 	// digits, and _:/- .
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The principal the grant permits to use the key: an IAM role (the
-	// mainstream pattern -- reference an AwsIamRole's role_arn output),
-	// an IAM user ARN, or an AWS service principal (e.g.
-	// "logs.amazonaws.com"). Cross-account delegation works by naming a
-	// principal in another account.
+	// The IAM principal the grant permits to use the key, in ARN form: an
+	// IAM role (the mainstream pattern -- reference an AwsIamRole's
+	// role_arn output), an IAM user, an account root, or a federated/
+	// assumed-role principal. Cross-account delegation works by naming a
+	// principal in another account. NOT a service principal: AWS's
+	// CreateGrant takes those through a separate GranteeServicePrincipal
+	// parameter (paired with a mandatory SourceArn constraint) that the
+	// Terraform provider does not expose -- a bare service principal here
+	// is rejected live with "InvalidArnException: GranteePrincipal does
+	// not refer to a valid principal" (live-verified 2026-08-11).
 	GranteePrincipal *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=grantee_principal,json=granteePrincipal,proto3" json:"grantee_principal,omitempty"`
 	// The KMS operations the grant allows, at least one. The domain is
 	// AWS's own GrantOperation set; which entries make sense depends on
 	// the key's shape (e.g. Sign/Verify need a signing key, GenerateMac
 	// an HMAC key) -- AWS validates that pairing at grant creation.
 	Operations []string `protobuf:"bytes,3,rep,name=operations,proto3" json:"operations,omitempty"`
-	// The principal allowed to retire the grant when it is no longer
-	// needed (in addition to the key administrators). Reference an
-	// AwsIamRole's role_arn output, or pass a literal role/user ARN or
-	// service principal.
+	// The IAM principal (ARN form) allowed to retire the grant when it is
+	// no longer needed, in addition to the key administrators. Reference
+	// an AwsIamRole's role_arn output or pass a literal role/user ARN.
+	// Service principals are not accepted here for the same reason as
+	// grantee_principal (AWS's RetiringServicePrincipal parameter is not
+	// in the provider surface).
 	RetiringPrincipal *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=retiring_principal,json=retiringPrincipal,proto3" json:"retiring_principal,omitempty"`
 	// Constrain the grant to requests whose encryption context EQUALS
 	// exactly these key-value pairs. Only valid for operations that take
@@ -456,7 +463,7 @@ const file_catalog_aws_awskmskey_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1ccustom_key_store_no_rotation\x12Bautomatic rotation is not supported for keys in a custom key store\x1a;this.custom_key_store_id == '' || !this.enable_key_rotation\x1a\x93\x01\n" +
 	" custom_key_store_no_multi_region\x129multi-Region keys cannot be created in a custom key store\x1a4this.custom_key_store_id == '' || !this.multi_region\x1a\xaf\x01\n" +
 	"!xks_key_requires_custom_key_store\x12Qxks_key_id requires custom_key_store_id (the external key store the key lives in)\x1a7this.xks_key_id == '' || this.custom_key_store_id != ''\x1a\xa4\x01\n" +
-	"\x17no_reserved_aws_aliases\x12Wthe alias/aws/ prefix is reserved for AWS-managed keys -- choose a different alias name\x1a0this.aliases.all(a, !a.startsWith('alias/aws/'))\"\xf6\v\n" +
+	"\x17no_reserved_aws_aliases\x12Wthe alias/aws/ prefix is reserved for AWS-managed keys -- choose a different alias name\x1a0this.aliases.all(a, !a.startsWith('alias/aws/'))\"\x9e\x10\n" +
 	"\x0eAwsKmsKeyGrant\x12\xb6\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xa1\x01\xbaH\x9d\x01\xba\x01\x99\x01\n" +
 	"\x11grant_name_format\x12;name may use letters, digits, and _:/- (max 256 characters)\x1aGthis == '' || (size(this) <= 256 && this.matches('^[0-9A-Za-z_:/-]+$'))R\x04name\x12\x87\x01\n" +
@@ -473,8 +480,10 @@ const file_catalog_aws_awskmskey_v1alpha1_spec_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aJ\n" +
 	"\x1cEncryptionContextSubsetEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xfd\x01\xbaH\xf9\x01\x1a\xf6\x01\n" +
-	"$encryption_context_equals_xor_subset\x12vencryption_context_equals and encryption_context_subset are mutually exclusive -- a grant takes at most one constraint\x1aVsize(this.encryption_context_equals) == 0 || size(this.encryption_context_subset) == 0B\xaf\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa5\x06\xbaH\xa1\x06\x1a\xf6\x01\n" +
+	"$encryption_context_equals_xor_subset\x12vencryption_context_equals and encryption_context_subset are mutually exclusive -- a grant takes at most one constraint\x1aVsize(this.encryption_context_equals) == 0 || size(this.encryption_context_subset) == 0\x1a\x96\x02\n" +
+	"\x1cgrantee_principal_arn_format\x12\x7fgrantee_principal must be an IAM principal ARN (arn:...) -- AWS's CreateGrant rejects bare service principals on this parameter\x1au!has(this.grantee_principal) || this.grantee_principal.value == '' || this.grantee_principal.value.startsWith('arn:')\x1a\x8c\x02\n" +
+	"\x1dretiring_principal_arn_format\x12qretiring_principal must be an IAM principal ARN (arn:...) -- AWS's RetireGrant contract takes IAM principals only\x1ax!has(this.retiring_principal) || this.retiring_principal.value == '' || this.retiring_principal.value.startsWith('arn:')B\xaf\x02\n" +
 	"&com.dev.planton.aws.awskmskey.v1alpha1B\tSpecProtoP\x01ZMgithub.com/plantonhq/planton/catalog/aws/awskmskey/v1alpha1;awskmskeyv1alpha1\xa2\x02\x04DPAA\xaa\x02\"Dev.Planton.Aws.Awskmskey.V1alpha1\xca\x02\"Dev\\Planton\\Aws\\Awskmskey\\V1alpha1\xe2\x02.Dev\\Planton\\Aws\\Awskmskey\\V1alpha1\\GPBMetadata\xea\x02&Dev::Planton::Aws::Awskmskey::V1alpha1b\x06proto3"
 
 var (

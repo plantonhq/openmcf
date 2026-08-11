@@ -251,6 +251,27 @@ var _ = ginkgo.Describe("AwsKmsKeySpec validations", func() {
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
+	ginkgo.It("rejects a grant to a bare service principal", func() {
+		// AWS's CreateGrant takes service principals through a separate
+		// parameter the provider does not expose; a bare service principal
+		// on grantee_principal fails live with InvalidArnException
+		// (live-verified 2026-08-11).
+		spec.Grants = []*AwsKmsKeyGrant{{
+			GranteePrincipal: newStringValueOrRef("logs.us-west-2.amazonaws.com"),
+			Operations:       []string{"Decrypt"},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a retiring principal that is not an ARN", func() {
+		spec.Grants = []*AwsKmsKeyGrant{{
+			GranteePrincipal:  newStringValueOrRef("arn:aws:iam::123456789012:role/orders-worker"),
+			Operations:        []string{"Decrypt"},
+			RetiringPrincipal: newStringValueOrRef("kms.amazonaws.com"),
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
 	ginkgo.It("rejects a grant with no operations", func() {
 		spec.Grants = []*AwsKmsKeyGrant{{
 			GranteePrincipal: newStringValueOrRef("arn:aws:iam::123456789012:role/orders-worker"),

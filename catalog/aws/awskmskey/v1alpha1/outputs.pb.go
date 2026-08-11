@@ -34,7 +34,14 @@ type AwsKmsKeyStackOutputs struct {
 	// The alias names attached to the key (each "alias/..."), in spec
 	// order -- the human-friendly addresses SDK callers may use instead
 	// of the key ID.
-	AliasNames    []string `protobuf:"bytes,3,rep,name=alias_names,json=aliasNames,proto3" json:"alias_names,omitempty"`
+	AliasNames []string `protobuf:"bytes,3,rep,name=alias_names,json=aliasNames,proto3" json:"alias_names,omitempty"`
+	// The AWS-generated grant IDs, keyed exactly as the module keys each
+	// grant: by the entry's position in spec.grants ("0", "1", ...). Grant
+	// identity lives in these IDs, not in the optional friendly name --
+	// RetireGrant/RevokeGrant and state import take them. (The one-time
+	// grant TOKEN from creation stays deliberately unexposed: it is a
+	// sensitive eventual-consistency bridge, not an identifier.)
+	GrantIds      map[string]string `protobuf:"bytes,4,rep,name=grant_ids,json=grantIds,proto3" json:"grant_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -90,16 +97,27 @@ func (x *AwsKmsKeyStackOutputs) GetAliasNames() []string {
 	return nil
 }
 
+func (x *AwsKmsKeyStackOutputs) GetGrantIds() map[string]string {
+	if x != nil {
+		return x.GrantIds
+	}
+	return nil
+}
+
 var File_catalog_aws_awskmskey_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awskmskey_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	",catalog/aws/awskmskey/v1alpha1/outputs.proto\x12\"dev.planton.aws.awskmskey.v1alpha1\"h\n" +
+	",catalog/aws/awskmskey/v1alpha1/outputs.proto\x12\"dev.planton.aws.awskmskey.v1alpha1\"\x8b\x02\n" +
 	"\x15AwsKmsKeyStackOutputs\x12\x15\n" +
 	"\x06key_id\x18\x01 \x01(\tR\x05keyId\x12\x17\n" +
 	"\akey_arn\x18\x02 \x01(\tR\x06keyArn\x12\x1f\n" +
 	"\valias_names\x18\x03 \x03(\tR\n" +
-	"aliasNamesB\xb2\x02\n" +
+	"aliasNames\x12d\n" +
+	"\tgrant_ids\x18\x04 \x03(\v2G.dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyStackOutputs.GrantIdsEntryR\bgrantIds\x1a;\n" +
+	"\rGrantIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xb2\x02\n" +
 	"&com.dev.planton.aws.awskmskey.v1alpha1B\fOutputsProtoP\x01ZMgithub.com/plantonhq/planton/catalog/aws/awskmskey/v1alpha1;awskmskeyv1alpha1\xa2\x02\x04DPAA\xaa\x02\"Dev.Planton.Aws.Awskmskey.V1alpha1\xca\x02\"Dev\\Planton\\Aws\\Awskmskey\\V1alpha1\xe2\x02.Dev\\Planton\\Aws\\Awskmskey\\V1alpha1\\GPBMetadata\xea\x02&Dev::Planton::Aws::Awskmskey::V1alpha1b\x06proto3"
 
 var (
@@ -114,16 +132,18 @@ func file_catalog_aws_awskmskey_v1alpha1_outputs_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awskmskey_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_aws_awskmskey_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awskmskey_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_aws_awskmskey_v1alpha1_outputs_proto_goTypes = []any{
 	(*AwsKmsKeyStackOutputs)(nil), // 0: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyStackOutputs
+	nil,                           // 1: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyStackOutputs.GrantIdsEntry
 }
 var file_catalog_aws_awskmskey_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyStackOutputs.grant_ids:type_name -> dev.planton.aws.awskmskey.v1alpha1.AwsKmsKeyStackOutputs.GrantIdsEntry
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awskmskey_v1alpha1_outputs_proto_init() }
@@ -137,7 +157,7 @@ func file_catalog_aws_awskmskey_v1alpha1_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awskmskey_v1alpha1_outputs_proto_rawDesc), len(file_catalog_aws_awskmskey_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

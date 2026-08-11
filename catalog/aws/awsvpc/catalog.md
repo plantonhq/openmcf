@@ -96,6 +96,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `default_network_acl_id` | ID of the default network ACL | Subnet-level network ACLs |
 | `owner_id` | AWS account ID that owns the VPC | Cross-account references |
 | `region` | Region the VPC was created in | Downstream region wiring |
+| `secondary_ipv4_cidr_association_ids` | Association IDs of secondary IPv4 CIDR blocks, keyed by CIDR (or `ipam-<index>`) | Disassociation tooling, state import |
+| `secondary_ipv6_cidr_association_ids` | Association IDs of secondary IPv6 CIDR blocks, keyed by CIDR (or `ipv6-<index>`) | Disassociation tooling, state import |
+| `encryption_control_id` | ID of the VPC Encryption Control (empty when not configured) | Encryption-posture inspection, state import |
 
 ## Common Patterns
 

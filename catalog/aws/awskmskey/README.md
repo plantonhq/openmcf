@@ -18,13 +18,14 @@ AWS Key Management Service (KMS) customer-managed keys provide encryption, signi
 - `aliases` — repeated `alias/...` strings (not a single `alias_name`)
 - `custom_key_store_id` — create the key in a CloudHSM or external key store (literal `cks-...` id; symmetric-only by AWS contract)
 - `xks_key_id` — the existing key in the external key manager (external key stores only)
-- `grants` — scoped, revocable per-principal key access without key-policy edits: grantee/retiring principals (reference an `AwsIamRole` or pass literal ARNs/service principals), operations, optional encryption-context constraints, retire-vs-revoke teardown
+- `grants` — scoped, revocable per-principal key access without key-policy edits: grantee/retiring principals (reference an `AwsIamRole` or pass a literal IAM principal ARN — never a bare service principal, which AWS rejects on this parameter), operations, optional encryption-context constraints, retire-vs-revoke teardown
 
 ## Stack outputs
 
 - `key_id` — generated key ID
 - `key_arn` — join key for encryption-at-rest fields
 - `alias_names` — attached alias names in spec order
+- `grant_ids` — AWS-generated grant IDs keyed by the grant's position in `spec.grants` (the handles `RetireGrant`/`RevokeGrant` and state import take)
 
 ## How it works
 

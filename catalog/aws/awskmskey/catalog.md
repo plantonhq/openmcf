@@ -63,7 +63,7 @@ These are the most important decisions when configuring a KMS key. Explore the f
 
 **Key spec and usage** -- The `keySpec` field defaults to `SYMMETRIC_DEFAULT`, the shape every AWS service integration requires. Choose an RSA (`RSA_2048`/`RSA_3072`/`RSA_4096`) or ECC (`ECC_NIST_P256`/`ECC_NIST_P384`/`ECC_NIST_P521`/`ECC_NIST_EDWARDS25519`/`ECC_SECG_P256K1`) spec for signing or public-key workflows, a post-quantum ML-DSA spec (`ML_DSA_44`/`ML_DSA_65`/`ML_DSA_87`) for quantum-resistant signing, an HMAC spec (`HMAC_224`/`HMAC_256`/`HMAC_384`/`HMAC_512`) for token authentication, or `SM2` in China regions. `keyUsage` is coupled to the spec's family: symmetric keys encrypt/decrypt, HMAC keys generate/verify MACs, the NIST ECC curves sign/verify or derive shared secrets (`KEY_AGREEMENT`, ECDH), Ed25519/secp256k1/ML-DSA keys sign only, and RSA/SM2 keys choose between encryption and signing -- the spec validates the full AWS compatibility matrix before deployment. Both fields are create-time immutable -- changing them replaces the key.
 
-**Grants** -- The `grants` list delegates scoped, revocable key access without editing the key policy: each entry names a principal (reference an `AwsIamRole`'s `role_arn` output, or pass a literal ARN or service principal), the allowed operations, optional encryption-context constraints, and whether teardown retires (graceful) or revokes (immediate) the grant. Grants are the chart-native way to wire "this workload may use this key."
+**Grants** -- The `grants` list delegates scoped, revocable key access without editing the key policy: each entry names an IAM principal (reference an `AwsIamRole`'s `role_arn` output, or pass a literal IAM principal ARN -- AWS rejects bare service principals on this parameter; service-principal grants ride a separate API surface the provider does not expose), the allowed operations, optional encryption-context constraints, and whether teardown retires (graceful) or revokes (immediate) the grant. Grants are the chart-native way to wire "this workload may use this key."
 
 **Custom key stores** -- `customKeyStoreId` creates the key in a CloudHSM key store (your hardware) or, with `xksKeyId`, in an external key store whose material lives outside AWS entirely. Custom key store keys are symmetric-only, never rotate automatically, and cannot be multi-Region -- AWS's contract, enforced at validate time.
 
@@ -92,6 +92,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `key_id` | Generated ID of the KMS key (`mrk-…` for multi-Region keys) | Direct key references in AWS service configurations |
 | `key_arn` | Amazon Resource Name of the KMS key | EKS secrets encryption, S3 SSE-KMS, RDS storage encryption, EBS volume encryption |
 | `alias_names` | Alias names attached to the key, in spec order | Human-readable key references in application configuration |
+| `grant_ids` | AWS-generated grant IDs, keyed by the grant's position in `spec.grants` | Grant retirement/revocation tooling, state import |
 
 The `key_arn` output is the primary value consumed by downstream resources. S3 buckets, EKS clusters, RDS instances, and EBS volumes reference it to enable customer-managed encryption instead of AWS-managed default keys.
 

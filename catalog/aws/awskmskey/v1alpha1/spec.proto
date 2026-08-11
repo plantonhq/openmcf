@@ -318,11 +318,16 @@ message AwsKmsKeyGrant {
     expression: "this == '' || (size(this) <= 256 && this.matches('^[0-9A-Za-z_:/-]+$'))"
   }];
 
-  // The principal the grant permits to use the key: an IAM role (the
-  // mainstream pattern -- reference an AwsIamRole's role_arn output),
-  // an IAM user ARN, or an AWS service principal (e.g.
-  // "logs.amazonaws.com"). Cross-account delegation works by naming a
-  // principal in another account.
+  // The IAM principal the grant permits to use the key, in ARN form: an
+  // IAM role (the mainstream pattern -- reference an AwsIamRole's
+  // role_arn output), an IAM user, an account root, or a federated/
+  // assumed-role principal. Cross-account delegation works by naming a
+  // principal in another account. NOT a service principal: AWS's
+  // CreateGrant takes those through a separate GranteeServicePrincipal
+  // parameter (paired with a mandatory SourceArn constraint) that the
+  // Terraform provider does not expose -- a bare service principal here
+  // is rejected live with "InvalidArnException: GranteePrincipal does
+  // not refer to a valid principal" (live-verified 2026-08-11).
   dev.planton.shared.foreignkey.v1.StringValueOrRef grantee_principal = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
@@ -361,10 +366,12 @@ message AwsKmsKeyGrant {
     }
   ];
 
-  // The principal allowed to retire the grant when it is no longer
-  // needed (in addition to the key administrators). Reference an
-  // AwsIamRole's role_arn output, or pass a literal role/user ARN or
-  // service principal.
+  // The IAM principal (ARN form) allowed to retire the grant when it is
+  // no longer needed, in addition to the key administrators. Reference
+  // an AwsIamRole's role_arn output or pass a literal role/user ARN.
+  // Service principals are not accepted here for the same reason as
+  // grantee_principal (AWS's RetiringServicePrincipal parameter is not
+  // in the provider surface).
   dev.planton.shared.foreignkey.v1.StringValueOrRef retiring_principal = 4 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
@@ -394,5 +401,21 @@ message AwsKmsKeyGrant {
     id: "encryption_context_equals_xor_subset"
     message: "encryption_context_equals and encryption_context_subset are mutually exclusive -- a grant takes at most one constraint"
     expression: "size(this.encryption_context_equals) == 0 || size(this.encryption_context_subset) == 0"
+  };
+
+  // Literal principals must be ARNs -- AWS rejects anything else at
+  // CreateGrant ("InvalidArnException: GranteePrincipal does not refer
+  // to a valid principal", live-verified: a bare service principal like
+  // "logs.us-west-2.amazonaws.com" fails on both engines). References
+  // (valueFrom) resolve to role ARNs by construction.
+  option (buf.validate.message).cel = {
+    id: "grantee_principal_arn_format"
+    message: "grantee_principal must be an IAM principal ARN (arn:...) -- AWS's CreateGrant rejects bare service principals on this parameter"
+    expression: "!has(this.grantee_principal) || this.grantee_principal.value == '' || this.grantee_principal.value.startsWith('arn:')"
+  };
+  option (buf.validate.message).cel = {
+    id: "retiring_principal_arn_format"
+    message: "retiring_principal must be an IAM principal ARN (arn:...) -- AWS's RetireGrant contract takes IAM principals only"
+    expression: "!has(this.retiring_principal) || this.retiring_principal.value == '' || this.retiring_principal.value.startsWith('arn:')"
   };
 }

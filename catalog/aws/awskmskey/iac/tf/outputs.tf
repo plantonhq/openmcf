@@ -12,3 +12,8 @@ output "alias_names" {
   description = "The alias names attached to the key (each alias/...), in spec order."
   value       = var.spec.aliases
 }
+
+output "grant_ids" {
+  description = "The AWS-generated grant IDs, keyed by the grant's position in spec.grants (the module's for_each key) -- the handles RetireGrant/RevokeGrant and state import take."
+  value       = { for k, grant in aws_kms_grant.this : k => grant.grant_id }
+}

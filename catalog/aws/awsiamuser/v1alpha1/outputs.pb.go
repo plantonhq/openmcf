@@ -36,9 +36,13 @@ type AwsIamUserStackOutputs struct {
 	// user_name is the friendly name of the IAM user.
 	UserName string `protobuf:"bytes,5,opt,name=user_name,json=userName,proto3" json:"user_name,omitempty"`
 	// user_id is the stable unique ID of the IAM user.
-	UserId        string `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	UserId string `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// access_key_status is the access key's status (Active/Inactive) as the
+	// provider reports it after apply -- the rotation-lever position,
+	// verifiable against ListAccessKeys. Empty when no access key was created.
+	AccessKeyStatus string `protobuf:"bytes,7,opt,name=access_key_status,json=accessKeyStatus,proto3" json:"access_key_status,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *AwsIamUserStackOutputs) Reset() {
@@ -113,11 +117,18 @@ func (x *AwsIamUserStackOutputs) GetUserId() string {
 	return ""
 }
 
+func (x *AwsIamUserStackOutputs) GetAccessKeyStatus() string {
+	if x != nil {
+		return x.AccessKeyStatus
+	}
+	return ""
+}
+
 var File_catalog_aws_awsiamuser_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsiamuser_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"-catalog/aws/awsiamuser/v1alpha1/outputs.proto\x12#dev.planton.aws.awsiamuser.v1alpha1\"\xda\x01\n" +
+	"-catalog/aws/awsiamuser/v1alpha1/outputs.proto\x12#dev.planton.aws.awsiamuser.v1alpha1\"\x86\x02\n" +
 	"\x16AwsIamUserStackOutputs\x12\x19\n" +
 	"\buser_arn\x18\x01 \x01(\tR\auserArn\x12\"\n" +
 	"\raccess_key_id\x18\x02 \x01(\tR\vaccessKeyId\x12*\n" +
@@ -125,7 +136,8 @@ const file_catalog_aws_awsiamuser_v1alpha1_outputs_proto_rawDesc = "" +
 	"\vconsole_url\x18\x04 \x01(\tR\n" +
 	"consoleUrl\x12\x1b\n" +
 	"\tuser_name\x18\x05 \x01(\tR\buserName\x12\x17\n" +
-	"\auser_id\x18\x06 \x01(\tR\x06userIdB\xb9\x02\n" +
+	"\auser_id\x18\x06 \x01(\tR\x06userId\x12*\n" +
+	"\x11access_key_status\x18\a \x01(\tR\x0faccessKeyStatusB\xb9\x02\n" +
 	"'com.dev.planton.aws.awsiamuser.v1alpha1B\fOutputsProtoP\x01ZOgithub.com/plantonhq/planton/catalog/aws/awsiamuser/v1alpha1;awsiamuserv1alpha1\xa2\x02\x04DPAA\xaa\x02#Dev.Planton.Aws.Awsiamuser.V1alpha1\xca\x02#Dev\\Planton\\Aws\\Awsiamuser\\V1alpha1\xe2\x02/Dev\\Planton\\Aws\\Awsiamuser\\V1alpha1\\GPBMetadata\xea\x02'Dev::Planton::Aws::Awsiamuser::V1alpha1b\x06proto3"
 
 var (

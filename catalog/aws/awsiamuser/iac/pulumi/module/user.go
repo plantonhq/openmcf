@@ -20,6 +20,7 @@ type IamUserResults struct {
 	ConsoleUrl      pulumi.StringOutput
 	AccessKeyId     pulumi.StringPtrOutput
 	SecretAccessKey pulumi.StringPtrOutput
+	AccessKeyStatus pulumi.StringPtrOutput
 }
 
 // iamUser provisions the user and its policy wiring. An IAM user is a
@@ -119,11 +120,17 @@ func iamUser(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*IamU
 
 	var accessKeyId pulumi.StringPtrOutput
 	var secretAccessKey pulumi.StringPtrOutput
+	var accessKeyStatus pulumi.StringPtrOutput
 	if accessKey != nil {
 		accessKeyId = accessKey.ID().ApplyT(func(id string) *string {
 			v := id
 			return &v
 		}).(pulumi.StringPtrOutput)
+		// The provider reports the applied status ("Active" default) -- the
+		// rotation-lever position, verifiable against ListAccessKeys. Status
+		// bridges as *string (Optional+Computed), so the output assigns
+		// directly.
+		accessKeyStatus = accessKey.Status
 		// Base64-encoded to match the stack-outputs contract (the proto
 		// documents the secret as base64), keeping both engines' outputs
 		// byte-identical. Pulumi already tracks the value as a secret.
@@ -140,6 +147,7 @@ func iamUser(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*IamU
 		ConsoleUrl:      consoleUrl,
 		AccessKeyId:     accessKeyId,
 		SecretAccessKey: secretAccessKey,
+		AccessKeyStatus: accessKeyStatus,
 	}, nil
 }
 
