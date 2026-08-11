@@ -1,0 +1,26 @@
+# GcpVpcNetwork prerequisite for the GcpComputeMig E2E lanes.
+#
+# The group's canonical manifest and scenarios attach the fleet's NICs
+# to this network — the default VPC is never assumed. AUTO-mode
+# (autoCreateSubnetworks true) so a bare network reference is a
+# sufficient attachment point in every region the lanes use.
+#
+# The cloud-side name carries ${E2E_RUN_ID} for run isolation while
+# metadata.name stays fixed so foreign-key resolution works.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpVpcNetwork
+metadata:
+  name: planton-oss-e2e-gcpvpcnetwork-prereq
+  id: planton-oss-e2e-gcpvpcnetwork-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpvpcnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  networkName: planton-oss-e2e-mig-vpc-${E2E_RUN_ID}
+  autoCreateSubnetworks: true

@@ -286,6 +286,8 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | GcpComputeInstance | `spec.networkInterfaces[].networkIp` | `status.outputs.address` |
 | GcpComputeInstance | `spec.networkInterfaces[].accessConfigs[].natIp` | `status.outputs.address` |
+| GcpComputeMig | `spec.perInstanceConfigs[].preservedState.externalIps[].address` | `status.outputs.address` |
+| GcpComputeMig | `spec.perInstanceConfigs[].preservedState.internalIps[].address` | `status.outputs.address` |
 | GcpDnsRecord | `spec.routingPolicy.wrr[].healthCheckedTargets.internalLoadBalancers[].ipAddress` | `status.outputs.address` |
 | GcpDnsRecord | `spec.routingPolicy.geo[].healthCheckedTargets.internalLoadBalancers[].ipAddress` | `status.outputs.address` |
 | GcpDnsRecord | `spec.routingPolicy.primaryBackup.primary.internalLoadBalancers[].ipAddress` | `status.outputs.address` |

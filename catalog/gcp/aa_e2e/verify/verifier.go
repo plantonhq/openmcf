@@ -119,6 +119,7 @@ var verifiers = map[string]Verifier{
 	"gcpprojectiammember":                    &projectIamMemberVerifier{},
 	"gcpworkloadidentitypool":                &workloadIdentityPoolVerifier{},
 	"gcpworkloadidentitypoolprovider":        &workloadIdentityPoolProviderVerifier{},
+	"gcpcomputemig":                          &computeMigVerifier{},
 	"gcphealthcheck":                         &healthCheckVerifier{},
 	"gcpbackendbucket":                       &backendBucketVerifier{},
 	"gcpbackendservice":                      &backendServiceVerifier{},

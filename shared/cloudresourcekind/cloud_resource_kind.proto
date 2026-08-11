@@ -2124,6 +2124,13 @@ enum CloudResourceKind {
     id_prefix: "gcpart"
     prerequisites: [GcpServiceAccount]
   }];
+  // The URL map is the parent a proxy cannot exist without; the classic
+  // compute certificate kinds and the SSL policy are the fixture parents the
+  // committed scenarios attach. The Certificate Manager certificate list
+  // (certificate_manager_certificates, honored only by the cross-region
+  // internal ALB) is optional composition -- a scenario that arms it declares
+  // GcpCertManagerCert via the e2e-prerequisites annotation, never a registry
+  // edge that would tax every proxy and forwarding-rule chain.
   GcpTargetHttpsProxy = 3001 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
@@ -2132,8 +2139,7 @@ enum CloudResourceKind {
       GcpUrlMap,
       GcpManagedSslCertificate,
       GcpSslPolicy,
-      GcpSslCertificate,
-      GcpCertManagerCert
+      GcpSslCertificate
     ]
   }];
   GcpCloudFunction = 3002 [(kind_meta) = {
@@ -2685,6 +2691,17 @@ enum CloudResourceKind {
     provider: gcp
     version: "v1alpha1"
     id_prefix: "gcpdisk"
+  }];
+
+  // GcpVpcNetwork is a prerequisite because the canonical group runs its
+  // fleet on a dedicated custom-mode VPC — a managed instance group's
+  // template must attach every VM to a network, and the default VPC is
+  // never assumed.
+  GcpComputeMig = 3131 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpmig"
+    prerequisites: [GcpVpcNetwork]
   }];
 
   // 3140–3149: GCP observability & log routing

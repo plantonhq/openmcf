@@ -1,0 +1,42 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpComputeMig
+metadata:
+  name: my-sample-mig
+spec:
+  # Exactly one of zone/region. Zonal is the simplest shape; region
+  # spreads the fleet across zones for availability.
+  zone: us-central1-a
+
+  # The VM shape — IMMUTABLE in GCP: every change here rotates the
+  # template and rolls the group per updatePolicy.
+  template:
+    machineType: e2-micro
+    disks:
+      - boot: true
+        sourceImage: debian-cloud/debian-12
+    networkInterfaces:
+      # Private fleet on the E2E VPC fixture (auto-mode, so the bare
+      # network reference is a sufficient attachment point). No
+      # accessConfigs = no external IPs — the secure default.
+      - network:
+          valueFrom:
+            kind: GcpVpcNetwork
+            name: planton-oss-e2e-gcpvpcnetwork-prereq
+            fieldPath: status.outputs.network_self_link
+
+  # Demand-driven sizing: the autoscaler owns the fleet size (mutually
+  # exclusive with targetSize).
+  autoscaler:
+    minReplicas: 1
+    maxReplicas: 3
+    cpuTarget: 0.6
+
+  # Template changes roll automatically, one extra instance of surge.
+  updatePolicy:
+    minimalAction: REPLACE
+    type: PROACTIVE
+    maxSurgeFixed: 1
+
+  # What a destroy does: DELETE (the whole stack), PREVENT (destroy
+  # fails), or ABANDON (leave the fleet running unmanaged).
+  deletionPolicy: DELETE

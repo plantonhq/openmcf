@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpcomputemig.v1alpha1;
+
+// Outputs produced after provisioning a Compute Engine managed instance
+// group.
+message GcpComputeMigStackOutputs {
+  // The full URL of the group's INSTANCE GROUP — the load-balancer
+  // backend handle: a GcpBackendService backend's group takes exactly
+  // this value.
+  // Zonal: https://www.googleapis.com/compute/v1/projects/{project}/zones/{zone}/instanceGroups/{name}
+  // Regional: https://www.googleapis.com/compute/v1/projects/{project}/regions/{region}/instanceGroups/{name}
+  string instance_group = 1;
+
+  // Self link of the instance group MANAGER resource (the management
+  // surface — distinct from the instance group it manages).
+  string self_link = 2;
+
+  // The unique self link of the template the group currently runs
+  // (carries the template's uniqueId, so it changes on every template
+  // rotation — compare across applies to confirm a rollout actually
+  // rolled).
+  string current_template_self_link = 3;
+
+  // Name of the managed instance group as it exists in GCP.
+  string mig_name = 4;
+
+  // The group's location: the zone of a zonal group or the region of a
+  // regional one. Downstream composition can use this to confirm scope
+  // compatibility (a regional backend service needs backends in its own
+  // region).
+  string location = 5;
+}

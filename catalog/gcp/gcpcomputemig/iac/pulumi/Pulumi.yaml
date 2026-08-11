@@ -1,0 +1,4 @@
+name: gcpcomputemig-pulumi-project
+runtime:
+  name: go
+description: Planton GcpComputeMig Pulumi module

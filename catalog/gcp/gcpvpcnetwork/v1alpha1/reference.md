@@ -254,6 +254,7 @@ Fields on other kinds that can point at this resource:
 | GcpCloudRunJob | `spec.template.vpcAccess.networkInterfaces[].network` | `status.outputs.network_name` |
 | GcpCloudSql | `spec.network.privateNetwork` | `status.outputs.network_id` |
 | GcpComputeInstance | `spec.networkInterfaces[].network` | `status.outputs.network_self_link` |
+| GcpComputeMig | `spec.template.networkInterfaces[].network` | `status.outputs.network_self_link` |
 | GcpDataprocCluster | `spec.clusterConfig.gceConfig.network` | `status.outputs.network_self_link` |
 | GcpDnsRecord | `spec.routingPolicy.wrr[].healthCheckedTargets.internalLoadBalancers[].networkUrl` | `status.outputs.network_self_link` |
 | GcpDnsRecord | `spec.routingPolicy.geo[].healthCheckedTargets.internalLoadBalancers[].networkUrl` | `status.outputs.network_self_link` |

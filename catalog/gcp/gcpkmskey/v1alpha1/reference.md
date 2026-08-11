@@ -317,6 +317,9 @@ Fields on other kinds that can point at this resource:
 | GcpComputeInstance | `spec.bootDisk.sourceSnapshotEncryption.kmsKey` | `status.outputs.key_id` |
 | GcpComputeInstance | `spec.attachedDisks[].kmsKey` | `status.outputs.key_id` |
 | GcpComputeInstance | `spec.instanceEncryptionKey.kmsKey` | `status.outputs.key_id` |
+| GcpComputeMig | `spec.template.disks[].diskEncryption.kmsKey` | `status.outputs.key_id` |
+| GcpComputeMig | `spec.template.disks[].sourceImageEncryption.kmsKey` | `status.outputs.key_id` |
+| GcpComputeMig | `spec.template.disks[].sourceSnapshotEncryption.kmsKey` | `status.outputs.key_id` |
 | GcpDataprocCluster | `spec.clusterConfig.encryptionKmsKeyName` | `status.outputs.key_id` |
 | GcpDataprocCluster | `spec.clusterConfig.securityConfig.kerberosConfig.kmsKeyUri` | `status.outputs.key_id` |
 | GcpEventarcMessageBus | `spec.cryptoKey` | `status.outputs.key_id` |

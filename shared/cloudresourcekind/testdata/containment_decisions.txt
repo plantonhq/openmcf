@@ -293,6 +293,9 @@ contained dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.project_id 
 contained dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.network -> GcpVpcNetwork
 contained dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.subnetwork -> GcpSubnetwork
 contained dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.project_id -> GcpProject
+contained dev.planton.gcp.gcpcomputemig.v1alpha1.GcpComputeMigSpec.project_id -> GcpProject
+contained dev.planton.gcp.gcpcomputemig.v1alpha1.GcpComputeMigTemplateNetworkInterface.network -> GcpVpcNetwork
+contained dev.planton.gcp.gcpcomputemig.v1alpha1.GcpComputeMigTemplateNetworkInterface.subnetwork -> GcpSubnetwork
 contained dev.planton.gcp.gcpdataprocautoscalingpolicy.v1alpha1.GcpDataprocAutoscalingPolicySpec.project_id -> GcpProject
 contained dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.network -> GcpVpcNetwork
 contained dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.subnetwork -> GcpSubnetwork

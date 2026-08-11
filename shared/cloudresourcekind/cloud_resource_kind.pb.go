@@ -734,7 +734,14 @@ const (
 	CloudResourceKind_AzureVirtualNetworkGatewayConnection CloudResourceKind = 2141
 	CloudResourceKind_AzureLocalNetworkGateway             CloudResourceKind = 2142
 	// 3000–3999: GCP resources
-	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
+	CloudResourceKind_GcpArtifactRegistryRepo CloudResourceKind = 3000
+	// The URL map is the parent a proxy cannot exist without; the classic
+	// compute certificate kinds and the SSL policy are the fixture parents the
+	// committed scenarios attach. The Certificate Manager certificate list
+	// (certificate_manager_certificates, honored only by the cross-region
+	// internal ALB) is optional composition -- a scenario that arms it declares
+	// GcpCertManagerCert via the e2e-prerequisites annotation, never a registry
+	// edge that would tax every proxy and forwarding-rule chain.
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
 	CloudResourceKind_GcpCloudFunction              CloudResourceKind = 3002
 	CloudResourceKind_GcpCloudRun                   CloudResourceKind = 3003
@@ -826,6 +833,11 @@ const (
 	// 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that
 	// holds GcpComputeInstance is fully allocated)
 	CloudResourceKind_GcpComputeDisk CloudResourceKind = 3130
+	// GcpVpcNetwork is a prerequisite because the canonical group runs its
+	// fleet on a dedicated custom-mode VPC — a managed instance group's
+	// template must attach every VM to a network, and the default VPC is
+	// never assumed.
+	CloudResourceKind_GcpComputeMig CloudResourceKind = 3131
 	// 3140–3149: GCP observability & log routing
 	CloudResourceKind_GcpMonitoringNotificationChannel CloudResourceKind = 3140
 	// GcpMonitoringNotificationChannel is a prerequisite because the policy's
@@ -1593,6 +1605,7 @@ var (
 		3120:  "GcpCloudRunJob",
 		3121:  "GcpServerlessVpcConnector",
 		3130:  "GcpComputeDisk",
+		3131:  "GcpComputeMig",
 		3140:  "GcpMonitoringNotificationChannel",
 		3141:  "GcpMonitoringAlertPolicy",
 		3142:  "GcpMonitoringUptimeCheck",
@@ -2230,6 +2243,7 @@ var (
 		"GcpCloudRunJob":                                 3120,
 		"GcpServerlessVpcConnector":                      3121,
 		"GcpComputeDisk":                                 3130,
+		"GcpComputeMig":                                  3131,
 		"GcpMonitoringNotificationChannel":               3140,
 		"GcpMonitoringAlertPolicy":                       3141,
 		"GcpMonitoringUptimeCheck":                       3142,
@@ -2847,7 +2861,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*Й\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x80\x9a\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3090,9 +3104,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1aAzureVirtualNetworkGateway\x10\xdc\x10\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\x05azvng:\x04\xdb\x0f\xdd\x0f\x12I\n" +
 	"$AzureVirtualNetworkGatewayConnection\x10\xdd\x10\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azvngc:\x04\xdc\x10\xde\x10\x12;\n" +
 	"\x18AzureLocalNetworkGateway\x10\xde\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azlngw:\x02\xd0\x0f\x12:\n" +
-	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
-	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
-	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x122\n" +
+	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12=\n" +
+	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a#\xa2\xf7\x04\x1f\b\x12\x12\bv1alpha1\"\agcpthsp:\b\xd3\x17\xd4\x17\xa7\x18\xa8\x18\x122\n" +
 	"\x10GcpCloudFunction\x10\xba\x17\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\bv1alpha1\"\x05gcpfn:\x02\xb1\x18\x12*\n" +
 	"\vGcpCloudRun\x10\xbb\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\bv1alpha1\"\x06gcprun\x120\n" +
 	"\vGcpCloudSql\x10\xbc\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\x06gcpsql0\x01:\x02\xa9\x18\x12/\n" +
@@ -3174,7 +3187,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x11GcpCertificateMap\x10\xad\x18\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpcmap:\x02\xc8\x17\x12.\n" +
 	"\x0eGcpCloudRunJob\x10\xb0\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcprunj\x12?\n" +
 	"\x19GcpServerlessVpcConnector\x10\xb1\x18\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\bv1alpha1\"\agcpvpcc:\x04\xc2\x17\xc3\x17\x12.\n" +
-	"\x0eGcpComputeDisk\x10\xba\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpdisk\x12A\n" +
+	"\x0eGcpComputeDisk\x10\xba\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpdisk\x120\n" +
+	"\rGcpComputeMig\x10\xbb\x18\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpmig:\x02\xc2\x17\x12A\n" +
 	" GcpMonitoringNotificationChannel\x10\xc4\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpntfch\x12<\n" +
 	"\x18GcpMonitoringAlertPolicy\x10\xc5\x18\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpalrt:\x02\xc4\x18\x127\n" +
 	"\x18GcpMonitoringUptimeCheck\x10\xc6\x18\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\bv1alpha1\"\x06gcpupt\x122\n" +

@@ -1872,6 +1872,25 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpComputeMig: branch-independent outputs from both engines and
+			// both location arms (one(concat()) collapsed in Terraform) — the
+			// instance-group URL a backend service's group edge consumes, the
+			// manager self link, the rotating template link, the group name,
+			// and the location.
+			name: "GcpComputeMig",
+			kind: cloudresourcekind.CloudResourceKind_GcpComputeMig,
+			rawOutputs: map[string]interface{}{
+				"instance_group":             "https://www.googleapis.com/compute/v1/projects/my-project/zones/us-central1-a/instanceGroups/web-tier",
+				"self_link":                  "https://www.googleapis.com/compute/v1/projects/my-project/zones/us-central1-a/instanceGroupManagers/web-tier",
+				"current_template_self_link": "https://www.googleapis.com/compute/v1/projects/my-project/global/instanceTemplates/web-tier-20260811100000000?uniqueId=1234567890",
+				"mig_name":                   "web-tier",
+				"location":                   "us-central1-a",
+			},
+			mustPopulate: []string{
+				"instance_group", "self_link", "current_template_self_link", "mig_name", "location",
+			},
+		},
+		{
 			// GcpArtifactRegistryRepo: the short name, the fully qualified
 			// repository path composing resources consume (function
 			// docker_repository, virtual/remote upstreams), the registry

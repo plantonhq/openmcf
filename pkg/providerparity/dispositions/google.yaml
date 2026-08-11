@@ -596,9 +596,6 @@ resources:
   - resource: google_compute_attached_disk
     disposition: deferred
     reason: "judged to fold into the existing GcpComputeInstance kind's spec (attached disks, from-template creation, and instance settings); the composition is not built"
-  - resource: google_compute_autoscaler
-    disposition: model-planned
-    reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
   - resource: google_compute_bulk_per_instance_config
     disposition: deferred
     reason: "batch-stamping named instances into a managed instance group is not bridged by the pinned Pulumi SDK, and the capability is reachable through the per-instance configuration surface the managed-instance-group kind models; re-evaluate when the Pulumi bridge ships the resource"
@@ -656,9 +653,6 @@ resources:
   - resource: google_compute_instance_group
     disposition: deferred
     reason: "hand-rolled static VM pools exist to serve as load-balancer backends; the capability composes with the backend-service kind's group edge when demand appears, and managed instance groups manage their own membership"
-  - resource: google_compute_instance_group_manager
-    disposition: model-planned
-    reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
   - resource: google_compute_instance_group_membership
     disposition: deferred
     reason: "per-instance membership in a hand-rolled static VM pool; composes with the backend-service kind's group edge when demand appears, and managed instance groups manage their own membership"
@@ -668,9 +662,6 @@ resources:
   - resource: google_compute_instance_settings
     disposition: deferred
     reason: "judged to fold into the existing GcpComputeInstance kind's spec (attached disks, from-template creation, and instance settings); the composition is not built"
-  - resource: google_compute_instance_template
-    disposition: model-planned
-    reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
   - resource: google_compute_instant_snapshot
     disposition: deferred
     reason: "judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built"
@@ -734,9 +725,6 @@ resources:
   - resource: google_compute_packet_mirroring
     disposition: deferred
     reason: "physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred"
-  - resource: google_compute_per_instance_config
-    disposition: model-planned
-    reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
   - resource: google_compute_preview_feature
     disposition: deferred
     reason: "preview-feature opt-ins are not durable infrastructure; deferred"
@@ -758,9 +746,6 @@ resources:
   - resource: google_compute_public_delegated_prefix
     disposition: deferred
     reason: "physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred"
-  - resource: google_compute_region_autoscaler
-    disposition: model-planned
-    reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
   - resource: google_compute_region_backend_service
     disposition: deferred
     reason: "regional/internal L7 load-balancer surface; deferred pending demand — the preferred shape is folding each regional variant into its owning global kind (the SSL-policy one-kind-both-variants grain) once those kinds' live proofs settle, never a facade kind duplicating already-consumed resources"
@@ -782,12 +767,6 @@ resources:
   - resource: google_compute_region_health_source
     disposition: deferred
     reason: "composite health-check aggregation is emerging load-balancing surface; deferred pending demand"
-  - resource: google_compute_region_instance_group_manager
-    disposition: model-planned
-    reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
-  - resource: google_compute_region_instance_template
-    disposition: model-planned
-    reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
   - resource: google_compute_region_instant_snapshot
     disposition: deferred
     reason: "judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built"
@@ -806,12 +785,6 @@ resources:
   - resource: google_compute_region_network_firewall_policy_with_rules
     disposition: deferred
     reason: "firewall policies judged as hierarchical and network firewall-policy kinds (regional as a flag; rules and associations composed); deferred pending demand"
-  - resource: google_compute_region_per_instance_config
-    disposition: model-planned
-    reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
-  - resource: google_compute_region_resize_request
-    disposition: model-planned
-    reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
   - resource: google_compute_region_security_policy
     disposition: deferred
     reason: "judged to fold into the existing GcpCloudArmorPolicy kind's spec (standalone and regional rules); the composition is not built"
@@ -833,9 +806,6 @@ resources:
   - resource: google_compute_reservation
     disposition: deferred
     reason: "physical interconnects, sole-tenancy nodes, capacity reservations, packet mirroring, and public IP prefixes are niche surfaces; deferred"
-  - resource: google_compute_resize_request
-    disposition: model-planned
-    reason: "planned kind GcpComputeMig (instance template, group manager, autoscaler, and per-instance configuration composed, zonal and regional)"
   - resource: google_compute_resource_policy
     disposition: deferred
     reason: "judged to fold into the existing GcpComputeDisk kind's spec (snapshots, regional disks, resource policies, and async replication); the composition is not built"

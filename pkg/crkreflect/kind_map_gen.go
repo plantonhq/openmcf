@@ -359,6 +359,7 @@ import (
 	gcpcloudtasksqueuev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcloudtasksqueue/v1alpha1"
 	gcpcomputediskv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcomputedisk/v1alpha1"
 	gcpcomputeinstancev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcomputeinstance/v1alpha1"
+	gcpcomputemigv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcomputemig/v1alpha1"
 	gcpdataprocautoscalingpolicyv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpdataprocautoscalingpolicy/v1alpha1"
 	gcpdataprocclusterv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpdataproccluster/v1alpha1"
 	gcpdnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpdnsrecord/v1alpha1"
@@ -1038,6 +1039,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpCloudTasksQueue:                     &gcpcloudtasksqueuev1alpha1.GcpCloudTasksQueue{},
 	cloudresourcekind.CloudResourceKind_GcpComputeDisk:                         &gcpcomputediskv1alpha1.GcpComputeDisk{},
 	cloudresourcekind.CloudResourceKind_GcpComputeInstance:                     &gcpcomputeinstancev1alpha1.GcpComputeInstance{},
+	cloudresourcekind.CloudResourceKind_GcpComputeMig:                          &gcpcomputemigv1alpha1.GcpComputeMig{},
 	cloudresourcekind.CloudResourceKind_GcpDataprocAutoscalingPolicy:           &gcpdataprocautoscalingpolicyv1alpha1.GcpDataprocAutoscalingPolicy{},
 	cloudresourcekind.CloudResourceKind_GcpDataprocCluster:                     &gcpdataprocclusterv1alpha1.GcpDataprocCluster{},
 	cloudresourcekind.CloudResourceKind_GcpDnsRecord:                           &gcpdnsrecordv1alpha1.GcpDnsRecord{},

@@ -314,6 +314,7 @@ Fields on other kinds that can point at this resource:
 | GcpCloudTasksQueue | `spec.httpTarget.oauthToken.serviceAccountEmail` | `status.outputs.email` |
 | GcpCloudTasksQueue | `spec.httpTarget.oidcToken.serviceAccountEmail` | `status.outputs.email` |
 | GcpComputeInstance | `spec.serviceAccount.email` | `status.outputs.email` |
+| GcpComputeMig | `spec.template.serviceAccount.email` | `status.outputs.email` |
 | GcpDataprocCluster | `spec.clusterConfig.gceConfig.serviceAccount` | `status.outputs.email` |
 | GcpEventarcMessageBus | `spec.pipelines[].authentication.googleOidc.serviceAccount` | `status.outputs.email` |
 | GcpEventarcMessageBus | `spec.pipelines[].authentication.oauthToken.serviceAccount` | `status.outputs.email` |

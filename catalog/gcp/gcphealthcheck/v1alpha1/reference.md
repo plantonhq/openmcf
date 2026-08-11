@@ -687,6 +687,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | GcpBackendService | `spec.healthCheck` | `status.outputs.self_link` |
+| GcpComputeMig | `spec.autoHealing.healthCheck` | `status.outputs.self_link` |
 | GcpDnsRecord | `spec.routingPolicy.healthCheck` | `status.outputs.self_link` |
 
 ## See Also

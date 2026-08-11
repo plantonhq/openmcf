@@ -909,6 +909,15 @@ func TestGcpWorkflow_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpworkflow", "terraform")
 }
 
+// --- GCP Compute MIG (managed instance group: deploys the GcpVpcNetwork prerequisite; the regional scenario adds the GcpHealthCheck fixture) ---
+
+func TestGcpComputeMig_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcomputemig", "pulumi")
+}
+func TestGcpComputeMig_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcomputemig", "terraform")
+}
+
 // --- GCP Eventarc Trigger (event routing: deploys the GcpCloudRun prerequisite) ---
 
 func TestGcpEventarcTrigger_Pulumi(t *testing.T) {

@@ -449,6 +449,8 @@ Fields on other kinds that can point at this resource:
 | GcpComputeDisk | `spec.asyncPrimaryDisk` | `status.outputs.self_link` |
 | GcpComputeInstance | `spec.bootDisk.sourceDisk` | `status.outputs.self_link` |
 | GcpComputeInstance | `spec.attachedDisks[].source` | `status.outputs.self_link` |
+| GcpComputeMig | `spec.template.disks[].source` | `status.outputs.self_link` |
+| GcpComputeMig | `spec.perInstanceConfigs[].preservedState.disks[].source` | `status.outputs.self_link` |
 
 ## See Also
 

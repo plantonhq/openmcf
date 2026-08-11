@@ -200,6 +200,7 @@ Fields on other kinds that can point at this resource:
 | GcpCloudTasksQueue | `spec.projectId` | `status.outputs.project_id` |
 | GcpComputeDisk | `spec.projectId` | `status.outputs.project_id` |
 | GcpComputeInstance | `spec.projectId` | `status.outputs.project_id` |
+| GcpComputeMig | `spec.projectId` | `status.outputs.project_id` |
 | GcpDataprocAutoscalingPolicy | `spec.projectId` | `status.outputs.project_id` |
 | GcpDataprocCluster | `spec.projectId` | `status.outputs.project_id` |
 | GcpDnsRecord | `spec.projectId` | `status.outputs.project_id` |

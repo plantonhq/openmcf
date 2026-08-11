@@ -1392,7 +1392,7 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -1471,6 +1471,7 @@ Allowed values (use exactly as shown):
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
 - `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
 - `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
 - `GcpMonitoringUptimeCheck`
@@ -2192,7 +2193,7 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -2271,6 +2272,7 @@ Allowed values (use exactly as shown):
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
 - `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
 - `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
 - `GcpMonitoringUptimeCheck`
@@ -4140,7 +4142,7 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -4219,6 +4221,7 @@ Allowed values (use exactly as shown):
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
 - `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
 - `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
 - `GcpMonitoringUptimeCheck`
@@ -4940,7 +4943,7 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -5019,6 +5022,7 @@ Allowed values (use exactly as shown):
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
 - `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
 - `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
 - `GcpMonitoringUptimeCheck`
@@ -6931,7 +6935,7 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -7010,6 +7014,7 @@ Allowed values (use exactly as shown):
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
 - `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
 - `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
 - `GcpMonitoringUptimeCheck`
@@ -7731,7 +7736,7 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -7810,6 +7815,7 @@ Allowed values (use exactly as shown):
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
 - `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
 - `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
 - `GcpMonitoringUptimeCheck`

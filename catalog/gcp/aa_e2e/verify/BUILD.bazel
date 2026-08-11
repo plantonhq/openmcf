@@ -32,6 +32,7 @@ go_library(
         "composer_user_workloads_secret.go",
         "compute_disk.go",
         "compute_instance.go",
+        "compute_mig.go",
         "dataproc_autoscaling_policy.go",
         "dataproc_cluster.go",
         "dns_record.go",
