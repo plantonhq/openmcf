@@ -205,6 +205,33 @@ func TestAzureNetworkWatcherFlowLog_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurenetworkwatcherflowlog", "terraform")
 }
 
+// --- Azure DNS Private Resolver (composed: fixture VNet + two delegated fixture subnets -> one inbound + one outbound endpoint; ONE resolver per network, so this family's lanes never run in parallel with each other) ---
+
+func TestAzurePrivateDnsResolver_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsresolver", "pulumi")
+}
+func TestAzurePrivateDnsResolver_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsresolver", "terraform")
+}
+
+// --- Azure DNS Forwarding Ruleset (composed: one rule -> RFC-5737 target, bound to the fixture resolver's outbound endpoint; chains the fixture resolver in the lane) ---
+
+func TestAzurePrivateDnsResolverForwardingRuleset_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsresolverforwardingruleset", "pulumi")
+}
+func TestAzurePrivateDnsResolverForwardingRuleset_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsresolverforwardingruleset", "terraform")
+}
+
+// --- Azure DNS Resolver Virtual Network Link (composed: links the fixture ruleset to the fixture network -- the hub-link pattern; chains fixture resolver -> fixture ruleset in the lane) ---
+
+func TestAzurePrivateDnsResolverVirtualNetworkLink_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsresolvervirtualnetworklink", "pulumi")
+}
+func TestAzurePrivateDnsResolverVirtualNetworkLink_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsresolvervirtualnetworklink", "terraform")
+}
+
 // --- Azure Application Security Group (empty micro-segmentation anchor in the fixture RG) ---
 
 func TestAzureApplicationSecurityGroup_Pulumi(t *testing.T) {

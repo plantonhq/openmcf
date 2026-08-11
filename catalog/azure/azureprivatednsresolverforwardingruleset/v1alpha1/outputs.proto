@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureprivatednsresolverforwardingruleset.v1alpha1;
+
+// **AzurePrivateDnsResolverForwardingRulesetStackOutputs** captures
+// the outputs of provisioning a DNS forwarding ruleset and its rules.
+message AzurePrivateDnsResolverForwardingRulesetStackOutputs {
+  // The ruleset's ARM resource ID
+  // (.../providers/Microsoft.Network/dnsForwardingRulesets/{name}) --
+  // what AzurePrivateDnsResolverVirtualNetworkLink references.
+  string dns_forwarding_ruleset_id = 1;
+
+  // The ruleset's name within its resource group.
+  string dns_forwarding_ruleset_name = 2;
+}

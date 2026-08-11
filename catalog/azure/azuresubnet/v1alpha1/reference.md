@@ -408,6 +408,8 @@ Fields on other kinds that can point at this resource:
 | AzureMysqlFlexibleServer | `spec.delegatedSubnetId` | `status.outputs.subnet_id` |
 | AzureNetworkInterface | `spec.ipConfigurations[].subnetId` | `status.outputs.subnet_id` |
 | AzurePostgresqlFlexibleServer | `spec.delegatedSubnetId` | `status.outputs.subnet_id` |
+| AzurePrivateDnsResolver | `spec.inboundEndpoints[].subnetId` | `status.outputs.subnet_id` |
+| AzurePrivateDnsResolver | `spec.outboundEndpoints[].subnetId` | `status.outputs.subnet_id` |
 | AzurePrivateEndpoint | `spec.subnetId` | `status.outputs.subnet_id` |
 | AzurePrivateLinkService | `spec.natIpConfigurations[].subnetId` | `status.outputs.subnet_id` |
 | AzureRedisCache | `spec.subnetId` | `status.outputs.subnet_id` |

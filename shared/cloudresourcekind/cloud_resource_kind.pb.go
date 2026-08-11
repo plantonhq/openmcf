@@ -917,6 +917,19 @@ const (
 	// references it by name. Traffic Analytics' Log Analytics workspace
 	// is an optional arm, declared by scenarios that use it.
 	CloudResourceKind_AzureNetworkWatcherFlowLog CloudResourceKind = 2185
+	// AzureVirtualNetwork and AzureSubnet are prerequisites because a
+	// DNS Private Resolver anchors to a referenced virtual network (at
+	// most ONE resolver per network -- Azure enforces it) and each of
+	// its inbound/outbound endpoints occupies its own dedicated subnet
+	// delegated to "Microsoft.Network/dnsResolvers" (the resource group
+	// chains transitively through the network and subnets).
+	CloudResourceKind_AzurePrivateDnsResolver CloudResourceKind = 2186
+	// AzurePrivateDnsResolver is a prerequisite because a DNS
+	// forwarding ruleset steers a resolver's OUTBOUND endpoints -- it
+	// binds their ARM ids (at most 2, same resolver) at creation. (The
+	// resource group and network chain transitively through the
+	// resolver's own prerequisite declarations.)
+	CloudResourceKind_AzurePrivateDnsResolverForwardingRuleset CloudResourceKind = 2187
 	// Registers a storage account with a Recovery Services vault as a
 	// backup container (.../protectionContainers/StorageContainer;...)
 	// -- one registration per storage-account-and-vault pair, required
@@ -933,6 +946,15 @@ const (
 	// (2175-2182) despite the out-of-run number -- enum numbers are
 	// pinned by the registry snapshot; never renumber.
 	CloudResourceKind_AzureDataProtectionResourceGuard CloudResourceKind = 2214
+	// The attachment that makes a DNS forwarding ruleset take effect in
+	// one virtual network ({ruleset_id}/virtualNetworkLinks/{name}) --
+	// one link per ruleset-network pair, up to 500 per ruleset, spokes
+	// joining and leaving independently (which is why the link is a
+	// standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink).
+	// Part of the DNS Private Resolver family (2186-2187) despite the
+	// out-of-run number -- enum numbers are pinned by the registry
+	// snapshot; never renumber.
+	CloudResourceKind_AzurePrivateDnsResolverVirtualNetworkLink CloudResourceKind = 2215
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
@@ -1708,8 +1730,11 @@ var (
 		2182:  "AzureDataProtectionBackupInstance",
 		2184:  "AzureBastionHost",
 		2185:  "AzureNetworkWatcherFlowLog",
+		2186:  "AzurePrivateDnsResolver",
+		2187:  "AzurePrivateDnsResolverForwardingRuleset",
 		2213:  "AzureBackupContainerStorageAccount",
 		2214:  "AzureDataProtectionResourceGuard",
+		2215:  "AzurePrivateDnsResolverVirtualNetworkLink",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2367,8 +2392,11 @@ var (
 		"AzureDataProtectionBackupInstance":              2182,
 		"AzureBastionHost":                               2184,
 		"AzureNetworkWatcherFlowLog":                     2185,
+		"AzurePrivateDnsResolver":                        2186,
+		"AzurePrivateDnsResolverForwardingRuleset":       2187,
 		"AzureBackupContainerStorageAccount":             2213,
 		"AzureDataProtectionResourceGuard":               2214,
+		"AzurePrivateDnsResolverVirtualNetworkLink":      2215,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -3034,7 +3062,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe0\xa5\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*ħ\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3315,9 +3343,12 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1fAzureDataProtectionBackupPolicy\x10\x85\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbp:\x02\x84\x11\x12F\n" +
 	"!AzureDataProtectionBackupInstance\x10\x86\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azdpbi:\x04\x84\x11\x85\x11\x128\n" +
 	"\x10AzureBastionHost\x10\x88\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\tazbastion:\x04\xdb\x0f\xdd\x0f\x12@\n" +
-	"\x1aAzureNetworkWatcherFlowLog\x10\x89\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazfwlog:\x04\xd6\x0f\xd9\x0f\x12G\n" +
+	"\x1aAzureNetworkWatcherFlowLog\x10\x89\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazfwlog:\x04\xd6\x0f\xd9\x0f\x12=\n" +
+	"\x17AzurePrivateDnsResolver\x10\x8a\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazpdnsr:\x04\xd6\x0f\xdb\x0f\x12N\n" +
+	"(AzurePrivateDnsResolverForwardingRuleset\x10\x8b\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\tazpdnsfrs:\x02\x8a\x11\x12G\n" +
 	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +
-	" AzureDataProtectionResourceGuard\x10\xa6\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdprg:\x02\xd0\x0f\x12:\n" +
+	" AzureDataProtectionResourceGuard\x10\xa6\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdprg:\x02\xd0\x0f\x12S\n" +
+	")AzurePrivateDnsResolverVirtualNetworkLink\x10\xa7\x11\x1a#\xa2\xf7\x04\x1f\b\r\x12\bv1alpha1\"\vazpdnsrlink:\x04\x8b\x11\xd6\x0f\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
 	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x124\n" +

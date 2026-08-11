@@ -368,3 +368,26 @@ spec:
     - terraform_type: azurerm_network_watcher_flow_log
       pulumi_type: azure:network/networkWatcherFlowLog:NetworkWatcherFlowLog
       id_format: "{flow_log_id}"
+
+    # --- DNS Private Resolver ------------------------------------------------
+    # The resolver's endpoints and the ruleset's rules are composed
+    # children -- their IDs compose from the parent's ID plus the child
+    # name recorded in the spec (the import map's address keys).
+    - terraform_type: azurerm_private_dns_resolver
+      pulumi_type: azure:privatedns/resolver:Resolver
+      id_format: "{dns_resolver_id}"
+    - terraform_type: azurerm_private_dns_resolver_inbound_endpoint
+      pulumi_type: azure:privatedns/resolverInboundEndpoint:ResolverInboundEndpoint
+      id_format: "{dns_resolver_id}/inboundEndpoints/{inbound_endpoint_name}"
+    - terraform_type: azurerm_private_dns_resolver_outbound_endpoint
+      pulumi_type: azure:privatedns/resolverOutboundEndpoint:ResolverOutboundEndpoint
+      id_format: "{dns_resolver_id}/outboundEndpoints/{outbound_endpoint_name}"
+    - terraform_type: azurerm_private_dns_resolver_dns_forwarding_ruleset
+      pulumi_type: azure:privatedns/resolverDnsForwardingRuleset:ResolverDnsForwardingRuleset
+      id_format: "{dns_forwarding_ruleset_id}"
+    - terraform_type: azurerm_private_dns_resolver_forwarding_rule
+      pulumi_type: azure:privatedns/resolverForwardingRule:ResolverForwardingRule
+      id_format: "{dns_forwarding_ruleset_id}/forwardingRules/{forwarding_rule_name}"
+    - terraform_type: azurerm_private_dns_resolver_virtual_network_link
+      pulumi_type: azure:privatedns/resolverVirtualNetworkLink:ResolverVirtualNetworkLink
+      id_format: "{virtual_network_link_id}"

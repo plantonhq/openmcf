@@ -1,0 +1,30 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureprivatednsresolver
+spec:
+  # The resolver imports by its full ARM resource ID; its endpoints are
+  # composed children addressed by the endpoint names in the spec.
+  values:
+    - name: dns_resolver_id
+      derivations:
+        - from_stack_output: dns_resolver_id
+      where_to_find: >-
+        `az dns-resolver show -g <resource-group> -n <name> --query id`,
+        or the component's own dns_resolver_id stack output.
+    - name: inbound_endpoint_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The endpoint's name in the spec's inboundEndpoints list (the
+        module keys one ARM child per endpoint name);
+        `az dns-resolver inbound-endpoint list` shows what exists
+        cloud-side.
+    - name: outbound_endpoint_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The endpoint's name in the spec's outboundEndpoints list (the
+        module keys one ARM child per endpoint name);
+        `az dns-resolver outbound-endpoint list` shows what exists
+        cloud-side.

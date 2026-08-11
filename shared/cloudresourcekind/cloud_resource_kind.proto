@@ -2529,6 +2529,32 @@ enum CloudResourceKind {
       AzureStorageAccount
     ]
   }];
+  // AzureVirtualNetwork and AzureSubnet are prerequisites because a
+  // DNS Private Resolver anchors to a referenced virtual network (at
+  // most ONE resolver per network -- Azure enforces it) and each of
+  // its inbound/outbound endpoints occupies its own dedicated subnet
+  // delegated to "Microsoft.Network/dnsResolvers" (the resource group
+  // chains transitively through the network and subnets).
+  AzurePrivateDnsResolver = 2186 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azpdnsr"
+    prerequisites: [
+      AzureVirtualNetwork,
+      AzureSubnet
+    ]
+  }];
+  // AzurePrivateDnsResolver is a prerequisite because a DNS
+  // forwarding ruleset steers a resolver's OUTBOUND endpoints -- it
+  // binds their ARM ids (at most 2, same resolver) at creation. (The
+  // resource group and network chain transitively through the
+  // resolver's own prerequisite declarations.)
+  AzurePrivateDnsResolverForwardingRuleset = 2187 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azpdnsfrs"
+    prerequisites: [AzurePrivateDnsResolver]
+  }];
   // Registers a storage account with a Recovery Services vault as a
   // backup container (.../protectionContainers/StorageContainer;...)
   // -- one registration per storage-account-and-vault pair, required
@@ -2557,6 +2583,23 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "azdprg"
     prerequisites: [AzureResourceGroup]
+  }];
+  // The attachment that makes a DNS forwarding ruleset take effect in
+  // one virtual network ({ruleset_id}/virtualNetworkLinks/{name}) --
+  // one link per ruleset-network pair, up to 500 per ruleset, spokes
+  // joining and leaving independently (which is why the link is a
+  // standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink).
+  // Part of the DNS Private Resolver family (2186-2187) despite the
+  // out-of-run number -- enum numbers are pinned by the registry
+  // snapshot; never renumber.
+  AzurePrivateDnsResolverVirtualNetworkLink = 2215 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azpdnsrlink"
+    prerequisites: [
+      AzurePrivateDnsResolverForwardingRuleset,
+      AzureVirtualNetwork
+    ]
   }];
 
   // 3000–3999: GCP resources

@@ -1,0 +1,30 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_private_dns_resolver_dns_forwarding_ruleset:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (an Azure
+      # region, a resource group), where the provider inherits ARM's
+      # terser property names.
+      - spec: spec.region
+        arg: location
+      - spec: spec.resource_group
+        arg: resource_group_name
+      # The provider's verbose list name shortened to the concept -- the
+      # kind's name already says whose outbound endpoints these are.
+      - spec: spec.outbound_endpoint_ids
+        arg: private_dns_resolver_outbound_endpoint_ids
+
+  azurerm_private_dns_resolver_forwarding_rule:
+    # Instantiated per spec.forwarding_rules entry (composed ARM
+    # children -- a ruleset IS its group of rules).
+    specRoot: spec.forwarding_rules
+    exclusions:
+      - arg: dns_forwarding_ruleset_id
+        reason: wired by the module to the ruleset it creates -- never user surface

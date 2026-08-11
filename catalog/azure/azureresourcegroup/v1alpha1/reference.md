@@ -138,6 +138,8 @@ Fields on other kinds that can point at this resource:
 | AzureNetworkWatcherFlowLog | `spec.networkWatcherResourceGroup` | `status.outputs.resource_group_name` |
 | AzurePointToSiteVpnGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePostgresqlFlexibleServer | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzurePrivateDnsResolver | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzurePrivateDnsResolverForwardingRuleset | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePrivateDnsZone | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePrivateEndpoint | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzurePrivateLinkService | `spec.resourceGroup` | `status.outputs.resource_group_name` |

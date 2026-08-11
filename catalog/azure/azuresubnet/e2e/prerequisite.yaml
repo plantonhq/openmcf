@@ -151,3 +151,71 @@ spec:
   name: AzureBastionSubnet
   addressPrefixes:
     - "10.240.246.0/26"
+---
+# A sixth, DNS-resolver-inbound-shaped subnet instance: a DNS Private
+# Resolver endpoint only deploys into a DEDICATED subnet delegated to
+# "Microsoft.Network/dnsResolvers" (/28-/24, one endpoint per subnet,
+# nothing else in it), so no fixture above can serve one. Consumers
+# address this instance by its metadata name
+# (planton-oss-e2e-azure-fixture-dnsr-in-subnet); the extra instance is
+# harmless for consumers that only use the generic one (subnets are
+# free and provision in seconds). The /28 is carved inside
+# 10.240.246.0/24 above the bastion fixture's /26 (which ends at .63)
+# to stay clear of scenario subnets.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureSubnet
+metadata:
+  name: planton-oss-e2e-azure-fixture-dnsr-in-subnet
+  id: planton-oss-e2e-azure-fixture-dnsr-in-subnet
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuresubnet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  virtualNetworkId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vnet
+  name: planton-oss-e2e-azure-fixture-dnsr-in-subnet
+  addressPrefixes:
+    - "10.240.246.64/28"
+  delegations:
+    - name: dnsresolver
+      serviceName: Microsoft.Network/dnsResolvers
+      actions:
+        - Microsoft.Network/virtualNetworks/subnets/join/action
+---
+# A seventh, DNS-resolver-outbound-shaped subnet instance: endpoints
+# are one-per-subnet, so the resolver's outbound endpoint needs its own
+# delegated /28 (same contract as the inbound fixture above). The /28
+# is carved adjacent to the inbound fixture's.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureSubnet
+metadata:
+  name: planton-oss-e2e-azure-fixture-dnsr-out-subnet
+  id: planton-oss-e2e-azure-fixture-dnsr-out-subnet
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuresubnet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  virtualNetworkId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vnet
+  name: planton-oss-e2e-azure-fixture-dnsr-out-subnet
+  addressPrefixes:
+    - "10.240.246.80/28"
+  delegations:
+    - name: dnsresolver
+      serviceName: Microsoft.Network/dnsResolvers
+      actions:
+        - Microsoft.Network/virtualNetworks/subnets/join/action
