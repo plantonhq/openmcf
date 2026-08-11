@@ -43,9 +43,6 @@ metadata:
   env: dev
   annotations:
     planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test
-    pulumi.planton.dev/project: test
-    pulumi.planton.dev/stack.name: dev.AwsBatchComputeEnvironment.test-batch
 spec:
   region: us-west-2
   computeResources:
@@ -426,6 +423,8 @@ How infrastructure updates treat RUNNING jobs when Batch replaces
 instances during an in-place update (EC2/SPOT environments). When unset,
 Batch waits for jobs to finish on the old instances (up to 30 minutes)
 before terminating them.
+
+- rule: set job_execution_timeout_minutes whenever update_policy is present (AWS's 30-minute default only applies when the whole policy is absent; use 30 to mirror it)
 
 ### spec.updatePolicy.terminateJobsOnUpdate
 

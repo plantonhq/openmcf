@@ -42,9 +42,6 @@ metadata:
   env: dev
   annotations:
     planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test
-    pulumi.planton.dev/project: test
-    pulumi.planton.dev/stack.name: dev.AwsBatchJobDefinition.test-batch-etl
 spec:
   region: us-west-2
   container:
@@ -72,7 +69,7 @@ spec:
 | Path | Type | Required | Default | References |
 |---|---|---|---|---|
 | `spec.region` | `string` | yes |  |  |
-| `spec.container` | `AwsBatchJobDefinitionContainer` | yes |  |  |
+| `spec.container` | `AwsBatchJobDefinitionContainer` |  |  |  |
 | `spec.container.image` | `string` | yes |  |  |
 | `spec.container.command` | `[]string` |  |  |  |
 | `spec.container.vcpus` | `double` |  |  |  |
@@ -139,6 +136,64 @@ spec:
 | `spec.schedulingPriority` | `int32` |  |  |  |
 | `spec.propagateTags` | `bool` |  |  |  |
 | `spec.deregisterOnNewRevision` | `bool` |  | `true` |  |
+| `spec.eks` | `AwsBatchJobDefinitionEks` |  |  |  |
+| `spec.eks.containers` | `[]AwsBatchJobDefinitionEksContainer` | yes |  |  |
+| `spec.eks.containers[].image` | `string` | yes |  |  |
+| `spec.eks.containers[].name` | `string` |  |  |  |
+| `spec.eks.containers[].command` | `[]string` |  |  |  |
+| `spec.eks.containers[].args` | `[]string` |  |  |  |
+| `spec.eks.containers[].env` | `map<string, string>` |  |  |  |
+| `spec.eks.containers[].imagePullPolicy` | `string` |  |  |  |
+| `spec.eks.containers[].resources` | `AwsBatchJobDefinitionEksResources` |  |  |  |
+| `spec.eks.containers[].resources.limits` | `map<string, string>` |  |  |  |
+| `spec.eks.containers[].resources.requests` | `map<string, string>` |  |  |  |
+| `spec.eks.containers[].securityContext` | `AwsBatchJobDefinitionEksSecurityContext` |  |  |  |
+| `spec.eks.containers[].securityContext.runAsUser` | `int64` |  |  |  |
+| `spec.eks.containers[].securityContext.runAsGroup` | `int64` |  |  |  |
+| `spec.eks.containers[].securityContext.runAsNonRoot` | `bool` |  |  |  |
+| `spec.eks.containers[].securityContext.allowPrivilegeEscalation` | `bool` |  |  |  |
+| `spec.eks.containers[].securityContext.privileged` | `bool` |  |  |  |
+| `spec.eks.containers[].securityContext.readOnlyRootFileSystem` | `bool` |  |  |  |
+| `spec.eks.containers[].volumeMounts` | `[]AwsBatchJobDefinitionEksVolumeMount` |  |  |  |
+| `spec.eks.containers[].volumeMounts[].name` | `string` | yes |  |  |
+| `spec.eks.containers[].volumeMounts[].mountPath` | `string` | yes |  |  |
+| `spec.eks.containers[].volumeMounts[].readOnly` | `bool` |  |  |  |
+| `spec.eks.initContainers` | `[]AwsBatchJobDefinitionEksContainer` |  |  |  |
+| `spec.eks.initContainers[].image` | `string` | yes |  |  |
+| `spec.eks.initContainers[].name` | `string` |  |  |  |
+| `spec.eks.initContainers[].command` | `[]string` |  |  |  |
+| `spec.eks.initContainers[].args` | `[]string` |  |  |  |
+| `spec.eks.initContainers[].env` | `map<string, string>` |  |  |  |
+| `spec.eks.initContainers[].imagePullPolicy` | `string` |  |  |  |
+| `spec.eks.initContainers[].resources` | `AwsBatchJobDefinitionEksResources` |  |  |  |
+| `spec.eks.initContainers[].resources.limits` | `map<string, string>` |  |  |  |
+| `spec.eks.initContainers[].resources.requests` | `map<string, string>` |  |  |  |
+| `spec.eks.initContainers[].securityContext` | `AwsBatchJobDefinitionEksSecurityContext` |  |  |  |
+| `spec.eks.initContainers[].securityContext.runAsUser` | `int64` |  |  |  |
+| `spec.eks.initContainers[].securityContext.runAsGroup` | `int64` |  |  |  |
+| `spec.eks.initContainers[].securityContext.runAsNonRoot` | `bool` |  |  |  |
+| `spec.eks.initContainers[].securityContext.allowPrivilegeEscalation` | `bool` |  |  |  |
+| `spec.eks.initContainers[].securityContext.privileged` | `bool` |  |  |  |
+| `spec.eks.initContainers[].securityContext.readOnlyRootFileSystem` | `bool` |  |  |  |
+| `spec.eks.initContainers[].volumeMounts` | `[]AwsBatchJobDefinitionEksVolumeMount` |  |  |  |
+| `spec.eks.initContainers[].volumeMounts[].name` | `string` | yes |  |  |
+| `spec.eks.initContainers[].volumeMounts[].mountPath` | `string` | yes |  |  |
+| `spec.eks.initContainers[].volumeMounts[].readOnly` | `bool` |  |  |  |
+| `spec.eks.hostNetwork` | `bool` |  |  |  |
+| `spec.eks.dnsPolicy` | `string` |  |  |  |
+| `spec.eks.serviceAccountName` | `string` |  |  |  |
+| `spec.eks.podLabels` | `map<string, string>` |  |  |  |
+| `spec.eks.imagePullSecretNames` | `[]string` |  |  |  |
+| `spec.eks.shareProcessNamespace` | `bool` |  |  |  |
+| `spec.eks.volumes` | `[]AwsBatchJobDefinitionEksVolume` |  |  |  |
+| `spec.eks.volumes[].name` | `string` | yes |  |  |
+| `spec.eks.volumes[].emptyDir` | `AwsBatchJobDefinitionEksEmptyDir` |  |  |  |
+| `spec.eks.volumes[].emptyDir.medium` | `string` |  |  |  |
+| `spec.eks.volumes[].emptyDir.sizeLimit` | `string` | yes |  |  |
+| `spec.eks.volumes[].hostPath` | `string` |  |  |  |
+| `spec.eks.volumes[].secret` | `AwsBatchJobDefinitionEksSecretVolume` |  |  |  |
+| `spec.eks.volumes[].secret.secretName` | `string` | yes |  |  |
+| `spec.eks.volumes[].secret.optional` | `bool` |  |  |  |
 
 ## Field Details
 
@@ -154,12 +209,11 @@ Example: "us-west-2", "eu-west-1".
 
 ### spec.container
 
-`AwsBatchJobDefinitionContainer` · required
+`AwsBatchJobDefinitionContainer`
 
 The container the job runs: image, command, sizing, identities,
 logging, and storage.
 
-- rule: {"required":true}
 - rule: environment variable names must not start with 'AWS_BATCH' -- that prefix is reserved for variables AWS Batch sets on every job
 - rule: ephemeral_storage_gib must be between 21 and 200 when set (Fargate includes 20 GiB by default)
 - rule: every mount_points entry must reference the name of a volume declared in volumes
@@ -739,8 +793,296 @@ running old revisions.
 
 - default: `true`
 
+### spec.eks
+
+`AwsBatchJobDefinitionEks`
+
+- rule: every volume_mounts entry (containers and init_containers) must reference the name of a volume declared in volumes
+
+### spec.eks.containers
+
+`[]AwsBatchJobDefinitionEksContainer` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"10"}}
+- rule: environment variable names must not start with 'AWS_BATCH' -- that prefix is reserved for variables AWS Batch sets on every job
+
+### spec.eks.containers[].image
+
+`string` · required
+
+- rule: {"required":true,"string":{"maxLen":"255"}}
+
+### spec.eks.containers[].name
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"63","pattern":"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"}}
+
+### spec.eks.containers[].command
+
+`[]string`
+
+### spec.eks.containers[].args
+
+`[]string`
+
+### spec.eks.containers[].env
+
+`map<string, string>`
+
+### spec.eks.containers[].imagePullPolicy
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Always","IfNotPresent","Never"]}}
+
+### spec.eks.containers[].resources
+
+`AwsBatchJobDefinitionEksResources`
+
+- rule: resources must set at least one of limits or requests (Batch requires cpu and memory sizing for EKS jobs)
+
+### spec.eks.containers[].resources.limits
+
+`map<string, string>`
+
+### spec.eks.containers[].resources.requests
+
+`map<string, string>`
+
+### spec.eks.containers[].securityContext
+
+`AwsBatchJobDefinitionEksSecurityContext`
+
+### spec.eks.containers[].securityContext.runAsUser
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"0"}}
+
+### spec.eks.containers[].securityContext.runAsGroup
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"0"}}
+
+### spec.eks.containers[].securityContext.runAsNonRoot
+
+`bool`
+
+### spec.eks.containers[].securityContext.allowPrivilegeEscalation
+
+`bool` · optional (explicit presence)
+
+### spec.eks.containers[].securityContext.privileged
+
+`bool`
+
+### spec.eks.containers[].securityContext.readOnlyRootFileSystem
+
+`bool`
+
+### spec.eks.containers[].volumeMounts
+
+`[]AwsBatchJobDefinitionEksVolumeMount`
+
+### spec.eks.containers[].volumeMounts[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.eks.containers[].volumeMounts[].mountPath
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.eks.containers[].volumeMounts[].readOnly
+
+`bool`
+
+### spec.eks.initContainers
+
+`[]AwsBatchJobDefinitionEksContainer`
+
+- rule: {"repeated":{"maxItems":"10"}}
+- rule: environment variable names must not start with 'AWS_BATCH' -- that prefix is reserved for variables AWS Batch sets on every job
+
+### spec.eks.initContainers[].image
+
+`string` · required
+
+- rule: {"required":true,"string":{"maxLen":"255"}}
+
+### spec.eks.initContainers[].name
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"63","pattern":"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"}}
+
+### spec.eks.initContainers[].command
+
+`[]string`
+
+### spec.eks.initContainers[].args
+
+`[]string`
+
+### spec.eks.initContainers[].env
+
+`map<string, string>`
+
+### spec.eks.initContainers[].imagePullPolicy
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Always","IfNotPresent","Never"]}}
+
+### spec.eks.initContainers[].resources
+
+`AwsBatchJobDefinitionEksResources`
+
+- rule: resources must set at least one of limits or requests (Batch requires cpu and memory sizing for EKS jobs)
+
+### spec.eks.initContainers[].resources.limits
+
+`map<string, string>`
+
+### spec.eks.initContainers[].resources.requests
+
+`map<string, string>`
+
+### spec.eks.initContainers[].securityContext
+
+`AwsBatchJobDefinitionEksSecurityContext`
+
+### spec.eks.initContainers[].securityContext.runAsUser
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"0"}}
+
+### spec.eks.initContainers[].securityContext.runAsGroup
+
+`int64` · optional (explicit presence)
+
+- rule: {"int64":{"gte":"0"}}
+
+### spec.eks.initContainers[].securityContext.runAsNonRoot
+
+`bool`
+
+### spec.eks.initContainers[].securityContext.allowPrivilegeEscalation
+
+`bool` · optional (explicit presence)
+
+### spec.eks.initContainers[].securityContext.privileged
+
+`bool`
+
+### spec.eks.initContainers[].securityContext.readOnlyRootFileSystem
+
+`bool`
+
+### spec.eks.initContainers[].volumeMounts
+
+`[]AwsBatchJobDefinitionEksVolumeMount`
+
+### spec.eks.initContainers[].volumeMounts[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.eks.initContainers[].volumeMounts[].mountPath
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.eks.initContainers[].volumeMounts[].readOnly
+
+`bool`
+
+### spec.eks.hostNetwork
+
+`bool` · optional (explicit presence)
+
+### spec.eks.dnsPolicy
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Default","ClusterFirst","ClusterFirstWithHostNet"]}}
+
+### spec.eks.serviceAccountName
+
+`string`
+
+### spec.eks.podLabels
+
+`map<string, string>`
+
+### spec.eks.imagePullSecretNames
+
+`[]string`
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.eks.shareProcessNamespace
+
+`bool`
+
+### spec.eks.volumes
+
+`[]AwsBatchJobDefinitionEksVolume`
+
+- rule: a volume is backed by exactly one of empty_dir, host_path, or secret
+
+### spec.eks.volumes[].name
+
+`string` · required
+
+- rule: {"required":true,"string":{"maxLen":"63","pattern":"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"}}
+
+### spec.eks.volumes[].emptyDir
+
+`AwsBatchJobDefinitionEksEmptyDir`
+
+### spec.eks.volumes[].emptyDir.medium
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"const":"Memory"}}
+
+### spec.eks.volumes[].emptyDir.sizeLimit
+
+`string` · required
+
+- rule: {"required":true,"string":{"pattern":"^[0-9]+(\\.[0-9]+)?(Ki|Mi|Gi|Ti|K|M|G|T)?$"}}
+
+### spec.eks.volumes[].hostPath
+
+`string`
+
+### spec.eks.volumes[].secret
+
+`AwsBatchJobDefinitionEksSecretVolume`
+
+### spec.eks.volumes[].secret.secretName
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.eks.volumes[].secret.optional
+
+`bool`
+
 ## Validation Rules
 
+- `exactly_one_of_container_or_eks`: set exactly one workload arm: container (ECS-based jobs on EC2/Fargate) or eks (pod jobs on an EKS-attached compute environment)
+- `eks_forbids_ecs_only_toggles`: platform_capabilities and propagate_tags apply only to container (ECS-based) job definitions -- AWS rejects them for EKS jobs
 - `fargate_requires_execution_role`: Fargate job definitions need container.execution_role -- reference an AwsIamRole carrying AmazonECSTaskExecutionRolePolicy (image pull + log write permissions)
 - `fargate_forbids_ec2_only_container_fields`: Fargate job definitions cannot use the EC2-only container fields -- remove gpus, privileged, ulimits, and linux_parameters, or drop FARGATE from platform_capabilities
 - `ec2_forbids_fargate_only_container_fields`: fargate_platform_version, assign_public_ip, ephemeral_storage_gib, and runtime_platform only apply to Fargate job definitions -- add FARGATE to platform_capabilities or remove them

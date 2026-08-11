@@ -32,7 +32,7 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
 | Distinct provider resources consumed | 247 |
-| Spec fields authored across all kinds | 4424 |
+| Spec fields authored across all kinds | 4470 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**70 of 112 kinds are at total accounting; 79 proven live.**
+**74 of 112 kinds are at total accounting; 76 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -58,16 +58,16 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsAppRunnerVpcConnector | 6 | 1 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
 | AwsAthenaWorkgroup | 37 | 4 | 0 | 0 | 59 | ❌ | ✅ pulumi, terraform |
 | AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsBatchComputeEnvironment | 33 | 20 | 0 | 0 | 19 | ❌ | ✅ pulumi, terraform |
-| AwsBatchJobDefinition | 67 | 12 | 0 | 0 | 98 | ❌ | ✅ pulumi, terraform |
-| AwsBatchJobQueue | 12 | 5 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
-| AwsBatchSchedulingPolicy | 8 | 1 | 0 | 0 | 11 | ❌ | ✅ pulumi, terraform |
+| AwsBatchComputeEnvironment | 33 | 20 | 6 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsBatchJobDefinition | 67 | 12 | 49 | 6 | 0 | ✅ | — |
+| AwsBatchJobQueue | 12 | 5 | 5 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsBatchSchedulingPolicy | 8 | 1 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCertManagerCert | 18 | 7 | 7 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsClientVpn | 47 | 28 | 0 | 0 | 32 | ❌ | — |
 | AwsCloudFront | 126 | 32 | 88 | 6 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCloudwatchAlarm | 39 | 24 | 12 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudwatchAlarm | 39 | 24 | 12 | 3 | 0 | ✅ | — |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCloudwatchLogGroup | 100 | 19 | 70 | 11 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudwatchLogGroup | 100 | 19 | 70 | 11 | 0 | ✅ | — |
 | AwsCodeBuildProject | 115 | 97 | 11 | 7 | 0 | ✅ | — |
 | AwsCodePipeline | 84 | 4 | 75 | 5 | 0 | ✅ | — |
 | AwsCognitoIdentityProvider | 7 | 6 | 1 | 0 | 0 | ✅ | — |

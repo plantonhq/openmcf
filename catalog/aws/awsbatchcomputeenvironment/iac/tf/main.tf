@@ -79,8 +79,11 @@ resource "aws_batch_compute_environment" "this" {
     for_each = var.spec.update_policy != null ? [var.spec.update_policy] : []
     content {
       terminate_jobs_on_update = update_policy.value.terminate_jobs_on_update
-      # Tri-state: unset lets AWS apply its own 30-minute default (matching
-      # the Pulumi module, which also omits it when unset).
+      # Always present here: the spec REQUIRES the timeout whenever the
+      # policy block is set, because the provider sends this member
+      # unconditionally -- an unset value would reach AWS as 0, below the
+      # API's 1-minute minimum. (AWS's 30-minute default applies only when
+      # the whole policy is absent.)
       job_execution_timeout_minutes = update_policy.value.job_execution_timeout_minutes
     }
   }
