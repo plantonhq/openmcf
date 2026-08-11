@@ -707,7 +707,7 @@ EBS volume configuration for this device.
 - rule: volume_initialization_rate_mibps must be between 100 and 300 when set
 - rule: volume_initialization_rate_mibps only applies when creating the volume from snapshot_id
 - rule: volume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard
-- rule: throughput_mibps must be between 125 and 1000 when set
+- rule: throughput_mibps must be between 125 and 2000 when set
 - rule: throughput_mibps only applies to gp3 volumes
 - rule: iops only applies to gp3, io1, and io2 volumes
 

@@ -14,6 +14,6 @@ spec:
   # snapshot-hydration rate -- the prior green predates this surface, so
   # the badge is revoked until the proof lane re-earns it.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

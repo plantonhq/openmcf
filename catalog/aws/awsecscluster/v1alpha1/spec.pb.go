@@ -71,10 +71,15 @@ type AwsEcsClusterSpec struct {
 	Ec2CapacityProviders []*AwsEcsClusterEc2CapacityProvider `protobuf:"bytes,4,rep,name=ec2_capacity_providers,json=ec2CapacityProviders,proto3" json:"ec2_capacity_providers,omitempty"`
 	// The cluster's default capacity provider strategy -- what ECS uses
 	// when a service or run-task does not declare its own strategy. Name
-	// any associated provider: the Fargate built-ins or an
-	// ec2_capacity_providers entry. Example: FARGATE base 1 / weight 1 +
-	// FARGATE_SPOT weight 4 keeps one guaranteed On-Demand task and runs
-	// ~80% of scaled capacity on Spot.
+	// any associated provider: the Fargate built-ins, an
+	// ec2_capacity_providers entry, or a managed_instances_capacity_providers
+	// entry. Example: FARGATE base 1 / weight 1 + FARGATE_SPOT weight 4
+	// keeps one guaranteed On-Demand task and runs ~80% of scaled capacity
+	// on Spot. Known first-apply caveat when naming a managed-instances
+	// entry created in the SAME apply: the strategy PUT can race the
+	// provider's seconds-long provisioning (AWS rejects it with "not in an
+	// ACTIVE state" until it finishes); a re-apply succeeds. Naming
+	// built-ins or EC2 providers has no such window.
 	DefaultCapacityProviderStrategy []*AwsEcsClusterCapacityProviderStrategy `protobuf:"bytes,5,rep,name=default_capacity_provider_strategy,json=defaultCapacityProviderStrategy,proto3" json:"default_capacity_provider_strategy,omitempty"`
 	// ECS Exec auditing for the cluster: where interactive exec sessions
 	// (`aws ecs execute-command`) are logged and how session traffic is
@@ -95,11 +100,13 @@ type AwsEcsClusterSpec struct {
 	// attributes (vCPUs, memory, accelerators) and the network to launch
 	// into, and ECS owns the fleet end to end (no auto-scaling group, no
 	// AMI, no user data). Each entry materializes as its own capacity
-	// provider resource bound to this cluster and is associated alongside
-	// the Fargate built-ins and ec2_capacity_providers; services reference
-	// entries by name in their capacity_provider_strategy. Requires an
-	// infrastructure role the ECS service principal can assume and an
-	// instance profile for the launched instances.
+	// provider resource that AWS binds to this cluster at creation --
+	// unlike EC2 providers there is no association step
+	// (PutClusterCapacityProviders neither attaches nor detaches
+	// managed-instances providers); services reference entries by name in
+	// their capacity_provider_strategy. Requires an infrastructure role the
+	// ECS service principal can assume and an instance profile for the
+	// launched instances.
 	ManagedInstancesCapacityProviders []*AwsEcsClusterManagedInstancesCapacityProvider `protobuf:"bytes,9,rep,name=managed_instances_capacity_providers,json=managedInstancesCapacityProviders,proto3" json:"managed_instances_capacity_providers,omitempty"`
 	unknownFields                     protoimpl.UnknownFields
 	sizeCache                         protoimpl.SizeCache
@@ -629,9 +636,14 @@ type AwsEcsClusterManagedInstancesNetworkConfiguration struct {
 	// availability. Reference AwsSubnet subnet_id outputs or pass literal
 	// subnet IDs.
 	Subnets []*v1.StringValueOrRef `protobuf:"bytes,1,rep,name=subnets,proto3" json:"subnets,omitempty"`
-	// Security groups applied to each instance. Reference AwsSecurityGroup
-	// security_group_id outputs or pass literal group IDs. Unset falls back
-	// to the VPC default group -- set one explicitly for production.
+	// Security groups applied to each instance -- at least one is REQUIRED.
+	// Reference AwsSecurityGroup security_group_id outputs or pass literal
+	// group IDs. Unlike EC2 launch paths there is NO fall-back to the VPC
+	// default group: AWS's CreateCapacityProvider rejects a managed-instances
+	// network configuration without security groups (ClientException
+	// "must specify a Network Configuration that contain security groups"),
+	// even though the Terraform provider's schema marks the argument
+	// optional -- the contract lives only server-side.
 	SecurityGroups []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=security_groups,json=securityGroups,proto3" json:"security_groups,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -1502,10 +1514,10 @@ const file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDesc = "" +
 	",reservation_preference_requires_requirements\x12areservation_preference 'RESERVATIONS_ONLY' or 'RESERVATIONS_FIRST' requires instance_requirements\x1a\xaa\x01!has(this.capacity_reservations) || !(this.capacity_reservations.reservation_preference in ['RESERVATIONS_ONLY', 'RESERVATIONS_FIRST']) || has(this.instance_requirements)\x1a\x88\x01\n" +
 	"\x10monitoring_valid\x121monitoring must be 'BASIC' or 'DETAILED' when set\x1aAthis.monitoring == '' || this.monitoring in ['BASIC', 'DETAILED']\x1a\x7f\n" +
 	"\x15storage_size_positive\x12,storage_size_gib must be at least 1 when set\x1a8this.storage_size_gib == 0 || this.storage_size_gib >= 1B\x14\n" +
-	"\x12_use_local_storage\"\xc0\x02\n" +
+	"\x12_use_local_storage\"\xcb\x02\n" +
 	"1AwsEcsClusterManagedInstancesNetworkConfiguration\x12~\n" +
-	"\asubnets\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\asubnets\x12\x8a\x01\n" +
-	"\x0fsecurity_groups\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_id\x98\xd4a\x01R\x0esecurityGroups\"\x99\x05\n" +
+	"\asubnets\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\asubnets\x12\x95\x01\n" +
+	"\x0fsecurity_groups\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_id\x98\xd4a\x01R\x0esecurityGroups\"\x99\x05\n" +
 	"1AwsEcsClusterManagedInstancesCapacityReservations\x125\n" +
 	"\x16reservation_preference\x18\x01 \x01(\tR\x15reservationPreference\x122\n" +
 	"\x15reservation_group_arn\x18\x02 \x01(\tR\x13reservationGroupArn:\xf8\x03\xbaH\xf4\x03\x1a\x98\x02\n" +

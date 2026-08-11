@@ -87,7 +87,13 @@ type AwsHttpApiDomainSpec struct {
 	// an optional path key: an empty api_mapping_key serves the API at the
 	// domain root ("https://api.example.com/"), while a key like "orders"
 	// serves it under "https://api.example.com/orders/". Multiple APIs
-	// compose onto one domain by using distinct keys.
+	// compose onto one domain by using distinct keys. Mutually exclusive
+	// with the routing-rule modes: AWS currently rejects CreateApiMapping
+	// for HTTP/WebSocket APIs on a domain whose routing_mode uses routing
+	// rules ("APIs with a protocol type of HTTP or WEBSOCKET cannot be
+	// associated to domains that have a routingMode that uses
+	// RoutingRules", live-verified) -- route through routing_rules instead
+	// on such domains.
 	ApiMappings []*AwsHttpApiDomainApiMapping `protobuf:"bytes,6,rep,name=api_mappings,json=apiMappings,proto3" json:"api_mappings,omitempty"`
 	// ARN of an AWS-issued public ACM certificate that proves ownership of the
 	// custom domain. Required by AWS in exactly two setups: when
@@ -99,20 +105,24 @@ type AwsHttpApiDomainSpec struct {
 	// How the domain routes incoming requests. Valid values:
 	//   - "API_MAPPING_ONLY" (AWS default when omitted): only the static
 	//     api_mappings path keys route requests.
-	//   - "ROUTING_RULE_ONLY": only routing_rules route requests; api_mappings
-	//     are not evaluated.
+	//   - "ROUTING_RULE_ONLY": only routing_rules route requests.
 	//   - "ROUTING_RULE_THEN_API_MAPPING": routing rules are evaluated first
-	//     (by ascending priority); requests matching no rule fall back to the
-	//     api_mappings.
+	//     (by ascending priority); requests matching no rule fall back to API
+	//     mappings. NOTE: AWS currently rejects HTTP/WebSocket API mappings on
+	//     rule-mode domains (see api_mappings), so under this spec -- whose
+	//     mappings are all HTTP APIs -- the fallback can only serve REST-API
+	//     mappings managed outside this resource.
 	//
 	// Updatable in place.
 	RoutingMode string `protobuf:"bytes,8,opt,name=routing_mode,json=routingMode,proto3" json:"routing_mode,omitempty"`
 	// Dynamic routing rules attached to the domain. Each rule matches requests
-	// on base path or header values and invokes one API stage; rules are
-	// evaluated in ascending priority order and the first match wins. Rules
-	// route requests only when routing_mode is "ROUTING_RULE_ONLY" or
-	// "ROUTING_RULE_THEN_API_MAPPING". Each entry creates one
-	// aws_apigatewayv2_routing_rule resource on the domain.
+	// on base path or header values and invokes one REST API stage -- API
+	// Gateway supports ONLY REST-protocol targets in routing rules
+	// (live-verified; HTTP/WebSocket targets are rejected at
+	// CreateRoutingRule). Rules are evaluated in ascending priority order and
+	// the first match wins; they route requests only when routing_mode is
+	// "ROUTING_RULE_ONLY" or "ROUTING_RULE_THEN_API_MAPPING". Each entry
+	// creates one aws_apigatewayv2_routing_rule resource on the domain.
 	RoutingRules  []*AwsHttpApiDomainRoutingRule `protobuf:"bytes,9,rep,name=routing_rules,json=routingRules,proto3" json:"routing_rules,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -277,7 +287,11 @@ func (x *AwsHttpApiDomainMutualTls) GetTruststoreVersion() string {
 // priority order; the first rule whose conditions ALL match wins. The
 // provider nests the target under an action/invoke_api wrapper (the only
 // action type API Gateway supports); the spec flattens it to the rule's own
-// api_id / stage / strip_base_path fields.
+// api_id / stage / strip_base_path fields. Routing rules can invoke ONLY
+// REST-protocol APIs: AWS rejects HTTP/WebSocket targets at
+// CreateRoutingRule ("Invalid API protocol type. Only the REST protocol
+// type is supported", live-verified on both engines; the provider's own
+// documentation carries the same restriction).
 type AwsHttpApiDomainRoutingRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Evaluation order of this rule: lower values are evaluated first. Must
@@ -289,12 +303,14 @@ type AwsHttpApiDomainRoutingRule struct {
 	// header pattern; combine a base-path condition with a header condition
 	// to require both.
 	Conditions []*AwsHttpApiDomainRoutingRuleCondition `protobuf:"bytes,2,rep,name=conditions,proto3" json:"conditions,omitempty"`
-	// The API that matching requests are routed to. Accepts a direct API ID
-	// or a reference to an AwsHttpApiGateway resource.
+	// The REST API that matching requests are routed to. Pass the REST API's
+	// ID literally -- API Gateway rejects HTTP/WebSocket API targets here, so
+	// referencing an AwsHttpApiGateway would always fail the apply (the
+	// catalog does not yet model REST APIs; this becomes referenceable when a
+	// REST API kind ships).
 	ApiId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=api_id,json=apiId,proto3" json:"api_id,omitempty"`
-	// The stage of the target API to invoke. For HTTP APIs managed by
-	// AwsHttpApiGateway this is the stage name exported in the API's outputs
-	// (typically "$default").
+	// The stage of the target REST API to invoke (a REST stage name such as
+	// "prod").
 	Stage string `protobuf:"bytes,4,opt,name=stage,proto3" json:"stage,omitempty"`
 	// Strip the matched base path from the request before forwarding it to
 	// the target API. With "orders" in a rule's base paths and
@@ -564,7 +580,7 @@ var File_catalog_aws_awshttpapidomain_v1alpha1_spec_proto protoreflect.FileDescr
 
 const file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/aws/awshttpapidomain/v1alpha1/spec.proto\x12)dev.planton.aws.awshttpapidomain.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x9a\x12\n" +
+	"0catalog/aws/awshttpapidomain/v1alpha1/spec.proto\x12)dev.planton.aws.awshttpapidomain.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xfd\x14\n" +
 	"\x14AwsHttpApiDomainSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12;\n" +
 	"\vdomain_name\x18\x02 \x01(\tB\x1a\xbaH\x17r\x15\x10\x01\x18\x80\x042\x0e^[a-z0-9*.-]+$R\n" +
@@ -576,22 +592,23 @@ const file_catalog_aws_awshttpapidomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\fapi_mappings\x18\x06 \x03(\v2E.dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainApiMappingR\vapiMappings\x12\xa9\x01\n" +
 	"&ownership_verification_certificate_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR#ownershipVerificationCertificateArn\x12!\n" +
 	"\frouting_mode\x18\b \x01(\tR\vroutingMode\x12k\n" +
-	"\rrouting_rules\x18\t \x03(\v2F.dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRuleR\froutingRules:\xea\v\xbaH\xe6\v\x1a\x9c\x01\n" +
+	"\rrouting_rules\x18\t \x03(\v2F.dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRuleR\froutingRules:\xcd\x0e\xbaH\xc9\x0e\x1a\x9c\x01\n" +
 	"\x15ip_address_type_valid\x126ip_address_type must be 'ipv4' or 'dualstack' when set\x1aKthis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack']\x1a\x92\x02\n" +
 	"\x17api_mapping_keys_unique\x12\x87\x01api_mapping_key values must be unique across api_mappings (only one API can serve the domain root, and each path key can carry one API)\x1amthis.api_mappings.all(m1, this.api_mappings.filter(m2, m2.api_mapping_key == m1.api_mapping_key).size() == 1)\x1a\xfb\x01\n" +
 	"\x12routing_mode_valid\x12irouting_mode must be 'API_MAPPING_ONLY', 'ROUTING_RULE_ONLY', or 'ROUTING_RULE_THEN_API_MAPPING' when set\x1azthis.routing_mode == '' || this.routing_mode in ['API_MAPPING_ONLY', 'ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING']\x1a\xba\x02\n" +
-	"\x1frouting_rules_require_rule_mode\x12\xa7\x01routing_rules require routing_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' -- under the default API_MAPPING_ONLY mode the rules would never be evaluated\x1amthis.routing_rules.size() == 0 || this.routing_mode in ['ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING']\x1a\x82\x02\n" +
+	"\x1frouting_rules_require_rule_mode\x12\xa7\x01routing_rules require routing_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' -- under the default API_MAPPING_ONLY mode the rules would never be evaluated\x1amthis.routing_rules.size() == 0 || this.routing_mode in ['ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING']\x1a\xe0\x02\n" +
+	"%api_mappings_conflict_with_rule_modes\x12\xc5\x01api_mappings cannot be combined with routing_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' -- AWS rejects HTTP-API mappings on rule-routed domains; route through routing_rules instead\x1aothis.api_mappings.size() == 0 || !(this.routing_mode in ['ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING'])\x1a\x82\x02\n" +
 	" rule_mode_requires_routing_rules\x12mrouting_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' requires at least one routing_rules entry\x1ao!(this.routing_mode in ['ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING']) || this.routing_rules.size() > 0\x1a\xef\x01\n" +
 	"\x1erouting_rule_priorities_unique\x12jrouting_rules priority values must be unique -- AWS rejects two rules with the same priority on one domain\x1aathis.routing_rules.all(r1, this.routing_rules.filter(r2, r2.priority == r1.priority).size() == 1)\"\x84\x01\n" +
 	"\x19AwsHttpApiDomainMutualTls\x128\n" +
 	"\x0etruststore_uri\x18\x01 \x01(\tB\x11\xbaH\x0er\f\x10\x012\b^s3://.+R\rtruststoreUri\x12-\n" +
-	"\x12truststore_version\x18\x02 \x01(\tR\x11truststoreVersion\"\xf9\x02\n" +
+	"\x12truststore_version\x18\x02 \x01(\tR\x11truststoreVersion\"\xdb\x02\n" +
 	"\x1bAwsHttpApiDomainRoutingRule\x12'\n" +
 	"\bpriority\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xc0\x84=(\x01R\bpriority\x12y\n" +
 	"\n" +
 	"conditions\x18\x02 \x03(\v2O.dev.planton.aws.awshttpapidomain.v1alpha1.AwsHttpApiDomainRoutingRuleConditionB\b\xbaH\x05\x92\x01\x02\b\x01R\n" +
-	"conditions\x12o\n" +
-	"\x06api_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\b\x92\xd4a\x15status.outputs.api_idR\x05apiId\x12\x1d\n" +
+	"conditions\x12Q\n" +
+	"\x06api_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x05apiId\x12\x1d\n" +
 	"\x05stage\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05stage\x12&\n" +
 	"\x0fstrip_base_path\x18\x05 \x01(\bR\rstripBasePath\"\xdf\x02\n" +
 	"$AwsHttpApiDomainRoutingRuleCondition\x12+\n" +

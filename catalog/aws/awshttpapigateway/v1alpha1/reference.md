@@ -780,7 +780,6 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AwsHttpApiDomain | `spec.apiMappings[].apiId` | `status.outputs.api_id` |
-| AwsHttpApiDomain | `spec.routingRules[].apiId` | `status.outputs.api_id` |
 
 ## See Also
 

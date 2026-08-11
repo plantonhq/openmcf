@@ -47,6 +47,11 @@ spec:
           subnets:
             - value: subnet-0a1b2c3d4e5f60789
             - value: subnet-0f9e8d7c6b5a43210
+          # Required: CreateCapacityProvider rejects a managed-instances
+          # network configuration without security groups (no VPC-default
+          # fall-back on this path).
+          securityGroups:
+            - value: sg-0a1b2c3d4e5f60001
         instanceRequirements:
           memoryMib:
             min: 2048
@@ -105,7 +110,7 @@ spec:
 | `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.ec2InstanceProfileArn` | `string \| valueFrom` | yes |  | AwsIamInstanceProfile (`status.outputs.instance_profile_arn`) |
 | `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration` | `AwsEcsClusterManagedInstancesNetworkConfiguration` | yes |  |  |
 | `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.subnets` | `[]string \| valueFrom` | yes |  | AwsSubnet (`status.outputs.subnet_id`) |
-| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.securityGroups` | `[]string \| valueFrom` |  |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
+| `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.securityGroups` | `[]string \| valueFrom` | yes |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
 | `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.capacityOptionType` | `string` |  |  |  |
 | `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.capacityReservations` | `AwsEcsClusterManagedInstancesCapacityReservations` |  |  |  |
 | `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.capacityReservations.reservationPreference` | `string` |  |  |  |
@@ -519,9 +524,10 @@ mesh namespace without per-service wiring.
 
 ### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.securityGroups
 
-`[]string | valueFrom`
+`[]string | valueFrom` · required
 
 - references: AwsSecurityGroup (`status.outputs.security_group_id`)
+- rule: {"required":true,"repeated":{"minItems":"1"}}
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSecurityGroup, name: <that resource's name>, fieldPath: status.outputs.security_group_id}} -- a bare string does not parse
 
 ### spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.capacityOptionType

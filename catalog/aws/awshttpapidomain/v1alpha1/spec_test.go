@@ -271,6 +271,25 @@ var _ = ginkgo.Describe("AwsHttpApiDomainSpec validations", func() {
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
+	ginkgo.It("fails when api_mappings are combined with a rule-honoring mode", func() {
+		spec.ApiMappings = []*AwsHttpApiDomainApiMapping{
+			{ApiId: strRef("api-abc123"), Stage: "$default"},
+		}
+		spec.RoutingMode = "ROUTING_RULE_THEN_API_MAPPING"
+		spec.RoutingRules = []*AwsHttpApiDomainRoutingRule{validRule(10)}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts api_mappings under explicit API_MAPPING_ONLY", func() {
+		spec.ApiMappings = []*AwsHttpApiDomainApiMapping{
+			{ApiId: strRef("api-abc123"), Stage: "$default"},
+		}
+		spec.RoutingMode = "API_MAPPING_ONLY"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
 	ginkgo.It("fails when a rule-honoring mode has no rules", func() {
 		spec.RoutingMode = "ROUTING_RULE_ONLY"
 		err := protovalidate.Validate(spec)

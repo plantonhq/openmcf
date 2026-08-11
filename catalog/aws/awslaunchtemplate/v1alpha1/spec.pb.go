@@ -1114,7 +1114,8 @@ type AwsLaunchTemplateEbs struct {
 	// Provisioned IOPS. Required for "io1"/"io2"; optional for "gp3"
 	// (baseline 3000 without it); not valid for other types.
 	Iops int32 `protobuf:"varint,3,opt,name=iops,proto3" json:"iops,omitempty"`
-	// Throughput in MiB/s, 125-1000. "gp3" only (baseline 125 without it).
+	// Throughput in MiB/s, 125-2000. "gp3" only (baseline 125 without it);
+	// gp3 volumes support up to 2,000 MiB/s.
 	ThroughputMibps int32 `protobuf:"varint,4,opt,name=throughput_mibps,json=throughputMibps,proto3" json:"throughput_mibps,omitempty"`
 	// Encrypt the volume at rest. Snapshots and volumes created from them
 	// stay encrypted. When the account enforces EBS-encryption-by-default
@@ -2235,7 +2236,7 @@ const file_catalog_aws_awslaunchtemplate_v1alpha1_spec_proto_rawDesc = "" +
 	"\x16volume_init_rate_range\x12Evolume_initialization_rate_mibps must be between 100 and 300 when set\x1a\x8c\x01this.volume_initialization_rate_mibps == 0 || (this.volume_initialization_rate_mibps >= 100 && this.volume_initialization_rate_mibps <= 300)\x1a\xc3\x01\n" +
 	"\"volume_init_rate_requires_snapshot\x12Wvolume_initialization_rate_mibps only applies when creating the volume from snapshot_id\x1aDthis.volume_initialization_rate_mibps == 0 || this.snapshot_id != ''\x1a\xbd\x01\n" +
 	"\x11volume_type_valid\x12Bvolume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard\x1adthis.volume_type == '' || this.volume_type in ['gp2', 'gp3', 'io1', 'io2', 'st1', 'sc1', 'standard']\x1a\xa9\x01\n" +
-	"\x10throughput_range\x126throughput_mibps must be between 125 and 1000 when set\x1a]this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 1000)\x1a\x80\x01\n" +
+	"\x10throughput_range\x126throughput_mibps must be between 125 and 2000 when set\x1a]this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 2000)\x1a\x80\x01\n" +
 	"\x17throughput_only_for_gp3\x12,throughput_mibps only applies to gp3 volumes\x1a7this.throughput_mibps == 0 || this.volume_type == 'gp3'\x1a\x8e\x01\n" +
 	"\x1fiops_only_for_provisioned_types\x12.iops only applies to gp3, io1, and io2 volumes\x1a;this.iops == 0 || this.volume_type in ['gp3', 'io1', 'io2']B\x18\n" +
 	"\x16_delete_on_termination\"\xf8\x11\n" +

@@ -77,10 +77,15 @@ message AwsEcsClusterSpec {
 
   // The cluster's default capacity provider strategy -- what ECS uses
   // when a service or run-task does not declare its own strategy. Name
-  // any associated provider: the Fargate built-ins or an
-  // ec2_capacity_providers entry. Example: FARGATE base 1 / weight 1 +
-  // FARGATE_SPOT weight 4 keeps one guaranteed On-Demand task and runs
-  // ~80% of scaled capacity on Spot.
+  // any associated provider: the Fargate built-ins, an
+  // ec2_capacity_providers entry, or a managed_instances_capacity_providers
+  // entry. Example: FARGATE base 1 / weight 1 + FARGATE_SPOT weight 4
+  // keeps one guaranteed On-Demand task and runs ~80% of scaled capacity
+  // on Spot. Known first-apply caveat when naming a managed-instances
+  // entry created in the SAME apply: the strategy PUT can race the
+  // provider's seconds-long provisioning (AWS rejects it with "not in an
+  // ACTIVE state" until it finishes); a re-apply succeeds. Naming
+  // built-ins or EC2 providers has no such window.
   repeated AwsEcsClusterCapacityProviderStrategy default_capacity_provider_strategy = 5;
 
   // --- Cluster-wide posture ---
@@ -107,11 +112,13 @@ message AwsEcsClusterSpec {
   // attributes (vCPUs, memory, accelerators) and the network to launch
   // into, and ECS owns the fleet end to end (no auto-scaling group, no
   // AMI, no user data). Each entry materializes as its own capacity
-  // provider resource bound to this cluster and is associated alongside
-  // the Fargate built-ins and ec2_capacity_providers; services reference
-  // entries by name in their capacity_provider_strategy. Requires an
-  // infrastructure role the ECS service principal can assume and an
-  // instance profile for the launched instances.
+  // provider resource that AWS binds to this cluster at creation --
+  // unlike EC2 providers there is no association step
+  // (PutClusterCapacityProviders neither attaches nor detaches
+  // managed-instances providers); services reference entries by name in
+  // their capacity_provider_strategy. Requires an infrastructure role the
+  // ECS service principal can assume and an instance profile for the
+  // launched instances.
   repeated AwsEcsClusterManagedInstancesCapacityProvider managed_instances_capacity_providers = 9;
 
   // ---------------------------------------------------------------------------
@@ -443,10 +450,17 @@ message AwsEcsClusterManagedInstancesNetworkConfiguration {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
-  // Security groups applied to each instance. Reference AwsSecurityGroup
-  // security_group_id outputs or pass literal group IDs. Unset falls back
-  // to the VPC default group -- set one explicitly for production.
+  // Security groups applied to each instance -- at least one is REQUIRED.
+  // Reference AwsSecurityGroup security_group_id outputs or pass literal
+  // group IDs. Unlike EC2 launch paths there is NO fall-back to the VPC
+  // default group: AWS's CreateCapacityProvider rejects a managed-instances
+  // network configuration without security groups (ClientException
+  // "must specify a Network Configuration that contain security groups"),
+  // even though the Terraform provider's schema marks the argument
+  // optional -- the contract lives only server-side.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_groups = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
     (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"

@@ -81,7 +81,13 @@ message AwsHttpApiDomainSpec {
   // an optional path key: an empty api_mapping_key serves the API at the
   // domain root ("https://api.example.com/"), while a key like "orders"
   // serves it under "https://api.example.com/orders/". Multiple APIs
-  // compose onto one domain by using distinct keys.
+  // compose onto one domain by using distinct keys. Mutually exclusive
+  // with the routing-rule modes: AWS currently rejects CreateApiMapping
+  // for HTTP/WebSocket APIs on a domain whose routing_mode uses routing
+  // rules ("APIs with a protocol type of HTTP or WEBSOCKET cannot be
+  // associated to domains that have a routingMode that uses
+  // RoutingRules", live-verified) -- route through routing_rules instead
+  // on such domains.
   repeated AwsHttpApiDomainApiMapping api_mappings = 6;
 
   // ARN of an AWS-issued public ACM certificate that proves ownership of the
@@ -98,20 +104,24 @@ message AwsHttpApiDomainSpec {
   // How the domain routes incoming requests. Valid values:
   // - "API_MAPPING_ONLY" (AWS default when omitted): only the static
   //   api_mappings path keys route requests.
-  // - "ROUTING_RULE_ONLY": only routing_rules route requests; api_mappings
-  //   are not evaluated.
+  // - "ROUTING_RULE_ONLY": only routing_rules route requests.
   // - "ROUTING_RULE_THEN_API_MAPPING": routing rules are evaluated first
-  //   (by ascending priority); requests matching no rule fall back to the
-  //   api_mappings.
+  //   (by ascending priority); requests matching no rule fall back to API
+  //   mappings. NOTE: AWS currently rejects HTTP/WebSocket API mappings on
+  //   rule-mode domains (see api_mappings), so under this spec -- whose
+  //   mappings are all HTTP APIs -- the fallback can only serve REST-API
+  //   mappings managed outside this resource.
   // Updatable in place.
   string routing_mode = 8;
 
   // Dynamic routing rules attached to the domain. Each rule matches requests
-  // on base path or header values and invokes one API stage; rules are
-  // evaluated in ascending priority order and the first match wins. Rules
-  // route requests only when routing_mode is "ROUTING_RULE_ONLY" or
-  // "ROUTING_RULE_THEN_API_MAPPING". Each entry creates one
-  // aws_apigatewayv2_routing_rule resource on the domain.
+  // on base path or header values and invokes one REST API stage -- API
+  // Gateway supports ONLY REST-protocol targets in routing rules
+  // (live-verified; HTTP/WebSocket targets are rejected at
+  // CreateRoutingRule). Rules are evaluated in ascending priority order and
+  // the first match wins; they route requests only when routing_mode is
+  // "ROUTING_RULE_ONLY" or "ROUTING_RULE_THEN_API_MAPPING". Each entry
+  // creates one aws_apigatewayv2_routing_rule resource on the domain.
   repeated AwsHttpApiDomainRoutingRule routing_rules = 9;
 
   // ---------------------------------------------------------------------------
@@ -146,6 +156,18 @@ message AwsHttpApiDomainSpec {
     id: "routing_rules_require_rule_mode"
     message: "routing_rules require routing_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' -- under the default API_MAPPING_ONLY mode the rules would never be evaluated"
     expression: "this.routing_rules.size() == 0 || this.routing_mode in ['ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING']"
+  };
+
+  // AWS rejects HTTP/WebSocket API mappings on rule-mode domains at
+  // CreateApiMapping (BadRequestException "APIs with a protocol type of
+  // HTTP or WEBSOCKET cannot be associated to domains that have a
+  // routingMode that uses RoutingRules", live-verified on both engines) --
+  // every mapping this spec models is an HTTP API, so failing at validate
+  // names the conflict instead of failing minutes into an apply.
+  option (buf.validate.message).cel = {
+    id: "api_mappings_conflict_with_rule_modes"
+    message: "api_mappings cannot be combined with routing_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' -- AWS rejects HTTP-API mappings on rule-routed domains; route through routing_rules instead"
+    expression: "this.api_mappings.size() == 0 || !(this.routing_mode in ['ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING'])"
   };
 
   // A rule-honoring mode without rules is equally dead: ROUTING_RULE_ONLY
@@ -190,7 +212,11 @@ message AwsHttpApiDomainMutualTls {
 // priority order; the first rule whose conditions ALL match wins. The
 // provider nests the target under an action/invoke_api wrapper (the only
 // action type API Gateway supports); the spec flattens it to the rule's own
-// api_id / stage / strip_base_path fields.
+// api_id / stage / strip_base_path fields. Routing rules can invoke ONLY
+// REST-protocol APIs: AWS rejects HTTP/WebSocket targets at
+// CreateRoutingRule ("Invalid API protocol type. Only the REST protocol
+// type is supported", live-verified on both engines; the provider's own
+// documentation carries the same restriction).
 message AwsHttpApiDomainRoutingRule {
   // Evaluation order of this rule: lower values are evaluated first. Must
   // be between 1 and 1,000,000 and unique across the domain's rules (AWS
@@ -206,17 +232,17 @@ message AwsHttpApiDomainRoutingRule {
   // to require both.
   repeated AwsHttpApiDomainRoutingRuleCondition conditions = 2 [(buf.validate.field).repeated.min_items = 1];
 
-  // The API that matching requests are routed to. Accepts a direct API ID
-  // or a reference to an AwsHttpApiGateway resource.
+  // The REST API that matching requests are routed to. Pass the REST API's
+  // ID literally -- API Gateway rejects HTTP/WebSocket API targets here, so
+  // referencing an AwsHttpApiGateway would always fail the apply (the
+  // catalog does not yet model REST APIs; this becomes referenceable when a
+  // REST API kind ships).
   dev.planton.shared.foreignkey.v1.StringValueOrRef api_id = 3 [
-    (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = AwsHttpApiGateway,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.api_id"
+    (buf.validate.field).required = true
   ];
 
-  // The stage of the target API to invoke. For HTTP APIs managed by
-  // AwsHttpApiGateway this is the stage name exported in the API's outputs
-  // (typically "$default").
+  // The stage of the target REST API to invoke (a REST stage name such as
+  // "prod").
   string stage = 4 [(buf.validate.field).string.min_len = 1];
 
   // Strip the matched base path from the request before forwarding it to

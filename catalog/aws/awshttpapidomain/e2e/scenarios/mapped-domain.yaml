@@ -7,10 +7,10 @@
 # DNS is deliberately not part of the lane -- the domain resource exists and
 # maps independently of any record pointing at it.
 #
-# The routing arm is free: ROUTING_RULE_THEN_API_MAPPING plus one base-path
-# rule invoking the same gateway fixture (rules and modes carry no charge;
-# only requests bill). It proves the rule resource creates, attaches, and
-# destroys with the domain on both engines.
+# Deliberately NO routing arm here: AWS rejects HTTP-API mappings on
+# rule-mode domains (live-verified 400 at CreateApiMapping; the spec CEL
+# now forbids the combination), so the routing-rule surface lives in the
+# routed-domain scenario instead.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiDomain
 metadata:
@@ -41,16 +41,3 @@ spec:
           name: planton-oss-e2e-awshttpapigw-prereq
           fieldPath: status.outputs.api_id
       stage: $default
-  routingMode: ROUTING_RULE_THEN_API_MAPPING
-  routingRules:
-    - priority: 10
-      conditions:
-        - basePaths:
-            - smoke
-      apiId:
-        valueFrom:
-          kind: AwsHttpApiGateway
-          name: planton-oss-e2e-awshttpapigw-prereq
-          fieldPath: status.outputs.api_id
-      stage: $default
-      stripBasePath: true

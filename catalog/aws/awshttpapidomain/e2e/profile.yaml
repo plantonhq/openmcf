@@ -8,18 +8,23 @@ spec:
   # -- its CN is what the domain name must match), the scenario composes the
   # dependency-free HTTP API prerequisite fixture via the e2e-prerequisites
   # annotation, then the domain proves create (TLS binding + REGIONAL
-  # endpoint), the root API mapping, the routing arm
-  # (ROUTING_RULE_THEN_API_MAPPING plus one base-path rule invoking the same
-  # fixture -- rules and modes are free), GetDomainName verification,
-  # destroy, and verify-destroyed on both provisioners. example.com is
-  # IANA-reserved, so the region-unique custom-domain namespace cannot
-  # collide with a real tenant. Deliberately not in the lane: mutual TLS
-  # (needs an S3-hosted truststore fixture), DNS records (the domain exists
-  # independently of any record pointing at it), and the
+  # endpoint), the root API mapping, GetDomainName verification, destroy,
+  # and verify-destroyed on both provisioners. example.com is IANA-reserved,
+  # so the region-unique custom-domain namespace cannot collide with a real
+  # tenant. Deliberately not in the lane: the ROUTING-RULE surface -- API
+  # Gateway routing rules invoke ONLY REST-protocol APIs (live-caught 400
+  # "Only the REST protocol type is supported" at CreateRoutingRule on both
+  # engines; the catalog has no REST API kind to build a fixture from), so
+  # the rule arms are offline-proven (plans/previews render the folded
+  # Plugin Framework resource) and unblock when a REST API kind ships with
+  # a fixture; the verifier already asserts the routing posture
+  # (GetDomainName mode + ListRoutingRules) for that day. Also not in the
+  # lane: mutual TLS (needs an S3-hosted truststore fixture), DNS records
+  # (the domain exists independently of any record pointing at it), and the
   # ownership-verification certificate (AWS only accepts it alongside a
   # Private-CA or imported+mTLS certificate setup the fixture chain cannot
   # honestly exercise) -- all proven by spec tests and the offline gate.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

@@ -45,11 +45,6 @@ metadata:
   id: test-pipeline
   org: test-org
   env: dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test
-    pulumi.planton.dev/project: test
-    pulumi.planton.dev/stack.name: dev.AwsCodePipeline.test-pipeline
 spec:
   region: us-west-2
   pipelineType: V2

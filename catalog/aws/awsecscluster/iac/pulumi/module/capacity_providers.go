@@ -41,18 +41,30 @@ func capacityProviders(ctx *pulumi.Context, locals *Locals, provider *aws.Provid
 		associatedNames = append(associatedNames, created.Name)
 	}
 
+	// Managed-instances providers are created but DELIBERATELY kept out of
+	// the association list: PutClusterCapacityProviders does not manage
+	// them (AWS binds an MI provider to its cluster at
+	// CreateCapacityProvider, and a PUT neither attaches nor detaches it --
+	// live-verified: a PUT omitting an attached MI provider leaves it
+	// attached). Listing one also races its async provisioning: the PUT
+	// fails 400 "not in an ACTIVE state" seconds after create, and the
+	// pinned provider's retry list does not cover that error class.
+	miProviders := make([]pulumi.Resource, 0, len(spec.ManagedInstancesCapacityProviders))
 	for _, providerSpec := range spec.ManagedInstancesCapacityProviders {
 		created, err := managedInstancesCapacityProvider(ctx, locals, provider, createdCluster, providerSpec)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to create managed-instances capacity provider %q", providerSpec.Name)
 		}
 		createdProviders = append(createdProviders, created)
-		associatedNames = append(associatedNames, created.Name)
+		miProviders = append(miProviders, created)
 	}
 
-	// Nothing to associate: a bare cluster (services name a launch_type
-	// directly) legitimately has no providers at all.
-	if len(associatedNames) == 0 {
+	// Nothing to PUT: a bare cluster (services name a launch_type
+	// directly) legitimately has no providers at all, and a cluster with
+	// ONLY managed-instances providers needs no association either -- ECS
+	// attaches those itself. The PUT still runs when a default strategy
+	// exists, because the strategy travels on it.
+	if len(associatedNames) == 0 && len(spec.DefaultCapacityProviderStrategy) == 0 {
 		return createdProviders, nil
 	}
 
@@ -61,6 +73,13 @@ func capacityProviders(ctx *pulumi.Context, locals *Locals, provider *aws.Provid
 		CapacityProviders: associatedNames,
 	}
 
+	// NOTE (live-verified): a default strategy MAY name a managed-instances
+	// provider -- ECS resolves it from the cluster's own attachment set --
+	// but on a FIRST apply that PUT can race the MI provider's async
+	// provisioning (400 "not in an ACTIVE state"; the window is seconds and
+	// the pinned provider does not retry this error class; a re-apply
+	// succeeds). The upstream fix is a retry condition in the provider's
+	// retryClusterCapacityProvidersPut.
 	if len(spec.DefaultCapacityProviderStrategy) > 0 {
 		strategies := ecs.ClusterCapacityProvidersDefaultCapacityProviderStrategyArray{}
 		for _, strategy := range spec.DefaultCapacityProviderStrategy {
@@ -78,8 +97,13 @@ func capacityProviders(ctx *pulumi.Context, locals *Locals, provider *aws.Provid
 		associationArgs.DefaultCapacityProviderStrategies = strategies
 	}
 
+	// The strategy may reference managed-instances providers even though
+	// the capacity_providers list never carries them, so the PUT keeps an
+	// explicit dependency edge on every MI provider (the EC2 providers'
+	// edges ride their Name outputs in the list).
 	if _, err := ecs.NewClusterCapacityProviders(ctx, "capacity-provider-association",
-		associationArgs, pulumi.Provider(provider), pulumi.Parent(createdCluster)); err != nil {
+		associationArgs, pulumi.Provider(provider), pulumi.Parent(createdCluster),
+		pulumi.DependsOn(miProviders)); err != nil {
 		return nil, errors.Wrap(err, "failed to associate capacity providers with the cluster")
 	}
 
@@ -225,8 +249,11 @@ func managedInstancesCapacityProvider(ctx *pulumi.Context, locals *Locals, provi
 }
 
 // managedInstancesNetworkConfiguration places the managed instances on the
-// network: subnets (required) and the security groups applied to each
-// instance.
+// network: subnets and security groups, BOTH required by AWS's
+// CreateCapacityProvider (live-verified 400 "must specify a Network
+// Configuration that contain security groups" without groups, despite the
+// bridged provider schema marking them optional). The spec enforces min 1,
+// so the conditional append never skips on a validated manifest.
 func managedInstancesNetworkConfiguration(networkSpec *awsecsclusterv1alpha1.AwsEcsClusterManagedInstancesNetworkConfiguration) ecs.CapacityProviderManagedInstancesProviderInstanceLaunchTemplateNetworkConfigurationArgs {
 	subnets := pulumi.StringArray{}
 	for _, subnet := range networkSpec.Subnets {

@@ -406,6 +406,30 @@ var _ = ginkgo.Describe("AwsLaunchTemplateSpec Validation Tests", func() {
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})
 
+			ginkgo.It("should accept gp3 throughput in the raised 1001-2000 range", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.BlockDeviceMappings = []*AwsLaunchTemplateBlockDeviceMapping{
+					{
+						DeviceName: "/dev/xvda",
+						Ebs:        &AwsLaunchTemplateEbs{VolumeType: "gp3", ThroughputMibps: 1500},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error for gp3 throughput above 2000", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.BlockDeviceMappings = []*AwsLaunchTemplateBlockDeviceMapping{
+					{
+						DeviceName: "/dev/xvda",
+						Ebs:        &AwsLaunchTemplateEbs{VolumeType: "gp3", ThroughputMibps: 2500},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
 			ginkgo.It("should return an error for iops on an unsupported volume type", func() {
 				input := minimalValidLaunchTemplate()
 				input.Spec.BlockDeviceMappings = []*AwsLaunchTemplateBlockDeviceMapping{

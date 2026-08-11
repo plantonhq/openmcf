@@ -14,7 +14,7 @@ output "cluster_arn" {
 
 output "capacity_provider_names" {
   description = "Every associated capacity provider: the Fargate built-ins plus the folded EC2 and managed-instances provider names, in spec order"
-  value       = local.associated_capacity_providers
+  value       = local.all_capacity_provider_names
 }
 
 output "capacity_provider_arns" {

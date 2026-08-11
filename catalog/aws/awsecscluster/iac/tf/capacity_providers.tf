@@ -81,6 +81,11 @@ resource "aws_ecs_capacity_provider" "managed_instances" {
         }
       }
 
+      # AWS's CreateCapacityProvider REQUIRES security groups here despite
+      # the provider schema marking them optional (live-verified 400
+      # "must specify a Network Configuration that contain security
+      # groups"); the spec enforces min 1, so the null branch never fires
+      # on a validated manifest.
       network_configuration {
         subnets         = each.value.instance_launch_template.network_configuration.subnets
         security_groups = length(each.value.instance_launch_template.network_configuration.security_groups) > 0 ? each.value.instance_launch_template.network_configuration.security_groups : null
@@ -195,12 +200,23 @@ resource "aws_ecs_capacity_provider" "managed_instances" {
 
 resource "aws_ecs_cluster_capacity_providers" "this" {
   # A bare cluster (services name a launch_type directly) legitimately
-  # associates nothing at all.
-  count = length(local.associated_capacity_providers) > 0 ? 1 : 0
+  # associates nothing at all. A cluster with ONLY managed-instances
+  # providers and no default strategy renders nothing either -- ECS
+  # attaches MI providers itself (see locals.tf); the PUT would be a
+  # no-op. The resource still renders when a default strategy exists,
+  # because the strategy travels on this PUT.
+  count = length(local.associated_capacity_providers) > 0 || length(var.spec.default_capacity_provider_strategy) > 0 ? 1 : 0
 
   cluster_name       = aws_ecs_cluster.this.name
   capacity_providers = local.associated_capacity_providers
 
+  # NOTE (live-verified): a default strategy MAY name a managed-instances
+  # provider -- ECS resolves it from the cluster's own attachment set --
+  # but on a FIRST apply that PUT can race the MI provider's async
+  # provisioning (400 "not in an ACTIVE state"; the window is seconds and
+  # the pinned provider does not retry this error class; a re-apply
+  # succeeds). The upstream fix is a retry condition in the provider's
+  # retryClusterCapacityProvidersPut.
   dynamic "default_capacity_provider_strategy" {
     for_each = var.spec.default_capacity_provider_strategy
     content {
@@ -210,7 +226,9 @@ resource "aws_ecs_cluster_capacity_providers" "this" {
     }
   }
 
-  # The custom providers must exist before the PUT names them.
+  # The custom providers must exist before the PUT names them -- including
+  # managed-instances providers, which the strategy may reference even
+  # though the capacity_providers list never carries them.
   depends_on = [
     aws_ecs_capacity_provider.this,
     aws_ecs_capacity_provider.managed_instances,

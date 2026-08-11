@@ -716,6 +716,45 @@ NAT gateway is the same order; an NLB scenario ~6 min per engine (create
 import round-trip when `PLANTON_E2E_IMPORT_ROUNDTRIP=1` is set (it re-imports
 and re-plans every resource, roughly doubling a component's Terraform lane).
 
+**Server-side-only AWS contracts: budget one live probe before a module
+debugging spiral.** Some AWS create/update contracts appear in no provider
+schema, validator, or CustomizeDiff — they live only in the service (the
+Azure section's "ARM contracts exist ONLY server-side" class, AWS edition).
+First hits: on ECS Managed Instances, CreateCapacityProvider requires
+security groups in the network configuration (the provider schema marks
+them optional), and PutClusterCapacityProviders neither attaches nor
+detaches MI providers (AWS binds them to their cluster at create) yet
+rejects a PUT that merely NAMES one still in its seconds-long PROVISIONING
+window; on API Gateway custom domains, CreateApiMapping rejects HTTP-API
+mappings on rule-mode domains, and CreateRoutingRule rejects everything
+but REST-protocol targets ("Only the REST protocol type is supported" —
+that one IS in the provider's website doc, three times, while the schema
+types api_id as a plain string: read the resource's DOC page during
+design, not only its schema). When a lane fails with a 4xx the offline
+gates never produced, probe the contract directly with the AWS CLI on
+throwaway resources (the default VPC makes MI-class probes fixture-free)
+before touching the module — ten minutes of probing settled both the
+defect and the correct design.
+
+**ECS Managed Instances provider deletion can FAIL SILENTLY, and the
+cluster cannot delete until every MI provider is INACTIVE.**
+`delete-capacity-provider` answers DEPROVISIONING even when the delete is
+doomed: minutes later the provider bounces back to ACTIVE with
+`updateStatus: DELETE_FAILED` ("Cannot remove capacity provider. It is
+either part of the default strategy or has non stopped tasks") when the
+cluster's default strategy still names it. Clear the strategy first
+(`put-cluster-capacity-providers` with a strategy that does not name it),
+then delete — an unreferenced provider deprovisions in about a minute —
+and only then delete the cluster (`DeleteCluster` fails with "Cluster
+cannot be deleted while Cluster Scoped Capacity Providers are attached"
+until then). Module destroys are safe on both counts — the association
+resource (which owns the strategy) destroys before the providers, and the
+provider's delete path waits — but MANUAL sweeps (CLI probes, orphan
+cleanup) must follow that order and check `updateStatus` for
+DELETE_FAILED rather than trusting the delete call's answer. A zero-orphan
+sweep that finds an ECS cluster lingering should check its capacity
+providers' status before suspecting a failed teardown.
+
 ## GCP E2E
 
 GCP tests live under `e2e/gcp/` and use the shared `aa_e2e` harness with

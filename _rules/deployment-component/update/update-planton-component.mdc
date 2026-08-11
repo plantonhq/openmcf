@@ -31,6 +31,15 @@ catalog modules; write original implementations informed by the facts. Consuming
 Apache-2.0 Pulumi SDKs from go.mod and calling their APIs is normal dependency usage and is
 not restricted.
 
+**Read the resource's website doc page in the clone alongside its schema.** The schema is
+the completeness floor for arguments, but requiredness and target/protocol restrictions can
+live ONLY in the provider's `website/docs/` page and the service itself: a schema can type a
+field as a plain optional string while the doc page states a hard service-side contract
+(e.g. an argument "Only REST APIs are supported", or a nested block the service requires
+despite the schema marking it optional). A surface modeled from the schema alone can pass
+every offline gate and be categorically undeployable live. When the doc page and schema
+disagree, the doc page plus a live probe is the truth to model.
+
 ## Improve this workflow as you use it (NON-NEGOTIABLE)
 
 If updating a component required knowledge this rule or its flow rules did not give you — an undocumented mechanism you had to reverse-engineer, a wrong or misleading implication, a missing step, or a stale path — amend this rule, the relevant flow rule, or `architecture/deployment-component.md` in the same session, as timeless guidance (never naming a project or a task), so the next agent never has to re-learn it. The workflow is expected to get sharper with every use.

@@ -14,13 +14,13 @@ spec:
   # the TLS certificate is Private-CA-issued or mTLS uses an imported cert.
   ownershipVerificationCertificateArn:
     value: arn:aws:acm:us-west-2:123456789012:certificate/own-456
-  apiMappings:
-    - apiId:
-        value: a1b2c3d4
-      stage: $default
-  # Rules first (by ascending priority); unmatched requests fall back to the
-  # api_mappings above.
-  routingMode: ROUTING_RULE_THEN_API_MAPPING
+  # Rules evaluate in ascending priority; the first match wins. Rules
+  # invoke ONLY REST-protocol APIs (ids passed literally), and AWS rejects
+  # HTTP-API mappings alongside rule modes (api_mappings and rule-routed
+  # domains are mutually exclusive on this kind), so a rule-routed domain
+  # carries no apiMappings -- see the 01-single-api-domain preset for the
+  # mapping-based shape.
+  routingMode: ROUTING_RULE_ONLY
   routingRules:
     - priority: 10
       conditions:
@@ -28,7 +28,7 @@ spec:
             - orders
       apiId:
         value: e5f6a7b8
-      stage: $default
+      stage: prod
       stripBasePath: true
     - priority: 20
       conditions:
@@ -37,4 +37,4 @@ spec:
             valueGlob: tenant-a-*
       apiId:
         value: a1b2c3d4
-      stage: $default
+      stage: prod

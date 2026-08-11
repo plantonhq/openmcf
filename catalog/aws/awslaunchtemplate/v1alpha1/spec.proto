@@ -593,7 +593,8 @@ message AwsLaunchTemplateEbs {
   // (baseline 3000 without it); not valid for other types.
   int32 iops = 3;
 
-  // Throughput in MiB/s, 125-1000. "gp3" only (baseline 125 without it).
+  // Throughput in MiB/s, 125-2000. "gp3" only (baseline 125 without it);
+  // gp3 volumes support up to 2,000 MiB/s.
   int32 throughput_mibps = 4;
 
   // Encrypt the volume at rest. Snapshots and volumes created from them
@@ -647,8 +648,8 @@ message AwsLaunchTemplateEbs {
 
   option (buf.validate.message).cel = {
     id: "throughput_range"
-    message: "throughput_mibps must be between 125 and 1000 when set"
-    expression: "this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 1000)"
+    message: "throughput_mibps must be between 125 and 2000 when set"
+    expression: "this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 2000)"
   };
 
   option (buf.validate.message).cel = {

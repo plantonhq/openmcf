@@ -25,6 +25,6 @@ spec:
   # surface. Offline plans and previews passed on both engines; the live
   # lanes re-earn the badge.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

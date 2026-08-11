@@ -107,7 +107,7 @@ These are the most important decisions when configuring an ECS cluster. Explore 
 | **AwsIamRole** (per managed-instances provider) | `managedInstancesCapacityProviders[].infrastructureRoleArn` | `status.outputs.role_arn` |
 | **AwsIamInstanceProfile** (per managed-instances provider) | `managedInstancesCapacityProviders[].instanceLaunchTemplate.ec2InstanceProfileArn` | `status.outputs.instance_profile_arn` |
 | **AwsSubnet** (per managed-instances provider) | `managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.subnets[]` | `status.outputs.subnet_id` |
-| **AwsSecurityGroup** (optional) | `managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.securityGroups[]` | `status.outputs.security_group_id` |
+| **AwsSecurityGroup** (per managed-instances provider — AWS requires at least one; there is no VPC-default fall-back on this path) | `managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.securityGroups[]` | `status.outputs.security_group_id` |
 | **AwsKmsKey** (optional) | `executeCommandConfiguration.kmsKeyId` | `status.outputs.key_arn` |
 | **AwsKmsKey** (optional) | `managedStorageConfiguration.fargateEphemeralStorageKmsKeyId` | `status.outputs.key_arn` |
 | **AwsKmsKey** (optional) | `managedStorageConfiguration.kmsKeyId` | `status.outputs.key_arn` |

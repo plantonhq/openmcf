@@ -237,7 +237,9 @@ var _ = ginkgo.Describe("AwsEcsClusterSpec validations", func() {
 
 	ginkgo.Context("managed instances capacity providers", func() {
 		// A minimal valid managed-instances provider: role, profile,
-		// network, and the two required requirement dimensions.
+		// network (subnets AND security groups -- AWS requires both at
+		// CreateCapacityProvider), and the two required requirement
+		// dimensions.
 		minimalManagedInstances := func(name string) *AwsEcsClusterManagedInstancesCapacityProvider {
 			return &AwsEcsClusterManagedInstancesCapacityProvider{
 				Name:                  name,
@@ -245,7 +247,8 @@ var _ = ginkgo.Describe("AwsEcsClusterSpec validations", func() {
 				InstanceLaunchTemplate: &AwsEcsClusterManagedInstancesLaunchTemplate{
 					Ec2InstanceProfileArn: literal("arn:aws:iam::123456789012:instance-profile/ecs-mi-instances"),
 					NetworkConfiguration: &AwsEcsClusterManagedInstancesNetworkConfiguration{
-						Subnets: []*fk.StringValueOrRef{literal("subnet-0a1b2c3d4e5f60789")},
+						Subnets:        []*fk.StringValueOrRef{literal("subnet-0a1b2c3d4e5f60789")},
+						SecurityGroups: []*fk.StringValueOrRef{literal("sg-0a1b2c3d4e5f60001")},
 					},
 					InstanceRequirements: &AwsEcsClusterManagedInstancesRequirements{
 						MemoryMib: &AwsEcsClusterIntRange{Min: 2048},
@@ -279,6 +282,13 @@ var _ = ginkgo.Describe("AwsEcsClusterSpec validations", func() {
 		ginkgo.It("fails without subnets", func() {
 			p := minimalManagedInstances("mi-general")
 			p.InstanceLaunchTemplate.NetworkConfiguration.Subnets = nil
+			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails without security groups", func() {
+			p := minimalManagedInstances("mi-general")
+			p.InstanceLaunchTemplate.NetworkConfiguration.SecurityGroups = nil
 			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
 			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 		})
