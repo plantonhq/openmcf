@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "module",
     srcs = [
+        "bucket_companions.go",
         "gcs_bucket.go",
         "locals.go",
         "main.go",

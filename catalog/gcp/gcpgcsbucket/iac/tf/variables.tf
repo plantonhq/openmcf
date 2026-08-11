@@ -181,8 +181,46 @@ variable "spec" {
     }), null)
 
     # Destroy-time guard: "" / "DELETE" deletes, "PREVENT" fails the
-    # destroy, "ABANDON" unmanages without deleting.
+    # destroy, "ABANDON" unmanages without deleting. Also applied to
+    # folders and managed folders (the notification config carries no
+    # deletion policy — it is immutable and delete-only).
     deletion_policy = optional(string, "")
+
+    # Folders — real directories, hierarchical-namespace buckets only.
+    # The API never auto-creates parents: list every ancestor as its own
+    # entry ("logs/2026/" needs "logs/" too). Max 5 nesting levels.
+    folders = optional(list(object({
+      # Path WITH trailing slash: "logs/", "logs/2026/".
+      name = string
+      # Sweep contained objects (client-side) on destroy. False fails
+      # the destroy of a non-empty folder instead of erasing data.
+      force_destroy = optional(bool, false)
+    })), [])
+
+    # Managed folders — prefix-scoped IAM anchors; require UBLA, not HNS.
+    # Independent of each other (no parent requirement).
+    managed_folders = optional(list(object({
+      # Path WITH trailing slash: "reports/".
+      name = string
+      # Server-side allowNonEmpty on destroy: objects SURVIVE, they just
+      # stop being covered by the managed folder's IAM.
+      force_destroy = optional(bool, false)
+    })), [])
+
+    # Pub/Sub notification configs. IMMUTABLE end to end — every change
+    # replaces the config. The GCS service agent needs
+    # roles/pubsub.publisher on the topic BEFORE create (composed grant).
+    notifications = optional(list(object({
+      # Fully-qualified projects/{project}/topics/{name} (resolved from a
+      # GcpPubSubTopic reference or a literal path).
+      topic = string
+      # "JSON_API_V1" / "NONE".
+      payload_format = string
+      # Empty means ALL event types.
+      event_types        = optional(list(string), [])
+      object_name_prefix = optional(string, "")
+      custom_attributes  = optional(map(string), {})
+    })), [])
   })
 
   validation {

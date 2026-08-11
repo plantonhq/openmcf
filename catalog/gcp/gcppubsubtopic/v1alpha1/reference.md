@@ -680,6 +680,7 @@ Fields on other kinds that can point at this resource:
 | GcpCloudSchedulerJob | `spec.pubsubTarget.topicName` | `status.outputs.topic_id` |
 | GcpEventarcMessageBus | `spec.pipelines[].destination.topic` | `status.outputs.topic_id` |
 | GcpEventarcTrigger | `spec.transportPubsubTopic` | `status.outputs.topic_id` |
+| GcpGcsBucket | `spec.notifications[].topic` | `status.outputs.topic_id` |
 | GcpGkeCluster | `spec.notificationPubsub.topic` | `status.outputs.topic_id` |
 | GcpLoggingSink | `spec.destination.pubsubTopic` | `status.outputs.topic_id` |
 | GcpPubSubSubscription | `spec.topic` | `status.outputs.topic_id` |

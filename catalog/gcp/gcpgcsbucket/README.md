@@ -1,6 +1,6 @@
 # GCP Cloud Storage Bucket
 
-Deploys a Google Cloud Storage bucket (`google_storage_bucket`) — the durable object store behind static sites, data lakes, build artifacts, backups, and every GCP service that stages data — with additive per-bucket IAM grants.
+Deploys a Google Cloud Storage bucket (`google_storage_bucket`) — the durable object store behind static sites, data lakes, build artifacts, backups, and every GCP service that stages data — with additive per-bucket IAM grants and the bucket's structural companions: folders, managed folders, and Pub/Sub notification configs.
 
 ## Overview
 
@@ -9,7 +9,8 @@ The spec covers the full bucket lifecycle surface:
 - **Access model** — uniform bucket-level access (IAM-only, the modern posture), public access prevention, and additive `iamMembers` grants (optionally condition-scoped to prefixes or expiry).
 - **Data lifecycle** — object versioning, lifecycle rules (delete, storage-class transitions, multipart-upload cleanup) with explicit-zero semantics, Autoclass (automatic per-object storage classes), soft delete (the 7-day recovery window GCP applies by default), and WORM retention with the irreversible lock.
 - **Placement and durability** — regions, multi-regions, predefined and custom dual-regions (pick your two regions), and turbo replication (`rpo: ASYNC_TURBO`).
-- **Safety** — `forceDestroy` defaults to false: destroying a non-empty bucket fails instead of silently erasing data.
+- **Structure and events** — `folders` (real directories on hierarchical-namespace buckets; parents listed explicitly, created parents-first), `managedFolders` (prefix-scoped IAM anchor points — grant on `reports/` without granting the bucket), and `notifications` (object-change events into a Pub/Sub topic — the event-driven pipeline trigger).
+- **Safety** — `forceDestroy` defaults to false: destroying a non-empty bucket fails instead of silently erasing data; each folder carries its own `forceDestroy` with the same default.
 
 `bucketName`, `location`, project, custom placement, hierarchical namespace, and `enableObjectRetention` are immutable — changing them replaces the bucket and everything in it.
 
@@ -24,6 +25,7 @@ The spec covers the full bucket lifecycle surface:
 
 - GCP credentials with `roles/storage.admin` on the target project (the Cloud Storage API is enabled automatically)
 - For CMEK: a `GcpKmsKey` whose key the GCS service agent can use (`roles/cloudkms.cryptoKeyEncrypterDecrypter`)
+- For notifications: the project's GCS service agent — `service-{projectNumber}@gs-project-accounts.iam.gserviceaccount.com`, with `{projectNumber}` from this kind's `project_number` output — must hold `roles/pubsub.publisher` on the destination topic before the config can be created. Compose the grant alongside this resource (a `GcpProjectIamMember` for project scope, or the topic's own IAM surface), exactly like the CMEK key grant.
 
 ## Quick Start
 
@@ -71,7 +73,10 @@ This creates a private STANDARD bucket that no IAM grant can ever expose publicl
 | `iamMembers[]` | list | No | Additive grants: `role` + `member` (+ optional IAM condition) |
 | `ipFilter` | object | No | Network-layer allowlist (public CIDRs and/or VPC networks) evaluated before IAM |
 | `encryptionEnforcement` | object | No | Restrict which encryption types NEW objects may use: `NotRestricted`/`FullyRestricted` per GMEK/CMEK/CSEK |
-| `deletionPolicy` | string | No | `PREVENT` fails destroys; `ABANDON` unmanages without deleting; default `DELETE` |
+| `deletionPolicy` | string | No | `PREVENT` fails destroys; `ABANDON` unmanages without deleting; default `DELETE`. Also guards folders and managed folders |
+| `folders[]` | list | No | Real directories (HNS buckets only): `name` with trailing `/` (every ancestor listed; ≤5 levels) + per-folder `forceDestroy` |
+| `managedFolders[]` | list | No | Prefix-scoped IAM anchors (UBLA buckets): `name` with trailing `/` + `forceDestroy` (server-side; objects survive) |
+| `notifications[]` | list | No | Pub/Sub event feeds: `topic` (reference a `GcpPubSubTopic`), `payloadFormat` (`JSON_API_V1`/`NONE`), `eventTypes` (empty = all), `objectNamePrefix`, `customAttributes`. Immutable — every change replaces |
 
 ## Stack Outputs
 

@@ -27,6 +27,42 @@ half: the CMEK-only compliance shape sets `googleManagedRestrictionMode` and
 to NEW objects only — flipping it on a populated bucket is a policy boundary
 in time, not a re-encryption; existing objects keep whatever they had.
 
+## Folders vs managed folders — organization vs permissions
+
+Two different tools that look alike:
+
+- `folders` are ORGANIZATION: real directories with atomic renames, and they
+  exist only on hierarchical-namespace buckets (`hierarchicalNamespaceEnabled`
+  — create-time only, requires UBLA, excludes versioning). The API never
+  auto-creates parents: "logs/2026/" needs its own "logs/" entry, and the
+  modules create parents first and destroy children first.
+- `managedFolders` are PERMISSIONS: prefix-scoped IAM anchor points that work
+  on any UBLA bucket, no HNS needed, independent of each other. Grant "read
+  `reports/` only" through the managed-folder IAM surface (composed — the
+  same additive-grants doctrine as `iamMembers`), instead of an IAM condition
+  string on a bucket-wide grant.
+
+Their `forceDestroy` fields differ in kind, not just scope: a folder's is a
+client-side sweep that DELETES every object under the prefix; a managed
+folder's is server-side and non-destructive — the objects survive and simply
+stop being covered by the managed folder's IAM.
+
+## Notifications: immutable configs and the agent grant
+
+A notification config cannot be updated — every change (topic, events,
+prefix, attributes) destroys and recreates it, with a brief gap in which
+events are NOT replayed. Treat the config as part of the pipeline's identity
+and change it in maintenance windows if consumers cannot tolerate gaps.
+Delivery is at-least-once and unordered; consumers must be idempotent.
+
+Before the first notification can be created, the project's GCS service
+agent — `service-{projectNumber}@gs-project-accounts.iam.gserviceaccount.com`,
+with `{projectNumber}` from this kind's `project_number` output — must hold
+`roles/pubsub.publisher` on the topic. The agent is created lazily by GCP and
+never granted automatically; compose the grant like the CMEK key grant
+(a `GcpProjectIamMember` for project scope, or the topic's own IAM surface).
+A missing grant fails loudly at create time, not silently at delivery time.
+
 ## Conventions and gotchas
 
 - Numeric lifecycle conditions carry explicit presence: a set `0` (e.g.
@@ -56,3 +92,6 @@ additive `iamMembers` list is what keeps the diagram honest.
   `encryptionEnforcement` for the mandatory posture.
 - `GcpBackendBucket` — front this bucket with the L7 load-balancer family
   for production HTTPS static sites.
+- `GcpPubSubTopic` — the destination for `notifications[].topic` (its
+  `topic_id` output is exactly the fully-qualified form the API requires),
+  plus a `GcpProjectIamMember` granting the GCS agent `roles/pubsub.publisher`.

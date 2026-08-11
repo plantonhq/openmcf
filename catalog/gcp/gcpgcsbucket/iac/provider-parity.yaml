@@ -74,6 +74,42 @@ resources:
       - arg: bucket
         reason: wired by the module to the bucket it creates -- never user surface
 
+  google_storage_folder:
+    # Instantiated per spec.folders entry (hierarchical-namespace
+    # directories; the module creates parents before children because the
+    # API never auto-creates them).
+    specRoot: spec.folders
+    mappings:
+      # The kind-level deletion_policy fans to every folder resource.
+      - spec: spec.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates -- never user surface
+
+  google_storage_managed_folder:
+    # Instantiated per spec.managed_folders entry (prefix-scoped IAM
+    # anchors; the managed-folder IAM surface itself is composed, keeping
+    # the additive-grants doctrine).
+    specRoot: spec.managed_folders
+    mappings:
+      # The kind-level deletion_policy fans to every managed folder.
+      - spec: spec.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates -- never user surface
+
+  google_storage_notification:
+    # Instantiated per spec.notifications entry. The resource is immutable
+    # end to end and carries no deletion_policy. The GCS service agent's
+    # roles/pubsub.publisher grant on the topic is a composed prerequisite
+    # (the CMEK-grant grain), never module-created.
+    specRoot: spec.notifications
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates -- never user surface
+
   google_project_service:
     internal: >-
       API enablement plumbing -- the module enables storage.googleapis.com

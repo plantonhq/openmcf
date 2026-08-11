@@ -1,0 +1,54 @@
+# GcpGcsBucket scenario: Pub/Sub notification configs — the event-driven
+# arm. The topic rides the scenario-level prerequisites annotation (a
+# topic is NOT a registry prerequisite of this kind — only manifests that
+# opt into notifications need one), followed by the consumer-scoped grant
+# fixture: the Storage API refuses to create a notification config until
+# the project's GCS service agent holds roles/pubsub.publisher on the
+# topic. Two configs prove the index keying and both payload formats; the
+# resource is immutable end to end, so the apply-idempotency gate is the
+# interesting judge here.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGcsBucket
+metadata:
+  name: planton-oss-e2e-gcsb-notify
+  id: planton-oss-e2e-gcsb-notify
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpgcsbucket
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "GcpPubSubTopic,catalog/gcp/gcpgcsbucket/e2e/prerequisites/gcpprojectiammember-gcs-agent.yaml"
+  tags:
+    - planton-e2e
+spec:
+  bucketName: planton-oss-e2e-ntfy-${E2E_RUN_ID}
+  location: us-central1
+  uniformBucketLevelAccessEnabled: true
+  publicAccessPrevention: enforced
+  forceDestroy: true
+  notifications:
+    # The full surface: narrowed events, a prefix scope, routing
+    # attributes, and the JSON payload.
+    - topic:
+        valueFrom:
+          kind: GcpPubSubTopic
+          name: planton-oss-e2e-gcppst-prereq
+          fieldPath: status.outputs.topic_id
+      payloadFormat: JSON_API_V1
+      eventTypes:
+        - OBJECT_FINALIZE
+        - OBJECT_DELETE
+      objectNamePrefix: uploads/
+      customAttributes:
+        e2e-suite: gcp
+    # The minimal surface: all event types (empty list), no payload.
+    - topic:
+        valueFrom:
+          kind: GcpPubSubTopic
+          name: planton-oss-e2e-gcppst-prereq
+          fieldPath: status.outputs.topic_id
+      payloadFormat: NONE
+  labels:
+    e2e-suite: gcp

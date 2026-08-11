@@ -117,6 +117,23 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create storage client")
 	}
+
+	// The project's GCS service agent (service-{project_number}@
+	// gs-project-accounts.iam.gserviceaccount.com) is the identity GCS
+	// publishes bucket notifications as, and it needs
+	// roles/pubsub.publisher granted BEFORE a notification config can be
+	// created. The email is project-specific, so committed fixtures
+	// reference it through the ${E2E_ENV:PLANTON_E2E_GCS_AGENT_EMAIL}
+	// token; this lookup (side-effect-free, and it lazily provisions the
+	// agent — GCP creates it on first read) is what makes those fixtures
+	// deployable against any test project.
+	gcsAgent, err := storageService.Projects.ServiceAccount.Get(project).Context(ctx).Do()
+	if err != nil {
+		return errors.Wrapf(err, "failed to resolve the GCS service agent for project %s", project)
+	}
+	if err := os.Setenv("PLANTON_E2E_GCS_AGENT_EMAIL", gcsAgent.EmailAddress); err != nil {
+		return errors.Wrap(err, "failed to export PLANTON_E2E_GCS_AGENT_EMAIL")
+	}
 	sqlAdminService, err := sqladmin.NewService(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to create sqladmin client")

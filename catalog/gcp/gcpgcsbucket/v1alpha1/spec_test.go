@@ -732,4 +732,171 @@ var _ = ginkgo.Describe("GcpGcsBucketSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	// ──────────────── Folders ────────────────
+
+	ginkgo.It("should accept nested folders on a hierarchical-namespace bucket", func() {
+		msg := minimal()
+		msg.Spec.HierarchicalNamespaceEnabled = true
+		msg.Spec.UniformBucketLevelAccessEnabled = true
+		msg.Spec.Folders = []*GcpGcsBucketFolder{
+			{Name: "logs/"},
+			{Name: "logs/2026/", ForceDestroy: true},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject folders on a bucket without hierarchical namespace", func() {
+		msg := minimal()
+		msg.Spec.Folders = []*GcpGcsBucketFolder{{Name: "logs/"}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("hierarchical"))
+	})
+
+	ginkgo.It("should reject a folder name without the trailing slash", func() {
+		msg := minimal()
+		msg.Spec.HierarchicalNamespaceEnabled = true
+		msg.Spec.UniformBucketLevelAccessEnabled = true
+		msg.Spec.Folders = []*GcpGcsBucketFolder{{Name: "logs"}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a folder path nested beyond 5 levels or with empty segments", func() {
+		msg := minimal()
+		msg.Spec.HierarchicalNamespaceEnabled = true
+		msg.Spec.UniformBucketLevelAccessEnabled = true
+		msg.Spec.Folders = []*GcpGcsBucketFolder{{Name: "a/b/c/d/e/f/"}}
+		gomega.Expect(validator.Validate(msg)).To(gomega.HaveOccurred())
+		msg.Spec.Folders = []*GcpGcsBucketFolder{{Name: "a//b/"}}
+		gomega.Expect(validator.Validate(msg)).To(gomega.HaveOccurred())
+		msg.Spec.Folders = []*GcpGcsBucketFolder{{Name: "/a/"}}
+		gomega.Expect(validator.Validate(msg)).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject duplicate folder paths", func() {
+		msg := minimal()
+		msg.Spec.HierarchicalNamespaceEnabled = true
+		msg.Spec.UniformBucketLevelAccessEnabled = true
+		msg.Spec.Folders = []*GcpGcsBucketFolder{
+			{Name: "logs/"},
+			{Name: "logs/"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("folders must not repeat"))
+	})
+
+	// ──────────────── Managed folders ────────────────
+
+	ginkgo.It("should accept managed folders on a uniform-access bucket (no HNS needed)", func() {
+		msg := minimal()
+		msg.Spec.UniformBucketLevelAccessEnabled = true
+		msg.Spec.ManagedFolders = []*GcpGcsBucketManagedFolder{
+			{Name: "reports/"},
+			{Name: "exports/", ForceDestroy: true},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject managed folders without uniform bucket-level access", func() {
+		msg := minimal()
+		msg.Spec.ManagedFolders = []*GcpGcsBucketManagedFolder{{Name: "reports/"}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("uniform bucket-level access"))
+	})
+
+	ginkgo.It("should reject a managed-folder name without the trailing slash", func() {
+		msg := minimal()
+		msg.Spec.UniformBucketLevelAccessEnabled = true
+		msg.Spec.ManagedFolders = []*GcpGcsBucketManagedFolder{{Name: "reports"}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject duplicate managed-folder paths", func() {
+		msg := minimal()
+		msg.Spec.UniformBucketLevelAccessEnabled = true
+		msg.Spec.ManagedFolders = []*GcpGcsBucketManagedFolder{
+			{Name: "reports/"},
+			{Name: "reports/"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("managed_folders must not repeat"))
+	})
+
+	// ──────────────── Notifications ────────────────
+
+	ginkgo.It("should accept a notification with a literal fully-qualified topic", func() {
+		msg := minimal()
+		msg.Spec.Notifications = []*GcpGcsBucketNotification{{
+			Topic:            literal("projects/my-project/topics/uploads"),
+			PayloadFormat:    "JSON_API_V1",
+			EventTypes:       []string{"OBJECT_FINALIZE", "OBJECT_DELETE"},
+			ObjectNamePrefix: "uploads/",
+			CustomAttributes: map[string]string{"env": "prod"},
+		}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a notification with a referenced topic and empty event_types (all events)", func() {
+		msg := minimal()
+		msg.Spec.Notifications = []*GcpGcsBucketNotification{{
+			Topic: &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+					ValueFrom: &foreignkeyv1.ValueFromRef{Name: "uploads-topic"},
+				},
+			},
+			PayloadFormat: "NONE",
+		}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a notification without a topic", func() {
+		msg := minimal()
+		msg.Spec.Notifications = []*GcpGcsBucketNotification{{
+			PayloadFormat: "JSON_API_V1",
+		}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a notification without a payload_format", func() {
+		msg := minimal()
+		msg.Spec.Notifications = []*GcpGcsBucketNotification{{
+			Topic: literal("projects/my-project/topics/uploads"),
+		}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("payload_format"))
+	})
+
+	ginkgo.It("should reject an unknown payload_format", func() {
+		msg := minimal()
+		msg.Spec.Notifications = []*GcpGcsBucketNotification{{
+			Topic:         literal("projects/my-project/topics/uploads"),
+			PayloadFormat: "PROTOBUF",
+		}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an unknown event type", func() {
+		msg := minimal()
+		msg.Spec.Notifications = []*GcpGcsBucketNotification{{
+			Topic:         literal("projects/my-project/topics/uploads"),
+			PayloadFormat: "JSON_API_V1",
+			EventTypes:    []string{"OBJECT_CREATED"},
+		}}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("event_types"))
+	})
 })

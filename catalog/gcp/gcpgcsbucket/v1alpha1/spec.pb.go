@@ -213,8 +213,39 @@ type GcpGcsBucketSpec struct {
 	//
 	// Mutable in place.
 	DeletionPolicy string `protobuf:"bytes,27,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Folders to create inside the bucket — REAL directories with atomic
+	// rename semantics, available only on hierarchical-namespace buckets
+	// (hierarchical_namespace_enabled, which itself requires uniform
+	// bucket-level access and is create-time only). Parent folders must be
+	// listed explicitly: creating "logs/2026/" requires a "logs/" entry too
+	// — the Storage API does not auto-create missing parents.
+	// The kind-level deletion_policy applies to each folder resource as
+	// well as the bucket (PREVENT guards them; ABANDON leaves them behind).
+	Folders []*GcpGcsBucketFolder `protobuf:"bytes,28,rep,name=folders,proto3" json:"folders,omitempty"`
+	// Managed folders — permission anchor points inside the bucket. Unlike
+	// plain folders they exist on ANY bucket with uniform bucket-level
+	// access (hierarchical namespace not required) and their purpose is
+	// prefix-scoped IAM: grant a role on "reports/" without granting it on
+	// the whole bucket. Grants on a managed folder are made through the
+	// managed-folder IAM surface (composition), not through this kind's
+	// bucket-level iam_members. The kind-level deletion_policy applies to
+	// each managed folder as well as the bucket.
+	ManagedFolders []*GcpGcsBucketManagedFolder `protobuf:"bytes,29,rep,name=managed_folders,json=managedFolders,proto3" json:"managed_folders,omitempty"`
+	// Pub/Sub notification configurations: GCS publishes an event to the
+	// named topic whenever objects change in this bucket — the standard
+	// trigger surface for event-driven pipelines (Cloud Run, Cloud
+	// Functions, Eventarc all consume the topic downstream).
+	//
+	// HARD PREREQUISITE the API enforces at create time: the project's GCS
+	// service agent — service-{project_number}@gs-project-accounts.iam.gserviceaccount.com,
+	// where {project_number} is this kind's project_number output — must
+	// hold roles/pubsub.publisher on the topic (or project-wide). The agent
+	// is NOT granted automatically; compose the grant alongside this
+	// resource (GcpProjectIamMember for project scope, or the topic's own
+	// IAM surface) exactly like the CMEK key grant for kms_key_name.
+	Notifications []*GcpGcsBucketNotification `protobuf:"bytes,30,rep,name=notifications,proto3" json:"notifications,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpGcsBucketSpec) Reset() {
@@ -434,6 +465,27 @@ func (x *GcpGcsBucketSpec) GetDeletionPolicy() string {
 		return x.DeletionPolicy
 	}
 	return ""
+}
+
+func (x *GcpGcsBucketSpec) GetFolders() []*GcpGcsBucketFolder {
+	if x != nil {
+		return x.Folders
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetManagedFolders() []*GcpGcsBucketManagedFolder {
+	if x != nil {
+		return x.ManagedFolders
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketSpec) GetNotifications() []*GcpGcsBucketNotification {
+	if x != nil {
+		return x.Notifications
+	}
+	return nil
 }
 
 // Per-encryption-type enforcement for new objects. Each restriction mode:
@@ -1544,11 +1596,251 @@ func (x *GcpGcsBucketIamCondition) GetDescription() string {
 	return ""
 }
 
+// One folder in a hierarchical-namespace bucket.
+type GcpGcsBucketFolder struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The folder path, WITH the trailing slash the Storage API requires:
+	// "logs/", "logs/2026/", "a-b/d-f/". Renaming is atomic on HNS buckets,
+	// but through this spec a name change is destroy-and-recreate (the
+	// path is the resource's identity).
+	//
+	// The API does NOT auto-create missing parents, so nested paths need
+	// every ancestor listed as its own entry ("logs/2026/" needs "logs/"
+	// too) — the modules then create parents before children and delete
+	// children before parents. Nesting is capped at 5 levels.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// If true, destroying this folder first deletes every object under it
+	// (the provider sweeps the prefix client-side, in parallel), then any
+	// sub-folders. Defaults to false: destroying a non-empty folder fails
+	// instead of silently erasing data — same safe posture as the bucket's
+	// own force_destroy, decided per folder.
+	ForceDestroy  bool `protobuf:"varint,2,opt,name=force_destroy,json=forceDestroy,proto3" json:"force_destroy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketFolder) Reset() {
+	*x = GcpGcsBucketFolder{}
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketFolder) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketFolder) ProtoMessage() {}
+
+func (x *GcpGcsBucketFolder) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketFolder.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketFolder) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GcpGcsBucketFolder) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketFolder) GetForceDestroy() bool {
+	if x != nil {
+		return x.ForceDestroy
+	}
+	return false
+}
+
+// One managed folder — a prefix-scoped IAM anchor point.
+type GcpGcsBucketManagedFolder struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The managed-folder path, WITH the trailing slash the Storage API
+	// requires: "reports/", "reports/2026/". The path is the resource's
+	// identity — changing it is destroy-and-recreate. Managed folders are
+	// independent prefix anchors, not a hierarchy — "reports/2026/" does
+	// not need a "reports/" managed folder to exist.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// If true, the managed folder can be destroyed even while objects live
+	// under its prefix. Unlike a plain folder's force_destroy this is
+	// SERVER-side and non-destructive to data: the objects survive and
+	// simply stop being covered by the managed folder's IAM. Defaults to
+	// false (destroy fails while the prefix is non-empty).
+	ForceDestroy  bool `protobuf:"varint,2,opt,name=force_destroy,json=forceDestroy,proto3" json:"force_destroy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketManagedFolder) Reset() {
+	*x = GcpGcsBucketManagedFolder{}
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketManagedFolder) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketManagedFolder) ProtoMessage() {}
+
+func (x *GcpGcsBucketManagedFolder) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketManagedFolder.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketManagedFolder) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GcpGcsBucketManagedFolder) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketManagedFolder) GetForceDestroy() bool {
+	if x != nil {
+		return x.ForceDestroy
+	}
+	return false
+}
+
+// One Pub/Sub notification configuration on the bucket.
+//
+// IMMUTABLE END TO END: the Storage API forbids updating a notification
+// config, so changing ANY field here destroys and recreates the config
+// (a brief gap in event delivery — events during the gap are not
+// replayed). Events are delivered at-least-once with no ordering
+// guarantee; consumers must be idempotent.
+type GcpGcsBucketNotification struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Pub/Sub topic that receives the events, as the FULLY-QUALIFIED
+	// resource path "projects/{project}/topics/{name}" — the API accepts
+	// only this form (a bare topic name is rejected). Reference a
+	// GcpPubSubTopic — its topic_id output is exactly this value. The
+	// topic may live in a different project than the bucket.
+	//
+	// Before creation the project's GCS service agent must hold
+	// roles/pubsub.publisher on this topic — see the notifications field
+	// comment on the spec for the composition pattern.
+	Topic *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	// The payload attached to each event message:
+	//
+	//	"JSON_API_V1" -- the object's full JSON representation (the common
+	//	                 choice; consumers read metadata without a GET)
+	//	"NONE"        -- no payload; event attributes only (cheapest)
+	PayloadFormat string `protobuf:"bytes,2,opt,name=payload_format,json=payloadFormat,proto3" json:"payload_format,omitempty"`
+	// Which object events publish to the topic. Empty means ALL event
+	// types. Values:
+	//
+	//	"OBJECT_FINALIZE"        -- a new object (or new version) is written
+	//	"OBJECT_METADATA_UPDATE" -- an object's metadata changed
+	//	"OBJECT_DELETE"          -- an object (or version) was deleted or
+	//	                            overwritten
+	//	"OBJECT_ARCHIVE"         -- a live version became noncurrent
+	//	                            (versioned buckets only)
+	EventTypes []string `protobuf:"bytes,3,rep,name=event_types,json=eventTypes,proto3" json:"event_types,omitempty"`
+	// Only objects whose names start with this prefix generate events —
+	// scope a busy bucket's feed to one subtree (e.g. "uploads/").
+	ObjectNamePrefix string `protobuf:"bytes,4,opt,name=object_name_prefix,json=objectNamePrefix,proto3" json:"object_name_prefix,omitempty"`
+	// Custom key:value attributes stamped onto every event message the
+	// topic receives — routing hints for subscribers (e.g. env: prod).
+	CustomAttributes map[string]string `protobuf:"bytes,5,rep,name=custom_attributes,json=customAttributes,proto3" json:"custom_attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GcpGcsBucketNotification) Reset() {
+	*x = GcpGcsBucketNotification{}
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpGcsBucketNotification) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpGcsBucketNotification) ProtoMessage() {}
+
+func (x *GcpGcsBucketNotification) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpGcsBucketNotification.ProtoReflect.Descriptor instead.
+func (*GcpGcsBucketNotification) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GcpGcsBucketNotification) GetTopic() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Topic
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketNotification) GetPayloadFormat() string {
+	if x != nil {
+		return x.PayloadFormat
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketNotification) GetEventTypes() []string {
+	if x != nil {
+		return x.EventTypes
+	}
+	return nil
+}
+
+func (x *GcpGcsBucketNotification) GetObjectNamePrefix() string {
+	if x != nil {
+		return x.ObjectNamePrefix
+	}
+	return ""
+}
+
+func (x *GcpGcsBucketNotification) GetCustomAttributes() map[string]string {
+	if x != nil {
+		return x.CustomAttributes
+	}
+	return nil
+}
+
 var File_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	",catalog/gcp/gcpgcsbucket/v1alpha1/spec.proto\x12%dev.planton.gcp.gcpgcsbucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xf8\x16\n" +
+	",catalog/gcp/gcpgcsbucket/v1alpha1/spec.proto\x12%dev.planton.gcp.gcpgcsbucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xe9\x1e\n" +
 	"\x10GcpGcsBucketSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12P\n" +
@@ -1585,11 +1877,18 @@ const file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\tip_filter\x18\x19 \x01(\v2;.dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterR\bipFilter\x12\x7f\n" +
 	"\x16encryption_enforcement\x18\x1a \x01(\v2H.dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketEncryptionEnforcementR\x15encryptionEnforcement\x12\xbb\x01\n" +
 	"\x0fdeletion_policy\x18\x1b \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
-	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x12S\n" +
+	"\afolders\x18\x1c \x03(\v29.dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketFolderR\afolders\x12i\n" +
+	"\x0fmanaged_folders\x18\x1d \x03(\v2@.dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketManagedFolderR\x0emanagedFolders\x12e\n" +
+	"\rnotifications\x18\x1e \x03(\v2?.dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketNotificationR\rnotifications\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb7\x02\xbaH\xb3\x02\x1a\xb0\x02\n" +
-	"0autoclass_conflicts_with_lifecycle_storage_class\x12rautoclass and SetStorageClass lifecycle rules both manage storage classes — enable only one transition mechanism\x1a\x87\x01!has(this.autoclass) || !this.autoclass.enabled || !this.lifecycle_rules.exists(r, has(r.action) && r.action.type == 'SetStorageClass')\"\xa6\x06\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x81\b\xbaH\xfd\a\x1a\xb0\x02\n" +
+	"0autoclass_conflicts_with_lifecycle_storage_class\x12rautoclass and SetStorageClass lifecycle rules both manage storage classes — enable only one transition mechanism\x1a\x87\x01!has(this.autoclass) || !this.autoclass.enabled || !this.lifecycle_rules.exists(r, has(r.action) && r.action.type == 'SetStorageClass')\x1a\x8a\x02\n" +
+	"&folders_require_hierarchical_namespace\x12\x9e\x01folders exist only on hierarchical-namespace buckets — enable hierarchical_namespace_enabled (create-time only, and it requires uniform bucket-level access)\x1a?this.folders.size() == 0 || this.hierarchical_namespace_enabled\x1a\xda\x01\n" +
+	"&managed_folders_require_uniform_access\x12bmanaged folders require uniform bucket-level access — enable uniform_bucket_level_access_enabled\x1aLthis.managed_folders.size() == 0 || this.uniform_bucket_level_access_enabled\x1ab\n" +
+	"\x13folder_names_unique\x12%folders must not repeat the same path\x1a$this.folders.map(f, f.name).unique()\x1az\n" +
+	"\x1bmanaged_folder_names_unique\x12-managed_folders must not repeat the same path\x1a,this.managed_folders.map(f, f.name).unique()\"\xa6\x06\n" +
 	"!GcpGcsBucketEncryptionEnforcement\x12\xf9\x01\n" +
 	"\x1fgoogle_managed_restriction_mode\x18\x01 \x01(\tB\xb1\x01\xbaH\xad\x01\xba\x01\xa9\x01\n" +
 	"\x1bvalid_gmek_restriction_mode\x12Ngoogle_managed_restriction_mode must be one of: NotRestricted, FullyRestricted\x1a:this == '' || this in ['NotRestricted', 'FullyRestricted']R\x1cgoogleManagedRestrictionMode\x12\xff\x01\n" +
@@ -1678,7 +1977,25 @@ const file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
 	"expression\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"expression\x12*\n" +
-	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescriptionB\xc4\x02\n" +
+	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription\"h\n" +
+	"\x12GcpGcsBucketFolder\x12-\n" +
+	"\x04name\x18\x01 \x01(\tB\x19\xbaH\x16\xc8\x01\x01r\x112\x0f^([^/]+/){1,5}$R\x04name\x12#\n" +
+	"\rforce_destroy\x18\x02 \x01(\bR\fforceDestroy\"k\n" +
+	"\x19GcpGcsBucketManagedFolder\x12)\n" +
+	"\x04name\x18\x01 \x01(\tB\x15\xbaH\x12\xc8\x01\x01r\r2\v^([^/]+/)+$R\x04name\x12#\n" +
+	"\rforce_destroy\x18\x02 \x01(\bR\fforceDestroy\"\xac\x06\n" +
+	"\x18GcpGcsBucketNotification\x12p\n" +
+	"\x05topic\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf4\x17\x92\xd4a\x17status.outputs.topic_idR\x05topic\x12\x99\x01\n" +
+	"\x0epayload_format\x18\x02 \x01(\tBr\xbaHo\xba\x01i\n" +
+	"\x14valid_payload_format\x120payload_format must be one of: JSON_API_V1, NONE\x1a\x1fthis in ['JSON_API_V1', 'NONE']\xc8\x01\x01R\rpayloadFormat\x12\x89\x02\n" +
+	"\vevent_types\x18\x03 \x03(\tB\xe7\x01\xbaH\xe3\x01\x92\x01\xdf\x01\"\xdc\x01\xba\x01\xd8\x01\n" +
+	"\x10valid_event_type\x12jevent_types entries must be one of: OBJECT_FINALIZE, OBJECT_METADATA_UPDATE, OBJECT_DELETE, OBJECT_ARCHIVE\x1aXthis in ['OBJECT_FINALIZE', 'OBJECT_METADATA_UPDATE', 'OBJECT_DELETE', 'OBJECT_ARCHIVE']R\n" +
+	"eventTypes\x12,\n" +
+	"\x12object_name_prefix\x18\x04 \x01(\tR\x10objectNamePrefix\x12\x82\x01\n" +
+	"\x11custom_attributes\x18\x05 \x03(\v2U.dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketNotification.CustomAttributesEntryR\x10customAttributes\x1aC\n" +
+	"\x15CustomAttributesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xc4\x02\n" +
 	")com.dev.planton.gcp.gcpgcsbucket.v1alpha1B\tSpecProtoP\x01ZSgithub.com/plantonhq/planton/catalog/gcp/gcpgcsbucket/v1alpha1;gcpgcsbucketv1alpha1\xa2\x02\x04DPGG\xaa\x02%Dev.Planton.Gcp.Gcpgcsbucket.V1alpha1\xca\x02%Dev\\Planton\\Gcp\\Gcpgcsbucket\\V1alpha1\xe2\x021Dev\\Planton\\Gcp\\Gcpgcsbucket\\V1alpha1\\GPBMetadata\xea\x02)Dev::Planton::Gcp::Gcpgcsbucket::V1alpha1b\x06proto3"
 
 var (
@@ -1693,7 +2010,7 @@ func file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpGcsBucketSpec)(nil),                        // 0: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec
 	(*GcpGcsBucketEncryptionEnforcement)(nil),       // 1: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketEncryptionEnforcement
@@ -1712,37 +2029,46 @@ var file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpGcsBucketIpFilterVpcNetworkSource)(nil),    // 14: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterVpcNetworkSource
 	(*GcpGcsBucketIamMember)(nil),                   // 15: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember
 	(*GcpGcsBucketIamCondition)(nil),                // 16: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamCondition
-	nil,                                             // 17: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.LabelsEntry
-	(*v1.StringValueOrRef)(nil),                     // 18: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpGcsBucketFolder)(nil),                      // 17: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketFolder
+	(*GcpGcsBucketManagedFolder)(nil),               // 18: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketManagedFolder
+	(*GcpGcsBucketNotification)(nil),                // 19: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketNotification
+	nil,                                             // 20: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.LabelsEntry
+	nil,                                             // 21: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketNotification.CustomAttributesEntry
+	(*v1.StringValueOrRef)(nil),                     // 22: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_depIdxs = []int32{
-	18, // 0: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 0: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	2,  // 1: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.autoclass:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketAutoclass
 	3,  // 2: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.lifecycle_rules:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule
 	6,  // 3: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.retention_policy:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketRetentionPolicy
 	7,  // 4: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.soft_delete_policy:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSoftDeletePolicy
-	18, // 5: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 5: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	8,  // 6: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.website:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketWebsite
 	9,  // 7: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.cors_rules:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketCorsRule
 	10, // 8: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.logging:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLogging
 	11, // 9: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.custom_placement_config:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketCustomPlacementConfig
-	17, // 10: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.labels:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.LabelsEntry
+	20, // 10: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.labels:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.LabelsEntry
 	15, // 11: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.iam_members:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember
 	12, // 12: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.ip_filter:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter
 	1,  // 13: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.encryption_enforcement:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketEncryptionEnforcement
-	4,  // 14: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule.action:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleAction
-	5,  // 15: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule.condition:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleCondition
-	18, // 16: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLogging.log_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 17: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter.public_network_source:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterPublicNetworkSource
-	14, // 18: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter.vpc_network_sources:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterVpcNetworkSource
-	18, // 19: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterVpcNetworkSource.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	18, // 20: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember.member:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 21: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember.condition:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamCondition
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	17, // 14: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.folders:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketFolder
+	18, // 15: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.managed_folders:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketManagedFolder
+	19, // 16: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketSpec.notifications:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketNotification
+	4,  // 17: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule.action:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleAction
+	5,  // 18: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleRule.condition:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLifecycleCondition
+	22, // 19: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketLogging.log_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 20: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter.public_network_source:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterPublicNetworkSource
+	14, // 21: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilter.vpc_network_sources:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterVpcNetworkSource
+	22, // 22: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIpFilterVpcNetworkSource.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 23: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember.member:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 24: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamMember.condition:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketIamCondition
+	22, // 25: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketNotification.topic:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // 26: dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketNotification.custom_attributes:type_name -> dev.planton.gcp.gcpgcsbucket.v1alpha1.GcpGcsBucketNotification.CustomAttributesEntry
+	27, // [27:27] is the sub-list for method output_type
+	27, // [27:27] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_init() }
@@ -1758,7 +2084,7 @@ func file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpgcsbucket_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -2147,9 +2147,6 @@ resources:
   - resource: google_storage_default_object_acl
     disposition: excluded-deprecated
     reason: "legacy per-object ACL model, superseded by uniform bucket-level IAM (the GcpGcsBucket kind's iam_members)"
-  - resource: google_storage_folder
-    disposition: model-planned
-    reason: "planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs)"
   - resource: google_storage_hmac_key
     disposition: deferred
     reason: "mints a long-lived S3-interoperability credential whose secret lands in provisioning state, and it is project/service-account scoped rather than a bucket child; belongs to a credential-management flow, not the bucket kind — revisit with an interoperability-credential ask"
@@ -2159,12 +2156,6 @@ resources:
   - resource: google_storage_insights_report_config
     disposition: deferred
     reason: "storage inventory reports are a niche; deferred"
-  - resource: google_storage_managed_folder
-    disposition: model-planned
-    reason: "planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs)"
-  - resource: google_storage_notification
-    disposition: model-planned
-    reason: "planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs)"
   - resource: google_storage_object_access_control
     disposition: excluded-deprecated
     reason: "legacy per-object ACL model, superseded by uniform bucket-level IAM (the GcpGcsBucket kind's iam_members)"

@@ -10,7 +10,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func gcsBucket(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
+func gcsBucket(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*storage.Bucket, error) {
 	spec := locals.GcpGcsBucket.Spec
 
 	// Enable the Cloud Storage API — the control plane that owns buckets.
@@ -30,7 +30,7 @@ func gcsBucket(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) e
 	createdStorageApi, err := projects.NewService(ctx,
 		"gcsbkt-storage.googleapis.com", storageApiArgs, pulumi.Provider(gcpProvider))
 	if err != nil {
-		return errors.Wrap(err, "failed to enable storage.googleapis.com api")
+		return nil, errors.Wrap(err, "failed to enable storage.googleapis.com api")
 	}
 
 	// The GCS bucket. Sharp edges, all taught by the API rather than
@@ -333,7 +333,7 @@ func gcsBucket(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) e
 		pulumi.Provider(gcpProvider),
 		pulumi.DependsOn([]pulumi.Resource{createdStorageApi}))
 	if err != nil {
-		return errors.Wrap(err, "failed to create bucket")
+		return nil, errors.Wrap(err, "failed to create bucket")
 	}
 
 	// Additive IAM grants: one (role, member) pair per resource, merging
@@ -363,7 +363,7 @@ func gcsBucket(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) e
 			pulumi.Provider(gcpProvider),
 			pulumi.Parent(createdBucket))
 		if err != nil {
-			return errors.Wrapf(err, "failed to grant %s to %s on the bucket", iamMember.Role, member)
+			return nil, errors.Wrapf(err, "failed to grant %s to %s on the bucket", iamMember.Role, member)
 		}
 	}
 
@@ -378,5 +378,5 @@ func gcsBucket(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) e
 	ctx.Export(OpLocation, createdBucket.Location)
 	ctx.Export(OpProjectNumber, createdBucket.ProjectNumber)
 
-	return nil
+	return createdBucket, nil
 }
