@@ -102,6 +102,9 @@ that record lie, and the next deploy turns the lie into a confusing failure.
 When the user insists on the raw path against a Planton-managed resource,
 warn about the drift once, plainly, and proceed only on their confirmed yes.
 
-Deploying, undeploying, or purging whole charts/projects remains a workflow
-the user drives from the studio — offer it, never perform it as part of
-composition.
+Deploying a composed chart is never part of composition — it is offered,
+and on the user's explicit ask you perform it under exactly this mutation
+protocol (`machine-deploy.md` has the command, the machine-login offer that
+often precedes it, and the pipeline follow-through). Undeploying or purging
+whole charts/projects remains a workflow the user drives from the studio —
+surface the need, let them drive it.

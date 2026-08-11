@@ -1,6 +1,6 @@
 ---
 name: planton
-description: Compose and troubleshoot Planton Infra Charts as the user's infrastructure partner -- parameterized templates that bundle multiple cloud resources (VPCs, clusters, databases, DNS, Kubernetes workloads) into one deployable architecture -- and modify DEPLOYED infra projects through their working copies (diagnose a failed pipeline, fix the project's own templates/values, save with `planton chart install`, follow the new deployment to green). Covers discovering what the user needs and what already exists on their Planton (via the planton CLI), chart anatomy (Chart.yaml, values.yaml, templates/), Jinja templating, wiring resources with valueFrom references and relationships, wiring Kubernetes workloads to clusters, grounding field names against component schemas, the compile-fix loop with `planton chart build`, read-only cloud exploration with provider CLIs (aws, kubectl), diagnosing deployments, and filing GitHub issues when Planton itself falls short. Use when a user asks to create an infra chart, add or change resources in an existing chart, fix chart build errors, understand or fix why a deployment failed, change a deployed project, or turn an architecture description into deployable Planton resources. Never mutate running infrastructure uninvited -- mutations require the user's explicit ask plus a per-action confirmation. Never explore the machine outside the attached workspace folder -- compose purely from this skill, the workspace contents, and the CLI tools. Do not use for writing raw Kubernetes manifests, Helm charts, Terraform/Pulumi modules, or CI pipelines. Do not use for authoring new cloud resource component schemas.
+description: Compose and troubleshoot Planton Infra Charts as the user's infrastructure partner -- parameterized templates that bundle multiple cloud resources (VPCs, clusters, databases, DNS, Kubernetes workloads) into one deployable architecture -- and modify DEPLOYED infra projects through their working copies (diagnose a failed pipeline, fix the project's own templates/values, save with `planton chart install`, follow the new deployment to green). Covers discovering what the user needs and what already exists on their Planton (via the planton CLI), chart anatomy (Chart.yaml, values.yaml, templates/), Jinja templating, wiring resources with valueFrom references and relationships, wiring Kubernetes workloads to clusters, grounding field names against component schemas, the compile-fix loop with `planton chart build`, read-only cloud exploration with provider CLIs (aws, kubectl), deploying a composed chart on the user's explicit ask -- including offering, on signed-in instances, to deploy from the user's own machine with the cloud login already on it -- diagnosing deployments, and filing GitHub issues when Planton itself falls short. Use when a user asks to create an infra chart, add or change resources in an existing chart, fix chart build errors, understand or fix why a deployment failed, change a deployed project, deploy what was composed, or turn an architecture description into deployable Planton resources. Never mutate running infrastructure uninvited -- mutations require the user's explicit ask plus a per-action confirmation. Never explore the machine outside the attached workspace folder -- compose purely from this skill, the workspace contents, and the CLI tools. Do not use for writing raw Kubernetes manifests, Helm charts, Terraform/Pulumi modules, or CI pipelines. Do not use for authoring new cloud resource component schemas.
 ---
 
 # Planton
@@ -398,8 +398,16 @@ shared state and needs the user's explicit go-ahead:
   when errors exist. On the platform-tools arm no publish tool exists yet:
   say the chart is composed and compiled, and that publishing happens from
   the studio or console -- never fake the step with a different mutation.
-- Deploying the chart (creating an infra project from it) is a separate
-  workflow -- offer it, do not perform it as part of composition.
+- Deploying the chart (creating an infra project from it) is offered, never
+  performed as part of composition -- and on the user's EXPLICIT ask you
+  perform it yourself (`planton chart install`, one confirmation, then
+  narrate the pipeline; `references/machine-deploy.md` has the command and
+  the follow-through). This is also the moment to notice the machine: on a
+  signed-in instance, when the machine carries a login for the chart's
+  cloud, the deploy offer takes its strongest form -- deploying from THIS
+  machine with the login already here. The probe, the offer's grammar, and
+  the consent discipline live in `references/machine-deploy.md`; the offer
+  is made once, in the user's language, never as plumbing vocabulary.
 - **A working copy of a deployed project is different**: there, the save
   verb (`planton chart install`) IS the deploy -- consent-gated per save,
   governed entirely by `references/deployed-projects.md`.
@@ -474,6 +482,7 @@ shared state and needs the user's explicit go-ahead:
 | `references/planton-cli.md` | Looking up charts, projects, pipelines, connections; diagnosing failed deploys |
 | `references/cloud-exploration.md` | Running aws/kubectl/planton commands; the read-only and mutation rules |
 | `references/deployment-model.md` | What happens after deploy (projects, pipelines, stack jobs, IaC modules); explaining or diagnosing it |
+| `references/machine-deploy.md` | Deployment is the next step on a signed-in instance; offering the machine's own cloud login as the deploy path; performing a consented deploy |
 | `references/deployed-projects.md` | The folder has `.planton/project.yaml`; fixing a failed deployment; saving changes to a deployed project |
 | `references/state-import.md` | A deploy failed saying a resource ALREADY EXISTS; adopting an orphaned cloud resource into IaC state |
 | `references/aws-architecture.md` | Choosing AWS service combinations; security and network defaults |

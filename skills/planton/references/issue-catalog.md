@@ -124,7 +124,11 @@ chart, the annotation is missing — add it to every Kubernetes-kind resource
 elsewhere, the organization has no cluster connection yet: a cluster deployed
 through Planton (or connected via the desktop) establishes the default
 binding automatically, so this error means no such cluster exists — deploy or
-connect one; do not paper over it with annotations or params.
+connect one; do not paper over it with annotations or params. The same error
+on NON-Kubernetes kinds means the organization has no connection for that
+cloud at all — the machine's own login may be the fastest way forward
+(`machine-deploy.md`: probe, offer, consent), and an organization cloud
+account connected through the console is the standing alternative.
 
 ## Connection slug not found at deploy time
 
