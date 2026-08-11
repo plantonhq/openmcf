@@ -177,6 +177,7 @@ Fields on other kinds that can point at this resource:
 | AzureLinuxWebApp | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureLinuxWebApp | `spec.keyVaultReferenceIdentityId` | `status.outputs.identity_id` |
 | AzureLogAnalyticsWorkspace | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
+| AzureMachineLearningBatchEndpoint | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureMachineLearningComputeCluster | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureMachineLearningComputeInstance | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureMachineLearningOnlineEndpoint | `spec.identity.identityIds` | `status.outputs.identity_id` |

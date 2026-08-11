@@ -842,6 +842,15 @@ const (
 	// An ARM child of its endpoint (.../deployments/{name}) -- the
 	// running copy of a model the endpoint's traffic map routes to.
 	CloudResourceKind_AzureMachineLearningOnlineDeployment CloudResourceKind = 2171
+	// An ARM child of its workspace (.../batchEndpoints/{name}) -- the
+	// stable address batch scoring jobs are submitted to. azurerm
+	// carries no ML endpoint resources; the modules write the raw ARM
+	// shape at a pinned api-version (azapi / azure-native).
+	CloudResourceKind_AzureMachineLearningBatchEndpoint CloudResourceKind = 2172
+	// An ARM child of its endpoint (.../deployments/{name}) -- the
+	// job recipe (model, compute, batching behavior) the endpoint's
+	// default-deployment pointer routes submissions to.
+	CloudResourceKind_AzureMachineLearningBatchDeployment CloudResourceKind = 2173
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
@@ -1604,6 +1613,8 @@ var (
 		2169:  "AzureSearchService",
 		2170:  "AzureMachineLearningOnlineEndpoint",
 		2171:  "AzureMachineLearningOnlineDeployment",
+		2172:  "AzureMachineLearningBatchEndpoint",
+		2173:  "AzureMachineLearningBatchDeployment",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2248,6 +2259,8 @@ var (
 		"AzureSearchService":                             2169,
 		"AzureMachineLearningOnlineEndpoint":             2170,
 		"AzureMachineLearningOnlineDeployment":           2171,
+		"AzureMachineLearningBatchEndpoint":              2172,
+		"AzureMachineLearningBatchDeployment":            2173,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -2913,7 +2926,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x85\x9e\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x93\x9f\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3180,7 +3193,9 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x15AzureAiFoundryProject\x10\xf8\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azaifp:\x02\xf7\x10\x125\n" +
 	"\x12AzureSearchService\x10\xf9\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azsrch:\x02\xd0\x0f\x12E\n" +
 	"\"AzureMachineLearningOnlineEndpoint\x10\xfa\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmloe:\x02\xf3\x10\x12G\n" +
-	"$AzureMachineLearningOnlineDeployment\x10\xfb\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlod:\x02\xfa\x10\x12:\n" +
+	"$AzureMachineLearningOnlineDeployment\x10\xfb\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlod:\x02\xfa\x10\x12D\n" +
+	"!AzureMachineLearningBatchEndpoint\x10\xfc\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlbe:\x02\xf3\x10\x12F\n" +
+	"#AzureMachineLearningBatchDeployment\x10\xfd\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlbd:\x02\xfc\x10\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
 	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x124\n" +

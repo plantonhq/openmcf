@@ -511,6 +511,24 @@ func TestAzureMachineLearningOnlineDeployment_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningonlinedeployment", "terraform")
 }
 
+// --- Azure ML Batch Endpoint (composed: the fixture workspace chain -> an Entra-auth endpoint with a system identity; a pure routing object -- no compute, free at rest. Raw-API kind riding the online pair's machinery; scenario names carry the run-id token -- batch names are expected to reserve region-wide like the online sibling's, unproven) ---
+
+func TestAzureMachineLearningBatchEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningbatchendpoint", "pulumi")
+}
+func TestAzureMachineLearningBatchEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningbatchendpoint", "terraform")
+}
+
+// --- Azure ML Batch Deployment (composed: workspace chain -> fixture batch endpoint -> a BARE recipe; nothing provisions or bills at create -- compute materializes per job and no lane submits one. Whether the service accepts a bare batch deployment is the lane's proof point; deployment names are endpoint-scoped, so scenarios carry the run-id token because both engines attach to the SAME fixture endpoint) ---
+
+func TestAzureMachineLearningBatchDeployment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningbatchdeployment", "pulumi")
+}
+func TestAzureMachineLearningBatchDeployment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningbatchdeployment", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {

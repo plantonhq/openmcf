@@ -355,6 +355,14 @@ Fields that can point at another resource's outputs:
 | `spec.identity.identityIds` | AzureUserAssignedIdentity | `status.outputs.identity_id` |
 | `spec.subnetId` | AzureSubnet | `status.outputs.subnet_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AzureMachineLearningBatchDeployment | `spec.computeId` | `status.outputs.machine_learning_compute_cluster_id` |
+
 ## See Also
 
 - [Overview](../README.md)

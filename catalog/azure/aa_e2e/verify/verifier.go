@@ -93,6 +93,8 @@ var verifiers = map[string]Verifier{
 	"azureloadbalancer":                              &loadBalancerVerifier{},
 	"azurelocalnetworkgateway":                       &localNetworkGatewayVerifier{},
 	"azureloganalyticsworkspace":                     &logAnalyticsWorkspaceVerifier{},
+	"azuremachinelearningbatchendpoint":              &machineLearningBatchEndpointVerifier{},
+	"azuremachinelearningbatchdeployment":            &machineLearningBatchDeploymentVerifier{},
 	"azuremachinelearningcomputecluster":             &machineLearningComputeClusterVerifier{},
 	"azuremachinelearningcomputeinstance":            &machineLearningComputeInstanceVerifier{},
 	"azuremachinelearningonlineendpoint":             &machineLearningOnlineEndpointVerifier{},

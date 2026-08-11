@@ -2370,6 +2370,25 @@ enum CloudResourceKind {
     id_prefix: "azmlod"
     prerequisites: [AzureMachineLearningOnlineEndpoint]
   }];
+  // An ARM child of its workspace (.../batchEndpoints/{name}) -- the
+  // stable address batch scoring jobs are submitted to. azurerm
+  // carries no ML endpoint resources; the modules write the raw ARM
+  // shape at a pinned api-version (azapi / azure-native).
+  AzureMachineLearningBatchEndpoint = 2172 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlbe"
+    prerequisites: [AzureMachineLearningWorkspace]
+  }];
+  // An ARM child of its endpoint (.../deployments/{name}) -- the
+  // job recipe (model, compute, batching behavior) the endpoint's
+  // default-deployment pointer routes submissions to.
+  AzureMachineLearningBatchDeployment = 2173 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlbd"
+    prerequisites: [AzureMachineLearningBatchEndpoint]
+  }];
 
   // 3000–3999: GCP resources
   GcpArtifactRegistryRepo = 3000 [(kind_meta) = {

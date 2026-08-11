@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningbatchdeployment.v1alpha1;
+
+// **AzureMachineLearningBatchDeploymentStackOutputs** captures the
+// outputs of provisioning a Machine Learning batch deployment.
+message AzureMachineLearningBatchDeploymentStackOutputs {
+  // The Azure Resource Manager ID of the batch deployment.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{ws}/batchEndpoints/{endpoint}/deployments/{name}
+  string batch_deployment_id = 1;
+
+  // The deployment's name -- the key the endpoint's
+  // default-deployment pointer routes job submissions by.
+  string batch_deployment_name = 2;
+}
