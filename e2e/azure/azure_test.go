@@ -583,6 +583,33 @@ func TestAzureBackupProtectedFileShare_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurebackupprotectedfileshare", "terraform")
 }
 
+// --- Azure Data Protection Backup Vault (composed: fixture RG -> a FREE locally-redundant vault with a system identity; the one-way doors -- Locked immutability, AlwaysOn soft delete, CMK -- stay offline-proven by design, and destroy runs past Azure's early "deleted" answer while the provider polls the name free) ---
+
+func TestAzureDataProtectionBackupVault_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionbackupvault", "pulumi")
+}
+func TestAzureDataProtectionBackupVault_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionbackupvault", "terraform")
+}
+
+// --- Azure Data Protection Backup Policy (composed: fixture RG -> fixture Data Protection vault -> THREE free configuration objects covering all three retention dialects; the minimal disk smoke doubles as future backup-instance lanes' install manifest, the kubernetes scenario proves the nested life-cycle dialect plus the vault name+RG addressing seam, and the blob scenario proves the dual-store dialect) ---
+
+func TestAzureDataProtectionBackupPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionbackuppolicy", "pulumi")
+}
+func TestAzureDataProtectionBackupPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionbackuppolicy", "terraform")
+}
+
+// --- Azure Data Protection Resource Guard (composed: fixture RG -> a FREE governance object that creates in seconds; no vault references it in the lane, so create and delete are unconstrained) ---
+
+func TestAzureDataProtectionResourceGuard_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionresourceguard", "pulumi")
+}
+func TestAzureDataProtectionResourceGuard_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionresourceguard", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {

@@ -1,0 +1,52 @@
+# The nested-retention scenario: the kubernetes_cluster variant with
+# the default-retention life-cycle block, a calendar-criteria rule, and
+# tiered keeps -- free on the fixture vault. This lane proves THREE
+# things at once: the nested life-cycle retention dialect live, the
+# marquee AKS policy grammar, and the one module seam unique to this
+# kind -- the vault name + resource group derived from the spec's
+# vault_id reference (the only variant the provider addresses that
+# way). No AKS cluster is needed: policies are pure configuration
+# objects; the cluster binding rides the backup-instance kind.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataProtectionBackupPolicy
+metadata:
+  name: planton-oss-e2e-azuredataprotectionbackuppolicy-k8s
+  id: planton-oss-e2e-azuredataprotectionbackuppolicy-k8s
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredataprotectionbackuppolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  vaultId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-dpbv
+  name: planton-oss-e2e-dpbp-k8s
+  kubernetesCluster:
+    backupRepeatingTimeIntervals:
+      - R/2024-01-01T00:00:00+00:00/PT4H
+    defaultRetentionRule:
+      lifeCycles:
+        - dataStoreType: OperationalStore
+          duration: P14D
+    retentionRules:
+      - name: daily
+        criteria:
+          absoluteCriteria: FirstOfDay
+        lifeCycles:
+          - dataStoreType: OperationalStore
+            duration: P8W
+        priority: 25
+      - name: sundays
+        criteria:
+          daysOfWeek:
+            - Sunday
+        lifeCycles:
+          - dataStoreType: OperationalStore
+            duration: P12W
+        priority: 20
+    timeZone: UTC

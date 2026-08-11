@@ -872,6 +872,18 @@ const (
 	// policy's protection. The share's storage account must already be
 	// registered with the vault (AzureBackupContainerStorageAccount).
 	CloudResourceKind_AzureBackupProtectedFileShare CloudResourceKind = 2179
+	// The Data Protection backup vault (Microsoft.DataProtection/
+	// backupVaults) -- the safe that MODERN Azure Backup data lives in
+	// (managed disks, blob storage, AKS clusters, MySQL/PostgreSQL
+	// flexible servers, Data Lake storage). Backup policies and backup
+	// instances are ARM children of a vault.
+	CloudResourceKind_AzureDataProtectionBackupVault CloudResourceKind = 2180
+	// An ARM child of its vault (.../backupPolicies/{name}) -- the
+	// schedule and retention rules for ONE Data Protection datasource
+	// type (blob storage, disk, Kubernetes cluster, MySQL/PostgreSQL
+	// flexible server, or Data Lake storage), modeled as one kind with
+	// variant blocks.
+	CloudResourceKind_AzureDataProtectionBackupPolicy CloudResourceKind = 2181
 	// Registers a storage account with a Recovery Services vault as a
 	// backup container (.../protectionContainers/StorageContainer;...)
 	// -- one registration per storage-account-and-vault pair, required
@@ -879,6 +891,15 @@ const (
 	// the backup family (2175-2179) despite the out-of-run number --
 	// enum numbers are pinned by the registry snapshot; never renumber.
 	CloudResourceKind_AzureBackupContainerStorageAccount CloudResourceKind = 2213
+	// The Data Protection Resource Guard (Microsoft.DataProtection/
+	// resourceGuards) -- the approval gate behind Multi-User
+	// Authorization: privileged vault operations (disabling soft delete,
+	// reducing retention) require an approval through a guard, which
+	// typically lives in a DIFFERENT administrator's scope. Vaults
+	// reference a guard by its ARM ID. Part of the backup family
+	// (2175-2182) despite the out-of-run number -- enum numbers are
+	// pinned by the registry snapshot; never renumber.
+	CloudResourceKind_AzureDataProtectionResourceGuard CloudResourceKind = 2214
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
@@ -1648,7 +1669,10 @@ var (
 		2177:  "AzureBackupProtectedVm",
 		2178:  "AzureBackupPolicyFileShare",
 		2179:  "AzureBackupProtectedFileShare",
+		2180:  "AzureDataProtectionBackupVault",
+		2181:  "AzureDataProtectionBackupPolicy",
 		2213:  "AzureBackupContainerStorageAccount",
+		2214:  "AzureDataProtectionResourceGuard",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2300,7 +2324,10 @@ var (
 		"AzureBackupProtectedVm":                         2177,
 		"AzureBackupPolicyFileShare":                     2178,
 		"AzureBackupProtectedFileShare":                  2179,
+		"AzureDataProtectionBackupVault":                 2180,
+		"AzureDataProtectionBackupPolicy":                2181,
 		"AzureBackupContainerStorageAccount":             2213,
+		"AzureDataProtectionResourceGuard":               2214,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -2966,7 +2993,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x94\xa2\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe0\xa3\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3240,8 +3267,11 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x13AzureBackupPolicyVm\x10\x80\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azbpv:\x02\xff\x10\x12;\n" +
 	"\x16AzureBackupProtectedVm\x10\x81\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbprv:\x04\x80\x11\xd8\x0f\x12=\n" +
 	"\x1aAzureBackupPolicyFileShare\x10\x82\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azbpfs:\x02\xff\x10\x12E\n" +
-	"\x1dAzureBackupProtectedFileShare\x10\x83\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\aazbprfs:\x06\xa5\x11\x82\x11\xab\x10\x12G\n" +
-	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12:\n" +
+	"\x1dAzureBackupProtectedFileShare\x10\x83\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\aazbprfs:\x06\xa5\x11\x82\x11\xab\x10\x12A\n" +
+	"\x1eAzureDataProtectionBackupVault\x10\x84\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbv:\x02\xd0\x0f\x12B\n" +
+	"\x1fAzureDataProtectionBackupPolicy\x10\x85\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbp:\x02\x84\x11\x12G\n" +
+	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +
+	" AzureDataProtectionResourceGuard\x10\xa6\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdprg:\x02\xd0\x0f\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
 	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x124\n" +

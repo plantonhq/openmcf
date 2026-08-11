@@ -1,0 +1,40 @@
+# Offline-plan test manifest. Exercises the union's deepest single
+# shape: the blob variant's DUAL retention tiers (operational +
+# vault), the schedule intervals the vault tier requires, and a named
+# vault-tier rule carrying calendar criteria including the
+# last-day-of-month encoding (days_of_month 0). The other five
+# variants' wire shapes are proven by the scenario manifests and the
+# per-variant offline plans.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataProtectionBackupPolicy
+metadata:
+  name: test-data-protection-backup-policy
+  org: test-org
+  env: dev
+spec:
+  vaultId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DataProtection/backupVaults/test-backup-vault
+  name: test-blob-dual-tier-policy
+  blobStorage:
+    operationalDefaultRetentionDuration: P30D
+    vaultDefaultRetentionDuration: P90D
+    backupRepeatingTimeIntervals:
+      - R/2024-01-01T00:00:00+00:00/P1D
+    timeZone: UTC
+    retentionRules:
+      - name: month-end
+        criteria:
+          absoluteCriteria: FirstOfMonth
+          daysOfMonth:
+            - 0
+            - 28
+          weeksOfMonth:
+            - Last
+          monthsOfYear:
+            - December
+          scheduledBackupTimes:
+            - "2024-01-01T00:00:00Z"
+        lifeCycle:
+          dataStoreType: VaultStore
+          duration: P1Y
+        priority: 20

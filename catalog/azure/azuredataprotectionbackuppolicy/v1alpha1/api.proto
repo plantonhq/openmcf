@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredataprotectionbackuppolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuredataprotectionbackuppolicy/v1alpha1/outputs.proto";
+import "catalog/azure/azuredataprotectionbackuppolicy/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureDataProtectionBackupPolicy is the top-level API resource
+// describing a Data Protection backup policy -- the schedule and
+// retention rules for one datasource type (blob storage, disk,
+// Kubernetes cluster, MySQL/PostgreSQL flexible server, or Data Lake
+// storage), expressed as one kind with variant blocks.
+message AzureDataProtectionBackupPolicy {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureDataProtectionBackupPolicy".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureDataProtectionBackupPolicy'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Data Protection backup policy specification.
+  AzureDataProtectionBackupPolicySpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureDataProtectionBackupPolicyStatus status = 5;
+}
+
+// AzureDataProtectionBackupPolicyStatus holds the deployment outputs.
+message AzureDataProtectionBackupPolicyStatus {
+  // Stack outputs from the IaC deployment.
+  AzureDataProtectionBackupPolicyStackOutputs outputs = 1;
+}

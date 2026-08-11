@@ -163,6 +163,7 @@ Fields on other kinds that can point at this resource:
 | AzureCosmosdbAccount | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureCosmosdbAccount | `spec.defaultIdentity.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureCosmosdbSqlRoleAssignment | `spec.principalId` | `status.outputs.principal_id` |
+| AzureDataProtectionBackupVault | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureDiskEncryptionSet | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureEventHub | `spec.captureDescription.destination.storageAuthenticationId` | `status.outputs.identity_id` |
 | AzureEventHubNamespace | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |

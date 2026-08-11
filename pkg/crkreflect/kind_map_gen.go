@@ -192,6 +192,9 @@ import (
 	azurecosmosdbsqldatabasev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbsqldatabase/v1alpha1"
 	azurecosmosdbsqlroleassignmentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbsqlroleassignment/v1alpha1"
 	azurecosmosdbsqlroledefinitionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbsqlroledefinition/v1alpha1"
+	azuredataprotectionbackuppolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionbackuppolicy/v1alpha1"
+	azuredataprotectionbackupvaultv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionbackupvault/v1alpha1"
+	azuredataprotectionresourceguardv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionresourceguard/v1alpha1"
 	azurediskencryptionsetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurediskencryptionset/v1alpha1"
 	azurednsrecordv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurednsrecord/v1alpha1"
 	azurednszonev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurednszone/v1alpha1"
@@ -871,6 +874,9 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlDatabase:                       &azurecosmosdbsqldatabasev1alpha1.AzureCosmosdbSqlDatabase{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleAssignment:                 &azurecosmosdbsqlroleassignmentv1alpha1.AzureCosmosdbSqlRoleAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleDefinition:                 &azurecosmosdbsqlroledefinitionv1alpha1.AzureCosmosdbSqlRoleDefinition{},
+	cloudresourcekind.CloudResourceKind_AzureDataProtectionBackupPolicy:                &azuredataprotectionbackuppolicyv1alpha1.AzureDataProtectionBackupPolicy{},
+	cloudresourcekind.CloudResourceKind_AzureDataProtectionBackupVault:                 &azuredataprotectionbackupvaultv1alpha1.AzureDataProtectionBackupVault{},
+	cloudresourcekind.CloudResourceKind_AzureDataProtectionResourceGuard:               &azuredataprotectionresourceguardv1alpha1.AzureDataProtectionResourceGuard{},
 	cloudresourcekind.CloudResourceKind_AzureDiskEncryptionSet:                         &azurediskencryptionsetv1alpha1.AzureDiskEncryptionSet{},
 	cloudresourcekind.CloudResourceKind_AzureDnsRecord:                                 &azurednsrecordv1alpha1.AzureDnsRecord{},
 	cloudresourcekind.CloudResourceKind_AzureDnsZone:                                   &azurednszonev1alpha1.AzureDnsZone{},

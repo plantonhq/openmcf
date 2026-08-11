@@ -97,6 +97,8 @@ Fields on other kinds that can point at this resource:
 | AzureContainerAppJob | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerRegistry | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureCosmosdbAccount | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureDataProtectionBackupVault | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureDataProtectionResourceGuard | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureDiskEncryptionSet | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureDnsRecord | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureDnsZone | `spec.resourceGroup` | `status.outputs.resource_group_name` |

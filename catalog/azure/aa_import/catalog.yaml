@@ -290,3 +290,37 @@ spec:
       # (AzureFileShare;{system-name}), not its friendly name -- the id
       # comes from the stack output or `az backup item list`, never
       # composed by hand; quoted on import (semicolons).
+    # --- Modern Azure Backup (Data Protection) -----------------------------
+    - terraform_type: azurerm_data_protection_backup_vault
+      pulumi_type: azure:dataprotection/backupVault:BackupVault
+      id_format: "{backup_vault_id}"
+    - terraform_type: azurerm_data_protection_backup_vault_customer_managed_key
+      pulumi_type: azure:dataprotection/backupVaultCustomerManagedKey:BackupVaultCustomerManagedKey
+      id_format: "{backup_vault_id}"
+      # The provider's CMK resource IS the vault re-addressed (its
+      # create rewrites the vault's own security settings), so its id
+      # composes wholly from the vault's own id.
+    - terraform_type: azurerm_data_protection_resource_guard
+      pulumi_type: azure:dataprotection/resourceGuard:ResourceGuard
+      id_format: "{resource_guard_id}"
+    # One backup-policy kind, six variant resources -- the SAME
+    # vault-child id shape (.../backupPolicies/{name}) serves all six;
+    # which resource imports it follows the spec's variant block.
+    - terraform_type: azurerm_data_protection_backup_policy_blob_storage
+      pulumi_type: azure:dataprotection/backupPolicyBlobStorage:BackupPolicyBlobStorage
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_data_protection_backup_policy_disk
+      pulumi_type: azure:dataprotection/backupPolicyDisk:BackupPolicyDisk
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_data_protection_backup_policy_kubernetes_cluster
+      pulumi_type: azure:dataprotection/backupPolicyKubernetesCluster:BackupPolicyKubernetesCluster
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_data_protection_backup_policy_mysql_flexible_server
+      pulumi_type: azure:dataprotection/backupPolicyMysqlFlexibleServer:BackupPolicyMysqlFlexibleServer
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_data_protection_backup_policy_postgresql_flexible_server
+      pulumi_type: azure:dataprotection/backupPolicyPostgresqlFlexibleServer:BackupPolicyPostgresqlFlexibleServer
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_data_protection_backup_policy_data_lake_storage
+      pulumi_type: azure:dataprotection/backupPolicyDataLakeStorage:BackupPolicyDataLakeStorage
+      id_format: "{backup_policy_id}"

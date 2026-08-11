@@ -1,0 +1,15 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuredataprotectionresourceguard
+spec:
+  # The guard's identity is its full ARM resource ID
+  # (.../providers/Microsoft.DataProtection/resourceGuards/{name}).
+  values:
+    - name: resource_guard_id
+      derivations:
+        - from_stack_output: resource_guard_id
+      where_to_find: >-
+        `az dataprotection resource-guard show -g <rg> -n <name>
+        --query id`, or compose /subscriptions/{sub}/resourceGroups/{rg}/
+        providers/Microsoft.DataProtection/resourceGuards/{name}.
