@@ -13,5 +13,8 @@ spec:
   # issuer); its wiring is proven by the offline gate and the SAML/OIDC CEL
   # spec tests.
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 20

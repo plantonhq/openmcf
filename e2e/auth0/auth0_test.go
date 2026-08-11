@@ -176,11 +176,7 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 	}
 
 	if engine == "pulumi" {
-		stackName := runner.GenerateStackName(component+"-"+scenario.Name, runID)
-		if len(stackName) > 50 {
-			stackName = stackName[:50]
-		}
-		tc.StackName = stackName
+		tc.StackName = runner.GenerateStackName(component+"-"+scenario.Name, runID)
 	}
 
 	ctx := context.Background()

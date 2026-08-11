@@ -2,6 +2,8 @@ package runner
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -137,12 +139,33 @@ func PulumiLogin(backendURL string) error {
 	return nil
 }
 
-// GenerateStackName creates a unique, deterministic stack name for an E2E test run.
-// Format: e2e-{component}-{shortID}
-func GenerateStackName(component string, runID string) string {
+// maxStackNameLen caps generated stack names well inside Pulumi's own limit.
+// The cap is enforced HERE, never by truncating at a call site: a plain
+// prefix truncation discards exactly the part of the name that carries
+// uniqueness (a multi-instance install profile's instance suffix and the run
+// id live at the tail). Live-proven failure mode: the three AwsSubnet
+// install-profile instances all truncated to one identical dependency stack
+// name, so each successive `pulumi up` silently REPLACED the previous
+// instance's cloud resource, the component's resolved reference pointed at a
+// deleted subnet, and teardown destroyed one stack then failed "no stack
+// named" on the two ghosts.
+const maxStackNameLen = 50
+
+// GenerateStackName creates a unique, deterministic stack name for an E2E test
+// run. Format: e2e-{label}-{shortRunID}, capped at maxStackNameLen. When the
+// composed name exceeds the cap it is truncated and its tail replaced with a
+// short digest of the FULL composed name, so two long labels can never
+// collapse into the same stack name.
+func GenerateStackName(label string, runID string) string {
 	short := runID
 	if len(short) > 8 {
 		short = short[:8]
 	}
-	return fmt.Sprintf("e2e-%s-%s", component, short)
+	name := fmt.Sprintf("e2e-%s-%s", label, short)
+	if len(name) <= maxStackNameLen {
+		return name
+	}
+	digest := sha256.Sum256([]byte(name))
+	tail := hex.EncodeToString(digest[:])[:8]
+	return name[:maxStackNameLen-len(tail)-1] + "-" + tail
 }

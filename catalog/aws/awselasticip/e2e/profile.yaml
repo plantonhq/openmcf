@@ -12,5 +12,8 @@ spec:
   # costs under a cent; a leaked allocation keeps billing, which is exactly
   # what verify-destroyed guards.
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 10

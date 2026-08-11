@@ -431,9 +431,6 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 		stackLabel = fmt.Sprintf("%s-%d", stackLabel, docIndex)
 	}
 	stackName := GenerateStackName(stackLabel, runID)
-	if len(stackName) > 50 {
-		stackName = stackName[:50]
-	}
 
 	fmt.Printf("  [deps] Deploying dependency %s (%s)...\n", dep.KindSlug, manifestName)
 	start := time.Now()

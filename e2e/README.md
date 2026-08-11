@@ -132,6 +132,21 @@ service-networking-connection verifier: the peering is created via the
 Service Networking API but read back through the Compute API, and that
 cross-API view is eventually consistent).
 
+**Dependency stack names are digest-capped — never truncate a stack name at a
+call site.** `GenerateStackName` caps names at 50 chars by replacing the tail
+with a short digest of the full name, because the tail is exactly where
+uniqueness lives (a multi-instance install profile's `-a`/`-b`/`-c` instance
+suffix and the run id). The live-caught failure class this kills: three
+same-kind install-profile instances whose names truncated identically shared
+ONE dependency stack, so each successive `pulumi up` silently REPLACED the
+previous instance's cloud resource — the component under test then failed
+with a stale resolved reference ("InvalidSubnet ... does not exist" moments
+after the fixture "deployed and verified"), and teardown destroyed one stack
+then burned its full retry budget on "no stack named" ghosts. That signature
+— a fixture that verified cleanly, a component create rejecting the fixture's
+id, and repeated "no stack named <truncated-name>" destroys — means stack-name
+collision, not a module defect.
+
 **Undeletable resource classes redefine "zero orphans".** Some GCP resources
 have NO delete API — KMS key rings and crypto keys are the canonical class:
 destroy removes a ring from state only, and destroys a key's *versions*
@@ -672,6 +687,34 @@ schedule:
 4. **summary** -- aggregates JUnit XML into GitHub Step Summary
 
 To trigger manually: Actions > e2e-kubernetes > Run workflow > select branch.
+
+## AWS E2E
+
+AWS tests live under `e2e/aws/` and verify through the AWS SDK against a real
+test account. Credentials are keyless: the harness probes the AMBIENT
+credential chain (`sts:GetCallerIdentity`) — locally an AWS SSO session, in
+CI the OIDC role.
+
+```bash
+AWS_PROFILE=planton-aws-e2e go test -tags=e2e -timeout=45m -v -count=1 \
+  -run '^TestAwsIamRole_(Pulumi|Terraform)$' ./e2e/aws/...
+```
+
+**Preflight the chain the harness actually reads.** `aws sts
+get-caller-identity --profile <name>` proving a NAMED profile valid says
+nothing about the ambient chain the SDK resolves — a stale default profile
+fails the harness with `InvalidClientTokenId` minutes after the named-profile
+preflight passed. Export `AWS_PROFILE` for the test process (as above) so the
+CLI preflight, the harness, and both engines' providers all resolve the same
+identity, and preflight with that same environment.
+
+Timing observed live (us-west-2): IAM/EIP/Cognito lanes run 30-90s per
+engine; a zonal NAT gateway scenario ~7 min per engine end-to-end (create
+~2 min, delete ~1 min, fixture chain ~1.5 min up + ~2 min down); a regional
+NAT gateway is the same order; an NLB scenario ~6 min per engine (create
+2-3 min, delete similar). Budget `-timeout` for scenarios × engines plus the
+import round-trip when `PLANTON_E2E_IMPORT_ROUNDTRIP=1` is set (it re-imports
+and re-plans every resource, roughly doubling a component's Terraform lane).
 
 ## GCP E2E
 
