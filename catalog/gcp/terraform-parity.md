@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**98 of 98 kinds are at total accounting; 22 proven live.**
+**98 of 98 kinds are at total accounting; 35 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -60,8 +60,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpBigQueryTable | 98 | 86 | 12 | 0 | 0 | ✅ | — |
 | GcpBigtableInstance | 19 | 6 | 13 | 0 | 0 | ✅ | — |
 | GcpBigtableTable | 23 | 8 | 14 | 1 | 0 | ✅ | — |
-| GcpCertManagerCert | 12 | 10 | 2 | 0 | 0 | ✅ | — |
-| GcpCertManagerDnsAuthorization | 8 | 6 | 2 | 0 | 0 | ✅ | — |
+| GcpCertManagerCert | 12 | 10 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCertManagerDnsAuthorization | 8 | 6 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCertificateMap | 14 | 4 | 9 | 1 | 0 | ✅ | — |
 | GcpCloudArmorPolicy | 61 | 10 | 51 | 0 | 0 | ✅ | — |
 | GcpCloudComposerEnvironment | 81 | 3 | 66 | 12 | 0 | ✅ | — |
@@ -108,7 +108,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpLogBucket | 59 | 38 | 17 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpLogMetric | 23 | 21 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpLoggingSink | 54 | 38 | 16 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpManagedSslCertificate | 6 | 2 | 3 | 1 | 0 | ✅ | — |
+| GcpManagedSslCertificate | 6 | 2 | 3 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpMemorystoreInstance | 38 | 29 | 7 | 2 | 0 | ✅ | — |
 | GcpMonitoringAlertPolicy | 70 | 68 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpMonitoringDashboard | 3 | 2 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
@@ -121,32 +121,32 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpPubSubSubscription | 44 | 41 | 3 | 0 | 0 | ✅ | — |
 | GcpPubSubTopic | 44 | 41 | 3 | 0 | 0 | ✅ | — |
 | GcpRedisInstance | 32 | 24 | 6 | 2 | 0 | ✅ | — |
-| GcpRegionNetworkEndpointGroup | 18 | 16 | 2 | 0 | 0 | ✅ | — |
+| GcpRegionNetworkEndpointGroup | 18 | 16 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpRouterNat | 54 | 28 | 21 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpSecretManagerSecret | 61 | 35 | 16 | 10 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpServerlessVpcConnector | 13 | 9 | 2 | 2 | 0 | ✅ | — |
+| GcpServerlessVpcConnector | 13 | 9 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpServiceAccount | 26 | 11 | 5 | 10 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpServiceAccountIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpServiceConnectionPolicy | 12 | 9 | 3 | 0 | 0 | ✅ | — |
-| GcpServiceNetworkingConnection | 5 | 5 | 0 | 0 | 0 | ✅ | — |
+| GcpServiceConnectionPolicy | 12 | 9 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpServiceNetworkingConnection | 5 | 5 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpSpannerBackupSchedule | 10 | 7 | 3 | 0 | 0 | ✅ | — |
 | GcpSpannerDatabase | 12 | 10 | 2 | 0 | 0 | ✅ | — |
 | GcpSpannerInstance | 28 | 21 | 7 | 0 | 0 | ✅ | — |
-| GcpSslCertificate | 19 | 9 | 4 | 6 | 0 | ✅ | — |
-| GcpSslPolicy | 17 | 13 | 4 | 0 | 0 | ✅ | — |
+| GcpSslCertificate | 19 | 9 | 4 | 6 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpSslPolicy | 17 | 13 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpSubnetwork | 29 | 22 | 7 | 0 | 0 | ✅ | — |
-| GcpTargetHttpProxy | 7 | 5 | 2 | 0 | 0 | ✅ | — |
-| GcpTargetHttpsProxy | 14 | 12 | 2 | 0 | 0 | ✅ | — |
+| GcpTargetHttpProxy | 7 | 5 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpTargetHttpsProxy | 14 | 12 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpUrlMap | 333 | 74 | 259 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpVertexAiDeployedIndex | 16 | 12 | 4 | 0 | 0 | ✅ | — |
 | GcpVertexAiEndpoint | 19 | 8 | 9 | 2 | 0 | ✅ | — |
 | GcpVertexAiIndex | 17 | 5 | 12 | 0 | 0 | ✅ | — |
 | GcpVertexAiIndexEndpoint | 13 | 10 | 3 | 0 | 0 | ✅ | — |
 | GcpVertexAiNotebook | 46 | 8 | 34 | 4 | 0 | ✅ | — |
-| GcpVpcNetwork | 17 | 10 | 6 | 1 | 0 | ✅ | — |
+| GcpVpcNetwork | 17 | 10 | 6 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpWorkflow | 15 | 10 | 4 | 1 | 0 | ✅ | — |
 | GcpWorkloadIdentityPool | 16 | 15 | 1 | 0 | 0 | ✅ | — |
-| GcpWorkloadIdentityPoolProvider | 16 | 15 | 1 | 0 | 0 | ✅ | — |
+| GcpWorkloadIdentityPoolProvider | 16 | 15 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 
 ## Breadth: every GA resource, one disposition
 

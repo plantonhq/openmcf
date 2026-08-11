@@ -873,6 +873,26 @@ first joins the harness, pre-enable its APIs on the test project once
 (`gcloud services enable <api> --project <test-project>`) before the first
 live run; from then on the in-module enablement carries every future run.
 
+**Fleet-backed managed services can fail on ZONAL CAPACITY, wearing an
+"internal error" mask:** a Serverless VPC Access connector create failed
+repeatedly with `Error code 13 ... VPC Access connector failed to get
+healthy. Please check GCE quotas, logs and org policies and recreate` while
+quotas, IAM, and org policies were all verified healthy. The truth was in
+the AUDIT LOG: every `v1.compute.instances.insert` for the connector's
+managed `aet-*` fleet failed with `ZONE_RESOURCE_POOL_EXHAUSTED` across
+us-central1-b/c/f — a GCP-side stockout of the zonal machine pools, hit for
+e2-micro AND e2-standard-4 in the same window, while the identical connector
+went READY in us-east1 minutes later. The diagnostic recipe: query Cloud
+Logging for `severity>=WARNING resource.type="gce_instance"` in the failure
+window and read the insert errors — never debug the module first. The fix
+is regional: a self-contained fixture chain (the connector's own VPC/subnet)
+moves to a quieter region; a chain shared with other kinds records the
+deferral with the stockout evidence instead. A failed connector also
+CASCADES: its dead fleet's auto-created `aet-*` firewalls and instance
+groups hold the VPC/subnetwork against deletion past the framework's
+6×60s teardown retries, so sweep connectors (state ERROR) FIRST, wait for
+GCP to reap the fleet, then delete subnets and networks.
+
 **Some GCP APIs require a quota project on user-credential calls:** the
 Identity Toolkit API (Identity Platform) rejects calls made with plain
 user ADC — 403 "requires a quota project, which is not set by default" —

@@ -2,7 +2,6 @@ package module
 
 import (
 	"github.com/pkg/errors"
-	gcpvpcnetworkv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpvpcnetwork/v1alpha1"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/compute"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
@@ -42,9 +41,13 @@ func vpc(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*compu
 		networkArgs.Project = pulumi.String(spec.ProjectId.GetValue())
 	}
 
-	if spec.GetRoutingMode() != gcpvpcnetworkv1alpha1.GcpVpcNetworkRoutingMode_REGIONAL {
-		networkArgs.RoutingMode = pulumi.StringPtr("GLOBAL")
-	}
+	// Sent explicitly on every apply (the attribute is Optional+Computed —
+	// the same class as always_compare_med below): omitting it on a
+	// GLOBAL→REGIONAL transition would silently keep GLOBAL on the live
+	// network, and the live API rejects a create whose routingConfig
+	// carries any BGP best-path field without routingMode ("Required field
+	// 'resource.routingConfig.routingMode' not specified").
+	networkArgs.RoutingMode = pulumi.String(spec.GetRoutingMode().String())
 
 	if spec.Description != "" {
 		networkArgs.Description = pulumi.StringPtr(spec.Description)

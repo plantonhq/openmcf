@@ -23,6 +23,13 @@ spec:
       name: planton-oss-e2e-gcpvpcnetwork-prereq
       fieldPath: status.outputs.network_self_link
   subnetworkName: planton-oss-e2e-vpcconn-subnet-${E2E_RUN_ID}
-  region: us-central1
+  # us-east1 deliberately (matching the connector scenarios): the connector's
+  # managed fleet draws from the shared-core zonal pools, and us-central1's
+  # pools stock out recurrently (ZONE_RESOURCE_POOL_EXHAUSTED across
+  # us-central1-b/c/f, observed live 2026-08-11 for e2-micro AND
+  # e2-standard-4 — the identical connector went READY in us-east1 minutes
+  # later). This chain is self-contained, so its region tracks capacity
+  # reliability, not the harness's default region.
+  region: us-east1
   ipCidrRange: 10.8.1.0/28
   description: Ephemeral /28 for the GcpServerlessVpcConnector subnet-placement E2E chain; safe to delete

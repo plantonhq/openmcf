@@ -59,20 +59,3 @@
 - key: catalog/azure/azurefrontdoorroute/e2e/scenarios/rule-set-attach.yaml|catalog/azure/azurefrontdoorroute/e2e/scenarios/rule-set-attach.yaml|origin_ids|AzureFrontDoorOrigin/planton-oss-e2e-fd-origin-prereq
   owner: azure-provider catalog maintainers
   note: consequence of the unloadable origin install profile above
-
-# ── GCP: GcpCertManagerCert sits in GcpTargetHttpsProxy's registry
-#    prerequisites but ships no install manifest (no e2e/prerequisite.yaml
-#    and no scenarios/minimal.yaml -- its only scenario is
-#    managed-dns-auth.yaml), so every chain through the https proxy fails to
-#    resolve. Owned by the proxy kinds' next proof pass: either publish an
-#    install profile for the cert or move the optional cert edge out of the
-#    registry prerequisites.
-- key: catalog/gcp/gcpglobalforwardingrule/e2e/scenarios/minimal.yaml|catalog/gcp/gcpglobalforwardingrule/e2e/scenarios/minimal.yaml||/
-  owner: gcp-provider catalog maintainers (global forwarding rule proof pass)
-  note: chain fails at the GcpCertManagerCert prerequisite via GcpTargetHttpsProxy
-- key: catalog/gcp/gcptargethttpsproxy/e2e/scenarios/hardened-frontend.yaml|catalog/gcp/gcptargethttpsproxy/e2e/scenarios/hardened-frontend.yaml||/
-  owner: gcp-provider catalog maintainers (target https proxy proof pass)
-  note: GcpCertManagerCert registry prerequisite has no install manifest
-- key: catalog/gcp/gcptargethttpsproxy/e2e/scenarios/minimal.yaml|catalog/gcp/gcptargethttpsproxy/e2e/scenarios/minimal.yaml||/
-  owner: gcp-provider catalog maintainers (target https proxy proof pass)
-  note: GcpCertManagerCert registry prerequisite has no install manifest

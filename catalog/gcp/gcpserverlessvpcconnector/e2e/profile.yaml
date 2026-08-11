@@ -8,8 +8,12 @@ spec:
   # slow for its size (~3-5 minutes each way — GCP builds and tears down a
   # managed instance fleet), so budget generously.
   tier: 1
-  # The prior proof predates this spec surface (deletion_policy) — the
-  # kind awaits live re-proof at the current shape.
-  status: pending_proof
-  validated_provisioners: []
+  # Proven live 2026-08-11 (both engines, both placement arms, idempotency
+  # gate) in us-east1 — the scenarios moved there after a live us-central1
+  # zonal-capacity stockout (ZONE_RESOURCE_POOL_EXHAUSTED for e2-micro AND
+  # e2-standard-4 across b/c/f; see the scenario comments and e2e/README.md).
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 45
