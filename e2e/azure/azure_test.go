@@ -232,6 +232,33 @@ func TestAzurePrivateDnsResolverVirtualNetworkLink_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureprivatednsresolvervirtualnetworklink", "terraform")
 }
 
+// --- Azure Private DNS Record (one A record in the fixture private zone -- the seven-payload union's live lane; the other six types are pure property writes on the same create path) ---
+
+func TestAzurePrivateDnsRecord_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsrecord", "pulumi")
+}
+func TestAzurePrivateDnsRecord_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsrecord", "terraform")
+}
+
+// --- Azure Traffic Manager Profile (global DNS traffic director; only a resource group beneath it -- fast, free at rest) ---
+
+func TestAzureTrafficManagerProfile_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuretrafficmanagerprofile", "pulumi")
+}
+func TestAzureTrafficManagerProfile_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuretrafficmanagerprofile", "terraform")
+}
+
+// --- Azure Traffic Manager Endpoint (composed: one external endpoint on the fixture profile -- the reference edge is the lane's proof point; endpoints are free at rest) ---
+
+func TestAzureTrafficManagerEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuretrafficmanagerendpoint", "pulumi")
+}
+func TestAzureTrafficManagerEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuretrafficmanagerendpoint", "terraform")
+}
+
 // --- Azure Application Security Group (empty micro-segmentation anchor in the fixture RG) ---
 
 func TestAzureApplicationSecurityGroup_Pulumi(t *testing.T) {

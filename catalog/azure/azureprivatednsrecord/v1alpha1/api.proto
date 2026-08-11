@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureprivatednsrecord.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureprivatednsrecord/v1alpha1/outputs.proto";
+import "catalog/azure/azureprivatednsrecord/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzurePrivateDnsRecord represents one DNS record set (A, AAAA, CNAME,
+// MX, PTR, SRV, or TXT) in an Azure Private DNS zone -- name resolution
+// visible only inside the virtual networks linked to the zone.
+message AzurePrivateDnsRecord {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzurePrivateDnsRecord'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzurePrivateDnsRecordSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzurePrivateDnsRecordStatus status = 5;
+}
+
+// AzurePrivateDnsRecordStatus represents the status of an Azure Private
+// DNS record deployment.
+message AzurePrivateDnsRecordStatus {
+  //stack-outputs
+  //  azure-private-dns-record stack-outputs
+  AzurePrivateDnsRecordStackOutputs outputs = 1;
+}

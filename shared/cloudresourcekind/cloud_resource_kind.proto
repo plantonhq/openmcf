@@ -2555,6 +2555,35 @@ enum CloudResourceKind {
     id_prefix: "azpdnsfrs"
     prerequisites: [AzurePrivateDnsResolver]
   }];
+  // AzurePrivateDnsZone is a prerequisite because every record set is
+  // created inside a referenced private DNS zone (the resource group
+  // chains transitively through the zone's own prerequisite).
+  AzurePrivateDnsRecord = 2188 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azpdnsrec"
+    prerequisites: [AzurePrivateDnsZone]
+  }];
+  // AzureResourceGroup is a prerequisite because a Traffic Manager
+  // profile is created inside a referenced resource group (the profile
+  // itself is a global service -- the group only holds its metadata
+  // record).
+  AzureTrafficManagerProfile = 2189 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "aztmprof"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureTrafficManagerProfile is a prerequisite because every
+  // endpoint is created inside a referenced profile -- it is the
+  // destination a profile steers traffic to (the resource group chains
+  // transitively through the profile's own prerequisite).
+  AzureTrafficManagerEndpoint = 2190 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "aztmep"
+    prerequisites: [AzureTrafficManagerProfile]
+  }];
   // Registers a storage account with a Recovery Services vault as a
   // backup container (.../protectionContainers/StorageContainer;...)
   // -- one registration per storage-account-and-vault pair, required

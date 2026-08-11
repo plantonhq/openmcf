@@ -80,7 +80,7 @@ spec:
 | `spec.serviceProviderName` | `string` |  |  |  |
 | `spec.peeringLocation` | `string` |  |  |  |
 | `spec.bandwidthInMbps` | `int32` |  |  |  |
-| `spec.expressRoutePortId` | `string` |  |  |  |
+| `spec.expressRoutePortId` | `string \| valueFrom` |  |  | AzureExpressRoutePort (`status.outputs.express_route_port_id`) |
 | `spec.bandwidthInGbps` | `double` |  |  |  |
 | `spec.rateLimitingEnabled` | `bool` |  |  |  |
 | `spec.allowClassicOperations` | `bool` |  |  |  |
@@ -189,10 +189,16 @@ provider's offered steps (50, 100, 200, 500, 1000, 2000, 5000,
 
 ### spec.expressRoutePortId
 
-`string`
+`string | valueFrom`
 
 EXPRESSROUTE DIRECT MODE: the ExpressRoute Port the circuit rides
-on, by ARM id. Requires bandwidth_in_gbps. Fixed at creation.
+on -- defaults to referencing an AzureExpressRoutePort's
+express_route_port_id output; pass the ARM id as a literal for a
+port managed outside Planton. Requires bandwidth_in_gbps. Fixed at
+creation.
+
+- references: AzureExpressRoutePort (`status.outputs.express_route_port_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureExpressRoutePort, name: <that resource's name>, fieldPath: status.outputs.express_route_port_id}} -- a bare string does not parse
 
 ### spec.bandwidthInGbps
 
@@ -288,6 +294,7 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.resourceGroup` | AzureResourceGroup | `status.outputs.resource_group_name` |
+| `spec.expressRoutePortId` | AzureExpressRoutePort | `status.outputs.express_route_port_id` |
 
 ## Referenced By
 

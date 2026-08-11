@@ -1,0 +1,42 @@
+# AzureTrafficManagerProfile install profile used as a prerequisite by
+# composed components (declared via prerequisites:
+# [AzureTrafficManagerProfile] in the kind registry). The E2E harness
+# deploys this document (via the profile's Pulumi module) after its own
+# prerequisite (the fixture resource group, whose name the
+# resource_group reference below addresses), and captures its outputs
+# -- traffic_manager_profile_id in particular -- for dependents'
+# references to resolve against (the endpoint component creates its
+# endpoints inside this profile). The profile is a bare fixture: any
+# endpoint a consumer needs, the consumer's own scenario provisions --
+# a component never mutates a resource it merely references.
+#
+# The DNS relative name lives in the GLOBAL trafficmanager.net
+# namespace; the org-prefixed name below collides only with this
+# suite's own leftovers, which the zero-orphan sweep prevents.
+# Weighted routing so consumer endpoints need no location or geo
+# claims; the TCP probe needs no path or status expectations.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureTrafficManagerProfile
+metadata:
+  name: planton-oss-e2e-azure-fixture-tmprof
+  id: planton-oss-e2e-azure-fixture-tmprof
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuretrafficmanagerprofile
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-fixture-tmprof
+  routingMethod: Weighted
+  dnsConfig:
+    relativeName: planton-oss-e2e-fixture-tmprof
+  monitorConfig:
+    protocol: TCP
+    port: 443

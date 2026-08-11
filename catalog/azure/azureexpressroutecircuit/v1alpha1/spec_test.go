@@ -59,7 +59,7 @@ var _ = ginkgo.Describe("AzureExpressRouteCircuitSpec Validation Tests", func() 
 				input.Spec.ServiceProviderName = ""
 				input.Spec.PeeringLocation = ""
 				input.Spec.BandwidthInMbps = 0
-				input.Spec.ExpressRoutePortId = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/expressRoutePorts/port1"
+				input.Spec.ExpressRoutePortId = literal("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/expressRoutePorts/port1")
 				input.Spec.BandwidthInGbps = 5
 				input.Spec.RateLimitingEnabled = true
 				err := protovalidate.Validate(input)
@@ -127,7 +127,7 @@ var _ = ginkgo.Describe("AzureExpressRouteCircuitSpec Validation Tests", func() 
 
 			ginkgo.It("should return a validation error when both provisioning modes are set", func() {
 				input := validResource()
-				input.Spec.ExpressRoutePortId = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/expressRoutePorts/port1"
+				input.Spec.ExpressRoutePortId = literal("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/expressRoutePorts/port1")
 				input.Spec.BandwidthInGbps = 5
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
@@ -168,7 +168,7 @@ var _ = ginkgo.Describe("AzureExpressRouteCircuitSpec Validation Tests", func() 
 				input.Spec.ServiceProviderName = ""
 				input.Spec.PeeringLocation = ""
 				input.Spec.BandwidthInMbps = 0
-				input.Spec.ExpressRoutePortId = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/expressRoutePorts/port1"
+				input.Spec.ExpressRoutePortId = literal("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/expressRoutePorts/port1")
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
@@ -176,7 +176,7 @@ var _ = ginkgo.Describe("AzureExpressRouteCircuitSpec Validation Tests", func() 
 			ginkgo.It("should return a validation error for provider fields on a Direct circuit", func() {
 				input := validResource()
 				input.Spec.ServiceProviderName = ""
-				input.Spec.ExpressRoutePortId = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/expressRoutePorts/port1"
+				input.Spec.ExpressRoutePortId = literal("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/expressRoutePorts/port1")
 				input.Spec.BandwidthInGbps = 5
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())

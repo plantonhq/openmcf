@@ -1,0 +1,30 @@
+# Minimal AzureTrafficManagerEndpoint scenario: one external endpoint
+# in the fixture Traffic Manager profile, addressed by reference (the
+# reference is the deploy-order edge; the fixture profile chains the
+# fixture resource group). The target is an RFC-5737 documentation
+# address -- ARM accepts any syntactically valid target; reachability
+# and probe health are data-plane concerns the lane does not exercise.
+# The fixture profile routes Weighted, so the endpoint needs no
+# location or geo claims. Endpoints are free at rest.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureTrafficManagerEndpoint
+metadata:
+  name: planton-oss-e2e-azuretrafficmanagerendpoint-smoke
+  id: planton-oss-e2e-azuretrafficmanagerendpoint-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuretrafficmanagerendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  profileId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-tmprof
+  name: planton-oss-e2e-tmep-smoke
+  external:
+    target:
+      value: "203.0.113.10"

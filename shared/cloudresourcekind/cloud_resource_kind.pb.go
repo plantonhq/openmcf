@@ -930,6 +930,20 @@ const (
 	// resource group and network chain transitively through the
 	// resolver's own prerequisite declarations.)
 	CloudResourceKind_AzurePrivateDnsResolverForwardingRuleset CloudResourceKind = 2187
+	// AzurePrivateDnsZone is a prerequisite because every record set is
+	// created inside a referenced private DNS zone (the resource group
+	// chains transitively through the zone's own prerequisite).
+	CloudResourceKind_AzurePrivateDnsRecord CloudResourceKind = 2188
+	// AzureResourceGroup is a prerequisite because a Traffic Manager
+	// profile is created inside a referenced resource group (the profile
+	// itself is a global service -- the group only holds its metadata
+	// record).
+	CloudResourceKind_AzureTrafficManagerProfile CloudResourceKind = 2189
+	// AzureTrafficManagerProfile is a prerequisite because every
+	// endpoint is created inside a referenced profile -- it is the
+	// destination a profile steers traffic to (the resource group chains
+	// transitively through the profile's own prerequisite).
+	CloudResourceKind_AzureTrafficManagerEndpoint CloudResourceKind = 2190
 	// Registers a storage account with a Recovery Services vault as a
 	// backup container (.../protectionContainers/StorageContainer;...)
 	// -- one registration per storage-account-and-vault pair, required
@@ -1732,6 +1746,9 @@ var (
 		2185:  "AzureNetworkWatcherFlowLog",
 		2186:  "AzurePrivateDnsResolver",
 		2187:  "AzurePrivateDnsResolverForwardingRuleset",
+		2188:  "AzurePrivateDnsRecord",
+		2189:  "AzureTrafficManagerProfile",
+		2190:  "AzureTrafficManagerEndpoint",
 		2213:  "AzureBackupContainerStorageAccount",
 		2214:  "AzureDataProtectionResourceGuard",
 		2215:  "AzurePrivateDnsResolverVirtualNetworkLink",
@@ -2394,6 +2411,9 @@ var (
 		"AzureNetworkWatcherFlowLog":                     2185,
 		"AzurePrivateDnsResolver":                        2186,
 		"AzurePrivateDnsResolverForwardingRuleset":       2187,
+		"AzurePrivateDnsRecord":                          2188,
+		"AzureTrafficManagerProfile":                     2189,
+		"AzureTrafficManagerEndpoint":                    2190,
 		"AzureBackupContainerStorageAccount":             2213,
 		"AzureDataProtectionResourceGuard":               2214,
 		"AzurePrivateDnsResolverVirtualNetworkLink":      2215,
@@ -3062,7 +3082,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*ħ\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x82\xa9\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3345,7 +3365,10 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x10AzureBastionHost\x10\x88\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\tazbastion:\x04\xdb\x0f\xdd\x0f\x12@\n" +
 	"\x1aAzureNetworkWatcherFlowLog\x10\x89\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazfwlog:\x04\xd6\x0f\xd9\x0f\x12=\n" +
 	"\x17AzurePrivateDnsResolver\x10\x8a\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazpdnsr:\x04\xd6\x0f\xdb\x0f\x12N\n" +
-	"(AzurePrivateDnsResolverForwardingRuleset\x10\x8b\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\tazpdnsfrs:\x02\x8a\x11\x12G\n" +
+	"(AzurePrivateDnsResolverForwardingRuleset\x10\x8b\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\tazpdnsfrs:\x02\x8a\x11\x12;\n" +
+	"\x15AzurePrivateDnsRecord\x10\x8c\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\tazpdnsrec:\x02\xdf\x0f\x12?\n" +
+	"\x1aAzureTrafficManagerProfile\x10\x8d\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\baztmprof:\x02\xd0\x0f\x12>\n" +
+	"\x1bAzureTrafficManagerEndpoint\x10\x8e\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06aztmep:\x02\x8d\x11\x12G\n" +
 	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +
 	" AzureDataProtectionResourceGuard\x10\xa6\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdprg:\x02\xd0\x0f\x12S\n" +
 	")AzurePrivateDnsResolverVirtualNetworkLink\x10\xa7\x11\x1a#\xa2\xf7\x04\x1f\b\r\x12\bv1alpha1\"\vazpdnsrlink:\x04\x8b\x11\xd6\x0f\x12:\n" +

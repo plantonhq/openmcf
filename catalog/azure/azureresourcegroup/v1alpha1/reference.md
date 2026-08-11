@@ -155,6 +155,7 @@ Fields on other kinds that can point at this resource:
 | AzureServiceBusNamespace | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureServicePlan | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureStorageAccount | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureTrafficManagerProfile | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureUserAssignedIdentity | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVirtualHub | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureVirtualMachine | `spec.resourceGroup` | `status.outputs.resource_group_name` |

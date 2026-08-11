@@ -191,6 +191,15 @@ spec:
     - terraform_type: azurerm_cognitive_deployment
       pulumi_type: azure:cognitive/deployment:Deployment
       id_format: "{deployment_id}"
+      # model.version is READ-AUGMENTED (live-proven): a version-unset
+      # config -- the track-the-service-default posture -- deploys
+      # whatever version ARM resolves, and the provider's read always
+      # writes that resolved version into state. A plan after import
+      # therefore proposes nulling model.version, a server-side no-op
+      # (the provider omits empty versions on write). Version-PINNED
+      # configs read back their pin and never consume this tolerance;
+      # drift on model.format/model.name still fails the oracle.
+      write_normalized_attributes: [model.version]
     - terraform_type: azurerm_cognitive_account_project
       pulumi_type: azure:cognitive/accountProject:AccountProject
       id_format: "{project_id}"
@@ -391,3 +400,50 @@ spec:
     - terraform_type: azurerm_private_dns_resolver_virtual_network_link
       pulumi_type: azure:privatedns/resolverVirtualNetworkLink:ResolverVirtualNetworkLink
       id_format: "{virtual_network_link_id}"
+
+    # --- Private DNS records ---------------------------------------------------
+    # One kind (AzurePrivateDnsRecord) covers seven variant resources;
+    # the record set's ARM ID carries the TYPE segment
+    # (.../privateDnsZones/{zone}/{TYPE}/{name}), so the same single-id
+    # shape serves every variant -- the importer validates the segment
+    # matches the resource's type.
+    - terraform_type: azurerm_private_dns_a_record
+      pulumi_type: azure:privatedns/aRecord:ARecord
+      id_format: "{record_id}"
+    - terraform_type: azurerm_private_dns_aaaa_record
+      pulumi_type: azure:privatedns/aAAARecord:AAAARecord
+      id_format: "{record_id}"
+    - terraform_type: azurerm_private_dns_cname_record
+      pulumi_type: azure:privatedns/cnameRecord:CnameRecord
+      id_format: "{record_id}"
+    - terraform_type: azurerm_private_dns_mx_record
+      pulumi_type: azure:privatedns/mxRecord:MxRecord
+      id_format: "{record_id}"
+    - terraform_type: azurerm_private_dns_ptr_record
+      pulumi_type: azure:privatedns/pTRRecord:PTRRecord
+      id_format: "{record_id}"
+    - terraform_type: azurerm_private_dns_srv_record
+      pulumi_type: azure:privatedns/sRVRecord:SRVRecord
+      id_format: "{record_id}"
+    - terraform_type: azurerm_private_dns_txt_record
+      pulumi_type: azure:privatedns/txtRecord:TxtRecord
+      id_format: "{record_id}"
+
+    # --- Traffic Manager -------------------------------------------------------
+    # Endpoints are profile children; one kind
+    # (AzureTrafficManagerEndpoint) covers the three variant resources,
+    # whose ARM IDs carry the TYPE segment
+    # ({profile_id}/{TYPE}/{name}) -- the same single-id shape serves
+    # every variant, and the importer validates the segment matches.
+    - terraform_type: azurerm_traffic_manager_profile
+      pulumi_type: azure:network/trafficManagerProfile:TrafficManagerProfile
+      id_format: "{traffic_manager_profile_id}"
+    - terraform_type: azurerm_traffic_manager_azure_endpoint
+      pulumi_type: azure:network/trafficManagerAzureEndpoint:TrafficManagerAzureEndpoint
+      id_format: "{endpoint_id}"
+    - terraform_type: azurerm_traffic_manager_external_endpoint
+      pulumi_type: azure:network/trafficManagerExternalEndpoint:TrafficManagerExternalEndpoint
+      id_format: "{endpoint_id}"
+    - terraform_type: azurerm_traffic_manager_nested_endpoint
+      pulumi_type: azure:network/trafficManagerNestedEndpoint:TrafficManagerNestedEndpoint
+      id_format: "{endpoint_id}"

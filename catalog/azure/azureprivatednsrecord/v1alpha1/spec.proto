@@ -1,0 +1,201 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureprivatednsrecord.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzurePrivateDnsRecordSpec** defines one record set in an Azure
+// PRIVATE DNS zone -- every value the zone answers for one (name, type)
+// pair, visible only inside the virtual networks linked to the zone.
+//
+// The record type is declared by which typed payload is present: set
+// exactly one of `a`, `aaaa`, `cname`, `mx`, `ptr`, `srv`, or `txt`.
+// Each payload carries the value shape DNS actually defines for that
+// type (MX entries are preference+exchange pairs, SRV entries are
+// priority/weight/port/target), so a record can never be declared with
+// a shape its type cannot hold. Private DNS supports exactly these
+// seven types -- there is no CAA (private names never face public
+// certificate authorities) and no NS (private zones cannot delegate
+// subdomains; create a separate zone per suffix instead). Unlike the
+// public AzureDnsRecord, there is no alias arm either -- the private
+// DNS service has no alias record concept; auto-registered VM records
+// are the service's own lifecycle mechanism, not a record type.
+//
+// **One record set per (name, type)**: Azure stores all values for a
+// (name, type) pair as one record set, so declare all of them in one
+// resource. A second AzurePrivateDnsRecord with the same name and type
+// in the same zone conflicts with this one rather than merging into it.
+message AzurePrivateDnsRecordSpec {
+  // The private DNS zone this record is created in, by ARM resource ID
+  // (.../providers/Microsoft.Network/privateDnsZones/{zone-name}) --
+  // defaults to referencing an AzurePrivateDnsZone's zone_id output;
+  // pass the full ID as a literal for a zone managed outside Planton.
+  // Changing it replaces the record.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef private_dns_zone_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePrivateDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // The record name, relative to the zone. Changing it replaces the
+  // record.
+  //   - "@" for the zone apex (the zone name itself -- the required
+  //     form for apex MX records)
+  //   - "db" for db.<zone-name>
+  //   - "api.v1" for api.v1.<zone-name>
+  //   - "*" or "*.app" for wildcards
+  //   - underscore-led service names: "_sip._tcp" (SRV service names)
+  string name = 2 [
+    (buf.validate.field).required = true,
+    // Regex: "@", "*", or dot-separated labels of letters, digits,
+    // hyphens, and underscores (1-63 chars each), optionally led by a
+    // "*." wildcard label. Underscores are legal and load-bearing in
+    // DNS record names (SRV service names, verification records).
+    (buf.validate.field).cel = {
+      id: "azure_private_dns_record_name_format"
+      message: "Record name must be '@' for the zone apex, '*' (optionally '*.<name>') for wildcards, or dot-separated labels of lowercase letters, digits, hyphens, and underscores -- e.g. db, api.v1, _sip._tcp"
+      expression: "this == '@' || this == '*' || this.matches('^(\\\\*\\\\.)?[_a-z0-9](?:[_a-z0-9-]{0,61}[_a-z0-9])?(?:\\\\.[_a-z0-9](?:[_a-z0-9-]{0,61}[_a-z0-9])?)*$')"
+    }
+  ];
+
+  // Time to live in seconds: how long resolvers may cache this record.
+  // Low TTLs (60-300) make changes visible quickly at the cost of more
+  // queries; long TTLs (3600+) suit stable records. Unspecified applies
+  // 300 (5 minutes) -- the modules always send the effective value
+  // explicitly.
+  optional int32 ttl_seconds = 3 [
+    (dev.planton.shared.options.default) = "300",
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 2147483647
+    }
+  ];
+
+  // Free-form tags applied to the record set (stored as ARM record-set
+  // metadata -- record sets carry no ARM tags proper), merged over the
+  // Planton-derived resource tags; a user tag with the same key wins.
+  // Updatable in place.
+  map<string, string> tags = 4;
+
+  // IPv4 addresses this name answers with; multiple addresses
+  // round-robin. Azure caps an A record set at 20 addresses. Set
+  // exactly one payload field on this spec.
+  repeated string a = 5 [
+    (buf.validate.field).repeated.max_items = 20,
+    (buf.validate.field).repeated.items.string.ipv4 = true
+  ];
+
+  // IPv6 addresses this name answers with (e.g. "2001:db8::1" -- Azure
+  // normalizes the compressed form); multiple addresses round-robin.
+  // Set exactly one payload field on this spec.
+  repeated string aaaa = 6 [(buf.validate.field).repeated.items.string.ipv6 = true];
+
+  // Canonical-name record: the hostname this name is an alias for (e.g.
+  // "db.internal.contoso.com"). A reference or a literal: reference
+  // another resource's hostname output when the target is minted at
+  // deploy time, pass a literal for known names. No kind dominates
+  // CNAME targets, so references declare their kind explicitly. DNS
+  // forbids CNAME at the zone apex. Set exactly one payload field on
+  // this spec.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cname = 7;
+
+  // Mail-exchange entries: one per mail server, each with its own
+  // preference. Private-zone MX records live at the zone apex in
+  // virtually every deployment -- set name to "@". Set exactly one
+  // payload field on this spec.
+  repeated AzurePrivateDnsMxEntry mx = 8;
+
+  // Pointer hostnames for reverse DNS (IP-to-name, in private
+  // in-addr.arpa / ip6.arpa zones). Set exactly one payload field on
+  // this spec.
+  repeated string ptr = 9 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 253
+  }];
+
+  // Service-locator entries (SIP, LDAP, Kerberos, ...). The record NAME
+  // carries the service and protocol ("_sip._tcp"). Set exactly one
+  // payload field on this spec.
+  repeated AzurePrivateDnsSrvEntry srv = 10;
+
+  // Text values (service discovery metadata, verification strings).
+  // Azure caps each value at 1,024 characters. Values are references or
+  // literals and may mix freely in one record set: reference another
+  // resource's output when the value is minted at deploy time, pass
+  // literals for everything hand-authored. No kind dominates TXT
+  // values, so references declare their kind explicitly. Set exactly
+  // one payload field on this spec.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef txt = 11;
+
+  // The record type is whichever payload is present -- requiring exactly
+  // one keeps a record from being declared with two types (Azure stores
+  // each type as its own record set) or with none.
+  option (buf.validate.message).cel = {
+    id: "azure_private_dns_record_exactly_one_payload"
+    message: "Set exactly one record payload -- a, aaaa, cname, mx, ptr, srv, or txt -- the payload determines the record type"
+    expression: "(this.a.size() > 0 ? 1 : 0) + (this.aaaa.size() > 0 ? 1 : 0) + (has(this.cname) ? 1 : 0) + (this.mx.size() > 0 ? 1 : 0) + (this.ptr.size() > 0 ? 1 : 0) + (this.srv.size() > 0 ? 1 : 0) + (this.txt.size() > 0 ? 1 : 0) == 1"
+  };
+}
+
+// One mail server in an MX record set.
+message AzurePrivateDnsMxEntry {
+  // Delivery preference: mail servers are tried lowest-preference
+  // first, equal preferences load-balance. Common convention: 10
+  // primary, 20 secondary. 0 is legal (and used by the "null MX"
+  // no-mail convention).
+  optional int32 preference = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 65535
+    }
+  ];
+
+  // The mail server hostname (e.g. "mail.internal.contoso.com").
+  string exchange = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253
+  ];
+}
+
+// One service endpoint in an SRV record set.
+message AzurePrivateDnsSrvEntry {
+  // Endpoint precedence: clients try lowest priority first. 0 is the
+  // conventional primary.
+  optional int32 priority = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 65535
+    }
+  ];
+
+  // Relative weight for load-balancing among endpoints of equal
+  // priority. 0 means "no preference" and is legal when only one
+  // endpoint exists at a priority.
+  optional int32 weight = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 65535
+    }
+  ];
+
+  // The TCP/UDP port the service listens on (e.g. 5060 for SIP).
+  optional int32 port = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  // The hostname providing the service (e.g. "sip.internal.contoso.com").
+  // Must be a hostname with its own A/AAAA record, never an IP address.
+  string target = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253
+  ];
+}

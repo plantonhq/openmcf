@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuretrafficmanagerendpoint.v1alpha1;
+
+// **AzureTrafficManagerEndpointStackOutputs** captures the outputs from
+// provisioning a Traffic Manager endpoint.
+message AzureTrafficManagerEndpointStackOutputs {
+  // The endpoint's ARM resource ID. Format:
+  // {profile_id}/{TYPE}/{name} where {TYPE} is AzureEndpoints,
+  // ExternalEndpoints, or NestedEndpoints per the spec's variant.
+  string endpoint_id = 1;
+
+  // The endpoint's name within its profile.
+  string endpoint_name = 2;
+}

@@ -42,7 +42,11 @@ func Resources(ctx *pulumi.Context, stackInput *azureexpressroutecircuitv1alpha1
 		circuitArgs.PeeringLocation = pulumi.String(spec.PeeringLocation)
 		circuitArgs.BandwidthInMbps = pulumi.Int(int(spec.BandwidthInMbps))
 	} else {
-		circuitArgs.ExpressRoutePortId = pulumi.String(spec.ExpressRoutePortId)
+		// The port reference is pre-resolved by the platform middleware;
+		// GetValue() is the resolved literal ARM id (an
+		// AzureExpressRoutePort's express_route_port_id output, or a
+		// literal for ports managed outside Planton).
+		circuitArgs.ExpressRoutePortId = pulumi.String(spec.ExpressRoutePortId.GetValue())
 		circuitArgs.BandwidthInGbps = pulumi.Float64(spec.BandwidthInGbps)
 	}
 

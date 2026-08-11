@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuretrafficmanagerprofile.v1alpha1;
+
+import "catalog/azure/azuretrafficmanagerprofile/v1alpha1/api.proto";
+import "catalog/azure/provider.proto";
+
+// AzureTrafficManagerProfileStackInput is the input to the IaC modules
+// (Pulumi/Terraform). It contains the target resource definition and
+// Azure provider credentials.
+message AzureTrafficManagerProfileStackInput {
+  // The Traffic Manager profile resource to deploy.
+  AzureTrafficManagerProfile target = 1;
+
+  // Azure provider configuration (credentials).
+  dev.planton.azure.AzureProviderConfig provider_config = 2;
+}

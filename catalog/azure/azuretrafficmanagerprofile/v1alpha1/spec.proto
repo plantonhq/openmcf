@@ -1,0 +1,249 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuretrafficmanagerprofile.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureTrafficManagerProfileSpec** defines a Traffic Manager profile
+// -- Azure's DNS-based traffic director. The profile owns a public DNS
+// name ({relative_name}.trafficmanager.net) and answers each lookup
+// with the address of one of its endpoints
+// (AzureTrafficManagerEndpoint), chosen by the routing method:
+// Performance (closest), Priority (failover order), Weighted
+// (proportional spread), Geographic (by the caller's region), Subnet
+// (by the caller's source IP), or MultiValue (all healthy addresses at
+// once). Because the steering happens in DNS, Traffic Manager fronts
+// anything with a resolvable address -- across regions, clouds, and
+// on-premises -- and is not in the data path.
+//
+// Traffic Manager is a GLOBAL service: a profile lives in no Azure
+// region (its resource group's region is just where the metadata
+// record sits). This is why this spec omits the `region` field that
+// other Azure resources include.
+//
+// The profile continuously health-probes every endpoint per
+// monitor_config and only answers with healthy ones. Endpoint objects
+// are separate resources (AzureTrafficManagerEndpoint) referencing
+// this profile -- one profile serves many endpoints.
+message AzureTrafficManagerProfileSpec {
+  // The Azure resource group the profile's metadata record lives in
+  // (the profile itself is global). Can be a literal resource-group
+  // name or a reference to an AzureResourceGroup's name output.
+  // Changing it replaces the profile.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The profile's resource name, unique within the resource group.
+  // Changing the name replaces the profile. (The DNS name users
+  // resolve is dns_config.relative_name, not this.)
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How lookups are answered. Updatable in place -- switching methods
+  // re-steers traffic without touching endpoints.
+  //   - "Performance": the endpoint with the lowest network latency to
+  //     the caller.
+  //   - "Priority": the healthy endpoint with the lowest priority
+  //     value (active/passive failover).
+  //   - "Weighted": endpoints in proportion to their weight values.
+  //   - "Geographic": the endpoint whose geo_mappings claim the
+  //     caller's region (every region used must be claimed by exactly
+  //     one endpoint).
+  //   - "Subnet": the endpoint whose subnets claim the caller's source
+  //     IP.
+  //   - "MultiValue": ALL healthy endpoint addresses in one answer
+  //     (max_return caps how many; endpoints must be external IPv4/
+  //     IPv6 addresses).
+  string routing_method = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Performance",
+        "Priority",
+        "Weighted",
+        "Geographic",
+        "Subnet",
+        "MultiValue"
+      ]
+    }
+  ];
+
+  // The profile's DNS identity: the name it answers on and how long
+  // resolvers may cache the answer.
+  AzureTrafficManagerDnsConfig dns_config = 4 [(buf.validate.field).required = true];
+
+  // How the profile health-probes its endpoints. Only healthy
+  // endpoints enter DNS answers.
+  AzureTrafficManagerMonitorConfig monitor_config = 5 [(buf.validate.field).required = true];
+
+  // Whether the profile answers queries. Unspecified applies true, the
+  // provider's default -- set false to park the profile (its DNS name
+  // stops resolving to endpoints) without deleting it. Updatable in
+  // place.
+  optional bool enabled = 6 [(dev.planton.shared.options.default) = "true"];
+
+  // For MultiValue routing only: the maximum number of healthy
+  // endpoint addresses returned in one DNS answer (1-8). REQUIRED when
+  // routing_method is "MultiValue" -- the provider rejects a
+  // MultiValue profile without it.
+  optional int32 max_return = 7 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 8
+  }];
+
+  // Enables Traffic View: Azure aggregates the profile's DNS query
+  // patterns into per-region latency and volume analytics (billed per
+  // million queries processed). Off by default.
+  bool traffic_view_enabled = 8;
+
+  // Free-form tags applied to the profile, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins. Updatable in place.
+  map<string, string> tags = 9;
+
+  // The provider rejects a MultiValue profile without max_return at
+  // apply time -- front-loaded here so manifests fail at validation.
+  option (buf.validate.message).cel = {
+    id: "azure_traffic_manager_multivalue_requires_max_return"
+    message: "MultiValue routing requires max_return (1-8) -- the number of healthy addresses returned per answer"
+    expression: "this.routing_method != 'MultiValue' || has(this.max_return)"
+  };
+}
+
+// The profile's DNS identity.
+message AzureTrafficManagerDnsConfig {
+  // The DNS label the profile answers on: {relative_name}
+  // .trafficmanager.net. Globally unique across ALL of Azure (the
+  // trafficmanager.net namespace is shared) -- Azure rejects a taken
+  // name at apply time. Changing it replaces the profile. Point your
+  // own domain at the profile with a CNAME to this generated name.
+  string relative_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Time to live in seconds for the profile's DNS answers: how long
+  // resolvers cache an answer -- and therefore how long clients keep
+  // using an endpoint after Traffic Manager stops handing it out. Low
+  // TTLs (30-120) make failover visible quickly at the cost of more
+  // queries (queries are the billing meter). Unspecified applies 60,
+  // the Azure portal's own default -- the modules always send the
+  // effective value explicitly.
+  optional int32 ttl_seconds = 2 [
+    (dev.planton.shared.options.default) = "60",
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 2147483647
+    }
+  ];
+}
+
+// How the profile health-probes its endpoints. Unhealthy endpoints
+// leave DNS answers until they recover.
+message AzureTrafficManagerMonitorConfig {
+  // The probe protocol. HTTP/HTTPS probe path and expect a status in
+  // expected_status_code_ranges (or 200 when unset); TCP considers a
+  // completed handshake healthy.
+  string protocol = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "HTTP",
+        "HTTPS",
+        "TCP"
+      ]
+    }
+  ];
+
+  // The port probed on each endpoint (e.g. 443 for HTTPS).
+  optional int32 port = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  // The path probed on HTTP/HTTPS (e.g. "/healthz"). Meaningless for
+  // TCP probes. Unset probes "/".
+  string path = 3;
+
+  // Seconds between probes of each endpoint. Azure offers exactly two
+  // cadences: 30 (the default, included in the profile price) and 10
+  // (fast interval, billed extra per endpoint). Unspecified applies
+  // 30 -- the modules always send the effective value explicitly.
+  optional int32 interval_in_seconds = 4 [
+    (dev.planton.shared.options.default) = "30",
+    (buf.validate.field).int32 = {
+      in: [
+        10,
+        30
+      ]
+    }
+  ];
+
+  // Seconds a probe waits for a response before counting a failure.
+  // 5-10 with the 30-second interval; the 10-second fast interval
+  // narrows it to 5-9 (set it explicitly then -- the 10 default no
+  // longer fits). Unspecified applies 10 -- the modules always send
+  // the effective value explicitly.
+  optional int32 timeout_in_seconds = 5 [
+    (dev.planton.shared.options.default) = "10",
+    (buf.validate.field).int32 = {
+      gte: 5
+      lte: 10
+    }
+  ];
+
+  // Consecutive probe failures before an endpoint is marked degraded
+  // and leaves DNS answers. 0 degrades on the first failure.
+  // Unspecified applies 3 -- the modules always send the effective
+  // value explicitly.
+  optional int32 tolerated_number_of_failures = 6 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 9
+    }
+  ];
+
+  // HTTP status ranges counted healthy, each as "min-max" (e.g.
+  // "200-299", "301-301"). Unset expects exactly 200. HTTP/HTTPS only.
+  repeated string expected_status_code_ranges = 7 [(buf.validate.field).repeated.items.string.pattern = "^[0-9]{3}-[0-9]{3}$"];
+
+  // Headers sent with every HTTP/HTTPS probe (e.g. a Host header for
+  // name-based virtual hosting). Endpoints can override per-endpoint.
+  repeated AzureTrafficManagerCustomHeader custom_headers = 8;
+
+  // The provider rejects interval 10 + timeout 10 at apply time (the
+  // fast interval narrows the timeout window to 5-9) -- front-loaded
+  // here. Unset timeout reads 0 in CEL, so the rule also forces an
+  // explicit timeout under the fast interval.
+  option (buf.validate.message).cel = {
+    id: "azure_traffic_manager_fast_interval_timeout"
+    message: "With interval_in_seconds 10 (fast interval), set timeout_in_seconds explicitly to 5-9 -- the default 10 does not fit inside the probe window"
+    expression: "this.interval_in_seconds != 10 || (this.timeout_in_seconds >= 5 && this.timeout_in_seconds <= 9)"
+  };
+}
+
+// One header sent with health probes.
+message AzureTrafficManagerCustomHeader {
+  // The header name (e.g. "Host").
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The header value.
+  string value = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}

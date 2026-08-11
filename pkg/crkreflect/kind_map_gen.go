@@ -264,6 +264,7 @@ import (
 	azurenetworkwatcherflowlogv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworkwatcherflowlog/v1alpha1"
 	azurepointtositevpngatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepointtositevpngateway/v1alpha1"
 	azurepostgresqlflexibleserverv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepostgresqlflexibleserver/v1alpha1"
+	azureprivatednsrecordv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednsrecord/v1alpha1"
 	azureprivatednsresolverv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednsresolver/v1alpha1"
 	azureprivatednsresolverforwardingrulesetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednsresolverforwardingruleset/v1alpha1"
 	azureprivatednsresolvervirtualnetworklinkv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednsresolvervirtualnetworklink/v1alpha1"
@@ -300,6 +301,8 @@ import (
 	azurestoragesharev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurestorageshare/v1alpha1"
 	azurestoragetablev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurestoragetable/v1alpha1"
 	azuresubnetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuresubnet/v1alpha1"
+	azuretrafficmanagerendpointv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuretrafficmanagerendpoint/v1alpha1"
+	azuretrafficmanagerprofilev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuretrafficmanagerprofile/v1alpha1"
 	azureuserassignedidentityv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureuserassignedidentity/v1alpha1"
 	azurevirtualhubv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualhub/v1alpha1"
 	azurevirtualhubconnectionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualhubconnection/v1alpha1"
@@ -953,6 +956,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureNetworkWatcherFlowLog:                     &azurenetworkwatcherflowlogv1alpha1.AzureNetworkWatcherFlowLog{},
 	cloudresourcekind.CloudResourceKind_AzurePointToSiteVpnGateway:                     &azurepointtositevpngatewayv1alpha1.AzurePointToSiteVpnGateway{},
 	cloudresourcekind.CloudResourceKind_AzurePostgresqlFlexibleServer:                  &azurepostgresqlflexibleserverv1alpha1.AzurePostgresqlFlexibleServer{},
+	cloudresourcekind.CloudResourceKind_AzurePrivateDnsRecord:                          &azureprivatednsrecordv1alpha1.AzurePrivateDnsRecord{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsResolver:                        &azureprivatednsresolverv1alpha1.AzurePrivateDnsResolver{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsResolverForwardingRuleset:       &azureprivatednsresolverforwardingrulesetv1alpha1.AzurePrivateDnsResolverForwardingRuleset{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsResolverVirtualNetworkLink:      &azureprivatednsresolvervirtualnetworklinkv1alpha1.AzurePrivateDnsResolverVirtualNetworkLink{},
@@ -989,6 +993,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureStorageShare:                              &azurestoragesharev1alpha1.AzureStorageShare{},
 	cloudresourcekind.CloudResourceKind_AzureStorageTable:                              &azurestoragetablev1alpha1.AzureStorageTable{},
 	cloudresourcekind.CloudResourceKind_AzureSubnet:                                    &azuresubnetv1alpha1.AzureSubnet{},
+	cloudresourcekind.CloudResourceKind_AzureTrafficManagerEndpoint:                    &azuretrafficmanagerendpointv1alpha1.AzureTrafficManagerEndpoint{},
+	cloudresourcekind.CloudResourceKind_AzureTrafficManagerProfile:                     &azuretrafficmanagerprofilev1alpha1.AzureTrafficManagerProfile{},
 	cloudresourcekind.CloudResourceKind_AzureUserAssignedIdentity:                      &azureuserassignedidentityv1alpha1.AzureUserAssignedIdentity{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualHub:                                &azurevirtualhubv1alpha1.AzureVirtualHub{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualHubConnection:                      &azurevirtualhubconnectionv1alpha1.AzureVirtualHubConnection{},
