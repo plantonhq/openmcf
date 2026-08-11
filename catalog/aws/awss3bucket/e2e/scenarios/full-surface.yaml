@@ -12,9 +12,18 @@
 #
 # Deliberately not composed here: replication (needs a second versioned
 # bucket + an IAM role with replicate permissions -- a cross-region cost
-# with no additional module surface beyond what the offline gate proves)
-# and Object Lock (irreversible bucket mode; retention windows outlive the
-# lane). forceDestroy lets teardown remove versioned objects cleanly.
+# with no additional module surface beyond what the offline gate proves),
+# Object Lock (irreversible bucket mode; retention windows outlive the
+# lane), and the S3 Metadata configuration (the provider schema's own
+# create timeout is 30 minutes against this profile's 15-minute lane
+# budget -- proven offline via the canonical manifest and the
+# 04-governed-data-lake preset, never silently skipped). forceDestroy
+# lets teardown remove versioned objects cleanly.
+#
+# Free arms added by the depth closure: ABAC, a storage-class-analysis
+# configuration, a self-delivered inventory configuration (bucket ARNs are
+# name-derived literals), a request-metrics configuration, a blocked
+# SSE-C posture, and a day-zero INTELLIGENT_TIERING transition.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
@@ -36,6 +45,10 @@ spec:
   encryption:
     sseAlgorithm: aws:kms
     bucketKeyEnabled: true
+    # Free arm: refuse customer-provided-key uploads (states the March-2026
+    # AWS default posture explicitly).
+    blockedEncryptionTypes:
+      - SSE-C
   policy:
     Version: "2012-10-17"
     Statement:
@@ -69,6 +82,15 @@ spec:
         noncurrentDays: 30
         newerNoncurrentVersions: 2
       abortIncompleteMultipartUploadDays: 7
+    # Free arm: day-zero transition -- objects under ingest/ enter
+    # INTELLIGENT_TIERING on the day they are uploaded (the presence-typed
+    # days field's explicit 0).
+    - id: tier-at-ingest
+      filter:
+        prefix: ingest/
+      transitions:
+        - days: 0
+          storageClass: INTELLIGENT_TIERING
   website:
     indexDocumentSuffix: index.html
     errorDocumentKey: error.html
@@ -85,3 +107,30 @@ spec:
       tiers:
         - accessTier: ARCHIVE_ACCESS
           days: 90
+  # Free arm: attribute-based access control (tag-based authorization).
+  abacStatus: Enabled
+  # Free arm: storage-class analysis observing the logs/ prefix (no export
+  # -- findings in the console only; the export arm is proven offline via
+  # the canonical manifest and preset).
+  analyticsConfigurations:
+    - name: log-access-analysis
+      filterPrefix: logs/
+  # Free arm: self-delivered inventory (the bucket's own ARN is a
+  # name-derived literal; delivery needs a bucket policy in production,
+  # but the configuration itself creates and verifies without one).
+  inventoryConfigurations:
+    - name: weekly-audit
+      includedObjectVersions: All
+      frequency: Weekly
+      optionalFields:
+        - Size
+        - EncryptionStatus
+      destination:
+        bucketArn:
+          value: arn:aws:s3:::planton-oss-e2e-awss3bucket-full
+        format: CSV
+        prefix: inventory/
+  # Free arm: CloudWatch request metrics scoped to the logs/ prefix.
+  metricsConfigurations:
+    - name: log-requests
+      filterPrefix: logs/

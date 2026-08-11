@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 235 |
-| Spec fields authored across all kinds | 4264 |
+| Distinct provider resources consumed | 240 |
+| Spec fields authored across all kinds | 4296 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**49 of 112 kinds are at total accounting; 76 proven live.**
+**50 of 112 kinds are at total accounting; 75 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -143,7 +143,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsRoute53DnsRecord | 25 | 7 | 0 | 0 | 36 | ❌ | ✅ pulumi, terraform |
 | AwsRoute53HealthCheck | 23 | 17 | 0 | 0 | 9 | ❌ | ✅ pulumi, terraform |
 | AwsRoute53Zone | 17 | 4 | 0 | 0 | 20 | ❌ | ✅ pulumi, terraform |
-| AwsS3Bucket | 163 | 23 | 0 | 0 | 228 | ❌ | ✅ pulumi, terraform |
+| AwsS3Bucket | 204 | 24 | 102 | 78 | 0 | ✅ | — |
 | AwsS3ObjectSet | 28 | 3 | 0 | 0 | 46 | ❌ | ✅ pulumi, terraform |
 | AwsSagemakerDomain | 159 | 93 | 0 | 0 | 126 | ❌ | ✅ pulumi, terraform |
 | AwsSecurityGroup | 10 | 4 | 0 | 0 | 26 | ❌ | ✅ pulumi, terraform |
@@ -170,10 +170,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 235 | consumed by a kind's Terraform module today |
+| Modeled | 240 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 5 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 797 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 792 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 525 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -183,7 +183,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (235)
+### Modeled (240)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -379,12 +379,17 @@ rather than trusted.
 | `aws_route_table` | consumed by AwsSubnet |
 | `aws_route_table_association` | consumed by AwsSubnet |
 | `aws_s3_bucket` | consumed by AwsS3Bucket |
+| `aws_s3_bucket_abac` | consumed by AwsS3Bucket |
 | `aws_s3_bucket_accelerate_configuration` | consumed by AwsS3Bucket |
 | `aws_s3_bucket_acl` | consumed by AwsS3Bucket |
+| `aws_s3_bucket_analytics_configuration` | consumed by AwsS3Bucket |
 | `aws_s3_bucket_cors_configuration` | consumed by AwsS3Bucket |
 | `aws_s3_bucket_intelligent_tiering_configuration` | consumed by AwsS3Bucket |
+| `aws_s3_bucket_inventory` | consumed by AwsS3Bucket |
 | `aws_s3_bucket_lifecycle_configuration` | consumed by AwsS3Bucket |
 | `aws_s3_bucket_logging` | consumed by AwsS3Bucket |
+| `aws_s3_bucket_metadata_configuration` | consumed by AwsS3Bucket |
+| `aws_s3_bucket_metric` | consumed by AwsS3Bucket |
 | `aws_s3_bucket_notification` | consumed by AwsS3Bucket |
 | `aws_s3_bucket_object_lock_configuration` | consumed by AwsS3Bucket |
 | `aws_s3_bucket_ownership_controls` | consumed by AwsS3Bucket |
@@ -433,7 +438,7 @@ rather than trusted.
 | `aws_kms_key_policy` | covered by AwsKmsKey spec.policy -- the standalone resource is the detached-management pattern for keys owned elsewhere |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
 
-### Planned (797)
+### Planned (792)
 
 | Resource | Recorded reason |
 |---|---|
@@ -996,11 +1001,6 @@ rather than trusted.
 | `aws_route53domains_registered_domain` | judged as a planned AwsRoute53Domain kind (registered domains, delegation signer records) |
 | `aws_s3_access_point` | judged as a planned AwsS3AccessPoint kind |
 | `aws_s3_account_public_access_block` | judged as a planned AwsS3AccountPublicAccessBlock kind |
-| `aws_s3_bucket_abac` | bucket companion surface (ABAC, analytics, inventory, metadata, metrics configurations); folds into the existing AwsS3Bucket kind as its spec deepens |
-| `aws_s3_bucket_analytics_configuration` | bucket companion surface (ABAC, analytics, inventory, metadata, metrics configurations); folds into the existing AwsS3Bucket kind as its spec deepens |
-| `aws_s3_bucket_inventory` | bucket companion surface (ABAC, analytics, inventory, metadata, metrics configurations); folds into the existing AwsS3Bucket kind as its spec deepens |
-| `aws_s3_bucket_metadata_configuration` | bucket companion surface (ABAC, analytics, inventory, metadata, metrics configurations); folds into the existing AwsS3Bucket kind as its spec deepens |
-| `aws_s3_bucket_metric` | bucket companion surface (ABAC, analytics, inventory, metadata, metrics configurations); folds into the existing AwsS3Bucket kind as its spec deepens |
 | `aws_s3_directory_bucket` | judged as a planned AwsS3DirectoryBucket kind (S3 Express One Zone) |
 | `aws_s3_object_copy` | object copies fold into the existing AwsS3ObjectSet kind as its spec deepens |
 | `aws_s3control_access_grant` | judged as a planned AwsS3AccessGrants kind (instances, locations, grants, policies) |

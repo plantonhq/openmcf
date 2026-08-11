@@ -46,11 +46,61 @@ spec:
   versioningStatus: Enabled
   encryption:
     sseAlgorithm: AES256
+    # Refuse customer-provided-key uploads (states the March-2026 AWS
+    # default posture explicitly).
+    blockedEncryptionTypes:
+      - SSE-C
   lifecycleRules:
     - id: prune-noncurrent
       noncurrentVersionExpiration:
         noncurrentDays: 30
       abortIncompleteMultipartUploadDays: 7
+    # Day-zero transition: objects under ingest/ enter INTELLIGENT_TIERING
+    # on the day they are uploaded.
+    - id: tier-at-ingest
+      filter:
+        prefix: ingest/
+      transitions:
+        - days: 0
+          storageClass: INTELLIGENT_TIERING
+  # Attribute-based access control: authorize by principal tags vs bucket tags.
+  abacStatus: Enabled
+  # Storage-class analysis with a daily CSV export delivered to this bucket
+  # itself (S3 bucket ARNs are name-derived, so the self-ARN is a literal).
+  analyticsConfigurations:
+    - name: hot-data-analysis
+      filterPrefix: data/
+      export:
+        bucketArn:
+          value: arn:aws:s3:::awss3bucket-demo
+        prefix: analytics/
+  # Weekly inventory report of every object version, delivered to this
+  # bucket itself.
+  inventoryConfigurations:
+    - name: weekly-audit
+      includedObjectVersions: All
+      frequency: Weekly
+      optionalFields:
+        - Size
+        - EncryptionStatus
+        - ReplicationStatus
+      destination:
+        bucketArn:
+          value: arn:aws:s3:::awss3bucket-demo
+        format: Parquet
+        prefix: inventory/
+  # CloudWatch request metrics for the hot data prefix.
+  metricsConfigurations:
+    - name: hot-data-requests
+      filterPrefix: data/
+  # S3 Metadata: queryable Iceberg tables of this bucket's objects — the
+  # change journal (expiring records after 90 days) plus the live
+  # inventory table.
+  metadataConfiguration:
+    inventoryTableEnabled: true
+    journalRecordExpiration:
+      enabled: true
+      days: 90
   forceDestroy: true
 ```
 
@@ -61,11 +111,13 @@ spec:
 | `spec.region` | `string` | yes |  |  |
 | `spec.forceDestroy` | `bool` |  |  |  |
 | `spec.objectLockEnabled` | `bool` |  |  |  |
+| `spec.bucketNamespace` | `string` |  |  |  |
 | `spec.versioningStatus` | `string` |  |  |  |
 | `spec.encryption` | `AwsS3BucketEncryption` |  |  |  |
 | `spec.encryption.sseAlgorithm` | `string` |  |  |  |
 | `spec.encryption.kmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.encryption.bucketKeyEnabled` | `bool` |  |  |  |
+| `spec.encryption.blockedEncryptionTypes` | `[]string` |  |  |  |
 | `spec.publicAccessBlock` | `AwsS3BucketPublicAccessBlock` |  |  |  |
 | `spec.publicAccessBlock.blockPublicAcls` | `bool` |  |  |  |
 | `spec.publicAccessBlock.blockPublicPolicy` | `bool` |  |  |  |
@@ -178,6 +230,45 @@ spec:
 | `spec.intelligentTieringConfigurations[].tiers` | `[]AwsS3BucketIntelligentTieringTier` | yes |  |  |
 | `spec.intelligentTieringConfigurations[].tiers[].accessTier` | `string` | yes |  |  |
 | `spec.intelligentTieringConfigurations[].tiers[].days` | `int32` |  |  |  |
+| `spec.abacStatus` | `string` |  |  |  |
+| `spec.analyticsConfigurations` | `[]AwsS3BucketAnalyticsConfiguration` |  |  |  |
+| `spec.analyticsConfigurations[].name` | `string` | yes |  |  |
+| `spec.analyticsConfigurations[].filterPrefix` | `string` |  |  |  |
+| `spec.analyticsConfigurations[].filterTags` | `map<string, string>` |  |  |  |
+| `spec.analyticsConfigurations[].export` | `AwsS3BucketAnalyticsExport` |  |  |  |
+| `spec.analyticsConfigurations[].export.bucketArn` | `string \| valueFrom` | yes |  | AwsS3Bucket (`status.outputs.bucket_arn`) |
+| `spec.analyticsConfigurations[].export.bucketAccountId` | `string` |  |  |  |
+| `spec.analyticsConfigurations[].export.prefix` | `string` |  |  |  |
+| `spec.inventoryConfigurations` | `[]AwsS3BucketInventoryConfiguration` |  |  |  |
+| `spec.inventoryConfigurations[].name` | `string` | yes |  |  |
+| `spec.inventoryConfigurations[].disabled` | `bool` |  |  |  |
+| `spec.inventoryConfigurations[].includedObjectVersions` | `string` | yes |  |  |
+| `spec.inventoryConfigurations[].frequency` | `string` | yes |  |  |
+| `spec.inventoryConfigurations[].optionalFields` | `[]string` |  |  |  |
+| `spec.inventoryConfigurations[].filterPrefix` | `string` |  |  |  |
+| `spec.inventoryConfigurations[].destination` | `AwsS3BucketInventoryDestination` | yes |  |  |
+| `spec.inventoryConfigurations[].destination.bucketArn` | `string \| valueFrom` | yes |  | AwsS3Bucket (`status.outputs.bucket_arn`) |
+| `spec.inventoryConfigurations[].destination.format` | `string` | yes |  |  |
+| `spec.inventoryConfigurations[].destination.accountId` | `string` |  |  |  |
+| `spec.inventoryConfigurations[].destination.prefix` | `string` |  |  |  |
+| `spec.inventoryConfigurations[].destination.sseKmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
+| `spec.inventoryConfigurations[].destination.sseS3` | `bool` |  |  |  |
+| `spec.metricsConfigurations` | `[]AwsS3BucketMetricsConfiguration` |  |  |  |
+| `spec.metricsConfigurations[].name` | `string` | yes |  |  |
+| `spec.metricsConfigurations[].filterAccessPointArn` | `string` |  |  |  |
+| `spec.metricsConfigurations[].filterPrefix` | `string` |  |  |  |
+| `spec.metricsConfigurations[].filterTags` | `map<string, string>` |  |  |  |
+| `spec.metadataConfiguration` | `AwsS3BucketMetadataConfiguration` |  |  |  |
+| `spec.metadataConfiguration.inventoryTableEnabled` | `bool` |  |  |  |
+| `spec.metadataConfiguration.inventoryTableEncryption` | `AwsS3BucketMetadataTableEncryption` |  |  |  |
+| `spec.metadataConfiguration.inventoryTableEncryption.sseAlgorithm` | `string` | yes |  |  |
+| `spec.metadataConfiguration.inventoryTableEncryption.kmsKeyArn` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
+| `spec.metadataConfiguration.journalRecordExpiration` | `AwsS3BucketMetadataJournalRecordExpiration` | yes |  |  |
+| `spec.metadataConfiguration.journalRecordExpiration.enabled` | `bool` |  |  |  |
+| `spec.metadataConfiguration.journalRecordExpiration.days` | `int32` |  |  |  |
+| `spec.metadataConfiguration.journalTableEncryption` | `AwsS3BucketMetadataTableEncryption` |  |  |  |
+| `spec.metadataConfiguration.journalTableEncryption.sseAlgorithm` | `string` | yes |  |  |
+| `spec.metadataConfiguration.journalTableEncryption.kmsKeyArn` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 
 ## Field Details
 
@@ -207,6 +298,12 @@ Cannot be changed after creation and requires versioning. Enabling the
 flag alone only makes the bucket lock-capable; pair it with
 `object_lock_default_retention` to apply a default retention window to
 every new object.
+
+### spec.bucketNamespace
+
+`string`
+
+- rule: bucket_namespace must be one of: account-regional, global
 
 ### spec.versioningStatus
 
@@ -268,6 +365,12 @@ derived from the KMS key and reused for objects, cutting KMS API calls
 by up to 99% on KMS-encrypted buckets. Recommended whenever SSE-KMS is
 in use; no effect under AES256.
 
+### spec.encryption.blockedEncryptionTypes
+
+`[]string`
+
+- rule: {"repeated":{"items":{"cel":[{"id":"blocked_encryption_type_valid","message":"blocked_encryption_types entries must be one of: NONE, SSE-C","expression":"this == 'NONE' || this == 'SSE-C'"}]}}}
+
 ### spec.publicAccessBlock
 
 `AwsS3BucketPublicAccessBlock`
@@ -326,7 +429,7 @@ re-enables ACLs (BucketOwnerPreferred or ObjectWriter) — enforced by
 validation. Prefer bucket policies over ACLs; this exists for legacy
 integrations (e.g. "log-delivery-write" for classic log delivery).
 
-- rule: acl must be a canned ACL: private, public-read, public-read-write, authenticated-read, log-delivery-write
+- rule: acl must be a canned ACL: private, public-read, public-read-write, authenticated-read, aws-exec-read, log-delivery-write
 
 ### spec.policy
 
@@ -428,7 +531,7 @@ target class and when to move.
 
 ### spec.lifecycleRules[].transitions[].days
 
-`int32`
+`int32` · optional (explicit presence)
 
 Days after object creation to transition. Mutually exclusive with `date`.
 
@@ -659,7 +762,7 @@ same-account.
 
 Storage class for replicas. Empty keeps each source object's class.
 
-- rule: storage_class must be one of: STANDARD, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE, REDUCED_REDUNDANCY
+- rule: storage_class must be one of: STANDARD, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE, REDUCED_REDUNDANCY, EXPRESS_ONEZONE, OUTPOSTS, SNOW, FSX_ONTAP
 
 ### spec.replication.rules[].destination.changeReplicaOwnershipToDestination
 
@@ -790,6 +893,8 @@ to another host or rewrite key prefixes).
 When the rule applies. At least one condition should be set; an empty
 condition matches every request.
 
+- rule: a routing-rule condition must set http_error_code_returned_equals and/or key_prefix_equals (omit the condition to match every request)
+
 ### spec.website.routingRules[].condition.httpErrorCodeReturnedEquals
 
 `string`
@@ -809,6 +914,8 @@ Apply to requests whose key starts with this prefix, e.g. "docs/".
 What the redirect does.
 
 - rule: {"required":true}
+- rule: a routing-rule redirect must set at least one of: host_name, http_redirect_code, protocol, replace_key_prefix_with, replace_key_with
+- rule: replace_key_prefix_with and replace_key_with are mutually exclusive
 
 ### spec.website.routingRules[].redirect.hostName
 
@@ -1201,6 +1308,216 @@ Consecutive days without access before objects move to this tier.
 
 - rule: {"int32":{"gte":1}}
 
+### spec.abacStatus
+
+`string`
+
+- rule: abac_status must be one of: Enabled, Disabled
+
+### spec.analyticsConfigurations
+
+`[]AwsS3BucketAnalyticsConfiguration`
+
+### spec.analyticsConfigurations[].name
+
+`string` · required
+
+- rule: {"string":{"minLen":"1","maxLen":"64"}}
+
+### spec.analyticsConfigurations[].filterPrefix
+
+`string`
+
+### spec.analyticsConfigurations[].filterTags
+
+`map<string, string>`
+
+### spec.analyticsConfigurations[].export
+
+`AwsS3BucketAnalyticsExport`
+
+### spec.analyticsConfigurations[].export.bucketArn
+
+`string | valueFrom` · required
+
+- references: AwsS3Bucket (`status.outputs.bucket_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsS3Bucket, name: <that resource's name>, fieldPath: status.outputs.bucket_arn}} -- a bare string does not parse
+
+### spec.analyticsConfigurations[].export.bucketAccountId
+
+`string`
+
+### spec.analyticsConfigurations[].export.prefix
+
+`string`
+
+### spec.inventoryConfigurations
+
+`[]AwsS3BucketInventoryConfiguration`
+
+### spec.inventoryConfigurations[].name
+
+`string` · required
+
+- rule: {"string":{"minLen":"1","maxLen":"64"}}
+
+### spec.inventoryConfigurations[].disabled
+
+`bool`
+
+### spec.inventoryConfigurations[].includedObjectVersions
+
+`string` · required
+
+- rule: included_object_versions must be one of: All, Current
+- rule: {"required":true}
+
+### spec.inventoryConfigurations[].frequency
+
+`string` · required
+
+- rule: frequency must be one of: Daily, Weekly
+- rule: {"required":true}
+
+### spec.inventoryConfigurations[].optionalFields
+
+`[]string`
+
+- rule: {"repeated":{"items":{"cel":[{"id":"inventory_optional_field_valid","message":"optional_fields entries must be valid inventory fields (Size, LastModifiedDate, StorageClass, ETag, IsMultipartUploaded, ReplicationStatus, EncryptionStatus, ObjectLockRetainUntilDate, ObjectLockMode, ObjectLockLegalHoldStatus, IntelligentTieringAccessTier, BucketKeyStatus, ChecksumAlgorithm, ObjectAccessControlList, ObjectOwner, LifecycleExpirationDate)","expression":"this in ['Size', 'LastModifiedDate', 'StorageClass', 'ETag', 'IsMultipartUploaded', 'ReplicationStatus', 'EncryptionStatus', 'ObjectLockRetainUntilDate', 'ObjectLockMode', 'ObjectLockLegalHoldStatus', 'IntelligentTieringAccessTier', 'BucketKeyStatus', 'ChecksumAlgorithm', 'ObjectAccessControlList', 'ObjectOwner', 'LifecycleExpirationDate']"}]}}}
+
+### spec.inventoryConfigurations[].filterPrefix
+
+`string`
+
+### spec.inventoryConfigurations[].destination
+
+`AwsS3BucketInventoryDestination` · required
+
+- rule: {"required":true}
+- rule: set at most one of sse_s3 or sse_kms_key_id for report encryption
+
+### spec.inventoryConfigurations[].destination.bucketArn
+
+`string | valueFrom` · required
+
+- references: AwsS3Bucket (`status.outputs.bucket_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsS3Bucket, name: <that resource's name>, fieldPath: status.outputs.bucket_arn}} -- a bare string does not parse
+
+### spec.inventoryConfigurations[].destination.format
+
+`string` · required
+
+- rule: format must be one of: CSV, ORC, Parquet
+- rule: {"required":true}
+
+### spec.inventoryConfigurations[].destination.accountId
+
+`string`
+
+### spec.inventoryConfigurations[].destination.prefix
+
+`string`
+
+### spec.inventoryConfigurations[].destination.sseKmsKeyId
+
+`string | valueFrom`
+
+- references: AwsKmsKey (`status.outputs.key_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
+
+### spec.inventoryConfigurations[].destination.sseS3
+
+`bool`
+
+### spec.metricsConfigurations
+
+`[]AwsS3BucketMetricsConfiguration`
+
+### spec.metricsConfigurations[].name
+
+`string` · required
+
+- rule: {"string":{"minLen":"1","maxLen":"64"}}
+
+### spec.metricsConfigurations[].filterAccessPointArn
+
+`string`
+
+### spec.metricsConfigurations[].filterPrefix
+
+`string`
+
+### spec.metricsConfigurations[].filterTags
+
+`map<string, string>`
+
+### spec.metadataConfiguration
+
+`AwsS3BucketMetadataConfiguration`
+
+### spec.metadataConfiguration.inventoryTableEnabled
+
+`bool`
+
+### spec.metadataConfiguration.inventoryTableEncryption
+
+`AwsS3BucketMetadataTableEncryption`
+
+- rule: kms_key_arn is only used when sse_algorithm is aws:kms
+
+### spec.metadataConfiguration.inventoryTableEncryption.sseAlgorithm
+
+`string` · required
+
+- rule: sse_algorithm must be one of: AES256, aws:kms
+- rule: {"required":true}
+
+### spec.metadataConfiguration.inventoryTableEncryption.kmsKeyArn
+
+`string | valueFrom`
+
+- references: AwsKmsKey (`status.outputs.key_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
+
+### spec.metadataConfiguration.journalRecordExpiration
+
+`AwsS3BucketMetadataJournalRecordExpiration` · required
+
+- rule: {"required":true}
+- rule: days is required (7–2147483647) when expiration is enabled, and must be unset when disabled
+
+### spec.metadataConfiguration.journalRecordExpiration.enabled
+
+`bool`
+
+### spec.metadataConfiguration.journalRecordExpiration.days
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.metadataConfiguration.journalTableEncryption
+
+`AwsS3BucketMetadataTableEncryption`
+
+- rule: kms_key_arn is only used when sse_algorithm is aws:kms
+
+### spec.metadataConfiguration.journalTableEncryption.sseAlgorithm
+
+`string` · required
+
+- rule: sse_algorithm must be one of: AES256, aws:kms
+- rule: {"required":true}
+
+### spec.metadataConfiguration.journalTableEncryption.kmsKeyArn
+
+`string | valueFrom`
+
+- references: AwsKmsKey (`status.outputs.key_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
+
 ## Validation Rules
 
 - `acl_requires_non_enforced_ownership`: acl can only be set when object_ownership is BucketOwnerPreferred or ObjectWriter (ACLs are disabled under BucketOwnerEnforced)
@@ -1237,6 +1554,11 @@ Fields that can point at another resource's outputs:
 | `spec.notification.lambdaFunctions[].lambdaFunctionArn` | AwsLambda | `status.outputs.function_arn` |
 | `spec.notification.queues[].queueArn` | AwsSqsQueue | `status.outputs.queue_arn` |
 | `spec.notification.topics[].topicArn` | AwsSnsTopic | `status.outputs.topic_arn` |
+| `spec.analyticsConfigurations[].export.bucketArn` | AwsS3Bucket | `status.outputs.bucket_arn` |
+| `spec.inventoryConfigurations[].destination.bucketArn` | AwsS3Bucket | `status.outputs.bucket_arn` |
+| `spec.inventoryConfigurations[].destination.sseKmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
+| `spec.metadataConfiguration.inventoryTableEncryption.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
+| `spec.metadataConfiguration.journalTableEncryption.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 
 ## Referenced By
 
@@ -1272,6 +1594,8 @@ Fields on other kinds that can point at this resource:
 | AwsNlb | `spec.accessLogs.bucket` | `status.outputs.bucket_id` |
 | AwsS3Bucket | `spec.replication.rules[].destination.bucketArn` | `status.outputs.bucket_arn` |
 | AwsS3Bucket | `spec.logging.targetBucket` | `status.outputs.bucket_id` |
+| AwsS3Bucket | `spec.analyticsConfigurations[].export.bucketArn` | `status.outputs.bucket_arn` |
+| AwsS3Bucket | `spec.inventoryConfigurations[].destination.bucketArn` | `status.outputs.bucket_arn` |
 | AwsS3ObjectSet | `spec.bucket` | `status.outputs.bucket_id` |
 
 ## See Also

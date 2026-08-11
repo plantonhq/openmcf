@@ -128,7 +128,7 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 
 | Component | Live round-trip | Tolerated declared updates / notes |
 |-----------|-----------------|------------------------------------|
-| `awss3bucket` | 2026-07-09, both scenarios (13 resources incl. `for_each` keys + the `{bucket}:{intelligent_tiering_name}` composite) | `aws_s3_bucket.force_destroy` (config-only) |
+| `awss3bucket` | 2026-07-09, both scenarios (13 resources incl. `for_each` keys + the `{bucket}:{intelligent_tiering_name}` composite). RE-PROOF PENDING: the depth closure added five resource types (abac, analytics/inventory/metric named configs, metadata configuration) with three new `from_address_key` composites — conformance green, live round-trip queued | `aws_s3_bucket.force_destroy` (config-only) |
 | `awsvpc` | 2026-07-10, minimal | `aws_vpc_ipv4_cidr_block_association` is user-supplied by design (no blind derivation), offline-validated only |
 | `awssecuritygroup` | 2026-07-10, rules-rich | `aws_security_group.revoke_rules_on_delete` (config-only) |
 | `awsecrrepo` | 2026-07-10, full-surface (repository + lifecycle policy) | `aws_ecr_repository.force_delete` (config-only) |

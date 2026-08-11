@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -167,8 +168,8 @@ var _ = ginkgo.Describe("AwsS3BucketSpec validations", func() {
 				ObjectSizeGreaterThan: 1024,
 			},
 			Transitions: []*AwsS3BucketLifecycleTransition{
-				{Days: 30, StorageClass: "STANDARD_IA"},
-				{Days: 365, StorageClass: "DEEP_ARCHIVE"},
+				{Days: proto.Int32(30), StorageClass: "STANDARD_IA"},
+				{Days: proto.Int32(365), StorageClass: "DEEP_ARCHIVE"},
 			},
 			Expiration:                   &AwsS3BucketLifecycleExpiration{Days: 730},
 			NoncurrentVersionTransitions: []*AwsS3BucketNoncurrentVersionTransition{{NoncurrentDays: 30, StorageClass: "GLACIER_IR"}},
@@ -228,7 +229,7 @@ var _ = ginkgo.Describe("AwsS3BucketSpec validations", func() {
 		spec.LifecycleRules = []*AwsS3BucketLifecycleRule{{
 			Id: "r",
 			Transitions: []*AwsS3BucketLifecycleTransition{
-				{Days: 30, Date: "2027-01-01T00:00:00Z", StorageClass: "GLACIER"},
+				{Days: proto.Int32(30), Date: "2027-01-01T00:00:00Z", StorageClass: "GLACIER"},
 			},
 		}}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
@@ -248,7 +249,7 @@ var _ = ginkgo.Describe("AwsS3BucketSpec validations", func() {
 		spec.LifecycleRules = []*AwsS3BucketLifecycleRule{{
 			Id: "r",
 			Transitions: []*AwsS3BucketLifecycleTransition{
-				{Days: 30, StorageClass: "STANDARD"},
+				{Days: proto.Int32(30), StorageClass: "STANDARD"},
 			},
 		}}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
@@ -374,7 +375,7 @@ var _ = ginkgo.Describe("AwsS3BucketSpec validations", func() {
 	ginkgo.It("rejects an invalid replica storage class", func() {
 		spec.VersioningStatus = "Enabled"
 		spec.Replication = replicationBase()
-		spec.Replication.Rules[0].Destination.StorageClass = "EXPRESS_ONEZONE"
+		spec.Replication.Rules[0].Destination.StorageClass = "STANDARD_ONEZONE"
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
@@ -644,6 +645,350 @@ var _ = ginkgo.Describe("AwsS3BucketSpec validations", func() {
 			Name:  "bad-tier",
 			Tiers: []*AwsS3BucketIntelligentTieringTier{{AccessTier: "GLACIER", Days: 90}},
 		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Day-zero transitions (presence-typed days)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a day-zero transition (transition at upload)", func() {
+		spec.LifecycleRules = []*AwsS3BucketLifecycleRule{{
+			Id: "tier-at-ingest",
+			Transitions: []*AwsS3BucketLifecycleTransition{
+				{Days: proto.Int32(0), StorageClass: "INTELLIGENT_TIERING"},
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a transition with neither days nor date", func() {
+		spec.LifecycleRules = []*AwsS3BucketLifecycleRule{{
+			Id: "r",
+			Transitions: []*AwsS3BucketLifecycleTransition{
+				{StorageClass: "GLACIER"},
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Canned ACL domain (provider-extended set)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts the aws-exec-read canned ACL when ownership re-enables ACLs", func() {
+		spec.ObjectOwnership = "ObjectWriter"
+		spec.Acl = "aws-exec-read"
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Replica storage-class domain (AWS replication contract)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts EXPRESS_ONEZONE as a replica storage class", func() {
+		spec.VersioningStatus = "Enabled"
+		spec.Replication = &AwsS3BucketReplication{
+			RoleArn: strRef("arn:aws:iam::123456789012:role/replication"),
+			Rules: []*AwsS3BucketReplicationRule{{
+				Id: "to-express",
+				Destination: &AwsS3BucketReplicationDestination{
+					BucketArn:    strRef("arn:aws:s3:::replica-bucket"),
+					StorageClass: "EXPRESS_ONEZONE",
+				},
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects FSX_OPENZFS as a replica storage class (AWS: not accepted when replicating)", func() {
+		spec.VersioningStatus = "Enabled"
+		spec.Replication = &AwsS3BucketReplication{
+			RoleArn: strRef("arn:aws:iam::123456789012:role/replication"),
+			Rules: []*AwsS3BucketReplicationRule{{
+				Id: "to-fsx",
+				Destination: &AwsS3BucketReplicationDestination{
+					BucketArn:    strRef("arn:aws:s3:::replica-bucket"),
+					StorageClass: "FSX_OPENZFS",
+				},
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Website routing rules: empty-arm guards (AWS contract)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("rejects a routing rule with an all-empty redirect", func() {
+		spec.Website = &AwsS3BucketWebsite{
+			IndexDocumentSuffix: "index.html",
+			RoutingRules: []*AwsS3BucketWebsiteRoutingRule{{
+				Redirect: &AwsS3BucketWebsiteRoutingRuleRedirect{},
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a routing rule with a present-but-empty condition", func() {
+		spec.Website = &AwsS3BucketWebsite{
+			IndexDocumentSuffix: "index.html",
+			RoutingRules: []*AwsS3BucketWebsiteRoutingRule{{
+				Condition: &AwsS3BucketWebsiteRoutingRuleCondition{},
+				Redirect:  &AwsS3BucketWebsiteRoutingRuleRedirect{HostName: "example.com"},
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a redirect setting both key-rewrite forms", func() {
+		spec.Website = &AwsS3BucketWebsite{
+			IndexDocumentSuffix: "index.html",
+			RoutingRules: []*AwsS3BucketWebsiteRoutingRule{{
+				Redirect: &AwsS3BucketWebsiteRoutingRuleRedirect{
+					ReplaceKeyPrefixWith: "documents/",
+					ReplaceKeyWith:       "landing.html",
+				},
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Blocked encryption types
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts blocking SSE-C and unencrypted overrides", func() {
+		spec.Encryption = &AwsS3BucketEncryption{
+			SseAlgorithm:           "AES256",
+			BlockedEncryptionTypes: []string{"SSE-C", "NONE"},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid blocked encryption type", func() {
+		spec.Encryption = &AwsS3BucketEncryption{
+			SseAlgorithm:           "AES256",
+			BlockedEncryptionTypes: []string{"SSE-KMS"},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Bucket namespace
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts the account-regional bucket namespace", func() {
+		spec.BucketNamespace = "account-regional"
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid bucket namespace", func() {
+		spec.BucketNamespace = "regional"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// ABAC
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts Enabled/Disabled/unset ABAC states", func() {
+		for _, s := range []string{"", "Enabled", "Disabled"} {
+			spec.AbacStatus = s
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		}
+	})
+
+	ginkgo.It("rejects an invalid ABAC state", func() {
+		spec.AbacStatus = "On"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Analytics configurations
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts an analytics configuration with a filtered export", func() {
+		spec.AnalyticsConfigurations = []*AwsS3BucketAnalyticsConfiguration{{
+			Name:         "hot-data-analysis",
+			FilterPrefix: "data/",
+			FilterTags:   map[string]string{"tier": "hot"},
+			Export: &AwsS3BucketAnalyticsExport{
+				BucketArn: strRef("arn:aws:s3:::analytics-results"),
+				Prefix:    "analytics/",
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts an analytics configuration without an export", func() {
+		spec.AnalyticsConfigurations = []*AwsS3BucketAnalyticsConfiguration{{
+			Name: "console-only",
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an analytics export without a destination bucket", func() {
+		spec.AnalyticsConfigurations = []*AwsS3BucketAnalyticsConfiguration{{
+			Name:   "no-dest",
+			Export: &AwsS3BucketAnalyticsExport{},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an analytics configuration name over 64 characters", func() {
+		spec.AnalyticsConfigurations = []*AwsS3BucketAnalyticsConfiguration{{
+			Name: "0123456789012345678901234567890123456789012345678901234567890123456789",
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Inventory configurations
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a full inventory configuration", func() {
+		spec.InventoryConfigurations = []*AwsS3BucketInventoryConfiguration{{
+			Name:                   "weekly-audit",
+			IncludedObjectVersions: "All",
+			Frequency:              "Weekly",
+			OptionalFields:         []string{"Size", "EncryptionStatus", "ReplicationStatus"},
+			FilterPrefix:           "data/",
+			Destination: &AwsS3BucketInventoryDestination{
+				BucketArn:   strRef("arn:aws:s3:::inventory-reports"),
+				Format:      "Parquet",
+				Prefix:      "inventory/",
+				SseKmsKeyId: strRef("arn:aws:kms:us-west-2:123456789012:key/abc"),
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an inventory configuration without a destination", func() {
+		spec.InventoryConfigurations = []*AwsS3BucketInventoryConfiguration{{
+			Name:                   "no-dest",
+			IncludedObjectVersions: "Current",
+			Frequency:              "Daily",
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid inventory optional field", func() {
+		spec.InventoryConfigurations = []*AwsS3BucketInventoryConfiguration{{
+			Name:                   "bad-field",
+			IncludedObjectVersions: "Current",
+			Frequency:              "Daily",
+			OptionalFields:         []string{"ObjectSize"},
+			Destination: &AwsS3BucketInventoryDestination{
+				BucketArn: strRef("arn:aws:s3:::inventory-reports"),
+				Format:    "CSV",
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an inventory destination with both encryption arms", func() {
+		spec.InventoryConfigurations = []*AwsS3BucketInventoryConfiguration{{
+			Name:                   "double-enc",
+			IncludedObjectVersions: "Current",
+			Frequency:              "Daily",
+			Destination: &AwsS3BucketInventoryDestination{
+				BucketArn:   strRef("arn:aws:s3:::inventory-reports"),
+				Format:      "CSV",
+				SseS3:       true,
+				SseKmsKeyId: strRef("arn:aws:kms:us-west-2:123456789012:key/abc"),
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid inventory frequency", func() {
+		spec.InventoryConfigurations = []*AwsS3BucketInventoryConfiguration{{
+			Name:                   "bad-freq",
+			IncludedObjectVersions: "Current",
+			Frequency:              "Monthly",
+			Destination: &AwsS3BucketInventoryDestination{
+				BucketArn: strRef("arn:aws:s3:::inventory-reports"),
+				Format:    "CSV",
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Metrics configurations
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a metrics configuration scoped by prefix and tags", func() {
+		spec.MetricsConfigurations = []*AwsS3BucketMetricsConfiguration{{
+			Name:         "api-objects",
+			FilterPrefix: "api/",
+			FilterTags:   map[string]string{"tier": "hot"},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a metrics configuration without a name", func() {
+		spec.MetricsConfigurations = []*AwsS3BucketMetricsConfiguration{{
+			FilterPrefix: "api/",
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// S3 Metadata configuration
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a metadata configuration with journal expiration and inventory table", func() {
+		spec.MetadataConfiguration = &AwsS3BucketMetadataConfiguration{
+			InventoryTableEnabled: true,
+			InventoryTableEncryption: &AwsS3BucketMetadataTableEncryption{
+				SseAlgorithm: "AES256",
+			},
+			JournalRecordExpiration: &AwsS3BucketMetadataJournalRecordExpiration{
+				Enabled: true,
+				Days:    90,
+			},
+			JournalTableEncryption: &AwsS3BucketMetadataTableEncryption{
+				SseAlgorithm: "aws:kms",
+				KmsKeyArn:    strRef("arn:aws:kms:us-west-2:123456789012:key/abc"),
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a metadata configuration without the journal expiration policy", func() {
+		spec.MetadataConfiguration = &AwsS3BucketMetadataConfiguration{}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects journal expiration below the 7-day minimum", func() {
+		spec.MetadataConfiguration = &AwsS3BucketMetadataConfiguration{
+			JournalRecordExpiration: &AwsS3BucketMetadataJournalRecordExpiration{
+				Enabled: true,
+				Days:    3,
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects journal expiration days when expiration is disabled", func() {
+		spec.MetadataConfiguration = &AwsS3BucketMetadataConfiguration{
+			JournalRecordExpiration: &AwsS3BucketMetadataJournalRecordExpiration{
+				Days: 90,
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a metadata table KMS key under AES256", func() {
+		spec.MetadataConfiguration = &AwsS3BucketMetadataConfiguration{
+			JournalRecordExpiration: &AwsS3BucketMetadataJournalRecordExpiration{Enabled: true, Days: 30},
+			JournalTableEncryption: &AwsS3BucketMetadataTableEncryption{
+				SseAlgorithm: "AES256",
+				KmsKeyArn:    strRef("arn:aws:kms:us-west-2:123456789012:key/abc"),
+			},
+		}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 })

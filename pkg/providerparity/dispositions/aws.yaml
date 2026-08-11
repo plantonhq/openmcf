@@ -3200,21 +3200,6 @@ resources:
   - resource: aws_s3_account_public_access_block
     disposition: model-planned
     reason: "judged as a planned AwsS3AccountPublicAccessBlock kind"
-  - resource: aws_s3_bucket_abac
-    disposition: model-planned
-    reason: "bucket companion surface (ABAC, analytics, inventory, metadata, metrics configurations); folds into the existing AwsS3Bucket kind as its spec deepens"
-  - resource: aws_s3_bucket_analytics_configuration
-    disposition: model-planned
-    reason: "bucket companion surface (ABAC, analytics, inventory, metadata, metrics configurations); folds into the existing AwsS3Bucket kind as its spec deepens"
-  - resource: aws_s3_bucket_inventory
-    disposition: model-planned
-    reason: "bucket companion surface (ABAC, analytics, inventory, metadata, metrics configurations); folds into the existing AwsS3Bucket kind as its spec deepens"
-  - resource: aws_s3_bucket_metadata_configuration
-    disposition: model-planned
-    reason: "bucket companion surface (ABAC, analytics, inventory, metadata, metrics configurations); folds into the existing AwsS3Bucket kind as its spec deepens"
-  - resource: aws_s3_bucket_metric
-    disposition: model-planned
-    reason: "bucket companion surface (ABAC, analytics, inventory, metadata, metrics configurations); folds into the existing AwsS3Bucket kind as its spec deepens"
   - resource: aws_s3_directory_bucket
     disposition: model-planned
     reason: "judged as a planned AwsS3DirectoryBucket kind (S3 Express One Zone)"

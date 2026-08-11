@@ -58,7 +58,6 @@ entries:
   - kind:AwsRoute53DnsRecord
   - kind:AwsRoute53HealthCheck
   - kind:AwsRoute53Zone
-  - kind:AwsS3Bucket
   - kind:AwsS3ObjectSet
   - kind:AwsSagemakerDomain
   - kind:AwsSecurityGroup

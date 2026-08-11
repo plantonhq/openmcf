@@ -66,6 +66,13 @@ type AwsS3BucketSpec struct {
 	// `object_lock_default_retention` to apply a default retention window to
 	// every new object.
 	ObjectLockEnabled bool `protobuf:"varint,3,opt,name=object_lock_enabled,json=objectLockEnabled,proto3" json:"object_lock_enabled,omitempty"`
+	// Bucket namespace. Empty keeps the classic "global" namespace (bucket
+	// names unique across all AWS accounts worldwide); "account-regional"
+	// scopes the name to this account and region instead — names only need to
+	// be unique within the account+region, and the bucket is addressed through
+	// account-scoped endpoints. Chosen at creation; changing it replaces the
+	// bucket.
+	BucketNamespace string `protobuf:"bytes,21,opt,name=bucket_namespace,json=bucketNamespace,proto3" json:"bucket_namespace,omitempty"`
 	// Bucket versioning state. When empty the bucket is left unversioned (the
 	// AWS default). "Enabled" keeps every version of every object — the
 	// foundation for replication, Object Lock, and protection against
@@ -95,7 +102,8 @@ type AwsS3BucketSpec struct {
 	// Canned ACL applied to the bucket. Only meaningful when `object_ownership`
 	// re-enables ACLs (BucketOwnerPreferred or ObjectWriter) — enforced by
 	// validation. Prefer bucket policies over ACLs; this exists for legacy
-	// integrations (e.g. "log-delivery-write" for classic log delivery).
+	// integrations (e.g. "log-delivery-write" for classic log delivery,
+	// "aws-exec-read" for EC2 AMI bundle reads).
 	Acl string `protobuf:"bytes,8,opt,name=acl,proto3" json:"acl,omitempty"`
 	// Bucket resource policy as a standard IAM policy document. This is the
 	// primary access-control surface for a bucket: cross-account read/write
@@ -164,8 +172,40 @@ type AwsS3BucketSpec struct {
 	// access. Only affects objects already in INTELLIGENT_TIERING (via lifecycle
 	// transition or direct upload).
 	IntelligentTieringConfigurations []*AwsS3BucketIntelligentTieringConfiguration `protobuf:"bytes,20,rep,name=intelligent_tiering_configurations,json=intelligentTieringConfigurations,proto3" json:"intelligent_tiering_configurations,omitempty"`
-	unknownFields                    protoimpl.UnknownFields
-	sizeCache                        protoimpl.SizeCache
+	// ABAC state for the bucket. "Enabled" lets IAM policies authorize requests
+	// by comparing principal tags against the bucket's tags (attribute-based
+	// access control); "Disabled" turns it off explicitly. Empty leaves the
+	// bucket at AWS's default (disabled) without managing the setting.
+	AbacStatus string `protobuf:"bytes,22,opt,name=abac_status,json=abacStatus,proto3" json:"abac_status,omitempty"`
+	// Storage-class-analysis configurations. Each named configuration observes
+	// access patterns for a scope of objects and (optionally) exports daily
+	// findings to a bucket as CSV — the data source for choosing lifecycle
+	// transition ages. Analysis observes for at least 30 days before results
+	// stabilize.
+	AnalyticsConfigurations []*AwsS3BucketAnalyticsConfiguration `protobuf:"bytes,23,rep,name=analytics_configurations,json=analyticsConfigurations,proto3" json:"analytics_configurations,omitempty"`
+	// Inventory report configurations. Each named configuration delivers a
+	// scheduled manifest of objects and selected metadata (encryption status,
+	// replication status, object-lock state, ...) to a destination bucket —
+	// the audit backbone for large buckets where ListObjects is impractical.
+	// The destination bucket needs a policy allowing `s3.amazonaws.com` to
+	// `s3:PutObject` (AWS documents the exact statement); delivery starts
+	// within 48 hours of configuration.
+	InventoryConfigurations []*AwsS3BucketInventoryConfiguration `protobuf:"bytes,24,rep,name=inventory_configurations,json=inventoryConfigurations,proto3" json:"inventory_configurations,omitempty"`
+	// Request-metrics configurations. Each named configuration publishes
+	// CloudWatch request metrics (AllRequests, 4xxErrors, FirstByteLatency,
+	// ...) for a scope of objects, at CloudWatch's standard per-metric cost.
+	// Whole-bucket storage metrics are free and always on; these add
+	// request-level visibility for a prefix, tag set, or access point.
+	MetricsConfigurations []*AwsS3BucketMetricsConfiguration `protobuf:"bytes,25,rep,name=metrics_configurations,json=metricsConfigurations,proto3" json:"metrics_configurations,omitempty"`
+	// S3 Metadata configuration. Maintains queryable Apache Iceberg tables of
+	// this bucket's object metadata in an AWS-managed table bucket: a journal
+	// table records every change (uploads, deletes, metadata updates) and an
+	// optional live inventory table mirrors the current object set. Query them
+	// with Athena/Spark to find objects without listing the bucket. Table
+	// storage and updates bill per S3 Tables pricing.
+	MetadataConfiguration *AwsS3BucketMetadataConfiguration `protobuf:"bytes,26,opt,name=metadata_configuration,json=metadataConfiguration,proto3" json:"metadata_configuration,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *AwsS3BucketSpec) Reset() {
@@ -217,6 +257,13 @@ func (x *AwsS3BucketSpec) GetObjectLockEnabled() bool {
 		return x.ObjectLockEnabled
 	}
 	return false
+}
+
+func (x *AwsS3BucketSpec) GetBucketNamespace() string {
+	if x != nil {
+		return x.BucketNamespace
+	}
+	return ""
 }
 
 func (x *AwsS3BucketSpec) GetVersioningStatus() string {
@@ -338,6 +385,41 @@ func (x *AwsS3BucketSpec) GetIntelligentTieringConfigurations() []*AwsS3BucketIn
 	return nil
 }
 
+func (x *AwsS3BucketSpec) GetAbacStatus() string {
+	if x != nil {
+		return x.AbacStatus
+	}
+	return ""
+}
+
+func (x *AwsS3BucketSpec) GetAnalyticsConfigurations() []*AwsS3BucketAnalyticsConfiguration {
+	if x != nil {
+		return x.AnalyticsConfigurations
+	}
+	return nil
+}
+
+func (x *AwsS3BucketSpec) GetInventoryConfigurations() []*AwsS3BucketInventoryConfiguration {
+	if x != nil {
+		return x.InventoryConfigurations
+	}
+	return nil
+}
+
+func (x *AwsS3BucketSpec) GetMetricsConfigurations() []*AwsS3BucketMetricsConfiguration {
+	if x != nil {
+		return x.MetricsConfigurations
+	}
+	return nil
+}
+
+func (x *AwsS3BucketSpec) GetMetadataConfiguration() *AwsS3BucketMetadataConfiguration {
+	if x != nil {
+		return x.MetadataConfiguration
+	}
+	return nil
+}
+
 // Default server-side encryption for new objects in the bucket.
 type AwsS3BucketEncryption struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -358,8 +440,14 @@ type AwsS3BucketEncryption struct {
 	// by up to 99% on KMS-encrypted buckets. Recommended whenever SSE-KMS is
 	// in use; no effect under AES256.
 	BucketKeyEnabled bool `protobuf:"varint,3,opt,name=bucket_key_enabled,json=bucketKeyEnabled,proto3" json:"bucket_key_enabled,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Encryption types PUT requests may no longer use on this bucket.
+	// "SSE-C" blocks customer-provided-key encryption (AWS blocks SSE-C on
+	// new buckets by default since March 2026 — set this to state the posture
+	// explicitly, or to re-permit SSE-C by managing the block without it);
+	// "NONE" blocks unencrypted uploads that override the bucket default.
+	BlockedEncryptionTypes []string `protobuf:"bytes,4,rep,name=blocked_encryption_types,json=blockedEncryptionTypes,proto3" json:"blocked_encryption_types,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *AwsS3BucketEncryption) Reset() {
@@ -411,6 +499,13 @@ func (x *AwsS3BucketEncryption) GetBucketKeyEnabled() bool {
 		return x.BucketKeyEnabled
 	}
 	return false
+}
+
+func (x *AwsS3BucketEncryption) GetBlockedEncryptionTypes() []string {
+	if x != nil {
+		return x.BlockedEncryptionTypes
+	}
+	return nil
 }
 
 // Public access guard rails for the bucket. Absence of this block means all
@@ -687,7 +782,10 @@ func (x *AwsS3BucketLifecycleFilter) GetObjectSizeLessThan() int64 {
 type AwsS3BucketLifecycleTransition struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Days after object creation to transition. Mutually exclusive with `date`.
-	Days int32 `protobuf:"varint,1,opt,name=days,proto3" json:"days,omitempty"`
+	// Presence-typed because AWS allows 0 ("transition on the upload day" —
+	// common for INTELLIGENT_TIERING/GLACIER_IR at ingest): unset means "use
+	// date instead", an explicit 0 is a real day-zero transition.
+	Days *int32 `protobuf:"varint,1,opt,name=days,proto3,oneof" json:"days,omitempty"`
 	// Absolute transition date in RFC3339 format (e.g. "2027-01-01T00:00:00Z").
 	// Mutually exclusive with `days`.
 	Date string `protobuf:"bytes,2,opt,name=date,proto3" json:"date,omitempty"`
@@ -728,8 +826,8 @@ func (*AwsS3BucketLifecycleTransition) Descriptor() ([]byte, []int) {
 }
 
 func (x *AwsS3BucketLifecycleTransition) GetDays() int32 {
-	if x != nil {
-		return x.Days
+	if x != nil && x.Days != nil {
+		return *x.Days
 	}
 	return 0
 }
@@ -1192,6 +1290,12 @@ type AwsS3BucketReplicationDestination struct {
 	// same-account.
 	Account string `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
 	// Storage class for replicas. Empty keeps each source object's class.
+	// The domain mirrors AWS's PUT Bucket replication contract at provider
+	// 6.58.0: the full storage-class set including EXPRESS_ONEZONE (directory
+	// buckets), OUTPOSTS, SNOW, and FSX_ONTAP — minus FSX_OPENZFS, which AWS's
+	// own API contract states "is not an accepted value when replicating
+	// objects". OUTPOSTS/SNOW/FSX_ONTAP apply only to their matching
+	// destination bucket types; AWS validates that pairing at apply time.
 	StorageClass string `protobuf:"bytes,3,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
 	// Transfer replica ownership to the destination account (cross-account
 	// replication where the destination owns its copies). Requires `account`.
@@ -1426,8 +1530,9 @@ func (x *AwsS3BucketWebsiteRedirectAll) GetProtocol() string {
 // One conditional website routing rule.
 type AwsS3BucketWebsiteRoutingRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// When the rule applies. At least one condition should be set; an empty
-	// condition matches every request.
+	// When the rule applies. Omit the condition entirely to apply the redirect
+	// to every request; a present-but-empty condition is rejected (AWS requires
+	// at least one condition field when the Condition element is sent).
 	Condition *AwsS3BucketWebsiteRoutingRuleCondition `protobuf:"bytes,1,opt,name=condition,proto3" json:"condition,omitempty"`
 	// What the redirect does.
 	Redirect      *AwsS3BucketWebsiteRoutingRuleRedirect `protobuf:"bytes,2,opt,name=redirect,proto3" json:"redirect,omitempty"`
@@ -2289,15 +2394,642 @@ func (x *AwsS3BucketIntelligentTieringTier) GetDays() int32 {
 	return 0
 }
 
+// One storage-class-analysis configuration. Scope predicates (prefix, tags)
+// combine with AND, mirroring the lifecycle/tiering filter convention.
+type AwsS3BucketAnalyticsConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the configuration, unique within the bucket (up to 64
+	// characters per the AWS analytics-id contract).
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Key prefix scoping the analysis. Combined (AND) with filter_tags; leave
+	// both empty to analyze the whole bucket.
+	FilterPrefix string `protobuf:"bytes,2,opt,name=filter_prefix,json=filterPrefix,proto3" json:"filter_prefix,omitempty"`
+	// Object tags scoping the analysis. Combined (AND) with filter_prefix.
+	FilterTags map[string]string `protobuf:"bytes,3,rep,name=filter_tags,json=filterTags,proto3" json:"filter_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Daily CSV export of the analysis findings to a bucket. Without it the
+	// findings are only visible in the S3 console. (AWS's V_1 schema and CSV
+	// format are the only values the API accepts, so only the destination is
+	// configurable.)
+	Export        *AwsS3BucketAnalyticsExport `protobuf:"bytes,4,opt,name=export,proto3" json:"export,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsS3BucketAnalyticsConfiguration) Reset() {
+	*x = AwsS3BucketAnalyticsConfiguration{}
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsS3BucketAnalyticsConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsS3BucketAnalyticsConfiguration) ProtoMessage() {}
+
+func (x *AwsS3BucketAnalyticsConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsS3BucketAnalyticsConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsS3BucketAnalyticsConfiguration) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *AwsS3BucketAnalyticsConfiguration) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsS3BucketAnalyticsConfiguration) GetFilterPrefix() string {
+	if x != nil {
+		return x.FilterPrefix
+	}
+	return ""
+}
+
+func (x *AwsS3BucketAnalyticsConfiguration) GetFilterTags() map[string]string {
+	if x != nil {
+		return x.FilterTags
+	}
+	return nil
+}
+
+func (x *AwsS3BucketAnalyticsConfiguration) GetExport() *AwsS3BucketAnalyticsExport {
+	if x != nil {
+		return x.Export
+	}
+	return nil
+}
+
+// Destination for a storage-class-analysis daily export.
+type AwsS3BucketAnalyticsExport struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Destination bucket for the CSV findings. Accepts a bucket ARN
+	// (arn:aws:s3:::name) or a reference to an AwsS3Bucket resource. The
+	// bucket must allow `s3.amazonaws.com` to `s3:PutObject` (same-account
+	// destinations get the grant via bucket policy).
+	BucketArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=bucket_arn,json=bucketArn,proto3" json:"bucket_arn,omitempty"`
+	// Account ID that owns the destination bucket. Empty assumes the
+	// bucket owner's account.
+	BucketAccountId string `protobuf:"bytes,2,opt,name=bucket_account_id,json=bucketAccountId,proto3" json:"bucket_account_id,omitempty"`
+	// Key prefix for exported findings, e.g. "analytics/".
+	Prefix        string `protobuf:"bytes,3,opt,name=prefix,proto3" json:"prefix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsS3BucketAnalyticsExport) Reset() {
+	*x = AwsS3BucketAnalyticsExport{}
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsS3BucketAnalyticsExport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsS3BucketAnalyticsExport) ProtoMessage() {}
+
+func (x *AwsS3BucketAnalyticsExport) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsS3BucketAnalyticsExport.ProtoReflect.Descriptor instead.
+func (*AwsS3BucketAnalyticsExport) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *AwsS3BucketAnalyticsExport) GetBucketArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.BucketArn
+	}
+	return nil
+}
+
+func (x *AwsS3BucketAnalyticsExport) GetBucketAccountId() string {
+	if x != nil {
+		return x.BucketAccountId
+	}
+	return ""
+}
+
+func (x *AwsS3BucketAnalyticsExport) GetPrefix() string {
+	if x != nil {
+		return x.Prefix
+	}
+	return ""
+}
+
+// One inventory report configuration.
+type AwsS3BucketInventoryConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the configuration, unique within the bucket (up to 64
+	// characters per the AWS inventory-id contract).
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Keep the configuration defined but stop generating reports. Unset means
+	// active (the AWS default) — the zero value never fights the provider's
+	// enabled-by-default contract.
+	Disabled bool `protobuf:"varint,2,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	// Which object versions the report covers: "All" (every version on
+	// versioned buckets) or "Current" (only the latest of each object).
+	IncludedObjectVersions string `protobuf:"bytes,3,opt,name=included_object_versions,json=includedObjectVersions,proto3" json:"included_object_versions,omitempty"`
+	// Report generation schedule.
+	Frequency string `protobuf:"bytes,4,opt,name=frequency,proto3" json:"frequency,omitempty"`
+	// Metadata columns to include beyond bucket/key/version. The report is the
+	// cheap way to audit encryption, replication, and object-lock posture at
+	// scale.
+	OptionalFields []string `protobuf:"bytes,5,rep,name=optional_fields,json=optionalFields,proto3" json:"optional_fields,omitempty"`
+	// Key prefix scoping which objects the report covers. Empty covers the
+	// whole bucket.
+	FilterPrefix string `protobuf:"bytes,6,opt,name=filter_prefix,json=filterPrefix,proto3" json:"filter_prefix,omitempty"`
+	// Where and how the report files are delivered.
+	Destination   *AwsS3BucketInventoryDestination `protobuf:"bytes,7,opt,name=destination,proto3" json:"destination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsS3BucketInventoryConfiguration) Reset() {
+	*x = AwsS3BucketInventoryConfiguration{}
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsS3BucketInventoryConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsS3BucketInventoryConfiguration) ProtoMessage() {}
+
+func (x *AwsS3BucketInventoryConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsS3BucketInventoryConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsS3BucketInventoryConfiguration) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *AwsS3BucketInventoryConfiguration) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsS3BucketInventoryConfiguration) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
+func (x *AwsS3BucketInventoryConfiguration) GetIncludedObjectVersions() string {
+	if x != nil {
+		return x.IncludedObjectVersions
+	}
+	return ""
+}
+
+func (x *AwsS3BucketInventoryConfiguration) GetFrequency() string {
+	if x != nil {
+		return x.Frequency
+	}
+	return ""
+}
+
+func (x *AwsS3BucketInventoryConfiguration) GetOptionalFields() []string {
+	if x != nil {
+		return x.OptionalFields
+	}
+	return nil
+}
+
+func (x *AwsS3BucketInventoryConfiguration) GetFilterPrefix() string {
+	if x != nil {
+		return x.FilterPrefix
+	}
+	return ""
+}
+
+func (x *AwsS3BucketInventoryConfiguration) GetDestination() *AwsS3BucketInventoryDestination {
+	if x != nil {
+		return x.Destination
+	}
+	return nil
+}
+
+// Delivery destination for inventory report files.
+type AwsS3BucketInventoryDestination struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Destination bucket for report files. Accepts a bucket ARN
+	// (arn:aws:s3:::name) or a reference to an AwsS3Bucket resource — a bucket
+	// may deliver its inventory to itself (its own ARN is derived from the
+	// name: arn:aws:s3:::<name>). The destination must allow `s3.amazonaws.com`
+	// to `s3:PutObject` via bucket policy.
+	BucketArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=bucket_arn,json=bucketArn,proto3" json:"bucket_arn,omitempty"`
+	// Report file format.
+	Format string `protobuf:"bytes,2,opt,name=format,proto3" json:"format,omitempty"`
+	// Account ID that owns the destination bucket. Empty assumes the bucket
+	// owner's account.
+	AccountId string `protobuf:"bytes,3,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	// Key prefix for report files, e.g. "inventory/".
+	Prefix string `protobuf:"bytes,4,opt,name=prefix,proto3" json:"prefix,omitempty"`
+	// Encrypt report files with SSE-KMS using this key. Accepts a key ARN or
+	// a reference to an AwsKmsKey resource; the key policy must allow
+	// `s3.amazonaws.com` to use it. Mutually exclusive with `sse_s3`.
+	SseKmsKeyId *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=sse_kms_key_id,json=sseKmsKeyId,proto3" json:"sse_kms_key_id,omitempty"`
+	// Encrypt report files with SSE-S3 (S3-managed keys). Mutually exclusive
+	// with `sse_kms_key_id`; leave both unset to deliver with the destination
+	// bucket's default encryption.
+	SseS3         bool `protobuf:"varint,6,opt,name=sse_s3,json=sseS3,proto3" json:"sse_s3,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsS3BucketInventoryDestination) Reset() {
+	*x = AwsS3BucketInventoryDestination{}
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsS3BucketInventoryDestination) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsS3BucketInventoryDestination) ProtoMessage() {}
+
+func (x *AwsS3BucketInventoryDestination) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsS3BucketInventoryDestination.ProtoReflect.Descriptor instead.
+func (*AwsS3BucketInventoryDestination) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *AwsS3BucketInventoryDestination) GetBucketArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.BucketArn
+	}
+	return nil
+}
+
+func (x *AwsS3BucketInventoryDestination) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+func (x *AwsS3BucketInventoryDestination) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *AwsS3BucketInventoryDestination) GetPrefix() string {
+	if x != nil {
+		return x.Prefix
+	}
+	return ""
+}
+
+func (x *AwsS3BucketInventoryDestination) GetSseKmsKeyId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SseKmsKeyId
+	}
+	return nil
+}
+
+func (x *AwsS3BucketInventoryDestination) GetSseS3() bool {
+	if x != nil {
+		return x.SseS3
+	}
+	return false
+}
+
+// One CloudWatch request-metrics configuration. Scope predicates (access
+// point, prefix, tags) combine with AND; leave all empty to publish metrics
+// for every request against the bucket.
+type AwsS3BucketMetricsConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the configuration, unique within the bucket (up to 64
+	// characters per the AWS metrics-id contract).
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Scope metrics to requests through this access point (access point ARN).
+	FilterAccessPointArn string `protobuf:"bytes,2,opt,name=filter_access_point_arn,json=filterAccessPointArn,proto3" json:"filter_access_point_arn,omitempty"`
+	// Key prefix scoping the metrics. Combined (AND) with the other predicates.
+	FilterPrefix string `protobuf:"bytes,3,opt,name=filter_prefix,json=filterPrefix,proto3" json:"filter_prefix,omitempty"`
+	// Object tags scoping the metrics. Combined (AND) with the other
+	// predicates.
+	FilterTags    map[string]string `protobuf:"bytes,4,rep,name=filter_tags,json=filterTags,proto3" json:"filter_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsS3BucketMetricsConfiguration) Reset() {
+	*x = AwsS3BucketMetricsConfiguration{}
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsS3BucketMetricsConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsS3BucketMetricsConfiguration) ProtoMessage() {}
+
+func (x *AwsS3BucketMetricsConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsS3BucketMetricsConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsS3BucketMetricsConfiguration) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *AwsS3BucketMetricsConfiguration) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsS3BucketMetricsConfiguration) GetFilterAccessPointArn() string {
+	if x != nil {
+		return x.FilterAccessPointArn
+	}
+	return ""
+}
+
+func (x *AwsS3BucketMetricsConfiguration) GetFilterPrefix() string {
+	if x != nil {
+		return x.FilterPrefix
+	}
+	return ""
+}
+
+func (x *AwsS3BucketMetricsConfiguration) GetFilterTags() map[string]string {
+	if x != nil {
+		return x.FilterTags
+	}
+	return nil
+}
+
+// S3 Metadata configuration: AWS-managed Apache Iceberg tables tracking this
+// bucket's objects. The journal table (change log) is always created and its
+// record-expiration policy is the required knob; the live inventory table is
+// opt-in. (AWS exposes the destination table bucket/namespace as read-only
+// state — they are AWS-managed, never configured.)
+type AwsS3BucketMetadataConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Maintain the live inventory table (current state of every object) in
+	// addition to the journal. Off keeps only the change journal.
+	InventoryTableEnabled bool `protobuf:"varint,1,opt,name=inventory_table_enabled,json=inventoryTableEnabled,proto3" json:"inventory_table_enabled,omitempty"`
+	// Encryption for the inventory table. Only meaningful while
+	// `inventory_table_enabled` is true.
+	InventoryTableEncryption *AwsS3BucketMetadataTableEncryption `protobuf:"bytes,2,opt,name=inventory_table_encryption,json=inventoryTableEncryption,proto3" json:"inventory_table_encryption,omitempty"`
+	// Expiration policy for journal-table records — the required cost control
+	// for the change log (records accrue per object change).
+	JournalRecordExpiration *AwsS3BucketMetadataJournalRecordExpiration `protobuf:"bytes,3,opt,name=journal_record_expiration,json=journalRecordExpiration,proto3" json:"journal_record_expiration,omitempty"`
+	// Encryption for the journal table.
+	JournalTableEncryption *AwsS3BucketMetadataTableEncryption `protobuf:"bytes,4,opt,name=journal_table_encryption,json=journalTableEncryption,proto3" json:"journal_table_encryption,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AwsS3BucketMetadataConfiguration) Reset() {
+	*x = AwsS3BucketMetadataConfiguration{}
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsS3BucketMetadataConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsS3BucketMetadataConfiguration) ProtoMessage() {}
+
+func (x *AwsS3BucketMetadataConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsS3BucketMetadataConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsS3BucketMetadataConfiguration) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *AwsS3BucketMetadataConfiguration) GetInventoryTableEnabled() bool {
+	if x != nil {
+		return x.InventoryTableEnabled
+	}
+	return false
+}
+
+func (x *AwsS3BucketMetadataConfiguration) GetInventoryTableEncryption() *AwsS3BucketMetadataTableEncryption {
+	if x != nil {
+		return x.InventoryTableEncryption
+	}
+	return nil
+}
+
+func (x *AwsS3BucketMetadataConfiguration) GetJournalRecordExpiration() *AwsS3BucketMetadataJournalRecordExpiration {
+	if x != nil {
+		return x.JournalRecordExpiration
+	}
+	return nil
+}
+
+func (x *AwsS3BucketMetadataConfiguration) GetJournalTableEncryption() *AwsS3BucketMetadataTableEncryption {
+	if x != nil {
+		return x.JournalTableEncryption
+	}
+	return nil
+}
+
+// Journal-table record expiration policy.
+type AwsS3BucketMetadataJournalRecordExpiration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Expire journal records after `days`. Disabled keeps records forever
+	// (stated explicitly — AWS requires the policy either way).
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Days to retain journal records (at least 7). Only set when `enabled`.
+	Days          int32 `protobuf:"varint,2,opt,name=days,proto3" json:"days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsS3BucketMetadataJournalRecordExpiration) Reset() {
+	*x = AwsS3BucketMetadataJournalRecordExpiration{}
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsS3BucketMetadataJournalRecordExpiration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsS3BucketMetadataJournalRecordExpiration) ProtoMessage() {}
+
+func (x *AwsS3BucketMetadataJournalRecordExpiration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsS3BucketMetadataJournalRecordExpiration.ProtoReflect.Descriptor instead.
+func (*AwsS3BucketMetadataJournalRecordExpiration) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *AwsS3BucketMetadataJournalRecordExpiration) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *AwsS3BucketMetadataJournalRecordExpiration) GetDays() int32 {
+	if x != nil {
+		return x.Days
+	}
+	return 0
+}
+
+// Server-side encryption for an S3 Metadata table.
+type AwsS3BucketMetadataTableEncryption struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Encryption algorithm for the table: "AES256" (S3-managed keys) or
+	// "aws:kms" (customer-managed KMS key).
+	SseAlgorithm string `protobuf:"bytes,1,opt,name=sse_algorithm,json=sseAlgorithm,proto3" json:"sse_algorithm,omitempty"`
+	// KMS key for aws:kms encryption. Accepts a key ARN or a reference to an
+	// AwsKmsKey resource; the key policy must allow the S3 Tables maintenance
+	// principal to use it.
+	KmsKeyArn     *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=kms_key_arn,json=kmsKeyArn,proto3" json:"kms_key_arn,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsS3BucketMetadataTableEncryption) Reset() {
+	*x = AwsS3BucketMetadataTableEncryption{}
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsS3BucketMetadataTableEncryption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsS3BucketMetadataTableEncryption) ProtoMessage() {}
+
+func (x *AwsS3BucketMetadataTableEncryption) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsS3BucketMetadataTableEncryption.ProtoReflect.Descriptor instead.
+func (*AwsS3BucketMetadataTableEncryption) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *AwsS3BucketMetadataTableEncryption) GetSseAlgorithm() string {
+	if x != nil {
+		return x.SseAlgorithm
+	}
+	return ""
+}
+
+func (x *AwsS3BucketMetadataTableEncryption) GetKmsKeyArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KmsKeyArn
+	}
+	return nil
+}
+
 var File_catalog_aws_awss3bucket_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"+catalog/aws/awss3bucket/v1alpha1/spec.proto\x12$dev.planton.aws.awss3bucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xfa\x1c\n" +
+	"+catalog/aws/awss3bucket/v1alpha1/spec.proto\x12$dev.planton.aws.awss3bucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x96$\n" +
 	"\x0fAwsS3BucketSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12#\n" +
 	"\rforce_destroy\x18\x02 \x01(\bR\fforceDestroy\x12.\n" +
-	"\x13object_lock_enabled\x18\x03 \x01(\bR\x11objectLockEnabled\x12\xd8\x01\n" +
+	"\x13object_lock_enabled\x18\x03 \x01(\bR\x11objectLockEnabled\x12\xc5\x01\n" +
+	"\x10bucket_namespace\x18\x15 \x01(\tB\x99\x01\xbaH\x95\x01\xba\x01\x91\x01\n" +
+	"\x16bucket_namespace_valid\x129bucket_namespace must be one of: account-regional, global\x1a<this == '' || this == 'account-regional' || this == 'global'R\x0fbucketNamespace\x12\xd8\x01\n" +
 	"\x11versioning_status\x18\x04 \x01(\tB\xaa\x01\xbaH\xa6\x01\xba\x01\xa2\x01\n" +
 	"\x17versioning_status_valid\x12Oversioning_status must be one of: Enabled, Suspended (or empty for unversioned)\x1a6this == '' || this == 'Enabled' || this == 'Suspended'R\x10versioningStatus\x12[\n" +
 	"\n" +
@@ -2305,9 +3037,9 @@ const file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDesc = "" +
 	"encryption\x12r\n" +
 	"\x13public_access_block\x18\x06 \x01(\v2B.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketPublicAccessBlockR\x11publicAccessBlock\x12\x8f\x02\n" +
 	"\x10object_ownership\x18\a \x01(\tB\xe3\x01\xbaH\xdf\x01\xba\x01\xdb\x01\n" +
-	"\x16object_ownership_valid\x12Xobject_ownership must be one of: BucketOwnerEnforced, BucketOwnerPreferred, ObjectWriter\x1agthis == '' || this == 'BucketOwnerEnforced' || this == 'BucketOwnerPreferred' || this == 'ObjectWriter'R\x0fobjectOwnership\x12\xab\x02\n" +
-	"\x03acl\x18\b \x01(\tB\x98\x02\xbaH\x94\x02\xba\x01\x90\x02\n" +
-	"\tacl_valid\x12iacl must be a canned ACL: private, public-read, public-read-write, authenticated-read, log-delivery-write\x1a\x97\x01this == '' || this == 'private' || this == 'public-read' || this == 'public-read-write' || this == 'authenticated-read' || this == 'log-delivery-write'R\x03acl\x12/\n" +
+	"\x16object_ownership_valid\x12Xobject_ownership must be one of: BucketOwnerEnforced, BucketOwnerPreferred, ObjectWriter\x1agthis == '' || this == 'BucketOwnerEnforced' || this == 'BucketOwnerPreferred' || this == 'ObjectWriter'R\x0fobjectOwnership\x12\xd5\x02\n" +
+	"\x03acl\x18\b \x01(\tB\xc2\x02\xbaH\xbe\x02\xba\x01\xba\x02\n" +
+	"\tacl_valid\x12xacl must be a canned ACL: private, public-read, public-read-write, authenticated-read, aws-exec-read, log-delivery-write\x1a\xb2\x01this == '' || this == 'private' || this == 'public-read' || this == 'public-read-write' || this == 'authenticated-read' || this == 'aws-exec-read' || this == 'log-delivery-write'R\x03acl\x12/\n" +
 	"\x06policy\x18\t \x01(\v2\x17.google.protobuf.StructR\x06policy\x12\xcc\x02\n" +
 	"&transition_default_minimum_object_size\x18\n" +
 	" \x01(\tB\xf7\x01\xbaH\xf3\x01\xba\x01\xef\x01\n" +
@@ -2324,17 +3056,26 @@ const file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\x19acceleration_status_valid\x126acceleration_status must be one of: Enabled, Suspended\x1a6this == '' || this == 'Enabled' || this == 'Suspended'R\x12accelerationStatus\x12\xb5\x01\n" +
 	"\rrequest_payer\x18\x13 \x01(\tB\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
 	"\x13request_payer_valid\x124request_payer must be one of: BucketOwner, Requester\x1a:this == '' || this == 'BucketOwner' || this == 'Requester'R\frequestPayer\x12\x9e\x01\n" +
-	"\"intelligent_tiering_configurations\x18\x14 \x03(\v2P.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringConfigurationR intelligentTieringConfigurations:\x9a\a\xbaH\x96\a\x1a\x96\x02\n" +
+	"\"intelligent_tiering_configurations\x18\x14 \x03(\v2P.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringConfigurationR intelligentTieringConfigurations\x12\xa0\x01\n" +
+	"\vabac_status\x18\x16 \x01(\tB\x7f\xbaH|\xba\x01y\n" +
+	"\x11abac_status_valid\x12-abac_status must be one of: Enabled, Disabled\x1a5this == '' || this == 'Enabled' || this == 'Disabled'R\n" +
+	"abacStatus\x12\x82\x01\n" +
+	"\x18analytics_configurations\x18\x17 \x03(\v2G.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketAnalyticsConfigurationR\x17analyticsConfigurations\x12\x82\x01\n" +
+	"\x18inventory_configurations\x18\x18 \x03(\v2G.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketInventoryConfigurationR\x17inventoryConfigurations\x12|\n" +
+	"\x16metrics_configurations\x18\x19 \x03(\v2E.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetricsConfigurationR\x15metricsConfigurations\x12}\n" +
+	"\x16metadata_configuration\x18\x1a \x01(\v2F.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataConfigurationR\x15metadataConfiguration:\x9a\a\xbaH\x96\a\x1a\x96\x02\n" +
 	"#acl_requires_non_enforced_ownership\x12\x7facl can only be set when object_ownership is BucketOwnerPreferred or ObjectWriter (ACLs are disabled under BucketOwnerEnforced)\x1anthis.acl == '' || (this.object_ownership == 'BucketOwnerPreferred' || this.object_ownership == 'ObjectWriter')\x1a\xb9\x01\n" +
 	"*object_lock_retention_requires_object_lock\x12Eobject_lock_default_retention requires object_lock_enabled to be true\x1aD!has(this.object_lock_default_retention) || this.object_lock_enabled\x1a\x90\x02\n" +
 	"\x1fobject_lock_requires_versioning\x12\xaa\x01object_lock_enabled requires versioning_status to be Enabled (AWS enables versioning automatically for Object Lock buckets; state it explicitly so the manifest is honest)\x1a@!this.object_lock_enabled || this.versioning_status == 'Enabled'\x1a\xab\x01\n" +
-	"\x1freplication_requires_versioning\x12Ireplication requires versioning_status to be Enabled on the source bucket\x1a=!has(this.replication) || this.versioning_status == 'Enabled'\"\xdf\x04\n" +
+	"\x1freplication_requires_versioning\x12Ireplication requires versioning_status to be Enabled on the source bucket\x1a=!has(this.replication) || this.versioning_status == 'Enabled'\"\xac\x06\n" +
 	"\x15AwsS3BucketEncryption\x12\xcf\x01\n" +
 	"\rsse_algorithm\x18\x01 \x01(\tB\xa9\x01\xbaH\xa5\x01\xba\x01\xa1\x01\n" +
 	"\x13sse_algorithm_valid\x12;sse_algorithm must be one of: AES256, aws:kms, aws:kms:dsse\x1aMthis == '' || this == 'AES256' || this == 'aws:kms' || this == 'aws:kms:dsse'R\fsseAlgorithm\x12q\n" +
 	"\n" +
 	"kms_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12,\n" +
-	"\x12bucket_key_enabled\x18\x03 \x01(\bR\x10bucketKeyEnabled:\xd2\x01\xbaH\xce\x01\x1a\xcb\x01\n" +
+	"\x12bucket_key_enabled\x18\x03 \x01(\bR\x10bucketKeyEnabled\x12\xca\x01\n" +
+	"\x18blocked_encryption_types\x18\x04 \x03(\tB\x8f\x01\xbaH\x8b\x01\x92\x01\x87\x01\"\x84\x01\xba\x01\x80\x01\n" +
+	"\x1dblocked_encryption_type_valid\x12<blocked_encryption_types entries must be one of: NONE, SSE-C\x1a!this == 'NONE' || this == 'SSE-C'R\x16blockedEncryptionTypes:\xd2\x01\xbaH\xce\x01\x1a\xcb\x01\n" +
 	"\x1ekms_key_requires_kms_algorithm\x12Ekms_key_id is only used when sse_algorithm is aws:kms or aws:kms:dsse\x1ab!has(this.kms_key_id) || (this.sse_algorithm == 'aws:kms' || this.sse_algorithm == 'aws:kms:dsse')\"\xe0\x01\n" +
 	"\x1cAwsS3BucketPublicAccessBlock\x12*\n" +
 	"\x11block_public_acls\x18\x01 \x01(\bR\x0fblockPublicAcls\x12.\n" +
@@ -2363,13 +3104,14 @@ const file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15object_size_less_than\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x12objectSizeLessThan\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc4\x04\n" +
-	"\x1eAwsS3BucketLifecycleTransition\x12\x1b\n" +
-	"\x04days\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x04days\x12\x12\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd4\x04\n" +
+	"\x1eAwsS3BucketLifecycleTransition\x12 \n" +
+	"\x04days\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x04days\x88\x01\x01\x12\x12\n" +
 	"\x04date\x18\x02 \x01(\tR\x04date\x12\xd8\x02\n" +
 	"\rstorage_class\x18\x03 \x01(\tB\xb2\x02\xbaH\xae\x02\xba\x01\xa7\x02\n" +
-	"\x1etransition_storage_class_valid\x12mstorage_class must be one of: STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE\x1a\x95\x01this == 'STANDARD_IA' || this == 'ONEZONE_IA' || this == 'INTELLIGENT_TIERING' || this == 'GLACIER_IR' || this == 'GLACIER' || this == 'DEEP_ARCHIVE'\xc8\x01\x01R\fstorageClass:\x95\x01\xbaH\x91\x01\x1a\x8e\x01\n" +
-	"\x18transition_days_xor_date\x12'exactly one of days or date must be set\x1aI(this.days > 0 && this.date == '') || (this.days == 0 && this.date != '')\"\xe4\x02\n" +
+	"\x1etransition_storage_class_valid\x12mstorage_class must be one of: STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE\x1a\x95\x01this == 'STANDARD_IA' || this == 'ONEZONE_IA' || this == 'INTELLIGENT_TIERING' || this == 'GLACIER_IR' || this == 'GLACIER' || this == 'DEEP_ARCHIVE'\xc8\x01\x01R\fstorageClass:\x97\x01\xbaH\x93\x01\x1a\x90\x01\n" +
+	"\x18transition_days_xor_date\x12'exactly one of days or date must be set\x1aK(has(this.days) && this.date == '') || (!has(this.days) && this.date != '')B\a\n" +
+	"\x05_days\"\xe4\x02\n" +
 	"\x1eAwsS3BucketLifecycleExpiration\x12\x1b\n" +
 	"\x04days\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x04days\x12\x12\n" +
 	"\x04date\x18\x02 \x01(\tR\x04date\x12?\n" +
@@ -2404,14 +3146,13 @@ const file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\x04tags\x18\x02 \x03(\v2L.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationFilter.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xcb\n" +
-	"\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd3\v\n" +
 	"!AwsS3BucketReplicationDestination\x12{\n" +
 	"\n" +
 	"bucket_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x19status.outputs.bucket_arnR\tbucketArn\x12\x18\n" +
-	"\aaccount\x18\x02 \x01(\tR\aaccount\x12\xb5\x03\n" +
-	"\rstorage_class\x18\x03 \x01(\tB\x8f\x03\xbaH\x8b\x03\xba\x01\x87\x03\n" +
-	"\x1breplica_storage_class_valid\x12\x8b\x01storage_class must be one of: STANDARD, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE, REDUCED_REDUNDANCY\x1a\xd9\x01this == '' || this == 'STANDARD' || this == 'STANDARD_IA' || this == 'ONEZONE_IA' || this == 'INTELLIGENT_TIERING' || this == 'GLACIER_IR' || this == 'GLACIER' || this == 'DEEP_ARCHIVE' || this == 'REDUCED_REDUNDANCY'R\fstorageClass\x12T\n" +
+	"\aaccount\x18\x02 \x01(\tR\aaccount\x12\xbd\x04\n" +
+	"\rstorage_class\x18\x03 \x01(\tB\x97\x04\xbaH\x93\x04\xba\x01\x8f\x04\n" +
+	"\x1breplica_storage_class_valid\x12\xb7\x01storage_class must be one of: STANDARD, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE, REDUCED_REDUNDANCY, EXPRESS_ONEZONE, OUTPOSTS, SNOW, FSX_ONTAP\x1a\xb5\x02this == '' || this == 'STANDARD' || this == 'STANDARD_IA' || this == 'ONEZONE_IA' || this == 'INTELLIGENT_TIERING' || this == 'GLACIER_IR' || this == 'GLACIER' || this == 'DEEP_ARCHIVE' || this == 'REDUCED_REDUNDANCY' || this == 'EXPRESS_ONEZONE' || this == 'OUTPOSTS' || this == 'SNOW' || this == 'FSX_ONTAP'R\fstorageClass\x12T\n" +
 	"'change_replica_ownership_to_destination\x18\x04 \x01(\bR#changeReplicaOwnershipToDestination\x12\x80\x01\n" +
 	"\x12replica_kms_key_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x0freplicaKmsKeyId\x12'\n" +
 	"\x0fmetrics_enabled\x18\x06 \x01(\bR\x0emetricsEnabled\x12G\n" +
@@ -2432,17 +3173,20 @@ const file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1bredirect_all_protocol_valid\x12$protocol must be one of: http, https\x1a/this == '' || this == 'http' || this == 'https'R\bprotocol\"\xfc\x01\n" +
 	"\x1dAwsS3BucketWebsiteRoutingRule\x12j\n" +
 	"\tcondition\x18\x01 \x01(\v2L.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRuleConditionR\tcondition\x12o\n" +
-	"\bredirect\x18\x02 \x01(\v2K.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRuleRedirectB\x06\xbaH\x03\xc8\x01\x01R\bredirect\"\x9a\x01\n" +
+	"\bredirect\x18\x02 \x01(\v2K.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRuleRedirectB\x06\xbaH\x03\xc8\x01\x01R\bredirect\"\x99\x03\n" +
 	"&AwsS3BucketWebsiteRoutingRuleCondition\x12D\n" +
 	"\x1fhttp_error_code_returned_equals\x18\x01 \x01(\tR\x1bhttpErrorCodeReturnedEquals\x12*\n" +
-	"\x11key_prefix_equals\x18\x02 \x01(\tR\x0fkeyPrefixEquals\"\xf0\x02\n" +
+	"\x11key_prefix_equals\x18\x02 \x01(\tR\x0fkeyPrefixEquals:\xfc\x01\xbaH\xf8\x01\x1a\xf5\x01\n" +
+	"\x1erouting_condition_at_least_one\x12\x86\x01a routing-rule condition must set http_error_code_returned_equals and/or key_prefix_equals (omit the condition to match every request)\x1aJthis.http_error_code_returned_equals != '' || this.key_prefix_equals != ''\"\xe0\x06\n" +
 	"%AwsS3BucketWebsiteRoutingRuleRedirect\x12\x1b\n" +
 	"\thost_name\x18\x01 \x01(\tR\bhostName\x12,\n" +
 	"\x12http_redirect_code\x18\x02 \x01(\tR\x10httpRedirectCode\x12\x9a\x01\n" +
 	"\bprotocol\x18\x03 \x01(\tB~\xbaH{\xba\x01x\n" +
 	"\x1frouting_redirect_protocol_valid\x12$protocol must be one of: http, https\x1a/this == '' || this == 'http' || this == 'https'R\bprotocol\x125\n" +
 	"\x17replace_key_prefix_with\x18\x04 \x01(\tR\x14replaceKeyPrefixWith\x12(\n" +
-	"\x10replace_key_with\x18\x05 \x01(\tR\x0ereplaceKeyWith\"\xb8\x03\n" +
+	"\x10replace_key_with\x18\x05 \x01(\tR\x0ereplaceKeyWith:\xed\x03\xbaH\xe9\x03\x1a\xba\x02\n" +
+	"\x1drouting_redirect_at_least_one\x12\x84\x01a routing-rule redirect must set at least one of: host_name, http_redirect_code, protocol, replace_key_prefix_with, replace_key_with\x1a\x91\x01this.host_name != '' || this.http_redirect_code != '' || this.protocol != '' || this.replace_key_prefix_with != '' || this.replace_key_with != ''\x1a\xa9\x01\n" +
+	"\x1frouting_redirect_prefix_xor_key\x12Creplace_key_prefix_with and replace_key_with are mutually exclusive\x1aAthis.replace_key_prefix_with == '' || this.replace_key_with == ''\"\xb8\x03\n" +
 	"\x12AwsS3BucketLogging\x12\x80\x01\n" +
 	"\rtarget_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\ftargetBucket\x12#\n" +
 	"\rtarget_prefix\x18\x02 \x01(\tR\ftargetPrefix\x12\xf9\x01\n" +
@@ -2498,7 +3242,67 @@ const file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\x11access_tier_valid\x12?access_tier must be one of: ARCHIVE_ACCESS, DEEP_ARCHIVE_ACCESS\x1a9this == 'ARCHIVE_ACCESS' || this == 'DEEP_ARCHIVE_ACCESS'\xc8\x01\x01R\n" +
 	"accessTier\x12\x1b\n" +
 	"\x04days\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x04days:\xa1\x02\xbaH\x9d\x02\x1a\x9a\x02\n" +
-	"\x11tier_days_minimum\x12^days must be at least 90 for ARCHIVE_ACCESS and at least 180 for DEEP_ARCHIVE_ACCESS (max 730)\x1a\xa4\x01(this.access_tier == 'ARCHIVE_ACCESS' && this.days >= 90 && this.days <= 730) || (this.access_tier == 'DEEP_ARCHIVE_ACCESS' && this.days >= 180 && this.days <= 730)B\xbd\x02\n" +
+	"\x11tier_days_minimum\x12^days must be at least 90 for ARCHIVE_ACCESS and at least 180 for DEEP_ARCHIVE_ACCESS (max 730)\x1a\xa4\x01(this.access_tier == 'ARCHIVE_ACCESS' && this.days >= 90 && this.days <= 730) || (this.access_tier == 'DEEP_ARCHIVE_ACCESS' && this.days >= 180 && this.days <= 730)\"\xfa\x02\n" +
+	"!AwsS3BucketAnalyticsConfiguration\x12\x1d\n" +
+	"\x04name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x04name\x12#\n" +
+	"\rfilter_prefix\x18\x02 \x01(\tR\ffilterPrefix\x12x\n" +
+	"\vfilter_tags\x18\x03 \x03(\v2W.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketAnalyticsConfiguration.FilterTagsEntryR\n" +
+	"filterTags\x12X\n" +
+	"\x06export\x18\x04 \x01(\v2@.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketAnalyticsExportR\x06export\x1a=\n" +
+	"\x0fFilterTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xdd\x01\n" +
+	"\x1aAwsS3BucketAnalyticsExport\x12{\n" +
+	"\n" +
+	"bucket_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x19status.outputs.bucket_arnR\tbucketArn\x12*\n" +
+	"\x11bucket_account_id\x18\x02 \x01(\tR\x0fbucketAccountId\x12\x16\n" +
+	"\x06prefix\x18\x03 \x01(\tR\x06prefix\"\xe8\n" +
+	"\n" +
+	"!AwsS3BucketInventoryConfiguration\x12\x1d\n" +
+	"\x04name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x04name\x12\x1a\n" +
+	"\bdisabled\x18\x02 \x01(\bR\bdisabled\x12\xc3\x01\n" +
+	"\x18included_object_versions\x18\x03 \x01(\tB\x88\x01\xbaH\x84\x01\xba\x01~\n" +
+	"!inventory_included_versions_valid\x125included_object_versions must be one of: All, Current\x1a\"this == 'All' || this == 'Current'\xc8\x01\x01R\x16includedObjectVersions\x12\x90\x01\n" +
+	"\tfrequency\x18\x04 \x01(\tBr\xbaHo\xba\x01i\n" +
+	"\x19inventory_frequency_valid\x12'frequency must be one of: Daily, Weekly\x1a#this == 'Daily' || this == 'Weekly'\xc8\x01\x01R\tfrequency\x12\x98\x06\n" +
+	"\x0foptional_fields\x18\x05 \x03(\tB\xee\x05\xbaH\xea\x05\x92\x01\xe6\x05\"\xe3\x05\xba\x01\xdf\x05\n" +
+	"\x1einventory_optional_field_valid\x12\xe4\x02optional_fields entries must be valid inventory fields (Size, LastModifiedDate, StorageClass, ETag, IsMultipartUploaded, ReplicationStatus, EncryptionStatus, ObjectLockRetainUntilDate, ObjectLockMode, ObjectLockLegalHoldStatus, IntelligentTieringAccessTier, BucketKeyStatus, ChecksumAlgorithm, ObjectAccessControlList, ObjectOwner, LifecycleExpirationDate)\x1a\xd5\x02this in ['Size', 'LastModifiedDate', 'StorageClass', 'ETag', 'IsMultipartUploaded', 'ReplicationStatus', 'EncryptionStatus', 'ObjectLockRetainUntilDate', 'ObjectLockMode', 'ObjectLockLegalHoldStatus', 'IntelligentTieringAccessTier', 'BucketKeyStatus', 'ChecksumAlgorithm', 'ObjectAccessControlList', 'ObjectOwner', 'LifecycleExpirationDate']R\x0eoptionalFields\x12#\n" +
+	"\rfilter_prefix\x18\x06 \x01(\tR\ffilterPrefix\x12o\n" +
+	"\vdestination\x18\a \x01(\v2E.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketInventoryDestinationB\x06\xbaH\x03\xc8\x01\x01R\vdestination\"\xa1\x05\n" +
+	"\x1fAwsS3BucketInventoryDestination\x12{\n" +
+	"\n" +
+	"bucket_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x19status.outputs.bucket_arnR\tbucketArn\x12\x99\x01\n" +
+	"\x06format\x18\x02 \x01(\tB\x80\x01\xbaH}\xba\x01w\n" +
+	"\x16inventory_format_valid\x12(format must be one of: CSV, ORC, Parquet\x1a3this == 'CSV' || this == 'ORC' || this == 'Parquet'\xc8\x01\x01R\x06format\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x03 \x01(\tR\taccountId\x12\x16\n" +
+	"\x06prefix\x18\x04 \x01(\tR\x06prefix\x12x\n" +
+	"\x0esse_kms_key_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\vsseKmsKeyId\x12\x15\n" +
+	"\x06sse_s3\x18\x06 \x01(\bR\x05sseS3:\x9c\x01\xbaH\x98\x01\x1a\x95\x01\n" +
+	"$inventory_encryption_exactly_one_arm\x12Aset at most one of sse_s3 or sse_kms_key_id for report encryption\x1a*!(this.sse_s3 && has(this.sse_kms_key_id))\"\xd3\x02\n" +
+	"\x1fAwsS3BucketMetricsConfiguration\x12\x1d\n" +
+	"\x04name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x04name\x125\n" +
+	"\x17filter_access_point_arn\x18\x02 \x01(\tR\x14filterAccessPointArn\x12#\n" +
+	"\rfilter_prefix\x18\x03 \x01(\tR\ffilterPrefix\x12v\n" +
+	"\vfilter_tags\x18\x04 \x03(\v2U.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetricsConfiguration.FilterTagsEntryR\n" +
+	"filterTags\x1a=\n" +
+	"\x0fFilterTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xff\x03\n" +
+	" AwsS3BucketMetadataConfiguration\x126\n" +
+	"\x17inventory_table_enabled\x18\x01 \x01(\bR\x15inventoryTableEnabled\x12\x86\x01\n" +
+	"\x1ainventory_table_encryption\x18\x02 \x01(\v2H.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataTableEncryptionR\x18inventoryTableEncryption\x12\x94\x01\n" +
+	"\x19journal_record_expiration\x18\x03 \x01(\v2P.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataJournalRecordExpirationB\x06\xbaH\x03\xc8\x01\x01R\x17journalRecordExpiration\x12\x82\x01\n" +
+	"\x18journal_table_encryption\x18\x04 \x01(\v2H.dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataTableEncryptionR\x16journalTableEncryption\"\xa2\x02\n" +
+	"*AwsS3BucketMetadataJournalRecordExpiration\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1b\n" +
+	"\x04days\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x04days:\xbc\x01\xbaH\xb8\x01\x1a\xb5\x01\n" +
+	"$journal_expiration_days_when_enabled\x12]days is required (7–2147483647) when expiration is enabled, and must be unset when disabled\x1a.this.enabled ? this.days >= 7 : this.days == 0\"\xe4\x03\n" +
+	"\"AwsS3BucketMetadataTableEncryption\x12\xa2\x01\n" +
+	"\rsse_algorithm\x18\x01 \x01(\tB}\xbaHz\xba\x01t\n" +
+	"\x1cmetadata_sse_algorithm_valid\x12-sse_algorithm must be one of: AES256, aws:kms\x1a%this == 'AES256' || this == 'aws:kms'\xc8\x01\x01R\fsseAlgorithm\x12s\n" +
+	"\vkms_key_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn:\xa3\x01\xbaH\x9f\x01\x1a\x9c\x01\n" +
+	"'metadata_kms_key_requires_kms_algorithm\x126kms_key_arn is only used when sse_algorithm is aws:kms\x1a9!has(this.kms_key_arn) || this.sse_algorithm == 'aws:kms'B\xbd\x02\n" +
 	"(com.dev.planton.aws.awss3bucket.v1alpha1B\tSpecProtoP\x01ZQgithub.com/plantonhq/planton/catalog/aws/awss3bucket/v1alpha1;awss3bucketv1alpha1\xa2\x02\x04DPAA\xaa\x02$Dev.Planton.Aws.Awss3bucket.V1alpha1\xca\x02$Dev\\Planton\\Aws\\Awss3bucket\\V1alpha1\xe2\x020Dev\\Planton\\Aws\\Awss3bucket\\V1alpha1\\GPBMetadata\xea\x02(Dev::Planton::Aws::Awss3bucket::V1alpha1b\x06proto3"
 
 var (
@@ -2513,7 +3317,7 @@ func file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
 var file_catalog_aws_awss3bucket_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsS3BucketSpec)(nil),                            // 0: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec
 	(*AwsS3BucketEncryption)(nil),                      // 1: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketEncryption
@@ -2542,16 +3346,26 @@ var file_catalog_aws_awss3bucket_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsS3BucketObjectLockDefaultRetention)(nil),      // 24: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketObjectLockDefaultRetention
 	(*AwsS3BucketIntelligentTieringConfiguration)(nil), // 25: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringConfiguration
 	(*AwsS3BucketIntelligentTieringTier)(nil),          // 26: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringTier
-	nil,                         // 27: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleFilter.TagsEntry
-	nil,                         // 28: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationFilter.TagsEntry
-	nil,                         // 29: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringConfiguration.FilterTagsEntry
-	(*structpb.Struct)(nil),     // 30: google.protobuf.Struct
-	(*v1.StringValueOrRef)(nil), // 31: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsS3BucketAnalyticsConfiguration)(nil),          // 27: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketAnalyticsConfiguration
+	(*AwsS3BucketAnalyticsExport)(nil),                 // 28: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketAnalyticsExport
+	(*AwsS3BucketInventoryConfiguration)(nil),          // 29: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketInventoryConfiguration
+	(*AwsS3BucketInventoryDestination)(nil),            // 30: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketInventoryDestination
+	(*AwsS3BucketMetricsConfiguration)(nil),            // 31: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetricsConfiguration
+	(*AwsS3BucketMetadataConfiguration)(nil),           // 32: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataConfiguration
+	(*AwsS3BucketMetadataJournalRecordExpiration)(nil), // 33: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataJournalRecordExpiration
+	(*AwsS3BucketMetadataTableEncryption)(nil),         // 34: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataTableEncryption
+	nil,                         // 35: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleFilter.TagsEntry
+	nil,                         // 36: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationFilter.TagsEntry
+	nil,                         // 37: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringConfiguration.FilterTagsEntry
+	nil,                         // 38: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketAnalyticsConfiguration.FilterTagsEntry
+	nil,                         // 39: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetricsConfiguration.FilterTagsEntry
+	(*structpb.Struct)(nil),     // 40: google.protobuf.Struct
+	(*v1.StringValueOrRef)(nil), // 41: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awss3bucket_v1alpha1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.encryption:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketEncryption
 	2,  // 1: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.public_access_block:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketPublicAccessBlock
-	30, // 2: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.policy:type_name -> google.protobuf.Struct
+	40, // 2: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.policy:type_name -> google.protobuf.Struct
 	3,  // 3: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.lifecycle_rules:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleRule
 	9,  // 4: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.replication:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplication
 	13, // 5: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.website:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsite
@@ -2560,38 +3374,53 @@ var file_catalog_aws_awss3bucket_v1alpha1_spec_proto_depIdxs = []int32{
 	20, // 8: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.notification:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketNotification
 	24, // 9: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.object_lock_default_retention:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketObjectLockDefaultRetention
 	25, // 10: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.intelligent_tiering_configurations:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringConfiguration
-	31, // 11: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketEncryption.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 12: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleRule.filter:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleFilter
-	5,  // 13: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleRule.transitions:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleTransition
-	6,  // 14: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleRule.expiration:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleExpiration
-	7,  // 15: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleRule.noncurrent_version_transitions:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketNoncurrentVersionTransition
-	8,  // 16: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleRule.noncurrent_version_expiration:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketNoncurrentVersionExpiration
-	27, // 17: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleFilter.tags:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleFilter.TagsEntry
-	31, // 18: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplication.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 19: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplication.rules:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationRule
-	11, // 20: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationRule.filter:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationFilter
-	12, // 21: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationRule.destination:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationDestination
-	28, // 22: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationFilter.tags:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationFilter.TagsEntry
-	31, // 23: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationDestination.bucket_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	31, // 24: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationDestination.replica_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // 25: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsite.redirect_all_requests_to:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRedirectAll
-	15, // 26: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsite.routing_rules:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRule
-	16, // 27: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRule.condition:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRuleCondition
-	17, // 28: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRule.redirect:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRuleRedirect
-	31, // 29: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLogging.target_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 30: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketNotification.lambda_functions:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLambdaNotification
-	22, // 31: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketNotification.queues:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketQueueNotification
-	23, // 32: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketNotification.topics:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketTopicNotification
-	31, // 33: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLambdaNotification.lambda_function_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	31, // 34: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketQueueNotification.queue_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	31, // 35: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketTopicNotification.topic_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // 36: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringConfiguration.filter_tags:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringConfiguration.FilterTagsEntry
-	26, // 37: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringConfiguration.tiers:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringTier
-	38, // [38:38] is the sub-list for method output_type
-	38, // [38:38] is the sub-list for method input_type
-	38, // [38:38] is the sub-list for extension type_name
-	38, // [38:38] is the sub-list for extension extendee
-	0,  // [0:38] is the sub-list for field type_name
+	27, // 11: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.analytics_configurations:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketAnalyticsConfiguration
+	29, // 12: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.inventory_configurations:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketInventoryConfiguration
+	31, // 13: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.metrics_configurations:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetricsConfiguration
+	32, // 14: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketSpec.metadata_configuration:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataConfiguration
+	41, // 15: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketEncryption.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 16: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleRule.filter:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleFilter
+	5,  // 17: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleRule.transitions:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleTransition
+	6,  // 18: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleRule.expiration:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleExpiration
+	7,  // 19: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleRule.noncurrent_version_transitions:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketNoncurrentVersionTransition
+	8,  // 20: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleRule.noncurrent_version_expiration:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketNoncurrentVersionExpiration
+	35, // 21: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleFilter.tags:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLifecycleFilter.TagsEntry
+	41, // 22: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplication.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 23: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplication.rules:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationRule
+	11, // 24: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationRule.filter:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationFilter
+	12, // 25: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationRule.destination:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationDestination
+	36, // 26: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationFilter.tags:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationFilter.TagsEntry
+	41, // 27: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationDestination.bucket_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	41, // 28: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketReplicationDestination.replica_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 29: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsite.redirect_all_requests_to:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRedirectAll
+	15, // 30: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsite.routing_rules:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRule
+	16, // 31: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRule.condition:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRuleCondition
+	17, // 32: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRule.redirect:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketWebsiteRoutingRuleRedirect
+	41, // 33: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLogging.target_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // 34: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketNotification.lambda_functions:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLambdaNotification
+	22, // 35: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketNotification.queues:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketQueueNotification
+	23, // 36: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketNotification.topics:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketTopicNotification
+	41, // 37: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketLambdaNotification.lambda_function_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	41, // 38: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketQueueNotification.queue_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	41, // 39: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketTopicNotification.topic_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	37, // 40: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringConfiguration.filter_tags:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringConfiguration.FilterTagsEntry
+	26, // 41: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringConfiguration.tiers:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketIntelligentTieringTier
+	38, // 42: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketAnalyticsConfiguration.filter_tags:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketAnalyticsConfiguration.FilterTagsEntry
+	28, // 43: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketAnalyticsConfiguration.export:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketAnalyticsExport
+	41, // 44: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketAnalyticsExport.bucket_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	30, // 45: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketInventoryConfiguration.destination:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketInventoryDestination
+	41, // 46: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketInventoryDestination.bucket_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	41, // 47: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketInventoryDestination.sse_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	39, // 48: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetricsConfiguration.filter_tags:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetricsConfiguration.FilterTagsEntry
+	34, // 49: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataConfiguration.inventory_table_encryption:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataTableEncryption
+	33, // 50: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataConfiguration.journal_record_expiration:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataJournalRecordExpiration
+	34, // 51: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataConfiguration.journal_table_encryption:type_name -> dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataTableEncryption
+	41, // 52: dev.planton.aws.awss3bucket.v1alpha1.AwsS3BucketMetadataTableEncryption.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	53, // [53:53] is the sub-list for method output_type
+	53, // [53:53] is the sub-list for method input_type
+	53, // [53:53] is the sub-list for extension type_name
+	53, // [53:53] is the sub-list for extension extendee
+	0,  // [0:53] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awss3bucket_v1alpha1_spec_proto_init() }
@@ -2599,13 +3428,14 @@ func file_catalog_aws_awss3bucket_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awss3bucket_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_aws_awss3bucket_v1alpha1_spec_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awss3bucket_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   30,
+			NumMessages:   40,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

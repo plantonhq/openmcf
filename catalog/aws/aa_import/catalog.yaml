@@ -91,6 +91,30 @@ spec:
         The colon-joined second segment is the per-configuration name (the
         module keys these off spec.intelligent_tiering_configurations[].name;
         it also appears in the enumerated address's for_each key).
+    - terraform_type: aws_s3_bucket_abac
+      pulumi_type: aws:s3/bucketAbac:BucketAbac
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_analytics_configuration
+      pulumi_type: aws:s3/analyticsConfiguration:AnalyticsConfiguration
+      id_format: "{bucket}:{analytics_name}"
+      notes: >-
+        Same name-keyed convention as intelligent tiering (the module keys
+        these off spec.analytics_configurations[].name).
+    - terraform_type: aws_s3_bucket_inventory
+      pulumi_type: aws:s3/inventory:Inventory
+      id_format: "{bucket}:{inventory_name}"
+      notes: >-
+        Same name-keyed convention as intelligent tiering (the module keys
+        these off spec.inventory_configurations[].name).
+    - terraform_type: aws_s3_bucket_metric
+      pulumi_type: aws:s3/bucketMetric:BucketMetric
+      id_format: "{bucket}:{metric_name}"
+      notes: >-
+        Same name-keyed convention as intelligent tiering (the module keys
+        these off spec.metrics_configurations[].name).
+    - terraform_type: aws_s3_bucket_metadata_configuration
+      pulumi_type: aws:s3/bucketMetadataConfiguration:BucketMetadataConfiguration
+      id_format: "{bucket}"
 
     # --- VPC -----------------------------------------------------------------
     - terraform_type: aws_vpc

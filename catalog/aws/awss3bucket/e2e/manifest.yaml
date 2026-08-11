@@ -7,9 +7,59 @@ spec:
   versioningStatus: Enabled
   encryption:
     sseAlgorithm: AES256
+    # Refuse customer-provided-key uploads (states the March-2026 AWS
+    # default posture explicitly).
+    blockedEncryptionTypes:
+      - SSE-C
   lifecycleRules:
     - id: prune-noncurrent
       noncurrentVersionExpiration:
         noncurrentDays: 30
       abortIncompleteMultipartUploadDays: 7
+    # Day-zero transition: objects under ingest/ enter INTELLIGENT_TIERING
+    # on the day they are uploaded.
+    - id: tier-at-ingest
+      filter:
+        prefix: ingest/
+      transitions:
+        - days: 0
+          storageClass: INTELLIGENT_TIERING
+  # Attribute-based access control: authorize by principal tags vs bucket tags.
+  abacStatus: Enabled
+  # Storage-class analysis with a daily CSV export delivered to this bucket
+  # itself (S3 bucket ARNs are name-derived, so the self-ARN is a literal).
+  analyticsConfigurations:
+    - name: hot-data-analysis
+      filterPrefix: data/
+      export:
+        bucketArn:
+          value: arn:aws:s3:::awss3bucket-demo
+        prefix: analytics/
+  # Weekly inventory report of every object version, delivered to this
+  # bucket itself.
+  inventoryConfigurations:
+    - name: weekly-audit
+      includedObjectVersions: All
+      frequency: Weekly
+      optionalFields:
+        - Size
+        - EncryptionStatus
+        - ReplicationStatus
+      destination:
+        bucketArn:
+          value: arn:aws:s3:::awss3bucket-demo
+        format: Parquet
+        prefix: inventory/
+  # CloudWatch request metrics for the hot data prefix.
+  metricsConfigurations:
+    - name: hot-data-requests
+      filterPrefix: data/
+  # S3 Metadata: queryable Iceberg tables of this bucket's objects — the
+  # change journal (expiring records after 90 days) plus the live
+  # inventory table.
+  metadataConfiguration:
+    inventoryTableEnabled: true
+    journalRecordExpiration:
+      enabled: true
+      days: 90
   forceDestroy: true

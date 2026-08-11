@@ -23,3 +23,27 @@ spec:
         configurations (each configuration's name), or
         `aws s3api list-bucket-intelligent-tiering-configurations
         --bucket <bucket>`.
+    - name: analytics_name
+      derivations:
+        # Same name-keyed for_each convention as intelligent tiering.
+        - from_address_key: true
+      where_to_find: >-
+        S3 console -> bucket -> Metrics -> Storage Class Analysis (each
+        configuration's name), or
+        `aws s3api list-bucket-analytics-configurations --bucket <bucket>`.
+    - name: inventory_name
+      derivations:
+        # Same name-keyed for_each convention as intelligent tiering.
+        - from_address_key: true
+      where_to_find: >-
+        S3 console -> bucket -> Management -> Inventory configurations
+        (each configuration's name), or
+        `aws s3api list-bucket-inventory-configurations --bucket <bucket>`.
+    - name: metric_name
+      derivations:
+        # Same name-keyed for_each convention as intelligent tiering.
+        - from_address_key: true
+      where_to_find: >-
+        S3 console -> bucket -> Metrics -> Request metrics (each
+        configuration's name), or
+        `aws s3api list-bucket-metrics-configurations --bucket <bucket>`.

@@ -387,6 +387,9 @@ Fields on other kinds that can point at this resource:
 | AwsRoute53Zone | `spec.dnssec.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsS3Bucket | `spec.encryption.kmsKeyId` | `status.outputs.key_arn` |
 | AwsS3Bucket | `spec.replication.rules[].destination.replicaKmsKeyId` | `status.outputs.key_arn` |
+| AwsS3Bucket | `spec.inventoryConfigurations[].destination.sseKmsKeyId` | `status.outputs.key_arn` |
+| AwsS3Bucket | `spec.metadataConfiguration.inventoryTableEncryption.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsS3Bucket | `spec.metadataConfiguration.journalTableEncryption.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsS3ObjectSet | `spec.objects[].kmsKey` | `status.outputs.key_arn` |
 | AwsSagemakerDomain | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.canvasAppSettings.workspaceSettings.s3KmsKeyId` | `status.outputs.key_arn` |

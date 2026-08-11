@@ -3,17 +3,19 @@ kind: ComponentE2EProfile
 metadata:
   name: awss3bucket
 spec:
-  # Two scenarios, live-validated on both provisioners (deploy -> HeadBucket
-  # verify -> destroy -> verify-destroyed): the minimal walking skeleton and
-  # the full-surface bucket (versioning + KMS-with-bucket-key encryption +
-  # TLS-only policy + multi-predicate lifecycle filters + website with
-  # routing rules + EventBridge notifications + Intelligent-Tiering).
-  # Deliberately not run live: replication (needs a second versioned bucket
-  # + replication role; module surface proven offline) and Object Lock
-  # (irreversible bucket mode) -- see the full-surface scenario header.
+  # Flipped to pending_proof by the depth-closure wave that folded the five
+  # governance companions (ABAC, analytics, inventory, metrics, S3 Metadata)
+  # and added blocked encryption types, the account-regional namespace, and
+  # day-zero transitions. The PRIOR green covered both provisioners across
+  # two scenarios (minimal + full-surface); the full-surface scenario now
+  # carries the new free arms (ABAC, analytics, self-delivered inventory,
+  # request metrics, blocked SSE-C, day-zero tiering) and must be re-proven.
+  # Deliberately not run live: replication and Object Lock (see the
+  # full-surface scenario header) and the S3 Metadata configuration (the
+  # provider's own create timeout is 30 minutes against this profile's
+  # 15-minute budget -- proven offline via the canonical manifest and the
+  # 04-governed-data-lake preset; the proof lane may choose to raise the
+  # timeout and prove it live instead).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 15
