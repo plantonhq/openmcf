@@ -1426,7 +1426,7 @@ resources:
     reason: "account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind"
   - resource: aws_ec2_instance_connect_endpoint
     disposition: model-planned
-    reason: "instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens"
+    reason: "judged as a planned AwsEc2InstanceConnectEndpoint kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): a subnet-resident endpoint with its own lifecycle serving MANY instances -- SSH/RDP reachability infrastructure, never per-instance configuration"
   - resource: aws_ec2_instance_metadata_defaults
     disposition: model-planned
     reason: "account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind"
@@ -2113,7 +2113,7 @@ resources:
     reason: "Kendra enterprise search; the Bedrock knowledge-base path covers retrieval-augmented generation; deferred"
   - resource: aws_key_pair
     disposition: model-planned
-    reason: "instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens"
+    reason: "judged as a planned AwsKeyPair kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): account-level public-key material referenced by many instances and launch templates -- AwsEc2Instance.key_name consumes a key pair by name but cannot create the material"
   - resource: aws_keyspaces_keyspace
     disposition: model-planned
     reason: "judged as a planned AwsKeyspaces kind (keyspaces with tables)"
@@ -2482,16 +2482,16 @@ resources:
     reason: "judged as a planned AwsNetworkAcl kind (ACLs, associations, rules)"
   - resource: aws_network_interface
     disposition: model-planned
-    reason: "instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens"
+    reason: "judged as a planned AwsNetworkInterface kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): a standalone ENI lifecycle attachable across instances -- AwsEc2Instance consumes one by reference (primary_network_interface_id) and creates launch-scoped ones inline (secondary_network_interfaces), neither of which is the durable standalone ENI; the provider's own aws_instance.network_interface deprecation points at the attachment resource as the sanctioned companion"
   - resource: aws_network_interface_attachment
     disposition: model-planned
-    reason: "instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens"
+    reason: "attachment satellite of the planned AwsNetworkInterface kind (re-judged 2026-08-11): binds an existing ENI to an instance at a device index -- the provider's sanctioned replacement for the deprecated aws_instance.network_interface block"
   - resource: aws_network_interface_permission
     disposition: model-planned
-    reason: "instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens"
+    reason: "cross-account permission satellite of the planned AwsNetworkInterface kind (re-judged 2026-08-11): grants another account attach rights on an ENI"
   - resource: aws_network_interface_sg_attachment
     disposition: model-planned
-    reason: "instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens"
+    reason: "security-group satellite of the planned AwsNetworkInterface kind (re-judged 2026-08-11): attaches a security group to an existing ENI without owning either side"
   - resource: aws_networkfirewall_firewall
     disposition: model-planned
     reason: "judged as a planned AwsNetworkFirewall kind family (firewalls, policies, rule groups, logging, TLS inspection)"
@@ -2806,7 +2806,7 @@ resources:
     reason: "judged as a planned AwsEventbridgePipe kind"
   - resource: aws_placement_group
     disposition: model-planned
-    reason: "instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens"
+    reason: "judged as a planned AwsPlacementGroup kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): an account-level placement strategy (cluster/partition/spread) consumed by many instances and ASGs -- AwsEc2Instance.placement references a group by name/id but cannot create one"
   - resource: aws_prometheus_alert_manager_definition
     disposition: model-planned
     reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
@@ -3730,7 +3730,7 @@ resources:
     reason: "spot request resources are superseded by launch-template market options and EC2 Fleet"
   - resource: aws_spot_instance_request
     disposition: excluded-deprecated
-    reason: "spot request resources are superseded by launch-template market options and EC2 Fleet"
+    reason: "superseded surface by AWS's own guidance (the provider carries NO deprecation marker at 6.58.0 -- recorded 2026-08-11): AWS directs Spot workloads to launch-template/instance market options (AwsEc2Instance.market_type + spot_options, AwsLaunchTemplate) and EC2 Fleet; the standalone request resource duplicates aws_instance's whole schema with everything ForceNew"
   - resource: aws_sqs_queue_policy
     disposition: model-planned
     reason: "queue policy surface (access, redrive, redrive-allow); folds into the existing AwsSqsQueue kind as its spec deepens"

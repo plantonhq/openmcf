@@ -9,17 +9,27 @@ spec:
   # nothing, since unset networking falls back to the default VPC), then
   # runs deploy -> DescribeInstances verify -> destroy ->
   # verify-destroyed on both provisioners. The scenario launches one
-  # t3.micro with IMDSv2 required, an encrypted gp3 root volume, and a
-  # template-introducer-bearing user-data script, so a full lane runs in
-  # minutes at nano-instance cost. Deliberately not in the live
-  # scenario: launch-template composition (proven by the auto-scaling
-  # group's live chain), Spot/placement/dedicated-host arms (account-
-  # capacity-dependent), and secondary network interfaces (need
-  # multi-card instance types) -- all proven by CEL spec tests and the
-  # offline gate.
+  # t3.micro with IMDSv2 required, an encrypted gp3 root volume carrying
+  # a per-volume tag (verify via DescribeVolumes), source_dest_check
+  # deliberately UNSET (the omit path must leave AWS's default ON -- the
+  # field is presence-typed), and a template-introducer-bearing user-data
+  # script, so a full lane runs in minutes at nano-instance cost.
+  # Deliberately not in the live scenario, each with its unblock
+  # condition: launch-template composition (proven by the auto-scaling
+  # group's live chain); Spot/placement/dedicated-host arms
+  # (account-capacity-dependent); secondary network interfaces (need
+  # multi-card instance types); the pre-provisioned primary-ENI arm
+  # (needs a standalone ENI fixture -- unblocks when an
+  # AwsNetworkInterface kind ships; proven offline via the
+  # 04-static-eni-identity preset's plan/preview on both engines -- the
+  # shape that previously died on the provider's source_dest_check
+  # ConflictsWith); the capacity-block / interruptible-reservation
+  # markets and capacity-reservations-only preference (need purchased
+  # capacity -- owner budget decision; proven offline via the
+  # 05-capacity-block-ml preset); force_destroy-under-protection (a
+  # proof-lane decision -- pairing it with disable_api_termination live
+  # risks a protected orphan if the disable step fails).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

@@ -59,7 +59,9 @@ type AwsEc2InstanceSpec struct {
 	// The EC2 instance type (e.g. "t4g.nano", "m7g.large", "c5.xlarge")
 	// determining vCPU count, memory, and network/EBS bandwidth. Required
 	// unless launch_template supplies one. Changing the type stops and
-	// restarts the instance in place (EBS-backed instances only).
+	// restarts the instance in place (EBS-backed instances only) -- UNLESS
+	// the old and new types share no CPU architecture (x86 -> ARM), which
+	// replaces the instance.
 	InstanceType string `protobuf:"bytes,3,opt,name=instance_type,json=instanceType,proto3" json:"instance_type,omitempty"`
 	// Launch from an AwsLaunchTemplate instead of (or in addition to) the
 	// inline fields. Every inline field set here OVERRIDES the template's
@@ -111,11 +113,15 @@ type AwsEc2InstanceSpec struct {
 	// value overrides it either way. ForceNew: changing it replaces the
 	// instance. Note AWS now bills every public IPv4 address.
 	AssociatePublicIpAddress *bool `protobuf:"varint,12,opt,name=associate_public_ip_address,json=associatePublicIpAddress,proto3,oneof" json:"associate_public_ip_address,omitempty"`
-	// Source/destination checking on the primary interface. AWS default:
-	// true. Set false ONLY for instances that forward traffic they neither
-	// originated nor terminate -- NAT instances, software routers, VPN
-	// appliances -- otherwise the network silently drops their forwarded
-	// packets.
+	// Source/destination checking on the primary interface. Optional
+	// tri-state: unset keeps AWS's default (true -- checking on); an
+	// explicit false is the forwarding posture for instances that carry
+	// traffic they neither originated nor terminate (NAT instances,
+	// software routers, VPN appliances) -- without it the network silently
+	// drops their forwarded packets. Leave unset when attaching a
+	// pre-provisioned primary ENI: the provider rejects the combination
+	// (the ENI carries its own source/dest-check setting), and setting the
+	// field on the ENI's kind is the right home for that posture.
 	SourceDestCheck *bool `protobuf:"varint,13,opt,name=source_dest_check,json=sourceDestCheck,proto3,oneof" json:"source_dest_check,omitempty"`
 	// Number of IPv6 addresses AWS auto-assigns from the subnet's IPv6
 	// range. Mutually exclusive with ipv6_addresses.
@@ -152,6 +158,14 @@ type AwsEc2InstanceSpec struct {
 	// with local disks. Data on instance store does not survive stop or
 	// termination. ForceNew: changing mappings replaces the instance.
 	EphemeralBlockDevices []*AwsEc2InstanceEphemeralBlockDevice `protobuf:"bytes,21,rep,name=ephemeral_block_devices,json=ephemeralBlockDevices,proto3" json:"ephemeral_block_devices,omitempty"`
+	// Tags applied uniformly to EVERY EBS volume at instance creation --
+	// including volumes the AMI's block-device mapping creates that are not
+	// declared here. Because they ride the launch call itself, these satisfy
+	// ABAC/SCP policies that require tags at creation time. Mutually
+	// exclusive with per-device tags (root_block_device.tags /
+	// ebs_block_devices[].tags), which allow per-volume values but are
+	// applied AFTER creation by a separate tagging call. Updatable in place.
+	VolumeTags map[string]string `protobuf:"bytes,40,rep,name=volume_tags,json=volumeTags,proto3" json:"volume_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Dedicated EBS throughput between the instance and its volumes. Only
 	// meaningful for instance types where EBS optimization is optional
 	// (most current-generation types have it always-on at no charge);
@@ -176,12 +190,25 @@ type AwsEc2InstanceSpec struct {
 	// for the excess). AWS default: "unlimited" for recent T families.
 	// Ignored for non-burstable types. Updatable in place.
 	CpuCredits string `protobuf:"bytes,26,opt,name=cpu_credits,json=cpuCredits,proto3" json:"cpu_credits,omitempty"`
+	// The instance's purchase market. Unset = On-Demand (with spot_options
+	// present implying "spot" for that classic shape). "spot" pairs with
+	// spot_options; "capacity-block" launches into a pre-purchased ML
+	// Capacity Block (target the block's reservation via
+	// capacity_reservation -- required); "interruptible-capacity-reservation"
+	// launches into an interruptible Capacity Reservation (target required).
+	// The AwsLaunchTemplate sibling carries only spot/capacity-block -- the
+	// interruptible market is instance-level surface at the pinned provider.
+	// ForceNew: the purchase option is fixed at launch. Note: the provider
+	// keeps capacity-block in state after launch (a re-plan shows no diff --
+	// the 6.53.0 perpetual-diff fix).
+	MarketType string `protobuf:"bytes,39,opt,name=market_type,json=marketType,proto3" json:"market_type,omitempty"`
 	// Request Spot capacity instead of On-Demand -- for interruption-
 	// tolerant standalone workloads (a build agent, a batch box). The
 	// instance can be reclaimed by AWS with two minutes' notice; pair with
 	// instance_interruption_behavior "stop"/"hibernate" (persistent
-	// requests) to survive reclaims. ForceNew: the purchase option is
-	// fixed at launch.
+	// requests) to survive reclaims. Presence implies market_type "spot"
+	// when that field is unset. ForceNew: the purchase option is fixed at
+	// launch.
 	SpotOptions *AwsEc2InstanceSpotOptions `protobuf:"bytes,27,opt,name=spot_options,json=spotOptions,proto3" json:"spot_options,omitempty"`
 	// Target an EC2 Capacity Reservation: "open" (use a matching
 	// reservation if one exists -- the AWS default behavior), "none" (never
@@ -218,6 +245,13 @@ type AwsEc2InstanceSpec struct {
 	// stateful pet. Updatable in place; the module's destroy flips it off
 	// first only if you remove the protection from the spec.
 	DisableApiTermination *bool `protobuf:"varint,35,opt,name=disable_api_termination,json=disableApiTermination,proto3,oneof" json:"disable_api_termination,omitempty"`
+	// Allow destroy to proceed even while disable_api_termination /
+	// disable_api_stop are true: the engine lifts the protections itself
+	// before terminating, instead of failing the destroy. The declarative
+	// escape hatch for tearing down a protected pet without first editing
+	// its spec. Imported instances always start with this false regardless
+	// of the live value (the provider cannot read it back).
+	ForceDestroy bool `protobuf:"varint,41,opt,name=force_destroy,json=forceDestroy,proto3" json:"force_destroy,omitempty"`
 	// Instance user data: a cloud-init config or shell script executed on
 	// first boot. Provide PLAIN TEXT here (16 KiB limit before encoding);
 	// shell variable syntax like ${HOME} passes through literally. By
@@ -417,6 +451,13 @@ func (x *AwsEc2InstanceSpec) GetEphemeralBlockDevices() []*AwsEc2InstanceEphemer
 	return nil
 }
 
+func (x *AwsEc2InstanceSpec) GetVolumeTags() map[string]string {
+	if x != nil {
+		return x.VolumeTags
+	}
+	return nil
+}
+
 func (x *AwsEc2InstanceSpec) GetEbsOptimized() bool {
 	if x != nil {
 		return x.EbsOptimized
@@ -448,6 +489,13 @@ func (x *AwsEc2InstanceSpec) GetCpuOptions() *AwsEc2InstanceCpuOptions {
 func (x *AwsEc2InstanceSpec) GetCpuCredits() string {
 	if x != nil {
 		return x.CpuCredits
+	}
+	return ""
+}
+
+func (x *AwsEc2InstanceSpec) GetMarketType() string {
+	if x != nil {
+		return x.MarketType
 	}
 	return ""
 }
@@ -515,6 +563,13 @@ func (x *AwsEc2InstanceSpec) GetDisableApiTermination() bool {
 	return false
 }
 
+func (x *AwsEc2InstanceSpec) GetForceDestroy() bool {
+	if x != nil {
+		return x.ForceDestroy
+	}
+	return false
+}
+
 func (x *AwsEc2InstanceSpec) GetUserData() string {
 	if x != nil {
 		return x.UserData
@@ -553,7 +608,9 @@ type AwsEc2InstanceLaunchTemplate struct {
 	// "$Latest" (track every new version -- each publish restarts the
 	// instance), or "$Default" (AWS default when unset; both Planton launch
 	// template modules promote each new version to default, so this tracks
-	// the template's releases).
+	// the template's releases). Changing this to a version the instance is
+	// not already running REPLACES the instance -- the provider verifies
+	// against the live instance's actual template version.
 	Version       string `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -786,7 +843,9 @@ type AwsEc2InstanceRootBlockDevice struct {
 	// Provisioned IOPS. Required for "io1"/"io2"; optional for "gp3"
 	// (baseline 3000 without it); not valid for other types.
 	Iops int32 `protobuf:"varint,3,opt,name=iops,proto3" json:"iops,omitempty"`
-	// Throughput in MiB/s, 125-1000. "gp3" only (baseline 125 without it).
+	// Throughput in MiB/s, 125-2000. "gp3" only (baseline 125 without it;
+	// above 1000 requires a matching iops floor per the gp3 ratio rules AWS
+	// enforces at the API).
 	ThroughputMibps int32 `protobuf:"varint,4,opt,name=throughput_mibps,json=throughputMibps,proto3" json:"throughput_mibps,omitempty"`
 	// Encrypt the root volume at rest. ForceNew on the root device: flipping
 	// encryption replaces the instance. When the account enforces
@@ -801,8 +860,13 @@ type AwsEc2InstanceRootBlockDevice struct {
 	// true. Optional so an explicit false ("keep the boot disk for
 	// forensics/reuse") is distinguishable from unset.
 	DeleteOnTermination *bool `protobuf:"varint,7,opt,name=delete_on_termination,json=deleteOnTermination,proto3,oneof" json:"delete_on_termination,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Tags on the root volume itself. Applied AFTER instance creation by a
+	// separate tagging call -- incompatible with ABAC/SCP policies that
+	// require tags at creation time (use the spec-level volume_tags for
+	// those). Mutually exclusive with volume_tags. Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,8,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsEc2InstanceRootBlockDevice) Reset() {
@@ -884,6 +948,13 @@ func (x *AwsEc2InstanceRootBlockDevice) GetDeleteOnTermination() bool {
 	return false
 }
 
+func (x *AwsEc2InstanceRootBlockDevice) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 // AwsEc2InstanceEbsBlockDevice attaches one additional EBS data volume at
 // launch. The whole mapping is create-time on an instance: prefer
 // standalone volumes attached post-launch when the data's lifecycle should
@@ -900,7 +971,7 @@ type AwsEc2InstanceEbsBlockDevice struct {
 	VolumeType string `protobuf:"bytes,3,opt,name=volume_type,json=volumeType,proto3" json:"volume_type,omitempty"`
 	// Provisioned IOPS. Required for "io1"/"io2"; optional for "gp3".
 	Iops int32 `protobuf:"varint,4,opt,name=iops,proto3" json:"iops,omitempty"`
-	// Throughput in MiB/s, 125-1000. "gp3" only.
+	// Throughput in MiB/s, 125-2000. "gp3" only.
 	ThroughputMibps int32 `protobuf:"varint,5,opt,name=throughput_mibps,json=throughputMibps,proto3" json:"throughput_mibps,omitempty"`
 	// Encrypt the volume at rest.
 	Encrypted bool `protobuf:"varint,6,opt,name=encrypted,proto3" json:"encrypted,omitempty"`
@@ -913,8 +984,13 @@ type AwsEc2InstanceEbsBlockDevice struct {
 	// Delete the volume when the instance terminates. AWS default: true.
 	// Set an explicit false to keep the data volume after termination.
 	DeleteOnTermination *bool `protobuf:"varint,9,opt,name=delete_on_termination,json=deleteOnTermination,proto3,oneof" json:"delete_on_termination,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Tags on this volume. Applied AFTER instance creation by a separate
+	// tagging call -- incompatible with ABAC/SCP policies that require tags
+	// at creation time (use the spec-level volume_tags for those).
+	// Mutually exclusive with volume_tags. Updatable in place.
+	Tags          map[string]string `protobuf:"bytes,10,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsEc2InstanceEbsBlockDevice) Reset() {
@@ -1008,6 +1084,13 @@ func (x *AwsEc2InstanceEbsBlockDevice) GetDeleteOnTermination() bool {
 		return *x.DeleteOnTermination
 	}
 	return false
+}
+
+func (x *AwsEc2InstanceEbsBlockDevice) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
 }
 
 // AwsEc2InstanceEphemeralBlockDevice maps one instance-store (local disk)
@@ -1344,9 +1427,11 @@ func (x *AwsEc2InstanceSpotOptions) GetValidUntil() string {
 type AwsEc2InstanceCapacityReservation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Reservation preference: "open" (consume a matching reservation when
-	// one exists -- AWS's default behavior) or "none" (never consume a
-	// reservation, even when one matches). Mutually exclusive with the
-	// specific-target fields.
+	// one exists -- AWS's default behavior), "none" (never consume a
+	// reservation, even when one matches), or "capacity-reservations-only"
+	// (launch ONLY into a matching reservation -- the launch fails when
+	// none matches, guaranteeing reserved capacity is what runs). Mutually
+	// exclusive with the specific-target fields.
 	Preference string `protobuf:"bytes,1,opt,name=preference,proto3" json:"preference,omitempty"`
 	// Target one specific Capacity Reservation by ID (e.g. "cr-0123...").
 	// Mutually exclusive with preference and
@@ -1525,7 +1610,7 @@ var File_catalog_aws_awsec2instance_v1alpha1_spec_proto protoreflect.FileDescrip
 
 const file_catalog_aws_awsec2instance_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	".catalog/aws/awsec2instance/v1alpha1/spec.proto\x12'dev.planton.aws.awsec2instance.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xac&\n" +
+	".catalog/aws/awsec2instance/v1alpha1/spec.proto\x12'dev.planton.aws.awsec2instance.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe35\n" +
 	"\x12AwsEc2InstanceSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x10\n" +
 	"\x03ami\x18\x02 \x01(\tR\x03ami\x12#\n" +
@@ -1540,8 +1625,8 @@ const file_catalog_aws_awsec2instance_v1alpha1_spec_proto_rawDesc = "" +
 	"private_ip\x18\n" +
 	" \x01(\tR\tprivateIp\x122\n" +
 	"\x15secondary_private_ips\x18\v \x03(\tR\x13secondaryPrivateIps\x12B\n" +
-	"\x1bassociate_public_ip_address\x18\f \x01(\bH\x00R\x18associatePublicIpAddress\x88\x01\x01\x129\n" +
-	"\x11source_dest_check\x18\r \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x0fsourceDestCheck\x88\x01\x01\x12,\n" +
+	"\x1bassociate_public_ip_address\x18\f \x01(\bH\x00R\x18associatePublicIpAddress\x88\x01\x01\x12/\n" +
+	"\x11source_dest_check\x18\r \x01(\bH\x01R\x0fsourceDestCheck\x88\x01\x01\x12,\n" +
 	"\x12ipv6_address_count\x18\x0e \x01(\x05R\x10ipv6AddressCount\x12%\n" +
 	"\x0eipv6_addresses\x18\x0f \x03(\tR\ripv6Addresses\x123\n" +
 	"\x13enable_primary_ipv6\x18\x10 \x01(\bH\x02R\x11enablePrimaryIpv6\x88\x01\x01\x12\x85\x01\n" +
@@ -1549,14 +1634,18 @@ const file_catalog_aws_awsec2instance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1csecondary_network_interfaces\x18\x12 \x03(\v2P.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSecondaryNetworkInterfaceR\x1asecondaryNetworkInterfaces\x12r\n" +
 	"\x11root_block_device\x18\x13 \x01(\v2F.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceRootBlockDeviceR\x0frootBlockDevice\x12q\n" +
 	"\x11ebs_block_devices\x18\x14 \x03(\v2E.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceEbsBlockDeviceR\x0febsBlockDevices\x12\x83\x01\n" +
-	"\x17ephemeral_block_devices\x18\x15 \x03(\v2K.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceEphemeralBlockDeviceR\x15ephemeralBlockDevices\x12#\n" +
+	"\x17ephemeral_block_devices\x18\x15 \x03(\v2K.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceEphemeralBlockDeviceR\x15ephemeralBlockDevices\x12l\n" +
+	"\vvolume_tags\x18( \x03(\v2K.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.VolumeTagsEntryR\n" +
+	"volumeTags\x12#\n" +
 	"\rebs_optimized\x18\x16 \x01(\bR\febsOptimized\x12q\n" +
 	"\x10metadata_options\x18\x17 \x01(\v2F.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceMetadataOptionsR\x0fmetadataOptions\x12/\n" +
 	"\x13detailed_monitoring\x18\x18 \x01(\bR\x12detailedMonitoring\x12b\n" +
 	"\vcpu_options\x18\x19 \x01(\v2A.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceCpuOptionsR\n" +
 	"cpuOptions\x12\x1f\n" +
 	"\vcpu_credits\x18\x1a \x01(\tR\n" +
-	"cpuCredits\x12e\n" +
+	"cpuCredits\x12\x1f\n" +
+	"\vmarket_type\x18' \x01(\tR\n" +
+	"marketType\x12e\n" +
 	"\fspot_options\x18\x1b \x01(\v2B.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpotOptionsR\vspotOptions\x12}\n" +
 	"\x14capacity_reservation\x18\x1c \x01(\v2J.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceCapacityReservationR\x13capacityReservation\x12^\n" +
 	"\tplacement\x18\x1d \x01(\v2@.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstancePlacementR\tplacement\x12'\n" +
@@ -1565,31 +1654,43 @@ const file_catalog_aws_awsec2instance_v1alpha1_spec_proto_rawDesc = "" +
 	"\rauto_recovery\x18  \x01(\tR\fautoRecovery\x12O\n" +
 	"$instance_initiated_shutdown_behavior\x18! \x01(\tR!instanceInitiatedShutdownBehavior\x12-\n" +
 	"\x10disable_api_stop\x18\" \x01(\bH\x03R\x0edisableApiStop\x88\x01\x01\x12;\n" +
-	"\x17disable_api_termination\x18# \x01(\bH\x04R\x15disableApiTermination\x88\x01\x01\x12&\n" +
+	"\x17disable_api_termination\x18# \x01(\bH\x04R\x15disableApiTermination\x88\x01\x01\x12#\n" +
+	"\rforce_destroy\x18) \x01(\bR\fforceDestroy\x12&\n" +
 	"\tuser_data\x18$ \x01(\tB\t\xbaH\x06r\x04(\x80\x80\x01R\buserData\x12(\n" +
 	"\x10user_data_base64\x18% \x01(\tR\x0euserDataBase64\x12<\n" +
-	"\x1buser_data_replace_on_change\x18& \x01(\bR\x17userDataReplaceOnChange:\x9b\x0f\xbaH\x97\x0f\x1a\x8a\x01\n" +
+	"\x1buser_data_replace_on_change\x18& \x01(\bR\x17userDataReplaceOnChange\x1a=\n" +
+	"\x0fVolumeTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe9\x1c\xbaH\xe5\x1c\x1a\x8a\x01\n" +
 	"\x16ami_or_launch_template\x12Cprovide ami, or reference a launch_template that supplies the image\x1a+this.ami != '' || has(this.launch_template)\x1a\xa7\x01\n" +
 	" instance_type_or_launch_template\x12Lprovide instance_type, or reference a launch_template that supplies the type\x1a5this.instance_type != '' || has(this.launch_template)\x1ah\n" +
 	"\n" +
-	"ami_format\x12+ami must be an AMI ID beginning with 'ami-'\x1a-this.ami == '' || this.ami.startsWith('ami-')\x1a\xa5\x04\n" +
-	"&primary_eni_excludes_inline_networking\x12\xc0\x01when primary_network_interface_id is set, the ENI defines networking -- clear subnet_id, security_group_ids, private_ip, secondary_private_ips, the IPv6 fields, and associate_public_ip_address\x1a\xb7\x02this.primary_network_interface_id == '' || (!has(this.subnet_id) && size(this.security_group_ids) == 0 && this.private_ip == '' && size(this.secondary_private_ips) == 0 && this.ipv6_address_count == 0 && size(this.ipv6_addresses) == 0 && !has(this.associate_public_ip_address) && !has(this.enable_primary_ipv6))\x1a\x98\x01\n" +
-	"\x18ipv6_count_xor_addresses\x12<ipv6_address_count and ipv6_addresses are mutually exclusive\x1a>this.ipv6_address_count == 0 || size(this.ipv6_addresses) == 0\x1a\x94\x01\n" +
+	"ami_format\x12+ami must be an AMI ID beginning with 'ami-'\x1a-this.ami == '' || this.ami.startsWith('ami-')\x1a\xd8\x04\n" +
+	"&primary_eni_excludes_inline_networking\x12\xd3\x01when primary_network_interface_id is set, the ENI defines networking -- clear subnet_id, security_group_ids, private_ip, secondary_private_ips, the IPv6 fields, associate_public_ip_address, and source_dest_check\x1a\xd7\x02this.primary_network_interface_id == '' || (!has(this.subnet_id) && size(this.security_group_ids) == 0 && this.private_ip == '' && size(this.secondary_private_ips) == 0 && this.ipv6_address_count == 0 && size(this.ipv6_addresses) == 0 && !has(this.associate_public_ip_address) && !has(this.enable_primary_ipv6) && !has(this.source_dest_check))\x1a\x98\x01\n" +
+	"\x18ipv6_count_xor_addresses\x12<ipv6_address_count and ipv6_addresses are mutually exclusive\x1a>this.ipv6_address_count == 0 || size(this.ipv6_addresses) == 0\x1a\x9b\x01\n" +
+	"\x11private_ip_format\x122private_ip must be an IPv4 address (e.g. 10.0.1.5)\x1aRthis.private_ip == '' || this.private_ip.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}$')\x1a\xab\x01\n" +
+	"\x1csecondary_private_ips_format\x129every secondary_private_ips entry must be an IPv4 address\x1aPthis.secondary_private_ips.all(ip, ip.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}$'))\x1a\x9b\x01\n" +
+	"\x15ipv6_addresses_format\x122every ipv6_addresses entry must be an IPv6 address\x1aNthis.ipv6_addresses.all(ip, ip.matches('^[0-9a-fA-F:]+$') && ip.contains(':'))\x1a\x94\x01\n" +
 	"\x11cpu_credits_valid\x126cpu_credits must be 'standard' or 'unlimited' when set\x1aGthis.cpu_credits == '' || this.cpu_credits in ['standard', 'unlimited']\x1a\x99\x01\n" +
 	"%enclave_incompatible_with_hibernation\x12;enclave_enabled and hibernation_enabled cannot both be true\x1a3!(this.enclave_enabled && this.hibernation_enabled)\x1a\x98\x01\n" +
 	"\x13auto_recovery_valid\x126auto_recovery must be 'default' or 'disabled' when set\x1aIthis.auto_recovery == '' || this.auto_recovery in ['default', 'disabled']\x1a\xdd\x01\n" +
 	"\x17shutdown_behavior_valid\x12Kinstance_initiated_shutdown_behavior must be 'stop' or 'terminate' when set\x1authis.instance_initiated_shutdown_behavior == '' || this.instance_initiated_shutdown_behavior in ['stop', 'terminate']\x1a\x82\x01\n" +
-	"\x14user_data_xor_base64\x125user_data and user_data_base64 are mutually exclusive\x1a3this.user_data == '' || this.user_data_base64 == ''B\x1e\n" +
+	"\x14user_data_xor_base64\x125user_data and user_data_base64 are mutually exclusive\x1a3this.user_data == '' || this.user_data_base64 == ''\x1a\xe3\x01\n" +
+	"\x11market_type_valid\x12^market_type must be 'spot', 'capacity-block', or 'interruptible-capacity-reservation' when set\x1anthis.market_type == '' || this.market_type in ['spot', 'capacity-block', 'interruptible-capacity-reservation']\x1a\xc7\x01\n" +
+	" spot_options_require_spot_market\x12Rspot_options only applies to the 'spot' market (leave market_type unset or 'spot')\x1aO!has(this.spot_options) || this.market_type == '' || this.market_type == 'spot'\x1a\xce\x03\n" +
+	"\"reservation_market_requires_target\x12\xa9\x01market_type 'capacity-block' / 'interruptible-capacity-reservation' requires capacity_reservation with capacity_reservation_id or capacity_reservation_resource_group_arn\x1a\xfb\x01!(this.market_type in ['capacity-block', 'interruptible-capacity-reservation']) || (has(this.capacity_reservation) && (this.capacity_reservation.capacity_reservation_id != '' || this.capacity_reservation.capacity_reservation_resource_group_arn != ''))\x1a\xad\x02\n" +
+	"\x1fvolume_tags_xor_per_device_tags\x12jvolume_tags and per-device tags (root_block_device.tags / ebs_block_devices[].tags) are mutually exclusive\x1a\x9d\x01size(this.volume_tags) == 0 || ((!has(this.root_block_device) || size(this.root_block_device.tags) == 0) && this.ebs_block_devices.all(d, size(d.tags) == 0))B\x1e\n" +
 	"\x1c_associate_public_ip_addressB\x14\n" +
 	"\x12_source_dest_checkB\x16\n" +
 	"\x14_enable_primary_ipv6B\x13\n" +
 	"\x11_disable_api_stopB\x1a\n" +
-	"\x18_disable_api_termination\"\xb4\x02\n" +
+	"\x18_disable_api_termination\"\xa6\x03\n" +
 	"\x1cAwsEc2InstanceLaunchTemplate\x12n\n" +
 	"\x02id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x8a\b\x92\xd4a!status.outputs.launch_template_idR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
-	"\aversion\x18\x03 \x01(\tR\aversion:v\xbaHs\x1aq\n" +
-	"\x14template_id_xor_name\x127identify the launch template by id or by name, not both\x1a !has(this.id) || this.name == ''\"\x8e\x03\n" +
+	"\aversion\x18\x03 \x01(\tR\aversion:\xe7\x01\xbaH\xe3\x01\x1aq\n" +
+	"\x14template_id_xor_name\x127identify the launch template by id or by name, not both\x1a !has(this.id) || this.name == ''\x1an\n" +
+	"\x1ctemplate_requires_id_or_name\x12-identify the launch template by id or by name\x1a\x1fhas(this.id) || this.name != ''\"\x8e\x03\n" +
 	"#AwsEc2InstancePrivateDnsNameOptions\x12#\n" +
 	"\rhostname_type\x18\x01 \x01(\tR\fhostnameType\x12G\n" +
 	"!enable_resource_name_dns_a_record\x18\x02 \x01(\bR\x1cenableResourceNameDnsARecord\x12M\n" +
@@ -1601,7 +1702,7 @@ const file_catalog_aws_awsec2instance_v1alpha1_spec_proto_rawDesc = "" +
 	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x127\n" +
 	"\x18private_ip_address_count\x18\x04 \x01(\x05R\x15privateIpAddressCount\x127\n" +
 	"\x15delete_on_termination\x18\x05 \x01(\bH\x00R\x13deleteOnTermination\x88\x01\x01B\x18\n" +
-	"\x16_delete_on_termination\"\x90\b\n" +
+	"\x16_delete_on_termination\"\xaf\t\n" +
 	"\x1dAwsEc2InstanceRootBlockDevice\x12$\n" +
 	"\x0evolume_size_gb\x18\x01 \x01(\x05R\fvolumeSizeGb\x12\x1f\n" +
 	"\vvolume_type\x18\x02 \x01(\tR\n" +
@@ -1611,12 +1712,17 @@ const file_catalog_aws_awsec2instance_v1alpha1_spec_proto_rawDesc = "" +
 	"\tencrypted\x18\x05 \x01(\bR\tencrypted\x12q\n" +
 	"\n" +
 	"kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x127\n" +
-	"\x15delete_on_termination\x18\a \x01(\bH\x00R\x13deleteOnTermination\x88\x01\x01:\x84\x05\xbaH\x80\x05\x1a\xbd\x01\n" +
+	"\x15delete_on_termination\x18\a \x01(\bH\x00R\x13deleteOnTermination\x88\x01\x01\x12d\n" +
+	"\x04tags\x18\b \x03(\v2P.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceRootBlockDevice.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x84\x05\xbaH\x80\x05\x1a\xbd\x01\n" +
 	"\x11volume_type_valid\x12Bvolume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard\x1adthis.volume_type == '' || this.volume_type in ['gp2', 'gp3', 'io1', 'io2', 'st1', 'sc1', 'standard']\x1a\xa9\x01\n" +
-	"\x10throughput_range\x126throughput_mibps must be between 125 and 1000 when set\x1a]this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 1000)\x1a\x80\x01\n" +
+	"\x10throughput_range\x126throughput_mibps must be between 125 and 2000 when set\x1a]this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 2000)\x1a\x80\x01\n" +
 	"\x17throughput_only_for_gp3\x12,throughput_mibps only applies to gp3 volumes\x1a7this.throughput_mibps == 0 || this.volume_type == 'gp3'\x1a\x8e\x01\n" +
 	"\x1fiops_only_for_provisioned_types\x12.iops only applies to gp3, io1, and io2 volumes\x1a;this.iops == 0 || this.volume_type in ['gp3', 'io1', 'io2']B\x18\n" +
-	"\x16_delete_on_termination\"\xe1\t\n" +
+	"\x16_delete_on_termination\"\xff\n" +
+	"\n" +
 	"\x1cAwsEc2InstanceEbsBlockDevice\x12'\n" +
 	"\vdevice_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"deviceName\x12$\n" +
@@ -1630,9 +1736,14 @@ const file_catalog_aws_awsec2instance_v1alpha1_spec_proto_rawDesc = "" +
 	"kms_key_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1f\n" +
 	"\vsnapshot_id\x18\b \x01(\tR\n" +
 	"snapshotId\x127\n" +
-	"\x15delete_on_termination\x18\t \x01(\bH\x00R\x13deleteOnTermination\x88\x01\x01:\x8c\x06\xbaH\x88\x06\x1a\xbd\x01\n" +
+	"\x15delete_on_termination\x18\t \x01(\bH\x00R\x13deleteOnTermination\x88\x01\x01\x12c\n" +
+	"\x04tags\x18\n" +
+	" \x03(\v2O.dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceEbsBlockDevice.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x8c\x06\xbaH\x88\x06\x1a\xbd\x01\n" +
 	"\x11volume_type_valid\x12Bvolume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard\x1adthis.volume_type == '' || this.volume_type in ['gp2', 'gp3', 'io1', 'io2', 'st1', 'sc1', 'standard']\x1a\xa9\x01\n" +
-	"\x10throughput_range\x126throughput_mibps must be between 125 and 1000 when set\x1a]this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 1000)\x1a\x80\x01\n" +
+	"\x10throughput_range\x126throughput_mibps must be between 125 and 2000 when set\x1a]this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 2000)\x1a\x80\x01\n" +
 	"\x17throughput_only_for_gp3\x12,throughput_mibps only applies to gp3 volumes\x1a7this.throughput_mibps == 0 || this.volume_type == 'gp3'\x1a\x8e\x01\n" +
 	"\x1fiops_only_for_provisioned_types\x12.iops only applies to gp3, io1, and io2 volumes\x1a;this.iops == 0 || this.volume_type in ['gp3', 'io1', 'io2']\x1a\x85\x01\n" +
 	"\x10size_or_snapshot\x12>provide volume_size_gb, or a snapshot_id that defines the size\x1a1this.volume_size_gb > 0 || this.snapshot_id != ''B\x18\n" +
@@ -1673,16 +1784,17 @@ const file_catalog_aws_awsec2instance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x18spot_instance_type_valid\x12>spot_instance_type must be 'one-time' or 'persistent' when set\x1aVthis.spot_instance_type == '' || this.spot_instance_type in ['one-time', 'persistent']\x1a\xea\x01\n" +
 	"\x1binterruption_behavior_valid\x12Sinstance_interruption_behavior must be 'terminate', 'stop', or 'hibernate' when set\x1avthis.instance_interruption_behavior == '' || this.instance_interruption_behavior in ['terminate', 'stop', 'hibernate']\x1a\xee\x01\n" +
 	"!stop_hibernate_require_persistent\x12]instance_interruption_behavior 'stop' or 'hibernate' requires spot_instance_type 'persistent'\x1aj!(this.instance_interruption_behavior in ['stop', 'hibernate']) || this.spot_instance_type == 'persistent'\x1a\xa6\x01\n" +
-	"\x1fvalid_until_requires_persistent\x12@valid_until only applies when spot_instance_type is 'persistent'\x1aAthis.valid_until == '' || this.spot_instance_type == 'persistent'\"\x80\x06\n" +
+	"\x1fvalid_until_requires_persistent\x12@valid_until only applies when spot_instance_type is 'persistent'\x1aAthis.valid_until == '' || this.spot_instance_type == 'persistent'\"\x97\b\n" +
 	"!AwsEc2InstanceCapacityReservation\x12\x1e\n" +
 	"\n" +
 	"preference\x18\x01 \x01(\tR\n" +
 	"preference\x126\n" +
 	"\x17capacity_reservation_id\x18\x02 \x01(\tR\x15capacityReservationId\x12T\n" +
-	"'capacity_reservation_resource_group_arn\x18\x03 \x01(\tR#capacityReservationResourceGroupArn:\xac\x04\xbaH\xa8\x04\x1a~\n" +
-	"\x10preference_valid\x12,preference must be 'open' or 'none' when set\x1a<this.preference == '' || this.preference in ['open', 'none']\x1a\xce\x01\n" +
+	"'capacity_reservation_resource_group_arn\x18\x03 \x01(\tR#capacityReservationResourceGroupArn:\xc3\x06\xbaH\xbf\x06\x1a\xbb\x01\n" +
+	"\x10preference_valid\x12Kpreference must be 'open', 'none', or 'capacity-reservations-only' when set\x1aZthis.preference == '' || this.preference in ['open', 'none', 'capacity-reservations-only']\x1a\xce\x01\n" +
 	"\x15preference_xor_target\x12@set preference, or target a specific reservation/group, not both\x1asthis.preference == '' || (this.capacity_reservation_id == '' && this.capacity_reservation_resource_group_arn == '')\x1a\xd4\x01\n" +
-	"\x1creservation_id_xor_group_arn\x12Zcapacity_reservation_id and capacity_reservation_resource_group_arn are mutually exclusive\x1aXthis.capacity_reservation_id == '' || this.capacity_reservation_resource_group_arn == ''\"\xae\a\n" +
+	"\x1creservation_id_xor_group_arn\x12Zcapacity_reservation_id and capacity_reservation_resource_group_arn are mutually exclusive\x1aXthis.capacity_reservation_id == '' || this.capacity_reservation_resource_group_arn == ''\x1a\xd6\x01\n" +
+	")reservation_requires_preference_or_target\x126set preference, or target a specific reservation/group\x1aqthis.preference != '' || this.capacity_reservation_id != '' || this.capacity_reservation_resource_group_arn != ''\"\xae\a\n" +
 	"\x17AwsEc2InstancePlacement\x12+\n" +
 	"\x11availability_zone\x18\x01 \x01(\tR\x10availabilityZone\x12\x1d\n" +
 	"\n" +
@@ -1710,7 +1822,7 @@ func file_catalog_aws_awsec2instance_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awsec2instance_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsec2instance_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_catalog_aws_awsec2instance_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_catalog_aws_awsec2instance_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsEc2InstanceSpec)(nil),                      // 0: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec
 	(*AwsEc2InstanceLaunchTemplate)(nil),            // 1: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceLaunchTemplate
@@ -1724,32 +1836,38 @@ var file_catalog_aws_awsec2instance_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsEc2InstanceSpotOptions)(nil),               // 9: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpotOptions
 	(*AwsEc2InstanceCapacityReservation)(nil),       // 10: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceCapacityReservation
 	(*AwsEc2InstancePlacement)(nil),                 // 11: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstancePlacement
-	(*v1.StringValueOrRef)(nil),                     // 12: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                                             // 12: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.VolumeTagsEntry
+	nil,                                             // 13: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceRootBlockDevice.TagsEntry
+	nil,                                             // 14: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceEbsBlockDevice.TagsEntry
+	(*v1.StringValueOrRef)(nil),                     // 15: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsec2instance_v1alpha1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.launch_template:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceLaunchTemplate
-	12, // 1: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.instance_profile:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 2: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 3: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 1: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.instance_profile:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 2: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 3: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	2,  // 4: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.private_dns_name_options:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstancePrivateDnsNameOptions
 	3,  // 5: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.secondary_network_interfaces:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSecondaryNetworkInterface
 	4,  // 6: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.root_block_device:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceRootBlockDevice
 	5,  // 7: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.ebs_block_devices:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceEbsBlockDevice
 	6,  // 8: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.ephemeral_block_devices:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceEphemeralBlockDevice
-	7,  // 9: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.metadata_options:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceMetadataOptions
-	8,  // 10: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.cpu_options:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceCpuOptions
-	9,  // 11: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.spot_options:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpotOptions
-	10, // 12: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.capacity_reservation:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceCapacityReservation
-	11, // 13: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.placement:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstancePlacement
-	12, // 14: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceLaunchTemplate.id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 15: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSecondaryNetworkInterface.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 16: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceRootBlockDevice.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 17: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceEbsBlockDevice.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	12, // 9: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.volume_tags:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.VolumeTagsEntry
+	7,  // 10: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.metadata_options:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceMetadataOptions
+	8,  // 11: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.cpu_options:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceCpuOptions
+	9,  // 12: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.spot_options:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpotOptions
+	10, // 13: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.capacity_reservation:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceCapacityReservation
+	11, // 14: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSpec.placement:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstancePlacement
+	15, // 15: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceLaunchTemplate.id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 16: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceSecondaryNetworkInterface.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 17: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceRootBlockDevice.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 18: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceRootBlockDevice.tags:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceRootBlockDevice.TagsEntry
+	15, // 19: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceEbsBlockDevice.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 20: dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceEbsBlockDevice.tags:type_name -> dev.planton.aws.awsec2instance.v1alpha1.AwsEc2InstanceEbsBlockDevice.TagsEntry
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsec2instance_v1alpha1_spec_proto_init() }
@@ -1767,7 +1885,7 @@ func file_catalog_aws_awsec2instance_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsec2instance_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsec2instance_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

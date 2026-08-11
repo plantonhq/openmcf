@@ -32,7 +32,7 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
 | Distinct provider resources consumed | 235 |
-| Spec fields authored across all kinds | 4254 |
+| Spec fields authored across all kinds | 4259 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**38 of 112 kinds are at total accounting; 73 proven live.**
+**40 of 112 kinds are at total accounting; 72 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -76,7 +76,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCognitoUserPoolClient | 31 | 30 | 0 | 0 | 1 | ❌ | ✅ pulumi, terraform |
 | AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | — |
 | AwsDynamodb | 71 | 27 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
-| AwsEc2Instance | 92 | 39 | 0 | 0 | 94 | ❌ | ✅ pulumi, terraform |
+| AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | — |
 | AwsEcrRepo | 17 | 5 | 0 | 0 | 25 | ❌ | ✅ pulumi, terraform |
 | AwsEcsCluster | 80 | 7 | 64 | 9 | 0 | ✅ | — |
 | AwsEcsService | 98 | 53 | 34 | 11 | 0 | ✅ | — |
@@ -106,7 +106,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsHttpApiDomain | 26 | 7 | 11 | 8 | 0 | ✅ | — |
 | AwsHttpApiGateway | 91 | 42 | 11 | 38 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiVpcLink | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsIamInstanceProfile | 6 | 2 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
+| AwsIamInstanceProfile | 6 | 2 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamOidcProvider | 5 | 3 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsIamPolicy | 8 | 2 | 1 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamRole | 16 | 5 | 0 | 0 | 20 | ❌ | ✅ pulumi, terraform |
@@ -722,7 +722,7 @@ rather than trusted.
 | `aws_ec2_capacity_reservation` | judged as a planned AwsEc2CapacityReservation kind |
 | `aws_ec2_default_credit_specification` | account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind |
 | `aws_ec2_image_block_public_access` | account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind |
-| `aws_ec2_instance_connect_endpoint` | instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens |
+| `aws_ec2_instance_connect_endpoint` | judged as a planned AwsEc2InstanceConnectEndpoint kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): a subnet-resident endpoint with its own lifecycle serving MANY instances -- SSH/RDP reachability infrastructure, never per-instance configuration |
 | `aws_ec2_instance_metadata_defaults` | account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind |
 | `aws_ec2_managed_prefix_list` | judged as a planned AwsManagedPrefixList kind (lists with entries) |
 | `aws_ec2_managed_prefix_list_entry` | judged as a planned AwsManagedPrefixList kind (lists with entries) |
@@ -848,7 +848,7 @@ rather than trusted.
 | `aws_inspector2_member_association` | judged as a planned AwsInspector kind (enabler, delegated admin, filters, organization configuration) |
 | `aws_inspector2_organization_configuration` | judged as a planned AwsInspector kind (enabler, delegated admin, filters, organization configuration) |
 | `aws_internet_gateway_attachment` | gateway attachments fold into the existing AwsInternetGateway kind as its spec deepens |
-| `aws_key_pair` | instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens |
+| `aws_key_pair` | judged as a planned AwsKeyPair kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): account-level public-key material referenced by many instances and launch templates -- AwsEc2Instance.key_name consumes a key pair by name but cannot create the material |
 | `aws_keyspaces_keyspace` | judged as a planned AwsKeyspaces kind (keyspaces with tables) |
 | `aws_keyspaces_table` | judged as a planned AwsKeyspaces kind (keyspaces with tables) |
 | `aws_kinesis_account_settings` | account-level Kinesis settings fold into the existing AwsKinesisStream kind family's account composition |
@@ -898,10 +898,10 @@ rather than trusted.
 | `aws_network_acl` | judged as a planned AwsNetworkAcl kind (ACLs, associations, rules) |
 | `aws_network_acl_association` | judged as a planned AwsNetworkAcl kind (ACLs, associations, rules) |
 | `aws_network_acl_rule` | judged as a planned AwsNetworkAcl kind (ACLs, associations, rules) |
-| `aws_network_interface` | instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens |
-| `aws_network_interface_attachment` | instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens |
-| `aws_network_interface_permission` | instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens |
-| `aws_network_interface_sg_attachment` | instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens |
+| `aws_network_interface` | judged as a planned AwsNetworkInterface kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): a standalone ENI lifecycle attachable across instances -- AwsEc2Instance consumes one by reference (primary_network_interface_id) and creates launch-scoped ones inline (secondary_network_interfaces), neither of which is the durable standalone ENI; the provider's own aws_instance.network_interface deprecation points at the attachment resource as the sanctioned companion |
+| `aws_network_interface_attachment` | attachment satellite of the planned AwsNetworkInterface kind (re-judged 2026-08-11): binds an existing ENI to an instance at a device index -- the provider's sanctioned replacement for the deprecated aws_instance.network_interface block |
+| `aws_network_interface_permission` | cross-account permission satellite of the planned AwsNetworkInterface kind (re-judged 2026-08-11): grants another account attach rights on an ENI |
+| `aws_network_interface_sg_attachment` | security-group satellite of the planned AwsNetworkInterface kind (re-judged 2026-08-11): attaches a security group to an existing ENI without owning either side |
 | `aws_networkfirewall_firewall` | judged as a planned AwsNetworkFirewall kind family (firewalls, policies, rule groups, logging, TLS inspection) |
 | `aws_networkfirewall_firewall_policy` | judged as a planned AwsNetworkFirewall kind family (firewalls, policies, rule groups, logging, TLS inspection) |
 | `aws_networkfirewall_firewall_transit_gateway_attachment_accepter` | judged as a planned AwsNetworkFirewall kind family (firewalls, policies, rule groups, logging, TLS inspection) |
@@ -936,7 +936,7 @@ rather than trusted.
 | `aws_organizations_resource_policy` | judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies) |
 | `aws_organizations_tag` | judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies) |
 | `aws_pipes_pipe` | judged as a planned AwsEventbridgePipe kind |
-| `aws_placement_group` | instance companion surface (key pairs, ENIs, placement groups, instance-connect endpoints); folds into the existing AwsEc2Instance kind family as its spec deepens |
+| `aws_placement_group` | judged as a planned AwsPlacementGroup kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): an account-level placement strategy (cluster/partition/spread) consumed by many instances and ASGs -- AwsEc2Instance.placement references a group by name/id but cannot create one |
 | `aws_prometheus_alert_manager_definition` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
 | `aws_prometheus_anomaly_detector` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
 | `aws_prometheus_query_logging_configuration` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
@@ -1871,7 +1871,7 @@ rather than trusted.
 | `aws_ses_identity_policy` | SES v1 identity/configuration surface is superseded by the SESv2 resources consumed by the SES kinds |
 | `aws_ses_template` | SES v1 identity/configuration surface is superseded by the SESv2 resources consumed by the SES kinds |
 | `aws_spot_fleet_request` | spot request resources are superseded by launch-template market options and EC2 Fleet |
-| `aws_spot_instance_request` | spot request resources are superseded by launch-template market options and EC2 Fleet |
+| `aws_spot_instance_request` | superseded surface by AWS's own guidance (the provider carries NO deprecation marker at 6.58.0 -- recorded 2026-08-11): AWS directs Spot workloads to launch-template/instance market options (AwsEc2Instance.market_type + spot_options, AwsLaunchTemplate) and EC2 Fleet; the standalone request resource duplicates aws_instance's whole schema with everything ForceNew |
 | `aws_swf_domain` | SWF is superseded by Step Functions (covered by AwsStepFunction) |
 | `aws_waf_byte_match_set` | WAF Classic (global) is superseded by WAFv2 (covered by AwsWafWebAcl) |
 | `aws_waf_geo_match_set` | WAF Classic (global) is superseded by WAFv2 (covered by AwsWafWebAcl) |

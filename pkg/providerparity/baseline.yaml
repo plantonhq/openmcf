@@ -32,7 +32,6 @@ entries:
   - kind:AwsCognitoUserPool
   - kind:AwsCognitoUserPoolClient
   - kind:AwsDynamodb
-  - kind:AwsEc2Instance
   - kind:AwsEcrRepo
   - kind:AwsEfsAccessPoint
   - kind:AwsEgressOnlyInternetGateway
@@ -48,7 +47,6 @@ entries:
   - kind:AwsFsxWindowsFileSystem
   - kind:AwsGlobalAccelerator
   - kind:AwsGlueCatalogDatabase
-  - kind:AwsIamInstanceProfile
   - kind:AwsIamOidcProvider
   - kind:AwsIamRole
   - kind:AwsInternetGateway

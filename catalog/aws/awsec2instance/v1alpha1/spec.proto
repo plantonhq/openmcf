@@ -46,7 +46,9 @@ message AwsEc2InstanceSpec {
   // The EC2 instance type (e.g. "t4g.nano", "m7g.large", "c5.xlarge")
   // determining vCPU count, memory, and network/EBS bandwidth. Required
   // unless launch_template supplies one. Changing the type stops and
-  // restarts the instance in place (EBS-backed instances only).
+  // restarts the instance in place (EBS-backed instances only) -- UNLESS
+  // the old and new types share no CPU architecture (x86 -> ARM), which
+  // replaces the instance.
   string instance_type = 3;
 
   // Launch from an AwsLaunchTemplate instead of (or in addition to) the
@@ -121,12 +123,16 @@ message AwsEc2InstanceSpec {
   // instance. Note AWS now bills every public IPv4 address.
   optional bool associate_public_ip_address = 12;
 
-  // Source/destination checking on the primary interface. AWS default:
-  // true. Set false ONLY for instances that forward traffic they neither
-  // originated nor terminate -- NAT instances, software routers, VPN
-  // appliances -- otherwise the network silently drops their forwarded
-  // packets.
-  optional bool source_dest_check = 13 [(dev.planton.shared.options.default) = "true"];
+  // Source/destination checking on the primary interface. Optional
+  // tri-state: unset keeps AWS's default (true -- checking on); an
+  // explicit false is the forwarding posture for instances that carry
+  // traffic they neither originated nor terminate (NAT instances,
+  // software routers, VPN appliances) -- without it the network silently
+  // drops their forwarded packets. Leave unset when attaching a
+  // pre-provisioned primary ENI: the provider rejects the combination
+  // (the ENI carries its own source/dest-check setting), and setting the
+  // field on the ENI's kind is the right home for that posture.
+  optional bool source_dest_check = 13;
 
   // Number of IPv6 addresses AWS auto-assigns from the subnet's IPv6
   // range. Mutually exclusive with ipv6_addresses.
@@ -173,6 +179,15 @@ message AwsEc2InstanceSpec {
   // termination. ForceNew: changing mappings replaces the instance.
   repeated AwsEc2InstanceEphemeralBlockDevice ephemeral_block_devices = 21;
 
+  // Tags applied uniformly to EVERY EBS volume at instance creation --
+  // including volumes the AMI's block-device mapping creates that are not
+  // declared here. Because they ride the launch call itself, these satisfy
+  // ABAC/SCP policies that require tags at creation time. Mutually
+  // exclusive with per-device tags (root_block_device.tags /
+  // ebs_block_devices[].tags), which allow per-volume values but are
+  // applied AFTER creation by a separate tagging call. Updatable in place.
+  map<string, string> volume_tags = 40;
+
   // Dedicated EBS throughput between the instance and its volumes. Only
   // meaningful for instance types where EBS optimization is optional
   // (most current-generation types have it always-on at no charge);
@@ -204,12 +219,26 @@ message AwsEc2InstanceSpec {
   // Ignored for non-burstable types. Updatable in place.
   string cpu_credits = 26;
 
+  // The instance's purchase market. Unset = On-Demand (with spot_options
+  // present implying "spot" for that classic shape). "spot" pairs with
+  // spot_options; "capacity-block" launches into a pre-purchased ML
+  // Capacity Block (target the block's reservation via
+  // capacity_reservation -- required); "interruptible-capacity-reservation"
+  // launches into an interruptible Capacity Reservation (target required).
+  // The AwsLaunchTemplate sibling carries only spot/capacity-block -- the
+  // interruptible market is instance-level surface at the pinned provider.
+  // ForceNew: the purchase option is fixed at launch. Note: the provider
+  // keeps capacity-block in state after launch (a re-plan shows no diff --
+  // the 6.53.0 perpetual-diff fix).
+  string market_type = 39;
+
   // Request Spot capacity instead of On-Demand -- for interruption-
   // tolerant standalone workloads (a build agent, a batch box). The
   // instance can be reclaimed by AWS with two minutes' notice; pair with
   // instance_interruption_behavior "stop"/"hibernate" (persistent
-  // requests) to survive reclaims. ForceNew: the purchase option is
-  // fixed at launch.
+  // requests) to survive reclaims. Presence implies market_type "spot"
+  // when that field is unset. ForceNew: the purchase option is fixed at
+  // launch.
   AwsEc2InstanceSpotOptions spot_options = 27;
 
   // Target an EC2 Capacity Reservation: "open" (use a matching
@@ -254,6 +283,14 @@ message AwsEc2InstanceSpec {
   // stateful pet. Updatable in place; the module's destroy flips it off
   // first only if you remove the protection from the spec.
   optional bool disable_api_termination = 35;
+
+  // Allow destroy to proceed even while disable_api_termination /
+  // disable_api_stop are true: the engine lifts the protections itself
+  // before terminating, instead of failing the destroy. The declarative
+  // escape hatch for tearing down a protected pet without first editing
+  // its spec. Imported instances always start with this false regardless
+  // of the live value (the provider cannot read it back).
+  bool force_destroy = 41;
 
   // --- User data ---
 
@@ -303,17 +340,39 @@ message AwsEc2InstanceSpec {
   };
 
   // A pre-provisioned primary ENI carries the whole network configuration;
-  // inline networking fields would conflict with it at the EC2 API.
+  // inline networking fields would conflict with it at the EC2 API. The
+  // provider rejects these on config PRESENCE, not value -- source_dest_check
+  // included (an explicit true is as illegal as false next to the ENI), so
+  // the guard checks has(), never the value.
   option (buf.validate.message).cel = {
     id: "primary_eni_excludes_inline_networking"
-    message: "when primary_network_interface_id is set, the ENI defines networking -- clear subnet_id, security_group_ids, private_ip, secondary_private_ips, the IPv6 fields, and associate_public_ip_address"
-    expression: "this.primary_network_interface_id == '' || (!has(this.subnet_id) && size(this.security_group_ids) == 0 && this.private_ip == '' && size(this.secondary_private_ips) == 0 && this.ipv6_address_count == 0 && size(this.ipv6_addresses) == 0 && !has(this.associate_public_ip_address) && !has(this.enable_primary_ipv6))"
+    message: "when primary_network_interface_id is set, the ENI defines networking -- clear subnet_id, security_group_ids, private_ip, secondary_private_ips, the IPv6 fields, associate_public_ip_address, and source_dest_check"
+    expression: "this.primary_network_interface_id == '' || (!has(this.subnet_id) && size(this.security_group_ids) == 0 && this.private_ip == '' && size(this.secondary_private_ips) == 0 && this.ipv6_address_count == 0 && size(this.ipv6_addresses) == 0 && !has(this.associate_public_ip_address) && !has(this.enable_primary_ipv6) && !has(this.source_dest_check))"
   };
 
   option (buf.validate.message).cel = {
     id: "ipv6_count_xor_addresses"
     message: "ipv6_address_count and ipv6_addresses are mutually exclusive"
     expression: "this.ipv6_address_count == 0 || size(this.ipv6_addresses) == 0"
+  };
+
+  // Address-format guards mirror the provider's per-value validators.
+  option (buf.validate.message).cel = {
+    id: "private_ip_format"
+    message: "private_ip must be an IPv4 address (e.g. 10.0.1.5)"
+    expression: "this.private_ip == '' || this.private_ip.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}$')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "secondary_private_ips_format"
+    message: "every secondary_private_ips entry must be an IPv4 address"
+    expression: "this.secondary_private_ips.all(ip, ip.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}$'))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "ipv6_addresses_format"
+    message: "every ipv6_addresses entry must be an IPv6 address"
+    expression: "this.ipv6_addresses.all(ip, ip.matches('^[0-9a-fA-F:]+$') && ip.contains(':'))"
   };
 
   option (buf.validate.message).cel = {
@@ -346,6 +405,36 @@ message AwsEc2InstanceSpec {
     message: "user_data and user_data_base64 are mutually exclusive"
     expression: "this.user_data == '' || this.user_data_base64 == ''"
   };
+
+  option (buf.validate.message).cel = {
+    id: "market_type_valid"
+    message: "market_type must be 'spot', 'capacity-block', or 'interruptible-capacity-reservation' when set"
+    expression: "this.market_type == '' || this.market_type in ['spot', 'capacity-block', 'interruptible-capacity-reservation']"
+  };
+
+  // Spot knobs describe the spot market; carrying them into a
+  // reservation-backed market is contradictory.
+  option (buf.validate.message).cel = {
+    id: "spot_options_require_spot_market"
+    message: "spot_options only applies to the 'spot' market (leave market_type unset or 'spot')"
+    expression: "!has(this.spot_options) || this.market_type == '' || this.market_type == 'spot'"
+  };
+
+  // Reservation-backed markets launch INTO a reservation; AWS rejects the
+  // market without a target to launch into.
+  option (buf.validate.message).cel = {
+    id: "reservation_market_requires_target"
+    message: "market_type 'capacity-block' / 'interruptible-capacity-reservation' requires capacity_reservation with capacity_reservation_id or capacity_reservation_resource_group_arn"
+    expression: "!(this.market_type in ['capacity-block', 'interruptible-capacity-reservation']) || (has(this.capacity_reservation) && (this.capacity_reservation.capacity_reservation_id != '' || this.capacity_reservation.capacity_reservation_resource_group_arn != ''))"
+  };
+
+  // The provider rejects uniform volume_tags next to per-device tags --
+  // one tagging strategy per instance.
+  option (buf.validate.message).cel = {
+    id: "volume_tags_xor_per_device_tags"
+    message: "volume_tags and per-device tags (root_block_device.tags / ebs_block_devices[].tags) are mutually exclusive"
+    expression: "size(this.volume_tags) == 0 || ((!has(this.root_block_device) || size(this.root_block_device.tags) == 0) && this.ebs_block_devices.all(d, size(d.tags) == 0))"
+  };
 }
 
 // AwsEc2InstanceLaunchTemplate launches the instance from an
@@ -369,7 +458,9 @@ message AwsEc2InstanceLaunchTemplate {
   // "$Latest" (track every new version -- each publish restarts the
   // instance), or "$Default" (AWS default when unset; both Planton launch
   // template modules promote each new version to default, so this tracks
-  // the template's releases).
+  // the template's releases). Changing this to a version the instance is
+  // not already running REPLACES the instance -- the provider verifies
+  // against the live instance's actual template version.
   string version = 3;
 
   // Exactly one identity arm: protovalidate-java cannot evaluate
@@ -379,6 +470,14 @@ message AwsEc2InstanceLaunchTemplate {
     id: "template_id_xor_name"
     message: "identify the launch template by id or by name, not both"
     expression: "!has(this.id) || this.name == ''"
+  };
+
+  // An empty block satisfies "has(launch_template)" upstream but names no
+  // template -- AWS requires exactly one identity arm.
+  option (buf.validate.message).cel = {
+    id: "template_requires_id_or_name"
+    message: "identify the launch template by id or by name"
+    expression: "has(this.id) || this.name != ''"
   };
 }
 
@@ -454,7 +553,9 @@ message AwsEc2InstanceRootBlockDevice {
   // (baseline 3000 without it); not valid for other types.
   int32 iops = 3;
 
-  // Throughput in MiB/s, 125-1000. "gp3" only (baseline 125 without it).
+  // Throughput in MiB/s, 125-2000. "gp3" only (baseline 125 without it;
+  // above 1000 requires a matching iops floor per the gp3 ratio rules AWS
+  // enforces at the API).
   int32 throughput_mibps = 4;
 
   // Encrypt the root volume at rest. ForceNew on the root device: flipping
@@ -476,6 +577,12 @@ message AwsEc2InstanceRootBlockDevice {
   // forensics/reuse") is distinguishable from unset.
   optional bool delete_on_termination = 7;
 
+  // Tags on the root volume itself. Applied AFTER instance creation by a
+  // separate tagging call -- incompatible with ABAC/SCP policies that
+  // require tags at creation time (use the spec-level volume_tags for
+  // those). Mutually exclusive with volume_tags. Updatable in place.
+  map<string, string> tags = 8;
+
   option (buf.validate.message).cel = {
     id: "volume_type_valid"
     message: "volume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard"
@@ -484,8 +591,8 @@ message AwsEc2InstanceRootBlockDevice {
 
   option (buf.validate.message).cel = {
     id: "throughput_range"
-    message: "throughput_mibps must be between 125 and 1000 when set"
-    expression: "this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 1000)"
+    message: "throughput_mibps must be between 125 and 2000 when set"
+    expression: "this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 2000)"
   };
 
   option (buf.validate.message).cel = {
@@ -520,7 +627,7 @@ message AwsEc2InstanceEbsBlockDevice {
   // Provisioned IOPS. Required for "io1"/"io2"; optional for "gp3".
   int32 iops = 4;
 
-  // Throughput in MiB/s, 125-1000. "gp3" only.
+  // Throughput in MiB/s, 125-2000. "gp3" only.
   int32 throughput_mibps = 5;
 
   // Encrypt the volume at rest.
@@ -541,6 +648,12 @@ message AwsEc2InstanceEbsBlockDevice {
   // Set an explicit false to keep the data volume after termination.
   optional bool delete_on_termination = 9;
 
+  // Tags on this volume. Applied AFTER instance creation by a separate
+  // tagging call -- incompatible with ABAC/SCP policies that require tags
+  // at creation time (use the spec-level volume_tags for those).
+  // Mutually exclusive with volume_tags. Updatable in place.
+  map<string, string> tags = 10;
+
   option (buf.validate.message).cel = {
     id: "volume_type_valid"
     message: "volume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard"
@@ -549,8 +662,8 @@ message AwsEc2InstanceEbsBlockDevice {
 
   option (buf.validate.message).cel = {
     id: "throughput_range"
-    message: "throughput_mibps must be between 125 and 1000 when set"
-    expression: "this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 1000)"
+    message: "throughput_mibps must be between 125 and 2000 when set"
+    expression: "this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 2000)"
   };
 
   option (buf.validate.message).cel = {
@@ -759,9 +872,11 @@ message AwsEc2InstanceSpotOptions {
 // launch (failover fleets, latency-critical singletons).
 message AwsEc2InstanceCapacityReservation {
   // Reservation preference: "open" (consume a matching reservation when
-  // one exists -- AWS's default behavior) or "none" (never consume a
-  // reservation, even when one matches). Mutually exclusive with the
-  // specific-target fields.
+  // one exists -- AWS's default behavior), "none" (never consume a
+  // reservation, even when one matches), or "capacity-reservations-only"
+  // (launch ONLY into a matching reservation -- the launch fails when
+  // none matches, guaranteeing reserved capacity is what runs). Mutually
+  // exclusive with the specific-target fields.
   string preference = 1;
 
   // Target one specific Capacity Reservation by ID (e.g. "cr-0123...").
@@ -776,8 +891,8 @@ message AwsEc2InstanceCapacityReservation {
 
   option (buf.validate.message).cel = {
     id: "preference_valid"
-    message: "preference must be 'open' or 'none' when set"
-    expression: "this.preference == '' || this.preference in ['open', 'none']"
+    message: "preference must be 'open', 'none', or 'capacity-reservations-only' when set"
+    expression: "this.preference == '' || this.preference in ['open', 'none', 'capacity-reservations-only']"
   };
 
   option (buf.validate.message).cel = {
@@ -790,6 +905,14 @@ message AwsEc2InstanceCapacityReservation {
     id: "reservation_id_xor_group_arn"
     message: "capacity_reservation_id and capacity_reservation_resource_group_arn are mutually exclusive"
     expression: "this.capacity_reservation_id == '' || this.capacity_reservation_resource_group_arn == ''"
+  };
+
+  // An empty block renders an empty specification -- AWS requires exactly
+  // one arm (a preference, or a target).
+  option (buf.validate.message).cel = {
+    id: "reservation_requires_preference_or_target"
+    message: "set preference, or target a specific reservation/group"
+    expression: "this.preference != '' || this.capacity_reservation_id != '' || this.capacity_reservation_resource_group_arn != ''"
   };
 }
 

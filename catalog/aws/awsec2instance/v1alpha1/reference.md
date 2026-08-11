@@ -52,6 +52,10 @@ spec:
     volumeSizeGb: 30
     volumeType: gp3
     encrypted: true
+  volumeTags: # uniform at-creation tags on EVERY volume (ABAC-compliant); per-device tags are the post-creation alternative
+    cost-center: platform
+  disableApiTermination: true # protect the pet from fat-fingered deletion
+  forceDestroy: true # ...while keeping teardown declarative: destroy lifts the protection itself
   userData: |
     #!/bin/bash
     echo "hello from ${HOSTNAME}" > /etc/motd
@@ -76,7 +80,7 @@ spec:
 | `spec.privateIp` | `string` |  |  |  |
 | `spec.secondaryPrivateIps` | `[]string` |  |  |  |
 | `spec.associatePublicIpAddress` | `bool` |  |  |  |
-| `spec.sourceDestCheck` | `bool` |  | `true` |  |
+| `spec.sourceDestCheck` | `bool` |  |  |  |
 | `spec.ipv6AddressCount` | `int32` |  |  |  |
 | `spec.ipv6Addresses` | `[]string` |  |  |  |
 | `spec.enablePrimaryIpv6` | `bool` |  |  |  |
@@ -98,6 +102,7 @@ spec:
 | `spec.rootBlockDevice.encrypted` | `bool` |  |  |  |
 | `spec.rootBlockDevice.kmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.rootBlockDevice.deleteOnTermination` | `bool` |  |  |  |
+| `spec.rootBlockDevice.tags` | `map<string, string>` |  |  |  |
 | `spec.ebsBlockDevices` | `[]AwsEc2InstanceEbsBlockDevice` |  |  |  |
 | `spec.ebsBlockDevices[].deviceName` | `string` | yes |  |  |
 | `spec.ebsBlockDevices[].volumeSizeGb` | `int32` |  |  |  |
@@ -108,10 +113,12 @@ spec:
 | `spec.ebsBlockDevices[].kmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.ebsBlockDevices[].snapshotId` | `string` |  |  |  |
 | `spec.ebsBlockDevices[].deleteOnTermination` | `bool` |  |  |  |
+| `spec.ebsBlockDevices[].tags` | `map<string, string>` |  |  |  |
 | `spec.ephemeralBlockDevices` | `[]AwsEc2InstanceEphemeralBlockDevice` |  |  |  |
 | `spec.ephemeralBlockDevices[].deviceName` | `string` | yes |  |  |
 | `spec.ephemeralBlockDevices[].virtualName` | `string` |  |  |  |
 | `spec.ephemeralBlockDevices[].noDevice` | `bool` |  |  |  |
+| `spec.volumeTags` | `map<string, string>` |  |  |  |
 | `spec.ebsOptimized` | `bool` |  |  |  |
 | `spec.metadataOptions` | `AwsEc2InstanceMetadataOptions` |  |  |  |
 | `spec.metadataOptions.httpEndpoint` | `string` |  |  |  |
@@ -126,6 +133,7 @@ spec:
 | `spec.cpuOptions.amdSevSnp` | `string` |  |  |  |
 | `spec.cpuOptions.nestedVirtualization` | `string` |  |  |  |
 | `spec.cpuCredits` | `string` |  |  |  |
+| `spec.marketType` | `string` |  |  |  |
 | `spec.spotOptions` | `AwsEc2InstanceSpotOptions` |  |  |  |
 | `spec.spotOptions.maxPrice` | `string` |  |  |  |
 | `spec.spotOptions.spotInstanceType` | `string` |  |  |  |
@@ -149,6 +157,7 @@ spec:
 | `spec.instanceInitiatedShutdownBehavior` | `string` |  |  |  |
 | `spec.disableApiStop` | `bool` |  |  |  |
 | `spec.disableApiTermination` | `bool` |  |  |  |
+| `spec.forceDestroy` | `bool` |  |  |  |
 | `spec.userData` | `string` |  |  |  |
 | `spec.userDataBase64` | `string` |  |  |  |
 | `spec.userDataReplaceOnChange` | `bool` |  |  |  |
@@ -193,6 +202,7 @@ value for this instance -- the template is the org's golden baseline,
 the inline fields are this pet's deviations.
 
 - rule: identify the launch template by id or by name, not both
+- rule: identify the launch template by id or by name
 
 ### spec.launchTemplate.id
 
@@ -318,8 +328,6 @@ originated nor terminate -- NAT instances, software routers, VPN
 appliances -- otherwise the network silently drops their forwarded
 packets.
 
-- default: `true`
-
 ### spec.ipv6AddressCount
 
 `int32`
@@ -437,7 +445,7 @@ and delete-on-termination are updatable in place; flipping encryption
 requires replacement.
 
 - rule: volume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard
-- rule: throughput_mibps must be between 125 and 1000 when set
+- rule: throughput_mibps must be between 125 and 2000 when set
 - rule: throughput_mibps only applies to gp3 volumes
 - rule: iops only applies to gp3, io1, and io2 volumes
 
@@ -498,6 +506,10 @@ Delete the root volume when the instance terminates. AWS default:
 true. Optional so an explicit false ("keep the boot disk for
 forensics/reuse") is distinguishable from unset.
 
+### spec.rootBlockDevice.tags
+
+`map<string, string>`
+
 ### spec.ebsBlockDevices
 
 `[]AwsEc2InstanceEbsBlockDevice`
@@ -508,7 +520,7 @@ mapping replaces the instance -- attach post-launch volumes as
 separate resources when independent lifecycles matter.
 
 - rule: volume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard
-- rule: throughput_mibps must be between 125 and 1000 when set
+- rule: throughput_mibps must be between 125 and 2000 when set
 - rule: throughput_mibps only applies to gp3 volumes
 - rule: iops only applies to gp3, io1, and io2 volumes
 - rule: provide volume_size_gb, or a snapshot_id that defines the size
@@ -577,6 +589,10 @@ volume) instead of empty.
 Delete the volume when the instance terminates. AWS default: true.
 Set an explicit false to keep the data volume after termination.
 
+### spec.ebsBlockDevices[].tags
+
+`map<string, string>`
+
 ### spec.ephemeralBlockDevices
 
 `[]AwsEc2InstanceEphemeralBlockDevice`
@@ -608,6 +624,10 @@ An instance-store virtual device name ("ephemeral0", "ephemeral1",
 
 Suppress a device the AMI would otherwise attach -- the way to DROP
 an AMI-baked mapping. Mutually exclusive with virtual_name.
+
+### spec.volumeTags
+
+`map<string, string>`
 
 ### spec.ebsOptimized
 
@@ -733,6 +753,10 @@ Credit option for burstable (T-family) instance types: "standard"
 for the excess). AWS default: "unlimited" for recent T families.
 Ignored for non-burstable types. Updatable in place.
 
+### spec.marketType
+
+`string`
+
 ### spec.spotOptions
 
 `AwsEc2InstanceSpotOptions`
@@ -793,9 +817,10 @@ consume a reservation), or a specific reservation / reservation
 group. Capacity reservations are how latency-critical or
 failover-critical instances guarantee capacity in an AZ.
 
-- rule: preference must be 'open' or 'none' when set
+- rule: preference must be 'open', 'none', or 'capacity-reservations-only' when set
 - rule: set preference, or target a specific reservation/group, not both
 - rule: capacity_reservation_id and capacity_reservation_resource_group_arn are mutually exclusive
+- rule: set preference, or target a specific reservation/group
 
 ### spec.capacityReservation.preference
 
@@ -935,6 +960,10 @@ protection) -- the classic guard against fat-fingered deletion of a
 stateful pet. Updatable in place; the module's destroy flips it off
 first only if you remove the protection from the spec.
 
+### spec.forceDestroy
+
+`bool`
+
 ### spec.userData
 
 `string`
@@ -972,13 +1001,20 @@ worse than a new one.
 - `ami_or_launch_template`: provide ami, or reference a launch_template that supplies the image
 - `instance_type_or_launch_template`: provide instance_type, or reference a launch_template that supplies the type
 - `ami_format`: ami must be an AMI ID beginning with 'ami-'
-- `primary_eni_excludes_inline_networking`: when primary_network_interface_id is set, the ENI defines networking -- clear subnet_id, security_group_ids, private_ip, secondary_private_ips, the IPv6 fields, and associate_public_ip_address
+- `primary_eni_excludes_inline_networking`: when primary_network_interface_id is set, the ENI defines networking -- clear subnet_id, security_group_ids, private_ip, secondary_private_ips, the IPv6 fields, associate_public_ip_address, and source_dest_check
 - `ipv6_count_xor_addresses`: ipv6_address_count and ipv6_addresses are mutually exclusive
+- `private_ip_format`: private_ip must be an IPv4 address (e.g. 10.0.1.5)
+- `secondary_private_ips_format`: every secondary_private_ips entry must be an IPv4 address
+- `ipv6_addresses_format`: every ipv6_addresses entry must be an IPv6 address
 - `cpu_credits_valid`: cpu_credits must be 'standard' or 'unlimited' when set
 - `enclave_incompatible_with_hibernation`: enclave_enabled and hibernation_enabled cannot both be true
 - `auto_recovery_valid`: auto_recovery must be 'default' or 'disabled' when set
 - `shutdown_behavior_valid`: instance_initiated_shutdown_behavior must be 'stop' or 'terminate' when set
 - `user_data_xor_base64`: user_data and user_data_base64 are mutually exclusive
+- `market_type_valid`: market_type must be 'spot', 'capacity-block', or 'interruptible-capacity-reservation' when set
+- `spot_options_require_spot_market`: spot_options only applies to the 'spot' market (leave market_type unset or 'spot')
+- `reservation_market_requires_target`: market_type 'capacity-block' / 'interruptible-capacity-reservation' requires capacity_reservation with capacity_reservation_id or capacity_reservation_resource_group_arn
+- `volume_tags_xor_per_device_tags`: volume_tags and per-device tags (root_block_device.tags / ebs_block_devices[].tags) are mutually exclusive
 
 ## Outputs
 
