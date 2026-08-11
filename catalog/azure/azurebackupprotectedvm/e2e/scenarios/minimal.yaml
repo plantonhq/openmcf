@@ -1,0 +1,46 @@
+# Minimal AzureBackupProtectedVm scenario: the fixture VM under the
+# smoke policy's protection, with the VM's data disk (LUN 0, part of
+# the VM kind's own fixture chain) EXCLUDED -- so the lane proves both
+# the protection registration AND the disk-exclusion seam live.
+#
+# The registry prerequisites chain everything: the policy (whose
+# install manifest is its minimal scenario, riding the fixture vault)
+# and the VM (whose install manifest is its minimal scenario, riding
+# the NIC/subnet/VNet chain plus its managed-disk extra fixture).
+# Creation only REGISTERS protection -- no backup job runs in this
+# lane, so no backup storage accrues; the cost is the fixture VM's
+# hour (~Standard_B2s).
+#
+# TEARDOWN: destroy stops protection and deletes backup data
+# (engine-default features); the harness's reverse-order destroy
+# removes the protection before the vault, which is exactly the order
+# the vault's delete guard requires. Deleted protections soft-hold
+# data 14 days -- the watch-list carries the re-run caveat.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupProtectedVm
+metadata:
+  name: planton-oss-e2e-azurebackupprotectedvm-smoke
+  id: planton-oss-e2e-azurebackupprotectedvm-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurebackupprotectedvm
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  recoveryVaultName:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rsv
+  sourceVmId:
+    valueFrom:
+      name: planton-oss-e2e-azurevirtualmachine-smoke
+  backupPolicyId:
+    valueFrom:
+      name: planton-oss-e2e-azurebackuppolicyvm-smoke
+  excludeDiskLuns: [0]

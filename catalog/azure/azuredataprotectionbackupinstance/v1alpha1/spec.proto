@@ -1,0 +1,271 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredataprotectionbackupinstance.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureDataProtectionBackupInstanceSpec** defines a Data Protection
+// backup instance (ARM: Microsoft.DataProtection/backupVaults/{vault}/
+// backupInstances/{name}) -- the binding that puts ONE datasource
+// under a backup policy's protection. The vault holds the backups,
+// the policy says when and for how long; the instance is what makes a
+// specific resource actually protected. ONE kind covers the six
+// datasource types as variants: blob storage, managed disks,
+// Kubernetes (AKS) clusters, MySQL flexible servers, PostgreSQL
+// flexible servers and Data Lake storage. Exactly one variant block
+// is set; the block IS the datasource type.
+//
+// **The vault's managed identity needs datasource permissions BEFORE
+// the instance is created** -- Azure validates them at create time and
+// the deploy fails without them (an authorization-class error here
+// means missing role assignments, not a module defect). The roles per
+// datasource: disk -> "Disk Backup Reader" on the disk + "Disk
+// Snapshot Contributor" on the snapshot resource group; blob storage
+// -> "Storage Account Backup Contributor" on the storage account;
+// Data Lake -> "Storage Account Backup Contributor" on the account;
+// Kubernetes -> the AKS Backup extension installed on the cluster plus
+// its trusted-access role binding and reader roles; MySQL/PostgreSQL
+// flexible server -> the vault identity's reader/backup roles on the
+// server. Compose AzureRoleAssignment resources referencing the
+// vault's system_assigned_identity_principal_id output.
+//
+// **Nearly everything is fixed at creation**: the vault, datasource,
+// name, region and snapshot settings all replace the instance when
+// changed. Only the policy binding (backup_policy_id) updates in
+// place -- and on the kubernetes_cluster variant even that replaces
+// the instance (the provider ships no update path for it).
+//
+// **The instance itself is a free binding object** -- cost follows the
+// backup storage the protected data consumes. Destroying the instance
+// stops protection and deletes the backup data (subject to the
+// vault's soft-delete setting, which can retain it for 14 days and
+// hold the vault's own deletion).
+message AzureDataProtectionBackupInstanceSpec {
+  // The Data Protection backup vault that will hold this instance's
+  // backups, by ARM ID (an instance is an ARM child of its vault).
+  // Fixed at creation. The vault's managed identity is the principal
+  // Azure Backup acts as -- it must hold the datasource roles listed
+  // above before this instance is created.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vault_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataProtectionBackupVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.backup_vault_id"
+  ];
+
+  // The instance's name, unique on the vault. Fixed at creation.
+  string name = 2 [(buf.validate.field).required = true];
+
+  // The Azure region of the instance -- must match the datasource's
+  // own region (Azure Backup protects a resource from within its
+  // region). Fixed at creation.
+  string region = 3 [(buf.validate.field).required = true];
+
+  // The Data Protection backup policy that governs this instance, by
+  // ARM ID. The policy must live on the SAME vault and be of the SAME
+  // datasource type as the variant below (a disk instance needs a
+  // disk policy). This is the instance's only in-place-updatable
+  // field -- EXCEPT on the kubernetes_cluster variant, where changing
+  // the policy replaces the instance (the provider ships no update
+  // path there).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef backup_policy_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataProtectionBackupPolicy,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.backup_policy_id"
+  ];
+
+  // The blob-storage variant: protects a storage account's blob
+  // services (operational tier and/or vault tier, per the policy).
+  AzureDataProtectionBackupInstanceBlobStorage blob_storage = 5;
+
+  // The managed-disk variant: protects one managed disk with
+  // incremental snapshots kept in a snapshot resource group.
+  AzureDataProtectionBackupInstanceDisk disk = 6;
+
+  // The Kubernetes (AKS) cluster variant: protects an AKS cluster's
+  // workloads (with optional namespace/resource filters and volume
+  // snapshots). This variant is IMMUTABLE end to end -- every field
+  // including the policy binding replaces the instance when changed.
+  AzureDataProtectionBackupInstanceKubernetesCluster kubernetes_cluster = 7;
+
+  // The MySQL flexible-server variant: protects one MySQL flexible
+  // server with vault-tier full backups.
+  AzureDataProtectionBackupInstanceMysqlFlexibleServer mysql_flexible_server = 8;
+
+  // The PostgreSQL flexible-server variant: protects one PostgreSQL
+  // flexible server with vault-tier full backups.
+  AzureDataProtectionBackupInstancePostgresqlFlexibleServer postgresql_flexible_server = 9;
+
+  // The Data Lake storage variant: protects a hierarchical-namespace
+  // storage account's ADLS blob services, container by container.
+  AzureDataProtectionBackupInstanceDataLakeStorage data_lake_storage = 10;
+
+  option (buf.validate.message).cel = {
+    id: "exactly_one_variant"
+    message: "exactly one of blob_storage, disk, kubernetes_cluster, mysql_flexible_server, postgresql_flexible_server or data_lake_storage must be set -- the block is the datasource type"
+    expression: "(has(this.blob_storage) ? 1 : 0) + (has(this.disk) ? 1 : 0) + (has(this.kubernetes_cluster) ? 1 : 0) + (has(this.mysql_flexible_server) ? 1 : 0) + (has(this.postgresql_flexible_server) ? 1 : 0) + (has(this.data_lake_storage) ? 1 : 0) == 1"
+  };
+}
+
+// The blob-storage variant: binds a storage account's blob services
+// to a blob-storage backup policy.
+message AzureDataProtectionBackupInstanceBlobStorage {
+  // The storage account whose blob services are protected, by ARM ID.
+  // Fixed at creation. The vault's identity needs the "Storage
+  // Account Backup Contributor" role on this account before create.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The container names to back up. Required when the policy has a
+  // VAULT tier (vaulted or operational+vaulted policies back up
+  // specific containers); leave empty for an operational-only policy,
+  // which protects the whole account continuously. ONE-WAY once set:
+  // the list can be changed but never removed entirely -- clearing it
+  // replaces the instance (the provider's own contract).
+  repeated string storage_account_container_names = 2;
+}
+
+// The managed-disk variant: binds one managed disk to a disk backup
+// policy.
+message AzureDataProtectionBackupInstanceDisk {
+  // The managed disk to protect, by ARM ID. Fixed at creation. The
+  // vault's identity needs the "Disk Backup Reader" role on this disk
+  // before create.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureManagedDisk,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.disk_id"
+  ];
+
+  // The resource group (by name) where Azure Backup stores the disk
+  // snapshots. Fixed at creation. The vault's identity needs the
+  // "Disk Snapshot Contributor" role on this group before create.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef snapshot_resource_group_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The subscription holding the snapshot resource group, when it
+  // differs from the vault's own subscription (cross-subscription
+  // snapshot storage). Leave unset to use the vault's subscription --
+  // the common case. Fixed at creation.
+  optional string snapshot_subscription_id = 3 [(buf.validate.field).string.uuid = true];
+}
+
+// The Kubernetes (AKS) cluster variant: binds an AKS cluster to a
+// Kubernetes backup policy. IMMUTABLE end to end -- the provider
+// ships no update path for this variant, so every change (the policy
+// binding included) replaces the instance.
+message AzureDataProtectionBackupInstanceKubernetesCluster {
+  // The AKS cluster to protect, by ARM ID. Fixed at creation. The
+  // cluster must carry the AKS Backup extension and its
+  // trusted-access role binding to the vault before create -- an
+  // apply-time contract Azure enforces, not something this spec can
+  // check.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kubernetes_cluster_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureAksCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // The resource group (by name) where Azure Backup stores the
+  // cluster's snapshots. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef snapshot_resource_group_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // What the backup includes. Leave unset to back up every namespace
+  // with the service defaults (no cluster-scoped resources, no volume
+  // snapshots). Fixed at creation.
+  AzureDataProtectionBackupInstanceKubernetesClusterDatasourceParameters backup_datasource_parameters = 3;
+}
+
+// Filters and switches for what an AKS cluster backup includes.
+// Everything here is fixed at creation (the variant is immutable).
+message AzureDataProtectionBackupInstanceKubernetesClusterDatasourceParameters {
+  // Namespaces to include. Empty means all namespaces (minus any
+  // exclusions below).
+  repeated string included_namespaces = 1;
+
+  // Namespaces to exclude from the backup.
+  repeated string excluded_namespaces = 2;
+
+  // Kubernetes resource types to include (e.g.
+  // "deployments.apps"). Empty means all types.
+  repeated string included_resource_types = 3;
+
+  // Kubernetes resource types to exclude from the backup.
+  repeated string excluded_resource_types = 4;
+
+  // Label selectors -- only resources matching these selectors are
+  // backed up (e.g. "app=commerce").
+  repeated string label_selectors = 5;
+
+  // Whether cluster-scoped resources (CRDs, cluster roles, ...) join
+  // the backup. Azure's default is false (namespaced resources only).
+  bool cluster_scoped_resources_enabled = 6;
+
+  // Whether persistent-volume snapshots are taken with each backup.
+  // Azure's default is false (configuration only, no volume data).
+  bool volume_snapshot_enabled = 7;
+}
+
+// The MySQL flexible-server variant: binds one MySQL flexible server
+// to a MySQL flexible-server backup policy.
+message AzureDataProtectionBackupInstanceMysqlFlexibleServer {
+  // The MySQL flexible server to protect, by ARM ID. Fixed at
+  // creation. The vault's identity needs its backup roles on the
+  // server before create.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef server_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMysqlFlexibleServer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.server_id"
+  ];
+}
+
+// The PostgreSQL flexible-server variant: binds one PostgreSQL
+// flexible server to a PostgreSQL flexible-server backup policy.
+message AzureDataProtectionBackupInstancePostgresqlFlexibleServer {
+  // The PostgreSQL flexible server to protect, by ARM ID. Fixed at
+  // creation. The vault's identity needs its backup roles on the
+  // server before create.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef server_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePostgresqlFlexibleServer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.server_id"
+  ];
+}
+
+// The Data Lake storage variant: binds a hierarchical-namespace
+// storage account's ADLS blob services to a Data Lake backup policy.
+message AzureDataProtectionBackupInstanceDataLakeStorage {
+  // The storage account to protect, by ARM ID. Must have hierarchical
+  // namespace (Data Lake Gen2) enabled. Fixed at creation. The
+  // vault's identity needs the "Storage Account Backup Contributor"
+  // role on this account before create.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The storage containers to back up -- at least one, at most 1,000
+  // (the provider's own bounds). Container names are 3-63 characters
+  // of lowercase letters, digits and hyphens, never starting with a
+  // hyphen. Updatable in place.
+  repeated string storage_container_names = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 1000,
+    (buf.validate.field).repeated.items.string = {
+      min_len: 3
+      max_len: 63
+      pattern: "^[0-9a-z][0-9a-z-]*$"
+    }
+  ];
+}

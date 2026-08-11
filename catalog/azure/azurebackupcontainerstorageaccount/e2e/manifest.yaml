@@ -1,0 +1,16 @@
+# Offline-plan test manifest. The registration is three references --
+# the seam worth proving offline is the wire map itself (all three
+# resolve to plain strings) and ARM's derived container addressing.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupContainerStorageAccount
+metadata:
+  name: test-backup-container-storage-account
+  org: test-org
+  env: dev
+spec:
+  resourceGroup:
+    value: test-rg
+  recoveryVaultName:
+    value: test-backup-vault
+  storageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/data-rg/providers/Microsoft.Storage/storageAccounts/appfiles

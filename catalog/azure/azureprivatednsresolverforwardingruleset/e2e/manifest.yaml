@@ -1,0 +1,33 @@
+# Offline-plan test manifest. Exercises the full surface: two rules
+# (one live with two ordered targets and an explicit non-standard
+# port, one PARKED with enabled false and metadata annotations), the
+# endpoint binding, and user tags merged over the derived ones.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateDnsResolverForwardingRuleset
+metadata:
+  name: test-forwarding-ruleset
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  resourceGroup:
+    value: platform-rg
+  name: test-ruleset
+  outboundEndpointIds:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Network/dnsResolvers/platform-resolver/outboundEndpoints/outbound
+  forwardingRules:
+    - name: corp-domain
+      domainName: corp.contoso.com.
+      targetDnsServers:
+        - ipAddress: "10.100.0.10"
+        - ipAddress: "10.100.0.11"
+          port: 5353
+      metadata:
+        owner: network-team
+    - name: parked-domain
+      domainName: internal.fabrikam.com.
+      enabled: false
+      targetDnsServers:
+        - ipAddress: "172.16.5.53"
+  tags:
+    cost-center: platform

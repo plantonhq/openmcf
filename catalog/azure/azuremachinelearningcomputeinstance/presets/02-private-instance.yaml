@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningComputeInstance
+metadata:
+  name: alice-private
+spec:
+  workspaceId:
+    value: "<your-machine-learning-workspace-id>"
+  name: alice-private
+  virtualMachineSize: STANDARD_DS3_V2
+  # Example UUIDs (tenant_id is format-validated): replace BOTH with
+  # the owner's real tenant and object IDs.
+  authorizationType: personal
+  assignToUser:
+    tenantId: 00000000-0000-0000-0000-000000000000
+    objectId: 11111111-1111-1111-1111-111111111111
+  identity:
+    type: SYSTEM_ASSIGNED
+  # No public IP: the instance is reachable only from inside the
+  # network. On a plain workspace the subnet is REQUIRED with public
+  # IP off; on a managed-network workspace, OMIT the subnet (Azure
+  # networks the instance itself).
+  nodePublicIpEnabled: false
+  subnetId:
+    value: "<your-subnet-id>"

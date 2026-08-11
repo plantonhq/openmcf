@@ -1,0 +1,18 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuredataprotectionbackuppolicy
+spec:
+  # The policy's identity is its full ARM resource ID -- a child of its
+  # vault (.../backupVaults/{vault}/backupPolicies/{name}). The SAME ID
+  # shape serves all six variant resources; which provider resource
+  # imports it follows the spec's variant block.
+  values:
+    - name: backup_policy_id
+      derivations:
+        - from_stack_output: backup_policy_id
+      where_to_find: >-
+        `az dataprotection backup-policy show -g <rg> --vault-name
+        <vault> -n <name> --query id`, or compose
+        /subscriptions/{sub}/resourceGroups/{rg}/providers/
+        Microsoft.DataProtection/backupVaults/{vault}/backupPolicies/{name}.

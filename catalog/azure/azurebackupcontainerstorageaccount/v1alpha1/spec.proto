@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurebackupcontainerstorageaccount.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureBackupContainerStorageAccountSpec** registers a storage
+// account with a Recovery Services vault as a backup container (ARM:
+// Microsoft.RecoveryServices/vaults/{vault}/backupFabrics/Azure/
+// protectionContainers/StorageContainer;storage;{sa-rg};{sa-name}).
+// Registration is the prerequisite for protecting any of the
+// account's file shares: ONE registration per storage-account-and-
+// vault pair, then each share gets its own
+// AzureBackupProtectedFileShare binding. Registration itself is free
+// and moves no data.
+//
+// **Every field is fixed at creation** (changing any replaces the
+// registration -- ARM has no update on protection containers).
+// While registered, Azure Backup places a RESOURCE LOCK on the
+// storage account (protecting the backups' source); unregistering
+// removes it. Unregistering REFUSES while any of the account's
+// shares are still protected -- destroy the protections first (the
+// GUIDE's teardown recipe).
+message AzureBackupContainerStorageAccountSpec {
+  // The Azure resource group the registering VAULT lives in (NOT
+  // necessarily the storage account's group). Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's
+  // name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The Recovery Services vault the storage account registers with,
+  // by NAME (ARM addresses backup containers as children of a vault).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef recovery_vault_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureRecoveryServicesVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.recovery_services_vault_name"
+  ];
+
+  // The storage account to register, by ARM ID. The account must live
+  // in the vault's region (Azure Files backup is regional).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+}

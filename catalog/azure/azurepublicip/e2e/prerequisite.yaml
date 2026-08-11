@@ -32,14 +32,17 @@ spec:
   zones:
     - "1"
 ---
-# A second, no-zone instance for consumers that bind an address
-# EXCLUSIVELY and deploy without zones -- a virtual network gateway takes
-# sole ownership of its address (sharing the zonal instance above would
-# collide with the NAT gateway's association, and its zone pinning
-# mismatches non-zonal gateway SKUs). Consumers address this instance by
-# its metadata name (planton-oss-e2e-azure-fixture-vng-pip); the extra
-# instance is harmless for consumers that only use the zonal one
-# (addresses provision in seconds and cost cents).
+# A second, ZONE-REDUNDANT instance for consumers that bind an address
+# EXCLUSIVELY -- a virtual network gateway takes sole ownership of its
+# address (sharing the single-zone instance above would collide with the
+# NAT gateway's association). Zone-redundant because ARM requires zones
+# on any Standard public IP an AZ-SKU VPN gateway binds
+# (VmssVpnGatewayPublicIpsMustHaveZonesConfigured, live-confirmed
+# 2026-08-11 -- and only AZ gateway SKUs accept new creates). Consumers
+# address this instance by its metadata name
+# (planton-oss-e2e-azure-fixture-vng-pip); the extra instance is
+# harmless for consumers that only use the zonal one (addresses
+# provision in seconds and cost cents).
 apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIp
 metadata:
@@ -60,3 +63,40 @@ spec:
     valueFrom:
       name: planton-oss-e2e-azure-fixture-rg
   name: planton-oss-e2e-azure-fixture-vng-pip
+  # Zone-redundant: ARM requires zones on the Standard public IP an
+  # AZ-SKU VPN gateway binds
+  # (VmssVpnGatewayPublicIpsMustHaveZonesConfigured).
+  zones:
+    - "1"
+    - "2"
+    - "3"
+---
+# A third instance for the Bastion host lane: a Bastion host binds its
+# Standard static address EXCLUSIVELY (like the gateway above -- the
+# zonal instance is bound by the NAT gateway scenario and the
+# zone-redundant one is the VPN gateway's), so the lane gets its own.
+# No zones: Bastion accepts a no-zone Standard address. Consumers
+# address this instance by its metadata name
+# (planton-oss-e2e-azure-fixture-bastion-pip); the extra instance is
+# harmless for consumers that only use the others (addresses provision
+# in seconds and cost cents).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePublicIp
+metadata:
+  name: planton-oss-e2e-azure-fixture-bastion-pip
+  id: planton-oss-e2e-azure-fixture-bastion-pip
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurepublicip
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azure-fixture-bastion-pip

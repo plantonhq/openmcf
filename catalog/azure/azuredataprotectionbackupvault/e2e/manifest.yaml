@@ -1,0 +1,31 @@
+# Offline-plan test manifest. Exercises the deep seams: geo-redundant
+# storage with cross-region restore, a widened soft-delete window, the
+# Unlocked immutability posture, a system-assigned identity, the
+# composed customer-managed-key arm with the versionless key URI, and
+# user tags merged over the derived ones. The one-way doors (Locked,
+# AlwaysOn) stay offline-only by design -- they are permanent on a live
+# vault.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataProtectionBackupVault
+metadata:
+  name: test-data-protection-backup-vault
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: test-backup-vault
+  datastoreType: VaultStore
+  redundancy: GeoRedundant
+  crossRegionRestoreEnabled: true
+  retentionDurationInDays: 30
+  softDelete: "On"
+  immutability: Unlocked
+  identity:
+    type: SYSTEM_ASSIGNED
+  encryption:
+    keyId:
+      value: https://test-kv.vault.azure.net/keys/vault-cmk
+  tags:
+    cost-center: platform

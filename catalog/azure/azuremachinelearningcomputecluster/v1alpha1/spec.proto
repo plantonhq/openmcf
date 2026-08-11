@@ -1,0 +1,226 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningcomputecluster.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureMachineLearningComputeClusterSpec** defines an auto-scaling
+// compute cluster on an Azure Machine Learning workspace (ARM:
+// Microsoft.MachineLearningServices/workspaces/{ws}/computes/{name})
+// -- the pool of VMs that training jobs and pipelines run on. The
+// cluster scales between its configured node bounds and, with
+// min_node_count 0, costs nothing while idle.
+//
+// **Only identity, scale_settings and tags update in place** -- every
+// other field replaces the cluster (the provider's own contract).
+// Replacement is routine for clusters (they hold no data), but
+// running jobs on the cluster fail when it is replaced.
+//
+// **The cluster is an ARM child of its workspace** -- it has no
+// resource group of its own. Uniquely in the ML family, the cluster
+// CAN live in a different region from its workspace (`region` here is
+// the compute location); note that ARM reports the cluster envelope
+// at the WORKSPACE's region, so cross-region clusters read back at
+// the workspace region while their nodes run where `region` says.
+message AzureMachineLearningComputeClusterSpec {
+  // The Machine Learning workspace the cluster belongs to, by ARM ID.
+  // Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workspace_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMachineLearningWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.machine_learning_workspace_id"
+  ];
+
+  // The cluster's name, unique on the workspace: 3-32 characters,
+  // letters, digits and hyphens, starting with a letter and ending
+  // with a letter or digit (the service's own rule, mirrored from the
+  // provider) -- what jobs and pipelines reference as their compute
+  // target. Changing the name replaces the cluster.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z][a-zA-Z0-9-]{1,30}[a-zA-Z0-9]$"
+  ];
+
+  // The Azure region the cluster's NODES run in, e.g. "eastus".
+  // Clusters (unlike compute instances) may run in a different region
+  // from their workspace -- useful when GPU quota lives elsewhere.
+  // ARM still reports the cluster envelope at the workspace's region.
+  // Fixed at creation.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The VM size of each node, e.g. "STANDARD_DS2_V2" or
+  // "STANDARD_NC6S_V3" (GPU). Regional VM-family quota gates what
+  // actually provisions. Fixed at creation.
+  string vm_size = 4 [(buf.validate.field).required = true];
+
+  // Whether nodes are regular dedicated VMs or evictable low-priority
+  // (spot-class) VMs at a steep discount. LOW_PRIORITY suits
+  // fault-tolerant training (checkpointed jobs); evicted nodes take
+  // running work with them. Fixed at creation.
+  AzureMachineLearningComputeClusterVmPriority vm_priority = 5 [(buf.validate.field).required = true];
+
+  // How the cluster scales. The one substantive setting that updates
+  // in place -- tune bounds freely on a live cluster.
+  AzureMachineLearningComputeClusterScaleSettings scale_settings = 6 [(buf.validate.field).required = true];
+
+  // The cluster's managed identity -- how jobs on the cluster reach
+  // storage, Key Vault and the container registry without embedded
+  // credentials. Updatable in place.
+  AzureMachineLearningComputeClusterIdentity identity = 7;
+
+  // The administrator account created on each node for SSH access.
+  // Only meaningful with ssh_public_access_enabled true (or from
+  // within the cluster's virtual network when false). The whole block
+  // is fixed at creation.
+  AzureMachineLearningComputeClusterSsh ssh = 8;
+
+  // Whether the nodes' SSH port answers the public internet. Azure's
+  // default is false (closed) -- the right posture; enable it only
+  // for debugging with the ssh block configured. Fixed at creation.
+  bool ssh_public_access_enabled = 9;
+
+  // Whether Azure Machine Learning token authentication to the
+  // cluster works. Unspecified applies true (the provider's default).
+  // Set false to force Entra ID auth only -- pair with an identity.
+  // Fixed at creation.
+  optional bool local_auth_enabled = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether each node gets a public IP. Unspecified applies true (the
+  // provider's default). Set false for VNet-only clusters -- typically
+  // together with subnet_id or a workspace managed network. Fixed at
+  // creation.
+  optional bool node_public_ip_enabled = 11 [(dev.planton.shared.options.default) = "true"];
+
+  // The subnet the cluster's nodes are placed in, by ARM ID. Leave
+  // unset to let Azure network the nodes (a workspace managed network
+  // assigns one, read back after apply). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 12 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // What the cluster is for. Fixed at creation (the provider's own
+  // contract -- changing the description replaces the cluster).
+  string description = 13;
+
+  // Free-form tags applied to the cluster, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins. Updatable in
+  // place.
+  map<string, string> tags = 14;
+}
+
+// Whether cluster nodes are dedicated or evictable low-priority VMs.
+enum AzureMachineLearningComputeClusterVmPriority {
+  // Not specified: rejected -- the provider requires an explicit
+  // priority.
+  azure_machine_learning_compute_cluster_vm_priority_unspecified = 0;
+
+  // Regular dedicated VMs (wire value "Dedicated") -- nodes stay up
+  // until the cluster scales them down.
+  DEDICATED = 1;
+
+  // Evictable low-priority VMs (wire value "LowPriority") -- deep
+  // discount, but Azure may evict nodes at any time; suit
+  // checkpointed, fault-tolerant training only.
+  LOW_PRIORITY = 2;
+}
+
+// How the cluster scales between its node bounds.
+message AzureMachineLearningComputeClusterScaleSettings {
+  // The most nodes the cluster grows to. Regional vCPU quota for the
+  // VM family gates what actually provisions.
+  int32 max_node_count = 1 [(buf.validate.field).int32.gte = 0];
+
+  // The fewest nodes the cluster keeps while idle. 0 is the
+  // economical posture -- the cluster costs nothing between jobs, at
+  // the price of node spin-up latency when work arrives.
+  int32 min_node_count = 2 [(buf.validate.field).int32.gte = 0];
+
+  // How long a node sits idle before scaling down, as an ISO-8601
+  // duration (e.g. "PT30M", "PT2M"). Longer keeps warm nodes between
+  // closely-spaced jobs; shorter saves cost.
+  string scale_down_nodes_after_idle_duration = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "ml_compute_cluster_idle_duration_iso8601"
+      message: "scale_down_nodes_after_idle_duration must be an ISO-8601 duration, e.g. PT30M"
+      expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+    }
+  ];
+
+  // ARM's own contract on the scale range, front-loaded so the error
+  // lands in seconds instead of at apply time.
+  option (buf.validate.message).cel = {
+    id: "ml_compute_cluster_scale_bounds"
+    message: "max_node_count must be greater than or equal to min_node_count"
+    expression: "this.max_node_count >= this.min_node_count"
+  };
+}
+
+// The cluster's managed identity.
+message AzureMachineLearningComputeClusterIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the cluster; USER_ASSIGNED brings identities you manage
+  // (grantable data / registry access BEFORE the cluster exists);
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureMachineLearningComputeClusterIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the cluster, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so storage / registry grants
+  // can be composed before the cluster is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The cluster's managed-identity flavor.
+enum AzureMachineLearningComputeClusterIdentityType {
+  // Not specified: rejected -- an identity block requires a flavor.
+  azure_machine_learning_compute_cluster_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the cluster.
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// The administrator account created on each cluster node.
+message AzureMachineLearningComputeClusterSsh {
+  // The admin account's username on every node. Fixed at creation.
+  string admin_username = 1 [(buf.validate.field).required = true];
+
+  // The admin account's password. Reference a secret rather than
+  // embedding the literal. SSH keys (key_value) are the production
+  // path; at least one credential is required (the provider's own
+  // contract).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef admin_password = 2 [(dev.planton.shared.options.sensitive) = true];
+
+  // The admin account's SSH PUBLIC key (e.g. "ssh-rsa AAAA..."),
+  // installed on every node. Public material -- not a secret. The
+  // provider names this argument `key_value`.
+  string key_value = 3;
+
+  option (buf.validate.message).cel = {
+    id: "ml_compute_cluster_ssh_credential_required"
+    message: "the ssh block requires at least one of admin_password or key_value"
+    expression: "has(this.admin_password) || this.key_value != ''"
+  };
+}

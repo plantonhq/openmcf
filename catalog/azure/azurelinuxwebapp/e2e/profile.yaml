@@ -11,16 +11,12 @@ spec:
   # release immediately on delete, so both engine runs can own the same
   # globally-unique name sequentially.
   #
-  # The x_azure_fdid repeated-StringValueOrRef retrofit was live-proven
-  # on the Pulumi engine (2026-07-15, 294.1s); the Terraform re-run was
-  # stopped mid-flight by the owner's project-wide live-E2E closure the
-  # same day.
-  #
-  # pending_proof: the azurerm v5 treatment removed the service-retired
-  # Ruby runtime from the application stack (spec and both modules).
-  # Offline plans are green on azurerm 5; the prior green predates the
-  # v5 pin and no longer stands as live proof for the reworked surface.
+  # Live-proven on both engines against azurerm 5 (2026-08-11): the v5
+  # treatment (service-retired Ruby runtime removed from the application
+  # stack in spec and both modules) deploys, verifies, and destroys
+  # cleanly, including the FDID-header ip-restriction path and the
+  # Basic B1 always-on/health-probe surface (~5 min per engine).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

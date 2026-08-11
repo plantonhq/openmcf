@@ -1,0 +1,49 @@
+# AzureVpnServerConfiguration install profile used as a fixture by
+# composed components (declared via prerequisites:
+# [AzureVpnServerConfiguration] in the kind registry -- the
+# point-to-site VPN gateway). The harness deploys this document after
+# the fixture resource group and captures its outputs --
+# vpn_server_configuration_id in particular -- for dependents'
+# references to resolve against.
+#
+# COST AND TIME: free and seconds -- the cheap fixture of the
+# point-to-site pair (the gateway that chains through it is the
+# expensive one). Certificate auth keeps the fixture
+# environment-independent: the pinned root is PUBLIC data only (the
+# private key was discarded at generation; no client can ever
+# authenticate with it, which is fine -- no lane ever connects a real
+# client).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVpnServerConfiguration
+metadata:
+  name: planton-oss-e2e-azure-fixture-vpnsc
+  id: planton-oss-e2e-azure-fixture-vpnsc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevpnserverconfiguration
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-fixture-vpnsc
+  vpnAuthenticationTypes:
+    - Certificate
+  clientRootCertificates:
+    # Self-signed test root, public data only. Generated with:
+    #   openssl req -x509 -newkey rsa:2048 -keyout root.key -out root.pem \
+    #     -days 3650 -nodes -subj "/CN=planton-oss-e2e-p2s-root"
+    #   openssl x509 -in root.pem -outform der | base64
+    - name: e2e-root
+      publicCertData: MIIDJzCCAg+gAwIBAgIUI4B0y9OsZnVyco5f2m1SK8vOOKIwDQYJKoZIhvcNAQELBQAwIzEhMB8GA1UEAwwYcGxhbnRvbi1vc3MtZTJlLXAycy1yb290MB4XDTI2MDgwOTIwMjAyM1oXDTM2MDgwNjIwMjAyM1owIzEhMB8GA1UEAwwYcGxhbnRvbi1vc3MtZTJlLXAycy1yb290MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAz0JLtVVB3WlaPydW1NBBRWamIFuvnNKQkSJGe2WzZ+yh8pL+oNaw9J2EyTpcrl0Wsvda7fLrqcWhE1Hw3KxjStsCh+fI37TBpV77oSTJjuwszN1EJRraU2MJuo1BafGBdfCRCufuuseJ8AQppLD/qgH3nrMQ2BnwrO+jaWxnkYdDl91vumDZPiWGctBcmTJp53ZzTICW39wCV1yq1/htK2wvBvvIf5nDQPHhTLfy8d2P5OksiTZWSY+HV3uUXTtrzr1QSLSP9A7OzuoBAvdBF5Fa3PtsZw27WmDDl2iOLM8cEQn3B4B4VWdQ9LCXkWE8MwMQI13yR2QNY+kt90rVywIDAQABo1MwUTAdBgNVHQ4EFgQU8ISSNCctYDUDNyo6vROk8V/LvfowHwYDVR0jBBgwFoAU8ISSNCctYDUDNyo6vROk8V/LvfowDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAK/pl9/Izolm4fGHI/xFvMJ6EPzFiAZ3kyZ0sg2mQZ1woF2Mv8IWjb+vRISVNyt3jPYpXGGNlmpZC1ZOjaK+BOlXsiw35L5Cuegkv+y/dwsH9EQe7lm1vOW2JNrpCITqN6dGm78+YJiLAD7RF29BxhNgh2yNx0RA+3eDduTTL6HlSUf2E7NeMNwfSRvUSUgbbynE+I6p3gq9Kit2hkHXn1uhXTRU93Qrk3GP9xbKr1pn2nOhdR5ucuspNuVS5oY+d0JIv5i+vLkON6gFXKSn5pbcv4j2Q8JdAfJfT6uTcBgIGv8ph32bte18K1MYiCrGpKHsRwOhiidCVFz8SNzpaGg==
+  vpnProtocols:
+    - OpenVPN
+  tags:
+    e2e-suite: azure
+    purpose: fixture

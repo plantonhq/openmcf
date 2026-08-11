@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecognitiveaccount.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurecognitiveaccount/v1alpha1/outputs.proto";
+import "catalog/azure/azurecognitiveaccount/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureCognitiveAccount is the top-level API resource describing an
+// Azure AI services account -- the container Azure AI capabilities
+// (Azure OpenAI, the multi-service AI Services account, the
+// single-service accounts) are provisioned and billed through, and
+// the parent that model deployments (AzureCognitiveDeployment) and
+// AI Foundry projects (AzureCognitiveAccountProject) are created on.
+message AzureCognitiveAccount {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureCognitiveAccount".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureCognitiveAccount'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Azure AI services account specification.
+  AzureCognitiveAccountSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureCognitiveAccountStatus status = 5;
+}
+
+// AzureCognitiveAccountStatus holds the deployment outputs.
+message AzureCognitiveAccountStatus {
+  // Stack outputs from the IaC deployment.
+  AzureCognitiveAccountStackOutputs outputs = 1;
+}

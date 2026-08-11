@@ -243,7 +243,9 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureBackupProtectedFileShare | `spec.sourceFileShareName` | `status.outputs.share_name` |
 | AzureContainerAppEnvironmentStorage | `spec.shareName` | `status.outputs.share_name` |
+| AzureMachineLearningDatastore | `spec.fileShare.storageFileshareId` | `status.outputs.share_id` |
 
 ## See Also
 

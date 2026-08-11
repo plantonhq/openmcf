@@ -1,0 +1,44 @@
+# AzureVpnSite install profile used as a fixture by composed components
+# (declared via prerequisites: [AzureVpnSite] in the kind registry --
+# the VPN gateway connection). The harness deploys this document after
+# the fixture WAN and captures its outputs -- vpn_site_id and the
+# name-keyed link_ids map in particular -- for dependents' references
+# to resolve against (a connection lane pins its tunnel to
+# link_ids.primary-isp).
+#
+# COST AND TIME: free, provisions in seconds. The endpoint is a
+# TEST-NET-3 documentation address (203.0.113.0/24 -- never routable),
+# and the address space (192.168.77.0/24) is disjoint from the fixture
+# VNet's 10.240.0.0/16 and the fixture hub's 10.250.0.0/23: no real
+# branch exists, so tunnels pointing here provision but never reach
+# Connected (provisioned-is-not-connected -- the recorded lane
+# boundary).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVpnSite
+metadata:
+  name: planton-oss-e2e-azure-fixture-vpnsite
+  id: planton-oss-e2e-azure-fixture-vpnsite
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevpnsite
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azure-fixture-vpnsite
+  virtualWanId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vwan
+  addressCidrs:
+    - "192.168.77.0/24"
+  links:
+    - name: primary-isp
+      ipAddress: "203.0.113.10"
+      speedInMbps: 100

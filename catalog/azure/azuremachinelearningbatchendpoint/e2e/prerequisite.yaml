@@ -1,0 +1,42 @@
+# AzureMachineLearningBatchEndpoint install profile used as a fixture
+# by dependent components (declared via prerequisites:
+# [AzureMachineLearningBatchEndpoint] in the kind registry -- the
+# batch-deployment lane). The harness deploys this document after the
+# fixture workspace chain and captures its outputs --
+# batch_endpoint_id in particular -- for dependents' references to
+# resolve against.
+#
+# COST AND TIME: a batch endpoint is a routing object -- it holds no
+# compute, bills nothing at rest, and provisions in minutes. The
+# cloud-side name is deliberately STABLE: the fixture is deployed once
+# per proof lane against the shared fixture workspace, and a stable
+# name keeps dependent references simple -- any region-wide
+# name-reservation concern belongs to per-engine SCENARIO endpoints,
+# which carry the run-id token instead. auth_mode is deliberately
+# unset (the platform's AADToken default -- the only mode the batch
+# service accepts).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningBatchEndpoint
+metadata:
+  name: planton-oss-e2e-azure-fixture-mlbe
+  id: planton-oss-e2e-azure-fixture-mlbe
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremachinelearningbatchendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  workspaceId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-mlw
+  name: planton-oss-e2e-fixture-mlbe
+  region: eastus
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    e2e-suite: azure
+    purpose: fixture

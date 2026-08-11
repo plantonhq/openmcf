@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurecognitivedeployment
+spec:
+  # The deployment's identity is its full ARM resource ID -- an ARM
+  # child of its account (.../accounts/{account}/deployments/{name}).
+  values:
+    - name: deployment_id
+      derivations:
+        - from_stack_output: deployment_id
+      where_to_find: >-
+        Portal -> the AI services account -> Model deployments -> the
+        deployment (its resource ID is the account's ID +
+        /deployments/<name>), or `az cognitiveservices account
+        deployment show -g <rg> -n <account> --deployment-name <name>
+        --query id`.

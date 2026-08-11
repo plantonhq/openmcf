@@ -120,13 +120,18 @@ proto-tools: $(PROTOC_STAMP) $(GRPC_JAVA_STAMP) $(PROTOC_GEN_GO_STAMP) $(PROTOC_
 
 .PHONY: buf-fmt
 buf-fmt:
-	buf format -w
+	buf format -w --disable-symlinks
 
 .PHONY: protos
 protos: buf-lint buf-fmt proto-tools
 	rm -rf generated/stubs
 	mkdir -p generated/stubs
-	buf generate
+	# --disable-symlinks: after any bazel run, the bazel-* convenience
+	# symlinks point at an execroot carrying a full copy of the proto
+	# tree; buf follows symlinks by default and fails on the duplicated
+	# symbols. --timeout 20m: with LOCAL plugins the full tree outruns
+	# buf's 2-minute default.
+	buf generate --disable-symlinks --timeout 20m
 	cp -R generated/stubs/go/github.com/plantonhq/planton/. .
 	rm -rf generated/stubs/go
 	# Generate a BUILD.bazel for the Java stubs so Bazel can compile them.
@@ -145,7 +150,7 @@ build-optional-linter-plugin:
 
 .PHONY: buf-lint
 buf-lint: build-optional-linter-plugin
-	buf lint
+	buf lint --disable-symlinks
 
 .PHONY: buf-breaking
 # Compares the module's protos against the main branch, classified by the
@@ -256,7 +261,11 @@ generate-kubernetes-types:
 .PHONY: generate-proto-docs
 generate-proto-docs:
 	mkdir -p build
-	buf build -o build/proto-docs-image.binpb
+	# --disable-symlinks: after any bazel run, the bazel-* convenience
+	# symlinks point at an execroot carrying a full copy of the proto
+	# tree; buf follows symlinks by default and fails on the duplicated
+	# symbols. The module has no legitimate protos behind symlinks.
+	buf build --disable-symlinks -o build/proto-docs-image.binpb
 	go run ./pkg/protodocs/distiller \
 		--image build/proto-docs-image.binpb \
 		--out pkg/protodocs/index.json.gz
@@ -274,7 +283,8 @@ generate-provider-schemas:
 	go run ./pkg/providerparity/distiller \
 		--out-dir pkg/providerparity/schemas \
 		--provider 'google=hashicorp/google@~> 7.43' \
-		--provider 'google-beta=hashicorp/google-beta@~> 7.43'
+		--provider 'google-beta=hashicorp/google-beta@~> 7.43' \
+		--provider 'azurerm=hashicorp/azurerm@5.0.0'
 
 # Regenerate every committed public parity page (catalog/<provider>/terraform-parity.md)
 # from the accounting. Each page embeds its own generation parameters, so this

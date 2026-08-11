@@ -1,0 +1,53 @@
+# Minimal AzureBackupPolicyVm scenario: a V2 daily policy with the
+# full grandfather-father-son retention ladder on the fixture vault --
+# a free configuration object that proves the schedule and all four
+# retention layers' wire shapes (monthly in the week-of-month grammar,
+# yearly likewise). This scenario doubles as the kind's INSTALL
+# MANIFEST when the protected-VM lane deploys a policy as its
+# prerequisite -- keep it fixture-safe: plain daily shape, fixed name
+# (policy names are vault-scoped; nothing soft-holds them).
+#
+# The hourly window, tiering, and instant-restore arms are
+# offline-proven this wave (rendered and inspected in the offline tofu
+# plan) -- one policy object proves the create/read/destroy loop; a
+# second policy shape would re-prove the same ARM collection.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupPolicyVm
+metadata:
+  name: planton-oss-e2e-azurebackuppolicyvm-smoke
+  id: planton-oss-e2e-azurebackuppolicyvm-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurebackuppolicyvm
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  recoveryVaultName:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rsv
+  name: planton-oss-e2e-bpv-smoke
+  policyType: V2
+  backup:
+    frequency: Daily
+    time: "23:30"
+  retentionDaily:
+    count: 7
+  retentionWeekly:
+    count: 4
+    weekdays: [Sunday]
+  retentionMonthly:
+    count: 3
+    weeks: [First]
+    weekdays: [Sunday]
+  retentionYearly:
+    count: 1
+    months: [January]
+    weeks: [First]
+    weekdays: [Sunday]

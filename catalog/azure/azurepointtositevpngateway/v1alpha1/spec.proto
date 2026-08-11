@@ -1,0 +1,203 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurepointtositevpngateway.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzurePointToSiteVpnGatewaySpec** defines a point-to-site VPN
+// gateway -- the managed receiver INSIDE a virtual hub that individual
+// devices (laptops, phones) dial into from anywhere (ARM allows one
+// per hub, a slot separate from the hub's site-to-site VPN gateway).
+// HOW users authenticate lives on the AzureVpnServerConfiguration the
+// gateway is born pointing at; WHAT addresses connected clients get
+// comes from this gateway's connection configurations. The
+// classic-world sibling is an AzureVirtualNetworkGateway carrying a
+// vpn_client_configuration.
+//
+// **Capacity is scale units**: each scale unit buys 500 connection
+// slots and aggregate throughput across the managed instance pair.
+// The gateway bills from creation and provisions in tens of minutes;
+// plan lifecycle around both.
+//
+// **ForceNew fields**: `name`, `region`, `resource_group`,
+// `virtual_hub_id`, `vpn_server_configuration_id`, and
+// `routing_preference_internet_enabled` -- changing any of them
+// replaces the gateway (a 30-45 minute create plus a delete, and
+// every connected client drops). `scale_unit`,
+// `connection_configurations`, `dns_servers`, and tags update in
+// place.
+message AzurePointToSiteVpnGatewaySpec {
+  // The Azure region the gateway lives in. Must match the hub's
+  // region (the gateway deploys into the hub). Changing it replaces
+  // the gateway.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the gateway is created in. Can be a
+  // literal resource-group name or a reference to an
+  // AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The gateway's name, unique within the resource group. Changing
+  // the name replaces the gateway.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The virtual hub the gateway deploys into -- references an
+  // AzureVirtualHub's ARM ID. One point-to-site gateway per hub
+  // (ARM's rule). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_hub_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_hub_id"
+  ];
+
+  // The VPN server configuration defining how users authenticate --
+  // references an AzureVpnServerConfiguration's ARM ID. Fixed at
+  // creation (pointing the gateway at a different policy replaces
+  // it); changes WITHIN the referenced configuration apply in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpn_server_configuration_id = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVpnServerConfiguration,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpn_server_configuration_id"
+  ];
+
+  // The gateway's connection configurations -- each names a client
+  // address pool (and optional hub-routing choices) for connected
+  // devices. Most gateways carry exactly one; multiple
+  // configurations require the server configuration to offer OpenVPN
+  // and are matched to users via its policy groups. At least one.
+  repeated AzurePointToSiteVpnGatewayConnectionConfiguration connection_configurations = 6 [(buf.validate.field).repeated.min_items = 1];
+
+  // The gateway's aggregate capacity in scale units (500 concurrent
+  // connections each, across the managed instance pair). The
+  // provider requires an explicit value; unset applies 1 (the
+  // smallest gateway). Updates in place.
+  optional int32 scale_unit = 7 [
+    (buf.validate.field).int32.gte = 0,
+    (dev.planton.shared.options.default) = "1"
+  ];
+
+  // Route internet-bound traffic from clients out via the public
+  // internet close to the gateway (hot-potato) instead of riding
+  // Microsoft's backbone. Off is ARM's default. Fixed at creation.
+  bool routing_preference_internet_enabled = 8;
+
+  // Custom DNS servers pushed to connecting clients (IPv4). Leave
+  // empty for Azure-provided resolution. NOTE: once set, clearing
+  // this list does NOT remove the servers from the deployed gateway
+  // (the provider skips empty-list updates) -- replace the gateway to
+  // remove them.
+  repeated string dns_servers = 9 [(buf.validate.field).repeated.items.string.ipv4 = true];
+
+  // Free-form tags applied to the gateway, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins.
+  map<string, string> tags = 10;
+
+  option (buf.validate.message).cel = {
+    id: "connection_configuration_names_unique"
+    message: "connection_configurations names must be unique on the gateway"
+    expression: "this.connection_configurations.all(c, this.connection_configurations.filter(o, o.name == c.name).size() == 1)"
+  };
+}
+
+// One connection configuration: a named client address pool with
+// optional hub-routing choices.
+message AzurePointToSiteVpnGatewayConnectionConfiguration {
+  // The configuration's name, unique on the gateway (e.g.
+  // "default-clients").
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The address pool connected clients draw their tunnel addresses
+  // from, in CIDR notation (e.g. "172.16.201.0/24"). Size it for the
+  // expected concurrent connections; it must not overlap the hub or
+  // any connected network. At least one prefix.
+  repeated string address_prefixes = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+
+  // How client traffic is routed in the hub. Leave unset for ARM's
+  // default behavior: associate with and propagate to the hub's
+  // built-in default route table (any-to-any reachability).
+  AzurePointToSiteVpnGatewayRoute route = 3;
+
+  // Enable "internet security": the hub advertises a default route
+  // (0.0.0.0/0) to connected clients, so their internet-bound
+  // traffic rides the tunnel into Azure (typically into a hub
+  // firewall via routing intent). Off is ARM's default -- clients
+  // keep their local internet egress.
+  bool internet_security_enabled = 4;
+}
+
+// The routing configuration of a connection configuration -- which hub
+// route table client traffic is routed by and where client routes
+// propagate. ARM requires a configured block to name its associated
+// route table (the provider's contract); the optional parts default
+// sensibly.
+message AzurePointToSiteVpnGatewayRoute {
+  // The ONE hub route table this configuration's traffic is routed by
+  // -- references the hub's default table (the hub's
+  // default_route_table_id output, the default reference) or a custom
+  // table via the hub's name-keyed map output, e.g. valueFrom
+  // fieldPath "status.outputs.route_table_ids.remote-users".
+  dev.planton.shared.foreignkey.v1.StringValueOrRef associated_route_table_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.default_route_table_id"
+  ];
+
+  // A route map applied to routes ARRIVING from connected clients --
+  // references the hub's name-keyed route_map_ids output, e.g.
+  // valueFrom fieldPath "status.outputs.route_map_ids.strip-communities".
+  dev.planton.shared.foreignkey.v1.StringValueOrRef inbound_route_map_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.route_map_ids"
+  ];
+
+  // A route map applied to routes ADVERTISED to connected clients --
+  // same referencing shape as inbound_route_map_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef outbound_route_map_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.route_map_ids"
+  ];
+
+  // The hub route tables client routes are PROPAGATED to (where other
+  // networks learn the client pool's prefixes from). Unset lets the
+  // service default propagation.
+  AzurePointToSiteVpnGatewayPropagatedRouteTable propagated_route_table = 4;
+}
+
+// The hub route tables a connection configuration propagates its
+// routes to.
+message AzurePointToSiteVpnGatewayPropagatedRouteTable {
+  // Propagate to these specific hub route tables -- reference the
+  // hub's default_route_table_id output (the default reference) or
+  // its name-keyed route_table_ids map, e.g. valueFrom fieldPath
+  // "status.outputs.route_table_ids.remote-users". At least one (the
+  // provider's contract on a configured block).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef route_table_ids = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.default_route_table_id"
+  ];
+
+  // Also propagate to every hub route table carrying these labels
+  // (labels are declared on the hub's route_tables; the built-in
+  // label "default" targets the hub's default table).
+  repeated string labels = 2;
+}

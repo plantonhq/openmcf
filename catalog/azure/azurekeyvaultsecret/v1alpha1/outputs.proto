@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurekeyvaultsecret.v1alpha1;
+
+// **AzureKeyVaultSecretStackOutputs** captures the outputs of
+// provisioning a Key Vault secret -- the identifiers consumers
+// reference to read it. The secret's VALUE is never an output.
+message AzureKeyVaultSecretStackOutputs {
+  // The secret's versioned data-plane ID:
+  // https://{vault}.vault.azure.net/secrets/{name}/{version}. Pins
+  // consumers to THIS version -- value updates do not follow.
+  // Reference it only when a compliance regime demands a frozen
+  // version.
+  string secret_id = 1;
+
+  // The secret's versionless data-plane ID:
+  // https://{vault}.vault.azure.net/secrets/{name}. The reference
+  // consumers should use -- Azure resolves it to the latest version,
+  // so value updates propagate with zero intervention.
+  string versionless_id = 2;
+
+  // The secret's name within the vault.
+  string secret_name = 3;
+
+  // The current version identifier (the trailing segment of
+  // secret_id).
+  string version = 4;
+
+  // The secret's versioned ARM resource ID
+  // (.../vaults/{vault}/secrets/{name}/versions/{version}) -- the
+  // control-plane identity used by ARM-level integrations and RBAC
+  // scopes.
+  string resource_id = 5;
+
+  // The secret's versionless ARM resource ID
+  // (.../vaults/{vault}/secrets/{name}).
+  string resource_versionless_id = 6;
+}

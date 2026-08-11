@@ -1,0 +1,46 @@
+# AzureAiFoundry install profile used as a fixture by composed
+# components (declared via prerequisites: [AzureAiFoundry] in the kind
+# registry -- the AzureAiFoundryProject lane). The harness deploys
+# this document after the fixture companion chain (resource group +
+# key vault + HNS-off storage account) and captures its outputs --
+# ai_foundry_id in particular -- for dependents' references to resolve
+# against.
+#
+# COST AND TIME: the hub is free at rest and provisions in a few
+# minutes. The fixture deliberately stays on the DEFAULT
+# managed-network mode (no isolation) so the dependents' lanes stay
+# fast. Deletion is a SOFT delete: the ghost holds the hub name until
+# purged -- the module purges on destroy so per-lane fixture cycles
+# never collide on the name.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureAiFoundry
+metadata:
+  name: planton-oss-e2e-azure-fixture-aif
+  id: planton-oss-e2e-azure-fixture-aif
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureaifoundry
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-fixture-aif
+  keyVaultId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-kv
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sa
+  identity:
+    type: SYSTEM_ASSIGNED
+  friendlyName: E2E Fixture AI Hub
+  tags:
+    e2e-suite: azure
+    purpose: fixture

@@ -1,0 +1,31 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVpnSite
+metadata:
+  name: test-vpn-site
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: branch-london
+  virtualWanId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualWans/global-wan
+  addressCidrs:
+    - "192.168.10.0/24"
+  deviceVendor: Cisco
+  deviceModel: ISR4331
+  links:
+    - name: primary-isp
+      providerName: ExampleCarrier
+      speedInMbps: 200
+      ipAddress: "203.0.113.10"
+    - name: backup-isp
+      speedInMbps: 100
+      ipAddress: "198.51.100.7"
+      bgp:
+        asn: 65010
+        peeringAddress: "169.254.21.2"
+  o365Policy:
+    trafficCategory:
+      optimizeEndpointEnabled: true
+  tags:
+    purpose: hack-test

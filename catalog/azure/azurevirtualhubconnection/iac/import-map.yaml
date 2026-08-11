@@ -1,0 +1,16 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurevirtualhubconnection
+spec:
+  # The connection's identity is its full ARM resource ID (an ARM child
+  # of the hub) -- the single resource this module deploys.
+  values:
+    - name: virtual_hub_connection_id
+      derivations:
+        - from_stack_output: virtual_hub_connection_id
+      where_to_find: >-
+        Portal -> Virtual WAN -> Hubs -> the hub -> Virtual network
+        connections -> the connection -> JSON View -> Resource ID, or
+        `az network vhub connection show --vhub-name <hub> -g <rg> -n
+        <name> --query id`.

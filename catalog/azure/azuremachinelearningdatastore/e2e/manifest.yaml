@@ -1,0 +1,27 @@
+# Offline-plan test manifest. Exercises the blob variant's full
+# surface: the container reference, the default-datastore claim, the
+# service-data identity enum, and a SAS credential (write-only on ARM;
+# the provider echoes it from configuration). The other two variants
+# are mutually exclusive with this one by design (exactly one variant
+# block) -- their plans are exercised by their own scenario shapes in
+# the proof lane.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningDatastore
+metadata:
+  name: test-ml-datastore
+  org: test-org
+  env: dev
+spec:
+  workspaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ml-workspace
+  name: training_data
+  description: Offline-plan datastore exercising the blob variant
+  serviceDataIdentity: WORKSPACE_SYSTEM_ASSIGNED_IDENTITY
+  blobStorage:
+    storageContainerId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/testmlstorage/blobServices/default/containers/training-data
+    isDefault: false
+    sharedAccessSignature:
+      value: "sv=2024-01-01&ss=b&srt=co&sp=rl&sig=offline-plan-placeholder"
+  tags:
+    cost-center: ml-platform

@@ -1,0 +1,37 @@
+# Minimal AzurePrivateDnsResolverForwardingRuleset scenario: one rule
+# forwarding a private test domain to an RFC-5737 documentation
+# address, bound to the fixture resolver's outbound endpoint by
+# reference (the reference is the deploy-order edge; the fixture
+# resolver chains the fixture network and delegated subnets). The
+# target server never receives a query in the lane -- ARM accepts any
+# syntactically valid target; reachability is a data-plane concern.
+# Rulesets and rules are free at rest; the fixture resolver's outbound
+# endpoint is the lane's only billing meter (cents).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateDnsResolverForwardingRuleset
+metadata:
+  name: planton-oss-e2e-azureprivatednsresolverforwardingruleset-smoke
+  id: planton-oss-e2e-azureprivatednsresolverforwardingruleset-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureprivatednsresolverforwardingruleset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-pdnsfrs-smoke
+  outboundEndpointIds:
+    - valueFrom:
+        name: planton-oss-e2e-azure-fixture-pdnsr
+  forwardingRules:
+    - name: corp-domain
+      domainName: corp.e2e-test.internal.
+      targetDnsServers:
+        - ipAddress: "192.0.2.53"

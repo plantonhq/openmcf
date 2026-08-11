@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurenetworkwatcherflowlog.v1alpha1;
+
+// **AzureNetworkWatcherFlowLogStackOutputs** captures the outputs of
+// provisioning a Network Watcher flow log.
+message AzureNetworkWatcherFlowLogStackOutputs {
+  // The flow log's ARM resource ID
+  // (.../networkWatchers/{watcher}/flowLogs/{name}).
+  string flow_log_id = 1;
+
+  // The flow log's name within its Network Watcher.
+  string flow_log_name = 2;
+
+  // The Network Watcher the flow log attached to -- the auto-created
+  // regional singleton unless the spec addressed a self-managed one.
+  string network_watcher_name = 3;
+}

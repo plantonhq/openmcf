@@ -80,18 +80,23 @@ message AzureVirtualNetworkGatewaySpec {
   AzureVirtualNetworkGatewayVpnType vpn_type = 5 [(buf.validate.field).enum.defined_only = true];
 
   // The gateway SKU -- sizes throughput, tunnel/connection counts, and
-  // hourly cost, and decides zone redundancy (the *_AZ variants). VPN
-  // gateways use BASIC through VPN_GW_5[_AZ]; ExpressRoute gateways use
-  // STANDARD/HIGH_PERFORMANCE/ULTRA_PERFORMANCE or ER_GW_*_AZ; ER_GW_SCALE
-  // autoscales between minimum_scale_unit and maximum_scale_unit. BASIC is
-  // dev/test only (no zone redundancy, no IKEv2 P2S) and cannot resize to
-  // other SKUs in place. Generation2 VPN SKUs start at VPN_GW_2.
+  // hourly cost. VPN gateways use BASIC or VPN_GW_1_AZ..5_AZ: Azure
+  // stopped accepting NEW non-AZ VpnGw1-5 creates on 2025-11-01 (ARM
+  // rejects them with NonAzSkusNotAllowedForVPNGateway; the legacy
+  // Standard/HighPerformance VPN tiers retired 2025-09-30), and the AZ
+  // SKUs deploy in EVERY region -- where the region has no availability
+  // zones the gateway is simply regional. ExpressRoute gateways use
+  // STANDARD/HIGH_PERFORMANCE/ULTRA_PERFORMANCE or ER_GW_*_AZ;
+  // ER_GW_SCALE autoscales between minimum_scale_unit and
+  // maximum_scale_unit. BASIC is dev/test only (no zone redundancy, no
+  // IKEv2 P2S, requires a Standard public IP) and cannot resize to other
+  // SKUs in place. Generation2 VPN SKUs start at VPN_GW_2_AZ.
   AzureVirtualNetworkGatewaySku sku = 6 [(buf.validate.field).enum.defined_only = true];
 
   // The VPN gateway generation. GENERATION2 doubles throughput ceilings
-  // and requires VPN_GW_2 or higher. Fixed at creation. Unspecified lets
-  // Azure pick the default generation for the SKU. Not applicable to
-  // ExpressRoute gateways (leave unset or NONE).
+  // and requires VPN_GW_2_AZ or higher. Fixed at creation. Unspecified
+  // lets Azure pick the default generation for the SKU. Not applicable
+  // to ExpressRoute gateways (leave unset or NONE).
   AzureVirtualNetworkGatewayGeneration generation = 7 [(buf.validate.field).enum.defined_only = true];
 
   // The gateway's IP configurations, each binding a public IP on the
@@ -149,7 +154,7 @@ message AzureVirtualNetworkGatewaySpec {
   // POINT-TO-SITE: the client VPN configuration -- address pool,
   // authentication (Entra ID, certificate, or RADIUS), tunnel protocols,
   // and per-group routing. VPN gateways only; requires a route-based
-  // gateway on VPN_GW_1/aZ or higher for IKEv2/OpenVPN.
+  // gateway on VPN_GW_1_AZ or higher for IKEv2/OpenVPN.
   AzureVirtualNetworkGatewayVpnClientConfiguration vpn_client_configuration = 16;
 
   // Policy groups for point-to-site connection segmentation: members are
@@ -217,13 +222,18 @@ message AzureVirtualNetworkGatewaySpec {
   // across the VPN/ExpressRoute split, so the choice is explicit.
   option (buf.validate.message).cel = {
     id: "sku_required"
-    message: "Choose the gateway SKU explicitly -- it sizes throughput, cost, and zone redundancy (VPN_GW_1 is the common production entry point for VPN gateways)"
+    message: "Choose the gateway SKU explicitly -- it sizes throughput, cost, and zone redundancy (VPN_GW_1_AZ is the common production entry point for VPN gateways)"
     expression: "this.sku != 0"
   };
+  // Azure retired every non-AZ VPN tier for new creates: VpnGw1-5
+  // (NonAzSkusNotAllowedForVPNGateway since 2025-11-01, live-confirmed)
+  // and the legacy Standard/HighPerformance VPN use (2025-09-30). Only
+  // BASIC and the AZ tiers remain creatable; STANDARD/HIGH_PERFORMANCE
+  // stay in the enum for their ExpressRoute use.
   option (buf.validate.message).cel = {
     id: "vpn_sku_vocabulary"
-    message: "VPN gateways use BASIC, STANDARD, HIGH_PERFORMANCE, or the VPN_GW_1..5[_AZ] SKUs -- the ER_GW/ULTRA_PERFORMANCE SKUs are ExpressRoute-only"
-    expression: "this.type == 2 || this.sku in [0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]"
+    message: "VPN gateways use BASIC or the VPN_GW_1_AZ..5_AZ SKUs (Azure retired new non-AZ VpnGw and legacy Standard/HighPerformance VPN creates; AZ SKUs deploy in every region) -- the ER_GW/ULTRA_PERFORMANCE SKUs are ExpressRoute-only"
+    expression: "this.type == 2 || this.sku in [0, 1, 10, 11, 12, 13, 14]"
   };
   option (buf.validate.message).cel = {
     id: "express_route_sku_vocabulary"
@@ -237,13 +247,13 @@ message AzureVirtualNetworkGatewaySpec {
   };
   option (buf.validate.message).cel = {
     id: "generation1_sku_vocabulary"
-    message: "Generation1 VPN gateways use BASIC, STANDARD, HIGH_PERFORMANCE, VPN_GW_1..3, or VPN_GW_1_AZ..3_AZ"
-    expression: "!(this.type != 2 && this.generation == 1) || this.sku in [0, 1, 2, 3, 5, 6, 7, 10, 11, 12]"
+    message: "Generation1 VPN gateways use BASIC or VPN_GW_1_AZ..3_AZ"
+    expression: "!(this.type != 2 && this.generation == 1) || this.sku in [0, 1, 10, 11, 12]"
   };
   option (buf.validate.message).cel = {
     id: "generation2_sku_vocabulary"
-    message: "Generation2 VPN gateways start at VPN_GW_2: use VPN_GW_2..5 or VPN_GW_2_AZ..5_AZ"
-    expression: "!(this.type != 2 && this.generation == 2) || this.sku in [0, 6, 7, 8, 9, 11, 12, 13, 14]"
+    message: "Generation2 VPN gateways start at VPN_GW_2_AZ: use VPN_GW_2_AZ..5_AZ"
+    expression: "!(this.type != 2 && this.generation == 2) || this.sku in [0, 11, 12, 13, 14]"
   };
   option (buf.validate.message).cel = {
     id: "generation_is_vpn_only"
@@ -332,54 +342,59 @@ enum AzureVirtualNetworkGatewayVpnType {
 }
 
 // The gateway SKU. VPN and ExpressRoute vocabularies are disjoint except
-// STANDARD and HIGH_PERFORMANCE (legacy names valid on both); the *_AZ
-// variants are zone-redundant.
+// STANDARD and HIGH_PERFORMANCE (legacy names ExpressRoute-only today --
+// their VPN use retired 2025-09-30); the *_AZ variants are
+// zone-redundant in regions with availability zones and deploy as
+// regional gateways everywhere else.
 enum AzureVirtualNetworkGatewaySku {
   // Not specified -- invalid: the SKU choice is explicit (see the
   // sku_required contract).
   azure_virtual_network_gateway_sku_unspecified = 0;
 
   // Dev/test VPN tier: no zone redundancy, no IKEv2 point-to-site, no
-  // in-place resize to other SKUs.
+  // in-place resize to other SKUs. Not retiring, but new BASIC gateways
+  // must use a Standard public IP.
   BASIC = 1;
 
-  // Legacy VPN/ExpressRoute tier (predates the VpnGw/ErGw families).
+  // Legacy tier (predates the VpnGw/ErGw families). ExpressRoute
+  // gateways only: Azure retired its VPN use on 2025-09-30 (the
+  // vpn_sku_vocabulary contract rejects it).
   STANDARD = 2;
 
-  // Legacy VPN/ExpressRoute tier (predates the VpnGw/ErGw families).
+  // Legacy tier (predates the VpnGw/ErGw families). ExpressRoute
+  // gateways only: Azure retired its VPN use on 2025-09-30 (the
+  // vpn_sku_vocabulary contract rejects it).
   HIGH_PERFORMANCE = 3;
 
   // ExpressRoute-only legacy top tier.
   ULTRA_PERFORMANCE = 4;
 
-  // Generation1 VPN production entry point (~650 Mbps aggregate).
-  VPN_GW_1 = 5;
+  // Azure retired the non-AZ VpnGw1-5 SKUs: new creates have been
+  // rejected with NonAzSkusNotAllowedForVPNGateway since 2025-11-01
+  // (live-confirmed) and existing gateways migrate to the AZ tiers.
+  // The vacated numbers and names can never be reused.
+  reserved 5 to 9;
+  reserved "VPN_GW_1", "VPN_GW_2", "VPN_GW_3", "VPN_GW_4", "VPN_GW_5";
 
-  // VPN tier 2 (Generation1 or Generation2).
-  VPN_GW_2 = 6;
-
-  // VPN tier 3 (Generation1 or Generation2).
-  VPN_GW_3 = 7;
-
-  // VPN tier 4 (Generation2 only).
-  VPN_GW_4 = 8;
-
-  // VPN tier 5 (Generation2 only).
-  VPN_GW_5 = 9;
-
-  // Zone-redundant VPN_GW_1 (Generation1 only).
+  // VPN tier 1 (Generation1 only, ~650 Mbps aggregate) -- the
+  // production entry point. Zone-redundant where the region has
+  // availability zones, regional elsewhere.
   VPN_GW_1_AZ = 10;
 
-  // Zone-redundant VPN_GW_2.
+  // VPN tier 2 (Generation1 or Generation2). Zone-redundant where the
+  // region has availability zones.
   VPN_GW_2_AZ = 11;
 
-  // Zone-redundant VPN_GW_3.
+  // VPN tier 3 (Generation1 or Generation2). Zone-redundant where the
+  // region has availability zones.
   VPN_GW_3_AZ = 12;
 
-  // Zone-redundant VPN_GW_4 (Generation2 only).
+  // VPN tier 4 (Generation2 only). Zone-redundant where the region has
+  // availability zones.
   VPN_GW_4_AZ = 13;
 
-  // Zone-redundant VPN_GW_5 (Generation2 only).
+  // VPN tier 5 (Generation2 only). Zone-redundant where the region has
+  // availability zones.
   VPN_GW_5_AZ = 14;
 
   // Zone-redundant ExpressRoute gateway, size 1.
@@ -402,11 +417,11 @@ enum AzureVirtualNetworkGatewayGeneration {
   // Not specified -- Azure picks the default generation for the SKU.
   azure_virtual_network_gateway_generation_unspecified = 0;
 
-  // First generation: supports BASIC through VPN_GW_3[_AZ].
+  // First generation: supports BASIC and VPN_GW_1_AZ..3_AZ.
   GENERATION1 = 1;
 
-  // Second generation: doubled throughput ceilings; requires VPN_GW_2 or
-  // higher.
+  // Second generation: doubled throughput ceilings; requires
+  // VPN_GW_2_AZ or higher.
   GENERATION2 = 2;
 
   // No generation -- ExpressRoute gateways.
@@ -433,7 +448,13 @@ message AzureVirtualNetworkGatewayIpConfiguration {
   // The public IP tunnels terminate on -- references an AzurePublicIp's
   // ARM id (Standard SKU, static). REQUIRED on VPN gateways (every
   // configuration); FORBIDDEN on ExpressRoute gateways (Azure manages
-  // their addressing).
+  // their addressing). The AZ VPN SKUs (the only creatable VpnGw tiers)
+  // require the address to carry ZONES -- ARM rejects a no-zone
+  // Standard IP with VmssVpnGatewayPublicIpsMustHaveZonesConfigured, so
+  // give the AzurePublicIp zones ["1","2","3"] (zone-redundant) unless
+  // you are deliberately pinning a zone. A cross-resource apply-time
+  // contract: the zones live on the referenced address, so it cannot be
+  // validated here.
   dev.planton.shared.foreignkey.v1.StringValueOrRef public_ip_address_id = 3 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzurePublicIp,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.public_ip_id"

@@ -38,6 +38,10 @@ catalog_root="catalog"
 # monthly sweep updates the constraint here and in every module together.
 canonical_pins=(
   "aws|aws|~> 6.58"
+  # azapi is admission-only (raw ARM at a pinned type@api-version, per kind,
+  # by recorded decision) and pins EXACT -- a floating raw-API provider would
+  # move the ARM client under every admitted kind at once.
+  "azure|azapi|2.11.0"
   "gcp|google|~> 7.43"
 )
 

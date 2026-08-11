@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecognitiveaccountproject.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureCognitiveAccountProjectSpec** defines an AI Foundry project
+// on an Azure AI services account (ARM:
+// Microsoft.CognitiveServices/accounts/{account}/projects/{name}) --
+// the workspace a team organizes its AI work in: agents,
+// evaluations, files and data-plane assets live inside a project,
+// isolated from sibling projects on the same account.
+//
+// **The parent account must allow projects**: an AzureCognitiveAccount
+// of kind "AIServices" with project_management_enabled true (which in
+// turn requires the account to carry a managed identity). The first
+// project created on an account becomes the account's DEFAULT project
+// (surfaced in the is_default output).
+//
+// **The project is an ARM child of its account** -- it has no
+// resource group of its own (ARM derives it through the account),
+// though it does carry its own location, identity and tags.
+//
+// **ForceNew fields**: `name` and `cognitive_account_id`. Also, ARM
+// cannot UPDATE `description` or `display_name` to an empty value --
+// clearing either replaces the project (setting or changing them is
+// an in-place update).
+message AzureCognitiveAccountProjectSpec {
+  // The Azure AI services account the project is created on, by ARM
+  // ID. The account must be kind "AIServices" with
+  // project_management_enabled true. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cognitive_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureCognitiveAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cognitive_account_id"
+  ];
+
+  // The project's name, unique on the account: 2-64 characters,
+  // starting alphanumeric, then alphanumerics, dashes, periods or
+  // underscores (the provider's own rule). Changing the name replaces
+  // the project.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,63}$"
+  ];
+
+  // The Azure region the project lives in, e.g. "eastus". By
+  // convention the account's own region.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The project's managed identity. REQUIRED -- the provider's own
+  // contract: every project carries an identity (it is what the
+  // project's agents and evaluations act as).
+  AzureCognitiveAccountProjectIdentity identity = 4 [(buf.validate.field).required = true];
+
+  // What the project is for. ARM cannot update this to empty --
+  // clearing a set description replaces the project.
+  string description = 5;
+
+  // The human-friendly name shown in the AI Foundry portal. ARM
+  // cannot update this to empty -- clearing a set display name
+  // replaces the project.
+  string display_name = 6;
+
+  // Free-form tags applied to the project, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins.
+  map<string, string> tags = 7;
+}
+
+// The project's managed identity.
+message AzureCognitiveAccountProjectIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the project; USER_ASSIGNED brings identities you manage;
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureCognitiveAccountProjectIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the project, by ARM ID.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The project's managed-identity flavor.
+enum AzureCognitiveAccountProjectIdentityType {
+  // Not specified. Invalid -- the project requires an identity.
+  azure_cognitive_account_project_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the project.
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}

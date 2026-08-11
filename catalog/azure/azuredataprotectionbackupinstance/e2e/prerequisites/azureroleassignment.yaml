@@ -1,0 +1,80 @@
+# Consumer-scoped AzureRoleAssignment install profile for the backup
+# instance's lanes (the harness prefers
+# <consumer>/e2e/prerequisites/<dep>.yaml over the dependency's
+# published profile). Azure Backup acts AS THE VAULT'S managed
+# identity: it validates at instance-create time that the identity
+# holds "Disk Backup Reader" on the disk and "Disk Snapshot
+# Contributor" on the snapshot resource group -- these two grants are
+# load-bearing for the disk lane, not optional hardening.
+#
+# Each document declares the fixtures its references resolve against
+# via the e2e-prerequisites annotation (kind form only -- install
+# manifests reject path entries), so the harness orders the vault and
+# disk fixtures BEFORE the grants. skip_service_principal_aad_check
+# is set because the vault's identity is created moments earlier in
+# the same chain and Azure AD replicates new principals
+# asynchronously -- without it the grant can fail PrincipalNotFound.
+#
+# Grants are free and delete instantly; role-assignment PROPAGATION
+# (grant visible to Azure Backup) can lag minutes -- an
+# authorization-class failure on the instance create shortly after
+# these deploy is propagation, not a defect.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureRoleAssignment
+metadata:
+  name: planton-oss-e2e-azure-fixture-grant-dpbv-snapshot
+  id: planton-oss-e2e-azure-fixture-grant-dpbv-snapshot
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureroleassignment
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureDataProtectionBackupVault"
+  tags:
+    - planton-e2e
+spec:
+  # Snapshots land in the fixture resource group -- the vault identity
+  # writes them there.
+  scope:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  roleDefinitionName: Disk Snapshot Contributor
+  principalId:
+    valueFrom:
+      kind: AzureDataProtectionBackupVault
+      name: planton-oss-e2e-azure-fixture-dpbv
+      fieldPath: status.outputs.system_assigned_identity_principal_id
+  skipServicePrincipalAadCheck: true
+---
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureRoleAssignment
+metadata:
+  name: planton-oss-e2e-azure-fixture-grant-dpbv-disk
+  id: planton-oss-e2e-azure-fixture-grant-dpbv-disk
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureroleassignment
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureDataProtectionBackupVault,AzureManagedDisk"
+  tags:
+    - planton-e2e
+spec:
+  # Reading the protected disk -- scoped to the ONE disk being
+  # protected, the narrowest grant that satisfies the service.
+  scope:
+    valueFrom:
+      kind: AzureManagedDisk
+      name: planton-oss-e2e-azure-fixture-disk
+      fieldPath: status.outputs.disk_id
+  roleDefinitionName: Disk Backup Reader
+  principalId:
+    valueFrom:
+      kind: AzureDataProtectionBackupVault
+      name: planton-oss-e2e-azure-fixture-dpbv
+      fieldPath: status.outputs.system_assigned_identity_principal_id
+  skipServicePrincipalAadCheck: true

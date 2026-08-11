@@ -1,0 +1,37 @@
+# Minimal AzureExpressRouteCircuit scenario: a service-provider circuit
+# (Standard/Metered, 50 Mbps -- the smallest step) with one issued
+# authorization. No carrier exists behind the test subscription, so the
+# circuit legitimately stays NotProvisioned -- the lane proves the ARM
+# object (SKU pair rendered from the enum names, provider trio, the
+# composed authorization child, the sensitive service_key /
+# authorization_keys outputs), never the physical cross-connect.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureExpressRouteCircuit
+metadata:
+  name: planton-oss-e2e-azureexpressroutecircuit-smoke
+  id: planton-oss-e2e-azureexpressroutecircuit-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureexpressroutecircuit
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-erc-smoke
+  skuTier: STANDARD
+  skuFamily: METERED_DATA
+  serviceProviderName: "Equinix"
+  peeringLocation: "Washington DC"
+  bandwidthInMbps: 50
+  authorizations:
+    - name: smoke-authorization
+  tags:
+    e2e-suite: azure
+    purpose: smoke

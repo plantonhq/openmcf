@@ -1,0 +1,42 @@
+# Offline-plan test manifest. Exercises the deep seams: the
+# high-density hosting mode on standard3 (the lookup-mapped enum seam
+# -- the plan must render "highDensity"), per-SKU-legal counts, the
+# RBAC-alongside-API-keys auth mode, semantic ranking, the IP
+# firewall with the AzureServices bypass, a system identity, and one
+# composed shared private link to a storage blob target (the ARM
+# child keyed by name into the shared_private_link_service_ids
+# output).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureSearchService
+metadata:
+  name: test-search-service
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: test-acme-search
+  sku: standard3
+  hostingMode: HIGH_DENSITY
+  replicaCount: 2
+  partitionCount: 3
+  localAuthenticationEnabled: true
+  authenticationFailureMode: http401WithBearerChallenge
+  customerManagedKeyEnforcementEnabled: false
+  publicNetworkAccessEnabled: true
+  semanticSearchSku: standard
+  allowedIps:
+    - 203.0.113.7
+    - 203.0.113.0/24
+  networkRuleBypassOption: AzureServices
+  identity:
+    type: SYSTEM_ASSIGNED
+  sharedPrivateLinkServices:
+    - name: to-blob
+      subresourceName: blob
+      targetResourceId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/testsearchdata
+      requestMessage: Please approve the search indexer's private access
+  tags:
+    cost-center: ai-platform

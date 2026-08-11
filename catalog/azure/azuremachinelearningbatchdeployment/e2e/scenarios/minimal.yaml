@@ -1,0 +1,39 @@
+# Minimal AzureMachineLearningBatchDeployment scenario: a bare recipe
+# on the fixture batch endpoint -- no model, no compute, no code. The
+# ARM schema marks every recipe property OPTIONAL; whether the SERVICE
+# accepts a bare batch deployment is itself this lane's proof point --
+# if ARM rejects it, the lane records the boundary and the queue's
+# watch-list carries the fallback (a minimal registered model as a
+# scenario-declared fixture), never a silent skip. Nothing provisions
+# at create time either way (compute materializes per job, and no lane
+# ever submits a job). The endpoint fixture rides the registry
+# prerequisite chain (workspace -> batch endpoint -> this).
+#
+# The cloud-side NAME carries ${E2E_RUN_ID} (metadata names stay
+# stable -- prerequisite FK resolution keys off them): deployment
+# names are scoped to their ENDPOINT, and both engine lanes attach to
+# the SAME fixture endpoint -- a fixed name would collide across
+# engines.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningBatchDeployment
+metadata:
+  name: planton-oss-e2e-azuremachinelearningbatchdeployment-smoke
+  id: planton-oss-e2e-azuremachinelearningbatchdeployment-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremachinelearningbatchdeployment
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  endpointId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-mlbe
+  name: bd-${E2E_RUN_ID}
+  region: eastus
+  tags:
+    e2e-suite: azure
+    purpose: smoke

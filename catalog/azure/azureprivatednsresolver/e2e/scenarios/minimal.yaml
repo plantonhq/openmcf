@@ -1,0 +1,41 @@
+# Minimal AzurePrivateDnsResolver scenario: the full hybrid shape --
+# one DYNAMIC inbound endpoint and one outbound endpoint on the two
+# delegated fixture subnets (Microsoft.Network/dnsResolvers, /28 each,
+# one endpoint per subnet -- the fixtures' first live exercise of the
+# subnet delegation surface). The resolver anchors to the fixture
+# network; Azure allows ONE resolver per network, so this family's
+# lanes never run in parallel with each other. Endpoints bill hourly
+# (cents for a lane-length life); the resolver object is free.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateDnsResolver
+metadata:
+  name: planton-oss-e2e-azureprivatednsresolver-smoke
+  id: planton-oss-e2e-azureprivatednsresolver-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureprivatednsresolver
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-pdnsr-smoke
+  virtualNetworkId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vnet
+  inboundEndpoints:
+    - name: inbound
+      subnetId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-dnsr-in-subnet
+  outboundEndpoints:
+    - name: outbound
+      subnetId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-dnsr-out-subnet

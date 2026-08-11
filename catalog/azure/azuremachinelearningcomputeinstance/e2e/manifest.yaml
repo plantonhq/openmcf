@@ -1,0 +1,30 @@
+# Offline-plan test manifest. Exercises the deep seams: personal
+# authorization with a user assignment, a system-assigned identity,
+# SSH enabled with a public key, VNet placement with both default-true
+# booleans explicitly false, description, and tags.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningComputeInstance
+metadata:
+  name: test-ml-compute-instance
+  org: test-org
+  env: dev
+spec:
+  workspaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ml-workspace
+  name: test-alice-dev
+  virtualMachineSize: STANDARD_DS3_V2
+  authorizationType: personal
+  assignToUser:
+    tenantId: 00000000-0000-0000-0000-000000000000
+    objectId: 11111111-1111-1111-1111-111111111111
+  identity:
+    type: SYSTEM_ASSIGNED
+  localAuthEnabled: false
+  ssh:
+    publicKey: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQoffline-plan-placeholder example
+  nodePublicIpEnabled: false
+  subnetId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/ml-workstations
+  description: Offline-plan instance exercising the full surface
+  tags:
+    cost-center: ml-platform

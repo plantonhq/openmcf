@@ -1,0 +1,25 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuresearchservice
+spec:
+  # The service's identity is its full ARM resource ID. Shared private
+  # links are ARM children composed under it
+  # (.../sharedPrivateLinkResources/{name}), each keyed by the spec
+  # entry's name (the module deploys one child per entry, addressed by
+  # that name).
+  values:
+    - name: search_service_id
+      derivations:
+        - from_stack_output: search_service_id
+      where_to_find: >-
+        Portal -> AI Search -> the service -> Properties -> Resource
+        ID, or `az search service show -g <rg> -n <name> --query id`.
+    - name: shared_private_link_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The link's name in the spec's sharedPrivateLinkServices list
+        (the module keys one ARM child per name); `az search
+        shared-private-link-resource list -g <rg> --service-name
+        <name>` shows what exists cloud-side.

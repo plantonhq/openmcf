@@ -1,0 +1,33 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVpnGateway
+metadata:
+  name: test-vpn-gateway
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: hub-vpn-gateway
+  virtualHubId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualHubs/hub-eastus
+  # The unset optional fields apply ARM's defaults: routing preference
+  # "Microsoft Network", scale unit 1.
+  bgpRouteTranslationForNatEnabled: true
+  bgpSettings:
+    asn: 65515
+    peerWeight: 10
+    instance0BgpPeeringAddress:
+      customIps:
+        - "169.254.21.5"
+    instance1BgpPeeringAddress:
+      customIps:
+        - "169.254.22.5"
+  natRules:
+    - name: branch-overlap
+      mode: INGRESS_SNAT
+      type: STATIC_NAT
+      externalMappings:
+        - addressSpace: "100.64.10.0/24"
+      internalMappings:
+        - addressSpace: "192.168.10.0/24"
+  tags:
+    purpose: hack-test

@@ -1,0 +1,22 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureprivatednsresolverforwardingruleset
+spec:
+  # The ruleset imports by its full ARM resource ID; its forwarding
+  # rules are composed children addressed by the rule names in the spec.
+  values:
+    - name: dns_forwarding_ruleset_id
+      derivations:
+        - from_stack_output: dns_forwarding_ruleset_id
+      where_to_find: >-
+        `az dns-resolver forwarding-ruleset show -g <resource-group> -n
+        <name> --query id`, or the component's own
+        dns_forwarding_ruleset_id stack output.
+    - name: forwarding_rule_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The rule's name in the spec's forwardingRules list (the module
+        keys one ARM child per rule name); `az dns-resolver
+        forwarding-rule list` shows what exists cloud-side.

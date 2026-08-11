@@ -1,0 +1,38 @@
+# Minimal AzureExpressRouteGateway scenario: a one-scale-unit gateway
+# in the fixture hub, with NO connections -- ARM accepts a connection
+# only against a provider-PROVISIONED circuit peering, and no carrier
+# exists behind the test subscription (the same recorded live-proof
+# boundary as the circuit peering's own lane). The proof is the
+# gateway object in its hub: created, billed, verified, destroyed.
+#
+# COST AND TIME: the gateway bills ~$0.42/hr from creation and takes
+# roughly 30 minutes to provision; its prerequisite chain pays a full
+# fixture-hub cycle (15-30 minute create) before it. Region must match
+# the fixture hub's (eastus).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureExpressRouteGateway
+metadata:
+  name: planton-oss-e2e-azureexpressroutegateway-smoke
+  id: planton-oss-e2e-azureexpressroutegateway-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureexpressroutegateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-ergw-smoke
+  virtualHubId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vhub
+  scaleUnits: 1
+  tags:
+    e2e-suite: azure
+    purpose: smoke

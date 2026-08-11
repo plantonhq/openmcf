@@ -1,0 +1,62 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# ONE kind covers three provider resources as variants -- exactly one of
+# the spec's blob_storage / data_lake_gen2 / file_share blocks is set,
+# and the module creates the matching resource. Shared fields (name,
+# workspace_id, description, tags) live at the spec root and match all
+# three resources by exact name; variant-scoped arguments map into
+# their variant block below.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_machine_learning_datastore_blobstorage:
+    mappings:
+      # Variant-scoped arguments live inside the spec's blob_storage
+      # block.
+      - spec: spec.blob_storage.storage_container_id
+        arg: storage_container_id
+      - spec: spec.blob_storage.is_default
+        arg: is_default
+      - spec: spec.blob_storage.account_key
+        arg: account_key
+      - spec: spec.blob_storage.shared_access_signature
+        arg: shared_access_signature
+      # The provider names the SAME service-data identity argument
+      # differently per variant: `service_data_auth_identity` here,
+      # `service_data_identity` on the other two -- one spec field
+      # feeds all three.
+      - spec: spec.service_data_identity
+        arg: service_data_auth_identity
+
+  azurerm_machine_learning_datastore_datalake_gen2:
+    mappings:
+      # Variant-scoped arguments live inside the spec's data_lake_gen2
+      # block (service_data_identity matches at the spec root by exact
+      # name on this resource).
+      - spec: spec.data_lake_gen2.storage_container_id
+        arg: storage_container_id
+      - spec: spec.data_lake_gen2.tenant_id
+        arg: tenant_id
+      - spec: spec.data_lake_gen2.client_id
+        arg: client_id
+      - spec: spec.data_lake_gen2.client_secret
+        arg: client_secret
+      - spec: spec.data_lake_gen2.authority_url
+        arg: authority_url
+
+  azurerm_machine_learning_datastore_fileshare:
+    mappings:
+      # Variant-scoped arguments live inside the spec's file_share
+      # block (service_data_identity matches at the spec root by exact
+      # name on this resource).
+      - spec: spec.file_share.storage_fileshare_id
+        arg: storage_fileshare_id
+      - spec: spec.file_share.account_key
+        arg: account_key
+      - spec: spec.file_share.shared_access_signature
+        arg: shared_access_signature

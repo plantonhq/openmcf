@@ -16,7 +16,7 @@ We developed this API resource to make hybrid connectivity a first-class, compos
 
 - **Consistent Interface**: aligns with our existing APIs for deploying cloud infrastructure across multiple providers
 - **Composition by Reference**: the gateway lives in a referenced AzureSubnet (the ARM-mandated "GatewaySubnet") and binds referenced AzurePublicIp resources -- addresses stay visible in the resource graph and reusable
-- **Full SKU Vocabulary**: BASIC through VPN_GW_5_AZ for VPN, ER_GW SKUs (including autoscaling ER_GW_SCALE) for ExpressRoute, with the type/generation/SKU pairing rules enforced at validation time -- not at minute 30 of a 45-minute deployment
+- **Full SKU Vocabulary**: BASIC and VPN_GW_1_AZ..5_AZ for VPN (Azure retired new non-AZ VpnGw creates; the AZ tiers deploy in every region), ER_GW SKUs (including autoscaling ER_GW_SCALE) for ExpressRoute, with the type/generation/SKU pairing rules enforced at validation time -- not at minute 30 of a 45-minute deployment
 - **Active-Active Support**: two-instance gateways with per-instance public IPs and APIPA BGP peering addresses
 - **Composed NAT Rules**: gateway NAT rules are part of the spec, and each rule's ARM id surfaces in the `nat_rule_ids` output for connections to opt into
 

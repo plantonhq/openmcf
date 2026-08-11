@@ -1,0 +1,31 @@
+# Minimal AzureDataProtectionResourceGuard scenario: the guard with
+# one exclusion entry -- a free governance object that creates in
+# seconds. The exclusion entry is present to prove the list's wire
+# shape live (production guidance is an EMPTY list, which guards every
+# critical operation); no vault references the guard in this lane, so
+# create and delete are unconstrained.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataProtectionResourceGuard
+metadata:
+  name: planton-oss-e2e-azuredataprotectionresourceguard-smoke
+  id: planton-oss-e2e-azuredataprotectionresourceguard-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredataprotectionresourceguard
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-dprg-smoke
+  vaultCriticalOperationExclusionList:
+    - Microsoft.RecoveryServices/vaults/backupconfig/write
+  tags:
+    e2e-suite: azure
+    purpose: smoke

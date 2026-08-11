@@ -155,6 +155,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AzureEventHub | `spec.captureDescription.destination.blobContainerName` | `status.outputs.container_name` |
+| AzureMachineLearningDatastore | `spec.blobStorage.storageContainerId` | `status.outputs.container_id` |
 | AzureStorageLocalUser | `spec.permissionScopes[].resourceName` | `status.outputs.container_name` |
 | AzureStorageObjectReplication | `spec.rules[].sourceContainerName` | `status.outputs.container_name` |
 | AzureStorageObjectReplication | `spec.rules[].destinationContainerName` | `status.outputs.container_name` |

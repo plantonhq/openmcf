@@ -1,0 +1,631 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecognitiveaccount.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureCognitiveAccountSpec** defines an Azure AI services account
+// (ARM: Microsoft.CognitiveServices/accounts) -- the container every
+// Azure AI capability is provisioned and billed through: Azure OpenAI
+// model deployments, the multi-service AI Services account that backs
+// AI Foundry projects, and the single-service accounts (Speech,
+// Vision, Language, Content Safety, ...). The account owns the
+// endpoint, the access keys, the network perimeter, and the
+// responsible-AI (content-filter) policy; model deployments
+// (AzureCognitiveDeployment) and projects
+// (AzureCognitiveAccountProject) are created onto it.
+//
+// **The kind decides everything else.** "OpenAI" hosts Azure OpenAI
+// model deployments; "AIServices" is the multi-service account (and
+// the ONLY kind that can enable project management or agent network
+// injection -- it is also where users of the retired
+// azurerm_ai_services resource land); the remaining values are the
+// single-service accounts. Several fields are only meaningful -- or
+// only legal -- on specific kinds; those contracts are enforced here
+// so the error lands in seconds, not at deploy time.
+//
+// **ForceNew fields**: `name`, `region`, `resource_group`, and the
+// four metrics_advisor_* fields. Changing `kind` also replaces the
+// account UNLESS the change is between "OpenAI" and "AIServices"
+// (Azure upgrades those in place). `custom_subdomain_name` can be SET
+// once on an account that never had one, but changing an existing
+// value replaces the account.
+//
+// **Deletion is a soft delete.** A deleted account becomes a
+// purgeable ghost that keeps holding the account name (the Key Vault
+// recycle-bin pattern); recreating under the same name fails until
+// the ghost is purged.
+message AzureCognitiveAccountSpec {
+  // The Azure region the account lives in, e.g. "eastus". Model and
+  // SKU availability differ per region (Azure OpenAI models
+  // especially). Changing the region replaces the account.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the account is created in. Can be a
+  // literal resource-group name or a reference to an
+  // AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The account's name, unique within the resource group: starts with
+  // an alphanumeric character, then alphanumerics, periods, dashes or
+  // underscores (the provider's own rule). Changing the name replaces
+  // the account -- and the OLD name stays held by the soft-deleted
+  // ghost until purged.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 2,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9_.-]+$"
+  ];
+
+  // Which AI service the account provides (the ARM account kind --
+  // the wire values). The two flagship choices: "OpenAI" (Azure
+  // OpenAI model deployments) and "AIServices" (the multi-service
+  // account that also backs AI Foundry projects and agents). The rest
+  // are single-service accounts. Changing kind replaces the account
+  // unless the change is between "OpenAI" and "AIServices" (in-place
+  // upgrade -- how an OpenAI account grows into the full AI Services
+  // surface).
+  string kind = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "AIServices",
+        "Academic",
+        "AnomalyDetector",
+        "Bing.Autosuggest",
+        "Bing.Autosuggest.v7",
+        "Bing.CustomSearch",
+        "Bing.Search",
+        "Bing.Search.v7",
+        "Bing.Speech",
+        "Bing.SpellCheck",
+        "Bing.SpellCheck.v7",
+        "CognitiveServices",
+        "ComputerVision",
+        "ContentModerator",
+        "ConversationalLanguageUnderstanding",
+        "ContentSafety",
+        "CustomSpeech",
+        "CustomVision.Prediction",
+        "CustomVision.Training",
+        "Emotion",
+        "Face",
+        "FormRecognizer",
+        "ImmersiveReader",
+        "LUIS",
+        "LUIS.Authoring",
+        "MetricsAdvisor",
+        "OpenAI",
+        "Personalizer",
+        "QnAMaker",
+        "Recommendations",
+        "SpeakerRecognition",
+        "Speech",
+        "SpeechServices",
+        "SpeechTranslation",
+        "TextAnalytics",
+        "TextTranslation",
+        "WebLM"
+      ]
+    }
+  ];
+
+  // The account's pricing tier (the wire values). "S0" is the
+  // standard paid tier for OpenAI and AIServices accounts; "F0" is
+  // the free tier where the service offers one. Which SKUs a kind
+  // accepts (and in which regions) is decided by ARM at deploy time.
+  string sku_name = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "C2",
+        "C3",
+        "C4",
+        "D3",
+        "DC0",
+        "E0",
+        "F0",
+        "F1",
+        "P0",
+        "P1",
+        "P2",
+        "S",
+        "S0",
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6"
+      ]
+    }
+  ];
+
+  // Allow AzureCognitiveAccountProject resources (AI Foundry
+  // projects) to be created on this account. Only legal on the
+  // "AIServices" kind, and the account must carry a managed identity.
+  // Disabling it later on an account that is not "OpenAI"-kind
+  // replaces the account.
+  bool project_management_enabled = 6;
+
+  // A custom subdomain for the account's endpoint
+  // ("{value}.cognitiveservices.azure.com"). Required before network
+  // ACLs can be configured, and required for Entra ID (token-based)
+  // authentication. Can be SET once on an account created without
+  // one; CHANGING an existing value replaces the account.
+  string custom_subdomain_name = 7;
+
+  // Encrypt the account's data with your own Key Vault key instead of
+  // Microsoft-managed keys. The account needs a managed identity with
+  // wrap/unwrap access on the key BEFORE this is configured.
+  AzureCognitiveAccountCustomerManagedKey customer_managed_key = 8;
+
+  // Let the service raise the account's default rate limits
+  // opportunistically (dynamic throttling). Not supported on the
+  // "OpenAI" and "AIServices" kinds (their capacity is managed per
+  // deployment instead).
+  bool dynamic_throttling_enabled = 9;
+
+  // Outbound destinations the account may call when
+  // outbound_network_access_restricted is true -- an FQDN allowlist
+  // (e.g. a search service the account grounds on).
+  repeated string fqdns = 10 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // The account's managed identity. Required for project management
+  // (AI Foundry), customer-managed keys, and user-owned storage
+  // access via identity.
+  AzureCognitiveAccountIdentity identity = 11;
+
+  // Whether the account's access KEYS work. Unspecified applies true
+  // (ARM's default). Set false to force Entra ID (token) auth only --
+  // the recommended hardened posture; note the account's key outputs
+  // are then empty.
+  optional bool local_auth_enabled = 12 [(dev.planton.shared.options.default) = "true"];
+
+  // Metrics Advisor only: the Entra ID application (client) ID bound
+  // to the account. Fixed at creation.
+  string metrics_advisor_aad_client_id = 13 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Metrics Advisor only: the Entra ID tenant ID. Fixed at creation.
+  string metrics_advisor_aad_tenant_id = 14 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Metrics Advisor only: the super-user name. Fixed at creation.
+  string metrics_advisor_super_user_name = 15;
+
+  // Metrics Advisor only: the website name. Fixed at creation.
+  string metrics_advisor_website_name = 16;
+
+  // The account's network perimeter: default action, allowed IPs /
+  // CIDRs, allowed VNet subnets, and the trusted-services bypass.
+  // Requires custom_subdomain_name (the provider's own contract --
+  // network rules only work against the custom endpoint).
+  AzureCognitiveAccountNetworkAcls network_acls = 17;
+
+  // Inject the account's agent workloads into your own VNet subnet
+  // (the AI Foundry Agent Service network-injection scenario). Only
+  // legal on the "AIServices" kind.
+  AzureCognitiveAccountNetworkInjection network_injection = 18;
+
+  // Restrict the account's OUTBOUND calls to the fqdns allowlist
+  // (data-loss prevention). ARM's default is unrestricted.
+  bool outbound_network_access_restricted = 19;
+
+  // Whether the account's endpoint answers the public internet.
+  // Unspecified applies true (ARM's default). Set false to make the
+  // account reachable only through private endpoints.
+  optional bool public_network_access_enabled = 20 [(dev.planton.shared.options.default) = "true"];
+
+  // QnAMaker only: the QnA runtime endpoint URL (required for that
+  // kind).
+  string qna_runtime_endpoint = 21 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uri = true
+  ];
+
+  // TextAnalytics (custom question answering) only: the ARM ID of the
+  // Azure AI Search service backing custom question answering.
+  // Plain string this wave; becomes a typed AzureSearchService
+  // reference when that kind registers (recorded in-place upgrade).
+  string custom_question_answering_search_service_id = 22;
+
+  // TextAnalytics (custom question answering) only: the Search
+  // service's API key. Reference a secret rather than embedding the
+  // literal in manifests.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef custom_question_answering_search_service_key = 23 [(dev.planton.shared.options.sensitive) = true];
+
+  // Bring-your-own-storage: the storage accounts the service stores
+  // customer data in (Speech, Custom Vision and friends).
+  repeated AzureCognitiveAccountStorage storage = 24;
+
+  // Free-form tags applied to the account, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins.
+  map<string, string> tags = 25;
+
+  // Responsible-AI blocklists on the account: named containers for
+  // custom blocked words/patterns that rai_policies can reference.
+  // Each deploys as its own ARM child; ids surface name-keyed in the
+  // rai_blocklist_ids output. (Blocklist ITEMS are managed through
+  // the service's data plane, not ARM.)
+  repeated AzureCognitiveAccountRaiBlocklist rai_blocklists = 26;
+
+  // Responsible-AI (content-filter) policies on the account:
+  // named filter configurations that model deployments select via
+  // their rai_policy_name. Each deploys as its own ARM child; ids
+  // surface name-keyed in the rai_policy_ids output.
+  repeated AzureCognitiveAccountRaiPolicy rai_policies = 27;
+
+  // The provider enforces every contract below in its own code at
+  // apply time; front-loaded here so the error lands in seconds.
+  option (buf.validate.message).cel = {
+    id: "project_management_requires_aiservices"
+    message: "project_management_enabled is only supported when kind is 'AIServices'"
+    expression: "!this.project_management_enabled || this.kind == 'AIServices'"
+  };
+  option (buf.validate.message).cel = {
+    id: "project_management_requires_identity"
+    message: "project_management_enabled requires a managed identity -- configure the identity block"
+    expression: "!this.project_management_enabled || has(this.identity)"
+  };
+  option (buf.validate.message).cel = {
+    id: "dynamic_throttling_unsupported_on_openai_kinds"
+    message: "dynamic_throttling_enabled is not supported when kind is 'OpenAI' or 'AIServices'"
+    expression: "!this.dynamic_throttling_enabled || !(this.kind in ['OpenAI', 'AIServices'])"
+  };
+  option (buf.validate.message).cel = {
+    id: "network_acls_require_custom_subdomain"
+    message: "network_acls requires custom_subdomain_name -- network rules only apply to the account's custom endpoint"
+    expression: "!has(this.network_acls) || this.custom_subdomain_name != ''"
+  };
+  option (buf.validate.message).cel = {
+    id: "network_acls_bypass_kind_gate"
+    message: "network_acls.bypass can only be set when kind is 'OpenAI', 'AIServices' or 'TextAnalytics'"
+    expression: "!has(this.network_acls) || this.network_acls.bypass == 0 || this.kind in ['OpenAI', 'AIServices', 'TextAnalytics']"
+  };
+  option (buf.validate.message).cel = {
+    id: "network_injection_requires_aiservices"
+    message: "network_injection is only supported when kind is 'AIServices'"
+    expression: "!has(this.network_injection) || this.kind == 'AIServices'"
+  };
+  option (buf.validate.message).cel = {
+    id: "qna_maker_requires_runtime_endpoint"
+    message: "kind 'QnAMaker' requires qna_runtime_endpoint"
+    expression: "this.kind != 'QnAMaker' || this.qna_runtime_endpoint != ''"
+  };
+  option (buf.validate.message).cel = {
+    id: "qna_runtime_endpoint_only_for_qna_maker"
+    message: "qna_runtime_endpoint is only used when kind is 'QnAMaker' -- it would be silently ignored on this kind"
+    expression: "this.qna_runtime_endpoint == '' || this.kind == 'QnAMaker'"
+  };
+  option (buf.validate.message).cel = {
+    id: "qna_search_service_only_for_text_analytics"
+    message: "custom_question_answering_search_service_id/key can only be set when kind is 'TextAnalytics'"
+    expression: "(this.custom_question_answering_search_service_id == '' && !has(this.custom_question_answering_search_service_key)) || this.kind == 'TextAnalytics'"
+  };
+  option (buf.validate.message).cel = {
+    id: "metrics_advisor_fields_only_for_metrics_advisor"
+    message: "the metrics_advisor_* fields can only be set when kind is 'MetricsAdvisor'"
+    expression: "(this.metrics_advisor_aad_client_id == '' && this.metrics_advisor_aad_tenant_id == '' && this.metrics_advisor_super_user_name == '' && this.metrics_advisor_website_name == '') || this.kind == 'MetricsAdvisor'"
+  };
+  option (buf.validate.message).cel = {
+    id: "rai_blocklist_names_unique"
+    message: "rai_blocklists names must be unique on the account -- each is the key the rai_blocklist_ids output uses"
+    expression: "this.rai_blocklists.all(b, this.rai_blocklists.filter(o, o.name == b.name).size() == 1)"
+  };
+  option (buf.validate.message).cel = {
+    id: "rai_policy_names_unique"
+    message: "rai_policies names must be unique on the account -- each is the key the rai_policy_ids output uses"
+    expression: "this.rai_policies.all(p, this.rai_policies.filter(o, o.name == p.name).size() == 1)"
+  };
+}
+
+// Customer-managed-key encryption for the account's data at rest.
+message AzureCognitiveAccountCustomerManagedKey {
+  // The Key Vault key (data-plane URL, e.g.
+  // "https://{vault}.vault.azure.net/keys/{name}"). Reference an
+  // AzureKeyVaultKey's versionless_id so rotation propagates without
+  // intervention; pin a versioned URL only under a compliance regime
+  // that demands a frozen version.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+
+  // The client ID of the USER-ASSIGNED identity that unwraps the key.
+  // Leave unset to use the account's system-assigned identity.
+  string identity_client_id = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+}
+
+// The account's managed identity.
+message AzureCognitiveAccountIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the account; USER_ASSIGNED brings identities you manage
+  // (grantable Key Vault / storage access BEFORE the account exists);
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureCognitiveAccountIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the account, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so Key Vault / storage grants
+  // can be composed before the account is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The account's managed-identity flavor.
+enum AzureCognitiveAccountIdentityType {
+  // Not specified: the account has no managed identity.
+  azure_cognitive_account_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the account.
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// The account's network perimeter.
+message AzureCognitiveAccountNetworkAcls {
+  // What happens to traffic matching no rule: "Allow" or "Deny" (the
+  // wire values). "Deny" plus ip_rules / virtual_network_rules is the
+  // locked-down posture.
+  string default_action = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Allow",
+        "Deny"
+      ]
+    }
+  ];
+
+  // Public IPv4 addresses or CIDR ranges allowed through the
+  // perimeter.
+  repeated string ip_rules = 2 [(buf.validate.field).repeated.items.string.pattern = "^(\\d{1,3}\\.){3}\\d{1,3}(/\\d{1,2})?$"];
+
+  // VNet subnets allowed through the perimeter (service endpoints).
+  repeated AzureCognitiveAccountVirtualNetworkRule virtual_network_rules = 3;
+
+  // Let trusted Azure services through a "Deny" default action.
+  // Unspecified omits the property (ARM's default). Only legal on the
+  // "OpenAI", "AIServices" and "TextAnalytics" kinds.
+  AzureCognitiveAccountNetworkAclsBypass bypass = 4;
+}
+
+// One allowed VNet subnet.
+message AzureCognitiveAccountVirtualNetworkRule {
+  // The subnet's ARM ID. The subnet needs the
+  // "Microsoft.CognitiveServices" service endpoint enabled (or set
+  // ignore_missing_vnet_service_endpoint).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Accept the rule even if the subnet has no CognitiveServices
+  // service endpoint yet (it will not take effect until one exists).
+  bool ignore_missing_vnet_service_endpoint = 2;
+}
+
+// The trusted-services bypass selection.
+enum AzureCognitiveAccountNetworkAclsBypass {
+  // Not specified: the property is omitted and ARM applies its
+  // default.
+  azure_cognitive_account_network_acls_bypass_unspecified = 0;
+
+  // Trusted Azure services may bypass the perimeter (wire value
+  // "AzureServices").
+  AZURE_SERVICES = 1;
+
+  // Nothing bypasses the perimeter (wire value "None").
+  NONE = 2;
+}
+
+// Agent network injection: run the account's AI Foundry agent
+// workloads inside your own subnet.
+message AzureCognitiveAccountNetworkInjection {
+  // The injection scenario. Azure currently defines exactly one:
+  // "agent" (the wire value) -- AI Foundry Agent Service workloads.
+  string scenario = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: ["agent"]
+    }
+  ];
+
+  // The delegated subnet agents are injected into. NOTE (deletion
+  // behavior): Azure removes the subnet's service association link
+  // asynchronously after the account deletes -- the subnet cannot be
+  // deleted until that completes (the module waits).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+}
+
+// One user-owned storage attachment.
+message AzureCognitiveAccountStorage {
+  // The storage account's ARM ID.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The client ID of the USER-ASSIGNED identity that accesses the
+  // storage account. Leave unset to use the system-assigned identity.
+  string identity_client_id = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+}
+
+// One responsible-AI blocklist (a named container; its ITEMS are
+// data-plane). Deploys as an ARM child of the account
+// (.../raiBlocklists/{name}).
+message AzureCognitiveAccountRaiBlocklist {
+  // The blocklist's name, unique on the account: 2-64 alphanumerics,
+  // hyphens or underscores (the provider's own rule). The blocklist's
+  // ARM id surfaces in the rai_blocklist_ids output under this name.
+  // Changing the name replaces the blocklist.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9_-]{2,64}$"
+  ];
+
+  // What the blocklist is for.
+  string description = 2;
+
+  // Free-form tags on the blocklist object.
+  map<string, string> tags = 3;
+}
+
+// One responsible-AI (content-filter) policy. Deploys as an ARM child
+// of the account (.../raiPolicies/{name}); model deployments select
+// it by name via their rai_policy_name.
+message AzureCognitiveAccountRaiPolicy {
+  // The policy's name, unique on the account. The policy's ARM id
+  // surfaces in the rai_policy_ids output under this name. Changing
+  // the name replaces the policy.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The built-in policy this one extends -- "Microsoft.Default" (the
+  // standard filters) or "Microsoft.DefaultV2". Fixed at creation.
+  string base_policy_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The content filters the policy applies -- one entry per filter
+  // category and direction (e.g. "Hate" on source "Prompt", "Violence"
+  // on source "Completion", "Jailbreak" on "Prompt").
+  repeated AzureCognitiveAccountRaiPolicyContentFilter content_filters = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // How filtering is applied. Unspecified omits the property (ARM
+  // applies its default).
+  AzureCognitiveAccountRaiPolicyMode mode = 4;
+
+  // Free-form tags on the policy object.
+  map<string, string> tags = 5;
+
+  // The provider rejects a severity threshold on the binary filters
+  // in its own code -- front-loaded here.
+  option (buf.validate.message).cel = {
+    id: "severity_threshold_not_applicable_to_binary_filters"
+    message: "severity_threshold is not applicable to the 'Jailbreak', 'Indirect Attack', 'Protected Material Text' and 'Protected Material Code' filters -- they are binary"
+    expression: "this.content_filters.all(f, f.severity_threshold == 0 || !(f.name in ['Jailbreak', 'Indirect Attack', 'Protected Material Text', 'Protected Material Code']))"
+  };
+}
+
+// One content filter of a responsible-AI policy.
+message AzureCognitiveAccountRaiPolicyContentFilter {
+  // The filter's name -- a category Azure defines: the severity-based
+  // filters ("Hate", "Sexual", "Violence", "Selfharm") and the binary
+  // filters ("Jailbreak", "Indirect Attack", "Protected Material
+  // Text", "Protected Material Code", "Profanity", or a custom
+  // blocklist's name).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Whether the filter evaluates content.
+  bool filter_enabled = 2;
+
+  // Whether matching content is BLOCKED (versus only annotated).
+  bool block_enabled = 3;
+
+  // Which content the filter applies to (the wire values): "Prompt"
+  // (what users send) or "Completion" (what the model returns), plus
+  // the agent-scoped sources "PreRun"/"PostRun" and
+  // "PreToolCall"/"PostToolCall".
+  string source = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Completion",
+        "PostRun",
+        "PostToolCall",
+        "PreRun",
+        "PreToolCall",
+        "Prompt"
+      ]
+    }
+  ];
+
+  // For the severity-based filters: the lowest severity that
+  // triggers the filter. Not applicable to the binary filters
+  // (Jailbreak, Indirect Attack, Protected Material Text/Code).
+  AzureCognitiveAccountRaiPolicyContentLevel severity_threshold = 5;
+}
+
+// A content-severity level.
+enum AzureCognitiveAccountRaiPolicyContentLevel {
+  // Not specified: the property is omitted.
+  azure_cognitive_account_rai_policy_content_level_unspecified = 0;
+
+  // Wire value "Low".
+  LOW = 1;
+
+  // Wire value "Medium".
+  MEDIUM = 2;
+
+  // Wire value "High".
+  HIGH = 3;
+}
+
+// How a responsible-AI policy applies its filters.
+enum AzureCognitiveAccountRaiPolicyMode {
+  // Not specified: the property is omitted and ARM applies its
+  // default.
+  azure_cognitive_account_rai_policy_mode_unspecified = 0;
+
+  // Wire value "Default".
+  DEFAULT = 1;
+
+  // Filters run before the response streams (wire value "Blocking").
+  BLOCKING = 2;
+
+  // Filters run asynchronously alongside streaming (wire value
+  // "AsynchronousFilter") -- lower latency, content may briefly
+  // stream before annotation.
+  ASYNCHRONOUS_FILTER = 3;
+
+  // Wire value "Deferred".
+  DEFERRED = 4;
+}

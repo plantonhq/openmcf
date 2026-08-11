@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureexpressroutecircuitpeering.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureexpressroutecircuitpeering/v1alpha1/outputs.proto";
+import "catalog/azure/azureexpressroutecircuitpeering/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureExpressRouteCircuitPeering is the top-level API resource
+// describing a BGP routing configuration on an ExpressRoute circuit --
+// private peering for VNet connectivity, or Microsoft peering for
+// Microsoft public services. The circuit is the pipe; the peering is
+// what makes routes flow through it (at most one peering of each type
+// per circuit).
+message AzureExpressRouteCircuitPeering {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureExpressRouteCircuitPeering".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureExpressRouteCircuitPeering'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // ExpressRoute circuit peering specification.
+  AzureExpressRouteCircuitPeeringSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureExpressRouteCircuitPeeringStatus status = 5;
+}
+
+// AzureExpressRouteCircuitPeeringStatus holds the deployment outputs.
+message AzureExpressRouteCircuitPeeringStatus {
+  // Stack outputs from the IaC deployment.
+  AzureExpressRouteCircuitPeeringStackOutputs outputs = 1;
+}

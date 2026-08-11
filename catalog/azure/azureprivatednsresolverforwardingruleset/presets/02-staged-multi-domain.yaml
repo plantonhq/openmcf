@@ -1,0 +1,37 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateDnsResolverForwardingRuleset
+metadata:
+  name: multi-domain-forwarding
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "<your-resource-group>"
+      fieldPath: status.outputs.resource_group_name
+  name: multi-domain-forwarding
+  outboundEndpointIds:
+    - valueFrom:
+        kind: AzurePrivateDnsResolver
+        name: "<your-dns-resolver>"
+        fieldPath: status.outputs.outbound_endpoint_id
+  forwardingRules:
+    # The live corporate domain.
+    - name: corp-domain
+      domainName: corp.contoso.com.
+      targetDnsServers:
+        - ipAddress: "10.100.0.10"
+        - ipAddress: "10.100.0.11"
+      metadata:
+        owner: network-team
+    # An acquired company's namespace, PARKED until its tunnel goes
+    # live -- flip enabled to true, no redeploys, no rule rewrites.
+    - name: acquired-domain
+      domainName: internal.fabrikam.com.
+      enabled: false
+      targetDnsServers:
+        - ipAddress: "172.16.5.53"
+          port: 5353
+      metadata:
+        owner: integration-team
+        note: enable-when-fabrikam-tunnel-is-live

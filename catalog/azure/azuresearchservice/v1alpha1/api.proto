@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuresearchservice.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuresearchservice/v1alpha1/outputs.proto";
+import "catalog/azure/azuresearchservice/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureSearchService is the top-level API resource describing an
+// Azure AI Search service -- the managed search-and-retrieval engine
+// AI applications index and query their own data with.
+message AzureSearchService {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureSearchService".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureSearchService'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Search service specification.
+  AzureSearchServiceSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureSearchServiceStatus status = 5;
+}
+
+// AzureSearchServiceStatus holds the deployment outputs.
+message AzureSearchServiceStatus {
+  // Stack outputs from the IaC deployment.
+  AzureSearchServiceStackOutputs outputs = 1;
+}

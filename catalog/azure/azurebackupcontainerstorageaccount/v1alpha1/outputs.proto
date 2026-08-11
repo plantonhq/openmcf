@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurebackupcontainerstorageaccount.v1alpha1;
+
+// **AzureBackupContainerStorageAccountStackOutputs** captures the
+// outputs of registering a storage account as a backup container.
+message AzureBackupContainerStorageAccountStackOutputs {
+  // The Azure Resource Manager ID of the backup container
+  // registration.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.RecoveryServices/vaults/{vault}/backupFabrics/Azure/protectionContainers/StorageContainer;storage;{sa-rg};{sa-name}
+  string backup_container_id = 1;
+
+  // The registered storage account's ARM ID, echoed from the spec
+  // after reference resolution. Protected file shares reference THIS
+  // output for their source_storage_account_id so the registration
+  // deploys first -- the reference carries both the value and the
+  // dependency edge (the provider docs' own wiring pattern).
+  string storage_account_id = 2;
+}

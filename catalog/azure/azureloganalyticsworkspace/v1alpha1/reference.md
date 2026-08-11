@@ -355,6 +355,8 @@ Fields on other kinds that can point at this resource:
 | AzureFirewallPolicy | `spec.insights.logAnalyticsWorkspaces[].workspaceId` | `status.outputs.workspace_id` |
 | AzureMonitorDiagnosticSetting | `spec.logAnalyticsWorkspaceId` | `status.outputs.workspace_id` |
 | AzureMonitorScheduledQueryAlert | `spec.scope` | `status.outputs.workspace_id` |
+| AzureNetworkWatcherFlowLog | `spec.trafficAnalytics.workspaceId` | `status.outputs.workspace_customer_id` |
+| AzureNetworkWatcherFlowLog | `spec.trafficAnalytics.workspaceResourceId` | `status.outputs.workspace_id` |
 
 ## See Also
 

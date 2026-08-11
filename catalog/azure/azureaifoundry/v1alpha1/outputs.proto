@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureaifoundry.v1alpha1;
+
+// **AzureAiFoundryStackOutputs** captures the outputs of provisioning
+// an Azure AI Foundry hub.
+message AzureAiFoundryStackOutputs {
+  // The Azure Resource Manager ID of the hub -- what
+  // AzureAiFoundryProject resources reference as their
+  // ai_services_hub_id.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{name}
+  string ai_foundry_id = 1;
+
+  // The name of the hub. ARM addresses the hub (and, at the API
+  // level, its projects' hub linkage) by this name.
+  string ai_foundry_name = 2;
+
+  // The hub's immutable GUID (distinct from the ARM ID) -- what some
+  // data-plane SDKs and diagnostic settings identify the hub by.
+  string workspace_guid = 3;
+
+  // The hub's regional discovery URL -- where SDKs resolve the hub's
+  // data-plane service endpoints from.
+  string discovery_url = 4;
+
+  // The principal (object) ID of the hub's system-assigned identity,
+  // when one is enabled -- what key vault / storage grants bind to.
+  string system_assigned_identity_principal_id = 5;
+}

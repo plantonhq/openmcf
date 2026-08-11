@@ -1018,6 +1018,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | AzureNetworkInterface | `spec.ipConfigurations[].loadBalancerBackendAddressPoolIds` | `status.outputs.backend_pool_ids` |
 | AzureNetworkInterface | `spec.ipConfigurations[].loadBalancerInboundNatRuleIds` | `status.outputs.nat_rule_ids` |
+| AzurePrivateLinkService | `spec.loadBalancerFrontendIpConfigurationIds` | `status.outputs.frontend_ip_configuration_ids` |
 | AzureVirtualMachineScaleSet | `spec.networkInterfaces[].ipConfigurations[].loadBalancerBackendAddressPoolIds` | `status.outputs.backend_pool_ids` |
 | AzureVirtualMachineScaleSet | `spec.networkInterfaces[].ipConfigurations[].loadBalancerInboundNatRuleIds` | `status.outputs.nat_rule_ids` |
 | AzureVirtualMachineScaleSet | `spec.upgradePolicy.healthProbeId` | `status.outputs.probe_ids` |

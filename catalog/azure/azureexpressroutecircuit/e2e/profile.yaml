@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureexpressroutecircuit
+spec:
+  # Live-proven 2026-08-11 on both engines: full lifecycle plus the
+  # Terraform blind import round-trip (circuit AND the composed
+  # authorization child from its address key; zero-change plan -- the
+  # declared authorization_key tolerance was not exercised: the smoke
+  # ISSUES an authorization, it redeems none). The circuit never reaches
+  # provider-Provisioned in the lane (no carrier behind the test
+  # subscription) -- verifiers assert ARM object state, SKU, and the
+  # composed authorization, never the cross-connect. Billing runs from
+  # creation (~cents for a lane-length life at 50 Mbps metered).
+  # TIMING (measured live, three creates): the Equinix/"Washington DC"
+  # circuit CREATE runs ~17-19 minutes -- not the minutes-class the
+  # family's siblings suggest -- so the lane totals ~20-22 min/engine
+  # and the 30-minute budget is honest but not generous. Any lane whose
+  # chain deploys the fixture circuit pays the same create.
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 45

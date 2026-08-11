@@ -1,0 +1,170 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningcomputeinstance.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureMachineLearningComputeInstanceSpec** defines a compute
+// instance on an Azure Machine Learning workspace (ARM:
+// Microsoft.MachineLearningServices/workspaces/{ws}/computes/{name})
+// -- a single always-on VM serving as one data scientist's cloud
+// workstation for notebooks, interactive debugging, and small jobs.
+//
+// **Nothing updates in place.** The provider has NO update path for
+// this resource -- every change, tags included, replaces the instance
+// (its OS disk and local files go with it; keep work in datastores
+// and git).
+//
+// **The instance lives in its workspace's region** (the service's own
+// rule -- unlike clusters, instances cannot run elsewhere), and its
+// NAME is reserved region-wide per subscription: two instances in the
+// same region cannot share a name even across different workspaces,
+// and a deleted instance's name can stay reserved briefly.
+//
+// **An instance is a running VM billing around the clock** unless
+// stopped -- it does not auto-scale to zero the way clusters do.
+message AzureMachineLearningComputeInstanceSpec {
+  // The Machine Learning workspace the instance belongs to, by ARM
+  // ID. The instance always runs in this workspace's region. Fixed at
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workspace_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMachineLearningWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.machine_learning_workspace_id"
+  ];
+
+  // The instance's name: a letter followed by 3-24 letters, digits or
+  // hyphens (the provider's own regex -- its error message understates
+  // the length by one). Reserved REGION-WIDE per subscription, not
+  // per workspace. Changing the name replaces the instance.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z][a-zA-Z0-9-]{3,24}$"
+  ];
+
+  // The VM size, e.g. "STANDARD_DS3_V2" (the provider compares
+  // case-insensitively). This VM runs around the clock until the
+  // instance is stopped or deleted. Fixed at creation.
+  string virtual_machine_size = 3 [(buf.validate.field).required = true];
+
+  // The instance's authorization mode. "personal" (the only value the
+  // provider accepts) locks the instance to one user -- its creator,
+  // or the user in assign_to_user. Unspecified leaves the service
+  // default (also personal-style single-user access). Fixed at
+  // creation.
+  string authorization_type = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["personal"]
+    }
+  ];
+
+  // Assign the instance to a user OTHER than the deploying principal
+  // -- the admin-provisions-for-the-team pattern (pair with
+  // authorization_type "personal"). Fixed at creation.
+  AzureMachineLearningComputeInstanceAssignToUser assign_to_user = 5;
+
+  // The instance's managed identity -- how ITS workloads reach
+  // storage and Key Vault without embedded credentials. Unlike the
+  // cluster's, the whole block is fixed at creation.
+  AzureMachineLearningComputeInstanceIdentity identity = 6;
+
+  // Whether Azure Machine Learning token authentication to the
+  // instance works. Unspecified applies true (the provider's
+  // default). Set false to force Entra ID auth only. Fixed at
+  // creation.
+  optional bool local_auth_enabled = 7 [(dev.planton.shared.options.default) = "true"];
+
+  // SSH access to the instance. Absent means the SSH port is
+  // DISABLED (the provider's own contract); present enables it with
+  // the given public key -- the service assigns the username and
+  // port, surfaced as outputs. Fixed at creation.
+  AzureMachineLearningComputeInstanceSsh ssh = 8;
+
+  // The subnet the instance is placed in, by ARM ID. Only legal when
+  // the workspace does NOT use a managed network (Azure then networks
+  // the instance itself). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Whether the instance gets a public IP. Unspecified applies true
+  // (the provider's default). When set false, the provider requires a
+  // subnet_id UNLESS the workspace runs a managed network (its
+  // isolation mode networks the instance) -- a live-workspace-state
+  // contract enforced at apply time, not expressible at manifest
+  // time. Fixed at creation.
+  optional bool node_public_ip_enabled = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // What the instance is for. Fixed at creation (the provider's own
+  // contract -- changing the description replaces the instance).
+  string description = 11;
+
+  // Free-form tags applied to the instance, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins. Fixed at
+  // creation (the provider's own contract -- tags included, unusually).
+  map<string, string> tags = 12;
+}
+
+// The user a personal instance is assigned to.
+message AzureMachineLearningComputeInstanceAssignToUser {
+  // The Entra ID tenant the user lives in.
+  string tenant_id = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // The user's Entra ID object ID.
+  string object_id = 2;
+}
+
+// The instance's managed identity.
+message AzureMachineLearningComputeInstanceIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the instance; USER_ASSIGNED brings identities you manage
+  // (grantable data access BEFORE the instance exists);
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureMachineLearningComputeInstanceIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the instance, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so storage / Key Vault grants
+  // can be composed before the instance is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The instance's managed-identity flavor.
+enum AzureMachineLearningComputeInstanceIdentityType {
+  // Not specified: rejected -- an identity block requires a flavor.
+  azure_machine_learning_compute_instance_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the instance.
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// SSH access to the instance.
+message AzureMachineLearningComputeInstanceSsh {
+  // The SSH PUBLIC key granted access (e.g. "ssh-rsa AAAA...").
+  // Public material -- not a secret. The service assigns the admin
+  // username and port, surfaced in the outputs.
+  string public_key = 1 [(buf.validate.field).required = true];
+}

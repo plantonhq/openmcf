@@ -1,0 +1,25 @@
+# Offline-plan test manifest. Exercises the disk variant at full
+# population (the richest single-variant shape: datasource ref,
+# snapshot resource group, and the cross-subscription snapshot home).
+# The other five variants are planned from per-variant manifest
+# variations at proof time -- exactly one variant is ever set (the
+# spec's exactly-one rule).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataProtectionBackupInstance
+metadata:
+  name: test-data-protection-backup-instance
+  org: test-org
+  env: dev
+spec:
+  vaultId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/backup-rg/providers/Microsoft.DataProtection/backupVaults/prod-vault
+  name: app-data-disk
+  region: eastus
+  backupPolicyId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/backup-rg/providers/Microsoft.DataProtection/backupVaults/prod-vault/backupPolicies/daily-disk
+  disk:
+    diskId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Compute/disks/app-data
+    snapshotResourceGroupName:
+      value: backup-snapshots-rg
+    snapshotSubscriptionId: 11111111-2222-3333-4444-555555555555

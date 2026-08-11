@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevirtualwan.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureVirtualWanSpec** defines a Virtual WAN -- the top-level umbrella
+// of Azure's managed hub-and-spoke networking. The WAN object itself is
+// a lightweight, free container of policy: the actual regional routers
+// (virtual hubs) and the gateways attached to them are separate
+// resources that reference this WAN. Create the WAN first; everything
+// else in the Virtual WAN world hangs off it.
+//
+// **Basic vs Standard**: a Standard WAN (the default and the right
+// choice for almost everyone) supports the full mesh -- ExpressRoute,
+// site-to-site and point-to-site VPN, hub-to-hub and any-to-any transit
+// routing. Basic is a constrained legacy tier limited to site-to-site
+// VPN in a Basic hub, and a WAN can be UPGRADED Basic-to-Standard but
+// never downgraded.
+//
+// **ForceNew fields**: `name`, `region`, and `resource_group` are fixed
+// at creation -- changing any of them replaces the WAN (and orphans
+// nothing by itself, but hubs must be deleted first; ARM refuses to
+// delete a WAN that still has hubs).
+message AzureVirtualWanSpec {
+  // The Azure region the WAN object lives in, e.g. "eastus". This is
+  // ARM metadata placement only -- hubs choose their own regions, and a
+  // WAN spans all of them. Changing the region replaces the WAN.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the WAN is created in. Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's name
+  // output. Changing it replaces the WAN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The WAN's name, unique within the resource group. Hubs reference
+  // the WAN by its ARM ID (the virtual_wan_id output). Changing the
+  // name replaces the WAN.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Disable IPsec encryption for VPN traffic transiting the WAN.
+  // Off by default (traffic is encrypted); enabling this is a niche
+  // performance trade for private-circuit-only topologies.
+  bool disable_vpn_encryption = 4;
+
+  // Allow branches (VPN sites) connected to different hubs to reach
+  // each other through the WAN. Unspecified applies true (ARM's
+  // default) -- branch-to-branch transit is most of the point of a
+  // Virtual WAN; set false only to force hub-and-spoke-only reachability
+  // where branches must not see each other.
+  optional bool allow_branch_to_branch_traffic = 5 [(dev.planton.shared.options.default) = "true"];
+
+  // Route Office 365 traffic out of local branch internet breakouts
+  // instead of hauling it through the WAN. Unspecified applies NONE
+  // (ARM's default -- no local breakout). OPTIMIZE covers the
+  // latency-sensitive endpoints Microsoft marks Optimize;
+  // OPTIMIZE_AND_ALLOW adds the Allow category; ALL breaks out every
+  // Office 365 endpoint.
+  optional AzureVirtualWanOffice365BreakoutCategory office365_local_breakout_category = 6 [
+    (buf.validate.field).enum.defined_only = true,
+    (dev.planton.shared.options.default) = "NONE"
+  ];
+
+  // The WAN type. Unspecified applies "Standard" (ARM's default and the
+  // full-mesh tier: ExpressRoute, S2S/P2S VPN, hub-to-hub transit).
+  // "Basic" is a constrained legacy tier (site-to-site VPN only, Basic
+  // hubs); ARM upgrades Basic-to-Standard in place but never
+  // downgrades. The value is a free string on ARM's side -- these two
+  // are the only published values.
+  optional string type = 7 [(dev.planton.shared.options.default) = "Standard"];
+
+  // Free-form tags applied to the WAN, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag
+  // with the same key wins.
+  map<string, string> tags = 8;
+}
+
+// Office 365 local-breakout scope.
+enum AzureVirtualWanOffice365BreakoutCategory {
+  // Not specified -- NONE (ARM's default) applies.
+  azure_virtual_wan_office365_breakout_category_unspecified = 0;
+
+  // No local breakout: Office 365 traffic transits the WAN like
+  // everything else.
+  NONE = 1;
+
+  // Break out every Office 365 endpoint locally.
+  ALL = 2;
+
+  // Break out only the endpoints Microsoft marks Optimize (the
+  // latency-sensitive core: Exchange, SharePoint, Teams media).
+  OPTIMIZE = 3;
+
+  // Break out the Optimize and Allow categories.
+  OPTIMIZE_AND_ALLOW = 4;
+}

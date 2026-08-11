@@ -1,0 +1,190 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevpnsite.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureVpnSiteSpec** defines a VPN site -- the Virtual WAN world's
+// DESCRIPTION of one branch location: its internet links (each with a
+// public endpoint and optional BGP speaker), the address space
+// reachable behind it, and the device that terminates the tunnels. It
+// deploys nothing at the branch and costs nothing to keep; it is the
+// address-book entry an AzureVpnGatewayConnection points at. The
+// classic-world sibling (without a Virtual WAN) is
+// AzureLocalNetworkGateway.
+//
+// **Links are the connectable unit**: a connection's vpn_links each pin
+// to ONE of this site's links by its ARM ID (published in the site's
+// name-keyed link_ids output). A site with two links (e.g. two ISPs)
+// gets a two-link connection -- that is how Virtual WAN does
+// active-active branch connectivity.
+//
+// **ForceNew fields**: `name`, `region`, `resource_group`, and
+// `virtual_wan_id` -- every other field updates in place (a connection
+// pins each link by ID, so renaming or removing a CONNECTED link is a
+// far-side change, not a site-only edit).
+message AzureVpnSiteSpec {
+  // The Azure region the VPN site object lives in, e.g. "eastus". By
+  // convention the region of the virtual hub whose gateway connects to
+  // it. Changing the region replaces the object.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the VPN site is created in. Can be a
+  // literal resource-group name or a reference to an
+  // AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The VPN site's name, unique within the resource group. Name it
+  // after the branch it describes ("branch-london", "factory-pune") --
+  // a connection references it per site. Must not contain any of
+  // ' < > % & : ? / + (the provider's own name rule). Changing the
+  // name replaces the object.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[^'<>%&:?/+]+$"
+  ];
+
+  // The Virtual WAN this site belongs to -- references an
+  // AzureVirtualWan's ARM ID. Sites are WAN-scoped so any hub's VPN
+  // gateway in the WAN can connect to them. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_wan_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualWan,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_wan_id"
+  ];
+
+  // The address space reachable behind the branch, in CIDR notation --
+  // the prefixes Azure routes into the tunnels. Leave empty only when
+  // every link speaks BGP (learned routes then carry the routing, the
+  // AzureLocalNetworkGateway convention).
+  repeated string address_cidrs = 5 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // The branch VPN device's vendor (e.g. "Cisco") -- informational
+  // metadata Azure surfaces in the portal and to partners.
+  string device_vendor = 6;
+
+  // The branch VPN device's model (e.g. "ISR4331") -- informational,
+  // like device_vendor.
+  string device_model = 7;
+
+  // The branch's internet links -- the connectable endpoints of the
+  // site. Each link's ARM ID surfaces in the site's name-keyed
+  // link_ids output; a connection's vpn_links pin to them. Two links
+  // (two ISPs) enable active-active branch connectivity.
+  repeated AzureVpnSiteLink links = 8;
+
+  // Office 365 breakout policy for this branch (SD-WAN partners read
+  // it): which O365 traffic categories exit the branch's local
+  // internet instead of riding the tunnel. Leave unset for no
+  // breakout.
+  AzureVpnSiteO365Policy o365_policy = 9;
+
+  // Free-form tags applied to the object, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins.
+  map<string, string> tags = 10;
+
+  option (buf.validate.message).cel = {
+    id: "link_names_unique"
+    message: "Link names must be unique on the site -- each is the key connections and the link_ids output use"
+    expression: "this.links.all(l, this.links.filter(o, o.name == l.name).size() == 1)"
+  };
+}
+
+// One internet link of the branch -- a connectable tunnel endpoint.
+message AzureVpnSiteLink {
+  // The link's name, unique on the site (e.g. "primary-isp"). The
+  // link's ARM ID surfaces in the site's link_ids output under this
+  // name -- what a connection's vpn_site_link_id references.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The ISP behind this link (e.g. "Airtel") -- informational metadata
+  // Azure surfaces to SD-WAN partners.
+  string provider_name = 2;
+
+  // The link's bandwidth in Mbps -- informational (Azure uses it for
+  // partner automation and portal display, not for rate limiting; the
+  // connection's bandwidth_mbps is separate). 0 (the provider's
+  // default) means unspecified.
+  int32 speed_in_mbps = 3 [(buf.validate.field).int32.gte = 0];
+
+  // The link's PUBLIC IP address -- where the hub's VPN gateway sends
+  // tunnel traffic. One of ip_address or fqdn (ARM rejects a link with
+  // neither; when both are set, the IP wins).
+  string ip_address = 4 [(buf.validate.field).cel = {
+    id: "link_ip_is_ip"
+    message: "ip_address must be an IP address"
+    expression: "this == '' || this.isIp()"
+  }];
+
+  // The link's public FQDN (for branches whose public IP changes --
+  // Azure re-resolves it). One of ip_address or fqdn.
+  string fqdn = 5;
+
+  // The BGP speaker behind this link -- set it to exchange routes
+  // dynamically instead of (or alongside) the site's static
+  // address_cidrs. The connection's matching vpn_link must enable BGP
+  // too.
+  AzureVpnSiteLinkBgp bgp = 6;
+
+  // ARM's create contract, front-loaded where the error is actionable.
+  option (buf.validate.message).cel = {
+    id: "link_endpoint_required"
+    message: "Give the link a public endpoint: ip_address (static public IP) or fqdn (re-resolved name)"
+    expression: "this.ip_address != '' || this.fqdn != ''"
+  };
+}
+
+// The BGP speaker behind one link.
+message AzureVpnSiteLinkBgp {
+  // The branch BGP speaker's Autonomous System Number. Must differ
+  // from the hub router's 65515; 65515-65520 are Azure-reserved.
+  int64 asn = 1 [(buf.validate.field).int64.gte = 1];
+
+  // The branch BGP speaker's peering address -- an IP INSIDE the
+  // tunnel (typically on the device's tunnel interface), not the
+  // link's public address.
+  string peering_address = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "bgp_peering_address_is_ip"
+      message: "peering_address must be an IP address"
+      expression: "this.isIp()"
+    }
+  ];
+}
+
+// Office 365 breakout policy: which O365 traffic categories exit the
+// branch locally instead of riding the tunnel.
+message AzureVpnSiteO365Policy {
+  // The per-category breakout switches.
+  AzureVpnSiteO365TrafficCategory traffic_category = 1;
+}
+
+// The O365 traffic categories, per Microsoft's classification.
+// Microsoft's guidance: break out OPTIMIZE (and usually ALLOW)
+// locally; keep DEFAULT on the tunnel.
+message AzureVpnSiteO365TrafficCategory {
+  // Break out the "Allow" category (required O365 endpoints tolerant
+  // of local egress) at the branch.
+  bool allow_endpoint_enabled = 1;
+
+  // Break out the "Default" category (everything else O365) at the
+  // branch.
+  bool default_endpoint_enabled = 2;
+
+  // Break out the "Optimize" category (the latency-critical endpoints:
+  // Teams media, Exchange) at the branch.
+  bool optimize_endpoint_enabled = 3;
+}

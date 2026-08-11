@@ -1,0 +1,45 @@
+# Minimal AzureVpnGatewayConnection scenario: one tunnel joining the
+# fixture site's primary link to the fixture gateway -- the flagship
+# proof of the map-keyed cross-kind wiring (the tunnel pins to the
+# site's name-keyed link_ids output) resolving through the full VPN
+# family chain: WAN -> hub -> gateway, plus the site.
+#
+# PROVISIONED IS NOT CONNECTED: no real branch device exists behind
+# the fixture site's TEST-NET endpoint, so the tunnel provisions but
+# never reaches Connected -- the verifier asserts ARM state, never
+# tunnel-up (the recorded lane boundary). Routing is left unset (ARM's
+# default-table behavior); the shared key is omitted so ARM generates
+# one -- both deliberate minimal-surface choices.
+#
+# TIME: the connection itself is minutes; the chain pays the fixture
+# hub (15-30 min) and fixture gateway (30-45 min) cycles.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVpnGatewayConnection
+metadata:
+  name: planton-oss-e2e-azurevpngatewayconnection-smoke
+  id: planton-oss-e2e-azurevpngatewayconnection-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevpngatewayconnection
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  name: planton-oss-e2e-vpngwc-smoke
+  vpnGatewayId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vpngw
+  remoteVpnSiteId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vpnsite
+  vpnLinks:
+    - name: primary-isp
+      vpnSiteLinkId:
+        valueFrom:
+          kind: AzureVpnSite
+          name: planton-oss-e2e-azure-fixture-vpnsite
+          fieldPath: status.outputs.link_ids.primary-isp
+      dpdTimeoutSeconds: 45

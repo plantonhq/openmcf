@@ -1,0 +1,189 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningonlineendpoint.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureMachineLearningOnlineEndpointSpec** defines a managed online
+// endpoint on an Azure Machine Learning workspace (ARM:
+// Microsoft.MachineLearningServices/workspaces/{ws}/onlineEndpoints/{name})
+// -- the stable HTTPS address applications call to score against
+// deployed models, with a traffic dial that splits requests across the
+// endpoint's deployments (blue/green rollouts, mirrored shadow
+// traffic).
+//
+// **The contract here is the ARM specification itself** (pinned
+// api-version 2025-06-01): azurerm carries no resource for ML
+// endpoints, so both engines write the raw ARM shape and this spec's
+// validation rules carry the full contract burden -- there is no
+// provider-side schema behind them.
+//
+// **The endpoint is an ARM child of its workspace** -- it has no
+// resource group of its own, and its name is reserved REGION-WIDE per
+// subscription (two endpoints in the same region cannot share a name
+// even across workspaces; the name becomes part of the scoring DNS).
+message AzureMachineLearningOnlineEndpointSpec {
+  // The Machine Learning workspace the endpoint belongs to, by ARM ID.
+  // Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workspace_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMachineLearningWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.machine_learning_workspace_id"
+  ];
+
+  // The endpoint's name (ARM's own rule, mirrored from the pinned
+  // specification: starts with a letter or digit, then letters,
+  // digits, hyphens and underscores). The name is part of the scoring
+  // URI's DNS and is reserved region-wide per subscription -- pick
+  // something unique to the application. Changing the name replaces
+  // the endpoint.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9-_]{0,254}$"
+  ];
+
+  // The Azure region the endpoint lives in, e.g. "eastus". Must be
+  // the workspace's own region (the service provisions endpoints
+  // beside their workspace). Fixed at creation.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How callers authenticate scoring requests (the data-plane
+  // operation), exactly the service's vocabulary: "Key" for static
+  // keys that never expire, "AMLToken" for Azure ML tokens that
+  // expire and refresh, "AADToken" for Microsoft Entra tokens (the
+  // keyless posture). Control-plane access is always Entra ID
+  // regardless of this setting.
+  string auth_mode = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Key",
+        "AMLToken",
+        "AADToken"
+      ]
+    }
+  ];
+
+  // The endpoint's managed identity -- how its deployments pull
+  // container images and model artifacts from the workspace's
+  // registry and storage. The ARM specification marks identity
+  // optional, but an endpoint without one cannot pull anything and
+  // every deployment on it fails at provisioning -- this spec
+  // requires it deliberately (a recorded tightening; SYSTEM_ASSIGNED
+  // is the service's own default posture).
+  AzureMachineLearningOnlineEndpointIdentity identity = 5 [(buf.validate.field).required = true];
+
+  // Percentage of live scoring traffic sent to each deployment,
+  // keyed by deployment name, e.g. {"blue": 100} or
+  // {"blue": 90, "green": 10}. Values are whole percentages; ARM
+  // enforces that they sum to at most 100 at apply time (a sum below
+  // 100 leaves the remainder unrouted). Updatable in place -- this is
+  // the blue/green rollout dial.
+  map<string, int32> traffic = 6 [(buf.validate.field).map.values.int32 = {
+    gte: 0
+    lte: 100
+  }];
+
+  // Percentage of live traffic MIRRORED to each deployment without
+  // returning its responses to callers -- shadow-testing a new
+  // deployment against production traffic. Keyed by deployment name;
+  // ARM enforces a total of at most 50 at apply time. Updatable in
+  // place.
+  map<string, int32> mirror_traffic = 7 [(buf.validate.field).map.values.int32 = {
+    gte: 0
+    lte: 50
+  }];
+
+  // Whether the scoring endpoint answers the public internet.
+  // Unspecified applies true (ARM's default "Enabled"). Set false to
+  // require private-endpoint access to the workspace for scoring.
+  // Updatable in place.
+  optional bool public_network_access_enabled = 8 [(dev.planton.shared.options.default) = "true"];
+
+  // Static authentication keys to SET at creation (Key auth mode
+  // only) -- bring-your-own keys from a secret store instead of the
+  // service minting them. ARM never returns these values on any read
+  // (retrieval is a separate listKeys action), so leave this unset to
+  // let the service mint keys and read them with
+  // `az ml online-endpoint get-credentials`. Fixed at creation.
+  AzureMachineLearningOnlineEndpointInitialAuthKeys initial_auth_keys = 9;
+
+  // The endpoint's ARM property dictionary -- free-form key/value
+  // pairs some tooling reads. ARM allows ADDING entries but never
+  // removing or altering existing ones (the service's own contract;
+  // removals are ignored on update).
+  map<string, string> properties = 10;
+
+  // What the endpoint serves. Updatable in place.
+  string description = 11;
+
+  // Free-form tags applied to the endpoint, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins. Updatable in
+  // place.
+  map<string, string> tags = 12;
+}
+
+// The endpoint's managed identity.
+message AzureMachineLearningOnlineEndpointIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the endpoint (the service's default posture); USER_ASSIGNED
+  // brings identities you manage (grantable registry/storage access
+  // BEFORE the endpoint exists); SYSTEM_AND_USER_ASSIGNED carries
+  // both.
+  AzureMachineLearningOnlineEndpointIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the endpoint, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so registry / storage grants
+  // can be composed before the endpoint is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The endpoint's managed-identity flavor.
+enum AzureMachineLearningOnlineEndpointIdentityType {
+  // Not specified: rejected -- the identity block requires a flavor.
+  azure_machine_learning_online_endpoint_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the endpoint.
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// Static authentication keys set at endpoint creation (Key auth mode).
+// ARM treats these as create-time-only input and never returns them on
+// reads -- both engines send them without expecting them back.
+message AzureMachineLearningOnlineEndpointInitialAuthKeys {
+  // The primary scoring key. Reference a secret rather than embedding
+  // the literal.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef primary_key = 1 [(dev.planton.shared.options.sensitive) = true];
+
+  // The secondary scoring key -- the rotation partner. Reference a
+  // secret rather than embedding the literal.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secondary_key = 2 [(dev.planton.shared.options.sensitive) = true];
+
+  option (buf.validate.message).cel = {
+    id: "ml_online_endpoint_initial_keys_nonempty"
+    message: "the initial_auth_keys block requires at least one of primary_key or secondary_key"
+    expression: "has(this.primary_key) || has(this.secondary_key)"
+  };
+}

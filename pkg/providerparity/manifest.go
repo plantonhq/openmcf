@@ -4,8 +4,9 @@
 // Per-kind mapping manifests: the recorded-judgment side of provider parity.
 // Detection is mechanical (the censuses); judgment -- "this provider argument
 // is this spec field under another name", "this one is deliberately not
-// modeled, and here is why" -- is recorded ONCE, in the kind's own manifest,
-// where the tooling reads it and the next author finds it.
+// modeled, and here is why", "this resource's contract is pinned outside the
+// provider by recorded admission" -- is recorded ONCE, in the kind's own
+// manifest, where the tooling reads it and the next author finds it.
 //
 // The manifest lives at catalog/<provider>/<kind>/iac/provider-parity.yaml,
 // beside iac/import-map.yaml, and file presence IS enrollment (the import-map
@@ -54,6 +55,17 @@ type ResourceManifest struct {
 	// decisions with fixed or derived values, not spec surface. The value
 	// is the mandatory reason. Mutually exclusive with every other field.
 	Internal string `yaml:"internal,omitempty"`
+	// External marks the whole resource as EXTERNALLY SPECIFIED: it is the
+	// kind's primary surface, but its configuration contract lives outside
+	// every loaded provider schema BY DESIGN — a raw-API resource (e.g.
+	// azapi's azapi_resource) admitted per kind by a recorded decision that
+	// pins an exact type@api-version. The value is the mandatory reason and
+	// must name that pin. No argument walk is possible (there is no schema
+	// to walk), and when ALL of a kind's consumed resources are external or
+	// internal, the reverse spec walk is suspended too — the spec's depth
+	// is accounted against the external contract, where the admission
+	// records it. Mutually exclusive with every other field.
+	External string `yaml:"external,omitempty"`
 	// SpecRoot is the spec subtree this resource's arguments match under.
 	// Defaults to "spec" (the kind's primary resource); a secondary
 	// resource names the subtree that instantiates it, e.g.
@@ -156,10 +168,21 @@ func (m *Manifest) validate() error {
 		if rm == nil {
 			return errors.Errorf("resource %s carries no judgment -- an empty entry records nothing; remove it", resource)
 		}
+		if rm.Internal != "" && rm.External != "" {
+			return errors.Errorf(
+				"resource %s: internal and external are mutually exclusive whole-resource judgments", resource)
+		}
 		if rm.Internal != "" {
 			if rm.SpecRoot != "" || len(rm.Mappings) > 0 || len(rm.Exclusions) > 0 {
 				return errors.Errorf(
 					"resource %s: internal is the whole judgment -- it cannot carry specRoot/mappings/exclusions", resource)
+			}
+			continue
+		}
+		if rm.External != "" {
+			if rm.SpecRoot != "" || len(rm.Mappings) > 0 || len(rm.Exclusions) > 0 {
+				return errors.Errorf(
+					"resource %s: external is the whole judgment -- it cannot carry specRoot/mappings/exclusions", resource)
 			}
 			continue
 		}

@@ -1,0 +1,37 @@
+# Offline-plan test manifest. Exercises the deep seams: the low-priority
+# wire value, the full scale-settings block, a system-assigned identity,
+# the SSH admin account with both credential arms, VNet placement with
+# both default-true booleans explicitly false, and the closed-by-default
+# SSH port explicitly opened.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningComputeCluster
+metadata:
+  name: test-ml-compute-cluster
+  org: test-org
+  env: dev
+spec:
+  workspaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ml-workspace
+  name: test-spot-cluster
+  region: eastus
+  vmSize: STANDARD_DS3_V2
+  vmPriority: LOW_PRIORITY
+  scaleSettings:
+    minNodeCount: 0
+    maxNodeCount: 8
+    scaleDownNodesAfterIdleDuration: PT15M
+  identity:
+    type: SYSTEM_ASSIGNED
+  ssh:
+    adminUsername: azureuser
+    adminPassword:
+      value: offline-plan-placeholder-password
+    keyValue: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQoffline-plan-placeholder example
+  sshPublicAccessEnabled: true
+  localAuthEnabled: false
+  nodePublicIpEnabled: false
+  subnetId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/ml-compute
+  description: Offline-plan cluster exercising the full surface
+  tags:
+    cost-center: ml-platform

@@ -1,0 +1,39 @@
+# Minimal AzureDataProtectionBackupPolicy scenario: the disk variant
+# with a plain daily schedule -- a free configuration object on the
+# fixture vault, the simplest of the six shapes. This scenario doubles
+# as the kind's INSTALL MANIFEST when future backup-instance lanes
+# deploy a policy as their prerequisite -- keep it fixture-safe: the
+# boring flat-retention disk shape, fixed name (policy names are
+# vault-scoped; nothing soft-holds them). The nested life-cycle and
+# dual-tier grammars are proven by their own scenarios
+# (kubernetes-nested-retention.yaml, blob-dual-store.yaml) so an
+# exotic-grammar failure never couples into a dependent lane.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataProtectionBackupPolicy
+metadata:
+  name: planton-oss-e2e-azuredataprotectionbackuppolicy-smoke
+  id: planton-oss-e2e-azuredataprotectionbackuppolicy-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredataprotectionbackuppolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  vaultId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-dpbv
+  name: planton-oss-e2e-dpbp-smoke
+  disk:
+    backupRepeatingTimeIntervals:
+      - R/2024-01-01T02:00:00+00:00/P1D
+    defaultRetentionDuration: P7D
+    retentionRules:
+      - name: weekly
+        duration: P30D
+        criteria:
+          absoluteCriteria: FirstOfWeek
+        priority: 25

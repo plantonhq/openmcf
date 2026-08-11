@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualHub
+metadata:
+  name: my-hub
+spec:
+  region: <azure-region>
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: my-hub
+  virtualWanId:
+    value: "<your-virtual-wan-arm-id>"
+  addressPrefix: "10.100.0.0/23"
+  routeTables:
+    - name: isolated
+      labels:
+        - isolated
+    - name: shared-services
+      labels:
+        - shared

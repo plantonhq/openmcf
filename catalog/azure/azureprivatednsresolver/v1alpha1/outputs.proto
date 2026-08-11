@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureprivatednsresolver.v1alpha1;
+
+// **AzurePrivateDnsResolverStackOutputs** captures the outputs of
+// provisioning a DNS Private Resolver and its endpoints.
+message AzurePrivateDnsResolverStackOutputs {
+  // The resolver's ARM resource ID
+  // (.../providers/Microsoft.Network/dnsResolvers/{name}).
+  string dns_resolver_id = 1;
+
+  // The resolver's name within its resource group.
+  string dns_resolver_name = 2;
+
+  // The private IP of the FIRST inbound endpoint declared in the spec
+  // -- the address on-premises DNS forwarders and VNet DNS settings
+  // point at. Empty when the spec declares no inbound endpoints.
+  string inbound_endpoint_ip = 3;
+
+  // The private IPs of ALL inbound endpoints, keyed by endpoint name.
+  // Empty when the spec declares no inbound endpoints.
+  map<string, string> inbound_endpoint_ips = 4;
+
+  // The ARM id of the FIRST outbound endpoint declared in the spec
+  // ({resolver_id}/outboundEndpoints/{name}) -- what
+  // AzurePrivateDnsResolverForwardingRuleset references by default.
+  // Empty when the spec declares no outbound endpoints.
+  string outbound_endpoint_id = 5;
+
+  // The ARM ids of ALL outbound endpoints, keyed by endpoint name.
+  // Empty when the spec declares no outbound endpoints.
+  map<string, string> outbound_endpoint_ids = 6;
+}

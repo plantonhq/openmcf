@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurerecoveryservicesvault.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurerecoveryservicesvault/v1alpha1/outputs.proto";
+import "catalog/azure/azurerecoveryservicesvault/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureRecoveryServicesVault is the top-level API resource describing
+// a Recovery Services vault -- the safe that classic Azure Backup data
+// (VM and file-share backups) and Site Recovery configuration live in.
+message AzureRecoveryServicesVault {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureRecoveryServicesVault".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureRecoveryServicesVault'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Recovery Services vault specification.
+  AzureRecoveryServicesVaultSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureRecoveryServicesVaultStatus status = 5;
+}
+
+// AzureRecoveryServicesVaultStatus holds the deployment outputs.
+message AzureRecoveryServicesVaultStatus {
+  // Stack outputs from the IaC deployment.
+  AzureRecoveryServicesVaultStackOutputs outputs = 1;
+}

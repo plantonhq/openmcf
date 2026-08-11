@@ -1,0 +1,30 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_vpn_gateway_connection:
+    mappings:
+      # The spec pluralizes repeated fields; the provider names blocks
+      # in the singular.
+      - spec: spec.vpn_links
+        arg: vpn_link
+      - spec: spec.vpn_links.ipsec_policies
+        arg: vpn_link.ipsec_policy
+      - spec: spec.vpn_links.custom_bgp_addresses
+        arg: vpn_link.custom_bgp_address
+      - spec: spec.traffic_selector_policies
+        arg: traffic_selector_policy
+      # The spec suffixes reference fields with what they reference; the
+      # provider's name stops at the concept.
+      - spec: spec.routing.associated_route_table_id
+        arg: routing.associated_route_table
+      # The spec names CIDR lists for what they contain.
+      - spec: spec.traffic_selector_policies.local_address_cidrs
+        arg: traffic_selector_policy.local_address_ranges
+      - spec: spec.traffic_selector_policies.remote_address_cidrs
+        arg: traffic_selector_policy.remote_address_ranges

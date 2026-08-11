@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningworkspace.v1alpha1;
+
+// **AzureMachineLearningWorkspaceStackOutputs** captures the outputs
+// of provisioning an Azure Machine Learning workspace.
+message AzureMachineLearningWorkspaceStackOutputs {
+  // The Azure Resource Manager ID of the workspace -- what datastores,
+  // compute, and outbound rules reference as their workspace_id.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{name}
+  string machine_learning_workspace_id = 1;
+
+  // The name of the workspace. ARM addresses datastores, compute and
+  // outbound rules as children of this name.
+  string machine_learning_workspace_name = 2;
+
+  // The workspace's immutable GUID (distinct from the ARM ID) -- what
+  // some data-plane SDKs and diagnostic settings identify the
+  // workspace by.
+  string workspace_guid = 3;
+
+  // The workspace's regional discovery URL -- where SDKs resolve the
+  // workspace's data-plane service endpoints from.
+  string discovery_url = 4;
+
+  // The principal (object) ID of the workspace's system-assigned
+  // identity, when one is enabled -- what storage / Key Vault grants
+  // bind to.
+  string system_assigned_identity_principal_id = 5;
+
+  // The ARM ID of each FQDN outbound rule on the workspace, keyed by
+  // the rule's name from the spec.
+  // Example valueFrom fieldPath: status.outputs.fqdn_outbound_rule_ids.allow-pypi
+  map<string, string> fqdn_outbound_rule_ids = 6;
+
+  // The ARM ID of each private-endpoint outbound rule on the
+  // workspace, keyed by the rule's name from the spec.
+  // Example valueFrom fieldPath: status.outputs.private_endpoint_outbound_rule_ids.to-keyvault
+  map<string, string> private_endpoint_outbound_rule_ids = 7;
+
+  // The ARM ID of each service-tag outbound rule on the workspace,
+  // keyed by the rule's name from the spec.
+  // Example valueFrom fieldPath: status.outputs.service_tag_outbound_rule_ids.allow-storage
+  map<string, string> service_tag_outbound_rule_ids = 8;
+}

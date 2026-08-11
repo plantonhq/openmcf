@@ -1,0 +1,22 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureAiFoundry
+metadata:
+  name: team-hub
+spec:
+  region: eastus
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  # 3-33 chars, alphanumerics/hyphens/underscores; the name is held by
+  # the soft-deleted ghost after deletion until purged.
+  name: acme-ai-hub
+  keyVaultId:
+    value: "<your-key-vault-id>"
+  # A general-purpose account with hierarchical namespace OFF -- the
+  # hub is an ML workspace at ARM, which rejects Data Lake Gen2
+  # accounts as default storage.
+  storageAccountId:
+    value: "<your-storage-account-id>"
+  identity:
+    type: SYSTEM_ASSIGNED
+  friendlyName: Team AI Hub
+  description: Shared AI Foundry hub for the company's AI teams

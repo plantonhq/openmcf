@@ -1,0 +1,473 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurebackuppolicyvm.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureBackupPolicyVmSpec** defines an Azure Backup policy for IaaS
+// virtual machines (ARM: Microsoft.RecoveryServices/vaults/{vault}/
+// backupPolicies/{name}) -- WHEN VMs under it are backed up (the
+// schedule) and HOW LONG each backup is kept (the retention rules,
+// layered daily/weekly/monthly/yearly like grandfather-father-son
+// tape rotation). The policy itself is a free configuration object;
+// cost follows the protected VMs and their backup storage.
+//
+// **The schedule's frequency decides which retention layers are
+// legal** (the provider's own contract, front-loaded here as
+// validation): Hourly and Daily schedules require retention_daily;
+// a Weekly schedule requires retention_weekly and forbids
+// retention_daily. Hourly schedules exist only on V2 (enhanced)
+// policies.
+message AzureBackupPolicyVmSpec {
+  // The Azure resource group the policy's VAULT lives in (a policy is
+  // an ARM child of its vault). Can be a literal resource-group name
+  // or a reference to an AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The Recovery Services vault the policy lives in, by NAME (ARM
+  // addresses backup policies as children of a vault). Fixed at
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef recovery_vault_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureRecoveryServicesVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.recovery_services_vault_name"
+  ];
+
+  // The policy's name, unique on the vault: 3-150 characters,
+  // starting with a letter; letters, digits, hyphens, underscores and
+  // '!' (the provider's own rule). Changing the name replaces the
+  // policy.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z][-_!a-zA-Z0-9]{2,149}$"
+  ];
+
+  // The policy generation (the wire values). V1 is the classic
+  // policy; V2 (an "enhanced" policy) adds Hourly schedules, zonally
+  // resilient instant restore, and longer instant-restore retention.
+  // Unspecified applies V1 (the provider's default). Fixed at
+  // creation.
+  optional string policy_type = 4 [
+    (dev.planton.shared.options.default) = "V1",
+    (buf.validate.field).string = {
+      in: [
+        "V1",
+        "V2"
+      ]
+    }
+  ];
+
+  // When backups run.
+  AzureBackupPolicyVmSchedule backup = 5 [(buf.validate.field).required = true];
+
+  // How many days instant-restore snapshots are kept alongside the
+  // VM (fast restores without vault round-trips): 1-30. On V1
+  // policies the cap is 5 (the provider's own contract). Unspecified
+  // applies the service default (2 for V1, 7 for V2).
+  optional int32 instant_restore_retention_days = 6 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 30
+  ];
+
+  // Names the resource group Azure creates instant-restore snapshot
+  // collections in (default: an AzureBackupRG_* group per region).
+  AzureBackupPolicyVmInstantRestoreResourceGroup instant_restore_resource_group = 7;
+
+  // Moves aged recovery points to the cheaper archive tier.
+  AzureBackupPolicyVmTieringPolicy tiering_policy = 8;
+
+  // The snapshot consistency class (the wire value).
+  // OnlyCrashConsistent trades application consistency for faster,
+  // lighter snapshots -- V2 policies only (the provider's own
+  // contract). Unspecified leaves the service default
+  // (application/file-system consistent when possible).
+  string consistency_type = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["OnlyCrashConsistent"]
+    }
+  ];
+
+  // The IANA/Windows timezone the schedule's time is interpreted in,
+  // e.g. "UTC" or "Pacific Standard Time". Unspecified applies UTC.
+  optional string timezone = 10 [(dev.planton.shared.options.default) = "UTC"];
+
+  // How long each daily/hourly backup is kept. REQUIRED for Hourly
+  // and Daily schedules; must be absent for Weekly schedules.
+  AzureBackupPolicyVmRetentionDaily retention_daily = 11;
+
+  // Keeps one backup per configured weekday for N weeks. REQUIRED for
+  // Weekly schedules; optional layering on Hourly/Daily schedules.
+  AzureBackupPolicyVmRetentionWeekly retention_weekly = 12;
+
+  // Keeps one backup per month (chosen by week-of-month days or by
+  // month days) for N months.
+  AzureBackupPolicyVmRetentionMonthly retention_monthly = 13;
+
+  // Keeps one backup per year (chosen months, then week-of-month days
+  // or month days) for N years.
+  AzureBackupPolicyVmRetentionYearly retention_yearly = 14;
+
+  // The provider's CustomizeDiff contracts, front-loaded so the error
+  // lands in seconds instead of at plan/apply time.
+  option (buf.validate.message).cel = {
+    id: "bpv_daily_retention_for_hourly_daily"
+    message: "retention_daily is required when backup.frequency is Hourly or Daily"
+    expression: "(this.backup.frequency != 'Hourly' && this.backup.frequency != 'Daily') || has(this.retention_daily)"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpv_weekly_retention_for_weekly"
+    message: "a Weekly schedule requires retention_weekly and must not set retention_daily (weekly backups have no daily layer)"
+    expression: "this.backup.frequency != 'Weekly' || (has(this.retention_weekly) && !has(this.retention_daily))"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpv_hourly_requires_v2"
+    message: "an Hourly schedule requires policy_type V2 (enhanced policy) -- V1 policies back up at most once a day"
+    expression: "this.backup.frequency != 'Hourly' || (has(this.policy_type) && this.policy_type == 'V2')"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpv_crash_consistent_requires_v2"
+    message: "consistency_type OnlyCrashConsistent requires policy_type V2 (the provider's own contract)"
+    expression: "this.consistency_type != 'OnlyCrashConsistent' || (has(this.policy_type) && this.policy_type == 'V2')"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpv_instant_restore_v1_cap"
+    message: "instant_restore_retention_days is capped at 5 on V1 policies -- use policy_type V2 for up to 30 days"
+    expression: "!has(this.instant_restore_retention_days) || (has(this.policy_type) && this.policy_type == 'V2') || this.instant_restore_retention_days <= 5"
+  };
+}
+
+// When backups run.
+message AzureBackupPolicyVmSchedule {
+  // How often backups run (the wire values). Hourly needs a V2
+  // policy; Weekly requires weekdays.
+  string frequency = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Hourly",
+        "Daily",
+        "Weekly"
+      ]
+    }
+  ];
+
+  // The time of day backups start, "HH:mm" on the hour or half past
+  // (e.g. "23:00", "02:30") -- the provider's own rule. For Hourly
+  // schedules this is the backup WINDOW's start time.
+  string time = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^([01][0-9]|[2][0-3]):([03][0])$"
+  ];
+
+  // For Weekly schedules ONLY: the days backups run (wire values,
+  // e.g. "Sunday", "Wednesday").
+  repeated string weekdays = 3 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ]
+  }];
+
+  // For Hourly schedules ONLY: hours between backups inside the
+  // window -- 4, 6, 8 or 12 (the provider's own set).
+  optional int32 hour_interval = 4 [(buf.validate.field).int32 = {
+    in: [
+      4,
+      6,
+      8,
+      12
+    ]
+  }];
+
+  // For Hourly schedules ONLY: the backup window's length in hours,
+  // 4-24; must be a multiple of hour_interval (the provider's own
+  // contract).
+  optional int32 hour_duration = 5 [
+    (buf.validate.field).int32.gte = 4,
+    (buf.validate.field).int32.lte = 24
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "bpv_schedule_weekdays_weekly_only"
+    message: "weekdays is required for a Weekly schedule and must be empty for Hourly and Daily schedules"
+    expression: "this.frequency == 'Weekly' ? this.weekdays.size() > 0 : this.weekdays.size() == 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpv_schedule_hourly_fields"
+    message: "hour_interval and hour_duration are required for an Hourly schedule and must be unset otherwise"
+    expression: "this.frequency == 'Hourly' ? (has(this.hour_interval) && has(this.hour_duration)) : (!has(this.hour_interval) && !has(this.hour_duration))"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpv_schedule_duration_multiple_of_interval"
+    message: "hour_duration must be a multiple of hour_interval (e.g. interval 4 allows durations 4, 8, 12, 16, 20, 24)"
+    expression: "!has(this.hour_interval) || !has(this.hour_duration) || this.hour_duration % this.hour_interval == 0"
+  };
+}
+
+// Names the resource group Azure creates instant-restore snapshot
+// collections in.
+message AzureBackupPolicyVmInstantRestoreResourceGroup {
+  // The name prefix of the per-region snapshot resource group.
+  string prefix = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // An optional suffix appended after the region segment.
+  string suffix = 2;
+}
+
+// Moves aged recovery points to the cheaper archive tier.
+message AzureBackupPolicyVmTieringPolicy {
+  // The archive rule for restore points.
+  AzureBackupPolicyVmArchivedRestorePoint archived_restore_point = 1 [(buf.validate.field).required = true];
+}
+
+// The archive rule for restore points.
+message AzureBackupPolicyVmArchivedRestorePoint {
+  // The archival mode (the wire values). TierRecommended lets Azure
+  // pick archivable points (cost-optimal); TierAfter archives every
+  // point after the configured age -- duration and duration_type then
+  // become required.
+  string mode = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "TierRecommended",
+        "TierAfter"
+      ]
+    }
+  ];
+
+  // For TierAfter: the age after which points archive. At least 3
+  // (the provider's own floor).
+  optional int32 duration = 2 [(buf.validate.field).int32.gte = 3];
+
+  // For TierAfter: the age's unit (the wire values).
+  string duration_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Days",
+        "Weeks",
+        "Months",
+        "Years"
+      ]
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "bpv_tier_after_needs_age"
+    message: "TierAfter requires duration and duration_type (the age after which restore points archive)"
+    expression: "this.mode != 'TierAfter' || (has(this.duration) && this.duration_type != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpv_tier_recommended_no_age"
+    message: "duration and duration_type only apply to TierAfter -- TierRecommended lets Azure pick the points"
+    expression: "this.mode != 'TierRecommended' || (!has(this.duration) && this.duration_type == '')"
+  };
+}
+
+// How long each daily/hourly backup is kept.
+message AzureBackupPolicyVmRetentionDaily {
+  // Days each backup is kept: 1, or 7-9999. Azure REJECTS 2-6 daily
+  // backups at create time (a service rule the provider surfaces only
+  // at apply -- front-loaded here).
+  int32 count = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 9999,
+    (buf.validate.field).cel = {
+      id: "bpv_retention_daily_count_floor"
+      message: "Azure no longer accepts 2-6 days of daily retention -- use 1, or 7 and above"
+      expression: "this == 1 || this >= 7"
+    }
+  ];
+}
+
+// Keeps one backup per configured weekday for N weeks.
+message AzureBackupPolicyVmRetentionWeekly {
+  // Weeks each kept backup is retained: 1-9999.
+  int32 count = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 9999
+  ];
+
+  // The weekdays whose backups are kept (wire values).
+  repeated string weekdays = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ]
+    }
+  ];
+}
+
+// Keeps one backup per month for N months. Pick the backup either by
+// WEEK-OF-MONTH (weeks + weekdays together, e.g. "First Sunday") or
+// by MONTH DAYS (days and/or include_last_days) -- the two forms are
+// mutually exclusive (the provider's own contract).
+message AzureBackupPolicyVmRetentionMonthly {
+  // Months each kept backup is retained: 1-9999.
+  int32 count = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 9999
+  ];
+
+  // Week-of-month form: which weeks (wire values First, Second,
+  // Third, Fourth, Last). Requires weekdays.
+  repeated string weeks = 2 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "First",
+      "Second",
+      "Third",
+      "Fourth",
+      "Last"
+    ]
+  }];
+
+  // Week-of-month form: which weekdays inside those weeks (wire
+  // values). Requires weeks.
+  repeated string weekdays = 3 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ]
+  }];
+
+  // Month-days form: which days of the month (1-31).
+  repeated int32 days = 4 [(buf.validate.field).repeated.items.int32 = {
+    gte: 1
+    lte: 31
+  }];
+
+  // Month-days form: whether the month's LAST day's backup is kept
+  // (months differ in length; this covers "the last day" exactly).
+  bool include_last_days = 5;
+
+  option (buf.validate.message).cel = {
+    id: "bpv_retention_monthly_one_form"
+    message: "pick ONE form: weeks+weekdays (week-of-month) or days/include_last_days (month days) -- they are mutually exclusive"
+    expression: "(this.weeks.size() == 0 && this.weekdays.size() == 0) || (this.days.size() == 0 && !this.include_last_days)"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpv_retention_monthly_at_least_one"
+    message: "configure which backup each month keeps: weeks+weekdays, days, or include_last_days"
+    expression: "this.weeks.size() > 0 || this.weekdays.size() > 0 || this.days.size() > 0 || this.include_last_days"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpv_retention_monthly_weeks_weekdays_paired"
+    message: "weeks and weekdays go together -- 'First Sunday' needs both the week and the weekday"
+    expression: "(this.weeks.size() > 0) == (this.weekdays.size() > 0)"
+  };
+}
+
+// Keeps one backup per year for N years, in the configured months.
+// Pick the backup either by WEEK-OF-MONTH (weeks + weekdays) or by
+// MONTH DAYS (days and/or include_last_days) -- mutually exclusive
+// (the provider's own contract).
+message AzureBackupPolicyVmRetentionYearly {
+  // Years each kept backup is retained: 1-9999.
+  int32 count = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 9999
+  ];
+
+  // The months whose backup is kept (wire values, e.g. "January").
+  repeated string months = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ]
+    }
+  ];
+
+  // Week-of-month form: which weeks (wire values). Requires weekdays.
+  repeated string weeks = 3 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "First",
+      "Second",
+      "Third",
+      "Fourth",
+      "Last"
+    ]
+  }];
+
+  // Week-of-month form: which weekdays inside those weeks (wire
+  // values). Requires weeks.
+  repeated string weekdays = 4 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ]
+  }];
+
+  // Month-days form: which days of the month (1-31).
+  repeated int32 days = 5 [(buf.validate.field).repeated.items.int32 = {
+    gte: 1
+    lte: 31
+  }];
+
+  // Month-days form: whether the month's LAST day's backup is kept.
+  bool include_last_days = 6;
+
+  option (buf.validate.message).cel = {
+    id: "bpv_retention_yearly_one_form"
+    message: "pick ONE form: weeks+weekdays (week-of-month) or days/include_last_days (month days) -- they are mutually exclusive"
+    expression: "(this.weeks.size() == 0 && this.weekdays.size() == 0) || (this.days.size() == 0 && !this.include_last_days)"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpv_retention_yearly_at_least_one"
+    message: "configure which backup each year keeps: weeks+weekdays, days, or include_last_days"
+    expression: "this.weeks.size() > 0 || this.weekdays.size() > 0 || this.days.size() > 0 || this.include_last_days"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpv_retention_yearly_weeks_weekdays_paired"
+    message: "weeks and weekdays go together -- 'First Sunday' needs both the week and the weekday"
+    expression: "(this.weeks.size() > 0) == (this.weekdays.size() > 0)"
+  };
+}

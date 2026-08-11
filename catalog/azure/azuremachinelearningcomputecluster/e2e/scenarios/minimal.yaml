@@ -1,0 +1,41 @@
+# Minimal AzureMachineLearningComputeCluster scenario: a scale-to-zero
+# dedicated cluster with a system identity on the fixture workspace.
+# min_node_count 0 means NO node ever provisions in this lane -- the
+# cluster object itself is what the lane proves (create, read-back,
+# identity, destroy), at zero VM cost. The workspace fixture rides the
+# registry prerequisite chain.
+#
+# The cluster's region matches the fixture workspace's region (eastus):
+# same-region is the common shape, and the cross-region ability is a
+# documented spec capability, not this lane's proof point.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningComputeCluster
+metadata:
+  name: planton-oss-e2e-azuremachinelearningcomputecluster-smoke
+  id: planton-oss-e2e-azuremachinelearningcomputecluster-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremachinelearningcomputecluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  workspaceId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-mlw
+  name: e2e-cpu-cluster
+  region: eastus
+  vmSize: STANDARD_DS2_V2
+  vmPriority: DEDICATED
+  scaleSettings:
+    minNodeCount: 0
+    maxNodeCount: 1
+    scaleDownNodesAfterIdleDuration: PT5M
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    e2e-suite: azure
+    purpose: smoke

@@ -502,7 +502,9 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureAiFoundry | `spec.containerRegistryId` | `status.outputs.container_registry_id` |
 | AzureAksCluster | `spec.bootstrapProfile.containerRegistryId` | `status.outputs.container_registry_id` |
+| AzureMachineLearningWorkspace | `spec.containerRegistryId` | `status.outputs.container_registry_id` |
 
 ## See Also
 

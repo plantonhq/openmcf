@@ -1,0 +1,23 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupContainerStorageAccount
+metadata:
+  name: register-appfiles-account
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "<your-resource-group>"
+      fieldPath: status.outputs.resource_group_name
+  recoveryVaultName:
+    valueFrom:
+      kind: AzureRecoveryServicesVault
+      name: "<your-recovery-services-vault>"
+      fieldPath: status.outputs.recovery_services_vault_name
+  # The storage account whose file shares will be protected -- ONE
+  # registration per account-and-vault pair; every share protection in
+  # the account rides this registration.
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: "<your-storage-account>"
+      fieldPath: status.outputs.storage_account_id

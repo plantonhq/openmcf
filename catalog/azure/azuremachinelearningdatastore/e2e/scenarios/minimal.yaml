@@ -1,0 +1,42 @@
+# Minimal AzureMachineLearningDatastore scenario: the blob variant on
+# the fixture container under workspace-identity auth -- no key or SAS
+# in the manifest. The container fixture is scenario-declared (only
+# the blob variant needs a container; the file-share variant would
+# need a share instead), and the workspace fixture rides the registry
+# prerequisite chain.
+#
+# The datastore registers in seconds. NOTE (honest boundary): the
+# provider creates datastores with service-side validation SKIPPED, so
+# the create proves registration, not data access -- the identity-mode
+# grant (Storage Blob Data Reader on the container) is a data-plane
+# concern jobs would surface, deliberately out of this lane's scope.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningDatastore
+metadata:
+  name: planton-oss-e2e-azuremachinelearningdatastore-smoke
+  id: planton-oss-e2e-azuremachinelearningdatastore-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremachinelearningdatastore
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureStorageContainer"
+  tags:
+    - planton-e2e
+spec:
+  workspaceId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-mlw
+  name: e2e_training_data
+  serviceDataIdentity: WORKSPACE_SYSTEM_ASSIGNED_IDENTITY
+  blobStorage:
+    storageContainerId:
+      valueFrom:
+        kind: AzureStorageContainer
+        name: planton-oss-e2e-azure-fixture-container
+        fieldPath: status.outputs.container_id
+  tags:
+    e2e-suite: azure
+    purpose: smoke

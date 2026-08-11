@@ -1,0 +1,32 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name (nested block arguments derive as
+# spec.<block>.<arg>: the identity block matches that way). Every
+# exclusion carries its reason: omission is a decision, never an
+# accident.
+
+resources:
+  azurerm_data_protection_backup_vault:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (an Azure
+      # region, a resource group), where the provider inherits ARM's
+      # terser property names.
+      - spec: spec.region
+        arg: location
+      - spec: spec.resource_group
+        arg: resource_group_name
+
+  azurerm_data_protection_backup_vault_customer_managed_key:
+    # Composed into the vault as the inline encryption block: the
+    # provider's sibling resource rewrites the vault's own security
+    # settings (one ARM object, one authoritative shape), and its
+    # delete is a documented no-op -- CMK can never be removed.
+    mappings:
+      - spec: spec.encryption.key_id
+        arg: key_vault_key_id
+    exclusions:
+      - arg: data_protection_backup_vault_id
+        reason: wired by the module to the vault it creates -- never user surface

@@ -1,0 +1,27 @@
+# Offline-plan test manifest. Exercises the deep seams: the typed hub
+# reference, a system-and-user-assigned identity with a primary
+# identity, the high-business-impact flag, and the descriptive
+# surface. There is deliberately NO resource group in the spec -- the
+# project deploys into its hub's group (the provider derives it).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureAiFoundryProject
+metadata:
+  name: test-ai-foundry-project
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  name: test-aif-project
+  aiServicesHubId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ai-foundry
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aifp-uai
+  primaryUserAssignedIdentity:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aifp-uai
+  highBusinessImpactEnabled: true
+  description: Offline-plan Foundry project exercising the deep seams
+  friendlyName: Test Foundry Project
+  tags:
+    cost-center: ai-platform

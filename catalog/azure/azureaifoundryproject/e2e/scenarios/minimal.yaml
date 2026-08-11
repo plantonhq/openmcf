@@ -1,0 +1,37 @@
+# Minimal AzureAiFoundryProject scenario: a system-identity project
+# inside the fixture hub (the registry prerequisite chain deploys
+# resource group + key vault + storage account + the hub itself). The
+# flagship proof is the CROSS-KIND wiring: the project's
+# aiServicesHubId resolves from the fixture hub's outputs, ARM returns
+# kind "Project", and the project lands in the HUB's resource group
+# (the spec carries no group by design).
+#
+# The project provisions in a few minutes and is free at rest. The
+# user-assigned identity arm is offline-proven only (tenant-scoped
+# identity values).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureAiFoundryProject
+metadata:
+  name: planton-oss-e2e-azureaifoundryproject-smoke
+  id: planton-oss-e2e-azureaifoundryproject-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureaifoundryproject
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  name: planton-oss-e2e-aifp-smoke
+  aiServicesHubId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-aif
+  identity:
+    type: SYSTEM_ASSIGNED
+  friendlyName: E2E Smoke Foundry Project
+  tags:
+    e2e-suite: azure
+    purpose: smoke

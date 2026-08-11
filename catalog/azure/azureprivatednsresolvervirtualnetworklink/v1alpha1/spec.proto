@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureprivatednsresolvervirtualnetworklink.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzurePrivateDnsResolverVirtualNetworkLinkSpec** defines the
+// attachment that makes a DNS forwarding ruleset
+// (AzurePrivateDnsResolverForwardingRuleset) take effect in one
+// virtual network: once linked, resources in that network resolve the
+// ruleset's domains through the resolver's outbound endpoints. A
+// ruleset without links steers nobody; each link adds one network to
+// its audience.
+//
+// The link is a first-class resource because it is many-per-ruleset
+// with its own lifecycle: hub-and-spoke topologies link one ruleset
+// (owned with the hub's resolver) to hundreds of spoke networks, and
+// spokes join and leave without touching the ruleset or each other --
+// linked networks do not even need to be peered with the resolver's
+// network, or live in the same subscription. Azure allows up to 500
+// links per ruleset, all in the ruleset's region (enforced by Azure,
+// not mirrored as validation because Microsoft adjusts limits over
+// time). Compose it with the ruleset and AzureVirtualNetwork; one
+// link resource per ruleset-network pair.
+//
+// Links are free at rest. Everything except metadata is FIXED AT
+// CREATION.
+message AzurePrivateDnsResolverVirtualNetworkLinkSpec {
+  // The link's name -- its ARM resource name under the parent
+  // ruleset, unique per ruleset. Name it after the network it
+  // attaches ("hub-vnet", "spoke-payments"). Changing the name
+  // replaces the link (a brief forwarding gap for the affected
+  // network, nothing else).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The DNS forwarding ruleset this link attaches to. Takes the
+  // ruleset's full ARM resource ID; defaults to referencing an
+  // AzurePrivateDnsResolverForwardingRuleset's
+  // dns_forwarding_ruleset_id output in composed environments. The
+  // link is a child resource of the ruleset -- its name and resource
+  // group are derived from this ID, so they can never contradict it.
+  // Changing the ruleset replaces the link.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef dns_forwarding_ruleset_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzurePrivateDnsResolverForwardingRuleset,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.dns_forwarding_ruleset_id"
+  ];
+
+  // The virtual network the ruleset becomes active in. Takes the
+  // network's full ARM resource ID; defaults to referencing an
+  // AzureVirtualNetwork's virtual_network_id output in composed
+  // environments. The network must be in the ruleset's region; it
+  // does NOT need to be peered with the resolver's network (cross-
+  // subscription links are allowed). Changing the network replaces
+  // the link.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_id"
+  ];
+
+  // Free-form key/value annotations stored on the link itself (ARM's
+  // metadata map -- links carry no tags). Useful for recording the
+  // linked network's owner or environment. The only surface updatable
+  // in place.
+  map<string, string> metadata = 4;
+}

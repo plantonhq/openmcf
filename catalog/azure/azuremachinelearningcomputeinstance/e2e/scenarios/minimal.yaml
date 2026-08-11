@@ -1,0 +1,39 @@
+# Minimal AzureMachineLearningComputeInstance scenario: one small
+# workstation VM with a system identity on the fixture workspace. The
+# workspace fixture rides the registry prerequisite chain.
+#
+# The cloud-side NAME carries ${E2E_RUN_ID} (metadata names stay
+# stable -- prerequisite FK resolution keys off them): instance names
+# are reserved REGION-WIDE per subscription and briefly after
+# deletion, so a fixed name would collide with the run's other engine
+# and with recent runs. Expanded shape: ci-<8-hex>-<p|t> (13 chars,
+# within the provider's 4-25 name budget).
+#
+# The personal/assign-to-user arm is deliberately absent: honest
+# values embed a real user's tenant and object IDs, which a committed
+# manifest cannot carry (the tenant-specificity precedent).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningComputeInstance
+metadata:
+  name: planton-oss-e2e-azuremachinelearningcomputeinstance-smoke
+  id: planton-oss-e2e-azuremachinelearningcomputeinstance-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremachinelearningcomputeinstance
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  workspaceId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-mlw
+  name: ci-${E2E_RUN_ID}
+  virtualMachineSize: STANDARD_DS2_V2
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    e2e-suite: azure
+    purpose: smoke

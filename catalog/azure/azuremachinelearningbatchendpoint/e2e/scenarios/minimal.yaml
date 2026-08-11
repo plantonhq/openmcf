@@ -1,0 +1,40 @@
+# Minimal AzureMachineLearningBatchEndpoint scenario: an Entra-auth
+# endpoint with a system identity on the fixture workspace. The
+# endpoint OBJECT is what the lane proves (create, scoring/swagger URI
+# read-back, identity, destroy) -- a batch endpoint is a routing
+# object with no compute behind it, so nothing bills at any point in
+# this lane. auth_mode is deliberately unset: the module's AADToken
+# default (the only mode the batch service accepts) is itself a proof
+# point. The workspace fixture rides the registry prerequisite chain.
+#
+# The cloud-side NAME carries ${E2E_RUN_ID} (metadata names stay
+# stable -- prerequisite FK resolution keys off them): batch endpoint
+# names share the online sibling's paths-level name grammar and are
+# expected to reserve REGION-WIDE the same way (unproven -- the lane
+# watches it), so a fixed name would collide with the run's other
+# engine and with recent runs.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningBatchEndpoint
+metadata:
+  name: planton-oss-e2e-azuremachinelearningbatchendpoint-smoke
+  id: planton-oss-e2e-azuremachinelearningbatchendpoint-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremachinelearningbatchendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  workspaceId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-mlw
+  name: be-${E2E_RUN_ID}
+  region: eastus
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    e2e-suite: azure
+    purpose: smoke

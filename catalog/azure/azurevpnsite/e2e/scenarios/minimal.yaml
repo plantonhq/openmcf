@@ -1,0 +1,50 @@
+# Minimal AzureVpnSite scenario: a two-link branch description on the
+# fixture WAN -- the flagship proof of the name-keyed link_ids output
+# (ARM assigns each link's child ID; the output republishes them by
+# name, which is what connection tunnels pin to) at zero cost (the
+# site is free and deploys nothing at the branch).
+#
+# The endpoints are documentation addresses (TEST-NET-3 / TEST-NET-2 --
+# never routable): the site is a pure ARM description, so no real
+# branch is needed for its own lifecycle.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVpnSite
+metadata:
+  name: planton-oss-e2e-azurevpnsite-smoke
+  id: planton-oss-e2e-azurevpnsite-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevpnsite
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-vpnsite-smoke
+  virtualWanId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vwan
+  addressCidrs:
+    - "192.168.88.0/24"
+  deviceVendor: Cisco
+  deviceModel: ISR4331
+  links:
+    - name: primary-isp
+      providerName: ExampleCarrier
+      speedInMbps: 200
+      ipAddress: "203.0.113.20"
+    - name: backup-isp
+      speedInMbps: 100
+      ipAddress: "198.51.100.20"
+      bgp:
+        asn: 65010
+        peeringAddress: "169.254.21.2"
+  tags:
+    e2e-suite: azure
+    purpose: smoke

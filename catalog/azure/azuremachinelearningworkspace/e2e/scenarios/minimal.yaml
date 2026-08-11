@@ -1,0 +1,71 @@
+# Minimal AzureMachineLearningWorkspace scenario: a Basic workspace
+# with a system identity on the fixture companion chain (storage
+# account + key vault + application insights), plus the managed
+# network at approved-outbound isolation with one rule of EACH type --
+# the flagship proof of the three composed outbound-rule children
+# surfacing in the name-keyed *_outbound_rule_ids outputs (they share
+# ONE ARM collection). The private-endpoint rule targets the fixture
+# key vault, which is already in the prerequisite chain.
+#
+# The workspace object provisions in two to five minutes;
+# provisionOnCreationEnabled makes the managed VNet materialize at
+# deploy time (several more minutes, incl. the private endpoint) so
+# failures land in the create, not on a first job. The Basic tier is
+# free at rest -- the fixture storage/insights/log-analytics cost
+# pennies. Deletion is a SOFT delete: the workspace ghost holds its
+# name until purged; the orphan sweep's recycle-bin check is
+# `az ml workspace list --archived`.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningWorkspace
+metadata:
+  name: planton-oss-e2e-azuremachinelearningworkspace-smoke
+  id: planton-oss-e2e-azuremachinelearningworkspace-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremachinelearningworkspace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-mlw-smoke
+  applicationInsightsId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-appi
+  keyVaultId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-kv
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sa
+  identity:
+    type: SYSTEM_ASSIGNED
+  friendlyName: E2E Smoke Workspace
+  managedNetwork:
+    isolationMode: ALLOW_ONLY_APPROVED_OUTBOUND
+    provisionOnCreationEnabled: true
+  fqdnOutboundRules:
+    - name: e2e-allow-pypi
+      destinationFqdn: pypi.org
+  privateEndpointOutboundRules:
+    - name: e2e-to-vault
+      serviceResourceId:
+        valueFrom:
+          kind: AzureKeyVault
+          name: planton-oss-e2e-azure-fixture-kv
+          fieldPath: status.outputs.key_vault_id
+      subResourceTarget: vault
+  serviceTagOutboundRules:
+    - name: e2e-allow-storage
+      serviceTag: Storage
+      protocol: TCP
+      portRanges: "443"
+  tags:
+    e2e-suite: azure
+    purpose: smoke

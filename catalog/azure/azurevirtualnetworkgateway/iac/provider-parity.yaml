@@ -1,0 +1,65 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_virtual_network_gateway:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (an Azure
+      # region, a resource group), where the provider inherits ARM's
+      # terser property names.
+      - spec: spec.region
+        arg: location
+      - spec: spec.resource_group
+        arg: resource_group_name
+      # Repeated-message fields are plural per proto style; provider
+      # blocks are singular. Exact matching resumes below each subtree.
+      - spec: spec.ip_configurations
+        arg: ip_configuration
+      - spec: spec.policy_groups
+        arg: policy_group
+      - spec: spec.policy_groups.policy_members
+        arg: policy_group.policy_member
+      # The provider's one-field custom_route block flattened to the
+      # prefix list itself.
+      - spec: spec.custom_route_address_prefixes
+        arg: custom_route.address_prefixes
+      - spec: spec.vpn_client_configuration.address_spaces
+        arg: vpn_client_configuration.address_space
+      - spec: spec.vpn_client_configuration.root_certificates
+        arg: vpn_client_configuration.root_certificate
+      - spec: spec.vpn_client_configuration.revoked_certificates
+        arg: vpn_client_configuration.revoked_certificate
+      - spec: spec.vpn_client_configuration.radius_servers
+        arg: vpn_client_configuration.radius_server
+      # The provider's verbose block name shortened to the concept --
+      # per-policy-group client connection pools.
+      - spec: spec.vpn_client_configuration.client_connections
+        arg: vpn_client_configuration.virtual_network_gateway_client_connection
+      # Unit-suffix renames: the spec keeps the family-wide *_seconds /
+      # *_kilobytes shape (matching the P2S IPsec policy on the
+      # connection kind).
+      - spec: spec.vpn_client_configuration.ipsec_policy.sa_lifetime_seconds
+        arg: vpn_client_configuration.ipsec_policy.sa_lifetime_in_seconds
+      - spec: spec.vpn_client_configuration.ipsec_policy.sa_data_size_kilobytes
+        arg: vpn_client_configuration.ipsec_policy.sa_data_size_in_kilobytes
+
+  azurerm_virtual_network_gateway_nat_rule:
+    # Instantiated per spec.nat_rules entry (composed ARM children; ids
+    # surface in the name-keyed nat_rule_ids output).
+    specRoot: spec.nat_rules
+    mappings:
+      # Plural per proto style; the provider's blocks are singular.
+      - spec: spec.nat_rules.external_mappings
+        arg: external_mapping
+      - spec: spec.nat_rules.internal_mappings
+        arg: internal_mapping
+    exclusions:
+      - arg: resource_group_name
+        reason: wired by the module to the gateway's resource group -- never user surface
+      - arg: virtual_network_gateway_id
+        reason: wired by the module to the gateway it creates -- never user surface

@@ -1,0 +1,31 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVpnServerConfiguration
+metadata:
+  name: test-vpn-server-configuration
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: remote-workforce
+  vpnAuthenticationTypes:
+    - Certificate
+  clientRootCertificates:
+    # A self-signed test root (public data only -- base64 X.509 body).
+    # Generated with:
+    #   openssl req -x509 -newkey rsa:2048 -keyout root.key -out root.pem \
+    #     -days 3650 -nodes -subj "/CN=planton-oss-e2e-p2s-root"
+    #   openssl x509 -in root.pem -outform der | base64
+    - name: corp-root
+      publicCertData: MIIDJzCCAg+gAwIBAgIUI4B0y9OsZnVyco5f2m1SK8vOOKIwDQYJKoZIhvcNAQELBQAwIzEhMB8GA1UEAwwYcGxhbnRvbi1vc3MtZTJlLXAycy1yb290MB4XDTI2MDgwOTIwMjAyM1oXDTM2MDgwNjIwMjAyM1owIzEhMB8GA1UEAwwYcGxhbnRvbi1vc3MtZTJlLXAycy1yb290MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAz0JLtVVB3WlaPydW1NBBRWamIFuvnNKQkSJGe2WzZ+yh8pL+oNaw9J2EyTpcrl0Wsvda7fLrqcWhE1Hw3KxjStsCh+fI37TBpV77oSTJjuwszN1EJRraU2MJuo1BafGBdfCRCufuuseJ8AQppLD/qgH3nrMQ2BnwrO+jaWxnkYdDl91vumDZPiWGctBcmTJp53ZzTICW39wCV1yq1/htK2wvBvvIf5nDQPHhTLfy8d2P5OksiTZWSY+HV3uUXTtrzr1QSLSP9A7OzuoBAvdBF5Fa3PtsZw27WmDDl2iOLM8cEQn3B4B4VWdQ9LCXkWE8MwMQI13yR2QNY+kt90rVywIDAQABo1MwUTAdBgNVHQ4EFgQU8ISSNCctYDUDNyo6vROk8V/LvfowHwYDVR0jBBgwFoAU8ISSNCctYDUDNyo6vROk8V/LvfowDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAK/pl9/Izolm4fGHI/xFvMJ6EPzFiAZ3kyZ0sg2mQZ1woF2Mv8IWjb+vRISVNyt3jPYpXGGNlmpZC1ZOjaK+BOlXsiw35L5Cuegkv+y/dwsH9EQe7lm1vOW2JNrpCITqN6dGm78+YJiLAD7RF29BxhNgh2yNx0RA+3eDduTTL6HlSUf2E7NeMNwfSRvUSUgbbynE+I6p3gq9Kit2hkHXn1uhXTRU93Qrk3GP9xbKr1pn2nOhdR5ucuspNuVS5oY+d0JIv5i+vLkON6gFXKSn5pbcv4j2Q8JdAfJfT6uTcBgIGv8ph32bte18K1MYiCrGpKHsRwOhiidCVFz8SNzpaGg==
+  vpnProtocols:
+    - OpenVPN
+  policyGroups:
+    - name: engineering
+      isDefault: true
+      priority: 0
+      policies:
+        - name: engineering-cn
+          type: CertificateGroupId
+          value: engineering
+  tags:
+    purpose: hack-test

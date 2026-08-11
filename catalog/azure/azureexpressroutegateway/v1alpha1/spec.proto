@@ -1,0 +1,215 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureexpressroutegateway.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureExpressRouteGatewaySpec** defines an ExpressRoute Gateway --
+// the on-ramp that lets ExpressRoute circuits reach a Virtual WAN hub.
+// This is the Virtual WAN counterpart of the classic VNet-resident
+// ExpressRoute gateway: it lives IN a hub (virtual_hub_id is required
+// by ARM and fixed at creation), and each of its connections joins one
+// ExpressRoute circuit PEERING to the hub, so branches and spokes across
+// the WAN reach the private circuit.
+//
+// **Cost and time**: the gateway bills per scale unit (~$0.42/hr per
+// unit) from creation, and ARM takes roughly 30 minutes to provision
+// one. Each scale unit adds ~2 Gbps of circuit-to-WAN throughput.
+//
+// **Connections need a PROVISIONED circuit**: an ExpressRoute
+// connection references a circuit peering, and ARM accepts it only when
+// the circuit's provider side is provisioned (a live carrier or an
+// ExpressRoute Direct port behind it).
+//
+// **ForceNew fields**: `name`, `region`, `resource_group`, and
+// `virtual_hub_id` are fixed at creation -- changing any of them
+// replaces the gateway.
+message AzureExpressRouteGatewaySpec {
+  // The Azure region the gateway lives in -- must match its hub's
+  // region. Changing the region replaces the gateway.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the gateway is created in. Can be a
+  // literal resource-group name or a reference to an
+  // AzureResourceGroup's name output. Changing it replaces the gateway.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The gateway's name, unique within the resource group. Changing the
+  // name replaces the gateway.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Virtual WAN hub the gateway is deployed into -- references an
+  // AzureVirtualHub's ARM ID. A hub holds at most one ExpressRoute
+  // gateway. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_hub_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_hub_id"
+  ];
+
+  // The gateway's MINIMUM scale units (1-10). Each unit carries
+  // ~2 Gbps of circuit-to-WAN throughput and bills hourly; ARM
+  // auto-scales above this floor under load. Updatable in place.
+  int32 scale_units = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 10
+  ];
+
+  // Allow traffic from networks OUTSIDE the Virtual WAN (classic
+  // VNets connected to the same circuit) to flow through this gateway.
+  // Off by default (ARM's default).
+  bool allow_non_virtual_wan_traffic = 6;
+
+  // The gateway's connections -- each joins one ExpressRoute circuit
+  // PEERING to the hub. Each connection's ARM ID surfaces in the
+  // connection_ids output map under its name.
+  repeated AzureExpressRouteGatewayConnection connections = 7;
+
+  // Free-form tags applied to the gateway, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins.
+  map<string, string> tags = 8;
+
+  // Connection names key the connection_ids output map -- duplicates
+  // would silently overwrite each other's IDs.
+  option (buf.validate.message).cel = {
+    id: "connection_names_unique"
+    message: "Connection names must be unique on the gateway"
+    expression: "this.connections.all(c, this.connections.filter(o, o.name == c.name).size() == 1)"
+  };
+}
+
+// One connection joining an ExpressRoute circuit peering to the hub.
+message AzureExpressRouteGatewayConnection {
+  // The connection's name, unique on the gateway: 1-80 characters,
+  // starting with a letter or number, containing only letters, numbers,
+  // underscores, periods, and hyphens, and ending in a letter, number,
+  // or underscore (ARM's rule). The ID's lookup name in the
+  // connection_ids output map.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9a-zA-Z]([0-9a-zA-Z_.-]{0,78}[0-9a-zA-Z_])?$"
+  ];
+
+  // The circuit's PRIVATE PEERING being connected -- references an
+  // AzureExpressRouteCircuitPeering's ARM ID. ARM accepts the
+  // connection only when the circuit's provider side is provisioned.
+  // Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef express_route_circuit_peering_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureExpressRouteCircuitPeering,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.express_route_circuit_peering_id"
+  ];
+
+  // The authorization key (a UUID) for connecting to a circuit in
+  // ANOTHER subscription -- redeem one generated by the circuit owner's
+  // authorization. Leave empty when the circuit is in this
+  // subscription.
+  string authorization_key = 3 [
+    (dev.planton.shared.options.sensitive) = true,
+    (buf.validate.field).cel = {
+      id: "authorization_key_is_uuid"
+      message: "The authorization key is the UUID generated by the circuit's authorization -- copy it exactly (8-4-4-4-12 hex)"
+      expression: "this == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+    }
+  ];
+
+  // Enable "internet security": the hub advertises a default route
+  // (0.0.0.0/0) over this connection toward the circuit. Off by
+  // default (ARM's default).
+  bool internet_security_enabled = 4;
+
+  // Bypass the gateway for on-premises-to-Private-Link traffic
+  // (FastPath). Off by default (ARM's default); requires a circuit SKU
+  // that supports FastPath.
+  bool express_route_gateway_bypass_enabled = 5;
+
+  // The connection's routing configuration. Leave unset for ARM's
+  // default behavior: associate with and propagate to the hub's
+  // built-in default route table.
+  AzureExpressRouteGatewayConnectionRouting routing = 6;
+
+  // The connection's routing weight (0-32000): when the same prefix is
+  // reachable over multiple connections, higher weight wins.
+  // Unspecified applies 0 (ARM's default).
+  int32 routing_weight = 7 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 32000
+  ];
+}
+
+// The routing configuration of an ExpressRoute connection -- how the
+// circuit's routes enter the hub and which hub routes it learns.
+message AzureExpressRouteGatewayConnectionRouting {
+  // The ONE hub route table this connection's traffic is routed by --
+  // references the hub's default table (the hub's
+  // default_route_table_id output, the default reference) or a custom
+  // table via the hub's name-keyed map output, e.g. valueFrom fieldPath
+  // "status.outputs.route_table_ids.on-prem".
+  dev.planton.shared.foreignkey.v1.StringValueOrRef associated_route_table_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.default_route_table_id"
+  ];
+
+  // A route map applied to routes ARRIVING from the circuit --
+  // references the hub's name-keyed route_map_ids output, e.g.
+  // valueFrom fieldPath "status.outputs.route_map_ids.strip-communities".
+  dev.planton.shared.foreignkey.v1.StringValueOrRef inbound_route_map_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.route_map_ids"
+  ];
+
+  // A route map applied to routes ADVERTISED to the circuit -- same
+  // referencing shape as inbound_route_map_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef outbound_route_map_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.route_map_ids"
+  ];
+
+  // The hub route tables this connection's routes are PROPAGATED to.
+  // Unset propagates to the hub's default table.
+  AzureExpressRouteGatewayConnectionPropagatedRouteTable propagated_route_table = 4;
+
+  // Mirrors ARM's contract on a configured routing block, so the error
+  // lands in seconds rather than at deploy.
+  option (buf.validate.message).cel = {
+    id: "routing_configures_something"
+    message: "Give the routing block something to do: an associated route table or a propagated_route_table -- or omit routing entirely for ARM's defaults"
+    expression: "has(this.associated_route_table_id) || has(this.propagated_route_table)"
+  };
+}
+
+// The hub route tables an ExpressRoute connection propagates its routes
+// to. Give it labels, explicit table references, or both.
+message AzureExpressRouteGatewayConnectionPropagatedRouteTable {
+  // Propagate to every hub route table carrying these labels.
+  repeated string labels = 1;
+
+  // Propagate to these specific hub route tables -- reference the hub's
+  // default_route_table_id output (the default reference) or its
+  // name-keyed route_table_ids map, e.g. valueFrom fieldPath
+  // "status.outputs.route_table_ids.on-prem".
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef route_table_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.default_route_table_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "propagation_targets_something"
+    message: "Give propagation a target: labels, route_table_ids, or both"
+    expression: "this.labels.size() > 0 || this.route_table_ids.size() > 0"
+  };
+}

@@ -142,9 +142,16 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureAiFoundry | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureAiFoundry | `spec.primaryUserAssignedIdentity` | `status.outputs.identity_id` |
+| AzureAiFoundry | `spec.encryption.userAssignedIdentityId` | `status.outputs.identity_id` |
+| AzureAiFoundryProject | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureAiFoundryProject | `spec.primaryUserAssignedIdentity` | `status.outputs.identity_id` |
 | AzureAksCluster | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureAksCluster | `spec.kubeletIdentity.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureApplicationGateway | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureCognitiveAccount | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureCognitiveAccountProject | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureContainerApp | `spec.customScaleRules[].identityId` | `status.outputs.identity_id` |
 | AzureContainerApp | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureContainerAppEnvironment | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
@@ -156,10 +163,12 @@ Fields on other kinds that can point at this resource:
 | AzureCosmosdbAccount | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureCosmosdbAccount | `spec.defaultIdentity.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureCosmosdbSqlRoleAssignment | `spec.principalId` | `status.outputs.principal_id` |
+| AzureDataProtectionBackupVault | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureDiskEncryptionSet | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureEventHub | `spec.captureDescription.destination.storageAuthenticationId` | `status.outputs.identity_id` |
 | AzureEventHubNamespace | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureEventHubNamespaceCustomerManagedKey | `spec.userAssignedIdentityId` | `status.outputs.identity_id` |
+| AzureExpressRoutePort | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureFederatedIdentityCredential | `spec.userAssignedIdentity` | `status.outputs.identity_id` |
 | AzureFirewallPolicy | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureFrontDoorProfile | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
@@ -169,6 +178,13 @@ Fields on other kinds that can point at this resource:
 | AzureLinuxWebApp | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureLinuxWebApp | `spec.keyVaultReferenceIdentityId` | `status.outputs.identity_id` |
 | AzureLogAnalyticsWorkspace | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
+| AzureMachineLearningBatchEndpoint | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureMachineLearningComputeCluster | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureMachineLearningComputeInstance | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureMachineLearningOnlineEndpoint | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureMachineLearningWorkspace | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureMachineLearningWorkspace | `spec.primaryUserAssignedIdentity` | `status.outputs.identity_id` |
+| AzureMachineLearningWorkspace | `spec.encryption.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureManagedRedis | `spec.customerManagedKey.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureManagedRedis | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureManagedRedisAccessPolicyAssignment | `spec.objectId` | `status.outputs.principal_id` |
@@ -186,9 +202,12 @@ Fields on other kinds that can point at this resource:
 | AzurePostgresqlFlexibleServer | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzurePostgresqlFlexibleServer | `spec.customerManagedKey.primaryUserAssignedIdentityId` | `status.outputs.identity_id` |
 | AzurePostgresqlFlexibleServer | `spec.customerManagedKey.geoBackupUserAssignedIdentityId` | `status.outputs.identity_id` |
+| AzureRecoveryServicesVault | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureRecoveryServicesVault | `spec.encryption.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureRedisCache | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureRedisCacheAccessPolicyAssignment | `spec.objectId` | `status.outputs.principal_id` |
 | AzureRoleAssignment | `spec.principalId` | `status.outputs.principal_id` |
+| AzureSearchService | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureServiceBusNamespace | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureServiceBusNamespace | `spec.customerManagedKey.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureStorageAccount | `spec.identity.identityIds` | `status.outputs.identity_id` |

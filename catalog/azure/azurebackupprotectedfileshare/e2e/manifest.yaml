@@ -1,0 +1,21 @@
+# Offline-plan test manifest. The protected item is five references --
+# the seam worth proving offline is the wire map itself (all five
+# resolve to plain strings) and the provider's Inquire-then-protect
+# addressing.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupProtectedFileShare
+metadata:
+  name: test-backup-protected-file-share
+  org: test-org
+  env: dev
+spec:
+  resourceGroup:
+    value: test-rg
+  recoveryVaultName:
+    value: test-backup-vault
+  sourceStorageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/data-rg/providers/Microsoft.Storage/storageAccounts/appfiles
+  sourceFileShareName:
+    value: team-share
+  backupPolicyId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.RecoveryServices/vaults/test-backup-vault/backupPolicies/daily-share-policy

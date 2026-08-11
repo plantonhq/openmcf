@@ -1,0 +1,41 @@
+# Offline-plan test manifest. Exercises the deep seams: an HOURLY
+# schedule (the window dials -- interval, start, duration), the
+# vault-standard tier with its local snapshot retention (strictly
+# below the daily count), and all four retention layers -- monthly in
+# the month-days form and yearly in the week-of-month form, so both
+# exclusive grammars render.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupPolicyFileShare
+metadata:
+  name: test-backup-policy-file-share
+  org: test-org
+  env: dev
+spec:
+  resourceGroup:
+    value: test-rg
+  recoveryVaultName:
+    value: test-backup-vault
+  name: hourly-vault-standard-policy
+  backup:
+    frequency: Hourly
+    hourly:
+      interval: 4
+      startTime: "06:00"
+      windowDuration: 12
+  backupTier: vault-standard
+  snapshotRetentionInDays: 5
+  timezone: UTC
+  retentionDaily:
+    count: 30
+  retentionWeekly:
+    count: 12
+    weekdays: [Sunday]
+  retentionMonthly:
+    count: 12
+    days: [1, 15]
+    includeLastDays: true
+  retentionYearly:
+    count: 10
+    months: [January]
+    weeks: [First]
+    weekdays: [Sunday]

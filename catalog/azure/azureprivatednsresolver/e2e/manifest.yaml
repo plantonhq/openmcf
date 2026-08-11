@@ -1,0 +1,31 @@
+# Offline-plan test manifest. Exercises the full surface: the resolver
+# on its network, one STATIC inbound endpoint (pinned address -- the
+# allocation contract's non-default arm), one outbound endpoint, and
+# user tags merged over the derived ones. (The dynamic-inbound default
+# arm is exercised by the live scenario, whose endpoint leaves the
+# address to Azure.)
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateDnsResolver
+metadata:
+  name: test-private-dns-resolver
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  resourceGroup:
+    value: platform-rg
+  name: test-dns-resolver
+  virtualNetworkId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Network/virtualNetworks/platform-vnet
+  inboundEndpoints:
+    - name: inbound
+      subnetId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Network/virtualNetworks/platform-vnet/subnets/dns-inbound
+      privateIpAllocationMethod: STATIC
+      privateIpAddress: "10.0.4.4"
+  outboundEndpoints:
+    - name: outbound
+      subnetId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Network/virtualNetworks/platform-vnet/subnets/dns-outbound
+  tags:
+    cost-center: platform

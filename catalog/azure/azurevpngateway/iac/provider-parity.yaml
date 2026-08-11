@@ -1,0 +1,38 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_vpn_gateway:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (an Azure
+      # region, a resource group), where the provider inherits ARM's
+      # terser property names.
+      - spec: spec.region
+        arg: location
+      - spec: spec.resource_group
+        arg: resource_group_name
+
+  azurerm_vpn_gateway_nat_rule:
+    # Instantiated per spec.nat_rules entry (the gateway's composed
+    # translation children, keyed by name into the nat_rule_ids output).
+    specRoot: spec.nat_rules
+    mappings:
+      # The spec pluralizes repeated fields; the provider names blocks
+      # in the singular.
+      - spec: spec.nat_rules.external_mappings
+        arg: external_mapping
+      - spec: spec.nat_rules.internal_mappings
+        arg: internal_mapping
+      # The provider's *_id name is misleading -- the value is an
+      # instance selector ("Instance0"/"Instance1"), which the spec
+      # models as an enum.
+      - spec: spec.nat_rules.ip_configuration
+        arg: ip_configuration_id
+    exclusions:
+      - arg: vpn_gateway_id
+        reason: wired by the module to the gateway it creates -- never user surface

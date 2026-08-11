@@ -1,0 +1,39 @@
+# Minimal AzureVirtualHubConnection scenario: the fixture VNet attached
+# to the fixture hub, with a routing block that propagates to the
+# built-in "default" label -- the flagship proof of the attachment AND
+# the routing-block wire (ARM's at-least-one-of contract satisfied by
+# propagation alone).
+#
+# ADDRESS SPACES: the fixture VNet is 10.240.0.0/16 and the fixture hub
+# is 10.250.0.0/23 -- disjoint by design; ARM validates the overlap at
+# attach time.
+#
+# TIME: the connection provisions in minutes, but its prerequisite
+# chain pays a full fixture-hub cycle (15-30 minute create, 10-15
+# minute delete) inside the lane.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualHubConnection
+metadata:
+  name: planton-oss-e2e-azurevirtualhubconnection-smoke
+  id: planton-oss-e2e-azurevirtualhubconnection-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevirtualhubconnection
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  name: planton-oss-e2e-vhubc-smoke
+  virtualHubId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vhub
+  remoteVirtualNetworkId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vnet
+  routing:
+    propagatedRouteTable:
+      labels:
+        - default

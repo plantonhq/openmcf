@@ -397,6 +397,91 @@ func TestBuildAccounting_MissingModule(t *testing.T) {
 	}
 }
 
+// TestBuildAccounting_ExternalResources proves the externally-specified
+// judgment end to end: an external-dispositioned resource carries no
+// argument walk and no unknown-resource finding, a kind consuming ONLY
+// external resources runs no reverse spec walk (its depth is accounted
+// against the external contract the admission records), a MIXED kind keeps
+// the reverse walk for its schema-served side, an external judgment on a
+// schema-served resource is a staleness finding (the provider shipped
+// native support -- the exit-to-native ratchet), and an external resource
+// WITHOUT the judgment keeps the unknown-resource finding.
+func TestBuildAccounting_ExternalResources(t *testing.T) {
+	spec, modules, schemas, manifests, _ := accountingFixture()
+	spec = append(spec,
+		KindCensus{Kind: "TestArm", SpecFieldPaths: []string{"spec.auth_mode", "spec.traffic"}},
+		KindCensus{Kind: "TestMixed", SpecFieldPaths: []string{"spec.plain_name", "spec.arm_only_field"}},
+		KindCensus{Kind: "TestArmUnjudged", SpecFieldPaths: []string{"spec.x"}},
+	)
+	modules = append(modules,
+		ModuleCensus{Kind: "TestArm", Resources: []string{"azapi_resource"}, Pins: map[string]string{"azapi": "2.11.0"}},
+		ModuleCensus{Kind: "TestMixed", Resources: []string{"google_plain", "azapi_resource"}, Pins: map[string]string{"google": "~> 6.0", "azapi": "2.11.0"}},
+		ModuleCensus{Kind: "TestArmUnjudged", Resources: []string{"azapi_resource"}, Pins: map[string]string{"azapi": "2.11.0"}},
+	)
+	external := &ResourceManifest{External: "raw-ARM surface at a pinned type@api-version by recorded admission"}
+	manifests["TestArm"] = &Manifest{Resources: map[string]*ResourceManifest{"azapi_resource": external}}
+	manifests["TestMixed"] = &Manifest{Resources: map[string]*ResourceManifest{
+		"azapi_resource": external,
+		"google_plain":   {Mappings: []Mapping{{Spec: "spec.plain_name", Arg: "name"}}},
+	}}
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+
+	arm := kindByName(t, acc, "TestArm")
+	if !arm.Accounted() {
+		t.Errorf("external-only kind must be at total accounting, got %+v", arm)
+	}
+	if !reflect.DeepEqual(arm.ExternalResources, []string{"azapi_resource"}) {
+		t.Errorf("ExternalResources = %v, want [azapi_resource]", arm.ExternalResources)
+	}
+	if len(arm.UncoveredSpecFields) != 0 {
+		t.Errorf("external-only kind must suspend the reverse walk, got uncovered %v", arm.UncoveredSpecFields)
+	}
+
+	// The mixed kind keeps the reverse walk: its schema-served field is
+	// covered by the mapping; the external-fed field is flagged until a
+	// specExclusion names the external resource.
+	mixed := kindByName(t, acc, "TestMixed")
+	if !reflect.DeepEqual(mixed.UncoveredSpecFields, []string{"spec.arm_only_field"}) {
+		t.Errorf("mixed kind uncovered = %v, want [spec.arm_only_field]", mixed.UncoveredSpecFields)
+	}
+
+	// Without the judgment, the unknown-resource finding stands unchanged.
+	unjudged := kindByName(t, acc, "TestArmUnjudged")
+	if unjudged.Accounted() || len(unjudged.ManifestStale) != 1 ||
+		!strings.Contains(unjudged.ManifestStale[0], "unknown to every loaded schema") {
+		t.Errorf("unjudged external consumption must keep the unknown-resource finding, got %+v", unjudged)
+	}
+}
+
+// TestBuildAccounting_ExternalJudgmentGoesStale proves the exit-to-native
+// ratchet: when a loaded schema starts serving a resource the manifest
+// still calls external, the judgment is a staleness finding, never a
+// silent double-accounting.
+func TestBuildAccounting_ExternalJudgmentGoesStale(t *testing.T) {
+	spec, modules, schemas, manifests, _ := accountingFixture()
+	spec = append(spec, KindCensus{Kind: "TestNative", SpecFieldPaths: []string{"spec.plain_name"}})
+	modules = append(modules, ModuleCensus{Kind: "TestNative", Resources: []string{"google_plain"}})
+	manifests["TestNative"] = &Manifest{Resources: map[string]*ResourceManifest{
+		"google_plain": {External: "stale: the schema serves this resource now"},
+	}}
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+
+	native := kindByName(t, acc, "TestNative")
+	if native.Accounted() {
+		t.Error("stale external judgment must fail accounting")
+	}
+	found := false
+	for _, s := range native.ManifestStale {
+		if strings.Contains(s, "external judgment is stale") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("ManifestStale = %v, want the stale-external finding", native.ManifestStale)
+	}
+}
+
 // TestBuildAccounting_ManifestStaleness proves the ratchet: judgment
 // referencing surface that no longer exists fails, in every reference class.
 func TestBuildAccounting_ManifestStaleness(t *testing.T) {

@@ -1,0 +1,23 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureexpressroutecircuitpeering
+spec:
+  # The peering's identity is its full ARM resource ID (the circuit path
+  # plus /peerings/{type}); Global Reach connections are ARM children
+  # composed under it, keyed by the spec entry's name.
+  values:
+    - name: express_route_circuit_peering_id
+      derivations:
+        - from_stack_output: express_route_circuit_peering_id
+      where_to_find: >-
+        Portal -> ExpressRoute circuits -> the circuit -> Peerings -> the
+        peering -> Resource ID, or `az network express-route peering show
+        -g <rg> --circuit-name <circuit> -n AzurePrivatePeering --query id`.
+    - name: connection_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The connection's name in the spec's connections list (the module
+        keys one ARM child per name); `az network express-route peering
+        connection list` shows what exists cloud-side.

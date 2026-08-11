@@ -7,7 +7,7 @@ spec:
   resourceGroup:
     value: "<your-resource-group-name>"
   name: client-vpn-gateway
-  sku: VPN_GW_1
+  sku: VPN_GW_1_AZ
   ipConfigurations:
     - subnetId:
         valueFrom:

@@ -425,6 +425,13 @@ const (
 	// certificate can be enrolled or imported (the resource group chains
 	// transitively through the vault's own prerequisite).
 	CloudResourceKind_AzureKeyVaultCertificate CloudResourceKind = 2026
+	// AzureKeyVault is a prerequisite because a secret is a data-plane
+	// object inside a referenced vault -- the vault must exist before the
+	// secret can be written (the resource group chains transitively
+	// through the vault's own prerequisite). Part of the Key Vault family
+	// (2005, 2025-2026) despite the out-of-run number -- enum numbers are
+	// pinned by the registry snapshot; never renumber.
+	CloudResourceKind_AzureKeyVaultSecret CloudResourceKind = 2183
 	// AzureResourceGroup is a prerequisite because a WAF policy is created
 	// inside a referenced resource group; the Application Gateways that
 	// attach the policy reference it, never the reverse.
@@ -725,7 +732,8 @@ const (
 	// with that exact ARM name. AzurePublicIp is a prerequisite because a
 	// VPN-type gateway (the default shape) requires a public IP per ip
 	// configuration; the address install profile publishes a dedicated
-	// no-zone instance (a gateway binds its address exclusively).
+	// zone-redundant instance (a gateway binds its address exclusively,
+	// and the AZ gateway SKUs require zones on it).
 	CloudResourceKind_AzureVirtualNetworkGateway CloudResourceKind = 2140
 	// Both gateways are prerequisites: a connection joins a virtual
 	// network gateway to a far side, and the site-to-site far side is a
@@ -733,6 +741,220 @@ const (
 	// chain transitively through the virtual network gateway).
 	CloudResourceKind_AzureVirtualNetworkGatewayConnection CloudResourceKind = 2141
 	CloudResourceKind_AzureLocalNetworkGateway             CloudResourceKind = 2142
+	// AzureSubnet is the sole prerequisite: every NAT ip configuration
+	// draws its address from a subnet with private-link-service network
+	// policies disabled (the subnet install profile publishes a fixture
+	// instance with that flag off). The Standard load balancer whose
+	// frontend the service typically fronts is NOT a registry
+	// prerequisite -- the spec's destination is an exactly-one-of (load
+	// balancer frontend OR fixed destination IP), so scenarios that use
+	// the load-balancer shape declare it via the
+	// planton.dev/e2e-prerequisites annotation instead.
+	CloudResourceKind_AzurePrivateLinkService  CloudResourceKind = 2143
+	CloudResourceKind_AzureExpressRouteCircuit CloudResourceKind = 2144
+	// The circuit is the prerequisite: a peering is an ARM child of the
+	// circuit, addressed by the circuit's name (the resource group chains
+	// transitively through the circuit).
+	CloudResourceKind_AzureExpressRouteCircuitPeering CloudResourceKind = 2145
+	// The hub is the prerequisite: ARM requires an ExpressRoute Gateway
+	// to be deployed INTO a Virtual WAN hub (the WAN and resource group
+	// chain transitively through the hub).
+	CloudResourceKind_AzureExpressRouteGateway CloudResourceKind = 2146
+	// ExpressRoute Port: your own physical port pair on a Microsoft edge
+	// router (ExpressRoute Direct), from whose bandwidth circuits are
+	// carved. Self-contained -- only the resource group is required.
+	CloudResourceKind_AzureExpressRoutePort CloudResourceKind = 2147
+	// Virtual WAN: the umbrella of Azure's managed hub-and-spoke
+	// networking, under which virtual hubs and their gateways are
+	// created. Self-contained -- only the resource group is required.
+	CloudResourceKind_AzureVirtualWan CloudResourceKind = 2148
+	// The WAN is the prerequisite: this kind models the Virtual WAN hub
+	// (virtual_wan_id is required; standalone hubs are the legacy Route
+	// Server construction, which has its own ARM surface). The resource
+	// group chains transitively through the WAN.
+	CloudResourceKind_AzureVirtualHub CloudResourceKind = 2149
+	// Both sides of the attachment are prerequisites: the hub being
+	// joined and the spoke virtual network being attached.
+	CloudResourceKind_AzureVirtualHubConnection CloudResourceKind = 2150
+	// The hub is the prerequisite: ARM deploys a Virtual WAN VPN gateway
+	// INTO a virtual hub (virtual_hub_id is required and immutable; the
+	// WAN and resource group chain transitively through the hub). ARM
+	// allows one VPN gateway per hub.
+	CloudResourceKind_AzureVpnGateway CloudResourceKind = 2151
+	// Both ends of the tunnel are prerequisites: a connection is an ARM
+	// child of the VPN gateway and pins each of its links to a specific
+	// link of the remote VPN site (the hub, WAN, and resource group
+	// chain transitively through the gateway).
+	CloudResourceKind_AzureVpnGatewayConnection CloudResourceKind = 2152
+	// The WAN is the prerequisite: a VPN site is the Virtual WAN world's
+	// address-book entry for one branch location (virtual_wan_id is
+	// required; the classic-world sibling without a WAN is
+	// AzureLocalNetworkGateway). The resource group chains transitively
+	// through the WAN.
+	CloudResourceKind_AzureVpnSite CloudResourceKind = 2153
+	// The hub and the server configuration are both prerequisites: a
+	// point-to-site VPN gateway deploys INTO a virtual hub (one P2S
+	// gateway per hub, a slot separate from the hub's site-to-site VPN
+	// gateway) and is born pointing at the VPN server configuration
+	// that defines how its users authenticate -- both ARM-required and
+	// fixed at creation. The WAN and resource group chain transitively
+	// through the hub.
+	CloudResourceKind_AzurePointToSiteVpnGateway CloudResourceKind = 2154
+	// Self-contained -- only the resource group is required: a VPN
+	// server configuration is the reusable "who may connect and how"
+	// authentication policy (Entra ID / certificate / RADIUS) that
+	// point-to-site VPN gateways attach to; it references no other
+	// Azure resource.
+	CloudResourceKind_AzureVpnServerConfiguration CloudResourceKind = 2155
+	// Self-contained -- only the resource group is required: an Azure
+	// AI services account (Azure OpenAI, the multi-service AIServices
+	// account, the single-service accounts) needs no other Azure
+	// resource; subnets (network rules), Key Vault keys (CMK), storage
+	// accounts and user-assigned identities are optional references.
+	CloudResourceKind_AzureCognitiveAccount CloudResourceKind = 2160
+	// An ARM child of its account: a model deployment (which model
+	// runs, at which throughput class) exists only on an Azure AI
+	// services account of kind "OpenAI" or "AIServices".
+	CloudResourceKind_AzureCognitiveDeployment CloudResourceKind = 2161
+	// An ARM child of its account: an AI Foundry project exists only
+	// on an "AIServices"-kind account with project management enabled.
+	CloudResourceKind_AzureCognitiveAccountProject CloudResourceKind = 2162
+	// The workspace REQUIRES all three companion services at creation
+	// (default storage, secrets vault, telemetry) -- genuine
+	// deploy-order prerequisites, each with its own fixture profile.
+	CloudResourceKind_AzureMachineLearningWorkspace CloudResourceKind = 2163
+	// An ARM child of its workspace. The storage target (container,
+	// filesystem or share) is scenario-declared via the
+	// e2e-prerequisites annotation -- only the blob scenario needs a
+	// container, so it is not a kind-wide prerequisite.
+	CloudResourceKind_AzureMachineLearningDatastore CloudResourceKind = 2164
+	// An ARM child of its workspace (.../computes/{name}) -- the
+	// auto-scaling pool of VMs training jobs run on.
+	CloudResourceKind_AzureMachineLearningComputeCluster CloudResourceKind = 2165
+	// An ARM child of its workspace (.../computes/{name}) -- a single
+	// always-on VM serving as one data scientist's cloud workstation.
+	CloudResourceKind_AzureMachineLearningComputeInstance CloudResourceKind = 2166
+	// The hub REQUIRES both companion services at creation (secrets
+	// vault, default storage) -- genuine deploy-order prerequisites,
+	// each with its own fixture profile.
+	CloudResourceKind_AzureAiFoundry CloudResourceKind = 2167
+	// Deploys into its hub's resource group (the provider derives the
+	// group from the hub reference -- the project spec carries none).
+	CloudResourceKind_AzureAiFoundryProject CloudResourceKind = 2168
+	CloudResourceKind_AzureSearchService    CloudResourceKind = 2169
+	// An ARM child of its workspace (.../onlineEndpoints/{name}) -- the
+	// stable scoring address applications call. azurerm carries no ML
+	// endpoint resources; the modules write the raw ARM shape at a
+	// pinned api-version (azapi / azure-native).
+	CloudResourceKind_AzureMachineLearningOnlineEndpoint CloudResourceKind = 2170
+	// An ARM child of its endpoint (.../deployments/{name}) -- the
+	// running copy of a model the endpoint's traffic map routes to.
+	CloudResourceKind_AzureMachineLearningOnlineDeployment CloudResourceKind = 2171
+	// An ARM child of its workspace (.../batchEndpoints/{name}) -- the
+	// stable address batch scoring jobs are submitted to. azurerm
+	// carries no ML endpoint resources; the modules write the raw ARM
+	// shape at a pinned api-version (azapi / azure-native).
+	CloudResourceKind_AzureMachineLearningBatchEndpoint CloudResourceKind = 2172
+	// An ARM child of its endpoint (.../deployments/{name}) -- the
+	// job recipe (model, compute, batching behavior) the endpoint's
+	// default-deployment pointer routes submissions to.
+	CloudResourceKind_AzureMachineLearningBatchDeployment CloudResourceKind = 2173
+	// The Recovery Services vault (Microsoft.RecoveryServices/vaults) --
+	// the safe that classic Azure Backup data and Site Recovery
+	// configuration live in. Backup policies and protected items are
+	// ARM children of a vault.
+	CloudResourceKind_AzureRecoveryServicesVault CloudResourceKind = 2175
+	// An ARM child of its vault (.../backupPolicies/{name}) -- the
+	// schedule and retention rules that govern IaaS VM backups.
+	CloudResourceKind_AzureBackupPolicyVm CloudResourceKind = 2176
+	// An ARM child of its vault (.../protectedItems/...) -- the binding
+	// that puts one virtual machine under a backup policy's protection.
+	CloudResourceKind_AzureBackupProtectedVm CloudResourceKind = 2177
+	// An ARM child of its vault (.../backupPolicies/{name}) -- the
+	// schedule and retention rules that govern Azure Files share
+	// backups (snapshot or vaulted).
+	CloudResourceKind_AzureBackupPolicyFileShare CloudResourceKind = 2178
+	// An ARM child of its vault (.../protectedItems/AzureFileShare;...)
+	// -- the binding that puts one Azure Files share under a backup
+	// policy's protection. The share's storage account must already be
+	// registered with the vault (AzureBackupContainerStorageAccount).
+	CloudResourceKind_AzureBackupProtectedFileShare CloudResourceKind = 2179
+	// The Data Protection backup vault (Microsoft.DataProtection/
+	// backupVaults) -- the safe that MODERN Azure Backup data lives in
+	// (managed disks, blob storage, AKS clusters, MySQL/PostgreSQL
+	// flexible servers, Data Lake storage). Backup policies and backup
+	// instances are ARM children of a vault.
+	CloudResourceKind_AzureDataProtectionBackupVault CloudResourceKind = 2180
+	// An ARM child of its vault (.../backupPolicies/{name}) -- the
+	// schedule and retention rules for ONE Data Protection datasource
+	// type (blob storage, disk, Kubernetes cluster, MySQL/PostgreSQL
+	// flexible server, or Data Lake storage), modeled as one kind with
+	// variant blocks.
+	CloudResourceKind_AzureDataProtectionBackupPolicy CloudResourceKind = 2181
+	// An ARM child of its vault (.../backupInstances/{name}) -- the
+	// binding that puts ONE datasource (a managed disk, a storage
+	// account's blob services, an AKS cluster, a MySQL/PostgreSQL
+	// flexible server, or a Data Lake storage account) under a Data
+	// Protection backup policy, modeled as one kind with variant
+	// blocks. The vault's managed identity must hold the datasource
+	// roles Azure Backup requires BEFORE the instance is created.
+	CloudResourceKind_AzureDataProtectionBackupInstance CloudResourceKind = 2182
+	// AzureSubnet and AzurePublicIp are prerequisites because a
+	// dedicated-infrastructure Bastion host (Basic/Standard/Premium --
+	// the default shapes) deploys into a subnet named exactly
+	// "AzureBastionSubnet" and binds a Standard static public IP
+	// EXCLUSIVELY (the virtual network and resource group chain
+	// transitively through the subnet). The Developer SKU instead
+	// attaches to a virtual network directly and uses neither.
+	CloudResourceKind_AzureBastionHost CloudResourceKind = 2184
+	// AzureVirtualNetwork and AzureStorageAccount are prerequisites
+	// because a flow log records a network-scoped target (a virtual
+	// network in the common case; subnets and network interfaces chain
+	// through the network) into a referenced storage account. The
+	// regional Network Watcher parent is NOT a prerequisite: Azure
+	// auto-creates it ("NetworkWatcher_{region}" in "NetworkWatcherRG")
+	// the moment the region hosts a virtual network, and the flow log
+	// references it by name. Traffic Analytics' Log Analytics workspace
+	// is an optional arm, declared by scenarios that use it.
+	CloudResourceKind_AzureNetworkWatcherFlowLog CloudResourceKind = 2185
+	// AzureVirtualNetwork and AzureSubnet are prerequisites because a
+	// DNS Private Resolver anchors to a referenced virtual network (at
+	// most ONE resolver per network -- Azure enforces it) and each of
+	// its inbound/outbound endpoints occupies its own dedicated subnet
+	// delegated to "Microsoft.Network/dnsResolvers" (the resource group
+	// chains transitively through the network and subnets).
+	CloudResourceKind_AzurePrivateDnsResolver CloudResourceKind = 2186
+	// AzurePrivateDnsResolver is a prerequisite because a DNS
+	// forwarding ruleset steers a resolver's OUTBOUND endpoints -- it
+	// binds their ARM ids (at most 2, same resolver) at creation. (The
+	// resource group and network chain transitively through the
+	// resolver's own prerequisite declarations.)
+	CloudResourceKind_AzurePrivateDnsResolverForwardingRuleset CloudResourceKind = 2187
+	// Registers a storage account with a Recovery Services vault as a
+	// backup container (.../protectionContainers/StorageContainer;...)
+	// -- one registration per storage-account-and-vault pair, required
+	// BEFORE any of the account's file shares can be protected. Part of
+	// the backup family (2175-2179) despite the out-of-run number --
+	// enum numbers are pinned by the registry snapshot; never renumber.
+	CloudResourceKind_AzureBackupContainerStorageAccount CloudResourceKind = 2213
+	// The Data Protection Resource Guard (Microsoft.DataProtection/
+	// resourceGuards) -- the approval gate behind Multi-User
+	// Authorization: privileged vault operations (disabling soft delete,
+	// reducing retention) require an approval through a guard, which
+	// typically lives in a DIFFERENT administrator's scope. Vaults
+	// reference a guard by its ARM ID. Part of the backup family
+	// (2175-2182) despite the out-of-run number -- enum numbers are
+	// pinned by the registry snapshot; never renumber.
+	CloudResourceKind_AzureDataProtectionResourceGuard CloudResourceKind = 2214
+	// The attachment that makes a DNS forwarding ruleset take effect in
+	// one virtual network ({ruleset_id}/virtualNetworkLinks/{name}) --
+	// one link per ruleset-network pair, up to 500 per ruleset, spokes
+	// joining and leaving independently (which is why the link is a
+	// standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink).
+	// Part of the DNS Private Resolver family (2186-2187) despite the
+	// out-of-run number -- enum numbers are pinned by the registry
+	// snapshot; never renumber.
+	CloudResourceKind_AzurePrivateDnsResolverVirtualNetworkLink CloudResourceKind = 2215
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo CloudResourceKind = 3000
 	// The URL map is the parent a proxy cannot exist without; the classic
@@ -1440,6 +1662,7 @@ var (
 		2024:  "AzureVirtualMachineScaleSet",
 		2025:  "AzureKeyVaultKey",
 		2026:  "AzureKeyVaultCertificate",
+		2183:  "AzureKeyVaultSecret",
 		2027:  "AzureWebApplicationFirewallPolicy",
 		2028:  "AzureApplicationSecurityGroup",
 		2029:  "AzureDiskEncryptionSet",
@@ -1525,6 +1748,48 @@ var (
 		2140:  "AzureVirtualNetworkGateway",
 		2141:  "AzureVirtualNetworkGatewayConnection",
 		2142:  "AzureLocalNetworkGateway",
+		2143:  "AzurePrivateLinkService",
+		2144:  "AzureExpressRouteCircuit",
+		2145:  "AzureExpressRouteCircuitPeering",
+		2146:  "AzureExpressRouteGateway",
+		2147:  "AzureExpressRoutePort",
+		2148:  "AzureVirtualWan",
+		2149:  "AzureVirtualHub",
+		2150:  "AzureVirtualHubConnection",
+		2151:  "AzureVpnGateway",
+		2152:  "AzureVpnGatewayConnection",
+		2153:  "AzureVpnSite",
+		2154:  "AzurePointToSiteVpnGateway",
+		2155:  "AzureVpnServerConfiguration",
+		2160:  "AzureCognitiveAccount",
+		2161:  "AzureCognitiveDeployment",
+		2162:  "AzureCognitiveAccountProject",
+		2163:  "AzureMachineLearningWorkspace",
+		2164:  "AzureMachineLearningDatastore",
+		2165:  "AzureMachineLearningComputeCluster",
+		2166:  "AzureMachineLearningComputeInstance",
+		2167:  "AzureAiFoundry",
+		2168:  "AzureAiFoundryProject",
+		2169:  "AzureSearchService",
+		2170:  "AzureMachineLearningOnlineEndpoint",
+		2171:  "AzureMachineLearningOnlineDeployment",
+		2172:  "AzureMachineLearningBatchEndpoint",
+		2173:  "AzureMachineLearningBatchDeployment",
+		2175:  "AzureRecoveryServicesVault",
+		2176:  "AzureBackupPolicyVm",
+		2177:  "AzureBackupProtectedVm",
+		2178:  "AzureBackupPolicyFileShare",
+		2179:  "AzureBackupProtectedFileShare",
+		2180:  "AzureDataProtectionBackupVault",
+		2181:  "AzureDataProtectionBackupPolicy",
+		2182:  "AzureDataProtectionBackupInstance",
+		2184:  "AzureBastionHost",
+		2185:  "AzureNetworkWatcherFlowLog",
+		2186:  "AzurePrivateDnsResolver",
+		2187:  "AzurePrivateDnsResolverForwardingRuleset",
+		2213:  "AzureBackupContainerStorageAccount",
+		2214:  "AzureDataProtectionResourceGuard",
+		2215:  "AzurePrivateDnsResolverVirtualNetworkLink",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2078,6 +2343,7 @@ var (
 		"AzureVirtualMachineScaleSet":                    2024,
 		"AzureKeyVaultKey":                               2025,
 		"AzureKeyVaultCertificate":                       2026,
+		"AzureKeyVaultSecret":                            2183,
 		"AzureWebApplicationFirewallPolicy":              2027,
 		"AzureApplicationSecurityGroup":                  2028,
 		"AzureDiskEncryptionSet":                         2029,
@@ -2163,6 +2429,48 @@ var (
 		"AzureVirtualNetworkGateway":                     2140,
 		"AzureVirtualNetworkGatewayConnection":           2141,
 		"AzureLocalNetworkGateway":                       2142,
+		"AzurePrivateLinkService":                        2143,
+		"AzureExpressRouteCircuit":                       2144,
+		"AzureExpressRouteCircuitPeering":                2145,
+		"AzureExpressRouteGateway":                       2146,
+		"AzureExpressRoutePort":                          2147,
+		"AzureVirtualWan":                                2148,
+		"AzureVirtualHub":                                2149,
+		"AzureVirtualHubConnection":                      2150,
+		"AzureVpnGateway":                                2151,
+		"AzureVpnGatewayConnection":                      2152,
+		"AzureVpnSite":                                   2153,
+		"AzurePointToSiteVpnGateway":                     2154,
+		"AzureVpnServerConfiguration":                    2155,
+		"AzureCognitiveAccount":                          2160,
+		"AzureCognitiveDeployment":                       2161,
+		"AzureCognitiveAccountProject":                   2162,
+		"AzureMachineLearningWorkspace":                  2163,
+		"AzureMachineLearningDatastore":                  2164,
+		"AzureMachineLearningComputeCluster":             2165,
+		"AzureMachineLearningComputeInstance":            2166,
+		"AzureAiFoundry":                                 2167,
+		"AzureAiFoundryProject":                          2168,
+		"AzureSearchService":                             2169,
+		"AzureMachineLearningOnlineEndpoint":             2170,
+		"AzureMachineLearningOnlineDeployment":           2171,
+		"AzureMachineLearningBatchEndpoint":              2172,
+		"AzureMachineLearningBatchDeployment":            2173,
+		"AzureRecoveryServicesVault":                     2175,
+		"AzureBackupPolicyVm":                            2176,
+		"AzureBackupProtectedVm":                         2177,
+		"AzureBackupPolicyFileShare":                     2178,
+		"AzureBackupProtectedFileShare":                  2179,
+		"AzureDataProtectionBackupVault":                 2180,
+		"AzureDataProtectionBackupPolicy":                2181,
+		"AzureDataProtectionBackupInstance":              2182,
+		"AzureBastionHost":                               2184,
+		"AzureNetworkWatcherFlowLog":                     2185,
+		"AzurePrivateDnsResolver":                        2186,
+		"AzurePrivateDnsResolverForwardingRuleset":       2187,
+		"AzureBackupContainerStorageAccount":             2213,
+		"AzureDataProtectionResourceGuard":               2214,
+		"AzurePrivateDnsResolverVirtualNetworkLink":      2215,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -2949,7 +3257,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xae\x9a\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xfc\xaf\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3102,7 +3410,9 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x10AzureManagedDisk\x10\xe7\x0f\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdisk:\x02\xd0\x0f\x12>\n" +
 	"\x1bAzureVirtualMachineScaleSet\x10\xe8\x0f\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azvmss:\x02\xdb\x0f\x124\n" +
 	"\x10AzureKeyVaultKey\x10\xe9\x0f\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazkvkey:\x02\xd5\x0f\x12=\n" +
-	"\x18AzureKeyVaultCertificate\x10\xea\x0f\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazkvcert:\x02\xd5\x0f\x12F\n" +
+	"\x18AzureKeyVaultCertificate\x10\xea\x0f\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazkvcert:\x02\xd5\x0f\x12:\n" +
+	"\x13AzureKeyVaultSecret\x10\x87\x11\x1a \xa2\xf7\x04\x1c\b\r\x12\bv1alpha1\"\n" +
+	"azkvsecret:\x02\xd5\x0f\x12F\n" +
 	"!AzureWebApplicationFirewallPolicy\x10\xeb\x0f\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazwafpol:\x02\xd0\x0f\x12?\n" +
 	"\x1dAzureApplicationSecurityGroup\x10\xec\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azasg:\x02\xd0\x0f\x128\n" +
 	"\x16AzureDiskEncryptionSet\x10\xed\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azdes:\x02\xe9\x0f\x12>\n" +
@@ -3192,7 +3502,49 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\fAzureIpGroup\x10\xd5\x10\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azipg:\x02\xd0\x0f\x12>\n" +
 	"\x1aAzureVirtualNetworkGateway\x10\xdc\x10\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\x05azvng:\x04\xdb\x0f\xdd\x0f\x12I\n" +
 	"$AzureVirtualNetworkGatewayConnection\x10\xdd\x10\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azvngc:\x04\xdc\x10\xde\x10\x12;\n" +
-	"\x18AzureLocalNetworkGateway\x10\xde\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azlngw:\x02\xd0\x0f\x12:\n" +
+	"\x18AzureLocalNetworkGateway\x10\xde\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azlngw:\x02\xd0\x0f\x129\n" +
+	"\x17AzurePrivateLinkService\x10\xdf\x10\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azpls:\x02\xdb\x0f\x12:\n" +
+	"\x18AzureExpressRouteCircuit\x10\xe0\x10\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azerc:\x02\xd0\x0f\x12B\n" +
+	"\x1fAzureExpressRouteCircuitPeering\x10\xe1\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azercp:\x02\xe0\x10\x12;\n" +
+	"\x18AzureExpressRouteGateway\x10\xe2\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azergw:\x02\xe5\x10\x128\n" +
+	"\x15AzureExpressRoutePort\x10\xe3\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azerpt:\x02\xd0\x0f\x122\n" +
+	"\x0fAzureVirtualWan\x10\xe4\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azvwan:\x02\xd0\x0f\x122\n" +
+	"\x0fAzureVirtualHub\x10\xe5\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azvhub:\x02\xe4\x10\x12?\n" +
+	"\x19AzureVirtualHubConnection\x10\xe6\x10\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazvhubc:\x04\xe5\x10\xd6\x0f\x123\n" +
+	"\x0fAzureVpnGateway\x10\xe7\x10\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazvpngw:\x02\xe5\x10\x12@\n" +
+	"\x19AzureVpnGatewayConnection\x10\xe8\x10\x1a \xa2\xf7\x04\x1c\b\r\x12\bv1alpha1\"\bazvpngwc:\x04\xe7\x10\xe9\x10\x122\n" +
+	"\fAzureVpnSite\x10\xe9\x10\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\tazvpnsite:\x02\xe4\x10\x12@\n" +
+	"\x1aAzurePointToSiteVpnGateway\x10\xea\x10\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazp2sgw:\x04\xe5\x10\xeb\x10\x12?\n" +
+	"\x1bAzureVpnServerConfiguration\x10\xeb\x10\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazvpnsc:\x02\xd0\x0f\x127\n" +
+	"\x15AzureCognitiveAccount\x10\xf0\x10\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azcog:\x02\xd0\x0f\x12;\n" +
+	"\x18AzureCognitiveDeployment\x10\xf1\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azcogd:\x02\xf0\x10\x12?\n" +
+	"\x1cAzureCognitiveAccountProject\x10\xf2\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azcogp:\x02\xf0\x10\x12E\n" +
+	"\x1dAzureMachineLearningWorkspace\x10\xf3\x10\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\x05azmlw:\b\xd0\x0f\xd9\x0f\xd5\x0f\x83\x10\x12@\n" +
+	"\x1dAzureMachineLearningDatastore\x10\xf4\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlds:\x02\xf3\x10\x12E\n" +
+	"\"AzureMachineLearningComputeCluster\x10\xf5\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlcc:\x02\xf3\x10\x12F\n" +
+	"#AzureMachineLearningComputeInstance\x10\xf6\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlci:\x02\xf3\x10\x124\n" +
+	"\x0eAzureAiFoundry\x10\xf7\x10\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\x05azaif:\x06\xd0\x0f\xd5\x0f\xd9\x0f\x128\n" +
+	"\x15AzureAiFoundryProject\x10\xf8\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azaifp:\x02\xf7\x10\x125\n" +
+	"\x12AzureSearchService\x10\xf9\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azsrch:\x02\xd0\x0f\x12E\n" +
+	"\"AzureMachineLearningOnlineEndpoint\x10\xfa\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmloe:\x02\xf3\x10\x12G\n" +
+	"$AzureMachineLearningOnlineDeployment\x10\xfb\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlod:\x02\xfa\x10\x12D\n" +
+	"!AzureMachineLearningBatchEndpoint\x10\xfc\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlbe:\x02\xf3\x10\x12F\n" +
+	"#AzureMachineLearningBatchDeployment\x10\xfd\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azmlbd:\x02\xfc\x10\x12<\n" +
+	"\x1aAzureRecoveryServicesVault\x10\xff\x10\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azrsv:\x02\xd0\x0f\x125\n" +
+	"\x13AzureBackupPolicyVm\x10\x80\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azbpv:\x02\xff\x10\x12;\n" +
+	"\x16AzureBackupProtectedVm\x10\x81\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbprv:\x04\x80\x11\xd8\x0f\x12=\n" +
+	"\x1aAzureBackupPolicyFileShare\x10\x82\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azbpfs:\x02\xff\x10\x12E\n" +
+	"\x1dAzureBackupProtectedFileShare\x10\x83\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\aazbprfs:\x06\xa5\x11\x82\x11\xab\x10\x12A\n" +
+	"\x1eAzureDataProtectionBackupVault\x10\x84\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbv:\x02\xd0\x0f\x12B\n" +
+	"\x1fAzureDataProtectionBackupPolicy\x10\x85\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbp:\x02\x84\x11\x12F\n" +
+	"!AzureDataProtectionBackupInstance\x10\x86\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azdpbi:\x04\x84\x11\x85\x11\x128\n" +
+	"\x10AzureBastionHost\x10\x88\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\tazbastion:\x04\xdb\x0f\xdd\x0f\x12@\n" +
+	"\x1aAzureNetworkWatcherFlowLog\x10\x89\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazfwlog:\x04\xd6\x0f\xd9\x0f\x12=\n" +
+	"\x17AzurePrivateDnsResolver\x10\x8a\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazpdnsr:\x04\xd6\x0f\xdb\x0f\x12N\n" +
+	"(AzurePrivateDnsResolverForwardingRuleset\x10\x8b\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\tazpdnsfrs:\x02\x8a\x11\x12G\n" +
+	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +
+	" AzureDataProtectionResourceGuard\x10\xa6\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdprg:\x02\xd0\x0f\x12S\n" +
+	")AzurePrivateDnsResolverVirtualNetworkLink\x10\xa7\x11\x1a#\xa2\xf7\x04\x1f\b\r\x12\bv1alpha1\"\vazpdnsrlink:\x04\x8b\x11\xd6\x0f\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12=\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a#\xa2\xf7\x04\x1f\b\x12\x12\bv1alpha1\"\agcpthsp:\b\xd3\x17\xd4\x17\xa7\x18\xa8\x18\x122\n" +
 	"\x10GcpCloudFunction\x10\xba\x17\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\bv1alpha1\"\x05gcpfn:\x02\xb1\x18\x12*\n" +

@@ -3,14 +3,18 @@ kind: ComponentE2EProfile
 metadata:
   name: azurevirtualnetworkgateway
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. A NEW slow class for the suite: VPN gateway creation
-  # runs 25-45 minutes and deletion 10-20, so a single engine lane
-  # (fixtures -> gateway + NAT rule -> verify -> destroy -> verify gone)
-  # budgets a full cycle -- the timeout leaves headroom for a slow region
-  # day. VpnGw1 keeps spend trivial (~$0.19/hour while the lane runs).
+  # Live-proven 2026-08-11 on both engines (full lifecycle; measured
+  # create 34-36m, destroy 14-15m, ~60m per engine lane) plus the blind
+  # import round-trip on the terraform lane -- the gateway by ARM id AND
+  # the NAT-rule child by its composed {gateway_id}/natRules/{name} id,
+  # zero-change plan, destroy from re-imported state. The live lanes
+  # forced the SKU redesign to the AZ tiers (Azure retired non-AZ VpnGw
+  # creates: NonAzSkusNotAllowedForVPNGateway) and the zone-redundant
+  # fixture public IP (VmssVpnGatewayPublicIpsMustHaveZonesConfigured).
+  # The slowest class in the suite -- the timeout budgets a full cycle
+  # with headroom for a slow region day. VpnGw1AZ keeps spend trivial
+  # (~$0.2-0.4/hour while the lane runs).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 90
