@@ -55,6 +55,23 @@ var _ = ginkgo.Describe("AwsCloudFront", func() {
 		})
 	})
 
+	ginkgo.Context("cache_tag_header_name (lowercase format)", func() {
+		ginkgo.It("should accept a lowercase header name", func() {
+			input.Spec.CacheTagHeaderName = "cache-tag"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		// AWS stores the header name lowercased while the provider passes
+		// the value through verbatim -- a mixed-case value would re-plan as
+		// a perpetual cosmetic diff on both engines (live-verified).
+		ginkgo.It("should reject a mixed-case header name", func() {
+			input.Spec.CacheTagHeaderName = "Cache-Tag"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
 	ginkgo.Context("Aliases (aliases_require_certificate)", func() {
 		ginkgo.It("should reject aliases without a viewer certificate", func() {
 			input.Spec.Aliases = []string{"cdn.example.com"}

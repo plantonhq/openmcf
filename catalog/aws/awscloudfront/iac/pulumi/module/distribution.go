@@ -309,6 +309,10 @@ func createDistribution(ctx *pulumi.Context, locals *Locals, provider *aws.Provi
 
 	// Tag-based invalidation: origin responses label objects via this
 	// header; invalidations by tag purge every object carrying the label.
+	// Verbatim pass-through: AWS stores the name LOWERCASED and the
+	// provider does not case-suppress, so a mixed-case value would
+	// re-plan forever -- the spec's format rule enforces lowercase
+	// upstream.
 	if spec.CacheTagHeaderName != "" {
 		args.CacheTagConfig = &cloudfront.DistributionCacheTagConfigArgs{
 			HeaderName: pulumi.String(spec.CacheTagHeaderName),

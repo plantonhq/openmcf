@@ -50,7 +50,7 @@ Stage a configuration change on real traffic before promoting it: deploy the can
 - **`webAclArn`** — a CLOUDFRONT-scope WAF Web ACL by ARN (referenceable from an `AwsWafWebAcl`).
 - **`priceClass`** — the cost/latency dial (`PriceClass_All` default, `PriceClass_200`, `PriceClass_100`).
 - **`httpVersion`** / **`isIpv6Enabled`** — protocol surface (`http2and3` is the safe way to adopt HTTP/3; IPv6 costs nothing).
-- **`cacheTagHeaderName`** — tag-based invalidation: origin responses label objects through this header, and one invalidation-by-tag purges every object carrying the label.
+- **`cacheTagHeaderName`** — tag-based invalidation: origin responses label objects through this header, and one invalidation-by-tag purges every object carrying the label. Write it lowercase (e.g. `cache-tag`) — AWS stores the name lowercased, and header matching is case-insensitive anyway.
 - **`connectionFunctionId`** — attach a connection function (runs at TCP establishment, before any HTTP parsing — the earliest programmable point).
 - **`anycastIpListId`** — serve from dedicated static edge IPs (a provisioned, paid Anycast list) for allowlist-style network controls.
 - **`enableAdditionalMetrics`** — CloudWatch additional metrics (cache hit rate, origin latency, per-status error rates).

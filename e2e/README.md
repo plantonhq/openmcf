@@ -820,6 +820,25 @@ is to wait for the holder's teardown window (poll `get-role` until
 NoSuchEntity) and launch immediately; the collision recurs at most until
 the sibling session's lanes finish.
 
+**A stale AWS CLI silently DROPS new API surface from its output — verify
+the CLI's model before diagnosing a missing field.** The CLI parses
+responses against its bundled service model and discards members it does
+not know, so evidence gathered with `aws <svc> get-*` can show a
+just-modeled field as absent while the cloud resource carries it (live
+hit 2026-08-12: `get-distribution-config` from aws-cli 2.33.24 omitted
+CloudFront's `CacheTagConfig` — same-wave `ResponseCompletionTimeout` and
+`IpAddressType` appeared fine — while the Terraform destroy-refresh read
+the header back through the provider's own SDK, proving it landed; the
+false negative briefly looked like a Pulumi-engine silent drop). Before
+treating a missing field in CLI output as a module or provider defect,
+check whether the CLI even knows it:
+`aws <svc> <create-op> --generate-cli-skeleton | grep <Field>`. When the
+model is stale, read the evidence through this repo's own pinned
+`aws-sdk-go-v2` (a `go doc` check plus a small probe) or through the
+engine's refresh diff — the same stale-local-tooling class as the
+installed `planton` binary misreporting new spec fields (use the
+working-tree CLI).
+
 ## GCP E2E
 
 GCP tests live under `e2e/gcp/` and use the shared `aa_e2e` harness with

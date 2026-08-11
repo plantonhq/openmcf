@@ -11,18 +11,19 @@ network in which other AWS resources are launched.
 
 A VPC is the networking foundation for nearly everything else on AWS, but it
 is itself a thin construct: an IP address space (one primary IPv4 CIDR, plus
-optional secondary IPv4 CIDRs and an IPv6 CIDR), a tenancy mode, and a few
-DNS toggles. The things that make a network useful -- subnets, internet
-gateways, NAT gateways, route tables -- are separate, independently ownable
-components that reference this VPC. Keeping the VPC a clean building block is
-what lets a topology be composed from first-class nodes rather than hidden
-inside one opaque resource.
+optional secondary IPv4/IPv6 CIDRs), a tenancy mode, a few DNS toggles, and
+an optional encryption-in-transit control. The things that make a network
+useful -- subnets, internet gateways, NAT gateways, route tables -- are
+separate, independently ownable components that reference this VPC. Keeping
+the VPC a clean building block is what lets a topology be composed from
+first-class nodes rather than hidden inside one opaque resource.
 
 The primary IPv4 CIDR can be specified explicitly (cidr_block) or allocated
 from an IPAM pool (ipv4_ipam_pool_id [+ ipv4_netmask_length]). IPv6 is opt-in
 and supports either an Amazon-provided /56 (assign_generated_ipv6_cidr_block)
-or an IPAM-allocated block (ipv6_ipam_pool_id). The cross-field rules below
-mirror what AWS itself enforces.
+or an IPAM-allocated block (ipv6_ipam_pool_id). Additional address space is
+attached in place through secondary_ipv4_cidrs / secondary_ipv6_cidrs. The
+cross-field rules below mirror what AWS itself enforces.
 
 ## Example
 
@@ -117,6 +118,13 @@ ipv4_ipam_pool_id must be provided.
 
 `[]AwsVpcSecondaryIpv4Cidr`
 
+Additional IPv4 address ranges to associate with the VPC beyond the
+primary one. Each entry is associated as its own resource and can be
+added or removed without recreating the VPC -- the standard way to grow
+a network whose original range ran out of subnet space, or to carve a
+distinct range (such as the 100.64.0.0/10 shared space) for specific
+workloads. Each entry names an explicit CIDR or an IPAM allocation.
+
 - rule: set cidr_block or ipam_pool_id (or both, to pin a specific block from the pool)
 - rule: cidr_block must be an IPv4 CIDR with a /16-/28 mask, e.g. 10.1.0.0/16
 - rule: netmask_length must be between 16 and 28, requires ipam_pool_id, and is mutually exclusive with cidr_block
@@ -125,15 +133,31 @@ ipv4_ipam_pool_id must be provided.
 
 `string`
 
+An explicit IPv4 CIDR block to associate (e.g. "10.1.0.0/16" or
+"100.64.0.0/16"). The mask must be between /16 and /28 and the range must
+not overlap the VPC's other CIDRs. When ipam_pool_id is also set, this
+pins a specific block from that pool. Immutable: changing it replaces the
+association (the VPC itself is untouched).
+
 ### spec.secondaryIpv4Cidrs[].ipamPoolId
 
 `string | valueFrom`
+
+The IPAM pool to allocate this secondary CIDR from, instead of (or in
+addition to, when pinning a specific block) cidr_block. Supply a literal
+ipam-pool-id; there is no IPAM pool catalog kind yet. Immutable: changing
+it replaces the association.
 
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
 ### spec.secondaryIpv4Cidrs[].netmaskLength
 
 `int32`
+
+The netmask length of the CIDR to allocate from ipam_pool_id (e.g. 16 for
+a /16). Must be between 16 and 28. Requires ipam_pool_id and is mutually
+exclusive with cidr_block. Immutable: changing it replaces the
+association.
 
 ### spec.ipv4IpamPoolId
 
@@ -142,7 +166,8 @@ ipv4_ipam_pool_id must be provided.
 The IPAM (IP Address Manager) pool to allocate the primary IPv4 CIDR from,
 instead of specifying cidr_block directly. Pair with ipv4_netmask_length to
 let IPAM choose a block of the requested size, or with cidr_block to take a
-specific block from the pool. Immutable: changing it replaces the VPC.
+specific block from the pool. Supply a literal ipam-pool-id; there is no
+IPAM pool catalog kind yet. Immutable: changing it replaces the VPC.
 
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
@@ -163,7 +188,7 @@ The tenancy of instances launched into this VPC: "default" (instances may
 run on shared hardware) or "dedicated" (every instance runs on
 single-tenant hardware, at higher cost). Leave empty for the AWS default
 ("default"). Note that AWS only supports changing "dedicated" -> "default"
-in place; other tenancy changes are not permitted by the API.
+in place; changing "default" -> "dedicated" replaces the VPC.
 
 - default: `default`
 - rule: instance_tenancy must be one of: default, dedicated
@@ -212,9 +237,10 @@ IPv6 fields (ipv6_ipam_pool_id / ipv6_cidr_block / ipv6_netmask_length).
 `string`
 
 An explicit IPv6 CIDR block to allocate from ipv6_ipam_pool_id (e.g.
-"2600:1f18:abcd:1200::/56"). Requires ipv6_ipam_pool_id (a bring-your-own
-IPv6 block without IPAM is not supported on the VPC resource) and is
-mutually exclusive with ipv6_netmask_length.
+"2600:1f18:abcd:1200::/56"). The prefix length must be one of /44, /48,
+/52, /56, or /60 (the AWS VPC IPv6 sizes). Requires ipv6_ipam_pool_id (a
+bring-your-own IPv6 block without IPAM is not supported on the VPC
+resource) and is mutually exclusive with ipv6_netmask_length.
 
 ### spec.ipv6CidrBlockNetworkBorderGroup
 
@@ -229,7 +255,8 @@ with assign_generated_ipv6_cidr_block.
 `string | valueFrom`
 
 The IPAM pool to allocate the IPv6 CIDR from. Pair with ipv6_netmask_length
-(the size to allocate) or ipv6_cidr_block (a specific block). Mutually
+(the size to allocate) or ipv6_cidr_block (a specific block). Supply a
+literal ipam-pool-id; there is no IPAM pool catalog kind yet. Mutually
 exclusive with assign_generated_ipv6_cidr_block.
 
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
@@ -246,6 +273,11 @@ mutually exclusive with ipv6_cidr_block.
 
 `[]AwsVpcSecondaryIpv6Cidr`
 
+Additional IPv6 address ranges to associate with the VPC beyond the one
+configured above. Each entry is associated as its own resource and can be
+added or removed without recreating the VPC. Each entry names exactly one
+source: an Amazon-provided block, a BYOIP public pool, or an IPAM pool.
+
 - rule: set exactly one IPv6 source: assign_generated, ipv6_pool, or ipam_pool_id
 - rule: cidr_block cannot be combined with assign_generated
 - rule: cidr_block must be an IPv6 CIDR with a /44, /48, /52, /56, or /60 prefix
@@ -255,13 +287,25 @@ mutually exclusive with ipv6_cidr_block.
 
 `bool`
 
+Request an Amazon-provided IPv6 /56 block. Mutually exclusive with the
+pool sources and with cidr_block (Amazon chooses the range).
+
 ### spec.secondaryIpv6Cidrs[].ipv6Pool
 
 `string`
 
+The BYOIP public IPv6 pool (ipv6pool-ec2-...) to take the range from --
+address space you brought to AWS outside of IPAM. Pair with cidr_block to
+pin the specific block. Immutable: changing it replaces the association.
+
 ### spec.secondaryIpv6Cidrs[].ipamPoolId
 
 `string | valueFrom`
+
+The IPAM pool to allocate the range from. Pair with netmask_length (the
+size to allocate) or cidr_block (a specific block). Supply a literal
+ipam-pool-id; there is no IPAM pool catalog kind yet. Immutable: changing
+it replaces the association.
 
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
@@ -269,13 +313,30 @@ mutually exclusive with ipv6_cidr_block.
 
 `string`
 
+An explicit IPv6 CIDR block, used with ipv6_pool or ipam_pool_id to pin
+the exact range (e.g. "2600:1f18:abcd:1200::/56"). The prefix length must
+be one of /44, /48, /52, /56, or /60. Mutually exclusive with
+netmask_length and with assign_generated. Immutable: changing it replaces
+the association.
+
 ### spec.secondaryIpv6Cidrs[].netmaskLength
 
 `int32`
 
+The netmask length to allocate from ipam_pool_id. Must be one of 44, 48,
+52, 56, or 60 (AWS only sizes IPAM allocations -- pool and Amazon blocks
+pin their own size). Mutually exclusive with cidr_block. Immutable:
+changing it replaces the association.
+
 ### spec.encryptionControl
 
 `AwsVpcEncryptionControl`
+
+VPC Encryption Control: monitor or enforce encryption in transit for
+traffic entering, leaving, and moving within the VPC. Omit to leave the
+feature off (the AWS default). Start in "monitor" mode to observe, then
+move to "enforce" once the exclusions below cover every path that cannot
+encrypt.
 
 - rule: exclusions only apply when mode is 'enforce'
 
@@ -283,39 +344,59 @@ mutually exclusive with ipv6_cidr_block.
 
 `string` · required
 
+The control mode: "monitor" (observe and report unencrypted paths) or
+"enforce" (block unencrypted traffic, honoring the exclusions below).
+
 - rule: {"required":true,"string":{"in":["monitor","enforce"]}}
 
 ### spec.encryptionControl.excludeInternetGateway
 
 `bool`
 
+Exclude internet gateway traffic from enforcement.
+
 ### spec.encryptionControl.excludeEgressOnlyInternetGateway
 
 `bool`
+
+Exclude egress-only internet gateway traffic from enforcement.
 
 ### spec.encryptionControl.excludeNatGateway
 
 `bool`
 
+Exclude NAT gateway traffic from enforcement.
+
 ### spec.encryptionControl.excludeVirtualPrivateGateway
 
 `bool`
+
+Exclude virtual private gateway (Site-to-Site VPN) traffic from
+enforcement.
 
 ### spec.encryptionControl.excludeVpcPeering
 
 `bool`
 
+Exclude VPC peering traffic from enforcement.
+
 ### spec.encryptionControl.excludeVpcLattice
 
 `bool`
+
+Exclude VPC Lattice traffic from enforcement.
 
 ### spec.encryptionControl.excludeLambda
 
 `bool`
 
+Exclude Lambda function traffic from enforcement.
+
 ### spec.encryptionControl.excludeElasticFileSystem
 
 `bool`
+
+Exclude Elastic File System (EFS) traffic from enforcement.
 
 ## Validation Rules
 
@@ -346,6 +427,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsVpc, name: <r
 | `status.outputs.default_network_acl_id` | `string` | The ID of the default network ACL created with the VPC. |
 | `status.outputs.default_route_table_id` | `string` | The ID of the default route table created with the VPC (equal to the main route table). |
 | `status.outputs.region` | `string` | The region the VPC was created in (mirrors spec.region, included for convenience). |
+| `status.outputs.secondary_ipv4_cidr_association_ids` | `map<string, string>` |  |
+| `status.outputs.secondary_ipv6_cidr_association_ids` | `map<string, string>` |  |
+| `status.outputs.encryption_control_id` | `string` |  |
 
 ## Referenced By
 

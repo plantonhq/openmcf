@@ -14,37 +14,44 @@ import (
 // DescribeDeliveryStream, keyed on the delivery_stream_name output. A
 // delivery stream mid-deletion stays describable with a DELETING status
 // before the typed ResourceNotFoundException appears, so existence is
-// "described AND not deleting", and absence accepts either signal.
+// "described AND ACTIVE", and absence accepts either signal. ACTIVE is a
+// post-apply invariant: both engines' create waiters return only once the
+// stream reaches ACTIVE, so a CREATING or CREATING_FAILED stream after
+// deploy means the waiter lied, never a timing artifact.
 type kinesisFirehoseVerifier struct{}
 
 func (*kinesisFirehoseVerifier) IDOutputKey() string { return "delivery_stream_name" }
 
 func (*kinesisFirehoseVerifier) VerifyExists(ctx context.Context, cfg aws.Config, id, region string) error {
-	exists, err := kinesisFirehoseExists(ctx, cfg, id, region)
+	desc, err := kinesisFirehoseDescribe(ctx, cfg, id, region)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "awskinesisfirehose verify-exists failed for %q", id)
 	}
-	if !exists {
+	if desc == nil || desc.DeliveryStreamStatus == types.DeliveryStreamStatusDeleting ||
+		desc.DeliveryStreamStatus == types.DeliveryStreamStatusDeletingFailed {
 		return pkgerrors.Errorf("awskinesisfirehose %q not found after deploy", id)
+	}
+	if desc.DeliveryStreamStatus != types.DeliveryStreamStatusActive {
+		return pkgerrors.Errorf("awskinesisfirehose %q exists but reports status %q, want ACTIVE", id, desc.DeliveryStreamStatus)
 	}
 	return nil
 }
 
 func (*kinesisFirehoseVerifier) VerifyAbsent(ctx context.Context, cfg aws.Config, id, region string) error {
-	exists, err := kinesisFirehoseExists(ctx, cfg, id, region)
+	desc, err := kinesisFirehoseDescribe(ctx, cfg, id, region)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "awskinesisfirehose verify-absent failed for %q", id)
 	}
-	if exists {
+	if desc != nil && desc.DeliveryStreamStatus != types.DeliveryStreamStatusDeleting &&
+		desc.DeliveryStreamStatus != types.DeliveryStreamStatusDeletingFailed {
 		return pkgerrors.Errorf("awskinesisfirehose %q still exists after destroy", id)
 	}
 	return nil
 }
 
-// kinesisFirehoseExists reports whether the delivery stream is present and
-// not already on its way out. A ResourceNotFoundException is treated as
-// absent.
-func kinesisFirehoseExists(ctx context.Context, cfg aws.Config, id, region string) (bool, error) {
+// kinesisFirehoseDescribe returns the delivery stream description, or nil
+// when AWS reports ResourceNotFoundException.
+func kinesisFirehoseDescribe(ctx context.Context, cfg aws.Config, id, region string) (*types.DeliveryStreamDescription, error) {
 	client := firehose.NewFromConfig(cfg, func(o *firehose.Options) {
 		if region != "" {
 			o.Region = region
@@ -54,16 +61,9 @@ func kinesisFirehoseExists(ctx context.Context, cfg aws.Config, id, region strin
 	if err != nil {
 		var notFound *types.ResourceNotFoundException
 		if errors.As(err, &notFound) {
-			return false, nil
+			return nil, nil
 		}
-		return false, err
+		return nil, err
 	}
-	if out.DeliveryStreamDescription == nil {
-		return false, nil
-	}
-	status := out.DeliveryStreamDescription.DeliveryStreamStatus
-	if status == types.DeliveryStreamStatusDeleting || status == types.DeliveryStreamStatusDeletingFailed {
-		return false, nil
-	}
-	return true, nil
+	return out.DeliveryStreamDescription, nil
 }

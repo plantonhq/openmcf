@@ -41,6 +41,8 @@ spec:
   # ordered behaviors, and edge functions -- proven by CEL spec tests and
   # the offline gate.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 60

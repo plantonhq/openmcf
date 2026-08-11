@@ -53,7 +53,7 @@ spec:
     advertiseTrustStoreCaNames: true
   # Tag-based invalidation: origin responses label objects through this
   # header; an invalidation by tag purges every object carrying the label.
-  cacheTagHeaderName: Cache-Tag
+  cacheTagHeaderName: cache-tag
   # A connection function runs at TCP establishment -- the earliest
   # programmable point in the request path.
   connectionFunctionId: EDFDVBD632BHDS5

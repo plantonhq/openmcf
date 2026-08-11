@@ -31,5 +31,8 @@ spec:
   # proven offline via the canonical manifest and the
   # 04-s3-parquet-analytics preset on both engines).
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 20

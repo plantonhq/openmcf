@@ -114,11 +114,14 @@ The cryptographic configuration, create-time immutable:
 "SYMMETRIC_DEFAULT" (AES-256-GCM -- the default and what AWS
 service integrations require), "RSA_2048"/"RSA_3072"/"RSA_4096"
 (asymmetric encrypt/decrypt or sign/verify),
-"ECC_NIST_P256"/"ECC_NIST_P384"/"ECC_NIST_P521"/"ECC_SECG_P256K1"
-(asymmetric sign/verify -- P256K1 is the blockchain curve),
-"HMAC_224"/"HMAC_256"/"HMAC_384"/"HMAC_512" (MAC generation), or
-"SM2" (China regions). Empty keeps the AWS default
-(SYMMETRIC_DEFAULT).
+"ECC_NIST_P256"/"ECC_NIST_P384"/"ECC_NIST_P521" (asymmetric
+sign/verify or ECDH key agreement),
+"ECC_NIST_EDWARDS25519" (Ed25519 sign/verify only),
+"ECC_SECG_P256K1" (sign/verify only -- the blockchain curve),
+"ML_DSA_44"/"ML_DSA_65"/"ML_DSA_87" (post-quantum ML-DSA
+sign/verify only), "HMAC_224"/"HMAC_256"/"HMAC_384"/"HMAC_512"
+(MAC generation), or "SM2" (China regions only). Empty keeps the
+AWS default (SYMMETRIC_DEFAULT).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["SYMMETRIC_DEFAULT","RSA_2048","RSA_3072","RSA_4096","ECC_NIST_P256","ECC_NIST_P384","ECC_NIST_P521","ECC_NIST_EDWARDS25519","ECC_SECG_P256K1","ML_DSA_44","ML_DSA_65","ML_DSA_87","HMAC_224","HMAC_256","HMAC_384","HMAC_512","SM2"]}}
 
@@ -129,9 +132,11 @@ service integrations require), "RSA_2048"/"RSA_3072"/"RSA_4096"
 What the key is used for, create-time immutable:
 "ENCRYPT_DECRYPT" (the default -- required for SYMMETRIC_DEFAULT
 and the only usage AWS service integrations support),
-"SIGN_VERIFY" (asymmetric RSA/ECC/SM2 keys), or
-"GENERATE_VERIFY_MAC" (HMAC keys). Empty keeps the AWS default
-(ENCRYPT_DECRYPT).
+"SIGN_VERIFY" (asymmetric RSA/ECC/ML-DSA/SM2 signing keys),
+"KEY_AGREEMENT" (ECDH shared-secret derivation -- NIST ECC curves
+and SM2 only), or "GENERATE_VERIFY_MAC" (HMAC keys). Empty keeps
+the AWS default (ENCRYPT_DECRYPT). The cross-field rules below
+mirror AWS's own key-spec / key-usage compatibility matrix.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ENCRYPT_DECRYPT","SIGN_VERIFY","KEY_AGREEMENT","GENERATE_VERIFY_MAC"]}}
 
@@ -226,11 +231,27 @@ reserved for AWS-managed keys.
 
 `string`
 
+The custom key store to create the key in: a CloudHSM key store
+(backed by your CloudHSM cluster) or an external key store (backed
+by a key manager outside AWS). Supply a literal key-store id
+(cks-...); custom key stores are account-level infrastructure the
+catalog does not provision. Create-time immutable. Custom key
+store keys must be symmetric encryption keys, never rotate
+automatically, and cannot be multi-Region (AWS's contract,
+enforced by the rules below). Empty (the default) keeps the key
+material in standard AWS KMS.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"22"}}
 
 ### spec.xksKeyId
 
 `string`
+
+The id of an existing key in the external key manager, for keys
+created in an EXTERNAL key store -- KMS forwards cryptographic
+operations under this key to that external key. Requires
+custom_key_store_id (pointing at an external key store).
+Create-time immutable. Up to 128 characters.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"128"}}
 
@@ -238,17 +259,37 @@ reserved for AWS-managed keys.
 
 `[]AwsKmsKeyGrant`
 
+KMS grants on this key: scoped, revocable permissions that let a
+principal use the key for specific operations without editing the
+key policy -- the mechanism for wiring "this workload role may
+encrypt/decrypt under this key" as a first-class dependency, and
+for cross-account key usage. Each entry materializes as its own
+grant resource; grants are create-time immutable (any change
+replaces the grant, which is safe -- grants carry no state).
+
 - rule: encryption_context_equals and encryption_context_subset are mutually exclusive -- a grant takes at most one constraint
+- rule: grantee_principal must be an IAM principal ARN (arn:...) -- AWS's CreateGrant rejects bare service principals on this parameter
+- rule: retiring_principal must be an IAM principal ARN (arn:...) -- AWS's RetireGrant contract takes IAM principals only
 
 ### spec.grants[].name
 
 `string`
+
+Friendly name for the grant, shown by ListGrants next to the
+generated grant id. Optional. Up to 256 characters: letters,
+digits, and _:/- .
 
 - rule: name may use letters, digits, and _:/- (max 256 characters)
 
 ### spec.grants[].granteePrincipal
 
 `string | valueFrom` · required
+
+The principal the grant permits to use the key: an IAM role (the
+mainstream pattern -- reference an AwsIamRole's role_arn output),
+an IAM user ARN, or an AWS service principal (e.g.
+"logs.amazonaws.com"). Cross-account delegation works by naming a
+principal in another account.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}
@@ -258,11 +299,21 @@ reserved for AWS-managed keys.
 
 `[]string` · required
 
+The KMS operations the grant allows, at least one. The domain is
+AWS's own GrantOperation set; which entries make sense depends on
+the key's shape (e.g. Sign/Verify need a signing key, GenerateMac
+an HMAC key) -- AWS validates that pairing at grant creation.
+
 - rule: {"repeated":{"minItems":"1","unique":true,"items":{"string":{"in":["Decrypt","Encrypt","GenerateDataKey","GenerateDataKeyWithoutPlaintext","ReEncryptFrom","ReEncryptTo","Sign","Verify","GetPublicKey","CreateGrant","RetireGrant","DescribeKey","GenerateDataKeyPair","GenerateDataKeyPairWithoutPlaintext","GenerateMac","VerifyMac","DeriveSharedSecret"]}}}}
 
 ### spec.grants[].retiringPrincipal
 
 `string | valueFrom`
+
+The principal allowed to retire the grant when it is no longer
+needed (in addition to the key administrators). Reference an
+AwsIamRole's role_arn output, or pass a literal role/user ARN or
+service principal.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
@@ -271,13 +322,28 @@ reserved for AWS-managed keys.
 
 `map<string, string>`
 
+Constrain the grant to requests whose encryption context EQUALS
+exactly these key-value pairs. Only valid for operations that take
+an encryption context (symmetric keys). Mutually exclusive with
+encryption_context_subset.
+
 ### spec.grants[].encryptionContextSubset
 
 `map<string, string>`
 
+Constrain the grant to requests whose encryption context CONTAINS
+these key-value pairs (a subset match -- the request may carry
+more). Mutually exclusive with encryption_context_equals.
+
 ### spec.grants[].retireOnDelete
 
 `bool`
+
+How teardown releases the grant: false (the default) REVOKES it --
+the hard stop that denies all further use immediately; true RETIRES
+it -- the graceful path AWS recommends when the grant's work is
+done. Both remove the grant; they differ in intent and in the API
+permission they exercise (RevokeGrant vs RetireGrant).
 
 ## Validation Rules
 
@@ -304,6 +370,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsKmsKey, name:
 | `status.outputs.key_id` | `string` | The generated key ID (UUID; "mrk-..." for multi-Region keys). |
 | `status.outputs.key_arn` | `string` | The key ARN -- the join key encryption-at-rest fields across the catalog reference (databases, queues, buckets, functions, ...). |
 | `status.outputs.alias_names` | `[]string` | The alias names attached to the key (each "alias/..."), in spec order -- the human-friendly addresses SDK callers may use instead of the key ID. |
+| `status.outputs.grant_ids` | `map<string, string>` |  |
 
 ## References
 
@@ -346,6 +413,7 @@ Fields on other kinds that can point at this resource:
 | AwsElasticFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsElasticFileSystem | `spec.replication.destinationKmsKeyId` | `status.outputs.key_arn` |
 | AwsEventBridgeBus | `spec.kmsKeyIdentifier` | `status.outputs.key_arn` |
+| AwsEventBridgeBus | `spec.archives[].kmsKeyIdentifier` | `status.outputs.key_arn` |
 | AwsFsxLustreFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsFsxOntapFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsFsxOpenzfsFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |

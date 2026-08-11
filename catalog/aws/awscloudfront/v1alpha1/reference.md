@@ -96,7 +96,7 @@ spec:
     advertiseTrustStoreCaNames: true
   # Tag-based invalidation: origin responses label objects through this
   # header; an invalidation by tag purges every object carrying the label.
-  cacheTagHeaderName: Cache-Tag
+  cacheTagHeaderName: cache-tag
   # A connection function runs at TCP establishment -- the earliest
   # programmable point in the request path.
   connectionFunctionId: EDFDVBD632BHDS5
@@ -1608,6 +1608,8 @@ invalidation): origin responses carry tags in this header, and an
 invalidation by tag purges every object labeled with it -- far
 cheaper than path invalidations for content that clusters by
 topic. Example: "Cache-Tag".
+
+- rule: {"string":{"maxLen":"128","pattern":"^$|^[a-z0-9][a-z0-9\\-\\_]*$"}}
 
 ### spec.connectionFunctionId
 

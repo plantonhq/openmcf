@@ -45,6 +45,8 @@ spec:
     # Managed-CachingOptimized -- the AWS managed static-content policy.
     cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
   # Tag-based invalidation header -- free create-time configuration.
-  cacheTagHeaderName: Cache-Tag
+  # Lowercase: AWS stores the header name lowercased (live-verified);
+  # the spec's format rule enforces the canonical form.
+  cacheTagHeaderName: cache-tag
   # PriceClass_100 keeps propagation to the smallest edge set.
   priceClass: PriceClass_100

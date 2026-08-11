@@ -109,7 +109,7 @@ These are the most important decisions when configuring a CloudFront distributio
 
 **Mutual TLS, both directions** -- `viewerMtls` validates VIEWER client certificates against a CloudFront trust store (required/optional/passthrough); `customOrigin.mtlsClientCertificateArn` has CloudFront present an ACM client certificate to the ORIGIN so only CloudFront can reach the backend.
 
-**Operational posture** -- `enabled: false` keeps a distribution deployed-but-dark for staging a configuration; `waitForDeployment` decides whether deploys block on edge propagation (5-15 minutes); `retainOnDelete` disables instead of deleting on destroy; `enableAdditionalMetrics` turns on the cache-hit-rate/origin-latency dashboard; `cacheTagHeaderName` enables tag-based invalidation (one invalidation purges every object carrying a label).
+**Operational posture** -- `enabled: false` keeps a distribution deployed-but-dark for staging a configuration; `waitForDeployment` decides whether deploys block on edge propagation (5-15 minutes); `retainOnDelete` disables instead of deleting on destroy; `enableAdditionalMetrics` turns on the cache-hit-rate/origin-latency dashboard; `cacheTagHeaderName` enables tag-based invalidation (one invalidation purges every object carrying a label; write the header name lowercase — AWS stores it lowercased).
 
 ## Outputs and Dependencies
 

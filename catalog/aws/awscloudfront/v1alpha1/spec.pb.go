@@ -180,7 +180,12 @@ type AwsCloudFrontSpec struct {
 	// invalidation): origin responses carry tags in this header, and an
 	// invalidation by tag purges every object labeled with it -- far
 	// cheaper than path invalidations for content that clusters by
-	// topic. Example: "Cache-Tag".
+	// topic. Lowercase only: AWS stores the header name lowercased in the
+	// distribution config (live-verified 2026-08-12: "Cache-Tag" read back
+	// as "cache-tag") while the provider passes the value through verbatim
+	// with no case suppression, so a mixed-case value re-plans as a
+	// perpetual cosmetic diff on both engines. HTTP header matching is
+	// case-insensitive, so lowercase loses nothing. Example: "cache-tag".
 	CacheTagHeaderName string `protobuf:"bytes,25,opt,name=cache_tag_header_name,json=cacheTagHeaderName,proto3" json:"cache_tag_header_name,omitempty"`
 	// The CloudFront connection function attached to the distribution,
 	// by ID. Connection functions run at TCP-connection establishment
@@ -2227,7 +2232,7 @@ var File_catalog_aws_awscloudfront_v1alpha1_spec_proto protoreflect.FileDescript
 
 const file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-catalog/aws/awscloudfront/v1alpha1/spec.proto\x12&dev.planton.aws.awscloudfront.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd4!\n" +
+	"-catalog/aws/awscloudfront/v1alpha1/spec.proto\x12&dev.planton.aws.awscloudfront.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xfa!\n" +
 	"\x11AwsCloudFrontSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12'\n" +
 	"\aenabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12J\n" +
@@ -2254,8 +2259,8 @@ const file_catalog_aws_awscloudfront_v1alpha1_spec_proto_rawDesc = "" +
 	"\astaging\x18\x15 \x01(\bR\astaging\x12E\n" +
 	"\x1fcontinuous_deployment_policy_id\x18\x16 \x01(\tR\x1ccontinuousDeploymentPolicyId\x12~\n" +
 	"\x15continuous_deployment\x18\x17 \x01(\v2I.dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontContinuousDeploymentR\x14continuousDeployment\x12+\n" +
-	"\x12anycast_ip_list_id\x18\x18 \x01(\tR\x0fanycastIpListId\x121\n" +
-	"\x15cache_tag_header_name\x18\x19 \x01(\tR\x12cacheTagHeaderName\x12T\n" +
+	"\x12anycast_ip_list_id\x18\x18 \x01(\tR\x0fanycastIpListId\x12W\n" +
+	"\x15cache_tag_header_name\x18\x19 \x01(\tB$\xbaH!r\x1f\x18\x80\x012\x1a^$|^[a-z0-9][a-z0-9\\-\\_]*$R\x12cacheTagHeaderName\x12T\n" +
 	"\x16connection_function_id\x18\x1a \x01(\tB\x1e\xbaH\x1br\x19\x18@2\x15^$|^[A-Za-z0-9\\-\\_]+$R\x14connectionFunctionId\x12`\n" +
 	"\vviewer_mtls\x18\x1b \x01(\v2?.dev.planton.aws.awscloudfront.v1alpha1.AwsCloudFrontViewerMtlsR\n" +
 	"viewerMtls:\x9c\x10\xbaH\x98\x10\x1a\xd6\x02\n" +

@@ -181,6 +181,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsIamUser, name
 | `status.outputs.console_url` | `string` | console_url is the AWS console sign-in URL for this user. |
 | `status.outputs.user_name` | `string` | user_name is the friendly name of the IAM user. |
 | `status.outputs.user_id` | `string` | user_id is the stable unique ID of the IAM user. |
+| `status.outputs.access_key_status` | `string` |  |
 
 ## References
 
