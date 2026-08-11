@@ -1097,7 +1097,9 @@ version or alias qualifier to pin the deployed transformation.
 `double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
-Range: 1-3 MiB. Default: 3 MiB.
+Range: 0.2-3 MiB (fractional values are AWS-legal -- e.g. 0.5 for
+low-latency, small-batch invocation). Default: 1 MiB (256 KiB when the
+destination is Splunk).
 
 Smaller buffers invoke Lambda more frequently with smaller batches.
 Larger buffers (up to 3 MiB) are more efficient and reduce Lambda
@@ -1122,6 +1124,16 @@ Range: 0-300. Default: 3.
 ### spec.extendedS3.processing.processors[].lambda.roleArn
 
 `string | valueFrom`
+
+IAM role ARN Firehose assumes to invoke the Lambda function. When
+absent, Firehose uses the delivery stream's destination role -- the
+right choice for almost every pipeline. Set this only when the
+transformation function must be invoked with a DIFFERENT role than the
+one that writes to the destination (e.g. the function lives in another
+account). Note: AWS reports the delivery role back for unset values, and
+the provider does not store default-valued processor parameters in
+state -- so set this only to a non-default role, never to the delivery
+role itself (that would cause perpetual plan diffs).
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
@@ -1320,36 +1332,77 @@ performance and reduces storage cost for analytics workloads.
 
 `bool`
 
-Enable data format conversion. When true, output_format and schema are
-required.
+Enable data format conversion. When true, exactly one deserializer arm
+(open_x_json or hive_json), exactly one serializer arm (parquet or orc),
+and schema are required. When false with arms configured, the
+conversion settings are retained but inactive (AWS permits disabling
+conversion without discarding its configuration).
 
 ### spec.extendedS3.dataFormatConversion.openXJson
 
 `AwsKinesisFirehoseOpenXJsonDeserializer`
 
+OpenX JSON deserializer arm. Handles most JSON formats including nested
+objects -- the right choice for general use. Exactly one of open_x_json
+or hive_json must be set when conversion is enabled; set it empty
+("openXJson: {}") to accept the deserializer defaults.
+
 ### spec.extendedS3.dataFormatConversion.openXJson.caseInsensitive
 
 `bool` · optional (explicit presence)
+
+When true (the AWS default), JSON keys are lowercased before
+deserialization, so keys match case-insensitively against the Glue
+schema's lowercase column names. Set to false only when the source
+JSON keys must be matched exactly as sent (combine with
+column_to_json_key_mappings for columns whose keys differ only by
+case).
 
 ### spec.extendedS3.dataFormatConversion.openXJson.columnToJsonKeyMappings
 
 `map<string, string>`
 
+Map of Glue schema column names to JSON keys that differ from them.
+Use when a JSON key is not a valid column name -- e.g. a key that
+collides with a Hive reserved word: {"ts": "timestamp"} reads the JSON
+key "timestamp" into the column "ts".
+
 ### spec.extendedS3.dataFormatConversion.openXJson.convertDotsInJsonKeysToUnderscores
 
 `bool`
+
+When true, dots in JSON keys are converted to underscores before
+matching against the schema ("a.b" reads into column "a_b"). Glue
+column names cannot contain dots, so enable this when source keys do.
+Default: false.
 
 ### spec.extendedS3.dataFormatConversion.hiveJson
 
 `AwsKinesisFirehoseHiveJsonDeserializer`
 
+Apache Hive JSON deserializer arm. Use for Hive-compatible JSON when
+records carry non-standard timestamp encodings that need explicit
+parsing patterns. Exactly one of open_x_json or hive_json must be set
+when conversion is enabled.
+
 ### spec.extendedS3.dataFormatConversion.hiveJson.timestampFormats
 
 `[]string`
 
+Joda-Time datetime format patterns for parsing timestamp fields from
+the source JSON (e.g. "yyyy-MM-dd'T'HH:mm:ss"). Include the special
+value "millis" to parse epoch-millisecond timestamps. When empty,
+Firehose uses java.sql.Timestamp::valueOf.
+
 ### spec.extendedS3.dataFormatConversion.parquet
 
 `AwsKinesisFirehoseParquetSerializer`
+
+Apache Parquet serializer arm. Best for read-heavy analytical workloads
+(Athena, Spark, Presto): excellent compression, predicate pushdown, and
+columnar pruning. Exactly one of parquet or orc must be set when
+conversion is enabled; set it empty ("parquet: {}") to accept the
+serializer defaults (SNAPPY compression).
 
 - rule: compression must be 'SNAPPY', 'GZIP', or 'UNCOMPRESSED' when set
 - rule: block_size_bytes must be at least 67108864 (64 MiB) when set
@@ -1361,29 +1414,57 @@ required.
 
 `string`
 
+Compression codec for Parquet pages. "SNAPPY" (the default) balances
+speed and size; "GZIP" compresses harder at higher CPU cost --
+preferable when S3 storage/scan cost outweighs write throughput;
+"UNCOMPRESSED" only when downstream readers cannot decompress.
+
 ### spec.extendedS3.dataFormatConversion.parquet.blockSizeBytes
 
 `int64`
+
+Parquet row-group (block) size in bytes. Firehose and query engines use
+it for padding and row-group sizing; larger blocks improve scan
+efficiency at the cost of memory. Minimum: 67108864 (64 MiB).
+Default: 268435456 (256 MiB).
 
 ### spec.extendedS3.dataFormatConversion.parquet.pageSizeBytes
 
 `int64`
 
+Parquet page size in bytes -- the smallest unit a read must fully
+decompress. Minimum: 65536 (64 KiB). Default: 1048576 (1 MiB).
+
 ### spec.extendedS3.dataFormatConversion.parquet.maxPaddingBytes
 
 `int64`
+
+Maximum padding in bytes when writing row groups (used to align blocks
+to HDFS-style boundaries; rarely needed on S3). Default: 0.
 
 ### spec.extendedS3.dataFormatConversion.parquet.enableDictionaryCompression
 
 `bool`
 
+Enable dictionary compression -- encodes repeated column values through
+a dictionary. Effective when columns carry low-cardinality values.
+Default: false.
+
 ### spec.extendedS3.dataFormatConversion.parquet.writerVersion
 
 `string`
 
+Parquet writer version. "V1" (the default) is readable by every
+engine; "V2" enables newer encodings -- confirm downstream reader
+support before switching. Valid values: "V1", "V2".
+
 ### spec.extendedS3.dataFormatConversion.orc
 
 `AwsKinesisFirehoseOrcSerializer`
+
+Apache ORC serializer arm. Best for Hive workloads: ACID support, bloom
+filters, and built-in indexing. Exactly one of parquet or orc must be
+set when conversion is enabled.
 
 - rule: compression must be 'SNAPPY', 'ZLIB', or 'NONE' when set
 - rule: block_size_bytes must be at least 67108864 (64 MiB) when set
@@ -1398,41 +1479,77 @@ required.
 
 `string`
 
+Compression codec for ORC stripes. "SNAPPY" (the default) balances
+speed and size; "ZLIB" compresses harder at higher CPU cost; "NONE"
+only when downstream readers cannot decompress.
+
 ### spec.extendedS3.dataFormatConversion.orc.blockSizeBytes
 
 `int64`
+
+ORC block size in bytes, used for padding calculations and copy-block
+sizing. Minimum: 67108864 (64 MiB). Default: 268435456 (256 MiB).
 
 ### spec.extendedS3.dataFormatConversion.orc.stripeSizeBytes
 
 `int64`
 
+ORC stripe size in bytes -- the unit of independent reading. Minimum:
+8388608 (8 MiB). Default: 67108864 (64 MiB).
+
 ### spec.extendedS3.dataFormatConversion.orc.bloomFilterColumns
 
 `[]string`
+
+Column names to build bloom filters for. Bloom filters let readers
+skip stripes that cannot contain a searched value -- list the columns
+your queries filter on by equality.
 
 ### spec.extendedS3.dataFormatConversion.orc.bloomFilterFalsePositiveProbability
 
 `double` · optional (explicit presence)
 
+Bloom filter false-positive probability, between 0 and 1. Lower values
+make filters more selective but larger. AWS default: 0.05. Explicit 0
+is AWS-legal, so absence (AWS default) and 0 are distinct states.
+
 ### spec.extendedS3.dataFormatConversion.orc.dictionaryKeyThreshold
 
 `double`
+
+Fraction of a column's total distinct keys above which dictionary
+encoding is abandoned for that column, between 0 and 1. 0 (the AWS
+default) always dictionary-encodes; 1 never abandons it.
 
 ### spec.extendedS3.dataFormatConversion.orc.enablePadding
 
 `bool`
 
+Pad stripes to HDFS-style block boundaries. Relevant for HDFS-backed
+readers; rarely needed for S3. Default: false.
+
 ### spec.extendedS3.dataFormatConversion.orc.paddingTolerance
 
 `double` · optional (explicit presence)
+
+Maximum fraction of a stripe that may be wasted as padding, between 0
+and 1. Only meaningful when enable_padding is true. AWS default: 0.05.
+Explicit 0 is AWS-legal, so absence and 0 are distinct states.
 
 ### spec.extendedS3.dataFormatConversion.orc.formatVersion
 
 `string`
 
+ORC file format version. "V0_12" (the default) is current; "V0_11" is
+the legacy Hive 0.11 format -- use only for readers frozen on it.
+Valid values: "V0_11", "V0_12".
+
 ### spec.extendedS3.dataFormatConversion.orc.rowIndexStride
 
 `int32`
+
+Number of rows between index entries. Must be at least 1000 when set.
+Default: 10000.
 
 ### spec.extendedS3.dataFormatConversion.schema
 
@@ -1820,7 +1937,9 @@ version or alias qualifier to pin the deployed transformation.
 `double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
-Range: 1-3 MiB. Default: 3 MiB.
+Range: 0.2-3 MiB (fractional values are AWS-legal -- e.g. 0.5 for
+low-latency, small-batch invocation). Default: 1 MiB (256 KiB when the
+destination is Splunk).
 
 Smaller buffers invoke Lambda more frequently with smaller batches.
 Larger buffers (up to 3 MiB) are more efficient and reduce Lambda
@@ -1845,6 +1964,16 @@ Range: 0-300. Default: 3.
 ### spec.opensearch.processing.processors[].lambda.roleArn
 
 `string | valueFrom`
+
+IAM role ARN Firehose assumes to invoke the Lambda function. When
+absent, Firehose uses the delivery stream's destination role -- the
+right choice for almost every pipeline. Set this only when the
+transformation function must be invoked with a DIFFERENT role than the
+one that writes to the destination (e.g. the function lives in another
+account). Note: AWS reports the delivery role back for unset values, and
+the provider does not store default-valued processor parameters in
+state -- so set this only to a non-default role, never to the delivery
+role itself (that would cause perpetual plan diffs).
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
@@ -2322,7 +2451,9 @@ version or alias qualifier to pin the deployed transformation.
 `double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
-Range: 1-3 MiB. Default: 3 MiB.
+Range: 0.2-3 MiB (fractional values are AWS-legal -- e.g. 0.5 for
+low-latency, small-batch invocation). Default: 1 MiB (256 KiB when the
+destination is Splunk).
 
 Smaller buffers invoke Lambda more frequently with smaller batches.
 Larger buffers (up to 3 MiB) are more efficient and reduce Lambda
@@ -2347,6 +2478,16 @@ Range: 0-300. Default: 3.
 ### spec.opensearchServerless.processing.processors[].lambda.roleArn
 
 `string | valueFrom`
+
+IAM role ARN Firehose assumes to invoke the Lambda function. When
+absent, Firehose uses the delivery stream's destination role -- the
+right choice for almost every pipeline. Set this only when the
+transformation function must be invoked with a DIFFERENT role than the
+one that writes to the destination (e.g. the function lives in another
+account). Note: AWS reports the delivery role back for unset values, and
+the provider does not store default-valued processor parameters in
+state -- so set this only to a non-default role, never to the delivery
+role itself (that would cause perpetual plan diffs).
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
@@ -2867,7 +3008,9 @@ version or alias qualifier to pin the deployed transformation.
 `double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
-Range: 1-3 MiB. Default: 3 MiB.
+Range: 0.2-3 MiB (fractional values are AWS-legal -- e.g. 0.5 for
+low-latency, small-batch invocation). Default: 1 MiB (256 KiB when the
+destination is Splunk).
 
 Smaller buffers invoke Lambda more frequently with smaller batches.
 Larger buffers (up to 3 MiB) are more efficient and reduce Lambda
@@ -2892,6 +3035,16 @@ Range: 0-300. Default: 3.
 ### spec.httpEndpoint.processing.processors[].lambda.roleArn
 
 `string | valueFrom`
+
+IAM role ARN Firehose assumes to invoke the Lambda function. When
+absent, Firehose uses the delivery stream's destination role -- the
+right choice for almost every pipeline. Set this only when the
+transformation function must be invoked with a DIFFERENT role than the
+one that writes to the destination (e.g. the function lives in another
+account). Note: AWS reports the delivery role back for unset values, and
+the provider does not store default-valued processor parameters in
+state -- so set this only to a non-default role, never to the delivery
+role itself (that would cause perpetual plan diffs).
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
@@ -3524,7 +3677,9 @@ version or alias qualifier to pin the deployed transformation.
 `double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
-Range: 1-3 MiB. Default: 3 MiB.
+Range: 0.2-3 MiB (fractional values are AWS-legal -- e.g. 0.5 for
+low-latency, small-batch invocation). Default: 1 MiB (256 KiB when the
+destination is Splunk).
 
 Smaller buffers invoke Lambda more frequently with smaller batches.
 Larger buffers (up to 3 MiB) are more efficient and reduce Lambda
@@ -3549,6 +3704,16 @@ Range: 0-300. Default: 3.
 ### spec.redshift.processing.processors[].lambda.roleArn
 
 `string | valueFrom`
+
+IAM role ARN Firehose assumes to invoke the Lambda function. When
+absent, Firehose uses the delivery stream's destination role -- the
+right choice for almost every pipeline. Set this only when the
+transformation function must be invoked with a DIFFERENT role than the
+one that writes to the destination (e.g. the function lives in another
+account). Note: AWS reports the delivery role back for unset values, and
+the provider does not store default-valued processor parameters in
+state -- so set this only to a non-default role, never to the delivery
+role itself (that would cause perpetual plan diffs).
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
@@ -4026,7 +4191,9 @@ version or alias qualifier to pin the deployed transformation.
 `double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
-Range: 1-3 MiB. Default: 3 MiB.
+Range: 0.2-3 MiB (fractional values are AWS-legal -- e.g. 0.5 for
+low-latency, small-batch invocation). Default: 1 MiB (256 KiB when the
+destination is Splunk).
 
 Smaller buffers invoke Lambda more frequently with smaller batches.
 Larger buffers (up to 3 MiB) are more efficient and reduce Lambda
@@ -4051,6 +4218,16 @@ Range: 0-300. Default: 3.
 ### spec.splunk.processing.processors[].lambda.roleArn
 
 `string | valueFrom`
+
+IAM role ARN Firehose assumes to invoke the Lambda function. When
+absent, Firehose uses the delivery stream's destination role -- the
+right choice for almost every pipeline. Set this only when the
+transformation function must be invoked with a DIFFERENT role than the
+one that writes to the destination (e.g. the function lives in another
+account). Note: AWS reports the delivery role back for unset values, and
+the provider does not store default-valued processor parameters in
+state -- so set this only to a non-default role, never to the delivery
+role itself (that would cause perpetual plan diffs).
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
@@ -4605,7 +4782,9 @@ version or alias qualifier to pin the deployed transformation.
 `double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
-Range: 1-3 MiB. Default: 3 MiB.
+Range: 0.2-3 MiB (fractional values are AWS-legal -- e.g. 0.5 for
+low-latency, small-batch invocation). Default: 1 MiB (256 KiB when the
+destination is Splunk).
 
 Smaller buffers invoke Lambda more frequently with smaller batches.
 Larger buffers (up to 3 MiB) are more efficient and reduce Lambda
@@ -4630,6 +4809,16 @@ Range: 0-300. Default: 3.
 ### spec.snowflake.processing.processors[].lambda.roleArn
 
 `string | valueFrom`
+
+IAM role ARN Firehose assumes to invoke the Lambda function. When
+absent, Firehose uses the delivery stream's destination role -- the
+right choice for almost every pipeline. Set this only when the
+transformation function must be invoked with a DIFFERENT role than the
+one that writes to the destination (e.g. the function lives in another
+account). Note: AWS reports the delivery role back for unset values, and
+the provider does not store default-valued processor parameters in
+state -- so set this only to a non-default role, never to the delivery
+role itself (that would cause perpetual plan diffs).
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
@@ -5108,7 +5297,9 @@ version or alias qualifier to pin the deployed transformation.
 `double`
 
 Buffer size in MiB that Firehose accumulates before invoking Lambda.
-Range: 1-3 MiB. Default: 3 MiB.
+Range: 0.2-3 MiB (fractional values are AWS-legal -- e.g. 0.5 for
+low-latency, small-batch invocation). Default: 1 MiB (256 KiB when the
+destination is Splunk).
 
 Smaller buffers invoke Lambda more frequently with smaller batches.
 Larger buffers (up to 3 MiB) are more efficient and reduce Lambda
@@ -5133,6 +5324,16 @@ Range: 0-300. Default: 3.
 ### spec.iceberg.processing.processors[].lambda.roleArn
 
 `string | valueFrom`
+
+IAM role ARN Firehose assumes to invoke the Lambda function. When
+absent, Firehose uses the delivery stream's destination role -- the
+right choice for almost every pipeline. Set this only when the
+transformation function must be invoked with a DIFFERENT role than the
+one that writes to the destination (e.g. the function lives in another
+account). Note: AWS reports the delivery role back for unset values, and
+the provider does not store default-valued processor parameters in
+state -- so set this only to a non-default role, never to the delivery
+role itself (that would cause perpetual plan diffs).
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse

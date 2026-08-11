@@ -183,6 +183,12 @@ Storage media type. ForceNew — cannot be changed after creation.
   SINGLE_AZ_2 and MULTI_AZ_1 deployment types. Requires minimum 2000 GiB
   storage capacity.
 
+The provider's shared storage-type enum also accepts INTELLIGENT_TIERING,
+but AWS's CreateFileSystem contract scopes Intelligent-Tiering to OpenZFS
+multi-AZ and Lustre PERSISTENT_2 file systems only — it is not valid for
+Windows. The two-value domain here is deliberate (spec mirrors AWS where
+the provider is loose).
+
 Default: SSD
 
 - default: `SSD`
@@ -194,7 +200,15 @@ Default: SSD
 Throughput capacity in MB/s. Required.
 
 Valid values: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4608, 6144, 9216, 12288.
-The maximum available throughput depends on the deployment type.
+The maximum available throughput depends on the deployment type, and the
+4608+ tiers are available only in a handful of regions (per the FSx for
+Windows performance documentation).
+
+Known provider defect at the pinned release: the provider's value list
+carries a digit-transposition typo — it validates 12228 where AWS's
+documented top tier is 12288 — so the 12288 tier fails the provider's
+plan-time validation on both engines until a provider release fixes the
+list. The spec mirrors AWS's contract, never the typo.
 
 Throughput can be changed after creation to scale performance up or down.
 

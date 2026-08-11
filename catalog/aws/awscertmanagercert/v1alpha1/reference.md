@@ -122,10 +122,12 @@ not repeat primary_domain_name here -- ACM already includes it.
 
 How ACM verifies domain ownership for requested certificates:
 "DNS" (recommended -- a CNAME record per domain, kept in place so
-renewals are fully automatic) or "EMAIL" (approval mail to the
+renewals are fully automatic), "EMAIL" (approval mail to the
 domain's WHOIS/admin addresses; renewal requires re-approval every
-time, so prefer DNS). Empty keeps DNS. Not applicable to imported
-or private certificates.
+time, so prefer DNS), or "HTTP" (serve a validation token from the
+domain -- for domains whose DNS you cannot touch; renewals repeat
+the challenge). Empty keeps DNS. Not applicable to imported or
+private certificates.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["DNS","EMAIL","HTTP"]}}
 
@@ -285,6 +287,14 @@ internal ALBs) where clients trust your private root.
 ### spec.earlyRenewalDuration
 
 `string`
+
+How long before expiry ACM starts the managed renewal of this
+PRIVATE certificate -- either an RFC 3339 duration ("P90D",
+"P3M") or a Go-style duration ("2160h"). Durations under 60 days
+have no effect (AWS's floor). Private-CA certificates only:
+publicly validated certificates renew on ACM's own schedule (kept
+automatic by leaving the DNS validation records in place), and
+imported certificates never renew.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(P([0-9]+Y)?([0-9]+M)?([0-9]+W)?([0-9]+D)?(T([0-9]+H)?([0-9]+M)?([0-9]+(\\.[0-9]+)?S)?)?|([0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h))+)$"}}
 

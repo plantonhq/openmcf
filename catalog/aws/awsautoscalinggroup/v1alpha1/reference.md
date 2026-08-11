@@ -1222,8 +1222,10 @@ on every replacement.
 
 How capacity distributes across availability zones:
 "balanced-best-effort" (AWS default -- launch in another zone when
-one is impaired) or "balanced-only" (strict balance; launches wait
-for the impaired zone).
+one is impaired), "balanced-only" (strict balance; launches wait
+for the impaired zone), or "reservations-then-balanced" (fill
+targeted Capacity Reservations first, then balance -- pairs with
+capacity_reservation).
 
 ### spec.forceDelete
 
@@ -1644,8 +1646,10 @@ Required.
 
 `string`
 
-The load/scaling metric pair to forecast: "ASGCPUUtilization",
-"ASGNetworkIn", "ASGNetworkOut", or "ALBRequestCount". Required.
+The predefined load/scaling metric PAIR to forecast:
+"ASGCPUUtilization", "ASGNetworkIn", "ASGNetworkOut", or
+"ALBRequestCount". The one-liner for the common cases -- mutually
+exclusive with the split and customized metric fields below.
 
 ### spec.scalingPolicies[].predictiveScaling.resourceLabel
 
@@ -1688,9 +1692,16 @@ max_capacity_breach_behavior is "IncreaseMaxCapacity", 0-100.
 
 `AwsAutoScalingGroupPredictiveScalingPredefinedMetric`
 
+SPLIT form, load side: the predefined TOTAL metric the forecast is
+trained on ("ASGTotalCPUUtilization", "ASGTotalNetworkIn",
+"ASGTotalNetworkOut", "ALBTargetGroupRequestCount"). Pair with
+predefined_scaling_metric (or customized_scaling_metric_queries).
+
 ### spec.scalingPolicies[].predictiveScaling.predefinedLoadMetric.metricType
 
 `string` · required
+
+The predefined metric name. Required.
 
 - rule: {"required":true}
 
@@ -1698,13 +1709,22 @@ max_capacity_breach_behavior is "IncreaseMaxCapacity", 0-100.
 
 `string`
 
+Identifies the ALB target group for the ALB-based metric types
+(load balancer arn_suffix + "/" + target group arn_suffix).
+
 ### spec.scalingPolicies[].predictiveScaling.predefinedScalingMetric
 
 `AwsAutoScalingGroupPredictiveScalingPredefinedMetric`
 
+SPLIT form, scaling side: the predefined AVERAGE metric capacity is
+sized against ("ASGAverageCPUUtilization", "ASGAverageNetworkIn",
+"ASGAverageNetworkOut", "ALBRequestCountPerTarget").
+
 ### spec.scalingPolicies[].predictiveScaling.predefinedScalingMetric.metricType
 
 `string` · required
+
+The predefined metric name. Required.
 
 - rule: {"required":true}
 
@@ -1712,9 +1732,17 @@ max_capacity_breach_behavior is "IncreaseMaxCapacity", 0-100.
 
 `string`
 
+Identifies the ALB target group for the ALB-based metric types
+(load balancer arn_suffix + "/" + target group arn_suffix).
+
 ### spec.scalingPolicies[].predictiveScaling.customizedLoadMetricQueries
 
 `[]AwsAutoScalingGroupMetricDataQuery`
+
+CUSTOMIZED form, load side: a metric-math query set (up to 10
+entries, exactly one returning data) producing the total-load
+signal the forecast is trained on. Mutually exclusive with
+predefined_load_metric.
 
 - rule: {"repeated":{"maxItems":"10"}}
 - rule: exactly one of expression or metric_stat must be set
@@ -1819,6 +1847,10 @@ explicitly set false on intermediate entries).
 
 `[]AwsAutoScalingGroupMetricDataQuery`
 
+CUSTOMIZED form, scaling side: a metric-math query set producing
+the per-instance utilization signal capacity is sized against.
+Mutually exclusive with predefined_scaling_metric.
+
 - rule: {"repeated":{"maxItems":"10"}}
 - rule: exactly one of expression or metric_stat must be set
 
@@ -1922,6 +1954,11 @@ explicitly set false on intermediate entries).
 
 `[]AwsAutoScalingGroupMetricDataQuery`
 
+CUSTOMIZED form, capacity side: a metric-math query set reporting
+the group's current capacity -- needed only when the scaling metric
+is a custom signal whose relationship to instance count AWS cannot
+infer.
+
 - rule: {"repeated":{"maxItems":"10"}}
 - rule: exactly one of expression or metric_stat must be set
 
@@ -2024,6 +2061,11 @@ explicitly set false on intermediate entries).
 ### spec.scalingPolicies[].disabled
 
 `bool`
+
+Suspend this policy without deleting it: the policy and its
+CloudWatch alarms stay configured but stop acting on the group.
+The pause button for incident response or load tests -- deleting
+the policy instead would discard alarm history and forecast state.
 
 ### spec.scheduledActions
 
@@ -2170,6 +2212,15 @@ for the consumer.
 
 `bool`
 
+Attach this hook atomically AT GROUP CREATION instead of as a
+separate post-creation resource. Without it, instances the group
+launches in the seconds before the standalone hook attaches slip
+through unhooked -- set it on launch-transition hooks that must
+catch the very first instance. Trade-off: AWS makes creation-time
+hooks immutable, so any change to a flagged hook REPLACES the whole
+group; leave it off (the default) for hooks that need in-place
+updates.
+
 ### spec.notifications
 
 `AwsAutoScalingGroupNotifications`
@@ -2206,6 +2257,10 @@ The event types to publish. At least one of:
 
 `AwsAutoScalingGroupCapacityReservation`
 
+Launch into EC2 Capacity Reservations -- guaranteed capacity a
+reserved fleet has already paid for. Leave unset for the AWS
+default behavior (use an open reservation when one matches).
+
 - rule: preference must be one of: default, capacity-reservations-only, capacity-reservations-first, none
 - rule: capacity_reservation_ids and capacity_reservation_resource_group_arns are mutually exclusive
 
@@ -2213,23 +2268,52 @@ The event types to publish. At least one of:
 
 `string`
 
+How launches use reservations:
+- "default": AWS account default (open reservations match
+  automatically).
+- "capacity-reservations-only": launch ONLY into the targeted
+  reservations -- fail rather than fall back to on-demand pool
+  capacity.
+- "capacity-reservations-first": try the reservations, fall back
+  to regular capacity when exhausted.
+- "none": never consume reservations, even matching open ones.
+
 ### spec.capacityReservation.capacityReservationIds
 
 `[]string`
+
+Specific Capacity Reservation IDs to launch into (e.g. "cr-...").
+Mutually exclusive with capacity_reservation_resource_group_arns.
 
 ### spec.capacityReservation.capacityReservationResourceGroupArns
 
 `[]string`
 
+Resource-group ARNs that collect Capacity Reservations -- target
+the group instead of chasing individual reservation IDs. Mutually
+exclusive with capacity_reservation_ids.
+
 ### spec.trafficSources
 
 `[]AwsAutoScalingGroupTrafficSource`
+
+Traffic sources this group registers its instances with -- the
+generalized successor to load-balancer attachment that also covers
+VPC Lattice target groups. For ALB/NLB target groups prefer
+target_groups (typed references); use this for VPC Lattice (no
+Planton kind yet -- pass the target group ARN) or Classic ELBs.
+Mutually exclusive with target_groups (the provider rejects the
+combination).
 
 - rule: type must be 'elb', 'elbv2', or 'vpc-lattice' when set
 
 ### spec.trafficSources[].identifier
 
 `string | valueFrom` · required
+
+What identifies the source: a VPC Lattice target group ARN, an
+ALB/NLB target group ARN, or a Classic ELB name. Reference another
+resource's output or pass the literal value.
 
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
@@ -2238,9 +2322,19 @@ The event types to publish. At least one of:
 
 `string`
 
+The source type: "vpc-lattice", "elbv2" (ALB/NLB target group), or
+"elb" (Classic). AWS infers it from the identifier when unset --
+set it explicitly for Classic ELB names, which look like plain
+strings.
+
 ### spec.instanceLifecyclePolicy
 
 `AwsAutoScalingGroupInstanceLifecyclePolicy`
+
+What happens to instances whose TERMINATING lifecycle hook ends in
+ABANDON -- terminate anyway (AWS default) or retain the instance
+for debugging. Only meaningful with a terminating-transition
+lifecycle hook.
 
 - rule: terminate_hook_abandon must be 'retain' or 'terminate' when set
 
@@ -2248,23 +2342,48 @@ The event types to publish. At least one of:
 
 `string`
 
+When a terminating instance's lifecycle hook ends in ABANDON:
+"terminate" (AWS default -- proceed with termination) or "retain"
+(keep the instance out of the group but running, for post-mortem
+debugging of whatever made the hook fail).
+
 ### spec.ignoreFailedScalingActivities
 
 `bool`
+
+Keep IaC applies moving while a scaling activity is failing: read
+the group state without waiting on the failed activity. For groups
+whose scaling errors are handled by their own alarms rather than
+the deploy pipeline.
 
 ### spec.forceDeleteWarmPool
 
 `bool`
 
+When force_delete tears the group down, also force-delete its warm
+pool without draining the pooled instances.
+
 ### spec.minElbCapacity
 
 `int32`
+
+Minimum number of instances that must pass ELB health checks
+before a CREATE is considered successful. Requires an attached
+load balancer (target_groups or traffic_sources) and health checks
+that can pass during the wait. An engine-behavior wait (both
+engines honor it identically), not an AWS API field -- like
+wait_for_capacity_timeout.
 
 - rule: {"int32":{"gte":0}}
 
 ### spec.waitForElbCapacity
 
 `int32`
+
+Exact number of ELB-healthy instances to wait for on create AND
+every update (min_elb_capacity waits on create only). Takes
+precedence over min_elb_capacity when both are set. An
+engine-behavior wait, not an AWS API field.
 
 - rule: {"int32":{"gte":0}}
 

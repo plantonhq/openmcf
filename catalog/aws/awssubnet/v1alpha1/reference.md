@@ -16,8 +16,9 @@ default route points at a NAT gateway (or which has no internet route) is
 private. Routing is therefore folded into this spec.
 
 Two mutually exclusive ways to attach a route table are supported:
-  - routes: inline rules from which a dedicated route table is created and
-    owned by this subnet.
+  - routes (and/or propagating_vgws): a dedicated route table is created,
+    owned by this subnet, populated with the inline rules and any VGW
+    route propagations.
   - route_table_id: an existing, externally-managed route table to associate.
 If neither is set, the subnet uses the VPC's main route table. The
 route_table_id is always exported as a stack output so downstream resources
@@ -103,8 +104,11 @@ VPC replaces the subnet.
 
 `string`
 
-The availability zone the subnet lives in (e.g. "us-west-2a"). AWS subnets
-are single-AZ; to span AZs, create one AwsSubnet per zone. Immutable:
+The availability zone the subnet lives in, by NAME (e.g. "us-west-2a").
+AWS subnets are single-AZ; to span AZs, create one AwsSubnet per zone.
+Exactly one of availability_zone or availability_zone_id must be set --
+explicit placement is mandatory (AWS would otherwise pick a zone at
+random, which is never what declarative infrastructure wants). Immutable:
 changing the AZ replaces the subnet.
 
 ### spec.cidrBlock
@@ -114,7 +118,10 @@ changing the AZ replaces the subnet.
 IPv4 CIDR block for the subnet (e.g. "10.0.1.0/24"). Must fall within the
 VPC's CIDR and not overlap any sibling subnet. Note that AWS reserves the
 first four and the last IP address in every subnet, so a /28 yields 11
-usable addresses. Immutable: changing the CIDR replaces the subnet.
+usable addresses. Exactly one IPv4 addressing method is required unless
+ipv6_native is true: either this CIDR or an IPAM allocation
+(ipv4_ipam_pool_id + ipv4_netmask_length). Immutable: changing the CIDR
+replaces the subnet.
 
 - rule: cidr_block must be an IPv4 CIDR like 10.0.1.0/24
 
@@ -235,10 +242,10 @@ Allowed values (use exactly as shown):
 - `vpc_endpoint`
 - `network_interface`
 - `egress_only_internet_gateway`
-- `carrier_gateway`
-- `core_network`
-- `local_gateway`
-- `odb_network`
+- `carrier_gateway` -- Wavelength Zone carrier gateway (cagw-...), for routing subnet traffic to the telecom carrier network.
+- `core_network` -- AWS Cloud WAN core network ARN (arn:aws:networkmanager::...:core-network/...).
+- `local_gateway` -- Outposts local gateway (lgw-...), for routing to an on-premises network through an Outpost.
+- `odb_network` -- Oracle Database@AWS network ARN (arn:aws:odb:...:odb-network/...). Verified provider quirk: AWS returns a gateway id alongside ODB routes, which older providers surfaced as perpetual drift -- fixed in provider 6.53.0; the modules rely on the pinned provider for this.
 
 ### spec.routes[].targetId
 
@@ -258,9 +265,20 @@ producing resource is referenced explicitly via value_from.
 
 `string`
 
+The availability zone the subnet lives in, by ID (e.g. "usw2-az1"). AZ IDs
+are stable across AWS accounts, unlike AZ names which are shuffled
+per-account -- use the ID form when coordinating subnet placement across
+accounts. Exactly one of availability_zone or availability_zone_id must be
+set. Immutable: changing it replaces the subnet.
+
 ### spec.ipv4IpamPoolId
 
 `string | valueFrom`
+
+The IPAM pool to allocate the subnet's IPv4 CIDR from, as an alternative
+to declaring cidr_block explicitly. Requires ipv4_netmask_length. Supply a
+literal ipam-pool-id; there is no IPAM pool catalog kind yet. Immutable:
+changing it replaces the subnet.
 
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
@@ -268,11 +286,20 @@ producing resource is referenced explicitly via value_from.
 
 `int32` · optional (explicit presence)
 
+Netmask length for the IPv4 CIDR allocated from ipv4_ipam_pool_id
+(e.g. 24 for a /24). Valid range 16-28 (the AWS subnet netmask bounds).
+Requires ipv4_ipam_pool_id; mutually exclusive with cidr_block.
+
 - rule: {"int32":{"lte":28,"gte":16}}
 
 ### spec.ipv6IpamPoolId
 
 `string | valueFrom`
+
+The IPAM pool to allocate the subnet's IPv6 CIDR from, as an alternative
+to declaring ipv6_cidr_block explicitly. Requires ipv6_netmask_length.
+Supply a literal ipam-pool-id; there is no IPAM pool catalog kind yet.
+Immutable: changing it replaces the subnet.
 
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
@@ -280,15 +307,35 @@ producing resource is referenced explicitly via value_from.
 
 `int32` · optional (explicit presence)
 
+Netmask length for the IPv6 CIDR allocated from ipv6_ipam_pool_id. AWS
+subnets accept /44, /48, /52, /56, /60, or /64 (a /64 is the norm --
+anything shorter is for subnets that will be further subdivided by
+longest-prefix-match routing). Requires ipv6_ipam_pool_id; mutually
+exclusive with ipv6_cidr_block.
+
 - rule: {"int32":{"in":[44,48,52,56,60,64]}}
 
 ### spec.ipv6Native
 
 `bool`
 
+When true, creates an IPv6-only subnet: no IPv4 addressing at all
+(cidr_block and ipv4_ipam_pool_id must both be empty), and an IPv6 CIDR
+(ipv6_cidr_block or the IPv6 IPAM pair) is required. Instances in an
+IPv6-only subnet need private_dns_hostname_type_on_launch =
+"resource-name" and can reach IPv4-only destinations via DNS64 + NAT64
+(see enable_dns64). Immutable: changing it replaces the subnet.
+
 ### spec.propagatingVgws
 
 `[]string`
+
+Virtual private gateway IDs (vgw-...) whose routes propagate into the
+subnet-owned route table -- the mechanism that pulls Site-to-Site VPN /
+Direct Connect routes in automatically instead of declaring them one by
+one. Only valid when this subnet OWNS its route table (inline routes
+mode, or propagation-only with no inline routes); not allowed with an
+external route_table_id, whose owner controls its own propagation.
 
 ## Validation Rules
 

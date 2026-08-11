@@ -7,7 +7,7 @@ The **AwsSqsQueue** resource provides a standardized way to provision and manage
 ### Essential Fields (80% Use Case)
 
 - **fifo_queue**: Whether to create a FIFO queue (exactly-once, ordered) or a Standard queue (best-effort ordering, at-least-once). Cannot be changed after creation.
-- **sqs_managed_sse_enabled**: Enable SQS-managed server-side encryption at zero cost. Mutually exclusive with `kms_key_id`.
+- **sqs_managed_sse_enabled**: SQS-managed server-side encryption at zero cost. AWS enables SSE-SQS on new queues by default, so the field is three-state: leave it unset to keep AWS's default, set `true` to pin encryption on, or set `false` to explicitly create an unencrypted queue. Setting it at all (either value) is mutually exclusive with `kms_key_id`.
 - **dead_letter_config**: Route messages that fail processing beyond a threshold to a separate dead letter queue.
   - **target_arn**: ARN of the dead letter queue. Accepts a literal value or a `valueFrom` reference to another AwsSqsQueue.
   - **max_receive_count**: Number of receive attempts before a message is sent to the DLQ (1–1000).
@@ -88,8 +88,10 @@ Use an SQS queue as an SNS subscription endpoint. Set a queue `policy` that gran
 - Set `max_receive_count` based on the nature of failures: use 1 for poison pill detection, 3–5 for transient error recovery.
 
 ### Encryption Choices
-- **SSE-SQS** (`sqs_managed_sse_enabled: true`): Zero-cost encryption managed by SQS. Sufficient for most compliance requirements.
-- **SSE-KMS** (`kms_key_id`): Use when you need customer-managed key rotation, CloudTrail auditing of key usage, or cross-account key sharing.
+- **AWS default** (leave `sqs_managed_sse_enabled` unset): new queues come up encrypted with SSE-SQS — AWS's own default.
+- **SSE-SQS pinned** (`sqs_managed_sse_enabled: true`): Zero-cost encryption managed by SQS, declared explicitly. Sufficient for most compliance requirements.
+- **SSE-KMS** (`kms_key_id`): Use when you need customer-managed key rotation, CloudTrail auditing of key usage, or cross-account key sharing. Leave `sqs_managed_sse_enabled` unset when using KMS.
+- **Explicitly unencrypted** (`sqs_managed_sse_enabled: false`): the only way to opt out of AWS's default queue encryption.
 - The two options are mutually exclusive.
 
 ### Visibility Timeout Design
@@ -103,7 +105,7 @@ The API enforces several validations:
 1. **FIFO-only fields**: `content_based_deduplication`, `deduplication_scope`, and `fifo_throughput_limit` require `fifo_queue` to be true.
 2. **Deduplication scope values**: Must be `"messageGroup"` or `"queue"` when set.
 3. **Throughput limit values**: Must be `"perMessageGroupId"` or `"perQueue"` when set.
-4. **Encryption mutual exclusion**: Cannot set both `kms_key_id` and `sqs_managed_sse_enabled`.
+4. **Encryption mutual exclusion**: Cannot set `kms_key_id` together with `sqs_managed_sse_enabled` — the conflict is on the field's PRESENCE, so even `sqs_managed_sse_enabled: false` cannot accompany a KMS key.
 5. **KMS data key reuse**: Requires `kms_key_id` to be set; range 60–86400 when set.
 6. **Message retention range**: 60–1209600 when set (0 uses AWS default).
 7. **Max message size range**: 1024–1048576 when set (0 uses AWS default).

@@ -454,9 +454,11 @@ AWS service integrations (integration_subtype) always use "1.0".
 
 `string`
 
-HTTP method used for the integration request. Defaults to the route's HTTP
-method for HTTP_PROXY integrations. For AWS_PROXY (Lambda) integrations,
-this is always POST regardless of the value set here.
+HTTP method used for the integration request. Valid values: "ANY",
+"DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT" (uppercase).
+Defaults to the route's HTTP method for HTTP_PROXY integrations. For
+AWS_PROXY (Lambda) integrations, this is always POST regardless of the
+value set here.
 
 ### spec.routes[].integration.timeoutMilliseconds
 
@@ -534,7 +536,8 @@ header. Supported by proxy and service integrations on HTTP APIs.
 `string`
 
 The backend response status code these mappings apply to (e.g. "403",
-"500").
+"500"). API Gateway accepts 200-599 -- informational (1xx) codes cannot
+carry response overrides.
 
 - rule: {"string":{"pattern":"^[2-5][0-9][0-9]$"}}
 

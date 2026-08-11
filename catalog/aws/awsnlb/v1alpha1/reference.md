@@ -147,6 +147,12 @@ When omitted, AWS assigns a private IP automatically.
 
 `string`
 
+Specific IPv6 address for the NLB node in this subnet, for dualstack
+NLBs (ip_address_type = "dualstack"). Must fall within the subnet's IPv6
+CIDR. When omitted, AWS assigns one automatically. Pinning it gives the
+IPv6 side the same static-address story allocation_id gives the IPv4
+side.
+
 ### spec.securityGroups
 
 `[]string | valueFrom`
@@ -292,17 +298,35 @@ Each hostname gets its own A record aliased to the NLB's DNS name.
 
 `int32` · optional (explicit presence)
 
+Reserved load balancer capacity, in Load Balancer Capacity Units (LCUs).
+Pre-provisions the NLB for a known traffic level (product launches,
+failover targets) instead of waiting for organic scaling. Reserved
+capacity bills for the reservation whether used or not. Leave unset for
+normal on-demand scaling.
+
 - rule: {"int32":{"gte":1}}
 
 ### spec.secondaryIpsAutoAssignedPerSubnet
 
 `int32` · optional (explicit presence)
 
+Number of secondary private IPv4 addresses (0-7) AWS auto-assigns to each
+NLB node, raising the source-port budget for very high connection counts
+to a single target. Provider-verified caveat: DECREASING this value
+replaces the load balancer (AWS cannot release secondary IPs in place) --
+plan capacity before setting it. Leave unset for the AWS default of 0.
+
 - rule: {"int32":{"lte":7,"gte":0}}
 
 ### spec.enablePrefixForIpv6SourceNat
 
 `string`
+
+Whether NLB nodes source-NAT IPv6 traffic through a /80 prefix per AZ
+instead of a single IPv6 address -- required for UDP listeners on a
+dualstack NLB (the per-address port budget cannot serve UDP flow hashing).
+Valid values: "on", "off". Only meaningful when ip_address_type is
+"dualstack".
 
 ## Validation Rules
 

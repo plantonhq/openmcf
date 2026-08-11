@@ -637,11 +637,12 @@ made (60-1800). AWS default: 300.
 `[]string`
 
 Launch types the task definition validates against: "FARGATE",
-"EC2", and/or "EXTERNAL" (ECS Anywhere). AWS registers the definition
-for those environments and rejects incompatible settings at
-registration time instead of at run time. When empty, both modules
-register for ["FARGATE"] -- the serverless launch type that needs no
-instance management.
+"EC2", "EXTERNAL" (ECS Anywhere), and/or "MANAGED_INSTANCES" (ECS
+Managed Instances capacity). AWS registers the definition for those
+environments and rejects incompatible settings at registration time
+instead of at run time. When empty, both modules register for
+["FARGATE"] -- the serverless launch type that needs no instance
+management.
 
 - rule: {"repeated":{"unique":true,"items":{"string":{"in":["FARGATE","EC2","EXTERNAL","MANAGED_INSTANCES"]}}}}
 
@@ -742,8 +743,11 @@ workload needs more (image processing, builds, large temp files).
 `[]AwsEcsTaskDefinitionVolume`
 
 Named volumes containers mount via mount_points. Fargate supports EFS
-volumes (durable, shared across tasks) and the implicit ephemeral
-storage; host-path volumes are EC2-only.
+and S3-backed volumes (durable, shared across tasks) and the implicit
+ephemeral storage; host-path and Docker volumes are EC2-only. A
+configure_at_launch volume declares only the NAME here -- the
+AwsEcsService running the task supplies the backing (managed EBS) at
+deployment time through its volume_configuration.
 
 - rule: a volume is backed by at most one of: efs, host_path, docker, s3files
 - rule: a configure_at_launch volume must not declare a backing here -- the AwsEcsService supplies it via volume_configuration
@@ -805,6 +809,10 @@ transit encryption, which the modules enable automatically.
 
 `int32`
 
+The port for the encrypted transit tunnel between host and EFS.
+0 (unset) lets AWS choose an ephemeral port -- the right answer
+unless a host firewall requires a fixed one.
+
 - rule: {"int32":{"lte":65535,"gte":0}}
 
 ### spec.volumes[].hostPath
@@ -818,9 +826,20 @@ type only). Example: "/mnt/data".
 
 `bool`
 
+Defer the volume's configuration to launch time: the AwsEcsService
+running this task supplies the backing through its
+volume_configuration (managed EBS -- a fresh, service-owned EBS
+volume per task) under this same volume name. Set it true and leave
+every backing here unset; the service side names the volume in
+spec.volume_configuration.name.
+
 ### spec.volumes[].docker
 
 `AwsEcsTaskDefinitionDockerVolume`
+
+Back the volume with a Docker volume on the container instance (EC2
+launch type only) -- named Docker-managed storage, optionally via a
+volume driver plugin.
 
 - rule: scope must be 'task' or 'shared' when set
 - rule: autoprovision only applies to 'shared' scope volumes -- a task-scoped volume always exists exactly as long as its task
@@ -829,29 +848,49 @@ type only). Example: "/mnt/data".
 
 `bool`
 
+Provision the volume automatically if it does not already exist.
+Only meaningful with scope "shared".
+
 ### spec.volumes[].docker.driver
 
 `string`
+
+The Docker volume driver. Default: "local". Must match a driver
+installed on the container instance.
 
 ### spec.volumes[].docker.driverOpts
 
 `map<string, string>`
 
+Driver-specific options passed at volume creation.
+
 ### spec.volumes[].docker.labels
 
 `map<string, string>`
+
+Custom metadata labels applied to the volume.
 
 ### spec.volumes[].docker.scope
 
 `string`
 
+The volume's lifetime: "task" (AWS default -- destroyed when the task
+stops) or "shared" (persists on the instance across tasks).
+
 ### spec.volumes[].s3files
 
 `AwsEcsTaskDefinitionS3FilesVolume`
 
+Back the volume with an S3 bucket mounted as a file system
+(Mountpoint for Amazon S3) -- read-heavy shared data (models,
+reference datasets) without provisioning EFS.
+
 ### spec.volumes[].s3files.fileSystemArn
 
 `string | valueFrom` · required
+
+The S3 bucket (by ARN) mounted as the volume. Reference an
+AwsS3Bucket's bucket_arn output or pass a literal bucket ARN.
 
 - references: AwsS3Bucket (`status.outputs.bucket_arn`)
 - rule: {"required":true}
@@ -861,13 +900,21 @@ type only). Example: "/mnt/data".
 
 `string`
 
+An S3 access point ARN to mount through instead of the bucket
+directly -- scopes the mount to the access point's policy.
+
 ### spec.volumes[].s3files.rootDirectory
 
 `string`
 
+The path within the bucket mounted as the volume root. Default: "/".
+
 ### spec.volumes[].s3files.transitEncryptionPort
 
 `int32`
+
+The port for encrypted transit between host and mount target.
+0 (unset) lets AWS choose.
 
 - rule: {"int32":{"lte":65535,"gte":0}}
 
@@ -924,17 +971,41 @@ older revisions.
 
 `bool`
 
+Enable AWS Fault Injection Service (FIS) actions against this task's
+containers -- the opt-in that lets chaos experiments (CPU stress,
+network latency, process kill) target the task. Off by default; only
+enable on definitions you deliberately run experiments against.
+
 ### spec.ipcMode
 
 `string`
+
+IPC namespace sharing for the task's containers: "host" (share the
+instance's IPC namespace -- weakest isolation), "task" (containers
+share one namespace within the task), or "none" (each container
+isolated). EC2 tasks only -- Fargate rejects it at registration.
+Unset keeps Docker's default (private namespace per container).
 
 ### spec.pidMode
 
 `string`
 
+Process namespace sharing: "host" (containers see the instance's
+processes -- weakest isolation) or "task" (containers within the task
+share one PID namespace -- what lets a sidecar observe the app's
+processes). On Fargate only "task" is supported (platform 1.4+).
+Unset keeps Docker's default (private namespace per container).
+
 ### spec.placementConstraints
 
 `[]AwsEcsTaskDefinitionPlacementConstraint`
+
+Task-level placement constraints, evaluated at RunTask/service
+scheduling time on EC2 container instances (at most 10). EC2 tasks
+only -- Fargate rejects them at registration. Service-level
+constraints live on the AwsEcsService; declare here only what is
+intrinsic to the task itself (e.g. an instance-attribute expression
+every consumer must honor).
 
 - rule: {"repeated":{"maxItems":"10"}}
 
@@ -942,11 +1013,19 @@ older revisions.
 
 `string`
 
+The constraint type. "memberOf" (restrict placement to instances
+matching the expression) is the only type AWS supports at the task
+definition level.
+
 - rule: {"string":{"in":["memberOf"]}}
 
 ### spec.placementConstraints[].expression
 
 `string` · required
+
+A cluster query language expression, e.g.
+"attribute:ecs.instance-type =~ t2.*" or
+"attribute:ecs.availability-zone in [us-west-2a, us-west-2b]".
 
 - rule: {"required":true}
 

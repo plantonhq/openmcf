@@ -738,7 +738,8 @@ Provisioned IOPS. Required for "io1"/"io2"; optional for "gp3"
 
 `int32`
 
-Throughput in MiB/s, 125-1000. "gp3" only (baseline 125 without it).
+Throughput in MiB/s, 125-2000. "gp3" only (baseline 125 without it);
+gp3 volumes support up to 2,000 MiB/s.
 
 ### spec.blockDeviceMappings[].ebs.encrypted
 
@@ -779,6 +780,12 @@ data volume") is distinguishable from unset ("keep the AMI default").
 ### spec.blockDeviceMappings[].ebs.volumeInitializationRateMibps
 
 `int32`
+
+MiB/s at which the volume hydrates from its snapshot, 100-300.
+Without it, snapshot blocks load lazily on first read (the classic
+cold-start latency on restored volumes); a paid initialization rate
+makes the volume fully warm on a schedule. Only meaningful with
+snapshot_id.
 
 ### spec.networkInterfaces
 
@@ -937,9 +944,18 @@ ipv6_prefix_count.
 
 `bool` · optional (explicit presence)
 
+Associate a Carrier IP (AWS Wavelength zones) -- the Wavelength
+analog of a public IP, reachable from the carrier's mobile
+network. Only meaningful for interfaces in Wavelength-zone
+subnets. Optional tri-state like associate_public_ip_address.
+
 ### spec.networkInterfaces[].connectionTracking
 
 `AwsLaunchTemplateConnectionTracking`
+
+Idle-timeout tuning for the interface's connection tracking --
+reclaim conntrack slots faster on connection-churning workloads
+(load-balancer backends, NAT-ish proxies).
 
 - rule: tcp_established_timeout_seconds must be between 60 and 432000 when set
 - rule: udp_stream_timeout_seconds must be between 60 and 180 when set
@@ -949,17 +965,29 @@ ipv6_prefix_count.
 
 `int32`
 
+Idle timeout for established TCP connections, 60-432000 seconds
+(5 days, the AWS default).
+
 ### spec.networkInterfaces[].connectionTracking.udpStreamTimeoutSeconds
 
 `int32`
+
+Idle timeout for UDP "connections" that have seen traffic BOTH
+ways (streams), 60-180 seconds.
 
 ### spec.networkInterfaces[].connectionTracking.udpTimeoutSeconds
 
 `int32`
 
+Idle timeout for single-direction UDP flows, 30-60 seconds.
+
 ### spec.networkInterfaces[].enaSrd
 
 `AwsLaunchTemplateEnaSrd`
+
+ENA Express (SRD -- Scalable Reliable Datagram): reduce tail
+latency between instances that both enable it, on supported
+types. TCP benefits transparently; UDP needs the explicit flag.
 
 - rule: udp_enabled requires enabled to be true
 
@@ -967,17 +995,31 @@ ipv6_prefix_count.
 
 `bool`
 
+Turn ENA Express on for the interface (TCP flows benefit
+transparently).
+
 ### spec.networkInterfaces[].enaSrd.udpEnabled
 
 `bool`
+
+Also run eligible UDP traffic over SRD. Only meaningful when
+enabled is true.
 
 ### spec.networkInterfaces[].enaQueueCount
 
 `int32`
 
+Number of ENA queues for the interface, on instance types that
+support ENA queue tuning. 0 keeps the AWS default per instance
+size.
+
 ### spec.networkInterfaces[].primaryIpv6
 
 `bool` · optional (explicit presence)
+
+Make the auto-assigned IPv6 address the instance's PRIMARY,
+stable identity: it survives network-interface replacement --
+required for IPv6-only instances whose address must not change.
 
 ### spec.metadataOptions
 
@@ -1067,7 +1109,7 @@ templates, prefer the group's subnets over AZ pinning here.
 
 The placement group to launch into: "cluster" groups pack instances
 for lowest latency, "spread" and "partition" groups separate them for
-fault isolation.
+fault isolation. Mutually exclusive with group_id.
 
 ### spec.placement.partitionNumber
 
@@ -1087,21 +1129,38 @@ licensing scenarios).
 
 `string`
 
+The placement group by ID ("pg-...") instead of name. Mutually
+exclusive with group_name.
+
 ### spec.placement.hostId
 
 `string`
+
+The Dedicated Host to land on ("h-..."). Host tenancy pins BYOL
+workloads (per-socket/per-core licenses) to specific hardware.
+Mutually exclusive with host_resource_group_arn.
 
 ### spec.placement.hostResourceGroupArn
 
 `string`
 
+A License Manager host resource group ARN -- AWS picks (and
+manages) a Dedicated Host from the group instead of naming one.
+Mutually exclusive with host_id.
+
 ### spec.placement.affinity
 
 `string`
 
+Dedicated Host affinity: "default" (instance may restart on any
+host) or "host" (the instance always restarts on the same host --
+needed when licenses are bound to specific hardware).
+
 ### spec.placement.spreadDomain
 
 `string`
+
+Named spread domain on AWS Outposts placement groups.
 
 ### spec.cpuOptions
 
@@ -1140,6 +1199,9 @@ AMD SEV-SNP memory encryption on supported AMD types: "enabled" or
 ### spec.cpuOptions.nestedVirtualization
 
 `string`
+
+Hardware-assisted nested virtualization on supported types:
+"enabled" (run hypervisors/VMs inside the instance) or "disabled".
 
 ### spec.cpuCredits
 
@@ -1281,6 +1343,11 @@ should never be resurrected by hand).
 
 `AwsLaunchTemplateCapacityReservation`
 
+Launch into EC2 Capacity Reservations -- guaranteed capacity a
+reserved fleet has already paid for (On-Demand Capacity
+Reservations, or Capacity Blocks for ML). Leave unset for the AWS
+default (use a matching open reservation when one exists).
+
 - rule: preference must be 'open', 'none', or 'capacity-reservations-only' when set
 - rule: capacity_reservation_id and capacity_reservation_resource_group_arn are mutually exclusive
 
@@ -1288,29 +1355,64 @@ should never be resurrected by hand).
 
 `string`
 
+How launches relate to reservations:
+- "open": use a matching open reservation when one exists (the AWS
+  default behavior), otherwise launch as regular On-Demand.
+- "none": never consume a reservation, even a matching open one.
+- "capacity-reservations-only": launch ONLY into reserved capacity
+  -- fail rather than fall back to On-Demand.
+Leave empty when targeting a specific reservation below.
+
 ### spec.capacityReservation.capacityReservationId
 
 `string`
+
+A specific Capacity Reservation to launch into ("cr-..."). The
+required target for Capacity Blocks. Mutually exclusive with
+capacity_reservation_resource_group_arn.
 
 ### spec.capacityReservation.capacityReservationResourceGroupArn
 
 `string`
 
+A resource-group ARN collecting Capacity Reservations -- target the
+group instead of one reservation ID. Mutually exclusive with
+capacity_reservation_id.
+
 ### spec.marketType
 
 `string`
+
+The purchase market for launched instances: "spot" (pairs with
+spot_options) or "capacity-block" (pre-purchased Capacity Blocks
+for ML -- requires capacity_reservation targeting the block).
+Unset means On-Demand, unless spot_options implies "spot".
 
 ### spec.bandwidthWeighting
 
 `string`
 
+Network bandwidth weighting on supported types: "default", "vpc-1"
+(shift baseline bandwidth toward VPC networking), or "ebs-1"
+(shift it toward EBS throughput). A no-cost performance bias for
+network- or storage-heavy workloads.
+
 ### spec.licenseConfigurationArns
 
 `[]string`
 
+AWS License Manager license-configuration ARNs launched instances
+consume -- BYOL license tracking (e.g. per-core database
+licenses). Literal ARNs: License Manager has no Planton kind.
+
 ### spec.secondaryInterfaces
 
 `[]AwsLaunchTemplateSecondaryInterface`
+
+Additional network interfaces attached at launch BEYOND the
+primary set in network_interfaces -- a 2026 EC2 capability for
+multi-homed instances (e.g. a dedicated storage-subnet interface).
+Interfaces are created and deleted with the instance.
 
 - rule: private_ip_address_count and private_ip_addresses are mutually exclusive
 
@@ -1318,17 +1420,28 @@ should never be resurrected by hand).
 
 `int32`
 
+The device index the interface attaches at.
+
 ### spec.secondaryInterfaces[].networkCardIndex
 
 `int32`
+
+The network card the interface binds to, on instance types with
+multiple network cards.
 
 ### spec.secondaryInterfaces[].deleteOnTermination
 
 `bool`
 
+Delete the interface when the instance terminates.
+
 ### spec.secondaryInterfaces[].secondarySubnetId
 
 `string | valueFrom`
+
+The subnet the secondary interface lives in. Reference an
+AwsSubnet's subnet_id output or pass a literal subnet ID -- e.g. a
+dedicated storage or replication subnet.
 
 - references: AwsSubnet (`status.outputs.subnet_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSubnet, name: <that resource's name>, fieldPath: status.outputs.subnet_id}} -- a bare string does not parse
@@ -1337,9 +1450,15 @@ should never be resurrected by hand).
 
 `int32`
 
+Number of private IPv4 addresses AWS auto-assigns on the
+interface. Mutually exclusive with private_ip_addresses.
+
 ### spec.secondaryInterfaces[].privateIpAddresses
 
 `[]string`
+
+Specific private IPv4 addresses to assign. Mutually exclusive with
+private_ip_address_count.
 
 ## Validation Rules
 

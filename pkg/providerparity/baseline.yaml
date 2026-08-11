@@ -35,7 +35,6 @@ entries:
   - kind:AwsEgressOnlyInternetGateway
   - kind:AwsElasticFileSystem
   - kind:AwsElasticIp
-  - kind:AwsEventBridgeBus
   - kind:AwsGlobalAccelerator
   - kind:AwsGlueCatalogDatabase
   - kind:AwsIamOidcProvider
@@ -63,9 +62,6 @@ entries:
   - kind:AwsSecurityGroup
   - kind:AwsSesConfigurationSet
   - kind:AwsSesEmailIdentity
-  - kind:AwsSnsSubscription
-  - kind:AwsSnsTopic
-  - kind:AwsSqsQueue
   - kind:AwsStepFunction
   - kind:AwsTransitGateway
   - kind:AwsTransitGatewayRouteTable

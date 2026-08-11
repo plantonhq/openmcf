@@ -127,6 +127,20 @@ spec:
       notes: >-
         The "vpc-cidr-assoc-..." association id (aws ec2 describe-vpcs shows
         each association under CidrBlockAssociationSet).
+    - terraform_type: aws_vpc_ipv6_cidr_block_association
+      pulumi_type: aws:ec2/vpcIpv6CidrBlockAssociation:VpcIpv6CidrBlockAssociation
+      id_format: "{cidr_association_id}"
+      notes: >-
+        The "vpc-cidr-assoc-..." association id (aws ec2 describe-vpcs shows
+        each association under Ipv6CidrBlockAssociationSet). The provider also
+        accepts an optional ",ipam-pool-id,netmask" suffix for IPAM-allocated
+        blocks; the bare association id is the canonical form.
+    - terraform_type: aws_vpc_encryption_control
+      pulumi_type: aws:ec2/vpcEncryptionControl:VpcEncryptionControl
+      id_format: "{vpc_encryption_control_id}"
+      notes: >-
+        The "vpcec-..." VPC Encryption Control id (aws ec2
+        describe-vpc-encryption-controls).
 
     # --- Security group ------------------------------------------------------
     - terraform_type: aws_security_group
@@ -250,6 +264,12 @@ spec:
       # deletion_window_in_days only exists as scheduling input to
       # ScheduleKeyDeletion; KMS never reports it back.
       config_only_attributes: [deletion_window_in_days]
+    - terraform_type: aws_kms_grant
+      pulumi_type: aws:kms/grant:Grant
+      id_format: "{kms_key_id}:{grant_id}"
+      notes: >-
+        Key ID and Grant ID separated by a colon (aws kms list-grants
+        --key-id shows each grant's GrantId).
     - terraform_type: aws_kms_alias
       pulumi_type: aws:kms/alias:Alias
       id_format: "{kms_alias_name}"

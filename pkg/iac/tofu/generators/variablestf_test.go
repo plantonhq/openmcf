@@ -240,8 +240,14 @@ func TestProtoToVariablesTF_CanonicalMetadata(t *testing.T) {
 func TestProtoToVariablesTF_RequiredVsOptional(t *testing.T) {
 	spec := extractBlock(generateVariables(t, &awssubnetv1alpha1.AwsSubnet{}), `variable "spec"`)
 
-	// region (string.min_len) and cidr_block / vpc_id (required) stay bare.
-	for _, bare := range []string{"region = string", "cidr_block = string", "vpc_id = string", "availability_zone = string"} {
+	// region (string.min_len) and vpc_id (required) stay bare. Assert only
+	// fields whose requiredness is structural to the kind (a subnet cannot
+	// exist without a VPC; region is the universal min_len field) — pinning
+	// a live spec's OTHER fields here rots when depth work legally relaxes
+	// their requiredness (cidr_block and availability_zone became optional
+	// when the spec adopted the provider's conflict graph: IPAM-allocated
+	// and IPv6-native subnets carry no IPv4 CIDR).
+	for _, bare := range []string{"region = string", "vpc_id = string"} {
 		if !strings.Contains(spec, bare) {
 			t.Errorf("expected required field rendered bare %q in spec:\n%s", bare, spec)
 		}
@@ -250,6 +256,7 @@ func TestProtoToVariablesTF_RequiredVsOptional(t *testing.T) {
 	for _, opt := range []string{
 		"map_public_ip_on_launch = optional(bool, false)",
 		"ipv6_cidr_block = optional(string, \"\")",
+		"cidr_block = optional(string, \"\")",
 	} {
 		if !strings.Contains(spec, opt) {
 			t.Errorf("expected optional field %q in spec:\n%s", opt, spec)

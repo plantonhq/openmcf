@@ -20,8 +20,9 @@ resource rather than a detail of the load balancer.
 
 The same kind serves both Application and Network Load Balancers, exactly as
 AWS models it: the protocol decides the family (HTTP/HTTPS for ALB;
-TCP/UDP/TCP_UDP/TLS for NLB), and the family decides which tuning fields
-apply. Field comments call out the scope of every family-specific field.
+TCP/UDP/TCP_UDP/TLS/QUIC/TCP_QUIC for NLB), and the family decides which
+tuning fields apply. Field comments call out the scope of every
+family-specific field.
 Gateway Load Balancer (GENEVE) target groups are deliberately not modeled --
 there is no gateway load balancer kind to compose them with.
 
@@ -183,10 +184,13 @@ per target. Immutable.
 The protocol used between the load balancer and the targets. Decides the
 load balancer family this group can attach to. Immutable.
 - ALB: "HTTP", "HTTPS".
-- NLB: "TCP", "UDP", "TCP_UDP", "TLS".
+- NLB: "TCP", "UDP", "TCP_UDP", "TLS", "QUIC", "TCP_QUIC".
 Required for every target type except "lambda". A TLS listener may
 forward to TCP targets (the NLB terminates TLS); an HTTPS listener may
-forward to HTTP targets (the ALB terminates TLS).
+forward to HTTP targets (the ALB terminates TLS). "QUIC" carries QUIC
+traffic natively; "TCP_QUIC" serves both TCP and QUIC on one group (the
+HTTP/3 pattern where clients may fall back to TCP). QUIC targets are
+registered with a quic_server_id (see targets).
 
 ### spec.protocolVersion
 
@@ -303,8 +307,9 @@ Not valid for TCP probes (a TCP probe has no response body to match).
 `AwsLbTargetGroupStickiness`
 
 Session stickiness. ALB supports cookie-based stickiness ("lb_cookie",
-"app_cookie"); NLB supports source-IP stickiness ("source_ip"). When
-omitted, stickiness is disabled.
+"app_cookie"); NLB supports flow-hash stickiness ("source_ip",
+"source_ip_dest_ip", "source_ip_dest_ip_proto"). When omitted,
+stickiness is disabled.
 
 - rule: type must be 'lb_cookie', 'app_cookie', 'source_ip', 'source_ip_dest_ip', or 'source_ip_dest_ip_proto'
 - rule: cookie_name is required for 'app_cookie' and not valid for other types
@@ -321,6 +326,10 @@ The stickiness mechanism. Required.
 - "app_cookie" (ALB): the application issues the cookie named in
   cookie_name; the load balancer follows it.
 - "source_ip" (NLB): affinity by client source IP.
+- "source_ip_dest_ip" (NLB): affinity by source and destination IP --
+  for dualstack groups where one client may arrive on both families.
+- "source_ip_dest_ip_proto" (NLB): affinity by source IP, destination
+  IP, and protocol -- the narrowest flow-hash affinity.
 
 - rule: {"required":true}
 
@@ -557,9 +566,21 @@ on-premises): the literal string "all". Leave unset for in-VPC targets.
 
 `string`
 
+QUIC / TCP_QUIC target groups only: the QUIC server ID this target
+serves. QUIC routes established connections by connection ID rather
+than by 5-tuple, and the server ID ties a registration to the QUIC
+endpoint identity the target presents.
+
 ### spec.targetControlPort
 
 `int32`
+
+ALB only. The port the ALB Target Optimizer agent listens on, 1-65535.
+Setting it enables Target Optimizer for this group: an agent on each
+target reports its readiness for new requests over this port, and the
+ALB routes accordingly. Requires the agent to be running on every
+target -- enabling it without the agent marks targets unavailable.
+Immutable: changing it replaces the target group.
 
 ## Validation Rules
 

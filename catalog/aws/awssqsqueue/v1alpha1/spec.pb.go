@@ -35,8 +35,10 @@ const (
 //   - Set `fifo_queue` to true to create a FIFO queue. This cannot be changed after creation.
 //   - FIFO queue names must end with `.fifo`; the IaC modules append this suffix automatically
 //     when `fifo_queue` is true and the metadata name does not already include it.
-//   - Encryption at rest is supported via SQS-managed SSE or a customer-managed KMS key
-//     (mutually exclusive).
+//   - Encryption at rest: AWS enables SQS-managed SSE (SSE-SQS) on new queues by
+//     default. Set `sqs_managed_sse_enabled` explicitly to pin it on or off, or
+//     supply a customer-managed KMS key via `kms_key_id` (mutually exclusive with
+//     setting `sqs_managed_sse_enabled` at all).
 //   - Dead letter queue configuration allows routing failed messages to a separate queue
 //     for investigation and reprocessing.
 //   - Credentials, region, and deployment workflow live outside this spec in stack inputs.
@@ -98,10 +100,18 @@ type AwsSqsQueueSpec struct {
 	// reuse. Range: 60–86400 (1 min to 24h). AWS default: 300 (5 min).
 	// Only relevant when `kms_key_id` is set.
 	KmsDataKeyReusePeriodSeconds int32 `protobuf:"varint,13,opt,name=kms_data_key_reuse_period_seconds,json=kmsDataKeyReusePeriodSeconds,proto3" json:"kms_data_key_reuse_period_seconds,omitempty"`
-	// Enable SQS-managed server-side encryption (SSE-SQS). SQS manages the
-	// encryption key automatically with no additional cost. Mutually exclusive
-	// with `kms_key_id`.
-	SqsManagedSseEnabled bool `protobuf:"varint,14,opt,name=sqs_managed_sse_enabled,json=sqsManagedSseEnabled,proto3" json:"sqs_managed_sse_enabled,omitempty"`
+	// SQS-managed server-side encryption (SSE-SQS). SQS manages the encryption
+	// key automatically at no additional cost. AWS enables SSE-SQS on newly
+	// created queues by default, so this field is PRESENCE-typed:
+	// - unset  — keep AWS's default (new queues come up encrypted with SSE-SQS)
+	// - true   — pin SSE-SQS on explicitly
+	// - false  — explicitly disable server-side encryption (an unencrypted queue)
+	//
+	// Setting this field at all (either value) conflicts with `kms_key_id`:
+	// the provider rejects the combination on config PRESENCE, not value, so
+	// an explicit `false` alongside a KMS key is still an error — leave this
+	// field unset when using customer-managed KMS encryption.
+	SqsManagedSseEnabled *bool `protobuf:"varint,14,opt,name=sqs_managed_sse_enabled,json=sqsManagedSseEnabled,proto3,oneof" json:"sqs_managed_sse_enabled,omitempty"`
 	// IAM access policy for the queue. Controls which AWS principals can perform
 	// actions on this queue (e.g., SendMessage, ReceiveMessage). Expressed as a
 	// standard IAM policy document structure. Common use cases include granting
@@ -242,8 +252,8 @@ func (x *AwsSqsQueueSpec) GetKmsDataKeyReusePeriodSeconds() int32 {
 }
 
 func (x *AwsSqsQueueSpec) GetSqsManagedSseEnabled() bool {
-	if x != nil {
-		return x.SqsManagedSseEnabled
+	if x != nil && x.SqsManagedSseEnabled != nil {
+		return *x.SqsManagedSseEnabled
 	}
 	return false
 }
@@ -396,7 +406,7 @@ var File_catalog_aws_awssqsqueue_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awssqsqueue_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"+catalog/aws/awssqsqueue/v1alpha1/spec.proto\x12$dev.planton.aws.awssqsqueue.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x98\x16\n" +
+	"+catalog/aws/awssqsqueue/v1alpha1/spec.proto\x12$dev.planton.aws.awssqsqueue.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xf4\x16\n" +
 	"\x0fAwsSqsQueueSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x1d\n" +
 	"\n" +
@@ -414,18 +424,19 @@ const file_catalog_aws_awssqsqueue_v1alpha1_spec_proto_rawDesc = "" +
 	"\x12dead_letter_config\x18\v \x01(\v2A.dev.planton.aws.awssqsqueue.v1alpha1.AwsSqsQueueDeadLetterConfigR\x10deadLetterConfig\x12q\n" +
 	"\n" +
 	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12G\n" +
-	"!kms_data_key_reuse_period_seconds\x18\r \x01(\x05R\x1ckmsDataKeyReusePeriodSeconds\x125\n" +
-	"\x17sqs_managed_sse_enabled\x18\x0e \x01(\bR\x14sqsManagedSseEnabled\x12/\n" +
+	"!kms_data_key_reuse_period_seconds\x18\r \x01(\x05R\x1ckmsDataKeyReusePeriodSeconds\x12:\n" +
+	"\x17sqs_managed_sse_enabled\x18\x0e \x01(\bH\x00R\x14sqsManagedSseEnabled\x88\x01\x01\x12/\n" +
 	"\x06policy\x18\x0f \x01(\v2\x17.google.protobuf.StructR\x06policy\x12u\n" +
-	"\x14redrive_allow_policy\x18\x10 \x01(\v2C.dev.planton.aws.awssqsqueue.v1alpha1.AwsSqsQueueRedriveAllowPolicyR\x12redriveAllowPolicy:\xe0\r\xbaH\xdc\r\x1a\xbb\x01\n" +
+	"\x14redrive_allow_policy\x18\x10 \x01(\v2C.dev.planton.aws.awssqsqueue.v1alpha1.AwsSqsQueueRedriveAllowPolicyR\x12redriveAllowPolicy:\x9b\x0e\xbaH\x97\x0e\x1a\xbb\x01\n" +
 	")content_based_deduplication_requires_fifo\x12Xcontent_based_deduplication can only be enabled on FIFO queues (fifo_queue must be true)\x1a4!this.content_based_deduplication || this.fifo_queue\x1a\xea\x01\n" +
 	"!deduplication_scope_requires_fifo\x12Wdeduplication_scope is only valid for FIFO queues and must be 'messageGroup' or 'queue'\x1althis.deduplication_scope == '' || (this.fifo_queue && this.deduplication_scope in ['messageGroup', 'queue'])\x1a\x82\x02\n" +
-	"#fifo_throughput_limit_requires_fifo\x12afifo_throughput_limit is only valid for FIFO queues and must be 'perMessageGroupId' or 'perQueue'\x1axthis.fifo_throughput_limit == '' || (this.fifo_queue && this.fifo_throughput_limit in ['perMessageGroupId', 'perQueue'])\x1a\xb3\x01\n" +
-	"\x1bencryption_mutual_exclusion\x12[kms_key_id and sqs_managed_sse_enabled are mutually exclusive; choose one encryption method\x1a7!(has(this.kms_key_id) && this.sqs_managed_sse_enabled)\x1a\xab\x01\n" +
+	"#fifo_throughput_limit_requires_fifo\x12afifo_throughput_limit is only valid for FIFO queues and must be 'perMessageGroupId' or 'perQueue'\x1axthis.fifo_throughput_limit == '' || (this.fifo_queue && this.fifo_throughput_limit in ['perMessageGroupId', 'perQueue'])\x1a\xee\x01\n" +
+	"\x1bencryption_mutual_exclusion\x12\x90\x01kms_key_id and sqs_managed_sse_enabled are mutually exclusive (even sqs_managed_sse_enabled: false conflicts with a KMS key); set one or neither\x1a<!(has(this.kms_key_id) && has(this.sqs_managed_sse_enabled))\x1a\xab\x01\n" +
 	"#kms_data_key_reuse_requires_kms_key\x12?kms_data_key_reuse_period_seconds requires kms_key_id to be set\x1aCthis.kms_data_key_reuse_period_seconds == 0 || has(this.kms_key_id)\x1a\xeb\x01\n" +
 	"\x17message_retention_range\x12Tmessage_retention_seconds must be between 60 and 1209600 (1 min to 14 days) when set\x1azthis.message_retention_seconds == 0 || (this.message_retention_seconds >= 60 && this.message_retention_seconds <= 1209600)\x1a\xde\x01\n" +
 	"\x16max_message_size_range\x12Omax_message_size_bytes must be between 1024 and 1048576 (1 KB to 1 MB) when set\x1asthis.max_message_size_bytes == 0 || (this.max_message_size_bytes >= 1024 && this.max_message_size_bytes <= 1048576)\x1a\xf6\x01\n" +
-	"\x18kms_data_key_reuse_range\x12Gkms_data_key_reuse_period_seconds must be between 60 and 86400 when set\x1a\x90\x01this.kms_data_key_reuse_period_seconds == 0 || (this.kms_data_key_reuse_period_seconds >= 60 && this.kms_data_key_reuse_period_seconds <= 86400)\"\xd1\x01\n" +
+	"\x18kms_data_key_reuse_range\x12Gkms_data_key_reuse_period_seconds must be between 60 and 86400 when set\x1a\x90\x01this.kms_data_key_reuse_period_seconds == 0 || (this.kms_data_key_reuse_period_seconds >= 60 && this.kms_data_key_reuse_period_seconds <= 86400)B\x1a\n" +
+	"\x18_sqs_managed_sse_enabled\"\xd1\x01\n" +
 	"\x1bAwsSqsQueueDeadLetterConfig\x12z\n" +
 	"\n" +
 	"target_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\ttargetArn\x126\n" +
@@ -478,6 +489,7 @@ func file_catalog_aws_awssqsqueue_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awssqsqueue_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_aws_awssqsqueue_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

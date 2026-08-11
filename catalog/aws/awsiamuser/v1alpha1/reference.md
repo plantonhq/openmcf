@@ -153,6 +153,14 @@ users where teardown must always succeed.
 
 `string`
 
+Lifecycle state of the managed access key: "Active" (the AWS default) or
+"Inactive". An Inactive key keeps its id and secret but AWS rejects every
+request signed with it -- the standard rotation lever: create the
+replacement credential, flip this key "Inactive" to prove nothing still
+depends on it, then delete it. Updatable in place (no key re-creation, so
+the secret output never changes). Empty keeps the key Active. Only
+meaningful when the access key exists (disable_access_keys is false).
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Active","Inactive"]}}
 
 ## Validation Rules

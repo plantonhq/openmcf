@@ -4,18 +4,26 @@ metadata:
   name: awssqsqueue
 spec:
   # An SQS queue under E2E: the harness runs deploy -> GetQueueAttributes
-  # verify -> destroy -> verify-destroyed on both provisioners. The scenario
-  # is a FIFO queue with content-based deduplication, per-message-group
-  # deduplication scope, high-throughput FIFO settings, and SSE-SQS
-  # encryption -- the fullest honest FIFO surface. Deliberately not in the
-  # live scenario: a dead-letter queue (the harness forbids same-kind
-  # e2e-prerequisites, and a FIFO DLQ must itself be FIFO), customer-managed
-  # KMS keys, redrive-allow byQueue lists, and resource policies -- all
-  # proven by CEL spec tests and the offline gate; SQS-as-DLQ wiring is
-  # exercised live by the AwsEventBridgeBus lane.
+  # verify -> destroy -> verify-destroyed on both provisioners. Two
+  # scenarios: the FIFO queue with content-based deduplication,
+  # per-message-group deduplication scope, high-throughput FIFO settings,
+  # and explicit-true SSE-SQS; and the standard queue with the explicit
+  # encryption OPT-OUT (sqsManagedSseEnabled: false -- the presence-typed
+  # field's explicit-false send path; verify GetQueueAttributes reports
+  # SqsManagedSseEnabled false, not apply success alone). The shared
+  # prerequisite fixture leaves the field unset, proving the omit path
+  # live via consumer chains (AWS's default-on encryption stands there).
+  # Deliberately not in the live scenarios: a dead-letter queue (the
+  # harness forbids same-kind e2e-prerequisites, and a FIFO DLQ must
+  # itself be FIFO), customer-managed KMS keys, redrive-allow byQueue
+  # lists, and resource policies -- all proven by CEL spec tests and the
+  # offline gate; SQS-as-DLQ wiring is exercised live by the
+  # AwsEventBridgeBus lane.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # pending_proof: the SSE flag converted to presence-typed (explicit-false
+  # now expressible and SENT by both engines; the exclusivity CEL moved to
+  # presence) and the Pulumi FIFO dedup send converged to state-pinned --
+  # the prior green predates this surface.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

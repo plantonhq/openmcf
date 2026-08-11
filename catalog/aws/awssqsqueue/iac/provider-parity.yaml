@@ -1,0 +1,50 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_sqs_queue:
+    mappings:
+      # The spec names the field for what it references (an AwsKmsKey, chart-
+      # wired via StringValueOrRef); the provider carries the legacy
+      # "master key" API name.
+      - spec: spec.kms_key_id
+        arg: kms_master_key_id
+      # The spec suffixes the unit; same 1 KiB - 1 MiB byte range.
+      - spec: spec.max_message_size_bytes
+        arg: max_message_size
+      # AWS models the DLQ pointer as ONE JSON redrive-policy document; the
+      # spec types the document's two members (deadLetterTargetArn,
+      # maxReceiveCount) so the target can be chart-wired to an AwsSqsQueue.
+      # The document's identity member carries the mapping; its sibling is a
+      # specExclusion below (one provider argument, two spec homes).
+      - spec: spec.dead_letter_config.target_arn
+        arg: redrive_policy
+      # Same JSON-document fold for the permission side of the dead-letter
+      # relationship; sourceQueueArns is the specExclusion twin.
+      - spec: spec.redrive_allow_policy.redrive_permission
+        arg: redrive_allow_policy
+    exclusions:
+      # Identity is the kind's own contract.
+      - arg: name
+        reason: derived from metadata.name (with the .fifo suffix appended for FIFO queues) -- never free-form user surface
+      - arg: name_prefix
+        reason: alternative naming form; names always derive from metadata.name
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+specExclusions:
+  # One provider argument, two spec homes: both typed members of each
+  # dead-letter message render into the SAME JSON-document argument. The
+  # identity member carries the mapping above; the sibling is recorded here.
+  - field: spec.dead_letter_config.max_receive_count
+    reason: renders into the same aws_sqs_queue redrive_policy JSON document as target_arn (maxReceiveCount member)
+  - field: spec.redrive_allow_policy.source_queue_arns
+    reason: renders into the same aws_sqs_queue redrive_allow_policy JSON document as redrive_permission (sourceQueueArns member, byQueue mode only)

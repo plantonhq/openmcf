@@ -417,9 +417,16 @@ The CA certificate bundle for this instance (e.g.
 
 `bool`
 
+Copy this instance's tags onto its snapshots.
+
 ### spec.instances[].performanceInsightsKmsKeyId
 
 `string | valueFrom`
+
+The KMS key encrypting this instance's Performance Insights data.
+Empty uses the AWS default. Reference an AwsKmsKey key_arn output
+or pass a literal key ARN. Cannot change after Performance
+Insights is first enabled on the instance.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
@@ -428,9 +435,17 @@ The CA certificate bundle for this instance (e.g.
 
 `int32`
 
+Days of Performance Insights history for THIS instance: 7 (free
+tier), 731 (2 years), or any multiple of 31 in between. 0 inherits
+the cluster-level setting (or the AWS default of 7).
+
 ### spec.instances[].preferredBackupWindow
 
 `string`
+
+The daily backup window for THIS instance in UTC, format
+"hh24:mi-hh24:mi". Empty inherits the cluster's window -- stagger
+per-instance windows when backups must not contend.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$"}}
 
@@ -438,11 +453,21 @@ The CA certificate bundle for this instance (e.g.
 
 `string`
 
+The weekly maintenance window for THIS instance in UTC, format
+"ddd:hh24:mi-ddd:hh24:mi". Empty inherits scheduling from AWS --
+stagger per-instance windows so readers never patch
+simultaneously.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$"}}
 
 ### spec.instances[].monitoringRoleArn
 
 `string | valueFrom`
+
+The IAM role Enhanced Monitoring publishes through for THIS
+instance (needs the AmazonRDSEnhancedMonitoringRole managed
+policy). Empty uses the cluster's monitoring_role_arn. Reference
+an AwsIamRole role_arn output or pass a literal ARN.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
@@ -450,6 +475,9 @@ The CA certificate bundle for this instance (e.g.
 ### spec.instances[].applyImmediately
 
 `bool`
+
+Apply modifications to THIS instance immediately instead of
+waiting for its next maintenance window. AWS defaults to deferred.
 
 ### spec.serverlessV2Scaling
 
@@ -723,7 +751,9 @@ refuses to delete without knowing the snapshot name.
 `string`
 
 The name for the final snapshot taken on deletion. Required when
-skip_final_snapshot is false.
+skip_final_snapshot is false. Must start with a letter, contain
+only letters, numbers, and hyphens, with no consecutive or
+trailing hyphens -- AWS's snapshot-identifier rules.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[A-Za-z][0-9A-Za-z]*(-[0-9A-Za-z]+)*$"}}
 
@@ -760,13 +790,21 @@ IAM auth tokens instead of passwords.
 
 IAM roles the cluster assumes for engine features that reach into
 other AWS services (S3 import/export, Lambda invocation, Comprehend
-/SageMaker for ML functions). Reference AwsIamRole role_arn outputs
-or pass literal ARNs -- the roles own their policies; this cluster
-only associates them.
+/SageMaker for ML functions). Each entry associates one role,
+optionally linked to a specific engine feature by feature_name --
+the roles own their policies; this cluster only associates them.
+Both IaC modules manage each entry as its own role-association
+resource (never the cluster's inline role list, which cannot carry
+feature names and conflicts with association resources), so roles
+attach and detach without touching the cluster.
 
 ### spec.iamRoles[].role
 
 `string | valueFrom` · required
+
+The IAM role to associate. Reference an AwsIamRole role_arn output
+or pass a literal role ARN. The role owns its policies; the
+cluster only assumes it. Required.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}
@@ -775,6 +813,12 @@ only associates them.
 ### spec.iamRoles[].featureName
 
 `string`
+
+The engine feature the role is linked to (e.g. "s3Import",
+"s3Export", "Lambda", "SageMaker", "Comprehend"). Empty associates
+the role without a feature link; AWS requires the name whenever
+the role powers a specific engine capability. Changing it replaces
+the association (the cluster is untouched).
 
 ### spec.enableHttpEndpoint
 
@@ -1035,13 +1079,29 @@ version bump.
 
 `string`
 
+Join the cluster to an AWS Managed Microsoft AD directory (d-...)
+for Kerberos authentication (Aurora MySQL and Aurora PostgreSQL).
+Pairs with domain_iam_role_name. (Self-managed AD is an
+instance-kind shape -- clusters only support the managed
+directory.)
+
 ### spec.domainIamRoleName
 
 `string`
 
+The name of the IAM role RDS uses to join the managed directory
+(needs the AmazonRDSDirectoryServiceAccess managed policy).
+Required with domain.
+
 ### spec.autoMinorVersionUpgrade
 
 `bool` · optional (explicit presence)
+
+Apply minor engine version patches to the cluster automatically
+during the maintenance window. AWS defaults this to true; disable
+only when patch timing must be controlled manually. Per-instance
+auto_minor_version_upgrade in `instances` overrides this for that
+instance.
 
 - default: `true`
 
@@ -1049,9 +1109,16 @@ version bump.
 
 `AwsRdsClusterS3Import`
 
+Create the cluster by restoring a Percona XtraBackup stored in S3
+-- the on-ramp for migrating a self-managed MySQL database into
+Aurora MySQL without a logical dump. Create-time only; mutually
+exclusive with snapshot_identifier and restore_to_point_in_time.
+
 ### spec.s3Import.bucketName
 
 `string` · required
+
+The S3 bucket holding the backup files. Required.
 
 - rule: {"required":true}
 
@@ -1059,9 +1126,15 @@ version bump.
 
 `string`
 
+The key prefix of the backup files within the bucket. Empty reads
+from the bucket root.
+
 ### spec.s3Import.ingestionRole
 
 `string | valueFrom` · required
+
+The IAM role RDS assumes to read the backup from S3. Reference an
+AwsIamRole role_arn output or pass a literal role ARN. Required.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}
@@ -1071,11 +1144,17 @@ version bump.
 
 `string` · required
 
+The engine of the source backup. AWS accepts only "mysql" for
+cluster S3 restores. Required.
+
 - rule: {"required":true,"string":{"in":["mysql"]}}
 
 ### spec.s3Import.sourceEngineVersion
 
 `string` · required
+
+The version of the source engine the backup was taken from (e.g.
+"8.0"). Required.
 
 - rule: {"required":true}
 
@@ -1083,11 +1162,23 @@ version bump.
 
 `[]AwsRdsClusterCustomEndpoint`
 
+Custom cluster endpoints -- stable DNS names scoped to a chosen
+subset of the cluster's instances (e.g. an analytics endpoint over
+the big readers). Each entry is managed as its own provider
+resource keyed by `name`, so endpoints come and go without
+touching the cluster.
+
 - rule: static_members and excluded_members are mutually exclusive -- pin the member set or subtract from it, not both
 
 ### spec.customEndpoints[].name
 
 `string` · required
+
+Endpoint name, unique within the cluster (lowercase letters,
+digits, hyphens; starts with a letter). Becomes the DNS-visible
+endpoint identifier and the key both IaC engines manage the
+provider resource by -- renaming an entry replaces that endpoint
+(the cluster is untouched). Required.
 
 - rule: {"required":true,"string":{"pattern":"^[a-z][a-z0-9-]*$"}}
 
@@ -1095,29 +1186,56 @@ version bump.
 
 `string` · required
 
+Which instances the endpoint fronts: "READER" (reader instances
+only) or "ANY" (all instances). Required.
+
 - rule: {"required":true,"string":{"in":["READER","ANY"]}}
 
 ### spec.customEndpoints[].staticMembers
 
 `[]string`
 
+Pin the endpoint to exactly these instances, by their
+spec.instances entry names. Mutually exclusive with
+excluded_members. Both empty fronts every instance of the
+endpoint's type.
+
 ### spec.customEndpoints[].excludedMembers
 
 `[]string`
+
+Front every instance of the endpoint's type EXCEPT these, by their
+spec.instances entry names. Mutually exclusive with
+static_members.
 
 ### spec.activityStream
 
 `AwsRdsClusterActivityStream`
 
+Stream every audited database event to a dedicated Kinesis stream
+(a Database Activity Stream), encrypted with the given KMS key --
+the compliance-grade audit feed consumed by GuardDuty RDS
+Protection and partner SIEMs. Aurora engines only. The stream's
+Kinesis name is exported as the activity_stream_kinesis_stream_name
+output.
+
 ### spec.activityStream.mode
 
 `string` · required
+
+Delivery mode: "sync" (the database blocks until the event is
+durably recorded -- audit-grade guarantees at a latency cost) or
+"async" (the database never waits; rare event loss is possible).
+Required.
 
 - rule: {"required":true,"string":{"in":["sync","async"]}}
 
 ### spec.activityStream.kmsKeyId
 
 `string | valueFrom` · required
+
+The KMS key that encrypts the activity stream. Reference an
+AwsKmsKey key_arn output or pass a literal key ARN. Required.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: {"required":true}
@@ -1126,6 +1244,10 @@ version bump.
 ### spec.activityStream.engineNativeAuditFieldsIncluded
 
 `bool`
+
+Also capture the engine's native audit fields in the stream
+(engine-version dependent; leave false unless the consumer needs
+them).
 
 ## Validation Rules
 
@@ -1176,10 +1298,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRdsCluster, n
 | `status.outputs.db_subnet_group_name` | `string` | The name of the DB subnet group the cluster runs in. |
 | `status.outputs.db_cluster_parameter_group_name` | `string` | The name of the cluster parameter group in use (module-managed or the referenced existing group). |
 | `status.outputs.instance_endpoints` | `[]string` | Per-instance endpoints of the cluster's folded instances, ordered as declared in spec.instances. Empty for Aurora Serverless v1 and Multi-AZ RDS clusters, where AWS owns the compute. |
-| `status.outputs.custom_endpoints` | `[]AwsRdsClusterCustomEndpointOutput` |  |
-| `status.outputs.custom_endpoints[].name` | `string` |  |
-| `status.outputs.custom_endpoints[].endpoint` | `string` |  |
-| `status.outputs.activity_stream_kinesis_stream_name` | `string` |  |
+| `status.outputs.custom_endpoints` | `[]AwsRdsClusterCustomEndpointOutput` | The custom cluster endpoints declared in spec.custom_endpoints -- one entry per endpoint, carrying its DNS name for charts to wire into consumers. |
+| `status.outputs.custom_endpoints[].name` | `string` | The endpoint's spec.custom_endpoints entry name. |
+| `status.outputs.custom_endpoints[].endpoint` | `string` | The DNS name of the custom endpoint -- connect here to reach the endpoint's member subset. |
+| `status.outputs.activity_stream_kinesis_stream_name` | `string` | The name of the Kinesis stream receiving the Database Activity Stream (aws-rds-das-...). Populated only when spec.activity_stream is set -- the handle audit consumers attach to. |
 
 ## References
 

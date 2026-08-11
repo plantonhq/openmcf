@@ -307,11 +307,21 @@ Copy this instance's tags onto its snapshots.
 
 `bool` · optional (explicit presence)
 
+Restart the instance when its CA certificate rotates. Unset keeps
+the AWS default (true -- rotation restarts the instance so the new
+certificate is served immediately); false defers the restart to
+the next maintenance action, for workloads that cannot absorb an
+unscheduled restart. Tri-state on purpose: only an explicit value
+is sent to AWS.
+
 - default: `true`
 
 ### spec.instances[].applyImmediately
 
 `bool`
+
+Apply modifications to THIS instance immediately instead of
+waiting for its next maintenance window. AWS defaults to deferred.
 
 ### spec.serverlessV2Scaling
 
@@ -440,7 +450,9 @@ refuses to delete without knowing the snapshot name.
 `string`
 
 The name for the final snapshot taken on deletion. Required when
-skip_final_snapshot is false.
+skip_final_snapshot is false. Must start with a letter, contain
+only letters, numbers, and hyphens, with no consecutive or
+trailing hyphens -- AWS's snapshot-identifier rules.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[A-Za-z][0-9A-Za-z]*(-[0-9A-Za-z]+)*$"}}
 

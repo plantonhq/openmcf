@@ -23,9 +23,10 @@ func topic(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*sns.To
 	// -------------------------------------------------------------------
 
 	if spec.FifoTopic {
-		if spec.ContentBasedDeduplication {
-			args.ContentBasedDeduplication = pulumi.BoolPtr(true)
-		}
+		// Sent whenever the topic is FIFO (matching the Terraform module's
+		// state-pinned rendering) — the provider default is false, so the
+		// explicit value never changes cloud behavior.
+		args.ContentBasedDeduplication = pulumi.BoolPtr(spec.ContentBasedDeduplication)
 		if spec.FifoThroughputScope != "" {
 			args.FifoThroughputScope = pulumi.StringPtr(spec.FifoThroughputScope)
 		}

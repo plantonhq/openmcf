@@ -740,9 +740,6 @@ resources:
   - resource: aws_cloudwatch_event_api_destination
     disposition: model-planned
     reason: "judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections)"
-  - resource: aws_cloudwatch_event_archive
-    disposition: model-planned
-    reason: "event-bus archives and permissions fold into the existing AwsEventBridgeBus kind as its spec deepens"
   - resource: aws_cloudwatch_event_connection
     disposition: model-planned
     reason: "judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections)"
@@ -750,8 +747,8 @@ resources:
     disposition: deferred
     reason: "EventBridge global endpoints (multi-region failover); deferred pending demand"
   - resource: aws_cloudwatch_event_permission
-    disposition: model-planned
-    reason: "event-bus archives and permissions fold into the existing AwsEventBridgeBus kind as its spec deepens"
+    disposition: composed
+    reason: "per-statement delivery (PutPermission with a StatementId) of the same bus policy AwsEventBridgeBus.spec.resource_policy models as one whole document via aws_cloudwatch_event_bus_policy -- mixing them fights over one policy (the bus-policy delete issues RemoveAllPermissions, wiping permission-managed statements)"
   - resource: aws_cloudwatch_log_account_policy
     disposition: model-planned
     reason: "account-scoped CloudWatch Logs policy and saved-query surface; folds into the AwsCloudwatchLogGroup kind family's account-level composition"
@@ -3705,8 +3702,8 @@ resources:
     disposition: deferred
     reason: "mobile-push platform applications and SMS preferences; deferred pending demand"
   - resource: aws_sns_topic_policy
-    disposition: model-planned
-    reason: "topic policies fold into the existing AwsSnsTopic kind as its spec deepens"
+    disposition: composed
+    reason: "out-of-band delivery of the topic's Policy attribute, which AwsSnsTopic.spec.policy models inline on aws_sns_topic -- both write the same single attribute (the standalone resource cannot even remove a policy on delete; it writes back a synthesized owner-default document, per the provider source)"
   - resource: aws_spot_datafeed_subscription
     disposition: model-planned
     reason: "account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind"
@@ -3717,14 +3714,14 @@ resources:
     disposition: excluded-deprecated
     reason: "superseded surface by AWS's own guidance (the provider carries NO deprecation marker at 6.58.0 -- recorded 2026-08-11): AWS directs Spot workloads to launch-template/instance market options (AwsEc2Instance.market_type + spot_options, AwsLaunchTemplate) and EC2 Fleet; the standalone request resource duplicates aws_instance's whole schema with everything ForceNew"
   - resource: aws_sqs_queue_policy
-    disposition: model-planned
-    reason: "queue policy surface (access, redrive, redrive-allow); folds into the existing AwsSqsQueue kind as its spec deepens"
+    disposition: composed
+    reason: "out-of-band delivery of the queue's Policy attribute, which AwsSqsQueue.spec.policy models inline on aws_sqs_queue -- both mechanisms upsert the same single queue attribute and fight over it when mixed (the attribute-splitter class)"
   - resource: aws_sqs_queue_redrive_allow_policy
-    disposition: model-planned
-    reason: "queue policy surface (access, redrive, redrive-allow); folds into the existing AwsSqsQueue kind as its spec deepens"
+    disposition: composed
+    reason: "out-of-band delivery of the queue's RedriveAllowPolicy attribute, which AwsSqsQueue.spec.redrive_allow_policy models inline (typed redrivePermission + sourceQueueArns) -- same single-attribute upsert, same mixing conflict (the attribute-splitter class)"
   - resource: aws_sqs_queue_redrive_policy
-    disposition: model-planned
-    reason: "queue policy surface (access, redrive, redrive-allow); folds into the existing AwsSqsQueue kind as its spec deepens"
+    disposition: composed
+    reason: "out-of-band delivery of the queue's RedrivePolicy attribute, which AwsSqsQueue.spec.dead_letter_config models inline (chart-wired deadLetterTargetArn + maxReceiveCount) -- same single-attribute upsert, same mixing conflict (the attribute-splitter class)"
   - resource: aws_ssm_activation
     disposition: model-planned
     reason: "SSM account-level plumbing (hybrid activations, resource data syncs, service settings); folds into the planned SSM kind family led by AwsSsmDocument"

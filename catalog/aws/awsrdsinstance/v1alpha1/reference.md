@@ -532,7 +532,9 @@ refuses to delete without knowing the snapshot name.
 `string`
 
 The name for the final snapshot taken on deletion. Required when
-skip_final_snapshot is false.
+skip_final_snapshot is false. Must start with a letter, contain
+only letters, numbers, and hyphens, with no consecutive or
+trailing hyphens -- AWS's snapshot-identifier rules.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[A-Za-z][0-9A-Za-z]*(-[0-9A-Za-z]+)*$"}}
 
@@ -623,18 +625,19 @@ Insights with 465+ day retention). Empty keeps the AWS default
 
 `string`
 
-The DB parameter group to associate. Empty keeps the engine default
-group. A literal name -- parameter groups have no standalone
-Planton kind (a named parameter list is configuration, not
-infrastructure).
+The name of an existing DB parameter group to associate. Mutually
+exclusive with `parameters` -- either bring your own group or let
+the module manage one from inline parameters. Empty (with
+`parameters` also empty) keeps the engine default group.
 
 ### spec.optionGroupName
 
 `string`
 
-The option group to associate (engine features like Oracle TDE or
-SQL Server native backup). Empty keeps the engine default. A
-literal name.
+The name of an existing option group to associate. Mutually
+exclusive with `options` -- either bring your own group or let the
+module manage one from inline options. Empty (with `options` also
+empty) keeps the engine default group.
 
 ### spec.activeDirectory
 
@@ -694,9 +697,12 @@ Exactly two DNS server IPs inside the self-managed AD.
 
 `string`
 
-The license model, for engines that carry one: "license-included",
-"bring-your-own-license", or "general-public-license". Empty keeps
-the engine default.
+The license model, for engines that carry one. Per AWS's contract:
+MySQL/MariaDB use "general-public-license"; PostgreSQL uses
+"postgresql-license"; Oracle uses "bring-your-own-license" or
+"license-included"; SQL Server uses "license-included" or
+"bring-your-own-media"; Db2 uses "bring-your-own-license" or
+"marketplace-license". Empty keeps the engine default.
 
 ### spec.characterSetName
 
@@ -767,17 +773,36 @@ deferred changes wait quietly. AWS defaults to deferred.
 
 `string`
 
+Extended support posture when the engine version leaves standard
+support: "open-source-rds-extended-support" (AWS default -- paid
+extended support kicks in automatically) or
+"open-source-rds-extended-support-disabled" (the instance must be
+upgraded before end of standard support; opts out of the extra
+cost).
+
 ### spec.upgradeStorageConfig
 
 `bool`
+
+Upgrade the storage file system configuration on a read replica or
+snapshot restore, when the source still runs the older 32-bit file
+system. One-way and create/restore-scoped.
 
 ### spec.s3Import
 
 `AwsRdsInstanceS3Import`
 
+Create the instance by restoring a Percona XtraBackup stored in S3
+-- the on-ramp for migrating a self-managed MySQL database into
+RDS without a logical dump. Create-time only; mutually exclusive
+with replicate_source_db, snapshot_identifier, and
+restore_to_point_in_time.
+
 ### spec.s3Import.bucketName
 
 `string` · required
+
+The S3 bucket holding the backup files. Required.
 
 - rule: {"required":true}
 
@@ -785,9 +810,15 @@ deferred changes wait quietly. AWS defaults to deferred.
 
 `string`
 
+The key prefix of the backup files within the bucket. Empty reads
+from the bucket root.
+
 ### spec.s3Import.ingestionRole
 
 `string | valueFrom` · required
+
+The IAM role RDS assumes to read the backup from S3. Reference an
+AwsIamRole role_arn output or pass a literal role ARN. Required.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}
@@ -797,11 +828,17 @@ deferred changes wait quietly. AWS defaults to deferred.
 
 `string` · required
 
+The engine of the source backup. AWS accepts only "mysql" for
+instance S3 restores. Required.
+
 - rule: {"required":true,"string":{"in":["mysql"]}}
 
 ### spec.s3Import.sourceEngineVersion
 
 `string` · required
+
+The version of the source engine the backup was taken from (e.g.
+"8.0"). Required.
 
 - rule: {"required":true}
 
@@ -809,9 +846,21 @@ deferred changes wait quietly. AWS defaults to deferred.
 
 `[]AwsRdsInstanceIamRole`
 
+IAM roles the instance assumes for engine features that reach into
+other AWS services (e.g. S3 import/export, Lambda invocation).
+Each entry associates one role to one named engine feature -- the
+roles own their policies; this instance only associates them. Both
+IaC modules manage each entry as its own role-association
+resource, so roles attach and detach without touching the
+instance.
+
 ### spec.iamRoles[].role
 
 `string | valueFrom` · required
+
+The IAM role to associate. Reference an AwsIamRole role_arn output
+or pass a literal role ARN. The role owns its policies; the
+instance only assumes it. Required.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}
@@ -821,11 +870,22 @@ deferred changes wait quietly. AWS defaults to deferred.
 
 `string` · required
 
+The engine feature the role is linked to (e.g. "s3Import",
+"s3Export", "Lambda", "S3_INTEGRATION" -- the valid set is
+engine-specific). Required -- AWS rejects an instance role
+association without a feature name. Changing it replaces the
+association (the instance is untouched).
+
 - rule: {"required":true}
 
 ### spec.parameters
 
 `[]AwsRdsInstanceParameter`
+
+Instance-level engine parameters, managed as a dedicated DB
+parameter group owned by this instance (the group is glue -- a
+named parameter list -- so it stays folded). Mutually exclusive
+with parameter_group_name.
 
 - rule: apply_method must be 'immediate' or 'pending-reboot' when set
 
@@ -833,11 +893,16 @@ deferred changes wait quietly. AWS defaults to deferred.
 
 `string` · required
 
+The parameter name (e.g. "max_connections",
+"rds.force_ssl"). Required.
+
 - rule: {"required":true}
 
 ### spec.parameters[].value
 
 `string` · required
+
+The parameter value. Required.
 
 - rule: {"required":true}
 
@@ -845,13 +910,25 @@ deferred changes wait quietly. AWS defaults to deferred.
 
 `string`
 
+When the change lands: "immediate" (AWS default -- dynamic
+parameters apply now) or "pending-reboot" (static parameters wait
+for the next instance reboot).
+
 ### spec.options
 
 `[]AwsRdsInstanceOption`
 
+Engine options (e.g. Oracle TDE/OEM, SQL Server native backup),
+managed as a dedicated option group owned by this instance (the
+group is glue -- a named option list -- so it stays folded).
+Mutually exclusive with option_group_name.
+
 ### spec.options[].optionName
 
 `string` · required
+
+The option name (e.g. "TDE", "OEM", "SQLSERVER_BACKUP_RESTORE").
+Required.
 
 - rule: {"required":true}
 
@@ -859,9 +936,14 @@ deferred changes wait quietly. AWS defaults to deferred.
 
 `[]AwsRdsInstanceOptionSetting`
 
+Settings the option exposes, as name/value pairs (e.g. the
+IAM_ROLE_ARN setting of SQLSERVER_BACKUP_RESTORE).
+
 ### spec.options[].optionSettings[].name
 
 `string` · required
+
+The setting name. Required.
 
 - rule: {"required":true}
 
@@ -869,11 +951,16 @@ deferred changes wait quietly. AWS defaults to deferred.
 
 `string` · required
 
+The setting value. Required.
+
 - rule: {"required":true}
 
 ### spec.options[].port
 
 `int32`
+
+The port the option listens on, for options that open one (e.g.
+OEM's 1158). 0 omits the port.
 
 - rule: {"int32":{"lte":65535,"gte":0}}
 
@@ -881,9 +968,14 @@ deferred changes wait quietly. AWS defaults to deferred.
 
 `string`
 
+The option version, for options that carry one.
+
 ### spec.options[].vpcSecurityGroupMemberships
 
 `[]string | valueFrom`
+
+Security groups granting access to the option's port. Reference
+AwsSecurityGroup security_group_id outputs or pass literal SG IDs.
 
 - references: AwsSecurityGroup (`status.outputs.security_group_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSecurityGroup, name: <that resource's name>, fieldPath: status.outputs.security_group_id}} -- a bare string does not parse
@@ -936,8 +1028,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRdsInstance, 
 | `status.outputs.engine_version_actual` | `string` | The resolved engine version actually running (meaningful when the spec leaves engine_version to the AWS default). |
 | `status.outputs.master_user_secret_arn` | `string` | The ARN of the AWS-managed master-user secret in Secrets Manager. Populated only when manage_master_user_password is true -- the handle applications use to fetch credentials at runtime. |
 | `status.outputs.db_subnet_group_name` | `string` | The name of the DB subnet group the instance runs in. |
-| `status.outputs.db_parameter_group_name` | `string` |  |
-| `status.outputs.option_group_name` | `string` |  |
+| `status.outputs.db_parameter_group_name` | `string` | The name of the DB parameter group in use (module-managed from spec.parameters or the referenced existing group; empty when the engine default group applies). |
+| `status.outputs.option_group_name` | `string` | The name of the option group in use (module-managed from spec.options or the referenced existing group; empty when the engine default group applies). |
 
 ## References
 

@@ -748,13 +748,21 @@ Default: the discovery name.
 
 `[]AwsEcsServiceServiceConnectTestTrafficRules`
 
+Route requests carrying a matching header to this service's TEST
+revision during a blue/green deployment -- how testers reach the new
+version through the mesh before traffic shifts.
+
 ### spec.serviceConnect.services[].clientAlias.testTrafficRules[].header
 
 `AwsEcsServiceServiceConnectTestTrafficHeader`
 
+The header match selecting test traffic.
+
 ### spec.serviceConnect.services[].clientAlias.testTrafficRules[].header.name
 
 `string` · required
+
+The header name to match (e.g. "x-canary-test").
 
 - rule: {"required":true}
 
@@ -762,11 +770,15 @@ Default: the discovery name.
 
 `AwsEcsServiceServiceConnectTestTrafficHeaderValue` · required
 
+The header value match.
+
 - rule: {"required":true}
 
 ### spec.serviceConnect.services[].clientAlias.testTrafficRules[].header.value.exact
 
 `string` · required
+
+The exact header value that selects test traffic.
 
 - rule: {"required":true}
 
@@ -873,17 +885,29 @@ ARN), resolved by the ECS agent at task start.
 
 `AwsEcsServiceServiceConnectAccessLog`
 
+Per-request access logging by the Service Connect proxy -- one line
+per mesh request (caller, target, status, latency), emitted to the
+proxy's log destination above. The mesh-level equivalent of load
+balancer access logs.
+
 - rule: include_query_parameters must be 'ENABLED' or 'DISABLED' when set
 
 ### spec.serviceConnect.accessLogConfiguration.format
 
 `string`
 
+The log line format: "TEXT" or "JSON" (structured -- the right choice
+when logs feed a query engine).
+
 - rule: {"string":{"in":["TEXT","JSON"]}}
 
 ### spec.serviceConnect.accessLogConfiguration.includeQueryParameters
 
 `string`
+
+Include request query parameters in the log lines: "ENABLED" or
+"DISABLED". Unset keeps AWS's default (disabled -- query strings
+often carry sensitive values).
 
 ### spec.serviceRegistries
 
@@ -931,9 +955,10 @@ For SRV records on awsvpc tasks: the port published with the task IP.
 `AwsEcsServiceVolumeConfiguration`
 
 A per-deployment managed EBS volume attached to each task, configured
-at deployment time against a volume declared (by name) in the task
-definition. How ECS tasks get real block storage beyond ephemeral
-scratch space.
+at deployment time against a volume the task definition declares with
+configure_at_launch (AwsEcsTaskDefinition spec.volumes) -- name must
+match that volume's name. How ECS tasks get real block storage beyond
+ephemeral scratch space.
 
 ### spec.volumeConfiguration.name
 
@@ -1030,11 +1055,17 @@ The filesystem ECS formats the volume with: "xfs" (default), "ext4",
 
 `[]AwsEcsServiceEbsTagSpecification`
 
+Tags applied to each created EBS volume at creation time -- without
+this, per-task volumes carry no cost-allocation tags at all.
+
 - rule: propagate_tags must be 'SERVICE', 'TASK_DEFINITION', or 'NONE' when set
 
 ### spec.volumeConfiguration.managedEbsVolume.tagSpecifications[].resourceType
 
 `string`
+
+The resource type being tagged; "volume" is the only type EBS task
+volumes support.
 
 - rule: {"string":{"in":["volume"]}}
 
@@ -1042,13 +1073,22 @@ The filesystem ECS formats the volume with: "xfs" (default), "ext4",
 
 `map<string, string>`
 
+The tags applied to each created volume.
+
 ### spec.volumeConfiguration.managedEbsVolume.tagSpecifications[].propagateTags
 
 `string`
 
+Also propagate tags from "SERVICE" or "TASK_DEFINITION" ("NONE"
+disables propagation) onto the created volumes.
+
 ### spec.volumeConfiguration.managedEbsVolume.volumeInitializationRate
 
 `int32`
+
+How fast a snapshot-restored volume hydrates, in MiB/s. Only
+meaningful with snapshot_id; 0 (unset) uses the EBS default lazy
+loading.
 
 ### spec.orderedPlacementStrategy
 
@@ -1326,9 +1366,21 @@ Only ever scale out on this policy; never remove capacity.
 
 `[]AwsEcsServiceVpcLatticeConfiguration`
 
+VPC Lattice target-group attachments: register this service's tasks
+into VPC Lattice target groups so Lattice services route to them --
+the application-network alternative to a load balancer for
+cross-VPC/cross-account traffic. Each entry names the target group,
+the port name (from the task definition's port_mappings) to register,
+and the infrastructure role ECS assumes to manage the registration.
+
 ### spec.vpcLatticeConfigurations[].roleArn
 
 `string | valueFrom` · required
+
+The IAM role ECS assumes to register and deregister task targets with
+VPC Lattice (the ECS service principal must be able to assume it, and
+it needs the Lattice target-management permissions). Reference an
+AwsIamRole's role_arn output or pass a literal ARN.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}
@@ -1338,11 +1390,18 @@ Only ever scale out on this policy; never remove capacity.
 
 `string` · required
 
+The VPC Lattice target group (by ARN) the tasks register into. A
+literal ARN -- Planton has no VPC Lattice kinds yet.
+
 - rule: {"required":true}
 
 ### spec.vpcLatticeConfigurations[].portName
 
 `string` · required
+
+The name of a port mapping in the task definition (the port_mappings
+entry must set name) whose port is registered with the target group.
+1-64 characters: lowercase letters, digits, underscores, hyphens.
 
 - rule: {"required":true,"string":{"pattern":"^[0-9a-z_][0-9a-z_-]{0,63}$"}}
 

@@ -1,6 +1,7 @@
 package module
 
 const (
-	OpBusName = "bus_name"
-	OpBusArn  = "bus_arn"
+	OpBusName  = "bus_name"
+	OpBusArn   = "bus_arn"
+	OpArchives = "archives"
 )

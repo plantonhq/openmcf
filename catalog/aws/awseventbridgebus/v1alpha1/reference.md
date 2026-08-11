@@ -39,12 +39,26 @@ metadata:
   id: test-bus-dev
   annotations:
     planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsEventBridgeBus.test-bus
 spec:
   region: us-east-1
   description: Test event bus for local development
+  # Event archives recorded from this bus -- replay-able event history
+  # (EventBridge StartReplay). An empty archive costs nothing; storage bills
+  # per GB of archived events.
+  archives:
+    # Pattern-scoped archive with every knob: retention window, event
+    # pattern, and a customer-managed key for the archived events at rest.
+    - name: orders-archive
+      description: Replay source for the orders domain
+      retentionDays: 30
+      eventPattern:
+        source:
+          - orders.service
+      kmsKeyIdentifier:
+        value: arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000
+    # Minimal archive: every event on the bus, retained indefinitely,
+    # AWS-owned key.
+    - name: full-history
 ```
 
 ## Spec Fields
@@ -61,6 +75,12 @@ spec:
 | `spec.logConfig.level` | `string` | yes |  |  |
 | `spec.logConfig.includeDetail` | `string` |  |  |  |
 | `spec.resourcePolicy` | `object` |  |  |  |
+| `spec.archives` | `[]AwsEventBridgeBusArchive` |  |  |  |
+| `spec.archives[].name` | `string` | yes |  |  |
+| `spec.archives[].description` | `string` |  |  |  |
+| `spec.archives[].retentionDays` | `int32` |  |  |  |
+| `spec.archives[].eventPattern` | `object` |  |  |  |
+| `spec.archives[].kmsKeyIdentifier` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 
 ## Field Details
 
@@ -182,9 +202,43 @@ standard IAM policy document structure; one policy per bus (statements
 express per-account/per-org grants). When unset, only the owning
 account can put events.
 
+### spec.archives
+
+`[]AwsEventBridgeBusArchive`
+
+### spec.archives[].name
+
+`string` · required
+
+- rule: {"required":true,"string":{"maxLen":"48","pattern":"^[.\\-_A-Za-z0-9]+$"}}
+
+### spec.archives[].description
+
+`string`
+
+- rule: {"string":{"maxLen":"512"}}
+
+### spec.archives[].retentionDays
+
+`int32`
+
+- rule: {"int32":{"gte":0}}
+
+### spec.archives[].eventPattern
+
+`object`
+
+### spec.archives[].kmsKeyIdentifier
+
+`string | valueFrom`
+
+- references: AwsKmsKey (`status.outputs.key_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
+
 ## Validation Rules
 
 - `event_source_name_pattern`: event_source_name must match the pattern aws.partner/{partner}/{...} (e.g., aws.partner/example.com/tenant/event-source)
+- `archive_names_unique`: archive names must be unique within the bus
 
 ## Outputs
 
@@ -194,6 +248,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEventBridgeBu
 |---|---|---|
 | `status.outputs.bus_name` | `string` | The name of the event bus. This is the primary identifier used in EventBridge API calls and in rule configurations that target this bus. |
 | `status.outputs.bus_arn` | `string` | The Amazon Resource Name (ARN) of the event bus. Used for IAM policies, cross-account event delivery, and as a reference in other resources. |
+| `status.outputs.archives` | `[]AwsEventBridgeBusArchiveOutput` |  |
+| `status.outputs.archives[].name` | `string` |  |
+| `status.outputs.archives[].arn` | `string` |  |
 
 ## References
 
@@ -203,6 +260,7 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.kmsKeyIdentifier` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.deadLetterConfig.arn` | AwsSqsQueue | `status.outputs.queue_arn` |
+| `spec.archives[].kmsKeyIdentifier` | AwsKmsKey | `status.outputs.key_arn` |
 
 ## Referenced By
 

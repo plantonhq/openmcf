@@ -303,6 +303,13 @@ every new object.
 
 `string`
 
+Bucket namespace. Empty keeps the classic "global" namespace (bucket
+names unique across all AWS accounts worldwide); "account-regional"
+scopes the name to this account and region instead — names only need to
+be unique within the account+region, and the bucket is addressed through
+account-scoped endpoints. Chosen at creation; changing it replaces the
+bucket.
+
 - rule: bucket_namespace must be one of: account-regional, global
 
 ### spec.versioningStatus
@@ -369,6 +376,12 @@ in use; no effect under AES256.
 
 `[]string`
 
+Encryption types PUT requests may no longer use on this bucket.
+"SSE-C" blocks customer-provided-key encryption (AWS blocks SSE-C on
+new buckets by default since March 2026 — set this to state the posture
+explicitly, or to re-permit SSE-C by managing the block without it);
+"NONE" blocks unencrypted uploads that override the bucket default.
+
 - rule: {"repeated":{"items":{"cel":[{"id":"blocked_encryption_type_valid","message":"blocked_encryption_types entries must be one of: NONE, SSE-C","expression":"this == 'NONE' || this == 'SSE-C'"}]}}}
 
 ### spec.publicAccessBlock
@@ -427,7 +440,8 @@ that depend on them.
 Canned ACL applied to the bucket. Only meaningful when `object_ownership`
 re-enables ACLs (BucketOwnerPreferred or ObjectWriter) — enforced by
 validation. Prefer bucket policies over ACLs; this exists for legacy
-integrations (e.g. "log-delivery-write" for classic log delivery).
+integrations (e.g. "log-delivery-write" for classic log delivery,
+"aws-exec-read" for EC2 AMI bundle reads).
 
 - rule: acl must be a canned ACL: private, public-read, public-read-write, authenticated-read, aws-exec-read, log-delivery-write
 
@@ -534,6 +548,9 @@ target class and when to move.
 `int32` · optional (explicit presence)
 
 Days after object creation to transition. Mutually exclusive with `date`.
+Presence-typed because AWS allows 0 ("transition on the upload day" —
+common for INTELLIGENT_TIERING/GLACIER_IR at ingest): unset means "use
+date instead", an explicit 0 is a real day-zero transition.
 
 - rule: {"int32":{"gte":0}}
 
@@ -761,6 +778,12 @@ same-account.
 `string`
 
 Storage class for replicas. Empty keeps each source object's class.
+The domain mirrors AWS's PUT Bucket replication contract at provider
+6.58.0: the full storage-class set including EXPRESS_ONEZONE (directory
+buckets), OUTPOSTS, SNOW, and FSX_ONTAP — minus FSX_OPENZFS, which AWS's
+own API contract states "is not an accepted value when replicating
+objects". OUTPOSTS/SNOW/FSX_ONTAP apply only to their matching
+destination bucket types; AWS validates that pairing at apply time.
 
 - rule: storage_class must be one of: STANDARD, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE, REDUCED_REDUNDANCY, EXPRESS_ONEZONE, OUTPOSTS, SNOW, FSX_ONTAP
 
@@ -890,8 +913,9 @@ to another host or rewrite key prefixes).
 
 `AwsS3BucketWebsiteRoutingRuleCondition`
 
-When the rule applies. At least one condition should be set; an empty
-condition matches every request.
+When the rule applies. Omit the condition entirely to apply the redirect
+to every request; a present-but-empty condition is rejected (AWS requires
+at least one condition field when the Condition element is sent).
 
 - rule: a routing-rule condition must set http_error_code_returned_equals and/or key_prefix_equals (omit the condition to match every request)
 
@@ -1312,15 +1336,29 @@ Consecutive days without access before objects move to this tier.
 
 `string`
 
+ABAC state for the bucket. "Enabled" lets IAM policies authorize requests
+by comparing principal tags against the bucket's tags (attribute-based
+access control); "Disabled" turns it off explicitly. Empty leaves the
+bucket at AWS's default (disabled) without managing the setting.
+
 - rule: abac_status must be one of: Enabled, Disabled
 
 ### spec.analyticsConfigurations
 
 `[]AwsS3BucketAnalyticsConfiguration`
 
+Storage-class-analysis configurations. Each named configuration observes
+access patterns for a scope of objects and (optionally) exports daily
+findings to a bucket as CSV — the data source for choosing lifecycle
+transition ages. Analysis observes for at least 30 days before results
+stabilize.
+
 ### spec.analyticsConfigurations[].name
 
 `string` · required
+
+Name of the configuration, unique within the bucket (up to 64
+characters per the AWS analytics-id contract).
 
 - rule: {"string":{"minLen":"1","maxLen":"64"}}
 
@@ -1328,17 +1366,32 @@ Consecutive days without access before objects move to this tier.
 
 `string`
 
+Key prefix scoping the analysis. Combined (AND) with filter_tags; leave
+both empty to analyze the whole bucket.
+
 ### spec.analyticsConfigurations[].filterTags
 
 `map<string, string>`
+
+Object tags scoping the analysis. Combined (AND) with filter_prefix.
 
 ### spec.analyticsConfigurations[].export
 
 `AwsS3BucketAnalyticsExport`
 
+Daily CSV export of the analysis findings to a bucket. Without it the
+findings are only visible in the S3 console. (AWS's V_1 schema and CSV
+format are the only values the API accepts, so only the destination is
+configurable.)
+
 ### spec.analyticsConfigurations[].export.bucketArn
 
 `string | valueFrom` · required
+
+Destination bucket for the CSV findings. Accepts a bucket ARN
+(arn:aws:s3:::name) or a reference to an AwsS3Bucket resource. The
+bucket must allow `s3.amazonaws.com` to `s3:PutObject` (same-account
+destinations get the grant via bucket policy).
 
 - references: AwsS3Bucket (`status.outputs.bucket_arn`)
 - rule: {"required":true}
@@ -1348,17 +1401,33 @@ Consecutive days without access before objects move to this tier.
 
 `string`
 
+Account ID that owns the destination bucket. Empty assumes the
+bucket owner's account.
+
 ### spec.analyticsConfigurations[].export.prefix
 
 `string`
+
+Key prefix for exported findings, e.g. "analytics/".
 
 ### spec.inventoryConfigurations
 
 `[]AwsS3BucketInventoryConfiguration`
 
+Inventory report configurations. Each named configuration delivers a
+scheduled manifest of objects and selected metadata (encryption status,
+replication status, object-lock state, ...) to a destination bucket —
+the audit backbone for large buckets where ListObjects is impractical.
+The destination bucket needs a policy allowing `s3.amazonaws.com` to
+`s3:PutObject` (AWS documents the exact statement); delivery starts
+within 48 hours of configuration.
+
 ### spec.inventoryConfigurations[].name
 
 `string` · required
+
+Name of the configuration, unique within the bucket (up to 64
+characters per the AWS inventory-id contract).
 
 - rule: {"string":{"minLen":"1","maxLen":"64"}}
 
@@ -1366,9 +1435,16 @@ Consecutive days without access before objects move to this tier.
 
 `bool`
 
+Keep the configuration defined but stop generating reports. Unset means
+active (the AWS default) — the zero value never fights the provider's
+enabled-by-default contract.
+
 ### spec.inventoryConfigurations[].includedObjectVersions
 
 `string` · required
+
+Which object versions the report covers: "All" (every version on
+versioned buckets) or "Current" (only the latest of each object).
 
 - rule: included_object_versions must be one of: All, Current
 - rule: {"required":true}
@@ -1377,6 +1453,8 @@ Consecutive days without access before objects move to this tier.
 
 `string` · required
 
+Report generation schedule.
+
 - rule: frequency must be one of: Daily, Weekly
 - rule: {"required":true}
 
@@ -1384,15 +1462,24 @@ Consecutive days without access before objects move to this tier.
 
 `[]string`
 
+Metadata columns to include beyond bucket/key/version. The report is the
+cheap way to audit encryption, replication, and object-lock posture at
+scale.
+
 - rule: {"repeated":{"items":{"cel":[{"id":"inventory_optional_field_valid","message":"optional_fields entries must be valid inventory fields (Size, LastModifiedDate, StorageClass, ETag, IsMultipartUploaded, ReplicationStatus, EncryptionStatus, ObjectLockRetainUntilDate, ObjectLockMode, ObjectLockLegalHoldStatus, IntelligentTieringAccessTier, BucketKeyStatus, ChecksumAlgorithm, ObjectAccessControlList, ObjectOwner, LifecycleExpirationDate)","expression":"this in ['Size', 'LastModifiedDate', 'StorageClass', 'ETag', 'IsMultipartUploaded', 'ReplicationStatus', 'EncryptionStatus', 'ObjectLockRetainUntilDate', 'ObjectLockMode', 'ObjectLockLegalHoldStatus', 'IntelligentTieringAccessTier', 'BucketKeyStatus', 'ChecksumAlgorithm', 'ObjectAccessControlList', 'ObjectOwner', 'LifecycleExpirationDate']"}]}}}
 
 ### spec.inventoryConfigurations[].filterPrefix
 
 `string`
 
+Key prefix scoping which objects the report covers. Empty covers the
+whole bucket.
+
 ### spec.inventoryConfigurations[].destination
 
 `AwsS3BucketInventoryDestination` · required
+
+Where and how the report files are delivered.
 
 - rule: {"required":true}
 - rule: set at most one of sse_s3 or sse_kms_key_id for report encryption
@@ -1400,6 +1487,12 @@ Consecutive days without access before objects move to this tier.
 ### spec.inventoryConfigurations[].destination.bucketArn
 
 `string | valueFrom` · required
+
+Destination bucket for report files. Accepts a bucket ARN
+(arn:aws:s3:::name) or a reference to an AwsS3Bucket resource — a bucket
+may deliver its inventory to itself (its own ARN is derived from the
+name: arn:aws:s3:::<name>). The destination must allow `s3.amazonaws.com`
+to `s3:PutObject` via bucket policy.
 
 - references: AwsS3Bucket (`status.outputs.bucket_arn`)
 - rule: {"required":true}
@@ -1409,6 +1502,8 @@ Consecutive days without access before objects move to this tier.
 
 `string` · required
 
+Report file format.
+
 - rule: format must be one of: CSV, ORC, Parquet
 - rule: {"required":true}
 
@@ -1416,13 +1511,22 @@ Consecutive days without access before objects move to this tier.
 
 `string`
 
+Account ID that owns the destination bucket. Empty assumes the bucket
+owner's account.
+
 ### spec.inventoryConfigurations[].destination.prefix
 
 `string`
 
+Key prefix for report files, e.g. "inventory/".
+
 ### spec.inventoryConfigurations[].destination.sseKmsKeyId
 
 `string | valueFrom`
+
+Encrypt report files with SSE-KMS using this key. Accepts a key ARN or
+a reference to an AwsKmsKey resource; the key policy must allow
+`s3.amazonaws.com` to use it. Mutually exclusive with `sse_s3`.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
@@ -1431,13 +1535,26 @@ Consecutive days without access before objects move to this tier.
 
 `bool`
 
+Encrypt report files with SSE-S3 (S3-managed keys). Mutually exclusive
+with `sse_kms_key_id`; leave both unset to deliver with the destination
+bucket's default encryption.
+
 ### spec.metricsConfigurations
 
 `[]AwsS3BucketMetricsConfiguration`
 
+Request-metrics configurations. Each named configuration publishes
+CloudWatch request metrics (AllRequests, 4xxErrors, FirstByteLatency,
+...) for a scope of objects, at CloudWatch's standard per-metric cost.
+Whole-bucket storage metrics are free and always on; these add
+request-level visibility for a prefix, tag set, or access point.
+
 ### spec.metricsConfigurations[].name
 
 `string` · required
+
+Name of the configuration, unique within the bucket (up to 64
+characters per the AWS metrics-id contract).
 
 - rule: {"string":{"minLen":"1","maxLen":"64"}}
 
@@ -1445,31 +1562,54 @@ Consecutive days without access before objects move to this tier.
 
 `string`
 
+Scope metrics to requests through this access point (access point ARN).
+
 ### spec.metricsConfigurations[].filterPrefix
 
 `string`
+
+Key prefix scoping the metrics. Combined (AND) with the other predicates.
 
 ### spec.metricsConfigurations[].filterTags
 
 `map<string, string>`
 
+Object tags scoping the metrics. Combined (AND) with the other
+predicates.
+
 ### spec.metadataConfiguration
 
 `AwsS3BucketMetadataConfiguration`
+
+S3 Metadata configuration. Maintains queryable Apache Iceberg tables of
+this bucket's object metadata in an AWS-managed table bucket: a journal
+table records every change (uploads, deletes, metadata updates) and an
+optional live inventory table mirrors the current object set. Query them
+with Athena/Spark to find objects without listing the bucket. Table
+storage and updates bill per S3 Tables pricing.
 
 ### spec.metadataConfiguration.inventoryTableEnabled
 
 `bool`
 
+Maintain the live inventory table (current state of every object) in
+addition to the journal. Off keeps only the change journal.
+
 ### spec.metadataConfiguration.inventoryTableEncryption
 
 `AwsS3BucketMetadataTableEncryption`
+
+Encryption for the inventory table. Only meaningful while
+`inventory_table_enabled` is true.
 
 - rule: kms_key_arn is only used when sse_algorithm is aws:kms
 
 ### spec.metadataConfiguration.inventoryTableEncryption.sseAlgorithm
 
 `string` · required
+
+Encryption algorithm for the table: "AES256" (S3-managed keys) or
+"aws:kms" (customer-managed KMS key).
 
 - rule: sse_algorithm must be one of: AES256, aws:kms
 - rule: {"required":true}
@@ -1478,12 +1618,19 @@ Consecutive days without access before objects move to this tier.
 
 `string | valueFrom`
 
+KMS key for aws:kms encryption. Accepts a key ARN or a reference to an
+AwsKmsKey resource; the key policy must allow the S3 Tables maintenance
+principal to use it.
+
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
 
 ### spec.metadataConfiguration.journalRecordExpiration
 
 `AwsS3BucketMetadataJournalRecordExpiration` · required
+
+Expiration policy for journal-table records — the required cost control
+for the change log (records accrue per object change).
 
 - rule: {"required":true}
 - rule: days is required (7–2147483647) when expiration is enabled, and must be unset when disabled
@@ -1492,9 +1639,14 @@ Consecutive days without access before objects move to this tier.
 
 `bool`
 
+Expire journal records after `days`. Disabled keeps records forever
+(stated explicitly — AWS requires the policy either way).
+
 ### spec.metadataConfiguration.journalRecordExpiration.days
 
 `int32`
+
+Days to retain journal records (at least 7). Only set when `enabled`.
 
 - rule: {"int32":{"gte":0}}
 
@@ -1502,11 +1654,16 @@ Consecutive days without access before objects move to this tier.
 
 `AwsS3BucketMetadataTableEncryption`
 
+Encryption for the journal table.
+
 - rule: kms_key_arn is only used when sse_algorithm is aws:kms
 
 ### spec.metadataConfiguration.journalTableEncryption.sseAlgorithm
 
 `string` · required
+
+Encryption algorithm for the table: "AES256" (S3-managed keys) or
+"aws:kms" (customer-managed KMS key).
 
 - rule: sse_algorithm must be one of: AES256, aws:kms
 - rule: {"required":true}
@@ -1514,6 +1671,10 @@ Consecutive days without access before objects move to this tier.
 ### spec.metadataConfiguration.journalTableEncryption.kmsKeyArn
 
 `string | valueFrom`
+
+KMS key for aws:kms encryption. Accepts a key ARN or a reference to an
+AwsKmsKey resource; the key policy must allow the S3 Tables maintenance
+principal to use it.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse

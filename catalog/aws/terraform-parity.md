@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 240 |
-| Spec fields authored across all kinds | 4307 |
+| Distinct provider resources consumed | 241 |
+| Spec fields authored across all kinds | 4312 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**53 of 112 kinds are at total accounting; 74 proven live.**
+**57 of 112 kinds are at total accounting; 75 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -85,15 +85,15 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsEgressOnlyInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsEksAccessEntry | 14 | 9 | 0 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEksAddon | 14 | 10 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEksCluster | 38 | 8 | 20 | 10 | 0 | ✅ | — |
+| AwsEksCluster | 38 | 8 | 20 | 10 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEksFargateProfile | 9 | 4 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEksNodeGroup | 43 | 26 | 12 | 5 | 0 | ✅ | — |
+| AwsEksNodeGroup | 43 | 26 | 12 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsElasticFileSystem | 34 | 13 | 0 | 0 | 35 | ❌ | ✅ pulumi, terraform |
 | AwsElasticIp | 12 | 4 | 0 | 0 | 8 | ❌ | ✅ pulumi, terraform |
 | AwsElasticacheUser | 13 | 6 | 0 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsElasticacheUserGroup | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEventBridgeBus | 13 | 8 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
-| AwsEventBridgeRule | 65 | 53 | 5 | 7 | 0 | ✅ | — |
+| AwsEventBridgeBus | 20 | 12 | 3 | 5 | 0 | ✅ | — |
+| AwsEventBridgeRule | 65 | 53 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsFsxDataRepositoryAssociation | 11 | 7 | 2 | 2 | 0 | ✅ | — |
 | AwsFsxLustreFileSystem | 34 | 29 | 3 | 2 | 0 | ✅ | — |
 | AwsFsxOntapFileSystem | 21 | 18 | 1 | 2 | 0 | ✅ | — |
@@ -116,8 +116,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsKinesisStream | 17 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
 | AwsKinesisStreamConsumer | 8 | 3 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
 | AwsKmsKey | 29 | 15 | 6 | 8 | 0 | ✅ | — |
-| AwsLambda | 108 | 51 | 30 | 27 | 0 | ✅ | — |
-| AwsLambdaEventSourceMapping | 45 | 11 | 31 | 3 | 0 | ✅ | — |
+| AwsLambda | 108 | 51 | 30 | 27 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsLambdaEventSourceMapping | 45 | 11 | 31 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListener | 76 | 13 | 59 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 55 | 3 | 0 | ✅ | ✅ pulumi, terraform |
@@ -150,9 +150,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsServerlessElasticache | 19 | 12 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSesConfigurationSet | 27 | 7 | 0 | 0 | 36 | ❌ | ✅ pulumi, terraform |
 | AwsSesEmailIdentity | 19 | 9 | 0 | 0 | 18 | ❌ | ✅ pulumi, terraform |
-| AwsSnsSubscription | 13 | 11 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
-| AwsSnsTopic | 33 | 12 | 0 | 0 | 38 | ❌ | ✅ pulumi, terraform |
-| AwsSqsQueue | 20 | 12 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
+| AwsSnsSubscription | 13 | 11 | 2 | 0 | 0 | ✅ | — |
+| AwsSnsTopic | 33 | 10 | 18 | 5 | 0 | ✅ | — |
+| AwsSqsQueue | 20 | 12 | 4 | 4 | 0 | ✅ | — |
 | AwsStepFunction | 16 | 5 | 0 | 0 | 17 | ❌ | ✅ pulumi, terraform |
 | AwsSubnet | 33 | 22 | 0 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsTransitGateway | 14 | 12 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
@@ -170,10 +170,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 240 | consumed by a kind's Terraform module today |
+| Modeled | 241 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 7 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 790 | judged to be covered by a planned kind or planned composition, not built yet |
+| Composed | 12 | capability covered through an existing kind's surface rather than a kind of its own |
+| Planned | 784 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 525 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -183,7 +183,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (240)
+### Modeled (241)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -220,6 +220,7 @@ rather than trusted.
 | `aws_cloudfront_monitoring_subscription` | consumed by AwsCloudFront |
 | `aws_cloudfront_origin_access_control` | consumed by AwsCloudFront |
 | `aws_cloudwatch_composite_alarm` | consumed by AwsCloudwatchCompositeAlarm |
+| `aws_cloudwatch_event_archive` | consumed by AwsEventBridgeBus |
 | `aws_cloudwatch_event_bus` | consumed by AwsEventBridgeBus |
 | `aws_cloudwatch_event_bus_policy` | consumed by AwsEventBridgeBus |
 | `aws_cloudwatch_event_rule` | consumed by AwsEventBridgeRule |
@@ -428,19 +429,24 @@ rather than trusted.
 | `aws_wafv2_web_acl_association` | consumed by AwsAlb, AwsAppRunnerService |
 | `aws_wafv2_web_acl_logging_configuration` | consumed by AwsWafWebAcl |
 
-### Composed (7)
+### Composed (12)
 
 | Resource | Recorded reason |
 |---|---|
 | `aws_autoscaling_attachment` | covered by AwsAutoScalingGroup: target_groups registers ALB/NLB target groups and traffic_sources covers Classic ELBs -- the standalone attachment is the imperative pattern for a group that owns its attachments |
 | `aws_autoscaling_traffic_source_attachment` | covered by AwsAutoScalingGroup.traffic_sources -- the standalone attachment is the imperative pattern for a group that owns its traffic sources |
+| `aws_cloudwatch_event_permission` | per-statement delivery (PutPermission with a StatementId) of the same bus policy AwsEventBridgeBus.spec.resource_policy models as one whole document via aws_cloudwatch_event_bus_policy -- mixing them fights over one policy (the bus-policy delete issues RemoveAllPermissions, wiping permission-managed statements) |
 | `aws_elasticache_user_group_association` | covered by AwsElasticacheUserGroup's declarative user_ids membership -- the standalone one-user-at-a-time association is the imperative alternative to membership the group already owns (the autoscaling-attachment class); it attaches users to GROUPS, not to the Redis kind the prior reason named |
 | `aws_kms_key_policy` | covered by AwsKmsKey spec.policy -- the standalone resource is the detached-management pattern for keys owned elsewhere |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
+| `aws_sns_topic_policy` | out-of-band delivery of the topic's Policy attribute, which AwsSnsTopic.spec.policy models inline on aws_sns_topic -- both write the same single attribute (the standalone resource cannot even remove a policy on delete; it writes back a synthesized owner-default document, per the provider source) |
+| `aws_sqs_queue_policy` | out-of-band delivery of the queue's Policy attribute, which AwsSqsQueue.spec.policy models inline on aws_sqs_queue -- both mechanisms upsert the same single queue attribute and fight over it when mixed (the attribute-splitter class) |
+| `aws_sqs_queue_redrive_allow_policy` | out-of-band delivery of the queue's RedriveAllowPolicy attribute, which AwsSqsQueue.spec.redrive_allow_policy models inline (typed redrivePermission + sourceQueueArns) -- same single-attribute upsert, same mixing conflict (the attribute-splitter class) |
+| `aws_sqs_queue_redrive_policy` | out-of-band delivery of the queue's RedrivePolicy attribute, which AwsSqsQueue.spec.dead_letter_config models inline (chart-wired deadLetterTargetArn + maxReceiveCount) -- same single-attribute upsert, same mixing conflict (the attribute-splitter class) |
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (790)
+### Planned (784)
 
 | Resource | Recorded reason |
 |---|---|
@@ -596,9 +602,7 @@ rather than trusted.
 | `aws_cloudwatch_alarm_mute_rule` | alarm mute rules fold into the existing AwsCloudwatchAlarm kind as its spec deepens |
 | `aws_cloudwatch_dashboard` | judged as a planned AwsCloudwatchDashboard kind |
 | `aws_cloudwatch_event_api_destination` | judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections) |
-| `aws_cloudwatch_event_archive` | event-bus archives and permissions fold into the existing AwsEventBridgeBus kind as its spec deepens |
 | `aws_cloudwatch_event_connection` | judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections) |
-| `aws_cloudwatch_event_permission` | event-bus archives and permissions fold into the existing AwsEventBridgeBus kind as its spec deepens |
 | `aws_cloudwatch_log_account_policy` | account-scoped CloudWatch Logs policy and saved-query surface; folds into the AwsCloudwatchLogGroup kind family's account-level composition |
 | `aws_cloudwatch_log_anomaly_detector` | log-group companion surface (anomaly detectors, transformers, storage tiers, streams, table integrations); folds into the existing AwsCloudwatchLogGroup kind as its spec deepens |
 | `aws_cloudwatch_log_delivery` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
@@ -1110,11 +1114,7 @@ rather than trusted.
 | `aws_shield_protection_health_check_association` | judged as a planned AwsShieldAdvanced kind (subscription, protections, protection groups, DRT access, proactive engagement) |
 | `aws_shield_subscription` | judged as a planned AwsShieldAdvanced kind (subscription, protections, protection groups, DRT access, proactive engagement) |
 | `aws_snapshot_create_volume_permission` | judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions) |
-| `aws_sns_topic_policy` | topic policies fold into the existing AwsSnsTopic kind as its spec deepens |
 | `aws_spot_datafeed_subscription` | account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind |
-| `aws_sqs_queue_policy` | queue policy surface (access, redrive, redrive-allow); folds into the existing AwsSqsQueue kind as its spec deepens |
-| `aws_sqs_queue_redrive_allow_policy` | queue policy surface (access, redrive, redrive-allow); folds into the existing AwsSqsQueue kind as its spec deepens |
-| `aws_sqs_queue_redrive_policy` | queue policy surface (access, redrive, redrive-allow); folds into the existing AwsSqsQueue kind as its spec deepens |
 | `aws_ssm_activation` | SSM account-level plumbing (hybrid activations, resource data syncs, service settings); folds into the planned SSM kind family led by AwsSsmDocument |
 | `aws_ssm_association` | judged as a planned AwsSsmDocument kind (documents with associations) |
 | `aws_ssm_default_patch_baseline` | judged as a planned AwsSsmPatchBaseline kind (baselines, groups, defaults) |

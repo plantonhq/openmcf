@@ -279,7 +279,10 @@ window. May cause brief downtime for some operations.
 `bool` · optional (explicit presence)
 
 Automatically apply minor engine version upgrades during maintenance
-windows. Recommended for staying on supported versions.
+windows. AWS enables this by default: leave unset to keep the default,
+set false to pin the running minor version explicitly, set true to pin
+the opt-in. Presence matters — unset is forwarded to AWS as "decide",
+never as false.
 
 - default: `true`
 
@@ -299,11 +302,19 @@ maintenance events, etc.).
 
 Preferred Availability Zones for the cache nodes. When provided, the list
 length must match num_cache_nodes. Nodes are placed in the specified AZs
-in order. Leave empty for AWS-managed AZ distribution.
+in order. Leave empty for AWS-managed AZ distribution. Mutually exclusive
+with `availability_zone` (the single-AZ pin).
 
 ### spec.availabilityZone
 
 `string`
+
+Pin ALL cache nodes to one Availability Zone (e.g. "us-west-2a") —
+AZ-local latency for a client fleet that lives in a single zone.
+ForceNew — changing the pin replaces the cluster. Leave empty for an
+AWS-chosen AZ. Mutually exclusive with `preferred_availability_zones`
+(per-node placement) and with az_mode "cross-az" — a single-AZ pin IS
+single-az mode.
 
 ## Validation Rules
 

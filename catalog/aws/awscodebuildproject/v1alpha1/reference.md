@@ -886,6 +886,14 @@ it by ARN.
 
 `string`
 
+host_kernel selects the Linux kernel version for the build hosts.
+  LINUX_KERNEL_4:      Kernel 4.x (the long-standing default)
+  LINUX_KERNEL_6:      Kernel 6.x (newer eBPF/io_uring features)
+  LINUX_KERNEL_LATEST: Always the newest kernel CodeBuild offers
+Applies only to the LINUX_CONTAINER, ARM_CONTAINER, LINUX_EC2, and
+ARM_EC2 environment types — AWS's contract; Windows, Lambda, and Mac
+environments have no kernel selection. Omit to let AWS choose.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["LINUX_KERNEL_4","LINUX_KERNEL_6","LINUX_KERNEL_LATEST"]}}
 
 ### spec.artifacts

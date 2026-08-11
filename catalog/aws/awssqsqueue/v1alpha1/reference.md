@@ -35,9 +35,6 @@ metadata:
   id: test-queue-dev
   annotations:
     planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsSqsQueue.test-queue
 spec:
   region: us-west-2
   sqsManagedSseEnabled: true
@@ -215,7 +212,7 @@ Only relevant when `kms_key_id` is set.
 
 ### spec.sqsManagedSseEnabled
 
-`bool`
+`bool` · optional (explicit presence)
 
 Enable SQS-managed server-side encryption (SSE-SQS). SQS manages the
 encryption key automatically with no additional cost. Mutually exclusive
@@ -280,7 +277,7 @@ is "byQueue". AWS caps the list at 10 source queues; to allow more than
 - `content_based_deduplication_requires_fifo`: content_based_deduplication can only be enabled on FIFO queues (fifo_queue must be true)
 - `deduplication_scope_requires_fifo`: deduplication_scope is only valid for FIFO queues and must be 'messageGroup' or 'queue'
 - `fifo_throughput_limit_requires_fifo`: fifo_throughput_limit is only valid for FIFO queues and must be 'perMessageGroupId' or 'perQueue'
-- `encryption_mutual_exclusion`: kms_key_id and sqs_managed_sse_enabled are mutually exclusive; choose one encryption method
+- `encryption_mutual_exclusion`: kms_key_id and sqs_managed_sse_enabled are mutually exclusive (even sqs_managed_sse_enabled: false conflicts with a KMS key); set one or neither
 - `kms_data_key_reuse_requires_kms_key`: kms_data_key_reuse_period_seconds requires kms_key_id to be set
 - `message_retention_range`: message_retention_seconds must be between 60 and 1209600 (1 min to 14 days) when set
 - `max_message_size_range`: max_message_size_bytes must be between 1024 and 1048576 (1 KB to 1 MB) when set

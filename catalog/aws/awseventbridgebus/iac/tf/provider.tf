@@ -9,7 +9,9 @@ terraform {
       # argument needs. Only the sweep moves this line — never a single kind.
       #
       # Feature floor (v6 family baseline): kms_key_identifier, dead_letter_config, and
-      # log_config on aws_cloudwatch_event_bus require the 6.x provider line.
+      # log_config on aws_cloudwatch_event_bus require the 6.x provider line;
+      # kms_key_identifier on aws_cloudwatch_event_archive landed in 6.2.0
+      # (changelog-dated) — both floors sit below the pinned line.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

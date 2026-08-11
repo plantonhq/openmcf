@@ -23,6 +23,15 @@ There are two kinds, selected by connectivity_type:
     transit/VPN/peering path) while keeping instances unreachable from those
     networks.
 
+Orthogonally, availability_mode selects the placement model:
+  - zonal (default, the classic form): one gateway in one subnet
+    (subnet_id), one AZ. Zone-resilient architectures deploy one per AZ.
+  - regional: one gateway spanning every AZ of a VPC (vpc_id), managed by
+    AWS as a single unit. AWS either picks the zones automatically (leave
+    availability_zone_addresses empty) or follows the explicit per-AZ
+    layout given there. Creating a regional gateway additionally requires
+    the ec2:DescribeAvailabilityZones permission on the deploying role.
+
 A NAT gateway does not, by itself, route anything: a private subnet becomes
 NAT-egressed only when its route table sends a default route
 (target_type = nat_gateway) to this gateway. The Elastic IP is composed by
@@ -101,11 +110,13 @@ gateway.
 
 `string | valueFrom`
 
-The subnet the NAT gateway is created in. Supply a literal subnet-id or
-reference an AwsSubnet and the platform resolves its subnet_id output. For a
-public gateway this must be a PUBLIC subnet (one whose route table reaches an
-internet gateway); for a private gateway any subnet works. Immutable:
-changing the subnet replaces the gateway.
+The subnet the NAT gateway is created in (zonal mode only -- required
+there, forbidden for a regional gateway, which spans the whole VPC).
+Supply a literal subnet-id or reference an AwsSubnet and the platform
+resolves its subnet_id output. For a public gateway this must be a PUBLIC
+subnet (one whose route table reaches an internet gateway); for a private
+gateway any subnet works. Immutable: changing the subnet replaces the
+gateway.
 
 - references: AwsSubnet (`status.outputs.subnet_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSubnet, name: <that resource's name>, fieldPath: status.outputs.subnet_id}} -- a bare string does not parse
@@ -114,11 +125,13 @@ changing the subnet replaces the gateway.
 
 `string | valueFrom`
 
-The Elastic IP allocation that gives a public gateway its stable outbound
-address. Supply a literal eipalloc-id or reference an AwsElasticIp and the
-platform resolves its allocation_id output. Required when
-connectivity_type is public; must be empty when it is private. ForceNew:
-changing it replaces the gateway.
+The Elastic IP allocation that gives a zonal public gateway its stable
+outbound address. Supply a literal eipalloc-id or reference an
+AwsElasticIp and the platform resolves its allocation_id output. Required
+for a zonal public gateway; must be empty when connectivity_type is
+private, and empty for a regional gateway (regional addressing lives in
+availability_zone_addresses or is AWS-managed). ForceNew: changing it
+replaces the gateway.
 
 - references: AwsElasticIp (`status.outputs.allocation_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsElasticIp, name: <that resource's name>, fieldPath: status.outputs.allocation_id}} -- a bare string does not parse
@@ -164,12 +177,22 @@ secondary_private_ip_addresses.
 
 `string`
 
+Placement model: "zonal" (default -- the classic single-subnet,
+single-AZ gateway) or "regional" (one AWS-managed gateway spanning every
+AZ of the VPC). Leave empty for zonal. ForceNew: changing the mode
+replaces the gateway.
+
 - default: `zonal`
 - rule: availability_mode must be one of: zonal, regional
 
 ### spec.vpcId
 
 `string | valueFrom`
+
+The VPC a REGIONAL gateway spans (required for regional mode, forbidden
+for zonal, where the subnet implies the VPC). Supply a literal vpc-id or
+reference an AwsVpc and the platform resolves its vpc_id output.
+Immutable: changing the VPC replaces the gateway.
 
 - references: AwsVpc (`status.outputs.vpc_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsVpc, name: <that resource's name>, fieldPath: status.outputs.vpc_id}} -- a bare string does not parse
@@ -178,19 +201,37 @@ secondary_private_ip_addresses.
 
 `[]AwsNatGatewayAvailabilityZoneAddress`
 
+Explicit per-AZ layout for a regional gateway. Leave empty to let AWS
+choose the zones and manage addresses automatically (auto mode); list
+entries to pin the zones -- and, for a public regional gateway, the
+Elastic IPs -- yourself (manual mode). Switching a regional gateway
+between auto and manual replaces it (verified provider behavior).
+
 - rule: each availability_zone_addresses entry needs availability_zone or availability_zone_id
 
 ### spec.availabilityZoneAddresses[].availabilityZone
 
 `string`
 
+The availability zone, by name (e.g. "us-west-2a"). At least one of
+availability_zone or availability_zone_id is required per entry; both
+may be set (AWS reports both).
+
 ### spec.availabilityZoneAddresses[].availabilityZoneId
 
 `string`
 
+The availability zone, by ID (e.g. "usw2-az1") -- stable across AWS
+accounts, unlike zone names. At least one of availability_zone or
+availability_zone_id is required per entry.
+
 ### spec.availabilityZoneAddresses[].allocationIds
 
 `[]string | valueFrom`
+
+Elastic IP allocations serving this zone (public regional gateways
+only -- a private gateway carries no Elastic IPs). Each entry is a
+literal eipalloc-id or a reference to an AwsElasticIp.
 
 - references: AwsElasticIp (`status.outputs.allocation_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsElasticIp, name: <that resource's name>, fieldPath: status.outputs.allocation_id}} -- a bare string does not parse

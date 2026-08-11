@@ -526,15 +526,27 @@ consulted while version/release_version/launch_template change.
 
 `AwsEksNodeGroupWarmPoolConfig`
 
+A pool of pre-initialized instances that cuts scale-out latency from
+minutes to seconds -- worth its cost exactly when boot time (AMI +
+bootstrap + image pulls) dominates how fast new capacity serves
+pods. Updates in place.
+
 - rule: pool_state must be 'STOPPED', 'RUNNING', or 'HIBERNATED' when set
 
 ### spec.warmPoolConfig.poolState
 
 `string`
 
+The state pooled instances wait in: "STOPPED" (AWS default --
+near-zero compute cost, seconds to start), "RUNNING" (instant but
+full price), or "HIBERNATED" (RAM restored from disk -- fast
+JVM/cache warmup without running cost). Empty keeps the AWS default.
+
 ### spec.warmPoolConfig.minSize
 
 `int32`
+
+Minimum number of instances always kept in the pool.
 
 - rule: {"int32":{"gte":0}}
 
@@ -542,11 +554,20 @@ consulted while version/release_version/launch_template change.
 
 `int32` · optional (explicit presence)
 
+Ceiling on pool size. Unset keeps the AWS default: the gap between
+the group's max_size and its desired capacity (AWS represents that
+default internally as -1 -- it never appears here). Explicit 0 is
+meaningful (no prepared capacity beyond min_size), which is why this
+field is optional.
+
 - rule: {"int32":{"gte":0}}
 
 ### spec.warmPoolConfig.reuseOnScaleIn
 
 `bool`
+
+Return scaled-in instances to the pool instead of terminating them
+-- reuse the warm boot instead of paying for it again.
 
 ## Validation Rules
 

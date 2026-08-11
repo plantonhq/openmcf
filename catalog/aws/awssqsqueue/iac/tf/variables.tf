@@ -30,7 +30,7 @@ variable "spec" {
     }))
     kms_key_id = optional(string, "")
     kms_data_key_reuse_period_seconds = optional(number, 0)
-    sqs_managed_sse_enabled = optional(bool, false)
+    sqs_managed_sse_enabled = optional(bool)
     policy = optional(any)
     redrive_allow_policy = optional(object({
       redrive_permission = string

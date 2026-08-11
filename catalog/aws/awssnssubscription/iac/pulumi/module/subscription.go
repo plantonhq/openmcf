@@ -41,9 +41,10 @@ func subscription(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (
 	// Delivery behavior
 	// -------------------------------------------------------------------
 
-	if spec.RawMessageDelivery {
-		args.RawMessageDelivery = pulumi.BoolPtr(true)
-	}
+	// Always sent (matching the Terraform module's state-pinned rendering) —
+	// the provider default is false, so the explicit value never changes
+	// cloud behavior.
+	args.RawMessageDelivery = pulumi.BoolPtr(spec.RawMessageDelivery)
 
 	// AWS models the subscription DLQ as a JSON redrive policy document
 	// holding just the target ARN (retry exhaustion is governed by the
@@ -83,9 +84,9 @@ func subscription(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (
 	// manifests.
 	// -------------------------------------------------------------------
 
-	if spec.EndpointAutoConfirms {
-		args.EndpointAutoConfirms = pulumi.BoolPtr(true)
-	}
+	// Always sent (matching the Terraform module's state-pinned rendering) —
+	// a provider-local wait knob with default false, never transmitted to AWS.
+	args.EndpointAutoConfirms = pulumi.BoolPtr(spec.EndpointAutoConfirms)
 	if spec.ConfirmationTimeoutMinutes != 0 {
 		args.ConfirmationTimeoutInMinutes = pulumi.IntPtr(int(spec.ConfirmationTimeoutMinutes))
 	}

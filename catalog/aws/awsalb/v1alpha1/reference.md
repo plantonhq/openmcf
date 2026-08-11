@@ -149,11 +149,25 @@ clients).
 
 `string | valueFrom`
 
+IPAM pool that allocates the ALB's public IPv4 addresses (instead of
+AWS-assigned addresses) -- lets organizations front the ALB with their
+own BYOIP ranges managed in VPC IPAM. Supply a literal ipam-pool-id;
+there is no IPAM pool catalog kind yet. Only meaningful for
+internet-facing ALBs with an IPv4 address family; removing it moves the
+ALB back to AWS-assigned addresses in place.
+
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
 ### spec.minimumLoadBalancerCapacityUnits
 
 `int32`
+
+Reserved load balancer capacity, in Load Balancer Capacity Units (LCUs).
+Pre-provisions the ALB for a known traffic surge (product launch, ticket
+sale) instead of waiting for organic scaling. BILLS for the reserved
+LCUs while set, on top of normal LCU usage -- set it for the event
+window, then remove it (0 / unset releases the reservation). Minimum and
+maximum reservable units depend on the account's service quotas.
 
 - rule: {"int32":{"gte":0}}
 

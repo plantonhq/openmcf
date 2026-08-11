@@ -29,9 +29,11 @@ Design notes:
   them. (Edge-optimized domains are a REST API v1 feature.)
 - The certificate must be issued in the SAME region as the domain and must
   cover the domain name (exact match or wildcard).
-- routing_mode (routing rules) is deliberately not modeled: header/path
-  rule-based routing is a separate resource family; the default
-  API-mapping-only mode covers the mapping surface this component models.
+- The domain routes requests two ways, selected by routing_mode: static
+  path-key API mappings (api_mappings, the default) and dynamic routing
+  rules (routing_rules) that match on base path or header and invoke an
+  API stage by priority order. Rules are their own AWS resources attached
+  to the domain; the module creates one per routing_rules entry.
 
 Credentials, region, and deployment workflow live outside this spec in
 stack inputs.
@@ -193,7 +195,13 @@ APIs mapped onto this domain. Each mapping binds one API's stage under
 an optional path key: an empty api_mapping_key serves the API at the
 domain root ("https://api.example.com/"), while a key like "orders"
 serves it under "https://api.example.com/orders/". Multiple APIs
-compose onto one domain by using distinct keys.
+compose onto one domain by using distinct keys. Mutually exclusive
+with the routing-rule modes: AWS currently rejects CreateApiMapping
+for HTTP/WebSocket APIs on a domain whose routing_mode uses routing
+rules ("APIs with a protocol type of HTTP or WEBSOCKET cannot be
+associated to domains that have a routingMode that uses
+RoutingRules", live-verified) -- route through routing_rules instead
+on such domains.
 
 ### spec.apiMappings[].apiId
 
@@ -231,6 +239,13 @@ by API Gateway v2.
 
 `string | valueFrom`
 
+ARN of an AWS-issued public ACM certificate that proves ownership of the
+custom domain. Required by AWS in exactly two setups: when
+certificate_arn is issued by an ACM Private CA, or when mutual_tls is
+configured with an ACM-IMPORTED certificate. The certificate must be a
+public ACM certificate for the same domain, in the same region. Accepts
+a direct ARN or a reference to an AwsCertManagerCert resource.
+
 - references: AwsCertManagerCert (`status.outputs.cert_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsCertManagerCert, name: <that resource's name>, fieldPath: status.outputs.cert_arn}} -- a bare string does not parse
 
@@ -238,19 +253,49 @@ by API Gateway v2.
 
 `string`
 
+How the domain routes incoming requests. Valid values:
+- "API_MAPPING_ONLY" (AWS default when omitted): only the static
+  api_mappings path keys route requests.
+- "ROUTING_RULE_ONLY": only routing_rules route requests.
+- "ROUTING_RULE_THEN_API_MAPPING": routing rules are evaluated first
+  (by ascending priority); requests matching no rule fall back to API
+  mappings. NOTE: AWS currently rejects HTTP/WebSocket API mappings on
+  rule-mode domains (see api_mappings), so under this spec -- whose
+  mappings are all HTTP APIs -- the fallback can only serve REST-API
+  mappings managed outside this resource.
+Updatable in place.
+
 ### spec.routingRules
 
 `[]AwsHttpApiDomainRoutingRule`
 
+Dynamic routing rules attached to the domain. Each rule matches requests
+on base path or header values and invokes one REST API stage -- API
+Gateway supports ONLY REST-protocol targets in routing rules
+(live-verified; HTTP/WebSocket targets are rejected at
+CreateRoutingRule). Rules are evaluated in ascending priority order and
+the first match wins; they route requests only when routing_mode is
+"ROUTING_RULE_ONLY" or "ROUTING_RULE_THEN_API_MAPPING". Each entry
+creates one aws_apigatewayv2_routing_rule resource on the domain.
+
 ### spec.routingRules[].priority
 
 `int32`
+
+Evaluation order of this rule: lower values are evaluated first. Must
+be between 1 and 1,000,000 and unique across the domain's rules (AWS
+rejects duplicate priorities). Updatable in place.
 
 - rule: {"int32":{"lte":1000000,"gte":1}}
 
 ### spec.routingRules[].conditions
 
 `[]AwsHttpApiDomainRoutingRuleCondition` · required
+
+Conditions that must ALL match for this rule to fire. Each condition
+tests exactly one dimension -- a set of candidate base paths, or one
+header pattern; combine a base-path condition with a header condition
+to require both.
 
 - rule: {"repeated":{"minItems":"1"}}
 - rule: each routing rule condition must set exactly one of base_paths or header
@@ -259,15 +304,25 @@ by API Gateway v2.
 
 `[]string`
 
+Candidate base paths (the request's first path segment, without
+slashes); the condition matches when the request's base path equals ANY
+entry. Example: ["orders", "billing"]. Case-sensitive.
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.routingRules[].conditions[].header
 
 `AwsHttpApiDomainRoutingRuleHeaderMatch`
 
+One header pattern the request must match. The condition matches when
+the named header's value matches the glob.
+
 ### spec.routingRules[].conditions[].header.name
 
 `string` · required
+
+Header name to test (max 40 characters), e.g. "x-tenant-id".
+Case-insensitive on the wire, as HTTP headers are.
 
 - rule: {"string":{"minLen":"1","maxLen":"40"}}
 
@@ -275,11 +330,20 @@ by API Gateway v2.
 
 `string` · required
 
+Glob pattern the header value must match (max 128 characters), e.g.
+"tenant-a-*" or an exact literal like "beta".
+
 - rule: {"string":{"minLen":"1","maxLen":"128"}}
 
 ### spec.routingRules[].apiId
 
 `string | valueFrom` · required
+
+The REST API that matching requests are routed to. Pass the REST API's
+ID literally -- API Gateway rejects HTTP/WebSocket API targets here, so
+referencing an AwsHttpApiGateway would always fail the apply (the
+catalog does not yet model REST APIs; this becomes referenceable when a
+REST API kind ships).
 
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
@@ -288,11 +352,20 @@ by API Gateway v2.
 
 `string` · required
 
+The stage of the target REST API to invoke (a REST stage name such as
+"prod").
+
 - rule: {"string":{"minLen":"1"}}
 
 ### spec.routingRules[].stripBasePath
 
 `bool`
+
+Strip the matched base path from the request before forwarding it to
+the target API. With "orders" in a rule's base paths and
+strip_base_path=true, a request to "https://<domain>/orders/list"
+reaches the API as "/list"; false (the default) forwards
+"/orders/list" unchanged.
 
 ## Validation Rules
 

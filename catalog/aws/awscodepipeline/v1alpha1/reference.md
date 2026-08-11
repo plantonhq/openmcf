@@ -347,7 +347,10 @@ Example: "us-west-2", "eu-west-1"
 pipeline_type selects the pipeline version.
   V1: Legacy pipeline (no triggers, no variables, SUPERSEDED execution only)
   V2: Modern pipeline with triggers, variables, and advanced execution modes
-Default: V2 (recommended for all new pipelines).
+Default: V2 (recommended for all new pipelines). The platform materializes
+this default when the manifest is loaded; the AWS provider's own default
+is V1, so a raw module invocation that bypasses manifest loading and
+omits this field deploys a V1 pipeline.
 
 - default: `V2`
 - rule: {"string":{"in":["V1","V2"]}}
@@ -526,6 +529,7 @@ Common examples:
   Lambda:                   FunctionName, UserParameters
   Manual (approval):        CustomData, ExternalEntityLink, NotificationArn
   CloudFormation:           ActionMode, StackName, TemplatePath, RoleArn
+Keys are limited to 50 characters (AWS's action-configuration key cap).
 
 - rule: {"map":{"keys":{"string":{"minLen":"1","maxLen":"50"}}}}
 
@@ -588,7 +592,9 @@ Range: 1-999. Default: 1 (all actions parallel).
 timeout_in_minutes overrides the action type's default timeout.
 Range: 5-86400 (60 days). AWS supports this override ONLY on Manual
 Approval actions (category Approval, provider Manual) — every other
-action type is rejected at pipeline creation.
+action type is rejected at pipeline creation. (The provider validates
+only the numeric range; the Approval-only scope is AWS's own API
+contract, mirrored here as validation.)
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":86400,"gte":5}}
 
@@ -596,15 +602,29 @@ action type is rejected at pipeline creation.
 
 `[]string`
 
+commands are shell commands run by a Compute action (category Compute,
+provider Commands) — inline CI steps without standing up a CodeBuild
+project. CodeBuild logs and permissions are used under the hood, and
+running commands bills CodeBuild compute time per execution. All
+command forms are supported except multi-line formats. Max 50 commands,
+each 1-1000 characters. AWS ignores this field on non-Compute actions.
+
 - rule: {"repeated":{"maxItems":"50","items":{"string":{"minLen":"1","maxLen":"1000"}}}}
 
 ### spec.stages[].actions[].outputArtifactsForComputeAction
 
 `[]AwsCodePipelineComputeOutputArtifact`
 
+output_artifacts_for_compute_action declares the file artifacts a
+Compute action exports (Compute actions use this INSTEAD of
+output_artifacts — AWS ignores plain output artifact names on Compute
+actions and file-based artifacts on every other category).
+
 ### spec.stages[].actions[].outputArtifactsForComputeAction[].name
 
 `string` · required
+
+name is the output artifact name, unique within the pipeline.
 
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"100","pattern":"^[a-zA-Z0-9_\\-]+$"}}
 
@@ -612,11 +632,19 @@ action type is rejected at pipeline creation.
 
 `[]string`
 
+files are the paths (relative to the compute working directory) to
+include in the exported artifact. Max 10 paths, each 1-128 characters.
+
 - rule: {"repeated":{"maxItems":"10","items":{"string":{"minLen":"1","maxLen":"128"}}}}
 
 ### spec.stages[].actions[].outputVariables
 
 `[]string`
+
+output_variables lists variable names a Compute action exports (these
+are the CodeBuild environment variables the commands set). Downstream
+actions reference them through this action's namespace as
+#{namespace.VariableName}. Max 15 names, each 1-128 characters.
 
 - rule: {"repeated":{"maxItems":"15","items":{"string":{"minLen":"1","maxLen":"128"}}}}
 
@@ -706,7 +734,8 @@ current version when omitted.
 
 configuration contains rule-provider-specific key-value pairs (e.g.,
 DeploymentWindow: Cron, TimeZone; CloudWatchAlarm: AlarmName,
-WaitTime; LambdaInvoke: FunctionName).
+WaitTime; LambdaInvoke: FunctionName). Values are limited to 10,000
+characters (AWS's rule-configuration value cap).
 
 - rule: {"map":{"values":{"string":{"minLen":"1","maxLen":"10000"}}}}
 
@@ -724,7 +753,8 @@ commands are shell commands executed by the Commands rule provider
 `[]string`
 
 input_artifacts are artifact names available to the rule (e.g., for
-Commands rules operating on build output).
+Commands rules operating on build output). Each name 1-100 characters,
+alphanumeric with underscores and hyphens.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1","maxLen":"100","pattern":"^[a-zA-Z0-9_\\-]+$"}}}}
 
@@ -838,7 +868,8 @@ current version when omitted.
 
 configuration contains rule-provider-specific key-value pairs (e.g.,
 DeploymentWindow: Cron, TimeZone; CloudWatchAlarm: AlarmName,
-WaitTime; LambdaInvoke: FunctionName).
+WaitTime; LambdaInvoke: FunctionName). Values are limited to 10,000
+characters (AWS's rule-configuration value cap).
 
 - rule: {"map":{"values":{"string":{"minLen":"1","maxLen":"10000"}}}}
 
@@ -856,7 +887,8 @@ commands are shell commands executed by the Commands rule provider
 `[]string`
 
 input_artifacts are artifact names available to the rule (e.g., for
-Commands rules operating on build output).
+Commands rules operating on build output). Each name 1-100 characters,
+alphanumeric with underscores and hyphens.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1","maxLen":"100","pattern":"^[a-zA-Z0-9_\\-]+$"}}}}
 
@@ -1007,7 +1039,8 @@ current version when omitted.
 
 configuration contains rule-provider-specific key-value pairs (e.g.,
 DeploymentWindow: Cron, TimeZone; CloudWatchAlarm: AlarmName,
-WaitTime; LambdaInvoke: FunctionName).
+WaitTime; LambdaInvoke: FunctionName). Values are limited to 10,000
+characters (AWS's rule-configuration value cap).
 
 - rule: {"map":{"values":{"string":{"minLen":"1","maxLen":"10000"}}}}
 
@@ -1025,7 +1058,8 @@ commands are shell commands executed by the Commands rule provider
 `[]string`
 
 input_artifacts are artifact names available to the rule (e.g., for
-Commands rules operating on build output).
+Commands rules operating on build output). Each name 1-100 characters,
+alphanumeric with underscores and hyphens.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1","maxLen":"100","pattern":"^[a-zA-Z0-9_\\-]+$"}}}}
 

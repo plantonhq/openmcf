@@ -236,9 +236,12 @@ consumer that processes records independently.
 
 `int32`
 
-Maximum concurrent function invocations this SQS mapping may drive,
-2-1000 -- a per-mapping throttle below the function's own
-concurrency. 0 leaves scaling to AWS. SQS sources only.
+Maximum concurrent function invocations this SQS mapping may drive
+-- a per-mapping throttle below the function's own concurrency.
+Minimum 2; the effective ceiling is the function's concurrency
+(AWS validates it at deploy time -- it routinely exceeds any fixed
+bound, so none is imposed here). 0 leaves scaling to AWS. SQS
+sources only.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"gte":2}}
 
@@ -246,8 +249,10 @@ concurrency. 0 leaves scaling to AWS. SQS sources only.
 
 `[]string`
 
-Emit the mapping's CloudWatch metrics ("EventCount" -- records
-delivered to the function). Off by default; metrics are billed.
+Emit the mapping's CloudWatch metrics: "EventCount" (records
+delivered to the function), "ErrorCount" (records that failed
+processing), and/or "KafkaMetrics" (poller/consumer-lag metrics --
+Kafka sources only). Off by default; metrics are billed.
 
 - rule: {"repeated":{"unique":true,"items":{"string":{"in":["EventCount","ErrorCount","KafkaMetrics"]}}}}
 
@@ -486,6 +491,11 @@ default (200).
 ### spec.provisionedPollers.pollerGroupName
 
 `string` · required
+
+Share one provisioned poller fleet across mappings by naming a
+poller group, 1-128 characters: every mapping naming the same group
+draws from (and is jointly capped by) one fleet instead of
+provisioning its own -- the cost lever for many low-traffic topics.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"minLen":"1","maxLen":"128"}}
 

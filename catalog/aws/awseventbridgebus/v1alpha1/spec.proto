@@ -101,6 +101,23 @@ message AwsEventBridgeBusSpec {
   google.protobuf.Struct resource_policy = 7;
 
   // ---------------------------------------------------------------------------
+  // Event archives
+  // ---------------------------------------------------------------------------
+
+  // Event archives on this bus. An archive continuously records events
+  // delivered to the bus (all events, or the subset matching its event
+  // pattern) so they can be replayed later — the disaster-recovery and
+  // backfill lever for event-driven systems. Replay itself is an on-demand
+  // operation (EventBridge StartReplay), not declarative configuration; the
+  // archive defines what is recorded and for how long.
+  //
+  // Each entry materializes one archive sourced from THIS bus. Archives are
+  // bus-scoped children: they cannot outlive the bus and cannot record from
+  // any other source. An empty archive costs nothing — storage is billed
+  // per GB of archived events.
+  repeated AwsEventBridgeBusArchive archives = 8;
+
+  // ---------------------------------------------------------------------------
   // CEL validations
   // ---------------------------------------------------------------------------
 
@@ -110,6 +127,58 @@ message AwsEventBridgeBusSpec {
     message: "event_source_name must match the pattern aws.partner/{partner}/{...} (e.g., aws.partner/example.com/tenant/event-source)"
     expression: "this.event_source_name == '' || this.event_source_name.matches('^aws\\\\.partner(/[.\\\\-_A-Za-z0-9]+){2,}$')"
   };
+
+  // Archive names must be unique within the bus — each entry keys one
+  // aws_cloudwatch_event_archive resource, and AWS rejects duplicate archive
+  // names within an account/region anyway.
+  option (buf.validate.message).cel = {
+    id: "archive_names_unique"
+    message: "archive names must be unique within the bus"
+    expression: "this.archives.map(a, a.name).unique()"
+  };
+}
+
+// AwsEventBridgeBusArchive declares one event archive recorded from this bus.
+// The archive stores delivered events for later replay (EventBridge
+// StartReplay); it is created against the bus's own ARN and deleted with the
+// bus.
+message AwsEventBridgeBusArchive {
+  // Name of the archive. Unique per AWS account and region; at most 48
+  // characters of letters, digits, dots, hyphens, and underscores.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 48,
+    (buf.validate.field).string.pattern = "^[.\\-_A-Za-z0-9]+$"
+  ];
+
+  // Human-readable description of the archive.
+  // Maximum length is 512 characters.
+  string description = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Maximum number of days to retain archived events. Leave at 0 to retain
+  // events indefinitely (the AWS default).
+  int32 retention_days = 3 [(buf.validate.field).int32.gte = 0];
+
+  // Event pattern selecting which of the bus's events are archived,
+  // expressed as the standard EventBridge pattern structure. When omitted,
+  // EVERY event delivered to the bus is archived.
+  //
+  // Example:
+  //   source: ["orders.service"]
+  //   detail-type: ["OrderPlaced"]
+  google.protobuf.Struct event_pattern = 4;
+
+  // KMS key for encrypting this archive. Accepts a KMS key ARN, key ID, key
+  // alias, or key alias ARN. When omitted, the archive is encrypted with an
+  // AWS-owned key at no additional cost. Note: this is the ARCHIVE's key —
+  // it is independent of the bus's own kms_key_identifier, and AWS applies
+  // it only to events at rest in the archive.
+  //
+  // Accepts a direct value or a reference to an AwsKmsKey resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_identifier = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
 }
 
 // AwsEventBridgeBusDeadLetterConfig configures a dead letter queue for the event bus.

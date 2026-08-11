@@ -204,7 +204,10 @@ Port the listener accepts traffic on, 1-65535. The classic pairs are 80
 Protocol the listener speaks. Decides the load balancer family and the
 allowed actions:
 - ALB: "HTTP", "HTTPS" (full action set).
-- NLB: "TCP", "UDP", "TCP_UDP", "TLS" (forward only).
+- NLB: "TCP", "UDP", "TCP_UDP", "TLS", "QUIC", "TCP_QUIC" (forward
+  only). "QUIC" accepts QUIC connections natively; "TCP_QUIC" serves
+  TCP and QUIC on one port (the HTTP/3 pattern with TCP fallback) and
+  forwards to a matching QUIC-family target group.
 
 - rule: {"required":true}
 

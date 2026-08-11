@@ -575,11 +575,23 @@ take before viewers see a 504. 0 keeps the AWS default (30).
 
 `string`
 
+How CloudFront resolves the origin's DNS name: "ipv4" (the AWS
+default), "ipv6", or "dualstack" (prefer IPv6, fall back to
+IPv4). Set ipv6/dualstack only for origins that actually publish
+AAAA records. Empty keeps ipv4.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ipv4","ipv6","dualstack"]}}
 
 ### spec.origins[].customOrigin.mtlsClientCertificateArn
 
 `string | valueFrom`
+
+Mutual TLS toward the ORIGIN: the ACM certificate CloudFront
+presents as its client certificate when connecting to this origin,
+by ARN -- the origin verifies it, so only CloudFront (not the open
+internet) can reach the backend. The certificate must live in
+us-east-1. Can reference an AwsCertManagerCert resource. Distinct
+from viewer_mtls, which authenticates VIEWERS to CloudFront.
 
 - references: AwsCertManagerCert (`status.outputs.cert_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsCertManagerCert, name: <that resource's name>, fieldPath: status.outputs.cert_arn}} -- a bare string does not parse
@@ -623,15 +635,34 @@ default (30).
 
 `string`
 
+The AWS account that owns the VPC origin, for CROSS-ACCOUNT
+origins (the VPC origin lives in another account that shared it
+with this one). Empty means the VPC origin belongs to this
+account.
+
 - rule: {"string":{"pattern":"^$|^[0-9]{12}$"}}
 
 ### spec.origins[].originAccessControlId
 
 `string`
 
+Attach an EXISTING Origin Access Control to this origin, by ID.
+OAC signs origin requests with SigV4 and works with S3, Lambda
+function URL, MediaPackage v2, and MediaStore origins -- attach a
+matching-type OAC regardless of which origin arm is set. For S3
+origins that should get their own OAC created here, use
+s3_origin.create_origin_access_control instead.
+
 ### spec.origins[].responseCompletionTimeoutSeconds
 
 `int32`
+
+Seconds CloudFront keeps the origin connection open waiting for
+the COMPLETE response (headers plus body). Distinct from the
+per-read timeout: this caps the whole transfer, catching origins
+that stream slowly forever. AWS requires it to be >= the origin's
+read timeout (30 when the read timeout is unset). 0 keeps the AWS
+default: no completion cap is enforced.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"gte":1}}
 
@@ -1271,9 +1302,11 @@ regions/paths where ACM is unavailable.
 `string`
 
 How CloudFront serves HTTPS for custom certificates: "sni-only"
-(the default -- free, supported by every modern client) or "vip"
-(dedicated IPs at significant monthly cost, for ancient non-SNI
-clients). Empty keeps sni-only.
+(the default -- free, supported by every modern client),
+"static-ip" (dedicated static IPs for clients that must pin
+addresses; contact AWS support to enable, billed), or "vip" (the
+legacy dedicated-IP tier at significant monthly cost, for ancient
+non-SNI clients). Empty keeps sni-only.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["sni-only","static-ip","vip"]}}
 
@@ -1281,10 +1314,14 @@ clients). Empty keeps sni-only.
 
 `string`
 
-The minimum TLS version viewers must speak, e.g. "TLSv1.2_2021"
-(the recommended modern floor, and the module default for custom
-certificates), "TLSv1.2_2019", "TLSv1.1_2016", "TLSv1_2016",
-"TLSv1". Empty keeps TLSv1.2_2021.
+The minimum TLS version viewers must speak -- an AWS security
+policy name. "TLSv1.2_2021" is the module default for custom
+certificates; "TLSv1.3_2025" (TLS 1.3 only) and "TLSv1.2_2025"
+are the current-generation policies. "TLSv1.2_2019",
+"TLSv1.2_2018", "TLSv1.1_2016", "TLSv1_2016", and "TLSv1" remain
+for older clients, and "SSLv3" exists ONLY for the legacy
+dedicated-IP tier serving ancient clients -- never choose it for
+new configurations. Empty keeps TLSv1.2_2021.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["SSLv3","TLSv1","TLSv1_2016","TLSv1.1_2016","TLSv1.2_2018","TLSv1.2_2019","TLSv1.2_2021","TLSv1.2_2025","TLSv1.3_2025"]}}
 
@@ -1372,7 +1409,11 @@ delivery, typically within minutes). Absent disables logging.
 The S3 bucket receiving logs, as a bucket DOMAIN NAME
 ("my-logs.s3.amazonaws.com"). The bucket must have ACLs enabled
 (object ownership "Bucket owner preferred") -- CloudFront writes
-logs via the awslogsdelivery canonical user.
+logs via the awslogsdelivery canonical user. May be left empty to
+keep v1 log DELIVERY off while still recording the cookie
+preference -- the transition shape for distributions moving to
+v2 (CloudWatch-delivered) access logs, which are configured
+outside the distribution.
 
 - rule: {"string":{"pattern":"^$|^[A-Za-z0-9\\-\\.]+\\.s3(\\.[a-z0-9-]+)?\\.amazonaws\\.com$"}}
 
@@ -1423,13 +1464,32 @@ production cache tuning.
 
 `bool`
 
+Mark this distribution as a STAGING distribution -- the target of a
+blue/green rollout. A staging distribution serves no viewer traffic
+of its own; a primary distribution's continuous-deployment policy
+routes a slice of traffic to it by its domain name. Changing this
+flag REPLACES the distribution (AWS makes it immutable). Staging
+distributions cannot have aliases -- they are reached only through
+the primary.
+
 ### spec.continuousDeploymentPolicyId
 
 `string`
 
+Attach an EXISTING continuous-deployment policy by ID -- for a
+policy managed outside this resource. To have this distribution
+own its blue/green policy, use continuous_deployment instead; the
+two are mutually exclusive.
+
 ### spec.continuousDeployment
 
 `AwsCloudFrontContinuousDeployment`
+
+Create and attach a continuous-deployment policy: route a slice of
+production traffic to a STAGING distribution (one deployed with
+staging: true) to validate a configuration change on real traffic
+before promoting it. The policy is created by this resource and
+attached to this (primary) distribution.
 
 - rule: set exactly one of single_weight (percentage-based routing) or single_header (header-based routing)
 
@@ -1437,11 +1497,21 @@ production cache tuning.
 
 `bool` · optional (explicit presence)
 
+Whether the policy is in effect. True (the default) shifts
+traffic per the routing choice below; false keeps the policy
+attached but dormant -- the pause button for a rollout.
+
 - default: `true`
 
 ### spec.continuousDeployment.stagingDistributionDnsNames
 
 `[]string | valueFrom` · required
+
+The CloudFront domain names of the staging distributions
+receiving the traffic slice (e.g. "d111111abcdef8.cloudfront.net"
+-- the domain_name output of a distribution deployed with
+staging: true). CloudFront currently supports one staging
+distribution per policy.
 
 - references: AwsCloudFront (`status.outputs.domain_name`)
 - rule: {"repeated":{"minItems":"1"}}
@@ -1451,9 +1521,17 @@ production cache tuning.
 
 `AwsCloudFrontContinuousDeploymentSingleWeight`
 
+Weight-based routing: send a fixed percentage of ALL traffic to
+staging. The canary shape. Set exactly one of single_weight or
+single_header.
+
 ### spec.continuousDeployment.singleWeight.weight
 
 `float` · required
+
+The fraction of traffic sent to staging, as a decimal between 0
+and 0.15 (AWS caps staged traffic at 15%). Example: 0.10 sends
+10% of requests to the staging distribution.
 
 - rule: {"required":true,"float":{"lte":0.15,"gt":0}}
 
@@ -1461,11 +1539,18 @@ production cache tuning.
 
 `AwsCloudFrontSessionStickiness`
 
+Pin each viewer to one side for the session, so a user does not
+bounce between primary and staging responses mid-visit. Absent
+means requests are split without stickiness.
+
 - rule: idle_ttl_seconds must be less than or equal to maximum_ttl_seconds
 
 ### spec.continuousDeployment.singleWeight.sessionStickiness.idleTtlSeconds
 
 `int32` · required
+
+Seconds of inactivity after which a viewer's session ends,
+300-3600. Must not exceed maximum_ttl_seconds.
 
 - rule: {"required":true,"int32":{"lte":3600,"gte":300}}
 
@@ -1473,15 +1558,25 @@ production cache tuning.
 
 `int32` · required
 
+The longest a viewer's requests count as one session regardless
+of activity, 300-3600 seconds.
+
 - rule: {"required":true,"int32":{"lte":3600,"gte":300}}
 
 ### spec.continuousDeployment.singleHeader
 
 `AwsCloudFrontContinuousDeploymentSingleHeader`
 
+Header-based routing: send only requests carrying a specific
+header/value pair to staging. The team-testing shape -- testers
+opt in by sending the header; regular viewers never hit staging.
+
 ### spec.continuousDeployment.singleHeader.header
 
 `string` · required
+
+The request header that opts a request into staging. AWS requires
+the "aws-cf-cd-" prefix. Example: "aws-cf-cd-canary".
 
 - rule: {"required":true,"string":{"pattern":"^aws-cf-cd-.+$"}}
 
@@ -1489,19 +1584,39 @@ production cache tuning.
 
 `string` · required
 
+The header value that must match exactly for the request to route
+to staging.
+
 - rule: {"required":true}
 
 ### spec.anycastIpListId
 
 `string`
 
+The Anycast static IP list this distribution serves from, by ID.
+Anycast lists give a distribution a small set of dedicated static
+IPs (for allowlist-style network controls); the feature carries a
+significant fixed monthly charge and requires the list to be
+provisioned in the account first.
+
 ### spec.cacheTagHeaderName
 
 `string`
 
+The request header CloudFront reads cache tags from (for tag-based
+invalidation): origin responses carry tags in this header, and an
+invalidation by tag purges every object labeled with it -- far
+cheaper than path invalidations for content that clusters by
+topic. Example: "Cache-Tag".
+
 ### spec.connectionFunctionId
 
 `string`
+
+The CloudFront connection function attached to the distribution,
+by ID. Connection functions run at TCP-connection establishment
+(before any HTTP parsing) -- the earliest programmable point in
+the request path.
 
 - rule: {"string":{"maxLen":"64","pattern":"^$|^[A-Za-z0-9\\-\\_]+$"}}
 
@@ -1509,11 +1624,23 @@ production cache tuning.
 
 `AwsCloudFrontViewerMtls`
 
+Mutual TLS for VIEWERS: require or accept client certificates on
+viewer connections, validated against a CloudFront trust store.
+The zero-trust front door for machine-to-machine APIs served
+through CloudFront.
+
 - rule: advertise_trust_store_ca_names and ignore_certificate_expiry require trust_store_id
 
 ### spec.viewerMtls.mode
 
 `string`
+
+The enforcement mode: "required" (reject connections without a
+valid client certificate), "optional" (request one, admit
+connections either way -- origins see the validation result in
+headers), or "passthrough" (forward the certificate to the origin
+without CloudFront validating it). Empty keeps the AWS default
+(required).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["required","optional","passthrough"]}}
 
@@ -1521,13 +1648,25 @@ production cache tuning.
 
 `string`
 
+The CloudFront trust store holding the CA bundle that client
+certificates are validated against, by ID. Required for the
+"required" and "optional" modes; "passthrough" needs no trust
+store (the origin does the validating).
+
 ### spec.viewerMtls.advertiseTrustStoreCaNames
 
 `bool`
 
+Advertise the trust store's CA names in the TLS handshake, so
+clients holding multiple certificates can pick the right one.
+
 ### spec.viewerMtls.ignoreCertificateExpiry
 
 `bool`
+
+Accept client certificates past their expiry date -- a migration
+escape hatch while a client fleet rotates certificates, never a
+steady state.
 
 ## Validation Rules
 

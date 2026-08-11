@@ -364,9 +364,22 @@ satisfied). Only consulted while `version` changes.
 
 `string`
 
+EKS Provisioned Control Plane: pre-provisions control-plane capacity
+for very large or bursty clusters instead of relying on EKS's
+reactive scaling (which can lag sudden API-server load, e.g. mass
+node joins or operator storms). "standard" (AWS default -- reactive
+scaling, no surcharge) or a provisioned tier of increasing capacity:
+"tier-xl", "tier-2xl", "tier-4xl", "tier-8xl" -- each billed hourly
+ON TOP of the cluster fee. Updates in place; empty keeps standard.
+
 ### spec.remoteNetworks
 
 `AwsEksClusterRemoteNetworks`
+
+EKS Hybrid Nodes: the on-premises/edge networks whose nodes and pods
+join this cluster over your VPN or Direct Connect. Declaring the
+ranges is free -- billing starts only when hybrid nodes register.
+Updates in place on a live cluster.
 
 - rule: remote_networks requires at least one of node_cidrs or pod_cidrs
 - rule: each node CIDR must be within 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, or 100.64.0.0/10
@@ -376,11 +389,21 @@ satisfied). Only consulted while `version` changes.
 
 `[]string`
 
+CIDR blocks of the on-premises network the hybrid NODES have their
+addresses in. This is the range the control plane accepts kubelet
+registrations from -- without a node's address inside one of these
+blocks, it cannot join.
+
 - rule: {"repeated":{"items":{"string":{"pattern":"^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$"}}}}
 
 ### spec.remoteNetworks.podCidrs
 
 `[]string`
+
+CIDR blocks the on-premises PODS have their addresses in (the CNI's
+pod network on the hybrid nodes). Optional: needed when pods must be
+directly routable from the cluster (e.g. webhooks running on hybrid
+nodes); node-only setups can omit it.
 
 - rule: {"repeated":{"items":{"string":{"pattern":"^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$"}}}}
 

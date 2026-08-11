@@ -46,11 +46,17 @@ locals {
     } : {}
   )) : null
 
-  # Encryption — customer-managed KMS XOR SQS-managed SSE (CEL enforces the
-  # exclusivity; both null lets AWS leave the queue unencrypted).
+  # Encryption — customer-managed KMS XOR SQS-managed SSE. The SSE flag is
+  # PRESENCE-typed (optional bool in the spec, null here when unset): AWS
+  # enables SSE-SQS on new queues by default, so unset must stay OMITTED to
+  # keep that default, while an explicit false is a real configuration (an
+  # unencrypted queue) that must be SENT. The provider also conflicts this
+  # attribute's config PRESENCE with kms_master_key_id — CEL blocks any
+  # manifest carrying both, and the pass-through null keeps the rendered
+  # config conflict-free when KMS is used.
   kms_master_key_id                 = var.spec.kms_key_id != "" ? var.spec.kms_key_id : null
   kms_data_key_reuse_period_seconds = var.spec.kms_data_key_reuse_period_seconds != 0 ? var.spec.kms_data_key_reuse_period_seconds : null
-  sqs_managed_sse_enabled           = var.spec.sqs_managed_sse_enabled ? true : null
+  sqs_managed_sse_enabled           = var.spec.sqs_managed_sse_enabled
 
   # Access policy — the Struct arrives from the tfvars layer as a nested
   # object; the provider wants the document as a JSON string.

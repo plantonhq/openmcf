@@ -308,9 +308,11 @@ Targets to invoke when the rule matches an event. At least one target is
 required. Each target specifies a destination (Lambda, SQS, SNS, Step
 Functions, etc.), optional input transformation, retry policy, dead
 letter queue, and an optional service-typed parameter block (SQS,
-Kinesis, HTTP/API-destination, Batch, ECS RunTask).
+Kinesis, HTTP/API-destination, Batch, ECS RunTask, Redshift Data API,
+SSM Run Command, SageMaker Pipelines, AppSync).
 
-AWS limits: maximum 5 targets per rule.
+AWS limits: maximum 5 targets per rule (enforced here so the quota
+fails at validate time instead of at PutTargets).
 
 - rule: {"repeated":{"maxItems":"5"}}
 - rule: only one of input, input_path, or input_transformer may be set
@@ -394,7 +396,7 @@ target. Mutually exclusive with `input` and `input_path`.
 
 Map of variable names to JSONPath expressions that extract values from
 the matched event. Keys become variables available in `input_template`.
-Maximum 100 entries. Keys must not start with "AWS".
+Maximum 100 entries. Keys must not start with "AWS" (reserved).
 
 Example:
   instance: "$.detail.instance-id"
@@ -780,13 +782,23 @@ Enable ECS Exec on the launched tasks for interactive debugging.
 
 `map<string, string>`
 
+Tags applied to the ECS TASKS each event launches (cost allocation,
+ownership) — distinct from the rule's own resource tags, which the
+module manages from metadata. Merged with the task definition's tags
+when propagate_tags is set.
+
 ### spec.targets[].redshiftTarget
 
 `AwsEventBridgeTargetRedshiftConfig`
 
+Redshift Data API parameters. Required when the target arn is a
+Redshift cluster — each matched event runs a SQL statement against it.
+
 ### spec.targets[].redshiftTarget.database
 
 `string` · required
+
+The database the statement runs in. Maximum 64 characters.
 
 - rule: {"required":true,"string":{"maxLen":"64"}}
 
@@ -794,15 +806,28 @@ Enable ECS Exec on the launched tasks for interactive debugging.
 
 `string`
 
+Authenticate as this database user with temporary credentials
+(GetClusterCredentials). Use this OR secrets_manager_arn — AWS
+resolves credentials from whichever is provided. Maximum 128
+characters.
+
 - rule: {"string":{"maxLen":"128"}}
 
 ### spec.targets[].redshiftTarget.secretsManagerArn
 
 `string`
 
+Authenticate with credentials stored in Secrets Manager — the
+alternative to db_user temporary credentials. Pass the secret ARN
+as a literal, e.g.
+"arn:aws:secretsmanager:us-west-2:123456789012:secret:redshift-...".
+
 ### spec.targets[].redshiftTarget.sql
 
 `string`
+
+The SQL statement each matched event runs. Maximum 100,000
+characters.
 
 - rule: {"string":{"maxLen":"100000"}}
 
@@ -810,15 +835,26 @@ Enable ECS Exec on the launched tasks for interactive debugging.
 
 `string`
 
+A name for the statement, visible in the Data API's statement
+history. Maximum 500 characters.
+
 - rule: {"string":{"maxLen":"500"}}
 
 ### spec.targets[].redshiftTarget.withEvent
 
 `bool`
 
+Deliver the matched event to the statement as execution context
+(the Data API's WithEvent flag).
+
 ### spec.targets[].runCommandTargets
 
 `[]AwsEventBridgeTargetRunCommandSelector`
+
+SSM Run Command instance selectors. Required when the target arn is a
+Systems Manager document — each matched event dispatches the command
+to the instances the selectors match. Up to 5 selectors, combined
+with AND.
 
 - rule: {"repeated":{"maxItems":"5"}}
 
@@ -826,11 +862,18 @@ Enable ECS Exec on the launched tasks for interactive debugging.
 
 `string` · required
 
+The selector key: "InstanceIds" (select by instance id) or
+"tag:<tag-key>" (select every instance carrying the tag). Maximum
+128 characters.
+
 - rule: {"required":true,"string":{"maxLen":"128"}}
 
 ### spec.targets[].runCommandTargets[].values
 
 `[]string` · required
+
+The selector values: instance ids for "InstanceIds", tag values for
+a "tag:" key. 1-50 entries, each 1-256 characters.
 
 - rule: {"repeated":{"minItems":"1","maxItems":"50","items":{"string":{"minLen":"1","maxLen":"256"}}}}
 
@@ -838,9 +881,16 @@ Enable ECS Exec on the launched tasks for interactive debugging.
 
 `AwsEventBridgeTargetSagemakerPipelineConfig`
 
+SageMaker Pipelines parameters. Set when the target arn is a
+SageMaker pipeline — each matched event starts a pipeline execution
+with these parameters.
+
 ### spec.targets[].sagemakerPipelineTarget.pipelineParameterList
 
 `[]AwsEventBridgeSagemakerPipelineParameter`
+
+Parameters passed to the pipeline execution, up to 200 — each must
+be a parameter the pipeline declares.
 
 - rule: {"repeated":{"maxItems":"200"}}
 
@@ -848,11 +898,15 @@ Enable ECS Exec on the launched tasks for interactive debugging.
 
 `string` · required
 
+The parameter name, as declared by the pipeline definition.
+
 - rule: {"required":true}
 
 ### spec.targets[].sagemakerPipelineTarget.pipelineParameterList[].value
 
 `string` · required
+
+The value passed for this execution.
 
 - rule: {"required":true}
 
@@ -860,9 +914,16 @@ Enable ECS Exec on the launched tasks for interactive debugging.
 
 `AwsEventBridgeTargetAppsyncConfig`
 
+AppSync parameters. Required when the target arn is an AppSync
+GraphQL API endpoint — each matched event invokes the operation.
+
 ### spec.targets[].appsyncTarget.graphqlOperation
 
 `string` · required
+
+The GraphQL operation (typically a mutation) to invoke, with its
+selection set — variables are bound from the (transformed) event
+input. Maximum 1,048,576 characters.
 
 - rule: {"required":true,"string":{"maxLen":"1048576"}}
 
