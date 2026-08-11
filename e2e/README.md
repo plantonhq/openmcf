@@ -413,6 +413,18 @@ go test -tags=e2e -timeout=90m -v -count=1 \
   -run 'TestAzureAksCluster_Pulumi/minimal' ./e2e/azure/...
 ```
 
+### Long-running Azure components (VPN gateways)
+
+Classic virtual network gateways are the suite's slowest single
+resource: measured live (VpnGw1AZ, eastus), the create ran **36m** and
+the delete **15m** — a full single-engine lane (fixture chain up, deploy,
+verify, destroy, verify-gone, chain down) totals **~60m**. Budget
+`-timeout=120m` per engine, and budget the SAME cycle inside any lane
+whose prerequisite chain deploys the fixture VPN gateway (the gateway
+connection's does). Lanes for gateways in the same VNet must run
+SEQUENTIALLY — ARM allows one VPN-type gateway per VNet, so the scenario
+gateway and the fixture gateway can never coexist.
+
 Burstable VM sizes in `eastus` may support only availability zone `1` — multi-zone
 lists fail with `AvailabilityZoneNotSupported`. AKS E2E scenarios in this repo
 use `zones: ["1"]` for the test subscription.
@@ -614,6 +626,24 @@ catches this class -- the plan renders fine and only the live create
 collides -- so treat every "declare over a service-created default"
 design as suspect until a live run proves it.
 
+### Provider-accepted values can be SERVER-RETIRED: SKU consolidations reject at create
+
+The pinned provider's static vocabulary lags Azure's retirement schedule,
+so a value every offline gate accepts can be rejected by ARM at create
+with a retirement error. Live-confirmed classes on the VPN gateway
+family: `NonAzSkusNotAllowedForVPNGateway` (new non-AZ VpnGw1-5 creates
+blocked since 2025-11-01 -- only the AZ tiers and BASIC remain
+creatable) and, chained behind it,
+`VmssVpnGatewayPublicIpsMustHaveZonesConfigured` (an AZ-SKU gateway
+demands ZONES on its Standard public IP -- a no-zone fixture address
+that served the non-AZ world fails the AZ world). When a create rejects
+with a retirement-class error: fix the SPEC (retire the values with
+reserved numbers/names per the catalog's removal-hygiene precedent),
+move scenarios/fixtures/presets to the successor values, and land the
+retirement on the kind's user surfaces -- never band-aid just the
+scenario. Retirements also arrive in CHAINS: re-run the lane after each
+fix expecting the next constraint in the family to surface.
+
 ### Some ARM contracts exist ONLY server-side: budget one live probe for the flagship combination
 
 The azurerm provider is the completeness floor, but it is NOT a complete
@@ -658,6 +688,25 @@ resource-group PUT is an upsert, so the later run's fixture "creates" the
 existing group and its teardown then deletes it, orphans included -- but
 never rely on that; sweep explicitly (`az group list`, plus the service's
 own list for account-level orphans).
+
+### A second "no stack named" cause: uniquifying suffixes truncated off stack names (fixed in the runner)
+
+The same "no stack named" signature at DEPENDENCY destroy -- for stacks
+whose deploys all "deployed and verified" -- once had a different cause
+than backend state loss: stack names were blindly truncated to a length
+cap AFTER their uniquifying suffixes (an install profile's per-document
+index, the run id) were appended, so every document of a long-named
+multi-document profile collapsed onto ONE shared stack name. Each
+document's `pulumi up` then silently REPLACED the previous document's
+resources (each "deployed and verified" against a sibling's grave --
+the gateway subnet was gone by the time the gateway deployed), the
+first destroy removed the shared stack, and every later destroy failed
+"no stack named". `GenerateStackName` now enforces the cap by replacing
+the tail with a short hash of the full composed name (deterministic,
+collision-free -- see `stackname_test.go`); never reintroduce a blind
+`name[:N]` truncation on stack names, and treat "several same-kind
+dependencies destroy-failing on ONE shared name" as this class, not
+state loss.
 
 ### How the Terraform path works
 
@@ -983,6 +1032,12 @@ owns two responsibilities beyond wiring verifiers:
   (`--assignee-principal-type ServicePrincipal`). Without both, the dependent
   resource's create fails with an access-denied error naming the vault, which
   looks like a module defect but is tenant bootstrap.
+- **Azure auto-creates `NetworkWatcherRG` the first time a virtual network
+  exists in a region** -- it appears mid-run without any manifest creating it
+  and survives every teardown (it is subscription furniture, not a test
+  orphan). The zero-orphan sweep should recognize it, and deleting it at
+  session end is safe and keeps the zero-resource-group baseline exact:
+  Azure recreates it on demand the next time a VNet appears.
 - **Soft-delete/retention services add an orphan class the resource list does not
   show.** A destroyed Azure Key Vault lingers soft-deleted (its globally unique
   name stays reserved) unless purged; both IaC engines purge on destroy by

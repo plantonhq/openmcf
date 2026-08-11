@@ -11,7 +11,7 @@ This preset creates a Generation2 VpnGw2AZ gateway running as an ACTIVE-ACTIVE p
 ## Key Configuration Choices
 
 - **`activeActive: true` + two ip configurations** -- each instance needs its own configuration and exclusive public IP (spec-enforced)
-- **`VPN_GW_2_AZ` + `GENERATION2`** -- Generation2 doubles throughput ceilings and starts at VpnGw2; the `_AZ` variant adds zone redundancy. Generation is FIXED at creation
+- **`VPN_GW_2_AZ` + `GENERATION2`** -- Generation2 doubles throughput ceilings and starts at VpnGw2AZ (only the AZ tiers accept new creates). Generation is FIXED at creation
 - **Named configurations + per-instance APIPA addresses** -- with multiple configurations, every `peeringAddresses` entry must name its `ipConfigurationName`; Azure public regions accept 169.254.21.0-169.254.22.255
 - **On-premises devices must run BOTH tunnels** -- if the device can only manage one, use the single-instance Site-to-Site preset instead; active-active with a one-tunnel device buys nothing
 

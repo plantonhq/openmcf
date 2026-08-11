@@ -8,12 +8,15 @@ spec:
     value: test-rg
   name: hub-vpn-gateway
   # VPN (site-to-site/point-to-site) is the default type; RouteBased the
-  # default routing model. VPN_GW_1 is the production entry point.
-  sku: VPN_GW_1
+  # default routing model. VPN_GW_1_AZ is the production entry point --
+  # Azure retired new non-AZ VpnGw creates, and the AZ SKUs deploy in
+  # every region (regional where zones are absent).
+  sku: VPN_GW_1_AZ
   ipConfigurations:
     # The subnet's ARM name must be EXACTLY "GatewaySubnet" (/27 or
     # larger recommended); VPN gateways require a Standard static public
-    # IP on every configuration.
+    # IP on every configuration, and the AZ SKUs require that address to
+    # carry zones (give the AzurePublicIp zones ["1","2","3"]).
     - subnetId:
         value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/hub-vnet/subnets/GatewaySubnet
       publicIpAddressId:

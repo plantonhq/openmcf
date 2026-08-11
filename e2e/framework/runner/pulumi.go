@@ -2,6 +2,8 @@ package runner
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -137,12 +139,33 @@ func PulumiLogin(backendURL string) error {
 	return nil
 }
 
-// GenerateStackName creates a unique, deterministic stack name for an E2E test run.
-// Format: e2e-{component}-{shortID}
-func GenerateStackName(component string, runID string) string {
+// maxStackNameLen caps generated stack names. The cap itself is a
+// conservative budget (Pulumi accepts up to 100 characters); what matters is
+// HOW the cap is enforced -- see GenerateStackName.
+const maxStackNameLen = 50
+
+// GenerateStackName creates a unique, deterministic stack name for an E2E
+// test run. Format: e2e-{label}-{shortID}, capped at maxStackNameLen.
+//
+// The cap is enforced by replacing the tail with a short hash of the FULL
+// composed name -- never by blind truncation. Labels carry uniquifying
+// suffixes at the END (an install profile's per-document index, the scenario
+// name, the run id), so a blind prefix cut collapses distinct stacks into
+// one shared name, and every `pulumi up` after the first silently REPLACES
+// the previous document's resources in that shared stack (live-caught: a
+// four-document subnet install profile deployed as one stack, each subnet
+// deleting its predecessor -- the gateway's subnet was gone by deploy time).
+// The hash keeps distinct full names distinct, and the derivation stays
+// deterministic, so per-run stack reuse across scenarios is unaffected.
+func GenerateStackName(label string, runID string) string {
 	short := runID
 	if len(short) > 8 {
 		short = short[:8]
 	}
-	return fmt.Sprintf("e2e-%s-%s", component, short)
+	name := fmt.Sprintf("e2e-%s-%s", label, short)
+	if len(name) <= maxStackNameLen {
+		return name
+	}
+	digest := sha256.Sum256([]byte(name))
+	return name[:maxStackNameLen-9] + "-" + hex.EncodeToString(digest[:4])
 }

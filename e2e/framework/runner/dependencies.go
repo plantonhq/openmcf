@@ -430,10 +430,10 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 	if docIndex > 0 {
 		stackLabel = fmt.Sprintf("%s-%d", stackLabel, docIndex)
 	}
+	// GenerateStackName enforces the length cap uniqueness-preservingly --
+	// the per-document suffix above must survive it (a blind truncation here
+	// once collapsed a multi-document profile into one shared stack).
 	stackName := GenerateStackName(stackLabel, runID)
-	if len(stackName) > 50 {
-		stackName = stackName[:50]
-	}
 
 	fmt.Printf("  [deps] Deploying dependency %s (%s)...\n", dep.KindSlug, manifestName)
 	start := time.Now()

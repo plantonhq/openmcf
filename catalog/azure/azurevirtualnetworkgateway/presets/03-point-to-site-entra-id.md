@@ -13,7 +13,7 @@ This preset creates a VPN gateway whose point-to-site clients authenticate with 
 - **The Entra ID trio travels together** -- `aadTenant`, `aadAudience`, and `aadIssuer` (spec-enforced). The audience is the Azure VPN client application's id; the issuer ends with a trailing slash
 - **`vpnClientProtocols: [OpenVPN]`** -- Entra ID authentication requires OpenVPN; IKEv2/SSTP pair with certificate or RADIUS auth instead
 - **Client pool sizing** -- each connected client consumes one address from `addressSpaces`; carve a range that never overlaps the VNet or any tunneled network
-- **VPN_GW_1 floor** -- IKEv2/OpenVPN point-to-site needs VpnGw1 or higher (BASIC cannot). The same gateway can carry site-to-site tunnels simultaneously
+- **VPN_GW_1_AZ floor** -- IKEv2/OpenVPN point-to-site needs VpnGw1AZ or higher (BASIC cannot; the non-AZ VpnGw SKUs are retired for new creates). The same gateway can carry site-to-site tunnels simultaneously
 - **Per-group routing** -- add `policyGroups` and `vpnClientConfiguration.clientConnections` when different user groups need distinct address pools
 
 ## Placeholders to Replace

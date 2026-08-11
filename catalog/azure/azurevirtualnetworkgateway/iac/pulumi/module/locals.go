@@ -87,7 +87,9 @@ func vpnTypeWireValue(vpnType azurevirtualnetworkgatewayv1alpha1.AzureVirtualNet
 
 // skuWireValue maps the SKU enum to azurerm's exact (case-sensitive)
 // vocabulary. The spec requires a non-zero SKU, so the empty default is
-// unreachable for valid manifests.
+// unreachable for valid manifests. The non-AZ VpnGw1-5 cases are gone
+// with their retired spec values: ARM rejects new non-AZ VPN gateway
+// creates (NonAzSkusNotAllowedForVPNGateway, live-confirmed).
 func skuWireValue(sku azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGatewaySku) string {
 	switch sku {
 	case azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGatewaySku_BASIC:
@@ -98,16 +100,6 @@ func skuWireValue(sku azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGate
 		return "HighPerformance"
 	case azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGatewaySku_ULTRA_PERFORMANCE:
 		return "UltraPerformance"
-	case azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGatewaySku_VPN_GW_1:
-		return "VpnGw1"
-	case azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGatewaySku_VPN_GW_2:
-		return "VpnGw2"
-	case azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGatewaySku_VPN_GW_3:
-		return "VpnGw3"
-	case azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGatewaySku_VPN_GW_4:
-		return "VpnGw4"
-	case azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGatewaySku_VPN_GW_5:
-		return "VpnGw5"
 	case azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGatewaySku_VPN_GW_1_AZ:
 		return "VpnGw1AZ"
 	case azurevirtualnetworkgatewayv1alpha1.AzureVirtualNetworkGatewaySku_VPN_GW_2_AZ:

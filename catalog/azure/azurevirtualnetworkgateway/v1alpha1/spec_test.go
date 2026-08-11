@@ -53,7 +53,7 @@ func validResource() *AzureVirtualNetworkGateway {
 			Region:        "eastus",
 			ResourceGroup: literal("test-rg"),
 			Name:          "hub-vpn-gateway",
-			Sku:           AzureVirtualNetworkGatewaySku_VPN_GW_1,
+			Sku:           AzureVirtualNetworkGatewaySku_VPN_GW_1_AZ,
 			IpConfigurations: []*AzureVirtualNetworkGatewayIpConfiguration{
 				ipConfiguration("primary"),
 			},
@@ -71,12 +71,12 @@ var _ = ginkgo.Describe("AzureVirtualNetworkGatewaySpec Validation Tests", func(
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should accept an explicit route-based Generation2 VpnGw2 gateway", func() {
+			ginkgo.It("should accept an explicit route-based Generation2 VpnGw2AZ gateway", func() {
 				input := validResource()
 				input.Spec.Type = AzureVirtualNetworkGatewayType_VPN
 				input.Spec.VpnType = AzureVirtualNetworkGatewayVpnType_ROUTE_BASED
 				input.Spec.Generation = AzureVirtualNetworkGatewayGeneration_GENERATION2
-				input.Spec.Sku = AzureVirtualNetworkGatewaySku_VPN_GW_2
+				input.Spec.Sku = AzureVirtualNetworkGatewaySku_VPN_GW_2_AZ
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -216,23 +216,42 @@ var _ = ginkgo.Describe("AzureVirtualNetworkGatewaySpec Validation Tests", func(
 			ginkgo.It("should return a validation error for a policy-based gateway above BASIC", func() {
 				input := validResource()
 				input.Spec.VpnType = AzureVirtualNetworkGatewayVpnType_POLICY_BASED
-				input.Spec.Sku = AzureVirtualNetworkGatewaySku_VPN_GW_1
+				input.Spec.Sku = AzureVirtualNetworkGatewaySku_VPN_GW_1_AZ
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error for a Generation2 gateway on VPN_GW_1", func() {
+			ginkgo.It("should return a validation error for a Generation2 gateway on VPN_GW_1_AZ", func() {
 				input := validResource()
 				input.Spec.Generation = AzureVirtualNetworkGatewayGeneration_GENERATION2
-				input.Spec.Sku = AzureVirtualNetworkGatewaySku_VPN_GW_1
+				input.Spec.Sku = AzureVirtualNetworkGatewaySku_VPN_GW_1_AZ
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error for a Generation1 gateway on VPN_GW_4", func() {
+			ginkgo.It("should return a validation error for a Generation1 gateway on VPN_GW_4_AZ", func() {
 				input := validResource()
 				input.Spec.Generation = AzureVirtualNetworkGatewayGeneration_GENERATION1
-				input.Spec.Sku = AzureVirtualNetworkGatewaySku_VPN_GW_4
+				input.Spec.Sku = AzureVirtualNetworkGatewaySku_VPN_GW_4_AZ
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			// Azure retired the non-AZ VpnGw tiers (new creates rejected with
+			// NonAzSkusNotAllowedForVPNGateway since 2025-11-01); the values are
+			// removed AND reserved, so defined_only rejects their old numbers.
+			ginkgo.It("should return a validation error for a retired non-AZ VpnGw sku number", func() {
+				input := validResource()
+				input.Spec.Sku = AzureVirtualNetworkGatewaySku(5) // formerly VPN_GW_1
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			// The legacy Standard tier remains only for ExpressRoute gateways;
+			// its VPN use retired 2025-09-30.
+			ginkgo.It("should return a validation error for a VPN gateway on the legacy STANDARD sku", func() {
+				input := validResource()
+				input.Spec.Sku = AzureVirtualNetworkGatewaySku_STANDARD
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
