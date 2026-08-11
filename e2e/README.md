@@ -365,6 +365,21 @@ go test -tags=e2e -timeout=30m -v -count=1 \
   -run "TestKubernetesNamespace_Terraform/minimal$" ./e2e/...
 ```
 
+### Pulumi CLI minimum version: the destroy path passes `--run-program`
+
+The runner's `pulumi destroy` invocations pass `--run-program` (it keeps the
+program available during destroy so BeforeDelete/AfterDelete resource hooks
+fire). Older Pulumi CLIs do not know the flag, and the failure mode is nasty:
+every phase up to and including VERIFY-RES passes, then DESTROY fails
+instantly with `unknown flag: --run-program` -- so the lane fails AFTER
+creating real cloud resources, whose stack state lives in the run's temp
+backend and is discarded when the process exits. The resources must then be
+swept by hand (`az group list` / the provider's own list commands) before a
+re-run. Verified live: v3.137.0 fails exactly this way; v3.256.0 works.
+Check `pulumi destroy --help | grep run-program` before the first lane on
+any machine, and upgrade the CLI rather than editing the runner -- the flag
+is load-bearing for delete-hook correctness.
+
 ### Terraform binary selection
 
 Terraform E2E defaults to `tofu` (OpenTofu), matching the Planton CLI.

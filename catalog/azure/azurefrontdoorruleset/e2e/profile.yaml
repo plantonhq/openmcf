@@ -7,20 +7,20 @@ spec:
   # Door profile (registry prerequisite), creates the rule set with a
   # three-rule delivery policy (redirect, security headers, caching
   # override), verifies it via the ARM API, destroys it, and verifies it
-  # is gone -- on both provisioners. Observed runs 21-24 min per engine
-  # (the profile fixture's ~18-min deletion dominates, the Front Door
+  # is gone -- on both provisioners. Observed runs 21-26 min per engine
+  # (the profile fixture's ~18-21 min deletion dominates, the Front Door
   # family timing class). The route's rule-set-attach scenario
   # additionally live-proves the attach seam through this kind's install
   # profile.
   #
-  # pending_proof: the Terraform module was remapped wholesale to the
-  # azurerm 5 rule grammar (renamed condition/action blocks, negation
-  # folded into Not* operator values, explicit Equal on the
+  # Live-proven on both engines against azurerm 5 (2026-08-11): the
+  # wholesale v5 grammar remap (renamed condition/action blocks,
+  # negation folded into Not* operator values, explicit Equal on the
   # equality-only conditions, the route override's nested
-  # origin_group/caching shape). Offline plans render the new grammar
-  # (incl. NotGeoMatch) and are green; the prior green (both engines)
-  # was earned on the v4 module and no longer stands as live proof.
+  # origin_group/caching shape) was accepted by ARM live -- including
+  # NotGeoMatch, NotIPMatch, the Wildcard path condition, and the
+  # DELETE header action without a value.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45
