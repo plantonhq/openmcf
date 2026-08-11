@@ -1003,6 +1003,19 @@ scenario is as simple as dropping a YAML file into the component's
    `pkg/e2e/profile/discover.go` so the CI matrix regex matches it
 6. The CI workflow picks up the new component automatically from the profile
 
+> **A prerequisite-only kind still needs steps 3 and 5 to be provable.** A
+> kind consumed by other kinds' chains gets deployed and verified as a
+> FIXTURE (its `prerequisite.yaml` + registered verifier), which makes it
+> easy to believe it is covered -- but fixture duty proves another kind's
+> lane, not this one's. Scenario discovery reads ONLY `e2e/scenarios/`
+> (`DiscoverTestScenarios` returns nil when the directory is absent, and the
+> runner then skips), the canonical `e2e/manifest.yaml` is a documented
+> example and offline-plan fixture that never runs live, and a missing
+> `Test{Kind}_{Provisioner}` pair means a `-run` filter silently matches
+> zero tests. First caught on a kind whose only live exercise for weeks was
+> as a chained VIP fixture: its profile claimed testability while no lane
+> could ever run it.
+
 ## Adding a New Provider
 
 1. Create `catalog/{provider}/aa_e2e/` with harness, verify

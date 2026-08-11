@@ -274,6 +274,15 @@ func TestGcpAddress_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpaddress", "terraform")
 }
 
+// --- GCP Global Address (global static IP reservation; the LB VIP class) ---
+
+func TestGcpGlobalAddress_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpglobaladdress", "pulumi")
+}
+func TestGcpGlobalAddress_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpglobaladdress", "terraform")
+}
+
 // --- GCP VPC (deep-rebuilt network; leaf scenario) ---
 
 func TestGcpVpcNetwork_Pulumi(t *testing.T) {

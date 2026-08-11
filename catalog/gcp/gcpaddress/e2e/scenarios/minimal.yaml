@@ -25,5 +25,10 @@ spec:
   addressType: EXTERNAL
   ipVersion: IPV4
 
+  # User labels arm the merge idiom (platform labels win on key conflicts) —
+  # the kind's one mutable surface.
+  labels:
+    team: platform
+
   # Ephemeral test fixture: fully delete on destroy.
   deletionPolicy: DELETE
