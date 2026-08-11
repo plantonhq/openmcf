@@ -110,7 +110,15 @@ type AwsCloudwatchLogGroupSpec struct {
 	// the log group (including via IaC destroy) will fail until this flag is set
 	// to false. Useful for protecting production log groups from accidental
 	// deletion.
-	DeletionProtectionEnabled bool `protobuf:"varint,5,opt,name=deletion_protection_enabled,json=deletionProtectionEnabled,proto3" json:"deletion_protection_enabled,omitempty"`
+	//
+	// Three states, and the difference matters for turning protection OFF: the
+	// provider attribute is Optional+Computed, so an OMITTED value keeps whatever
+	// the log group already has — only an EXPLICIT false disables protection.
+	//   - unset — new groups get AWS's default (unprotected); existing groups keep
+	//     their current protection state.
+	//   - true  — protection enabled.
+	//   - false — protection explicitly disabled (the only way back off).
+	DeletionProtectionEnabled *bool `protobuf:"varint,5,opt,name=deletion_protection_enabled,json=deletionProtectionEnabled,proto3,oneof" json:"deletion_protection_enabled,omitempty"`
 	// Metric filters that extract CloudWatch metrics from log events flowing
 	// through this group. Each filter matches events against a pattern and
 	// publishes a metric value for every match — the standard way to alarm on
@@ -151,8 +159,31 @@ type AwsCloudwatchLogGroupSpec struct {
 	// group; an account-level policy (managed outside this resource) can also
 	// apply — the two merge at query time.
 	FieldIndexPolicy *structpb.Struct `protobuf:"bytes,9,opt,name=field_index_policy,json=fieldIndexPolicy,proto3" json:"field_index_policy,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Names of log streams to pre-create inside this log group. Most log streams
+	// are created at runtime by the writing agent or AWS service and should NOT
+	// be listed here — pre-create a stream only when something depends on the
+	// stream existing before the first write (an agent configured with a fixed
+	// stream name, IAM policies scoped to specific stream ARNs, or tooling that
+	// writes with `sequenceToken` semantics).
+	//
+	// Stream names must be 1-512 characters and must not contain ':' or '*'
+	// (the CreateLogStream contract). Streams are deleted with the group.
+	LogStreams []string `protobuf:"bytes,10,rep,name=log_streams,json=logStreams,proto3" json:"log_streams,omitempty"`
+	// Log transformer for this log group: an ordered pipeline of 1-20 processors
+	// that parses and reshapes every log event at ingestion time. The transformed
+	// form is what Logs Insights queries, metric filters, and subscription
+	// filters see (the latter two only when their `apply_on_transformed_logs` is
+	// set). One transformer per log group; supported ONLY on STANDARD class log
+	// groups (the PutTransformer contract).
+	//
+	// The first processor must be a parser (parse_json, grok, csv,
+	// parse_key_value, or one of the vended-log parsers). An account-level
+	// transformer (managed outside this resource) can also exist; when both
+	// apply, the log-group-level transformer wins and the account-level one is
+	// ignored.
+	Transformer   *AwsCloudwatchLogGroupTransformer `protobuf:"bytes,11,opt,name=transformer,proto3" json:"transformer,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsCloudwatchLogGroupSpec) Reset() {
@@ -214,8 +245,8 @@ func (x *AwsCloudwatchLogGroupSpec) GetLogGroupClass() string {
 }
 
 func (x *AwsCloudwatchLogGroupSpec) GetDeletionProtectionEnabled() bool {
-	if x != nil {
-		return x.DeletionProtectionEnabled
+	if x != nil && x.DeletionProtectionEnabled != nil {
+		return *x.DeletionProtectionEnabled
 	}
 	return false
 }
@@ -248,6 +279,20 @@ func (x *AwsCloudwatchLogGroupSpec) GetFieldIndexPolicy() *structpb.Struct {
 	return nil
 }
 
+func (x *AwsCloudwatchLogGroupSpec) GetLogStreams() []string {
+	if x != nil {
+		return x.LogStreams
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupSpec) GetTransformer() *AwsCloudwatchLogGroupTransformer {
+	if x != nil {
+		return x.Transformer
+	}
+	return nil
+}
+
 // AwsCloudwatchLogGroupMetricFilter extracts a CloudWatch metric from log
 // events that match a filter pattern. The filter watches every event ingested
 // into the log group and publishes the configured metric transformation for
@@ -256,7 +301,8 @@ func (x *AwsCloudwatchLogGroupSpec) GetFieldIndexPolicy() *structpb.Struct {
 type AwsCloudwatchLogGroupMetricFilter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Name of the metric filter, unique within the log group. Changing the
-	// name replaces the filter.
+	// name replaces the filter. Must not contain ':' or '*' (the
+	// PutMetricFilter contract).
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Filter pattern that selects which log events produce metric values.
 	// An empty pattern matches ALL log events.
@@ -266,10 +312,15 @@ type AwsCloudwatchLogGroupMetricFilter struct {
 	// ([ip, user, ts, request, status=5*, size]).
 	// Maximum 1024 characters.
 	Pattern string `protobuf:"bytes,2,opt,name=pattern,proto3" json:"pattern,omitempty"`
-	// When true, this filter is also applied to log events AFTER they pass
-	// through the log group's transformer (if one is configured). Leave unset
-	// for the standard behavior of filtering raw ingested events.
-	ApplyOnTransformedLogs bool `protobuf:"varint,3,opt,name=apply_on_transformed_logs,json=applyOnTransformedLogs,proto3" json:"apply_on_transformed_logs,omitempty"`
+	// When true, this filter matches against log events AFTER they pass through
+	// the log group's transformer (or an account-level transformer managed
+	// outside this resource). When false or unset, the filter matches raw
+	// ingested events.
+	//
+	// The provider attribute is Optional+Computed, so an omitted value keeps the
+	// filter's existing setting — only an explicit false switches an existing
+	// filter back to matching raw events.
+	ApplyOnTransformedLogs *bool `protobuf:"varint,3,opt,name=apply_on_transformed_logs,json=applyOnTransformedLogs,proto3,oneof" json:"apply_on_transformed_logs,omitempty"`
 	// The metric to publish for each matching log event. Required — a filter
 	// without a transformation does nothing.
 	Transformation *AwsCloudwatchLogGroupMetricTransformation `protobuf:"bytes,4,opt,name=transformation,proto3" json:"transformation,omitempty"`
@@ -322,8 +373,8 @@ func (x *AwsCloudwatchLogGroupMetricFilter) GetPattern() string {
 }
 
 func (x *AwsCloudwatchLogGroupMetricFilter) GetApplyOnTransformedLogs() bool {
-	if x != nil {
-		return x.ApplyOnTransformedLogs
+	if x != nil && x.ApplyOnTransformedLogs != nil {
+		return *x.ApplyOnTransformedLogs
 	}
 	return false
 }
@@ -341,9 +392,11 @@ func (x *AwsCloudwatchLogGroupMetricFilter) GetTransformation() *AwsCloudwatchLo
 type AwsCloudwatchLogGroupMetricTransformation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Name of the CloudWatch metric to publish (e.g. "ErrorCount").
+	// Must not contain ':', '*', or '$' (the MetricTransformation contract).
 	MetricName string `protobuf:"bytes,1,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
 	// Namespace for the metric (e.g. "MyApp/Errors"). Custom namespaces keep
 	// log-derived metrics separate from AWS service namespaces.
+	// Must not contain ':', '*', or '$' (the MetricTransformation contract).
 	MetricNamespace string `protobuf:"bytes,2,opt,name=metric_namespace,json=metricNamespace,proto3" json:"metric_namespace,omitempty"`
 	// Value to publish for each matching event. Either a literal number
 	// ("1" to count occurrences) or a field reference that extracts a numeric
@@ -451,7 +504,9 @@ func (x *AwsCloudwatchLogGroupMetricTransformation) GetUnit() string {
 type AwsCloudwatchLogGroupSubscriptionFilter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Name of the subscription filter, unique within the log group. Changing
-	// the name replaces the filter.
+	// the name replaces the filter. Must not contain ':' or '*' (the
+	// PutSubscriptionFilter contract; the provider validates length only —
+	// the character rule is AWS's own).
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// ARN of the destination that receives matching log events. Supported
 	// destinations:
@@ -482,13 +537,19 @@ type AwsCloudwatchLogGroupSubscriptionFilter struct {
 	// Only meaningful for Kinesis stream destinations.
 	Distribution string `protobuf:"bytes,5,opt,name=distribution,proto3" json:"distribution,omitempty"`
 	// System fields to include with each delivered log event. Supported values:
-	// "@aws.account" (the source account ID) and "@aws.region" (the source
-	// region). Useful when a central destination aggregates logs from many
-	// accounts/regions.
+	// "@aws.account" (the source account ID), "@aws.region" (the source
+	// region), and "@source.log" (the source log group and stream). Useful when
+	// a central destination aggregates logs from many accounts/regions/groups.
 	EmitSystemFields []string `protobuf:"bytes,6,rep,name=emit_system_fields,json=emitSystemFields,proto3" json:"emit_system_fields,omitempty"`
-	// When true, this filter is also applied to log events AFTER they pass
-	// through the log group's transformer (if one is configured).
-	ApplyOnTransformedLogs bool `protobuf:"varint,7,opt,name=apply_on_transformed_logs,json=applyOnTransformedLogs,proto3" json:"apply_on_transformed_logs,omitempty"`
+	// When true, this filter matches and delivers log events AFTER they pass
+	// through the log group's transformer (or an account-level transformer
+	// managed outside this resource). When false or unset, the filter operates
+	// on raw ingested events.
+	//
+	// The provider attribute is Optional+Computed, so an omitted value keeps the
+	// filter's existing setting — only an explicit false switches an existing
+	// filter back to raw events.
+	ApplyOnTransformedLogs *bool `protobuf:"varint,7,opt,name=apply_on_transformed_logs,json=applyOnTransformedLogs,proto3,oneof" json:"apply_on_transformed_logs,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -566,45 +627,1852 @@ func (x *AwsCloudwatchLogGroupSubscriptionFilter) GetEmitSystemFields() []string
 }
 
 func (x *AwsCloudwatchLogGroupSubscriptionFilter) GetApplyOnTransformedLogs() bool {
-	if x != nil {
-		return x.ApplyOnTransformedLogs
+	if x != nil && x.ApplyOnTransformedLogs != nil {
+		return *x.ApplyOnTransformedLogs
 	}
 	return false
+}
+
+// AwsCloudwatchLogGroupTransformer is an ordered pipeline of processors that
+// CloudWatch Logs applies to every event at ingestion time. Processors run
+// one after another in list order; each entry carries exactly ONE processor.
+//
+// Pipeline rules (the PutTransformer contract, enforced at validation time):
+//   - 1 to 20 processors.
+//   - The FIRST processor must be a parser: parse_json, grok, csv,
+//     parse_key_value, or one of the vended-log parsers.
+//   - add_keys, copy_value, and grok may each appear at most once.
+//   - parse_json, parse_key_value, and csv may each appear at most 5 times.
+//   - Each vended-log parser (parse_cloudfront, parse_postgres, parse_route53,
+//     parse_to_ocsf, parse_vpc, parse_waf) may appear at most once and, when
+//     present, must be the first processor.
+type AwsCloudwatchLogGroupTransformer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The processor pipeline, applied in order. Each entry configures exactly
+	// one processor.
+	Processors    []*AwsCloudwatchLogGroupTransformerProcessor `protobuf:"bytes,1,rep,name=processors,proto3" json:"processors,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformer) Reset() {
+	*x = AwsCloudwatchLogGroupTransformer{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformer) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformer) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformer.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformer) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsCloudwatchLogGroupTransformer) GetProcessors() []*AwsCloudwatchLogGroupTransformerProcessor {
+	if x != nil {
+		return x.Processors
+	}
+	return nil
+}
+
+// AwsCloudwatchLogGroupTransformerProcessor is one step in a transformer
+// pipeline. Exactly ONE of the processor fields must be set — the field name
+// selects the processor type.
+type AwsCloudwatchLogGroupTransformerProcessor struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Adds new key-value pairs to the log event. Single-use per transformer.
+	AddKeys *AwsCloudwatchLogGroupTransformerAddKeys `protobuf:"bytes,1,opt,name=add_keys,json=addKeys,proto3" json:"add_keys,omitempty"`
+	// Copies values from existing keys to new keys. Single-use per transformer.
+	CopyValue *AwsCloudwatchLogGroupTransformerCopyValue `protobuf:"bytes,2,opt,name=copy_value,json=copyValue,proto3" json:"copy_value,omitempty"`
+	// Parses comma-separated values into columns. Counts as a parser (may be
+	// the pipeline's first processor). Up to 5 per transformer.
+	Csv *AwsCloudwatchLogGroupTransformerCsv `protobuf:"bytes,3,opt,name=csv,proto3" json:"csv,omitempty"`
+	// Converts a datetime string into a target format.
+	DateTimeConverter *AwsCloudwatchLogGroupTransformerDateTimeConverter `protobuf:"bytes,4,opt,name=date_time_converter,json=dateTimeConverter,proto3" json:"date_time_converter,omitempty"`
+	// Deletes keys from the log event.
+	DeleteKeys *AwsCloudwatchLogGroupTransformerDeleteKeys `protobuf:"bytes,5,opt,name=delete_keys,json=deleteKeys,proto3" json:"delete_keys,omitempty"`
+	// Parses unstructured text with a grok pattern. Counts as a parser.
+	// Single-use per transformer.
+	Grok *AwsCloudwatchLogGroupTransformerGrok `protobuf:"bytes,6,opt,name=grok,proto3" json:"grok,omitempty"`
+	// Converts a list of key-value objects into a map.
+	ListToMap *AwsCloudwatchLogGroupTransformerListToMap `protobuf:"bytes,7,opt,name=list_to_map,json=listToMap,proto3" json:"list_to_map,omitempty"`
+	// Converts the values of the given keys to lowercase.
+	LowerCaseString *AwsCloudwatchLogGroupTransformerWithKeys `protobuf:"bytes,8,opt,name=lower_case_string,json=lowerCaseString,proto3" json:"lower_case_string,omitempty"`
+	// Moves values from one key to another.
+	MoveKeys *AwsCloudwatchLogGroupTransformerMoveKeys `protobuf:"bytes,9,opt,name=move_keys,json=moveKeys,proto3" json:"move_keys,omitempty"`
+	// Parses CloudFront vended access logs into JSON fields. Must be the first
+	// processor when present; single-use per transformer.
+	ParseCloudfront *AwsCloudwatchLogGroupTransformerVendedLogParser `protobuf:"bytes,10,opt,name=parse_cloudfront,json=parseCloudfront,proto3" json:"parse_cloudfront,omitempty"`
+	// Parses JSON-format log events. Counts as a parser. Up to 5 per
+	// transformer.
+	ParseJson *AwsCloudwatchLogGroupTransformerParseJson `protobuf:"bytes,11,opt,name=parse_json,json=parseJson,proto3" json:"parse_json,omitempty"`
+	// Parses a field into key-value pairs. Counts as a parser. Up to 5 per
+	// transformer.
+	ParseKeyValue *AwsCloudwatchLogGroupTransformerParseKeyValue `protobuf:"bytes,12,opt,name=parse_key_value,json=parseKeyValue,proto3" json:"parse_key_value,omitempty"`
+	// Parses RDS for PostgreSQL vended logs into JSON fields. Must be the first
+	// processor when present; single-use per transformer.
+	ParsePostgres *AwsCloudwatchLogGroupTransformerVendedLogParser `protobuf:"bytes,13,opt,name=parse_postgres,json=parsePostgres,proto3" json:"parse_postgres,omitempty"`
+	// Parses Route 53 vended logs into JSON fields. Must be the first processor
+	// when present; single-use per transformer.
+	ParseRoute53 *AwsCloudwatchLogGroupTransformerVendedLogParser `protobuf:"bytes,14,opt,name=parse_route53,json=parseRoute53,proto3" json:"parse_route53,omitempty"`
+	// Converts log events into Open Cybersecurity Schema Framework (OCSF)
+	// events. Must be the first processor when present; single-use per
+	// transformer.
+	ParseToOcsf *AwsCloudwatchLogGroupTransformerParseToOcsf `protobuf:"bytes,15,opt,name=parse_to_ocsf,json=parseToOcsf,proto3" json:"parse_to_ocsf,omitempty"`
+	// Parses Amazon VPC flow logs into JSON fields. Must be the first processor
+	// when present; single-use per transformer.
+	ParseVpc *AwsCloudwatchLogGroupTransformerVendedLogParser `protobuf:"bytes,16,opt,name=parse_vpc,json=parseVpc,proto3" json:"parse_vpc,omitempty"`
+	// Parses AWS WAF vended logs into JSON fields. Must be the first processor
+	// when present; single-use per transformer.
+	ParseWaf *AwsCloudwatchLogGroupTransformerVendedLogParser `protobuf:"bytes,17,opt,name=parse_waf,json=parseWaf,proto3" json:"parse_waf,omitempty"`
+	// Renames keys in the log event.
+	RenameKeys *AwsCloudwatchLogGroupTransformerRenameKeys `protobuf:"bytes,18,opt,name=rename_keys,json=renameKeys,proto3" json:"rename_keys,omitempty"`
+	// Splits field values into arrays using a delimiter.
+	SplitString *AwsCloudwatchLogGroupTransformerSplitString `protobuf:"bytes,19,opt,name=split_string,json=splitString,proto3" json:"split_string,omitempty"`
+	// Replaces regex matches in field values with a replacement string.
+	SubstituteString *AwsCloudwatchLogGroupTransformerSubstituteString `protobuf:"bytes,20,opt,name=substitute_string,json=substituteString,proto3" json:"substitute_string,omitempty"`
+	// Trims leading and trailing whitespace from the given keys' values.
+	TrimString *AwsCloudwatchLogGroupTransformerWithKeys `protobuf:"bytes,21,opt,name=trim_string,json=trimString,proto3" json:"trim_string,omitempty"`
+	// Converts field values to a different data type.
+	TypeConverter *AwsCloudwatchLogGroupTransformerTypeConverter `protobuf:"bytes,22,opt,name=type_converter,json=typeConverter,proto3" json:"type_converter,omitempty"`
+	// Converts the values of the given keys to uppercase.
+	UpperCaseString *AwsCloudwatchLogGroupTransformerWithKeys `protobuf:"bytes,23,opt,name=upper_case_string,json=upperCaseString,proto3" json:"upper_case_string,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerProcessor{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerProcessor) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerProcessor.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerProcessor) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetAddKeys() *AwsCloudwatchLogGroupTransformerAddKeys {
+	if x != nil {
+		return x.AddKeys
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetCopyValue() *AwsCloudwatchLogGroupTransformerCopyValue {
+	if x != nil {
+		return x.CopyValue
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetCsv() *AwsCloudwatchLogGroupTransformerCsv {
+	if x != nil {
+		return x.Csv
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetDateTimeConverter() *AwsCloudwatchLogGroupTransformerDateTimeConverter {
+	if x != nil {
+		return x.DateTimeConverter
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetDeleteKeys() *AwsCloudwatchLogGroupTransformerDeleteKeys {
+	if x != nil {
+		return x.DeleteKeys
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetGrok() *AwsCloudwatchLogGroupTransformerGrok {
+	if x != nil {
+		return x.Grok
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetListToMap() *AwsCloudwatchLogGroupTransformerListToMap {
+	if x != nil {
+		return x.ListToMap
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetLowerCaseString() *AwsCloudwatchLogGroupTransformerWithKeys {
+	if x != nil {
+		return x.LowerCaseString
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetMoveKeys() *AwsCloudwatchLogGroupTransformerMoveKeys {
+	if x != nil {
+		return x.MoveKeys
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetParseCloudfront() *AwsCloudwatchLogGroupTransformerVendedLogParser {
+	if x != nil {
+		return x.ParseCloudfront
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetParseJson() *AwsCloudwatchLogGroupTransformerParseJson {
+	if x != nil {
+		return x.ParseJson
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetParseKeyValue() *AwsCloudwatchLogGroupTransformerParseKeyValue {
+	if x != nil {
+		return x.ParseKeyValue
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetParsePostgres() *AwsCloudwatchLogGroupTransformerVendedLogParser {
+	if x != nil {
+		return x.ParsePostgres
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetParseRoute53() *AwsCloudwatchLogGroupTransformerVendedLogParser {
+	if x != nil {
+		return x.ParseRoute53
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetParseToOcsf() *AwsCloudwatchLogGroupTransformerParseToOcsf {
+	if x != nil {
+		return x.ParseToOcsf
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetParseVpc() *AwsCloudwatchLogGroupTransformerVendedLogParser {
+	if x != nil {
+		return x.ParseVpc
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetParseWaf() *AwsCloudwatchLogGroupTransformerVendedLogParser {
+	if x != nil {
+		return x.ParseWaf
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetRenameKeys() *AwsCloudwatchLogGroupTransformerRenameKeys {
+	if x != nil {
+		return x.RenameKeys
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetSplitString() *AwsCloudwatchLogGroupTransformerSplitString {
+	if x != nil {
+		return x.SplitString
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetSubstituteString() *AwsCloudwatchLogGroupTransformerSubstituteString {
+	if x != nil {
+		return x.SubstituteString
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetTrimString() *AwsCloudwatchLogGroupTransformerWithKeys {
+	if x != nil {
+		return x.TrimString
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetTypeConverter() *AwsCloudwatchLogGroupTransformerTypeConverter {
+	if x != nil {
+		return x.TypeConverter
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerProcessor) GetUpperCaseString() *AwsCloudwatchLogGroupTransformerWithKeys {
+	if x != nil {
+		return x.UpperCaseString
+	}
+	return nil
+}
+
+// AwsCloudwatchLogGroupTransformerAddKeys adds new key-value pairs to the
+// log event.
+type AwsCloudwatchLogGroupTransformerAddKeys struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Keys to add. 1-5 entries.
+	Entries       []*AwsCloudwatchLogGroupTransformerAddKeysEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerAddKeys) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerAddKeys{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerAddKeys) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerAddKeys) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerAddKeys) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerAddKeys.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerAddKeys) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerAddKeys) GetEntries() []*AwsCloudwatchLogGroupTransformerAddKeysEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+// AwsCloudwatchLogGroupTransformerAddKeysEntry is one key to add.
+type AwsCloudwatchLogGroupTransformerAddKeysEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Key of the new entry. 1-128 characters. Use dot notation for nested
+	// fields (e.g. "metadata.environment").
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// Value of the new entry. 1-256 characters.
+	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	// When true, overwrites the value if the key already exists in the log
+	// event. Defaults to false (existing values win).
+	OverwriteIfExists bool `protobuf:"varint,3,opt,name=overwrite_if_exists,json=overwriteIfExists,proto3" json:"overwrite_if_exists,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerAddKeysEntry) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerAddKeysEntry{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerAddKeysEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerAddKeysEntry) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerAddKeysEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerAddKeysEntry.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerAddKeysEntry) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerAddKeysEntry) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerAddKeysEntry) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerAddKeysEntry) GetOverwriteIfExists() bool {
+	if x != nil {
+		return x.OverwriteIfExists
+	}
+	return false
+}
+
+// AwsCloudwatchLogGroupTransformerCopyValue copies values from existing keys
+// to new keys.
+type AwsCloudwatchLogGroupTransformerCopyValue struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Values to copy. 1-5 entries.
+	Entries       []*AwsCloudwatchLogGroupTransformerCopyValueEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCopyValue) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerCopyValue{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCopyValue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerCopyValue) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerCopyValue) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerCopyValue.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerCopyValue) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCopyValue) GetEntries() []*AwsCloudwatchLogGroupTransformerCopyValueEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+// AwsCloudwatchLogGroupTransformerCopyValueEntry is one value copy.
+type AwsCloudwatchLogGroupTransformerCopyValueEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Key to copy from. 1-128 characters.
+	Source string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	// Key to copy the value to. 1-128 characters.
+	Target string `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	// When true, overwrites the value if the target key already exists.
+	// Defaults to false.
+	OverwriteIfExists bool `protobuf:"varint,3,opt,name=overwrite_if_exists,json=overwriteIfExists,proto3" json:"overwrite_if_exists,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCopyValueEntry) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerCopyValueEntry{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCopyValueEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerCopyValueEntry) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerCopyValueEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerCopyValueEntry.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerCopyValueEntry) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCopyValueEntry) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCopyValueEntry) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCopyValueEntry) GetOverwriteIfExists() bool {
+	if x != nil {
+		return x.OverwriteIfExists
+	}
+	return false
+}
+
+// AwsCloudwatchLogGroupTransformerCsv parses comma-separated values from the
+// log event into columns.
+type AwsCloudwatchLogGroupTransformerCsv struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Names for the parsed columns. When omitted, default names
+	// (column_1, column_2, ...) are used. Up to 100 names, each 1-128
+	// characters.
+	Columns []string `protobuf:"bytes,1,rep,name=columns,proto3" json:"columns,omitempty"`
+	// Character separating columns in the source value. Defaults to ",".
+	// 1-2 characters.
+	Delimiter string `protobuf:"bytes,2,opt,name=delimiter,proto3" json:"delimiter,omitempty"`
+	// Character used as a text qualifier for a single column of data.
+	// Defaults to '"'. Exactly 1 character.
+	QuoteCharacter string `protobuf:"bytes,3,opt,name=quote_character,json=quoteCharacter,proto3" json:"quote_character,omitempty"`
+	// Path to the field to parse. When omitted, the whole @message is
+	// processed. 1-128 characters.
+	Source        string `protobuf:"bytes,4,opt,name=source,proto3" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCsv) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerCsv{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCsv) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerCsv) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerCsv) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerCsv.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerCsv) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCsv) GetColumns() []string {
+	if x != nil {
+		return x.Columns
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCsv) GetDelimiter() string {
+	if x != nil {
+		return x.Delimiter
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCsv) GetQuoteCharacter() string {
+	if x != nil {
+		return x.QuoteCharacter
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerCsv) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+// AwsCloudwatchLogGroupTransformerDateTimeConverter converts a datetime
+// string into a target format.
+type AwsCloudwatchLogGroupTransformerDateTimeConverter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Key holding the datetime string to convert. 1-128 characters.
+	Source string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	// Key to store the converted result in. 1-128 characters.
+	Target string `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	// Patterns to match against the source value (Java DateTimeFormatter
+	// syntax, e.g. "dd/MMM/yyyy:HH:mm:ss" — or "epoch" for epoch timestamps).
+	// 1-5 patterns.
+	MatchPatterns []string `protobuf:"bytes,3,rep,name=match_patterns,json=matchPatterns,proto3" json:"match_patterns,omitempty"`
+	// Locale of the source field (e.g. "en-US"). Defaults to locale.ROOT.
+	Locale string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	// Time zone of the source field (e.g. "America/Los_Angeles"). Defaults
+	// to UTC.
+	SourceTimezone string `protobuf:"bytes,5,opt,name=source_timezone,json=sourceTimezone,proto3" json:"source_timezone,omitempty"`
+	// Datetime format for the converted value in the target field. Defaults to
+	// "yyyy-MM-dd'T'HH:mm:ss.SSS'Z". 1-64 characters.
+	TargetFormat string `protobuf:"bytes,6,opt,name=target_format,json=targetFormat,proto3" json:"target_format,omitempty"`
+	// Time zone of the target field. Defaults to UTC.
+	TargetTimezone string `protobuf:"bytes,7,opt,name=target_timezone,json=targetTimezone,proto3" json:"target_timezone,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerDateTimeConverter) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerDateTimeConverter{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerDateTimeConverter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerDateTimeConverter) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerDateTimeConverter) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerDateTimeConverter.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerDateTimeConverter) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerDateTimeConverter) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerDateTimeConverter) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerDateTimeConverter) GetMatchPatterns() []string {
+	if x != nil {
+		return x.MatchPatterns
+	}
+	return nil
+}
+
+func (x *AwsCloudwatchLogGroupTransformerDateTimeConverter) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerDateTimeConverter) GetSourceTimezone() string {
+	if x != nil {
+		return x.SourceTimezone
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerDateTimeConverter) GetTargetFormat() string {
+	if x != nil {
+		return x.TargetFormat
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerDateTimeConverter) GetTargetTimezone() string {
+	if x != nil {
+		return x.TargetTimezone
+	}
+	return ""
+}
+
+// AwsCloudwatchLogGroupTransformerDeleteKeys deletes keys from the log
+// event.
+type AwsCloudwatchLogGroupTransformerDeleteKeys struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Keys to delete. 1-5 keys, each non-empty.
+	WithKeys      []string `protobuf:"bytes,1,rep,name=with_keys,json=withKeys,proto3" json:"with_keys,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerDeleteKeys) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerDeleteKeys{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerDeleteKeys) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerDeleteKeys) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerDeleteKeys) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerDeleteKeys.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerDeleteKeys) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerDeleteKeys) GetWithKeys() []string {
+	if x != nil {
+		return x.WithKeys
+	}
+	return nil
+}
+
+// AwsCloudwatchLogGroupTransformerGrok parses unstructured text using grok
+// pattern matching.
+type AwsCloudwatchLogGroupTransformerGrok struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Grok pattern to match against the log event (e.g.
+	// "%{COMMONAPACHELOG}" or a composition of named grok patterns).
+	// 1-512 characters.
+	Match string `protobuf:"bytes,1,opt,name=match,proto3" json:"match,omitempty"`
+	// Path to the field to parse. When omitted, the whole @message is
+	// processed. 1-128 characters.
+	Source        string `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerGrok) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerGrok{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerGrok) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerGrok) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerGrok) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerGrok.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerGrok) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerGrok) GetMatch() string {
+	if x != nil {
+		return x.Match
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerGrok) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+// AwsCloudwatchLogGroupTransformerListToMap converts a list of key-value
+// objects into a map keyed by a chosen field.
+type AwsCloudwatchLogGroupTransformerListToMap struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Key of the field holding the list of objects to convert.
+	// 1-128 characters.
+	Source string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	// Field within each source object whose value becomes a key in the
+	// generated map. 1-128 characters.
+	Key string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	// Field within each source object whose value is placed into the map's
+	// values. When omitted, the whole source object becomes the value.
+	// 1-128 characters.
+	ValueKey string `protobuf:"bytes,3,opt,name=value_key,json=valueKey,proto3" json:"value_key,omitempty"`
+	// Key of the field that will hold the generated map. When omitted, the
+	// map is placed under the root node. 1-128 characters.
+	Target string `protobuf:"bytes,4,opt,name=target,proto3" json:"target,omitempty"`
+	// When true, lists of values in the generated map are flattened into
+	// single items using flattened_element.
+	Flatten bool `protobuf:"varint,5,opt,name=flatten,proto3" json:"flatten,omitempty"`
+	// Which element to keep when flattening: "first" or "last". Required when
+	// flatten is true.
+	FlattenedElement string `protobuf:"bytes,6,opt,name=flattened_element,json=flattenedElement,proto3" json:"flattened_element,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerListToMap) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerListToMap{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerListToMap) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerListToMap) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerListToMap) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerListToMap.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerListToMap) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerListToMap) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerListToMap) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerListToMap) GetValueKey() string {
+	if x != nil {
+		return x.ValueKey
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerListToMap) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerListToMap) GetFlatten() bool {
+	if x != nil {
+		return x.Flatten
+	}
+	return false
+}
+
+func (x *AwsCloudwatchLogGroupTransformerListToMap) GetFlattenedElement() string {
+	if x != nil {
+		return x.FlattenedElement
+	}
+	return ""
+}
+
+// AwsCloudwatchLogGroupTransformerWithKeys applies a string operation
+// (lowercase, uppercase, or trim — selected by the processor field it sits
+// under) to the values of the given keys.
+type AwsCloudwatchLogGroupTransformerWithKeys struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Keys whose values the operation applies to. 1-10 keys, each non-empty.
+	WithKeys      []string `protobuf:"bytes,1,rep,name=with_keys,json=withKeys,proto3" json:"with_keys,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerWithKeys) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerWithKeys{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerWithKeys) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerWithKeys) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerWithKeys) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerWithKeys.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerWithKeys) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerWithKeys) GetWithKeys() []string {
+	if x != nil {
+		return x.WithKeys
+	}
+	return nil
+}
+
+// AwsCloudwatchLogGroupTransformerMoveKeys moves values from one key to
+// another (the source key is removed).
+type AwsCloudwatchLogGroupTransformerMoveKeys struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Keys to move. 1-5 entries.
+	Entries       []*AwsCloudwatchLogGroupTransformerMoveKeysEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerMoveKeys) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerMoveKeys{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerMoveKeys) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerMoveKeys) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerMoveKeys) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerMoveKeys.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerMoveKeys) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerMoveKeys) GetEntries() []*AwsCloudwatchLogGroupTransformerMoveKeysEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+// AwsCloudwatchLogGroupTransformerMoveKeysEntry is one key move.
+type AwsCloudwatchLogGroupTransformerMoveKeysEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Key to move. 1-128 characters.
+	Source string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	// Key to move the value to. 1-128 characters.
+	Target string `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	// When true, overwrites the value if the target key already exists.
+	// Defaults to false.
+	OverwriteIfExists bool `protobuf:"varint,3,opt,name=overwrite_if_exists,json=overwriteIfExists,proto3" json:"overwrite_if_exists,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerMoveKeysEntry) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerMoveKeysEntry{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerMoveKeysEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerMoveKeysEntry) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerMoveKeysEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerMoveKeysEntry.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerMoveKeysEntry) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerMoveKeysEntry) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerMoveKeysEntry) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerMoveKeysEntry) GetOverwriteIfExists() bool {
+	if x != nil {
+		return x.OverwriteIfExists
+	}
+	return false
+}
+
+// AwsCloudwatchLogGroupTransformerVendedLogParser parses an AWS vended log
+// format (CloudFront, RDS PostgreSQL, Route 53, VPC flow logs, or AWS WAF —
+// selected by the processor field it sits under) into JSON fields.
+type AwsCloudwatchLogGroupTransformerVendedLogParser struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Source field to parse. The only allowed value is "@message"; when
+	// omitted, the whole log message is processed.
+	Source        string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerVendedLogParser) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerVendedLogParser{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerVendedLogParser) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerVendedLogParser) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerVendedLogParser) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerVendedLogParser.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerVendedLogParser) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerVendedLogParser) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+// AwsCloudwatchLogGroupTransformerParseJson parses JSON-format log events
+// into fields.
+type AwsCloudwatchLogGroupTransformerParseJson struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Path to the field to parse. Defaults to "@message". 1-128 characters.
+	Source string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	// Location to put the parsed key-value pairs. When omitted, they are
+	// placed under the root node. 1-128 characters.
+	Destination   string `protobuf:"bytes,2,opt,name=destination,proto3" json:"destination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseJson) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerParseJson{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseJson) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerParseJson) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerParseJson) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerParseJson.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerParseJson) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseJson) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseJson) GetDestination() string {
+	if x != nil {
+		return x.Destination
+	}
+	return ""
+}
+
+// AwsCloudwatchLogGroupTransformerParseKeyValue parses a field into
+// key-value pairs.
+type AwsCloudwatchLogGroupTransformerParseKeyValue struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Path to the field to parse. Defaults to "@message". 1-128 characters.
+	Source string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	// Destination field for the extracted key-value pairs. 1-128 characters.
+	Destination string `protobuf:"bytes,2,opt,name=destination,proto3" json:"destination,omitempty"`
+	// Delimiter between key-value pairs in the source (e.g. ";"). Defaults
+	// to "&". 1-128 characters.
+	FieldDelimiter string `protobuf:"bytes,3,opt,name=field_delimiter,json=fieldDelimiter,proto3" json:"field_delimiter,omitempty"`
+	// Delimiter between the key and the value within a pair (e.g. ":").
+	// Defaults to "=". 1-128 characters.
+	KeyValueDelimiter string `protobuf:"bytes,4,opt,name=key_value_delimiter,json=keyValueDelimiter,proto3" json:"key_value_delimiter,omitempty"`
+	// Prefix added to all transformed keys. 1-128 characters.
+	KeyPrefix string `protobuf:"bytes,5,opt,name=key_prefix,json=keyPrefix,proto3" json:"key_prefix,omitempty"`
+	// Value inserted when a pair cannot be split successfully.
+	// 1-128 characters.
+	NonMatchValue string `protobuf:"bytes,6,opt,name=non_match_value,json=nonMatchValue,proto3" json:"non_match_value,omitempty"`
+	// When true, overwrites the value if the destination key already exists.
+	// Defaults to false.
+	OverwriteIfExists bool `protobuf:"varint,7,opt,name=overwrite_if_exists,json=overwriteIfExists,proto3" json:"overwrite_if_exists,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseKeyValue) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerParseKeyValue{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseKeyValue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerParseKeyValue) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerParseKeyValue) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerParseKeyValue.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerParseKeyValue) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseKeyValue) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseKeyValue) GetDestination() string {
+	if x != nil {
+		return x.Destination
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseKeyValue) GetFieldDelimiter() string {
+	if x != nil {
+		return x.FieldDelimiter
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseKeyValue) GetKeyValueDelimiter() string {
+	if x != nil {
+		return x.KeyValueDelimiter
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseKeyValue) GetKeyPrefix() string {
+	if x != nil {
+		return x.KeyPrefix
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseKeyValue) GetNonMatchValue() string {
+	if x != nil {
+		return x.NonMatchValue
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseKeyValue) GetOverwriteIfExists() bool {
+	if x != nil {
+		return x.OverwriteIfExists
+	}
+	return false
+}
+
+// AwsCloudwatchLogGroupTransformerParseToOcsf converts log events into Open
+// Cybersecurity Schema Framework (OCSF) events.
+type AwsCloudwatchLogGroupTransformerParseToOcsf struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Service or process producing the log events. Valid values:
+	// "CloudTrail", "Route53Resolver", "VPCFlow", "EKSAudit", "AWSWAF".
+	EventSource string `protobuf:"bytes,1,opt,name=event_source,json=eventSource,proto3" json:"event_source,omitempty"`
+	// OCSF schema version for the transformed events. Valid values: "V1.1",
+	// "V1.5".
+	OcsfVersion string `protobuf:"bytes,2,opt,name=ocsf_version,json=ocsfVersion,proto3" json:"ocsf_version,omitempty"`
+	// Source field to parse. The only allowed value is "@message"; when
+	// omitted, the whole log message is processed.
+	Source        string `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseToOcsf) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerParseToOcsf{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseToOcsf) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerParseToOcsf) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerParseToOcsf) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerParseToOcsf.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerParseToOcsf) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseToOcsf) GetEventSource() string {
+	if x != nil {
+		return x.EventSource
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseToOcsf) GetOcsfVersion() string {
+	if x != nil {
+		return x.OcsfVersion
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerParseToOcsf) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+// AwsCloudwatchLogGroupTransformerRenameKeys renames keys in the log event.
+type AwsCloudwatchLogGroupTransformerRenameKeys struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Keys to rename. 1-5 entries.
+	Entries       []*AwsCloudwatchLogGroupTransformerRenameKeysEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerRenameKeys) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerRenameKeys{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerRenameKeys) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerRenameKeys) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerRenameKeys) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerRenameKeys.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerRenameKeys) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerRenameKeys) GetEntries() []*AwsCloudwatchLogGroupTransformerRenameKeysEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+// AwsCloudwatchLogGroupTransformerRenameKeysEntry is one key rename.
+type AwsCloudwatchLogGroupTransformerRenameKeysEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Key to rename. 1-128 characters.
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// New name for the key. 1-128 characters.
+	RenameTo string `protobuf:"bytes,2,opt,name=rename_to,json=renameTo,proto3" json:"rename_to,omitempty"`
+	// When true, overwrites the value if the new key name already exists.
+	// Defaults to false.
+	OverwriteIfExists bool `protobuf:"varint,3,opt,name=overwrite_if_exists,json=overwriteIfExists,proto3" json:"overwrite_if_exists,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerRenameKeysEntry) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerRenameKeysEntry{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerRenameKeysEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerRenameKeysEntry) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerRenameKeysEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerRenameKeysEntry.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerRenameKeysEntry) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerRenameKeysEntry) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerRenameKeysEntry) GetRenameTo() string {
+	if x != nil {
+		return x.RenameTo
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerRenameKeysEntry) GetOverwriteIfExists() bool {
+	if x != nil {
+		return x.OverwriteIfExists
+	}
+	return false
+}
+
+// AwsCloudwatchLogGroupTransformerSplitString splits field values into
+// arrays using a delimiter.
+type AwsCloudwatchLogGroupTransformerSplitString struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fields to split. 1-10 entries.
+	Entries       []*AwsCloudwatchLogGroupTransformerSplitStringEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSplitString) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerSplitString{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSplitString) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerSplitString) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerSplitString) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerSplitString.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerSplitString) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSplitString) GetEntries() []*AwsCloudwatchLogGroupTransformerSplitStringEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+// AwsCloudwatchLogGroupTransformerSplitStringEntry is one field split.
+type AwsCloudwatchLogGroupTransformerSplitStringEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Key of the field to split. 1-128 characters.
+	Source string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	// Separator characters to split the string on. 1-128 characters.
+	Delimiter     string `protobuf:"bytes,2,opt,name=delimiter,proto3" json:"delimiter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSplitStringEntry) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerSplitStringEntry{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSplitStringEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerSplitStringEntry) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerSplitStringEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerSplitStringEntry.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerSplitStringEntry) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSplitStringEntry) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSplitStringEntry) GetDelimiter() string {
+	if x != nil {
+		return x.Delimiter
+	}
+	return ""
+}
+
+// AwsCloudwatchLogGroupTransformerSubstituteString replaces regex matches in
+// field values with a replacement string.
+type AwsCloudwatchLogGroupTransformerSubstituteString struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fields to substitute. 1-10 entries.
+	Entries       []*AwsCloudwatchLogGroupTransformerSubstituteStringEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSubstituteString) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerSubstituteString{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSubstituteString) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerSubstituteString) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerSubstituteString) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerSubstituteString.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerSubstituteString) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSubstituteString) GetEntries() []*AwsCloudwatchLogGroupTransformerSubstituteStringEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+// AwsCloudwatchLogGroupTransformerSubstituteStringEntry is one field
+// substitution.
+type AwsCloudwatchLogGroupTransformerSubstituteStringEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Key of the field to modify. 1-128 characters.
+	Source string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	// Regular expression whose matches are replaced. 1-128 characters.
+	From string `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
+	// Replacement string for each match. 1-128 characters.
+	To            string `protobuf:"bytes,3,opt,name=to,proto3" json:"to,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSubstituteStringEntry) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerSubstituteStringEntry{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSubstituteStringEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerSubstituteStringEntry) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerSubstituteStringEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerSubstituteStringEntry.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerSubstituteStringEntry) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSubstituteStringEntry) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSubstituteStringEntry) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerSubstituteStringEntry) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+// AwsCloudwatchLogGroupTransformerTypeConverter converts field values to a
+// different data type.
+type AwsCloudwatchLogGroupTransformerTypeConverter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fields to convert. 1-5 entries.
+	Entries       []*AwsCloudwatchLogGroupTransformerTypeConverterEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerTypeConverter) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerTypeConverter{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerTypeConverter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerTypeConverter) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerTypeConverter) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerTypeConverter.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerTypeConverter) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerTypeConverter) GetEntries() []*AwsCloudwatchLogGroupTransformerTypeConverterEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+// AwsCloudwatchLogGroupTransformerTypeConverterEntry is one field type
+// conversion.
+type AwsCloudwatchLogGroupTransformerTypeConverterEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Key whose value is converted. 1-128 characters.
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// Type to convert the value to. Valid values: "boolean", "integer",
+	// "double", "string".
+	Type          string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCloudwatchLogGroupTransformerTypeConverterEntry) Reset() {
+	*x = AwsCloudwatchLogGroupTransformerTypeConverterEntry{}
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCloudwatchLogGroupTransformerTypeConverterEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCloudwatchLogGroupTransformerTypeConverterEntry) ProtoMessage() {}
+
+func (x *AwsCloudwatchLogGroupTransformerTypeConverterEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCloudwatchLogGroupTransformerTypeConverterEntry.ProtoReflect.Descriptor instead.
+func (*AwsCloudwatchLogGroupTransformerTypeConverterEntry) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *AwsCloudwatchLogGroupTransformerTypeConverterEntry) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *AwsCloudwatchLogGroupTransformerTypeConverterEntry) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
 }
 
 var File_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/aws/awscloudwatchloggroup/v1alpha1/spec.proto\x12.dev.planton.aws.awscloudwatchloggroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe9\x11\n" +
+	"5catalog/aws/awscloudwatchloggroup/v1alpha1/spec.proto\x12.dev.planton.aws.awscloudwatchloggroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe6\x17\n" +
 	"\x19AwsCloudwatchLogGroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x122\n" +
 	"\x11retention_in_days\x18\x02 \x01(\x05B\x06\x92\xa6\x1d\x0230R\x0fretentionInDays\x12q\n" +
 	"\n" +
 	"kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12&\n" +
-	"\x0flog_group_class\x18\x04 \x01(\tR\rlogGroupClass\x12>\n" +
-	"\x1bdeletion_protection_enabled\x18\x05 \x01(\bR\x19deletionProtectionEnabled\x12x\n" +
+	"\x0flog_group_class\x18\x04 \x01(\tR\rlogGroupClass\x12C\n" +
+	"\x1bdeletion_protection_enabled\x18\x05 \x01(\bH\x00R\x19deletionProtectionEnabled\x88\x01\x01\x12x\n" +
 	"\x0emetric_filters\x18\x06 \x03(\v2Q.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricFilterR\rmetricFilters\x12\x8a\x01\n" +
 	"\x14subscription_filters\x18\a \x03(\v2W.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSubscriptionFilterR\x13subscriptionFilters\x12M\n" +
 	"\x16data_protection_policy\x18\b \x01(\v2\x17.google.protobuf.StructR\x14dataProtectionPolicy\x12E\n" +
-	"\x12field_index_policy\x18\t \x01(\v2\x17.google.protobuf.StructR\x10fieldIndexPolicy:\xfe\v\xbaH\xfa\v\x1a\xb8\x02\n" +
+	"\x12field_index_policy\x18\t \x01(\v2\x17.google.protobuf.StructR\x10fieldIndexPolicy\x12\x1f\n" +
+	"\vlog_streams\x18\n" +
+	" \x03(\tR\n" +
+	"logStreams\x12r\n" +
+	"\vtransformer\x18\v \x01(\v2P.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerR\vtransformer:\xc1\x10\xbaH\xbd\x10\x1a\xb8\x02\n" +
 	"\x1eretention_in_days_valid_values\x12\x8c\x01retention_in_days must be one of: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653\x1a\x86\x01this.retention_in_days in [0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653]\x1a\xd4\x01\n" +
 	"\x1clog_group_class_valid_values\x12Olog_group_class must be 'STANDARD', 'INFREQUENT_ACCESS', or 'DELIVERY' when set\x1acthis.log_group_class == '' || this.log_group_class in ['STANDARD', 'INFREQUENT_ACCESS', 'DELIVERY']\x1a\xe5\x01\n" +
 	"\x1bdelivery_class_no_retention\x12\x82\x01retention_in_days must not be set (must be 0) when log_group_class is 'DELIVERY' — AWS manages retention for Delivery log groups\x1aAthis.log_group_class != 'DELIVERY' || this.retention_in_days == 0\x1a\xa1\x01\n" +
 	"\x1asubscription_filters_max_2\x12]a log group supports at most 2 subscription filters — AWS enforces this limit per log group\x1a$size(this.subscription_filters) <= 2\x1a\x8a\x01\n" +
 	"\x1ametric_filter_names_unique\x12?each metric filter must have a unique name within the log group\x1a+this.metric_filters.map(f, f.name).unique()\x1a\x9c\x01\n" +
 	" subscription_filter_names_unique\x12Eeach subscription filter must have a unique name within the log group\x1a1this.subscription_filters.map(f, f.name).unique()\x1a\xad\x02\n" +
-	"\x1cinfrequent_access_no_filters\x12\x93\x01metric_filters and subscription_filters are not supported on INFREQUENT_ACCESS log groups — use a STANDARD class log group for filtering features\x1awthis.log_group_class != 'INFREQUENT_ACCESS' || (size(this.metric_filters) == 0 && size(this.subscription_filters) == 0)\"\xaf\x02\n" +
-	"!AwsCloudwatchLogGroupMetricFilter\x12\x1f\n" +
-	"\x04name\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x80\x04R\x04name\x12\"\n" +
-	"\apattern\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\apattern\x129\n" +
-	"\x19apply_on_transformed_logs\x18\x03 \x01(\bR\x16applyOnTransformedLogs\x12\x89\x01\n" +
-	"\x0etransformation\x18\x04 \x01(\v2Y.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricTransformationB\x06\xbaH\x03\xc8\x01\x01R\x0etransformation\"\xe8\n" +
+	"\x1cinfrequent_access_no_filters\x12\x93\x01metric_filters and subscription_filters are not supported on INFREQUENT_ACCESS log groups — use a STANDARD class log group for filtering features\x1awthis.log_group_class != 'INFREQUENT_ACCESS' || (size(this.metric_filters) == 0 && size(this.subscription_filters) == 0)\x1a\x88\x02\n" +
+	"#transformer_requires_standard_class\x12\x84\x01transformer is only supported on STANDARD class log groups — AWS rejects PutTransformer for INFREQUENT_ACCESS and DELIVERY classes\x1aZ!has(this.transformer) || this.log_group_class == '' || this.log_group_class == 'STANDARD'\x1an\n" +
+	"\x17log_stream_names_unique\x128each log stream name must be unique within the log group\x1a\x19this.log_streams.unique()\x1a\xc5\x01\n" +
+	"\x17log_stream_names_format\x12Ilog stream names must be 1-512 characters and must not contain ':' or '*'\x1a_this.log_streams.all(s, size(s) >= 1 && size(s) <= 512 && !s.contains(':') && !s.contains('*'))B\x1e\n" +
+	"\x1c_deletion_protection_enabled\"\xdc\x02\n" +
+	"!AwsCloudwatchLogGroupMetricFilter\x12)\n" +
+	"\x04name\x18\x01 \x01(\tB\x15\xbaH\x12\xc8\x01\x01r\r\x18\x80\x042\b^[^:*]+$R\x04name\x12\"\n" +
+	"\apattern\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\apattern\x12>\n" +
+	"\x19apply_on_transformed_logs\x18\x03 \x01(\bH\x00R\x16applyOnTransformedLogs\x88\x01\x01\x12\x89\x01\n" +
+	"\x0etransformation\x18\x04 \x01(\v2Y.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricTransformationB\x06\xbaH\x03\xc8\x01\x01R\x0etransformationB\x1c\n" +
+	"\x1a_apply_on_transformed_logs\"\xfe\n" +
 	"\n" +
-	")AwsCloudwatchLogGroupMetricTransformation\x12,\n" +
-	"\vmetric_name\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xff\x01R\n" +
-	"metricName\x126\n" +
-	"\x10metric_namespace\x18\x02 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xff\x01R\x0fmetricNamespace\x12-\n" +
+	")AwsCloudwatchLogGroupMetricTransformation\x127\n" +
+	"\vmetric_name\x18\x01 \x01(\tB\x16\xbaH\x13\xc8\x01\x01r\x0e\x18\xff\x012\t^[^:*$]*$R\n" +
+	"metricName\x12A\n" +
+	"\x10metric_namespace\x18\x02 \x01(\tB\x16\xbaH\x13\xc8\x01\x01r\x0e\x18\xff\x012\t^[^:*$]*$R\x0fmetricNamespace\x12-\n" +
 	"\fmetric_value\x18\x03 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x18dR\vmetricValue\x12(\n" +
 	"\rdefault_value\x18\x04 \x01(\x01H\x00R\fdefaultValue\x88\x01\x01\x12\x89\x01\n" +
@@ -618,18 +2486,187 @@ const file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDesc = "" +
 	"'default_value_conflicts_with_dimensions\x12{default_value cannot be set together with dimensions — AWS does not support a default value on dimensional metric filters\x1a6!has(this.default_value) || size(this.dimensions) == 0\x1a]\n" +
 	"\x10dimensions_max_3\x12-a metric filter supports at most 3 dimensions\x1a\x1asize(this.dimensions) <= 3\x1a\xc3\x04\n" +
 	"\x11unit_valid_values\x12\x83\x01unit must be a valid CloudWatch unit (e.g. Seconds, Milliseconds, Bytes, Percent, Count, Bytes/Second, Count/Second, None) when set\x1a\xa7\x03this.unit == '' || this.unit in ['Seconds', 'Microseconds', 'Milliseconds', 'Bytes', 'Kilobytes', 'Megabytes', 'Gigabytes', 'Terabytes', 'Bits', 'Kilobits', 'Megabits', 'Gigabits', 'Terabits', 'Percent', 'Count', 'Bytes/Second', 'Kilobytes/Second', 'Megabytes/Second', 'Gigabytes/Second', 'Terabytes/Second', 'Bits/Second', 'Kilobits/Second', 'Megabits/Second', 'Gigabits/Second', 'Terabits/Second', 'Count/Second', 'None']B\x10\n" +
-	"\x0e_default_value\"\xb7\x06\n" +
-	"'AwsCloudwatchLogGroupSubscriptionFilter\x12!\n" +
-	"\x04name\x18\x01 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x04R\x04name\x12c\n" +
+	"\x0e_default_value\"\x83\a\n" +
+	"'AwsCloudwatchLogGroupSubscriptionFilter\x12+\n" +
+	"\x04name\x18\x01 \x01(\tB\x17\xbaH\x14\xc8\x01\x01r\x0f\x10\x01\x18\x80\x042\b^[^:*]+$R\x04name\x12c\n" +
 	"\x0fdestination_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x0edestinationArn\x12/\n" +
 	"\x0efilter_pattern\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\rfilterPattern\x12o\n" +
 	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\"\n" +
 	"\fdistribution\x18\x05 \x01(\tR\fdistribution\x12,\n" +
-	"\x12emit_system_fields\x18\x06 \x03(\tR\x10emitSystemFields\x129\n" +
-	"\x19apply_on_transformed_logs\x18\a \x01(\bR\x16applyOnTransformedLogs:\xd4\x02\xbaH\xd0\x02\x1a\x9f\x01\n" +
-	"\x19distribution_valid_values\x127distribution must be 'ByLogStream' or 'Random' when set\x1aIthis.distribution == '' || this.distribution in ['ByLogStream', 'Random']\x1a\xab\x01\n" +
-	"\x1femit_system_fields_valid_values\x12Bemit_system_fields entries must be '@aws.account' or '@aws.region'\x1aDthis.emit_system_fields.all(f, f in ['@aws.account', '@aws.region'])B\x83\x03\n" +
+	"\x12emit_system_fields\x18\x06 \x03(\tR\x10emitSystemFields\x12>\n" +
+	"\x19apply_on_transformed_logs\x18\a \x01(\bH\x00R\x16applyOnTransformedLogs\x88\x01\x01:\xf3\x02\xbaH\xef\x02\x1a\x9f\x01\n" +
+	"\x19distribution_valid_values\x127distribution must be 'ByLogStream' or 'Random' when set\x1aIthis.distribution == '' || this.distribution in ['ByLogStream', 'Random']\x1a\xca\x01\n" +
+	"\x1femit_system_fields_valid_values\x12Remit_system_fields entries must be '@aws.account', '@aws.region', or '@source.log'\x1aSthis.emit_system_fields.all(f, f in ['@aws.account', '@aws.region', '@source.log'])B\x1c\n" +
+	"\x1a_apply_on_transformed_logs\"\x83\x15\n" +
+	" AwsCloudwatchLogGroupTransformer\x12\x85\x01\n" +
+	"\n" +
+	"processors\x18\x01 \x03(\v2Y.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessorB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x14R\n" +
+	"processors:\xd6\x13\xbaH\xd2\x13\x1a\xe2\x04\n" +
+	"\x19first_processor_is_parser\x12\xa5\x01the first processor must be a parser: parse_json, grok, csv, parse_key_value, parse_cloudfront, parse_postgres, parse_route53, parse_to_ocsf, parse_vpc, or parse_waf\x1a\x9c\x03size(this.processors) == 0 || has(this.processors[0].parse_json) || has(this.processors[0].grok) || has(this.processors[0].csv) || has(this.processors[0].parse_key_value) || has(this.processors[0].parse_cloudfront) || has(this.processors[0].parse_postgres) || has(this.processors[0].parse_route53) || has(this.processors[0].parse_to_ocsf) || has(this.processors[0].parse_vpc) || has(this.processors[0].parse_waf)\x1a\x95\x02\n" +
+	"\x1esingle_use_processors_max_once\x12Kadd_keys, copy_value, and grok may each appear at most once per transformer\x1a\xa5\x01size(this.processors.filter(p, has(p.add_keys))) <= 1 && size(this.processors.filter(p, has(p.copy_value))) <= 1 && size(this.processors.filter(p, has(p.grok))) <= 1\x1a\xa3\x02\n" +
+	"\x1dconfigurable_parsers_max_five\x12Tparse_json, parse_key_value, and csv may each appear at most 5 times per transformer\x1a\xab\x01size(this.processors.filter(p, has(p.parse_json))) <= 5 && size(this.processors.filter(p, has(p.parse_key_value))) <= 5 && size(this.processors.filter(p, has(p.csv))) <= 5\x1a\xa2\x04\n" +
+	"\x19vended_parsers_single_use\x12\x95\x01each vended-log parser (parse_cloudfront, parse_postgres, parse_route53, parse_to_ocsf, parse_vpc, parse_waf) may appear at most once per transformer\x1a\xec\x02size(this.processors.filter(p, has(p.parse_cloudfront))) <= 1 && size(this.processors.filter(p, has(p.parse_postgres))) <= 1 && size(this.processors.filter(p, has(p.parse_route53))) <= 1 && size(this.processors.filter(p, has(p.parse_to_ocsf))) <= 1 && size(this.processors.filter(p, has(p.parse_vpc))) <= 1 && size(this.processors.filter(p, has(p.parse_waf))) <= 1\x1a\x87\x06\n" +
+	"\x1bvended_parser_must_be_first\x12\x96\x01a vended-log parser (parse_cloudfront, parse_postgres, parse_route53, parse_to_ocsf, parse_vpc, parse_waf) must be the first processor in the pipeline\x1a\xce\x04size(this.processors) == 0 || ((!this.processors.exists(p, has(p.parse_cloudfront)) || has(this.processors[0].parse_cloudfront)) && (!this.processors.exists(p, has(p.parse_postgres)) || has(this.processors[0].parse_postgres)) && (!this.processors.exists(p, has(p.parse_route53)) || has(this.processors[0].parse_route53)) && (!this.processors.exists(p, has(p.parse_to_ocsf)) || has(this.processors[0].parse_to_ocsf)) && (!this.processors.exists(p, has(p.parse_vpc)) || has(this.processors[0].parse_vpc)) && (!this.processors.exists(p, has(p.parse_waf)) || has(this.processors[0].parse_waf)))\"\xa9\x1e\n" +
+	")AwsCloudwatchLogGroupTransformerProcessor\x12r\n" +
+	"\badd_keys\x18\x01 \x01(\v2W.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerAddKeysR\aaddKeys\x12x\n" +
+	"\n" +
+	"copy_value\x18\x02 \x01(\v2Y.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerCopyValueR\tcopyValue\x12e\n" +
+	"\x03csv\x18\x03 \x01(\v2S.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerCsvR\x03csv\x12\x91\x01\n" +
+	"\x13date_time_converter\x18\x04 \x01(\v2a.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerDateTimeConverterR\x11dateTimeConverter\x12{\n" +
+	"\vdelete_keys\x18\x05 \x01(\v2Z.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerDeleteKeysR\n" +
+	"deleteKeys\x12h\n" +
+	"\x04grok\x18\x06 \x01(\v2T.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerGrokR\x04grok\x12y\n" +
+	"\vlist_to_map\x18\a \x01(\v2Y.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerListToMapR\tlistToMap\x12\x84\x01\n" +
+	"\x11lower_case_string\x18\b \x01(\v2X.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerWithKeysR\x0flowerCaseString\x12u\n" +
+	"\tmove_keys\x18\t \x01(\v2X.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerMoveKeysR\bmoveKeys\x12\x8a\x01\n" +
+	"\x10parse_cloudfront\x18\n" +
+	" \x01(\v2_.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerVendedLogParserR\x0fparseCloudfront\x12x\n" +
+	"\n" +
+	"parse_json\x18\v \x01(\v2Y.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerParseJsonR\tparseJson\x12\x85\x01\n" +
+	"\x0fparse_key_value\x18\f \x01(\v2].dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerParseKeyValueR\rparseKeyValue\x12\x86\x01\n" +
+	"\x0eparse_postgres\x18\r \x01(\v2_.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerVendedLogParserR\rparsePostgres\x12\x84\x01\n" +
+	"\rparse_route53\x18\x0e \x01(\v2_.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerVendedLogParserR\fparseRoute53\x12\x7f\n" +
+	"\rparse_to_ocsf\x18\x0f \x01(\v2[.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerParseToOcsfR\vparseToOcsf\x12|\n" +
+	"\tparse_vpc\x18\x10 \x01(\v2_.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerVendedLogParserR\bparseVpc\x12|\n" +
+	"\tparse_waf\x18\x11 \x01(\v2_.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerVendedLogParserR\bparseWaf\x12{\n" +
+	"\vrename_keys\x18\x12 \x01(\v2Z.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerRenameKeysR\n" +
+	"renameKeys\x12~\n" +
+	"\fsplit_string\x18\x13 \x01(\v2[.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSplitStringR\vsplitString\x12\x8d\x01\n" +
+	"\x11substitute_string\x18\x14 \x01(\v2`.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSubstituteStringR\x10substituteString\x12y\n" +
+	"\vtrim_string\x18\x15 \x01(\v2X.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerWithKeysR\n" +
+	"trimString\x12\x84\x01\n" +
+	"\x0etype_converter\x18\x16 \x01(\v2].dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerTypeConverterR\rtypeConverter\x12\x84\x01\n" +
+	"\x11upper_case_string\x18\x17 \x01(\v2X.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerWithKeysR\x0fupperCaseString:\x80\a\xbaH\xfc\x06\x1a\xf9\x06\n" +
+	"\x15exactly_one_processor\x129exactly one processor type must be set per pipeline entry\x1a\xa4\x06(has(this.add_keys) ? 1 : 0) + (has(this.copy_value) ? 1 : 0) + (has(this.csv) ? 1 : 0) + (has(this.date_time_converter) ? 1 : 0) + (has(this.delete_keys) ? 1 : 0) + (has(this.grok) ? 1 : 0) + (has(this.list_to_map) ? 1 : 0) + (has(this.lower_case_string) ? 1 : 0) + (has(this.move_keys) ? 1 : 0) + (has(this.parse_cloudfront) ? 1 : 0) + (has(this.parse_json) ? 1 : 0) + (has(this.parse_key_value) ? 1 : 0) + (has(this.parse_postgres) ? 1 : 0) + (has(this.parse_route53) ? 1 : 0) + (has(this.parse_to_ocsf) ? 1 : 0) + (has(this.parse_vpc) ? 1 : 0) + (has(this.parse_waf) ? 1 : 0) + (has(this.rename_keys) ? 1 : 0) + (has(this.split_string) ? 1 : 0) + (has(this.substitute_string) ? 1 : 0) + (has(this.trim_string) ? 1 : 0) + (has(this.type_converter) ? 1 : 0) + (has(this.upper_case_string) ? 1 : 0) == 1\"\xae\x01\n" +
+	"'AwsCloudwatchLogGroupTransformerAddKeys\x12\x82\x01\n" +
+	"\aentries\x18\x01 \x03(\v2\\.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerAddKeysEntryB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x05R\aentries\"\xa4\x01\n" +
+	",AwsCloudwatchLogGroupTransformerAddKeysEntry\x12\x1f\n" +
+	"\x03key\x18\x01 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x03key\x12#\n" +
+	"\x05value\x18\x02 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x02R\x05value\x12.\n" +
+	"\x13overwrite_if_exists\x18\x03 \x01(\bR\x11overwriteIfExists\"\xb2\x01\n" +
+	")AwsCloudwatchLogGroupTransformerCopyValue\x12\x84\x01\n" +
+	"\aentries\x18\x01 \x03(\v2^.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerCopyValueEntryB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x05R\aentries\"\xae\x01\n" +
+	".AwsCloudwatchLogGroupTransformerCopyValueEntry\x12%\n" +
+	"\x06source\x18\x01 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x06source\x12%\n" +
+	"\x06target\x18\x02 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x06target\x12.\n" +
+	"\x13overwrite_if_exists\x18\x03 \x01(\bR\x11overwriteIfExists\"\xc9\x02\n" +
+	"#AwsCloudwatchLogGroupTransformerCsv\x12\"\n" +
+	"\acolumns\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10dR\acolumns\x12%\n" +
+	"\tdelimiter\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18\x02R\tdelimiter\x120\n" +
+	"\x0fquote_character\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18\x01R\x0equoteCharacter\x12 \n" +
+	"\x06source\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x06source:\x82\x01\xbaH\x7f\x1a}\n" +
+	"\x17csv_column_names_length\x12-each csv column name must be 1-128 characters\x1a3this.columns.all(c, size(c) >= 1 && size(c) <= 128)\"\xcf\x03\n" +
+	"1AwsCloudwatchLogGroupTransformerDateTimeConverter\x12%\n" +
+	"\x06source\x18\x01 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x06source\x12%\n" +
+	"\x06target\x18\x02 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x06target\x121\n" +
+	"\x0ematch_patterns\x18\x03 \x03(\tB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x05R\rmatchPatterns\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\x12'\n" +
+	"\x0fsource_timezone\x18\x05 \x01(\tR\x0esourceTimezone\x12,\n" +
+	"\rtarget_format\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18@R\ftargetFormat\x12'\n" +
+	"\x0ftarget_timezone\x18\a \x01(\tR\x0etargetTimezone:\x80\x01\xbaH}\x1a{\n" +
+	"\"date_time_match_patterns_non_empty\x12+each match_patterns entry must be non-empty\x1a(this.match_patterns.all(p, size(p) >= 1)\"\xc0\x01\n" +
+	"*AwsCloudwatchLogGroupTransformerDeleteKeys\x12'\n" +
+	"\twith_keys\x18\x01 \x03(\tB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x05R\bwithKeys:i\xbaHf\x1ad\n" +
+	"\x15delete_keys_non_empty\x12&each with_keys entry must be non-empty\x1a#this.with_keys.all(k, size(k) >= 1)\"m\n" +
+	"$AwsCloudwatchLogGroupTransformerGrok\x12#\n" +
+	"\x05match\x18\x01 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x04R\x05match\x12 \n" +
+	"\x06source\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x06source\"\xba\x04\n" +
+	")AwsCloudwatchLogGroupTransformerListToMap\x12%\n" +
+	"\x06source\x18\x01 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x06source\x12\x1f\n" +
+	"\x03key\x18\x02 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x03key\x12%\n" +
+	"\tvalue_key\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bvalueKey\x12 \n" +
+	"\x06target\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x06target\x12\x18\n" +
+	"\aflatten\x18\x05 \x01(\bR\aflatten\x12+\n" +
+	"\x11flattened_element\x18\x06 \x01(\tR\x10flattenedElement:\xb4\x02\xbaH\xb0\x02\x1a\xa3\x01\n" +
+	"\x1eflattened_element_valid_values\x124flattened_element must be 'first' or 'last' when set\x1aKthis.flattened_element == '' || this.flattened_element in ['first', 'last']\x1a\x87\x01\n" +
+	"\"flatten_requires_flattened_element\x122flattened_element is required when flatten is true\x1a-!this.flatten || this.flattened_element != ''\"\xbc\x01\n" +
+	"(AwsCloudwatchLogGroupTransformerWithKeys\x12'\n" +
+	"\twith_keys\x18\x01 \x03(\tB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\n" +
+	"R\bwithKeys:g\xbaHd\x1ab\n" +
+	"\x13with_keys_non_empty\x12&each with_keys entry must be non-empty\x1a#this.with_keys.all(k, size(k) >= 1)\"\xb0\x01\n" +
+	"(AwsCloudwatchLogGroupTransformerMoveKeys\x12\x83\x01\n" +
+	"\aentries\x18\x01 \x03(\v2].dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerMoveKeysEntryB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x05R\aentries\"\xad\x01\n" +
+	"-AwsCloudwatchLogGroupTransformerMoveKeysEntry\x12%\n" +
+	"\x06source\x18\x01 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x06source\x12%\n" +
+	"\x06target\x18\x02 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x06target\x12.\n" +
+	"\x13overwrite_if_exists\x18\x03 \x01(\bR\x11overwriteIfExists\"\x82\x02\n" +
+	"/AwsCloudwatchLogGroupTransformerVendedLogParser\x12\x16\n" +
+	"\x06source\x18\x01 \x01(\tR\x06source:\xb6\x01\xbaH\xb2\x01\x1a\xaf\x01\n" +
+	"\x1fvended_parser_source_is_message\x12\\source must be '@message' when set — vended-log parsers can only parse the raw log message\x1a.this.source == '' || this.source == '@message'\"y\n" +
+	")AwsCloudwatchLogGroupTransformerParseJson\x12 \n" +
+	"\x06source\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x06source\x12*\n" +
+	"\vdestination\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\vdestination\"\xf5\x02\n" +
+	"-AwsCloudwatchLogGroupTransformerParseKeyValue\x12 \n" +
+	"\x06source\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x06source\x12*\n" +
+	"\vdestination\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\vdestination\x121\n" +
+	"\x0ffield_delimiter\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x0efieldDelimiter\x128\n" +
+	"\x13key_value_delimiter\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x11keyValueDelimiter\x12'\n" +
+	"\n" +
+	"key_prefix\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\tkeyPrefix\x120\n" +
+	"\x0fnon_match_value\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\rnonMatchValue\x12.\n" +
+	"\x13overwrite_if_exists\x18\a \x01(\bR\x11overwriteIfExists\"\x84\x05\n" +
+	"+AwsCloudwatchLogGroupTransformerParseToOcsf\x12)\n" +
+	"\fevent_source\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\veventSource\x12)\n" +
+	"\focsf_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vocsfVersion\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source:\xe6\x03\xbaH\xe2\x03\x1a\xce\x01\n" +
+	"\x1eocsf_event_source_valid_values\x12Sevent_source must be one of: CloudTrail, Route53Resolver, VPCFlow, EKSAudit, AWSWAF\x1aWthis.event_source in ['CloudTrail', 'Route53Resolver', 'VPCFlow', 'EKSAudit', 'AWSWAF']\x1ai\n" +
+	"\x19ocsf_version_valid_values\x12%ocsf_version must be 'V1.1' or 'V1.5'\x1a%this.ocsf_version in ['V1.1', 'V1.5']\x1a\xa3\x01\n" +
+	"\x16ocsf_source_is_message\x12Ysource must be '@message' when set — OCSF conversion can only parse the raw log message\x1a.this.source == '' || this.source == '@message'\"\xb4\x01\n" +
+	"*AwsCloudwatchLogGroupTransformerRenameKeys\x12\x85\x01\n" +
+	"\aentries\x18\x01 \x03(\v2_.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerRenameKeysEntryB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x05R\aentries\"\xae\x01\n" +
+	"/AwsCloudwatchLogGroupTransformerRenameKeysEntry\x12\x1f\n" +
+	"\x03key\x18\x01 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x03key\x12*\n" +
+	"\trename_to\x18\x02 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\brenameTo\x12.\n" +
+	"\x13overwrite_if_exists\x18\x03 \x01(\bR\x11overwriteIfExists\"\xb6\x01\n" +
+	"+AwsCloudwatchLogGroupTransformerSplitString\x12\x86\x01\n" +
+	"\aentries\x18\x01 \x03(\v2`.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSplitStringEntryB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\n" +
+	"R\aentries\"\x86\x01\n" +
+	"0AwsCloudwatchLogGroupTransformerSplitStringEntry\x12%\n" +
+	"\x06source\x18\x01 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x06source\x12+\n" +
+	"\tdelimiter\x18\x02 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\tdelimiter\"\xc0\x01\n" +
+	"0AwsCloudwatchLogGroupTransformerSubstituteString\x12\x8b\x01\n" +
+	"\aentries\x18\x01 \x03(\v2e.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSubstituteStringEntryB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\n" +
+	"R\aentries\"\xa0\x01\n" +
+	"5AwsCloudwatchLogGroupTransformerSubstituteStringEntry\x12%\n" +
+	"\x06source\x18\x01 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x06source\x12!\n" +
+	"\x04from\x18\x02 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x04from\x12\x1d\n" +
+	"\x02to\x18\x03 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x02to\"\xba\x01\n" +
+	"-AwsCloudwatchLogGroupTransformerTypeConverter\x12\x88\x01\n" +
+	"\aentries\x18\x01 \x03(\v2b.dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerTypeConverterEntryB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x05R\aentries\"\x87\x02\n" +
+	"2AwsCloudwatchLogGroupTransformerTypeConverterEntry\x12\x1f\n" +
+	"\x03key\x18\x01 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x03key\x12\x1a\n" +
+	"\x04type\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type:\x93\x01\xbaH\x8f\x01\x1a\x8c\x01\n" +
+	"\x1atype_converter_valid_types\x125type must be one of: boolean, integer, double, string\x1a7this.type in ['boolean', 'integer', 'double', 'string']B\x83\x03\n" +
 	"2com.dev.planton.aws.awscloudwatchloggroup.v1alpha1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/catalog/aws/awscloudwatchloggroup/v1alpha1;awscloudwatchloggroupv1alpha1\xa2\x02\x04DPAA\xaa\x02.Dev.Planton.Aws.Awscloudwatchloggroup.V1alpha1\xca\x02.Dev\\Planton\\Aws\\Awscloudwatchloggroup\\V1alpha1\xe2\x02:Dev\\Planton\\Aws\\Awscloudwatchloggroup\\V1alpha1\\GPBMetadata\xea\x022Dev::Planton::Aws::Awscloudwatchloggroup::V1alpha1b\x06proto3"
 
 var (
@@ -644,31 +2681,89 @@ func file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescGZIP() []
 	return file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
 var file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsCloudwatchLogGroupSpec)(nil),                 // 0: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec
-	(*AwsCloudwatchLogGroupMetricFilter)(nil),         // 1: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricFilter
-	(*AwsCloudwatchLogGroupMetricTransformation)(nil), // 2: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricTransformation
-	(*AwsCloudwatchLogGroupSubscriptionFilter)(nil),   // 3: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSubscriptionFilter
-	nil,                         // 4: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricTransformation.DimensionsEntry
-	(*v1.StringValueOrRef)(nil), // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*structpb.Struct)(nil),     // 6: google.protobuf.Struct
+	(*AwsCloudwatchLogGroupSpec)(nil),                             // 0: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec
+	(*AwsCloudwatchLogGroupMetricFilter)(nil),                     // 1: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricFilter
+	(*AwsCloudwatchLogGroupMetricTransformation)(nil),             // 2: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricTransformation
+	(*AwsCloudwatchLogGroupSubscriptionFilter)(nil),               // 3: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSubscriptionFilter
+	(*AwsCloudwatchLogGroupTransformer)(nil),                      // 4: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformer
+	(*AwsCloudwatchLogGroupTransformerProcessor)(nil),             // 5: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor
+	(*AwsCloudwatchLogGroupTransformerAddKeys)(nil),               // 6: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerAddKeys
+	(*AwsCloudwatchLogGroupTransformerAddKeysEntry)(nil),          // 7: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerAddKeysEntry
+	(*AwsCloudwatchLogGroupTransformerCopyValue)(nil),             // 8: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerCopyValue
+	(*AwsCloudwatchLogGroupTransformerCopyValueEntry)(nil),        // 9: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerCopyValueEntry
+	(*AwsCloudwatchLogGroupTransformerCsv)(nil),                   // 10: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerCsv
+	(*AwsCloudwatchLogGroupTransformerDateTimeConverter)(nil),     // 11: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerDateTimeConverter
+	(*AwsCloudwatchLogGroupTransformerDeleteKeys)(nil),            // 12: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerDeleteKeys
+	(*AwsCloudwatchLogGroupTransformerGrok)(nil),                  // 13: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerGrok
+	(*AwsCloudwatchLogGroupTransformerListToMap)(nil),             // 14: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerListToMap
+	(*AwsCloudwatchLogGroupTransformerWithKeys)(nil),              // 15: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerWithKeys
+	(*AwsCloudwatchLogGroupTransformerMoveKeys)(nil),              // 16: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerMoveKeys
+	(*AwsCloudwatchLogGroupTransformerMoveKeysEntry)(nil),         // 17: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerMoveKeysEntry
+	(*AwsCloudwatchLogGroupTransformerVendedLogParser)(nil),       // 18: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerVendedLogParser
+	(*AwsCloudwatchLogGroupTransformerParseJson)(nil),             // 19: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerParseJson
+	(*AwsCloudwatchLogGroupTransformerParseKeyValue)(nil),         // 20: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerParseKeyValue
+	(*AwsCloudwatchLogGroupTransformerParseToOcsf)(nil),           // 21: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerParseToOcsf
+	(*AwsCloudwatchLogGroupTransformerRenameKeys)(nil),            // 22: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerRenameKeys
+	(*AwsCloudwatchLogGroupTransformerRenameKeysEntry)(nil),       // 23: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerRenameKeysEntry
+	(*AwsCloudwatchLogGroupTransformerSplitString)(nil),           // 24: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSplitString
+	(*AwsCloudwatchLogGroupTransformerSplitStringEntry)(nil),      // 25: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSplitStringEntry
+	(*AwsCloudwatchLogGroupTransformerSubstituteString)(nil),      // 26: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSubstituteString
+	(*AwsCloudwatchLogGroupTransformerSubstituteStringEntry)(nil), // 27: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSubstituteStringEntry
+	(*AwsCloudwatchLogGroupTransformerTypeConverter)(nil),         // 28: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerTypeConverter
+	(*AwsCloudwatchLogGroupTransformerTypeConverterEntry)(nil),    // 29: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerTypeConverterEntry
+	nil,                         // 30: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricTransformation.DimensionsEntry
+	(*v1.StringValueOrRef)(nil), // 31: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*structpb.Struct)(nil),     // 32: google.protobuf.Struct
 }
 var file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_depIdxs = []int32{
-	5, // 0: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec.metric_filters:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricFilter
-	3, // 2: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec.subscription_filters:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSubscriptionFilter
-	6, // 3: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec.data_protection_policy:type_name -> google.protobuf.Struct
-	6, // 4: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec.field_index_policy:type_name -> google.protobuf.Struct
-	2, // 5: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricFilter.transformation:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricTransformation
-	4, // 6: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricTransformation.dimensions:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricTransformation.DimensionsEntry
-	5, // 7: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSubscriptionFilter.destination_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // 8: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSubscriptionFilter.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	31, // 0: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec.metric_filters:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricFilter
+	3,  // 2: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec.subscription_filters:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSubscriptionFilter
+	32, // 3: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec.data_protection_policy:type_name -> google.protobuf.Struct
+	32, // 4: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec.field_index_policy:type_name -> google.protobuf.Struct
+	4,  // 5: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSpec.transformer:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformer
+	2,  // 6: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricFilter.transformation:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricTransformation
+	30, // 7: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricTransformation.dimensions:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupMetricTransformation.DimensionsEntry
+	31, // 8: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSubscriptionFilter.destination_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	31, // 9: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupSubscriptionFilter.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 10: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformer.processors:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor
+	6,  // 11: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.add_keys:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerAddKeys
+	8,  // 12: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.copy_value:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerCopyValue
+	10, // 13: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.csv:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerCsv
+	11, // 14: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.date_time_converter:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerDateTimeConverter
+	12, // 15: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.delete_keys:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerDeleteKeys
+	13, // 16: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.grok:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerGrok
+	14, // 17: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.list_to_map:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerListToMap
+	15, // 18: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.lower_case_string:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerWithKeys
+	16, // 19: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.move_keys:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerMoveKeys
+	18, // 20: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.parse_cloudfront:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerVendedLogParser
+	19, // 21: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.parse_json:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerParseJson
+	20, // 22: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.parse_key_value:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerParseKeyValue
+	18, // 23: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.parse_postgres:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerVendedLogParser
+	18, // 24: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.parse_route53:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerVendedLogParser
+	21, // 25: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.parse_to_ocsf:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerParseToOcsf
+	18, // 26: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.parse_vpc:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerVendedLogParser
+	18, // 27: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.parse_waf:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerVendedLogParser
+	22, // 28: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.rename_keys:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerRenameKeys
+	24, // 29: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.split_string:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSplitString
+	26, // 30: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.substitute_string:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSubstituteString
+	15, // 31: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.trim_string:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerWithKeys
+	28, // 32: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.type_converter:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerTypeConverter
+	15, // 33: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerProcessor.upper_case_string:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerWithKeys
+	7,  // 34: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerAddKeys.entries:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerAddKeysEntry
+	9,  // 35: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerCopyValue.entries:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerCopyValueEntry
+	17, // 36: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerMoveKeys.entries:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerMoveKeysEntry
+	23, // 37: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerRenameKeys.entries:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerRenameKeysEntry
+	25, // 38: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSplitString.entries:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSplitStringEntry
+	27, // 39: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSubstituteString.entries:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerSubstituteStringEntry
+	29, // 40: dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerTypeConverter.entries:type_name -> dev.planton.aws.awscloudwatchloggroup.v1alpha1.AwsCloudwatchLogGroupTransformerTypeConverterEntry
+	41, // [41:41] is the sub-list for method output_type
+	41, // [41:41] is the sub-list for method input_type
+	41, // [41:41] is the sub-list for extension type_name
+	41, // [41:41] is the sub-list for extension extendee
+	0,  // [0:41] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_init() }
@@ -676,14 +2771,17 @@ func file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awscloudwatchloggroup_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

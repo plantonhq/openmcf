@@ -47,10 +47,12 @@ func logGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*Log
 	}
 
 	// Deletion protection: applied by the provider through a separate
-	// PutLogGroupDeletionProtection call after create. Only set when enabled so
-	// unset stays indistinguishable from AWS's default (unprotected).
-	if spec.DeletionProtectionEnabled {
-		args.DeletionProtectionEnabled = pulumi.BoolPtr(true)
+	// PutLogGroupDeletionProtection call after create. Tri-state send-when-set:
+	// the provider attribute is Optional+Computed, so an omitted value keeps
+	// the group's existing protection state — an EXPLICIT false is the only
+	// way to disable protection once enabled.
+	if spec.DeletionProtectionEnabled != nil {
+		args.DeletionProtectionEnabled = pulumi.BoolPtr(spec.GetDeletionProtectionEnabled())
 	}
 
 	createdLogGroup, err := cloudwatch.NewLogGroup(
@@ -99,8 +101,10 @@ func logGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*Log
 			Pattern:              pulumi.String(filter.Pattern),
 			MetricTransformation: transformationArgs,
 		}
-		if filter.ApplyOnTransformedLogs {
-			filterArgs.ApplyOnTransformedLogs = pulumi.BoolPtr(true)
+		// Tri-state send-when-set (the provider attribute is Optional+Computed):
+		// only an explicit false switches an existing filter back to raw events.
+		if filter.ApplyOnTransformedLogs != nil {
+			filterArgs.ApplyOnTransformedLogs = pulumi.BoolPtr(filter.GetApplyOnTransformedLogs())
 		}
 
 		if _, err := cloudwatch.NewLogMetricFilter(
@@ -135,8 +139,10 @@ func logGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*Log
 		if len(filter.EmitSystemFields) > 0 {
 			subscriptionArgs.EmitSystemFields = pulumi.ToStringArray(filter.EmitSystemFields)
 		}
-		if filter.ApplyOnTransformedLogs {
-			subscriptionArgs.ApplyOnTransformedLogs = pulumi.BoolPtr(true)
+		// Tri-state send-when-set (the provider attribute is Optional+Computed):
+		// only an explicit false switches an existing filter back to raw events.
+		if filter.ApplyOnTransformedLogs != nil {
+			subscriptionArgs.ApplyOnTransformedLogs = pulumi.BoolPtr(filter.GetApplyOnTransformedLogs())
 		}
 
 		if _, err := cloudwatch.NewLogSubscriptionFilter(
@@ -190,6 +196,32 @@ func logGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*Log
 			pulumi.DependsOn([]pulumi.Resource{createdLogGroup}),
 		); err != nil {
 			return nil, errors.Wrap(err, "failed to create field index policy")
+		}
+	}
+
+	// Pre-created log streams: one per declared name (most streams are created
+	// at runtime by the writing agent — these exist for fixed-name agent
+	// configs and stream-scoped IAM policies). Streams die with the group.
+	for _, streamName := range spec.LogStreams {
+		if _, err := cloudwatch.NewLogStream(
+			ctx,
+			fmt.Sprintf("log-stream-%s", streamName),
+			&cloudwatch.LogStreamArgs{
+				Name:         pulumi.String(streamName),
+				LogGroupName: createdLogGroup.Name,
+			},
+			pulumi.Provider(provider),
+			pulumi.DependsOn([]pulumi.Resource{createdLogGroup}),
+		); err != nil {
+			return nil, errors.Wrapf(err, "failed to create log stream %s", streamName)
+		}
+	}
+
+	// Log transformer: the group's ingest-time processor pipeline (one per
+	// group, STANDARD class only — CEL-enforced in the spec).
+	if spec.Transformer != nil {
+		if err := transformer(ctx, spec.Transformer, createdLogGroup, provider); err != nil {
+			return nil, errors.Wrap(err, "failed to create log transformer")
 		}
 	}
 

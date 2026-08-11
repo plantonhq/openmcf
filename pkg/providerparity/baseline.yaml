@@ -22,9 +22,6 @@ entries:
   - kind:AwsBatchJobQueue
   - kind:AwsBatchSchedulingPolicy
   - kind:AwsClientVpn
-  - kind:AwsCloudwatchAlarm
-  - kind:AwsCloudwatchCompositeAlarm
-  - kind:AwsCloudwatchLogGroup
   - kind:AwsDynamodb
   - kind:AwsEcrRepo
   - kind:AwsEfsAccessPoint

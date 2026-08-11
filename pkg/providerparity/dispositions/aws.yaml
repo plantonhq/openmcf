@@ -727,7 +727,7 @@ resources:
     reason: "judged as a planned AwsCloudTrail kind (trails, event data stores, organization delegated admin)"
   - resource: aws_cloudwatch_alarm_mute_rule
     disposition: model-planned
-    reason: "alarm mute rules fold into the existing AwsCloudwatchAlarm kind as its spec deepens"
+    reason: "judged as a planned AwsCloudwatchAlarmMuteRule kind: one rule mutes up to 100 alarms on a recurring schedule -- multi-alarm scope, not per-alarm configuration, so a fold onto AwsCloudwatchAlarm would misrepresent it (the CloudFront-companion class)"
   - resource: aws_cloudwatch_contributor_insight_rule
     disposition: deferred
     reason: "Contributor Insights rules; deferred pending demand"
@@ -751,10 +751,10 @@ resources:
     reason: "per-statement delivery (PutPermission with a StatementId) of the same bus policy AwsEventBridgeBus.spec.resource_policy models as one whole document via aws_cloudwatch_event_bus_policy -- mixing them fights over one policy (the bus-policy delete issues RemoveAllPermissions, wiping permission-managed statements)"
   - resource: aws_cloudwatch_log_account_policy
     disposition: model-planned
-    reason: "account-scoped CloudWatch Logs policy and saved-query surface; folds into the AwsCloudwatchLogGroup kind family's account-level composition"
+    reason: "judged as a planned AwsCloudwatchLogAccountPolicy kind: an account-wide policy per type (data protection / subscription filter / field index / transformer) optionally scoped by selection criteria -- standalone account-scoped configuration, never a per-group satellite"
   - resource: aws_cloudwatch_log_anomaly_detector
     disposition: model-planned
-    reason: "log-group companion surface (anomaly detectors, transformers, storage tiers, streams, table integrations); folds into the existing AwsCloudwatchLogGroup kind as its spec deepens"
+    reason: "judged as a planned AwsCloudwatchLogAnomalyDetector kind: one detector trains over a LIST of log groups (log_group_arn_list) -- multi-parent scope, not a single group's satellite (the CloudFront-companion class)"
   - resource: aws_cloudwatch_log_delivery
     disposition: model-planned
     reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
@@ -775,19 +775,13 @@ resources:
     reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
   - resource: aws_cloudwatch_log_resource_policy
     disposition: model-planned
-    reason: "account-scoped CloudWatch Logs policy and saved-query surface; folds into the AwsCloudwatchLogGroup kind family's account-level composition"
+    reason: "judged as a planned AwsCloudwatchLogResourcePolicy kind: account-scoped named policies that grant AWS services log-delivery permission (Route53 query logging, EventBridge, ...) -- standalone glue many kinds need; nothing in the catalog renders it today, so composed would overstate coverage"
   - resource: aws_cloudwatch_log_s3_table_integration_source
-    disposition: model-planned
-    reason: "log-group companion surface (anomaly detectors, transformers, storage tiers, streams, table integrations); folds into the existing AwsCloudwatchLogGroup kind as its spec deepens"
+    disposition: deferred
+    reason: "attaches a data source to an S3 Tables log INTEGRATION ARN whose parent integration has no provider resource (console/API-created) -- not log-group-scoped despite the former blanket; deferred until the S3 Tables integration surface is modelable end to end"
   - resource: aws_cloudwatch_log_storage_tier_policy
-    disposition: model-planned
-    reason: "log-group companion surface (anomaly detectors, transformers, storage tiers, streams, table integrations); folds into the existing AwsCloudwatchLogGroup kind as its spec deepens"
-  - resource: aws_cloudwatch_log_stream
-    disposition: model-planned
-    reason: "log-group companion surface (anomaly detectors, transformers, storage tiers, streams, table integrations); folds into the existing AwsCloudwatchLogGroup kind as its spec deepens"
-  - resource: aws_cloudwatch_log_transformer
-    disposition: model-planned
-    reason: "log-group companion surface (anomaly detectors, transformers, storage tiers, streams, table integrations); folds into the existing AwsCloudwatchLogGroup kind as its spec deepens"
+    disposition: deferred
+    reason: "regional account-level SINGLETON (one storage-tier policy per region, 6.58.0-new) -- account posture, not log-group configuration (the VPC block-public-access class); deferred pending demand"
   - resource: aws_cloudwatch_metric_stream
     disposition: model-planned
     reason: "judged as a planned AwsCloudwatchMetricStream kind"
@@ -795,8 +789,8 @@ resources:
     disposition: deferred
     reason: "OpenTelemetry enrichment is newly introduced account telemetry plumbing; deferred pending maturity"
   - resource: aws_cloudwatch_query_definition
-    disposition: model-planned
-    reason: "account-scoped CloudWatch Logs policy and saved-query surface; folds into the AwsCloudwatchLogGroup kind family's account-level composition"
+    disposition: deferred
+    reason: "saved Logs Insights queries are operator content (the data-plane class, like Cognito users) -- not infrastructure shape; deferred pending demand"
   - resource: aws_codeartifact_domain
     disposition: model-planned
     reason: "judged as a planned AwsCodeArtifact kind (domains and repositories with permission policies)"

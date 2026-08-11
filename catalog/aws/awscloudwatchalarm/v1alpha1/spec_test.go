@@ -1434,6 +1434,247 @@ var _ = ginkgo.Describe("AwsCloudwatchAlarmSpec validations", func() {
 		err := protovalidate.Validate(input)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
+
+	// -------------------------------------------------------------------------
+	// CEL: threshold_conflicts_with_threshold_metric_id
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when both threshold and threshold_metric_id are set", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "double-threshold",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanUpperThreshold",
+				EvaluationPeriods:  3,
+				Threshold:          80.0,
+				ThresholdMetricId:  "ad1",
+				MetricQueries: []*AwsCloudwatchAlarmMetricQuery{
+					{
+						Id: "m1",
+						Metric: &AwsCloudwatchAlarmMetricQueryMetric{
+							MetricName: "CPUUtilization",
+							Namespace:  "AWS/EC2",
+							Period:     300,
+							Stat:       "Average",
+						},
+						ReturnData: true,
+					},
+					{
+						Id:         "ad1",
+						Expression: "ANOMALY_DETECTION_BAND(m1, 2)",
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: metric_queries_forbid_simple_metric_fields
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when metric_queries is combined with a top-level unit", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "query-with-stray-unit",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          5.0,
+				Unit:               "Count",
+				MetricQueries: []*AwsCloudwatchAlarmMetricQuery{
+					{
+						Id: "m1",
+						Metric: &AwsCloudwatchAlarmMetricQueryMetric{
+							MetricName: "5XXError",
+							Namespace:  "AWS/ApplicationELB",
+							Period:     300,
+							Stat:       "Sum",
+						},
+						ReturnData: true,
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when metric_queries is combined with top-level dimensions", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "query-with-stray-dimensions",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          5.0,
+				Dimensions:         map[string]string{"InstanceId": "i-1234567890abcdef0"},
+				MetricQueries: []*AwsCloudwatchAlarmMetricQuery{
+					{
+						Id: "m1",
+						Metric: &AwsCloudwatchAlarmMetricQueryMetric{
+							MetricName: "CPUUtilization",
+							Namespace:  "AWS/EC2",
+							Period:     300,
+							Stat:       "Average",
+						},
+						ReturnData: true,
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: extended_statistic_format / stat_valid_format
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts trimmed-mean and percentile extended statistics", func() {
+		build := func(name, extendedStat string) *AwsCloudwatchAlarm {
+			return &AwsCloudwatchAlarm{
+				ApiVersion: "aws.planton.dev/v1alpha1",
+				Kind:       "AwsCloudwatchAlarm",
+				Metadata:   &shared.CloudResourceMetadata{Name: name},
+				Spec: &AwsCloudwatchAlarmSpec{
+					Region:             "us-west-2",
+					ComparisonOperator: "GreaterThanThreshold",
+					EvaluationPeriods:  3,
+					Threshold:          500.0,
+					MetricName:         "TargetResponseTime",
+					Namespace:          "AWS/ApplicationELB",
+					Period:             60,
+					ExtendedStatistic:  extendedStat,
+				},
+			}
+		}
+		for _, stat := range []string{"p95", "p99.9", "tm99", "IQM", "TM(10%:90%)", "PR(:300)"} {
+			err := protovalidate.Validate(build("ext-stat-ok", stat))
+			gomega.Expect(err).To(gomega.BeNil(), "expected %q to be accepted", stat)
+		}
+	})
+
+	ginkgo.It("fails when extended_statistic is not a valid percentile form", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-ext-stat",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  3,
+				Threshold:          500.0,
+				MetricName:         "TargetResponseTime",
+				Namespace:          "AWS/ApplicationELB",
+				Period:             60,
+				ExtendedStatistic:  "percentile95",
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a metric query stat is neither standard nor percentile", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-query-stat",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          5.0,
+				MetricQueries: []*AwsCloudwatchAlarmMetricQuery{
+					{
+						Id: "m1",
+						Metric: &AwsCloudwatchAlarmMetricQueryMetric{
+							MetricName: "CPUUtilization",
+							Namespace:  "AWS/EC2",
+							Period:     300,
+							Stat:       "Mean",
+						},
+						ReturnData: true,
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: namespace_no_leading_colon (top-level and metric query)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when the namespace starts with a colon", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-namespace",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          80.0,
+				MetricName:         "CPUUtilization",
+				Namespace:          ":AWS/EC2",
+				Period:             300,
+				Statistic:          "Average",
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a metric query namespace starts with a colon", func() {
+		input := &AwsCloudwatchAlarm{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-query-namespace",
+			},
+			Spec: &AwsCloudwatchAlarmSpec{
+				Region:             "us-west-2",
+				ComparisonOperator: "GreaterThanThreshold",
+				EvaluationPeriods:  1,
+				Threshold:          5.0,
+				MetricQueries: []*AwsCloudwatchAlarmMetricQuery{
+					{
+						Id: "m1",
+						Metric: &AwsCloudwatchAlarmMetricQueryMetric{
+							MetricName: "CPUUtilization",
+							Namespace:  ":AWS/EC2",
+							Period:     300,
+							Stat:       "Average",
+						},
+						ReturnData: true,
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
 })
 
 func boolPtr(b bool) *bool { return &b }

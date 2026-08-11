@@ -51,20 +51,42 @@ metadata:
   id: test-log-group-dev
   annotations:
     planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsCloudwatchLogGroup.test-log-group
 spec:
   region: us-west-2
   retentionInDays: 30
   metricFilters:
     - name: error-count
       pattern: "ERROR"
+      applyOnTransformedLogs: true
       transformation:
         metricName: ErrorCount
         metricNamespace: TestApp/Errors
         metricValue: "1"
         defaultValue: 0
+  subscriptionFilters:
+    - name: central-delivery
+      destinationArn:
+        value: arn:aws:kinesis:us-west-2:123456789012:stream/central-logs
+      roleArn:
+        value: arn:aws:iam::123456789012:role/cwl-to-kinesis-delivery
+      filterPattern: ""
+      emitSystemFields:
+        - "@aws.account"
+        - "@aws.region"
+        - "@source.log"
+  logStreams:
+    - agent-primary
+  transformer:
+    processors:
+      - parseJson: {}
+      - renameKeys:
+          entries:
+            - key: msg
+              renameTo: message
+      - typeConverter:
+          entries:
+            - key: statusCode
+              type: integer
   fieldIndexPolicy:
     Fields:
       - requestId
@@ -100,6 +122,98 @@ spec:
 | `spec.subscriptionFilters[].applyOnTransformedLogs` | `bool` |  |  |  |
 | `spec.dataProtectionPolicy` | `object` |  |  |  |
 | `spec.fieldIndexPolicy` | `object` |  |  |  |
+| `spec.logStreams` | `[]string` |  |  |  |
+| `spec.transformer` | `AwsCloudwatchLogGroupTransformer` |  |  |  |
+| `spec.transformer.processors` | `[]AwsCloudwatchLogGroupTransformerProcessor` | yes |  |  |
+| `spec.transformer.processors[].addKeys` | `AwsCloudwatchLogGroupTransformerAddKeys` |  |  |  |
+| `spec.transformer.processors[].addKeys.entries` | `[]AwsCloudwatchLogGroupTransformerAddKeysEntry` | yes |  |  |
+| `spec.transformer.processors[].addKeys.entries[].key` | `string` | yes |  |  |
+| `spec.transformer.processors[].addKeys.entries[].value` | `string` | yes |  |  |
+| `spec.transformer.processors[].addKeys.entries[].overwriteIfExists` | `bool` |  |  |  |
+| `spec.transformer.processors[].copyValue` | `AwsCloudwatchLogGroupTransformerCopyValue` |  |  |  |
+| `spec.transformer.processors[].copyValue.entries` | `[]AwsCloudwatchLogGroupTransformerCopyValueEntry` | yes |  |  |
+| `spec.transformer.processors[].copyValue.entries[].source` | `string` | yes |  |  |
+| `spec.transformer.processors[].copyValue.entries[].target` | `string` | yes |  |  |
+| `spec.transformer.processors[].copyValue.entries[].overwriteIfExists` | `bool` |  |  |  |
+| `spec.transformer.processors[].csv` | `AwsCloudwatchLogGroupTransformerCsv` |  |  |  |
+| `spec.transformer.processors[].csv.columns` | `[]string` |  |  |  |
+| `spec.transformer.processors[].csv.delimiter` | `string` |  |  |  |
+| `spec.transformer.processors[].csv.quoteCharacter` | `string` |  |  |  |
+| `spec.transformer.processors[].csv.source` | `string` |  |  |  |
+| `spec.transformer.processors[].dateTimeConverter` | `AwsCloudwatchLogGroupTransformerDateTimeConverter` |  |  |  |
+| `spec.transformer.processors[].dateTimeConverter.source` | `string` | yes |  |  |
+| `spec.transformer.processors[].dateTimeConverter.target` | `string` | yes |  |  |
+| `spec.transformer.processors[].dateTimeConverter.matchPatterns` | `[]string` | yes |  |  |
+| `spec.transformer.processors[].dateTimeConverter.locale` | `string` |  |  |  |
+| `spec.transformer.processors[].dateTimeConverter.sourceTimezone` | `string` |  |  |  |
+| `spec.transformer.processors[].dateTimeConverter.targetFormat` | `string` |  |  |  |
+| `spec.transformer.processors[].dateTimeConverter.targetTimezone` | `string` |  |  |  |
+| `spec.transformer.processors[].deleteKeys` | `AwsCloudwatchLogGroupTransformerDeleteKeys` |  |  |  |
+| `spec.transformer.processors[].deleteKeys.withKeys` | `[]string` | yes |  |  |
+| `spec.transformer.processors[].grok` | `AwsCloudwatchLogGroupTransformerGrok` |  |  |  |
+| `spec.transformer.processors[].grok.match` | `string` | yes |  |  |
+| `spec.transformer.processors[].grok.source` | `string` |  |  |  |
+| `spec.transformer.processors[].listToMap` | `AwsCloudwatchLogGroupTransformerListToMap` |  |  |  |
+| `spec.transformer.processors[].listToMap.source` | `string` | yes |  |  |
+| `spec.transformer.processors[].listToMap.key` | `string` | yes |  |  |
+| `spec.transformer.processors[].listToMap.valueKey` | `string` |  |  |  |
+| `spec.transformer.processors[].listToMap.target` | `string` |  |  |  |
+| `spec.transformer.processors[].listToMap.flatten` | `bool` |  |  |  |
+| `spec.transformer.processors[].listToMap.flattenedElement` | `string` |  |  |  |
+| `spec.transformer.processors[].lowerCaseString` | `AwsCloudwatchLogGroupTransformerWithKeys` |  |  |  |
+| `spec.transformer.processors[].lowerCaseString.withKeys` | `[]string` | yes |  |  |
+| `spec.transformer.processors[].moveKeys` | `AwsCloudwatchLogGroupTransformerMoveKeys` |  |  |  |
+| `spec.transformer.processors[].moveKeys.entries` | `[]AwsCloudwatchLogGroupTransformerMoveKeysEntry` | yes |  |  |
+| `spec.transformer.processors[].moveKeys.entries[].source` | `string` | yes |  |  |
+| `spec.transformer.processors[].moveKeys.entries[].target` | `string` | yes |  |  |
+| `spec.transformer.processors[].moveKeys.entries[].overwriteIfExists` | `bool` |  |  |  |
+| `spec.transformer.processors[].parseCloudfront` | `AwsCloudwatchLogGroupTransformerVendedLogParser` |  |  |  |
+| `spec.transformer.processors[].parseCloudfront.source` | `string` |  |  |  |
+| `spec.transformer.processors[].parseJson` | `AwsCloudwatchLogGroupTransformerParseJson` |  |  |  |
+| `spec.transformer.processors[].parseJson.source` | `string` |  |  |  |
+| `spec.transformer.processors[].parseJson.destination` | `string` |  |  |  |
+| `spec.transformer.processors[].parseKeyValue` | `AwsCloudwatchLogGroupTransformerParseKeyValue` |  |  |  |
+| `spec.transformer.processors[].parseKeyValue.source` | `string` |  |  |  |
+| `spec.transformer.processors[].parseKeyValue.destination` | `string` |  |  |  |
+| `spec.transformer.processors[].parseKeyValue.fieldDelimiter` | `string` |  |  |  |
+| `spec.transformer.processors[].parseKeyValue.keyValueDelimiter` | `string` |  |  |  |
+| `spec.transformer.processors[].parseKeyValue.keyPrefix` | `string` |  |  |  |
+| `spec.transformer.processors[].parseKeyValue.nonMatchValue` | `string` |  |  |  |
+| `spec.transformer.processors[].parseKeyValue.overwriteIfExists` | `bool` |  |  |  |
+| `spec.transformer.processors[].parsePostgres` | `AwsCloudwatchLogGroupTransformerVendedLogParser` |  |  |  |
+| `spec.transformer.processors[].parsePostgres.source` | `string` |  |  |  |
+| `spec.transformer.processors[].parseRoute53` | `AwsCloudwatchLogGroupTransformerVendedLogParser` |  |  |  |
+| `spec.transformer.processors[].parseRoute53.source` | `string` |  |  |  |
+| `spec.transformer.processors[].parseToOcsf` | `AwsCloudwatchLogGroupTransformerParseToOcsf` |  |  |  |
+| `spec.transformer.processors[].parseToOcsf.eventSource` | `string` | yes |  |  |
+| `spec.transformer.processors[].parseToOcsf.ocsfVersion` | `string` | yes |  |  |
+| `spec.transformer.processors[].parseToOcsf.source` | `string` |  |  |  |
+| `spec.transformer.processors[].parseVpc` | `AwsCloudwatchLogGroupTransformerVendedLogParser` |  |  |  |
+| `spec.transformer.processors[].parseVpc.source` | `string` |  |  |  |
+| `spec.transformer.processors[].parseWaf` | `AwsCloudwatchLogGroupTransformerVendedLogParser` |  |  |  |
+| `spec.transformer.processors[].parseWaf.source` | `string` |  |  |  |
+| `spec.transformer.processors[].renameKeys` | `AwsCloudwatchLogGroupTransformerRenameKeys` |  |  |  |
+| `spec.transformer.processors[].renameKeys.entries` | `[]AwsCloudwatchLogGroupTransformerRenameKeysEntry` | yes |  |  |
+| `spec.transformer.processors[].renameKeys.entries[].key` | `string` | yes |  |  |
+| `spec.transformer.processors[].renameKeys.entries[].renameTo` | `string` | yes |  |  |
+| `spec.transformer.processors[].renameKeys.entries[].overwriteIfExists` | `bool` |  |  |  |
+| `spec.transformer.processors[].splitString` | `AwsCloudwatchLogGroupTransformerSplitString` |  |  |  |
+| `spec.transformer.processors[].splitString.entries` | `[]AwsCloudwatchLogGroupTransformerSplitStringEntry` | yes |  |  |
+| `spec.transformer.processors[].splitString.entries[].source` | `string` | yes |  |  |
+| `spec.transformer.processors[].splitString.entries[].delimiter` | `string` | yes |  |  |
+| `spec.transformer.processors[].substituteString` | `AwsCloudwatchLogGroupTransformerSubstituteString` |  |  |  |
+| `spec.transformer.processors[].substituteString.entries` | `[]AwsCloudwatchLogGroupTransformerSubstituteStringEntry` | yes |  |  |
+| `spec.transformer.processors[].substituteString.entries[].source` | `string` | yes |  |  |
+| `spec.transformer.processors[].substituteString.entries[].from` | `string` | yes |  |  |
+| `spec.transformer.processors[].substituteString.entries[].to` | `string` | yes |  |  |
+| `spec.transformer.processors[].trimString` | `AwsCloudwatchLogGroupTransformerWithKeys` |  |  |  |
+| `spec.transformer.processors[].trimString.withKeys` | `[]string` | yes |  |  |
+| `spec.transformer.processors[].typeConverter` | `AwsCloudwatchLogGroupTransformerTypeConverter` |  |  |  |
+| `spec.transformer.processors[].typeConverter.entries` | `[]AwsCloudwatchLogGroupTransformerTypeConverterEntry` | yes |  |  |
+| `spec.transformer.processors[].typeConverter.entries[].key` | `string` | yes |  |  |
+| `spec.transformer.processors[].typeConverter.entries[].type` | `string` | yes |  |  |
+| `spec.transformer.processors[].upperCaseString` | `AwsCloudwatchLogGroupTransformerWithKeys` |  |  |  |
+| `spec.transformer.processors[].upperCaseString.withKeys` | `[]string` | yes |  |  |
 
 ## Field Details
 
@@ -175,7 +289,7 @@ This field is ForceNew: changing it requires replacing the log group.
 
 ### spec.deletionProtectionEnabled
 
-`bool`
+`bool` · optional (explicit presence)
 
 When true, the log group is protected from deletion. Any attempt to delete
 the log group (including via IaC destroy) will fail until this flag is set
@@ -201,7 +315,7 @@ Not supported on INFREQUENT_ACCESS log groups (AWS rejects the call).
 Name of the metric filter, unique within the log group. Changing the
 name replaces the filter.
 
-- rule: {"required":true,"string":{"maxLen":"512"}}
+- rule: {"required":true,"string":{"maxLen":"512","pattern":"^[^:*]+$"}}
 
 ### spec.metricFilters[].pattern
 
@@ -219,7 +333,7 @@ Maximum 1024 characters.
 
 ### spec.metricFilters[].applyOnTransformedLogs
 
-`bool`
+`bool` · optional (explicit presence)
 
 When true, this filter is also applied to log events AFTER they pass
 through the log group's transformer (if one is configured). Leave unset
@@ -243,7 +357,7 @@ without a transformation does nothing.
 
 Name of the CloudWatch metric to publish (e.g. "ErrorCount").
 
-- rule: {"required":true,"string":{"maxLen":"255"}}
+- rule: {"required":true,"string":{"maxLen":"255","pattern":"^[^:*$]*$"}}
 
 ### spec.metricFilters[].transformation.metricNamespace
 
@@ -252,7 +366,7 @@ Name of the CloudWatch metric to publish (e.g. "ErrorCount").
 Namespace for the metric (e.g. "MyApp/Errors"). Custom namespaces keep
 log-derived metrics separate from AWS service namespaces.
 
-- rule: {"required":true,"string":{"maxLen":"255"}}
+- rule: {"required":true,"string":{"maxLen":"255","pattern":"^[^:*$]*$"}}
 
 ### spec.metricFilters[].transformation.metricValue
 
@@ -308,7 +422,7 @@ AWS allows at most TWO subscription filters per log group. Names must be
 unique within the group. Not supported on INFREQUENT_ACCESS log groups.
 
 - rule: distribution must be 'ByLogStream' or 'Random' when set
-- rule: emit_system_fields entries must be '@aws.account' or '@aws.region'
+- rule: emit_system_fields entries must be '@aws.account', '@aws.region', or '@source.log'
 
 ### spec.subscriptionFilters[].name
 
@@ -317,7 +431,7 @@ unique within the group. Not supported on INFREQUENT_ACCESS log groups.
 Name of the subscription filter, unique within the log group. Changing
 the name replaces the filter.
 
-- rule: {"required":true,"string":{"minLen":"1","maxLen":"512"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"512","pattern":"^[^:*]+$"}}
 
 ### spec.subscriptionFilters[].destinationArn
 
@@ -382,7 +496,7 @@ accounts/regions.
 
 ### spec.subscriptionFilters[].applyOnTransformedLogs
 
-`bool`
+`bool` · optional (explicit presence)
 
 When true, this filter is also applied to log events AFTER they pass
 through the log group's transformer (if one is configured).
@@ -419,6 +533,513 @@ value cannot match. Index up to 20 fields per policy. One policy per log
 group; an account-level policy (managed outside this resource) can also
 apply — the two merge at query time.
 
+### spec.logStreams
+
+`[]string`
+
+### spec.transformer
+
+`AwsCloudwatchLogGroupTransformer`
+
+- rule: the first processor must be a parser: parse_json, grok, csv, parse_key_value, parse_cloudfront, parse_postgres, parse_route53, parse_to_ocsf, parse_vpc, or parse_waf
+- rule: add_keys, copy_value, and grok may each appear at most once per transformer
+- rule: parse_json, parse_key_value, and csv may each appear at most 5 times per transformer
+- rule: each vended-log parser (parse_cloudfront, parse_postgres, parse_route53, parse_to_ocsf, parse_vpc, parse_waf) may appear at most once per transformer
+- rule: a vended-log parser (parse_cloudfront, parse_postgres, parse_route53, parse_to_ocsf, parse_vpc, parse_waf) must be the first processor in the pipeline
+
+### spec.transformer.processors
+
+`[]AwsCloudwatchLogGroupTransformerProcessor` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"20"}}
+- rule: exactly one processor type must be set per pipeline entry
+
+### spec.transformer.processors[].addKeys
+
+`AwsCloudwatchLogGroupTransformerAddKeys`
+
+### spec.transformer.processors[].addKeys.entries
+
+`[]AwsCloudwatchLogGroupTransformerAddKeysEntry` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"5"}}
+
+### spec.transformer.processors[].addKeys.entries[].key
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].addKeys.entries[].value
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"256"}}
+
+### spec.transformer.processors[].addKeys.entries[].overwriteIfExists
+
+`bool`
+
+### spec.transformer.processors[].copyValue
+
+`AwsCloudwatchLogGroupTransformerCopyValue`
+
+### spec.transformer.processors[].copyValue.entries
+
+`[]AwsCloudwatchLogGroupTransformerCopyValueEntry` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"5"}}
+
+### spec.transformer.processors[].copyValue.entries[].source
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].copyValue.entries[].target
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].copyValue.entries[].overwriteIfExists
+
+`bool`
+
+### spec.transformer.processors[].csv
+
+`AwsCloudwatchLogGroupTransformerCsv`
+
+- rule: each csv column name must be 1-128 characters
+
+### spec.transformer.processors[].csv.columns
+
+`[]string`
+
+- rule: {"repeated":{"maxItems":"100"}}
+
+### spec.transformer.processors[].csv.delimiter
+
+`string`
+
+- rule: {"string":{"maxLen":"2"}}
+
+### spec.transformer.processors[].csv.quoteCharacter
+
+`string`
+
+- rule: {"string":{"maxLen":"1"}}
+
+### spec.transformer.processors[].csv.source
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.transformer.processors[].dateTimeConverter
+
+`AwsCloudwatchLogGroupTransformerDateTimeConverter`
+
+- rule: each match_patterns entry must be non-empty
+
+### spec.transformer.processors[].dateTimeConverter.source
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].dateTimeConverter.target
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].dateTimeConverter.matchPatterns
+
+`[]string` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"5"}}
+
+### spec.transformer.processors[].dateTimeConverter.locale
+
+`string`
+
+### spec.transformer.processors[].dateTimeConverter.sourceTimezone
+
+`string`
+
+### spec.transformer.processors[].dateTimeConverter.targetFormat
+
+`string`
+
+- rule: {"string":{"maxLen":"64"}}
+
+### spec.transformer.processors[].dateTimeConverter.targetTimezone
+
+`string`
+
+### spec.transformer.processors[].deleteKeys
+
+`AwsCloudwatchLogGroupTransformerDeleteKeys`
+
+- rule: each with_keys entry must be non-empty
+
+### spec.transformer.processors[].deleteKeys.withKeys
+
+`[]string` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"5"}}
+
+### spec.transformer.processors[].grok
+
+`AwsCloudwatchLogGroupTransformerGrok`
+
+### spec.transformer.processors[].grok.match
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"512"}}
+
+### spec.transformer.processors[].grok.source
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.transformer.processors[].listToMap
+
+`AwsCloudwatchLogGroupTransformerListToMap`
+
+- rule: flattened_element must be 'first' or 'last' when set
+- rule: flattened_element is required when flatten is true
+
+### spec.transformer.processors[].listToMap.source
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].listToMap.key
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].listToMap.valueKey
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.transformer.processors[].listToMap.target
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.transformer.processors[].listToMap.flatten
+
+`bool`
+
+### spec.transformer.processors[].listToMap.flattenedElement
+
+`string`
+
+### spec.transformer.processors[].lowerCaseString
+
+`AwsCloudwatchLogGroupTransformerWithKeys`
+
+- rule: each with_keys entry must be non-empty
+
+### spec.transformer.processors[].lowerCaseString.withKeys
+
+`[]string` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"10"}}
+
+### spec.transformer.processors[].moveKeys
+
+`AwsCloudwatchLogGroupTransformerMoveKeys`
+
+### spec.transformer.processors[].moveKeys.entries
+
+`[]AwsCloudwatchLogGroupTransformerMoveKeysEntry` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"5"}}
+
+### spec.transformer.processors[].moveKeys.entries[].source
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].moveKeys.entries[].target
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].moveKeys.entries[].overwriteIfExists
+
+`bool`
+
+### spec.transformer.processors[].parseCloudfront
+
+`AwsCloudwatchLogGroupTransformerVendedLogParser`
+
+- rule: source must be '@message' when set — vended-log parsers can only parse the raw log message
+
+### spec.transformer.processors[].parseCloudfront.source
+
+`string`
+
+### spec.transformer.processors[].parseJson
+
+`AwsCloudwatchLogGroupTransformerParseJson`
+
+### spec.transformer.processors[].parseJson.source
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.transformer.processors[].parseJson.destination
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.transformer.processors[].parseKeyValue
+
+`AwsCloudwatchLogGroupTransformerParseKeyValue`
+
+### spec.transformer.processors[].parseKeyValue.source
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.transformer.processors[].parseKeyValue.destination
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.transformer.processors[].parseKeyValue.fieldDelimiter
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.transformer.processors[].parseKeyValue.keyValueDelimiter
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.transformer.processors[].parseKeyValue.keyPrefix
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.transformer.processors[].parseKeyValue.nonMatchValue
+
+`string`
+
+- rule: {"string":{"maxLen":"128"}}
+
+### spec.transformer.processors[].parseKeyValue.overwriteIfExists
+
+`bool`
+
+### spec.transformer.processors[].parsePostgres
+
+`AwsCloudwatchLogGroupTransformerVendedLogParser`
+
+- rule: source must be '@message' when set — vended-log parsers can only parse the raw log message
+
+### spec.transformer.processors[].parsePostgres.source
+
+`string`
+
+### spec.transformer.processors[].parseRoute53
+
+`AwsCloudwatchLogGroupTransformerVendedLogParser`
+
+- rule: source must be '@message' when set — vended-log parsers can only parse the raw log message
+
+### spec.transformer.processors[].parseRoute53.source
+
+`string`
+
+### spec.transformer.processors[].parseToOcsf
+
+`AwsCloudwatchLogGroupTransformerParseToOcsf`
+
+- rule: event_source must be one of: CloudTrail, Route53Resolver, VPCFlow, EKSAudit, AWSWAF
+- rule: ocsf_version must be 'V1.1' or 'V1.5'
+- rule: source must be '@message' when set — OCSF conversion can only parse the raw log message
+
+### spec.transformer.processors[].parseToOcsf.eventSource
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.transformer.processors[].parseToOcsf.ocsfVersion
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.transformer.processors[].parseToOcsf.source
+
+`string`
+
+### spec.transformer.processors[].parseVpc
+
+`AwsCloudwatchLogGroupTransformerVendedLogParser`
+
+- rule: source must be '@message' when set — vended-log parsers can only parse the raw log message
+
+### spec.transformer.processors[].parseVpc.source
+
+`string`
+
+### spec.transformer.processors[].parseWaf
+
+`AwsCloudwatchLogGroupTransformerVendedLogParser`
+
+- rule: source must be '@message' when set — vended-log parsers can only parse the raw log message
+
+### spec.transformer.processors[].parseWaf.source
+
+`string`
+
+### spec.transformer.processors[].renameKeys
+
+`AwsCloudwatchLogGroupTransformerRenameKeys`
+
+### spec.transformer.processors[].renameKeys.entries
+
+`[]AwsCloudwatchLogGroupTransformerRenameKeysEntry` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"5"}}
+
+### spec.transformer.processors[].renameKeys.entries[].key
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].renameKeys.entries[].renameTo
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].renameKeys.entries[].overwriteIfExists
+
+`bool`
+
+### spec.transformer.processors[].splitString
+
+`AwsCloudwatchLogGroupTransformerSplitString`
+
+### spec.transformer.processors[].splitString.entries
+
+`[]AwsCloudwatchLogGroupTransformerSplitStringEntry` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"10"}}
+
+### spec.transformer.processors[].splitString.entries[].source
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].splitString.entries[].delimiter
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].substituteString
+
+`AwsCloudwatchLogGroupTransformerSubstituteString`
+
+### spec.transformer.processors[].substituteString.entries
+
+`[]AwsCloudwatchLogGroupTransformerSubstituteStringEntry` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"10"}}
+
+### spec.transformer.processors[].substituteString.entries[].source
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].substituteString.entries[].from
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].substituteString.entries[].to
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].trimString
+
+`AwsCloudwatchLogGroupTransformerWithKeys`
+
+- rule: each with_keys entry must be non-empty
+
+### spec.transformer.processors[].trimString.withKeys
+
+`[]string` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"10"}}
+
+### spec.transformer.processors[].typeConverter
+
+`AwsCloudwatchLogGroupTransformerTypeConverter`
+
+### spec.transformer.processors[].typeConverter.entries
+
+`[]AwsCloudwatchLogGroupTransformerTypeConverterEntry` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"5"}}
+- rule: type must be one of: boolean, integer, double, string
+
+### spec.transformer.processors[].typeConverter.entries[].key
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.transformer.processors[].typeConverter.entries[].type
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.transformer.processors[].upperCaseString
+
+`AwsCloudwatchLogGroupTransformerWithKeys`
+
+- rule: each with_keys entry must be non-empty
+
+### spec.transformer.processors[].upperCaseString.withKeys
+
+`[]string` · required
+
+- rule: {"repeated":{"minItems":"1","maxItems":"10"}}
+
 ## Validation Rules
 
 - `retention_in_days_valid_values`: retention_in_days must be one of: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
@@ -428,6 +1049,9 @@ apply — the two merge at query time.
 - `metric_filter_names_unique`: each metric filter must have a unique name within the log group
 - `subscription_filter_names_unique`: each subscription filter must have a unique name within the log group
 - `infrequent_access_no_filters`: metric_filters and subscription_filters are not supported on INFREQUENT_ACCESS log groups — use a STANDARD class log group for filtering features
+- `transformer_requires_standard_class`: transformer is only supported on STANDARD class log groups — AWS rejects PutTransformer for INFREQUENT_ACCESS and DELIVERY classes
+- `log_stream_names_unique`: each log stream name must be unique within the log group
+- `log_stream_names_format`: log stream names must be 1-512 characters and must not contain ':' or '*'
 
 ## Outputs
 

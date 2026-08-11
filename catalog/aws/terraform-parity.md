@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 245 |
-| Spec fields authored across all kinds | 4364 |
+| Distinct provider resources consumed | 247 |
+| Spec fields authored across all kinds | 4424 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,11 +47,11 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**67 of 112 kinds are at total accounting; 78 proven live.**
+**70 of 112 kinds are at total accounting; 79 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
-| AwsAlb | 71 | 17 | 12 | 42 | 0 | ✅ | — |
+| AwsAlb | 71 | 17 | 12 | 42 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerAutoScalingConfiguration | 7 | 4 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsAppRunnerObservabilityConfiguration | 5 | 2 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsAppRunnerService | 48 | 5 | 0 | 0 | 74 | ❌ | ✅ pulumi, terraform |
@@ -65,18 +65,18 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCertManagerCert | 18 | 7 | 7 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsClientVpn | 47 | 28 | 0 | 0 | 32 | ❌ | — |
 | AwsCloudFront | 126 | 32 | 88 | 6 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCloudwatchAlarm | 39 | 24 | 0 | 0 | 27 | ❌ | ✅ pulumi, terraform |
-| AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
-| AwsCloudwatchLogGroup | 36 | 9 | 0 | 0 | 45 | ❌ | ✅ pulumi, terraform |
+| AwsCloudwatchAlarm | 39 | 24 | 12 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudwatchLogGroup | 100 | 19 | 70 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCodeBuildProject | 115 | 97 | 11 | 7 | 0 | ✅ | — |
 | AwsCodePipeline | 84 | 4 | 75 | 5 | 0 | ✅ | — |
-| AwsCognitoIdentityProvider | 7 | 6 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCognitoIdentityProvider | 7 | 6 | 1 | 0 | 0 | ✅ | — |
 | AwsCognitoResourceServer | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCognitoUserPool | 122 | 59 | 52 | 11 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCognitoUserPoolClient | 56 | 30 | 23 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCognitoUserPool | 122 | 59 | 52 | 11 | 0 | ✅ | — |
+| AwsCognitoUserPoolClient | 56 | 30 | 23 | 3 | 0 | ✅ | — |
 | AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | — |
 | AwsDynamodb | 71 | 27 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
-| AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | — |
+| AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcrRepo | 17 | 5 | 0 | 0 | 25 | ❌ | ✅ pulumi, terraform |
 | AwsEcsCluster | 80 | 7 | 64 | 9 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsService | 98 | 53 | 34 | 11 | 0 | ✅ | ✅ pulumi, terraform |
@@ -121,7 +121,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListener | 76 | 13 | 59 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 55 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsLbTargetGroup | 48 | 34 | 7 | 7 | 0 | ✅ | — |
+| AwsLbTargetGroup | 48 | 34 | 7 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsMemcachedElasticache | 48 | 21 | 3 | 24 | 0 | ✅ | — |
 | AwsMemorydbAcl | 6 | 2 | 0 | 0 | 4 | ❌ | — |
 | AwsMemorydbCluster | 46 | 31 | 0 | 0 | 18 | ❌ | — |
@@ -162,7 +162,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsVpcEndpoint | 23 | 17 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
 | AwsWafIpSet | 9 | 5 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsWafRegexPatternSet | 8 | 3 | 1 | 4 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsWafWebAcl | 9727 | 7 | 9685 | 35 | 0 | ✅ | — |
+| AwsWafWebAcl | 9727 | 7 | 9685 | 35 | 0 | ✅ | ✅ pulumi, terraform |
 
 ## Breadth: every GA resource, one disposition
 
@@ -170,11 +170,11 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 245 | consumed by a kind's Terraform module today |
+| Modeled | 247 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 12 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 776 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 529 | deliberately not offered, each with the recorded reason |
+| Planned | 771 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 532 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -183,7 +183,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (245)
+### Modeled (247)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -229,7 +229,9 @@ rather than trusted.
 | `aws_cloudwatch_log_group` | consumed by AwsCloudwatchLogGroup, AwsEcsTaskDefinition, AwsPlantonRunner |
 | `aws_cloudwatch_log_index_policy` | consumed by AwsCloudwatchLogGroup |
 | `aws_cloudwatch_log_metric_filter` | consumed by AwsCloudwatchLogGroup |
+| `aws_cloudwatch_log_stream` | consumed by AwsCloudwatchLogGroup |
 | `aws_cloudwatch_log_subscription_filter` | consumed by AwsCloudwatchLogGroup |
+| `aws_cloudwatch_log_transformer` | consumed by AwsCloudwatchLogGroup |
 | `aws_cloudwatch_metric_alarm` | consumed by AwsCloudwatchAlarm |
 | `aws_codebuild_project` | consumed by AwsCodeBuildProject |
 | `aws_codebuild_resource_policy` | consumed by AwsCodeBuildProject |
@@ -450,7 +452,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (776)
+### Planned (771)
 
 | Resource | Recorded reason |
 |---|---|
@@ -603,25 +605,20 @@ rather than trusted.
 | `aws_cloudtrail` | judged as a planned AwsCloudTrail kind (trails, event data stores, organization delegated admin) |
 | `aws_cloudtrail_event_data_store` | judged as a planned AwsCloudTrail kind (trails, event data stores, organization delegated admin) |
 | `aws_cloudtrail_organization_delegated_admin_account` | judged as a planned AwsCloudTrail kind (trails, event data stores, organization delegated admin) |
-| `aws_cloudwatch_alarm_mute_rule` | alarm mute rules fold into the existing AwsCloudwatchAlarm kind as its spec deepens |
+| `aws_cloudwatch_alarm_mute_rule` | judged as a planned AwsCloudwatchAlarmMuteRule kind: one rule mutes up to 100 alarms on a recurring schedule -- multi-alarm scope, not per-alarm configuration, so a fold onto AwsCloudwatchAlarm would misrepresent it (the CloudFront-companion class) |
 | `aws_cloudwatch_dashboard` | judged as a planned AwsCloudwatchDashboard kind |
 | `aws_cloudwatch_event_api_destination` | judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections) |
 | `aws_cloudwatch_event_connection` | judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections) |
-| `aws_cloudwatch_log_account_policy` | account-scoped CloudWatch Logs policy and saved-query surface; folds into the AwsCloudwatchLogGroup kind family's account-level composition |
-| `aws_cloudwatch_log_anomaly_detector` | log-group companion surface (anomaly detectors, transformers, storage tiers, streams, table integrations); folds into the existing AwsCloudwatchLogGroup kind as its spec deepens |
+| `aws_cloudwatch_log_account_policy` | judged as a planned AwsCloudwatchLogAccountPolicy kind: an account-wide policy per type (data protection / subscription filter / field index / transformer) optionally scoped by selection criteria -- standalone account-scoped configuration, never a per-group satellite |
+| `aws_cloudwatch_log_anomaly_detector` | judged as a planned AwsCloudwatchLogAnomalyDetector kind: one detector trains over a LIST of log groups (log_group_arn_list) -- multi-parent scope, not a single group's satellite (the CloudFront-companion class) |
 | `aws_cloudwatch_log_delivery` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
 | `aws_cloudwatch_log_delivery_destination` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
 | `aws_cloudwatch_log_delivery_destination_policy` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
 | `aws_cloudwatch_log_delivery_source` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
 | `aws_cloudwatch_log_destination` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
 | `aws_cloudwatch_log_destination_policy` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
-| `aws_cloudwatch_log_resource_policy` | account-scoped CloudWatch Logs policy and saved-query surface; folds into the AwsCloudwatchLogGroup kind family's account-level composition |
-| `aws_cloudwatch_log_s3_table_integration_source` | log-group companion surface (anomaly detectors, transformers, storage tiers, streams, table integrations); folds into the existing AwsCloudwatchLogGroup kind as its spec deepens |
-| `aws_cloudwatch_log_storage_tier_policy` | log-group companion surface (anomaly detectors, transformers, storage tiers, streams, table integrations); folds into the existing AwsCloudwatchLogGroup kind as its spec deepens |
-| `aws_cloudwatch_log_stream` | log-group companion surface (anomaly detectors, transformers, storage tiers, streams, table integrations); folds into the existing AwsCloudwatchLogGroup kind as its spec deepens |
-| `aws_cloudwatch_log_transformer` | log-group companion surface (anomaly detectors, transformers, storage tiers, streams, table integrations); folds into the existing AwsCloudwatchLogGroup kind as its spec deepens |
+| `aws_cloudwatch_log_resource_policy` | judged as a planned AwsCloudwatchLogResourcePolicy kind: account-scoped named policies that grant AWS services log-delivery permission (Route53 query logging, EventBridge, ...) -- standalone glue many kinds need; nothing in the catalog renders it today, so composed would overstate coverage |
 | `aws_cloudwatch_metric_stream` | judged as a planned AwsCloudwatchMetricStream kind |
-| `aws_cloudwatch_query_definition` | account-scoped CloudWatch Logs policy and saved-query surface; folds into the AwsCloudwatchLogGroup kind family's account-level composition |
 | `aws_codeartifact_domain` | judged as a planned AwsCodeArtifact kind (domains and repositories with permission policies) |
 | `aws_codeartifact_domain_permissions_policy` | judged as a planned AwsCodeArtifact kind (domains and repositories with permission policies) |
 | `aws_codeartifact_repository` | judged as a planned AwsCodeArtifact kind (domains and repositories with permission policies) |
@@ -1231,7 +1228,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (529)
+### Deferred (532)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1294,7 +1291,10 @@ rather than trusted.
 | `aws_cloudwatch_contributor_insight_rule` | Contributor Insights rules; deferred pending demand |
 | `aws_cloudwatch_contributor_managed_insight_rule` | Contributor Insights rules; deferred pending demand |
 | `aws_cloudwatch_event_endpoint` | EventBridge global endpoints (multi-region failover); deferred pending demand |
+| `aws_cloudwatch_log_s3_table_integration_source` | attaches a data source to an S3 Tables log INTEGRATION ARN whose parent integration has no provider resource (console/API-created) -- not log-group-scoped despite the former blanket; deferred until the S3 Tables integration surface is modelable end to end |
+| `aws_cloudwatch_log_storage_tier_policy` | regional account-level SINGLETON (one storage-tier policy per region, 6.58.0-new) -- account posture, not log-group configuration (the VPC block-public-access class); deferred pending demand |
 | `aws_cloudwatch_otel_enrichment` | OpenTelemetry enrichment is newly introduced account telemetry plumbing; deferred pending maturity |
+| `aws_cloudwatch_query_definition` | saved Logs Insights queries are operator content (the data-plane class, like Cognito users) -- not infrastructure shape; deferred pending demand |
 | `aws_codebuild_report_group` | standalone report-export destination referenced from buildspec report sections (never project configuration); niche CI-analytics surface, deferred pending demand |
 | `aws_codecatalyst_dev_environment` | CodeCatalyst vertical; deferred pending demand |
 | `aws_codecatalyst_project` | CodeCatalyst vertical; deferred pending demand |

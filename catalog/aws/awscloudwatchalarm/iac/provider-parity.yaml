@@ -1,0 +1,26 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_cloudwatch_metric_alarm:
+    mappings:
+      # The spec pluralizes the repeated block honestly; every query leaf
+      # (id, expression, metric.*, return_data, ...) exact-matches below the
+      # subtree.
+      - spec: spec.metric_queries
+        arg: metric_query
+    exclusions:
+      # Identity is the kind's own contract -- the name is also the alarm's
+      # address in composite alarm rules.
+      - arg: alarm_name
+        reason: derived from metadata.name -- never free-form user surface
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

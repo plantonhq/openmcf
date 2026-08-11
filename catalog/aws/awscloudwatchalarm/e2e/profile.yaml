@@ -16,9 +16,13 @@ spec:
   # builds) and anomaly-detection bands (the same metric-query plumbing with
   # an expression function). Simple-metric mode is exercised by the
   # prerequisite fixture that composite-alarm lanes deploy.
+  #
+  # pending_proof: the depth closure converged two Pulumi sends — metric
+  # query return_data is now state-pinned (explicit false, matching
+  # Terraform) and metric.namespace is send-when-set (an unset namespace no
+  # longer reaches AWS as "") — and the existing scenario's three queries
+  # exercise both paths. Prior green proofs predate the convergence.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 10

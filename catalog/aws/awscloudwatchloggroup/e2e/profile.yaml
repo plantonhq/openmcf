@@ -5,19 +5,25 @@ metadata:
 spec:
   # A CloudWatch log group under live E2E: deploy -> DescribeLogGroups verify
   # -> destroy -> verify-destroyed on both provisioners. The full-surface
-  # scenario exercises retention, a metric filter (default_value arm), a
-  # field index policy, a data protection policy, and a subscription filter
-  # streaming into the composed Kinesis fixture through the CloudWatch-Logs
-  # delivery role — proving both folded-satellite FK edges live. The group
-  # itself creates in seconds; the composed chain adds the stream + role
-  # fixtures. Deliberately not in the live scenario: KMS encryption (the key
-  # association is a single in-place call, proven by the encrypted preset +
-  # offline gate), INFREQUENT_ACCESS/DELIVERY classes (create-time variants
-  # of the same call), and deletion protection (would fail the destroy leg
-  # by design — its wiring is proven by the offline gate).
+  # scenario exercises retention, a metric filter (default_value arm, now
+  # matching TRANSFORMED events via applyOnTransformedLogs), a field index
+  # policy, a data protection policy, a subscription filter streaming into
+  # the composed Kinesis fixture through the CloudWatch-Logs delivery role
+  # (with @source.log enrichment), a pre-created log stream, an ingest-time
+  # transformer (parse_json -> rename_keys), and EXPLICIT-FALSE deletion
+  # protection (the presence-typed send path — free on a fresh group, and
+  # the destroy leg still passes). Deliberately not in the live scenario:
+  # KMS encryption (the key association is a single in-place call, proven by
+  # the encrypted preset + offline gate), INFREQUENT_ACCESS/DELIVERY classes
+  # (create-time variants of the same call), and EXPLICIT-TRUE deletion
+  # protection (would fail the destroy leg by design — its wiring is proven
+  # by the offline gate).
+  #
+  # pending_proof: the depth closure folded the transformer + log streams,
+  # presence-typed deletion_protection_enabled and both
+  # apply_on_transformed_logs flags (send-when-set in BOTH engines), and
+  # added @source.log — prior green proofs predate all of it.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

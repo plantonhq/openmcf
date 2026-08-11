@@ -113,9 +113,10 @@ func alarm(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*AlarmR
 			if mq.Period > 0 {
 				query.Period = pulumi.IntPtr(int(mq.Period))
 			}
-			if mq.ReturnData {
-				query.ReturnData = pulumi.BoolPtr(true)
-			}
+			// State-pinned like the Terraform module: sending an explicit false
+			// keeps a true→false edit visible to the engine instead of a silent
+			// fall-through to the provider default.
+			query.ReturnData = pulumi.BoolPtr(mq.ReturnData)
 			if mq.AccountId != "" {
 				query.AccountId = pulumi.StringPtr(mq.AccountId)
 			}
@@ -125,9 +126,13 @@ func alarm(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*AlarmR
 				m := mq.Metric
 				metricArgs := cloudwatch.MetricAlarmMetricQueryMetricArgs{
 					MetricName: pulumi.String(m.MetricName),
-					Namespace:  pulumi.StringPtr(m.Namespace),
 					Period:     pulumi.Int(int(m.Period)),
 					Stat:       pulumi.String(m.Stat),
+				}
+				// Send-when-set, matching the Terraform module: an unset
+				// namespace must be omitted, never delivered as "".
+				if m.Namespace != "" {
+					metricArgs.Namespace = pulumi.StringPtr(m.Namespace)
 				}
 				if len(m.Dimensions) > 0 {
 					metricArgs.Dimensions = pulumi.ToStringMap(m.Dimensions)

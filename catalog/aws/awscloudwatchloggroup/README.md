@@ -2,7 +2,7 @@
 
 A **CloudWatch Logs log group** is a container for log streams that share the same retention, monitoring, and access control settings. It is the primary destination for application logs, service logs, and operational data across AWS.
 
-Beyond the container itself, this component folds in the log-group-scoped satellites that share the group's lifecycle: **metric filters** (turn matching log events into CloudWatch metrics), **subscription filters** (stream matching events to Kinesis, Firehose, or Lambda in real time), a **data protection policy** (audit and mask PII in log events), and a **field index policy** (accelerate Logs Insights queries on selected fields).
+Beyond the container itself, this component folds in the log-group-scoped satellites that share the group's lifecycle: **metric filters** (turn matching log events into CloudWatch metrics), **subscription filters** (stream matching events to Kinesis, Firehose, or Lambda in real time), a **data protection policy** (audit and mask PII in log events), a **field index policy** (accelerate Logs Insights queries on selected fields), a **transformer** (an ingest-time processor pipeline that parses and reshapes every event), and **pre-created log streams** (for fixed-name agent configs and stream-scoped IAM).
 
 ## When to Use
 
@@ -32,17 +32,19 @@ Beyond the container itself, this component folds in the log-group-scoped satell
 | `retentionInDays` | int | No | 0 (never expire) | Days to retain log events. Must be one of: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653. |
 | `kmsKeyId` | StringValueOrRef | No | — | KMS key ARN for encrypting log data at rest. Can reference AwsKmsKey via `valueFrom`. |
 | `logGroupClass` | string | No | STANDARD | Log group class: `STANDARD`, `INFREQUENT_ACCESS`, or `DELIVERY`. ForceNew. |
-| `deletionProtectionEnabled` | bool | No | false | Blocks every delete (including IaC destroy) until cleared. |
+| `deletionProtectionEnabled` | bool (tri-state) | No | unset | Blocks every delete (including IaC destroy) until cleared. Unset keeps the group's current state; **only an explicit `false` disables protection once enabled**. |
 | `metricFilters[]` | list | No | — | Metric filters extracting CloudWatch metrics from matching log events. Unique names per group; STANDARD class only. |
 | `subscriptionFilters[]` | list | No | — | Real-time delivery of matching events to Kinesis/Firehose/Lambda. Maximum 2 per group (AWS limit); STANDARD class only. |
 | `dataProtectionPolicy` | object | No | — | CloudWatch Logs data protection policy document (PII audit + masking). One per group. |
 | `fieldIndexPolicy` | object | No | — | Field index policy document (`{"Fields": [...]}`) accelerating Logs Insights queries. One per group. |
+| `logStreams[]` | list | No | — | Names of log streams to pre-create (fixed-name agent configs, stream-scoped IAM). Most streams are runtime-created — leave empty unless something depends on the stream existing first. |
+| `transformer` | object | No | — | Ingest-time processor pipeline (1–20 processors; the first must be a parser). One per group; STANDARD class only. |
 
 **ForceNew warning:** `logGroupClass` triggers log group replacement when changed. Choose carefully at creation time.
 
 **DELIVERY class note:** When `logGroupClass` is `DELIVERY`, `retentionInDays` must not be set (AWS manages retention for Delivery log groups).
 
-**INFREQUENT_ACCESS note:** Metric filters and subscription filters are not supported on INFREQUENT_ACCESS log groups — the spec rejects the combination at validation time.
+**INFREQUENT_ACCESS note:** Metric filters, subscription filters, and transformers are not supported on INFREQUENT_ACCESS log groups — the spec rejects the combinations at validation time.
 
 ### Metric filter fields
 
@@ -67,8 +69,19 @@ Beyond the container itself, this component folds in the log-group-scoped satell
 | `filterPattern` | string | No | Empty delivers ALL events. |
 | `roleArn` | StringValueOrRef | No | IAM role CloudWatch Logs assumes for Kinesis/Firehose delivery (required for those destinations; not used for Lambda). |
 | `distribution` | string | No | `ByLogStream` (default, ordered) or `Random` (throughput) — Kinesis streams only. |
-| `emitSystemFields[]` | list | No | `@aws.account` / `@aws.region` enrichment for centralized destinations. |
-| `applyOnTransformedLogs` | bool | No | Apply after the group's transformer (if configured). |
+| `emitSystemFields[]` | list | No | `@aws.account` / `@aws.region` / `@source.log` enrichment for centralized destinations. |
+| `applyOnTransformedLogs` | bool (tri-state) | No | Match transformed events instead of raw ones. Unset keeps an existing filter's setting; only an explicit `false` switches it back. |
+
+### Transformer fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `processors[]` | list | Yes | 1–20 pipeline steps, applied in order; each entry carries exactly ONE processor. |
+| `processors[].parseJson` / `grok` / `csv` / `parseKeyValue` | object | — | Configurable parsers — one of these (or a vended parser) must be the FIRST processor. `parseJson`/`parseKeyValue`/`csv` up to 5 each; `grok` once. |
+| `processors[].parseCloudfront` / `parsePostgres` / `parseRoute53` / `parseToOcsf` / `parseVpc` / `parseWaf` | object | — | Vended-log parsers — at most once each, and always first. |
+| `processors[].addKeys` / `copyValue` / `moveKeys` / `renameKeys` / `deleteKeys` | object | — | Key surgery (add/copy/move/rename/delete); `addKeys` and `copyValue` once per transformer. |
+| `processors[].splitString` / `substituteString` / `trimString` / `lowerCaseString` / `upperCaseString` | object | — | String operations on named fields. |
+| `processors[].dateTimeConverter` / `typeConverter` / `listToMap` | object | — | Datetime normalization, type conversion (`integer`/`double`/`string`/`boolean`), and list-to-map reshaping. |
 
 ## Outputs
 
@@ -154,12 +167,11 @@ spec:
         fieldPath: status.outputs.log_group_arn
 ```
 
-## What Is Deliberately Omitted (v1)
+## What Is Deliberately Omitted
 
-- **Log streams** — Created automatically by services and agents writing to the log group; a data-plane concern, not infrastructure shape.
-- **Log transformer** — A 20-processor transformation pipeline surface; deferred until pulled by real demand.
-- **Log anomaly detector** — Spans multiple log groups (standalone resource); deferred.
-- **Delivery source/destination/delivery** — The vended-log delivery plane (`aws_cloudwatch_log_delivery_*`), a separate surface; deferred.
+- **Log anomaly detector** — One detector trains over a LIST of log groups; multi-group scope makes it a standalone resource, never a single group's satellite.
+- **Account-level storage tier policy** — A regional account singleton, not per-group configuration.
+- **Delivery source/destination/delivery** — The vended-log delivery plane (`aws_cloudwatch_log_delivery_*`), a separate surface.
 - **Cross-account destinations and destination policies** — Cross-account log aggregation plumbing; subscription filters compose to them by literal ARN today.
 - **Query definitions and account policies** — Account-scoped operational tooling, not group shape.
 - **`skip_destroy`** — Retaining a resource on destroy contradicts honest lifecycle management; protection needs are served by `deletionProtectionEnabled`.

@@ -26,7 +26,10 @@ locals {
   # Null when unset so AWS defaults the class to STANDARD.
   log_group_class = var.spec.log_group_class != "" ? var.spec.log_group_class : null
 
-  # Only send deletion protection when enabled, so unset stays
-  # indistinguishable from AWS's default (unprotected).
-  deletion_protection_enabled = var.spec.deletion_protection_enabled ? true : null
+  # Tri-state pass-through: unset (null) leaves the provider's Computed
+  # attribute alone (new groups get AWS's unprotected default; existing groups
+  # keep their state), true enables protection, and an EXPLICIT false is the
+  # only way to disable protection once enabled — the provider keeps the
+  # existing value whenever the argument is omitted.
+  deletion_protection_enabled = var.spec.deletion_protection_enabled
 }

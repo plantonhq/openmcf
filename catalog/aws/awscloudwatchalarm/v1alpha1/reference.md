@@ -359,6 +359,8 @@ CloudWatch rather than computing a value from other queries.
 Mutually exclusive with `expression`.
 
 - rule: period must be 1, 5, 10, 20, 30, or a multiple of 60
+- rule: stat must be a standard statistic (SampleCount, Average, Sum, Minimum, Maximum) or a percentile/trimmed statistic, e.g. 'p95', 'IQM', 'TM(10%:90%)'
+- rule: namespace must not start with a colon
 
 ### spec.metricQueries[].metric.metricName
 
@@ -590,6 +592,10 @@ of 60. When unset, AWS uses its default evaluation interval.
 - `alarm_actions_max_5`: maximum 5 alarm_actions allowed
 - `ok_actions_max_5`: maximum 5 ok_actions allowed
 - `insufficient_data_actions_max_5`: maximum 5 insufficient_data_actions allowed
+- `threshold_conflicts_with_threshold_metric_id`: threshold and threshold_metric_id are mutually exclusive — use a static threshold or an anomaly detection band, not both
+- `metric_queries_forbid_simple_metric_fields`: namespace, period, statistic, extended_statistic, dimensions, and unit must not be set together with metric_queries — define them inside each query's metric instead
+- `extended_statistic_format`: extended_statistic must be a percentile or trimmed statistic, e.g. 'p95', 'tm99', 'IQM', 'TM(10%:90%)', 'PR(:300)'
+- `namespace_no_leading_colon`: namespace must not start with a colon
 
 ## Outputs
 
