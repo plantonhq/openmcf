@@ -40,7 +40,9 @@ const (
 //   - associations: which attachments USE this table for their outbound
 //     lookups. An attachment is associated with at most ONE table -- AWS
 //     rejects a second association at apply time, and since documents cannot
-//     see each other, that uniqueness cannot be validated earlier.
+//     see each other, that uniqueness cannot be validated earlier. Each entry
+//     can take over an attachment's existing association in one apply
+//     (replace_existing_association).
 //   - propagations: which attachments ADVERTISE their routes into this table
 //     (an attachment can propagate to many tables).
 //   - routes: static routes -- a destination CIDR sent to one attachment, or
@@ -48,6 +50,9 @@ const (
 //   - prefix_list_references: route a managed prefix list's whole CIDR set
 //     via one attachment (or blackhole it) instead of maintaining per-CIDR
 //     static routes.
+//   - set_as_default_association_table / set_as_default_propagation_table:
+//     designate THIS table as the gateway's default association/propagation
+//     table, redirecting where default-enabled attachments land.
 //
 // Membership entries reference AwsTransitGatewayVpcAttachment resources by
 // default, and accept literal attachment IDs for attachments created
@@ -71,11 +76,11 @@ type AwsTransitGatewayRouteTableSpec struct {
 	// up here. An attachment can be associated with at most ONE route table
 	// across the whole gateway (AWS enforces this at apply time), so an
 	// attachment listed here must have its default_route_table_association
-	// turned off and must not appear in any other table's associations.
-	// Reference AwsTransitGatewayVpcAttachment attachment_id outputs, or pass
-	// literal attachment IDs for VPN / Direct Connect / peering attachments
-	// created outside the resource graph.
-	Associations []*v1.StringValueOrRef `protobuf:"bytes,3,rep,name=associations,proto3" json:"associations,omitempty"`
+	// turned off, must not appear in any other table's associations -- or must
+	// be taken over explicitly with the entry's replace_existing_association.
+	// Attachment IDs must be unique within the table (both engines key each
+	// association by its attachment ID).
+	Associations []*AwsTransitGatewayRouteTableAssociation `protobuf:"bytes,3,rep,name=associations,proto3" json:"associations,omitempty"`
 	// Attachments that PROPAGATE their routes into this table: their CIDRs
 	// (VPC CIDRs for VPC attachments, BGP-learned routes for VPN and Direct
 	// Connect) appear here automatically and track changes. An attachment can
@@ -95,8 +100,27 @@ type AwsTransitGatewayRouteTableSpec struct {
 	// operationally safer than mirroring a team's CIDR inventory as static
 	// routes. Prefix list IDs must be unique within the table.
 	PrefixListReferences []*AwsTransitGatewayRouteTablePrefixListReference `protobuf:"bytes,6,rep,name=prefix_list_references,json=prefixListReferences,proto3" json:"prefix_list_references,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Designate this table as the gateway's DEFAULT ASSOCIATION route table:
+	// attachments that keep default_route_table_association enabled (the
+	// gateway-inherited posture) associate HERE instead of the AWS-created
+	// default table. Meaningful only on a gateway whose own
+	// default_route_table_association dial is enabled -- a gateway created
+	// with the dial disabled has no default-association behavior to redirect.
+	// At most one table per gateway may hold this designation; documents
+	// cannot see each other, so AWS state -- not validation -- is the referee
+	// and the most recent apply wins the pointer. Removing the flag RESTORES
+	// the gateway's original default table (recorded at designation time by
+	// both engines' providers).
+	SetAsDefaultAssociationTable bool `protobuf:"varint,7,opt,name=set_as_default_association_table,json=setAsDefaultAssociationTable,proto3" json:"set_as_default_association_table,omitempty"`
+	// Designate this table as the gateway's DEFAULT PROPAGATION route table:
+	// attachments that keep default_route_table_propagation enabled advertise
+	// their routes HERE instead of the AWS-created default table. Same
+	// contract as set_as_default_association_table: meaningful only on a
+	// gateway with the propagation dial enabled, at most one claimant per
+	// gateway, and removing the flag restores the original table.
+	SetAsDefaultPropagationTable bool `protobuf:"varint,8,opt,name=set_as_default_propagation_table,json=setAsDefaultPropagationTable,proto3" json:"set_as_default_propagation_table,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *AwsTransitGatewayRouteTableSpec) Reset() {
@@ -143,7 +167,7 @@ func (x *AwsTransitGatewayRouteTableSpec) GetTransitGatewayId() *v1.StringValueO
 	return nil
 }
 
-func (x *AwsTransitGatewayRouteTableSpec) GetAssociations() []*v1.StringValueOrRef {
+func (x *AwsTransitGatewayRouteTableSpec) GetAssociations() []*AwsTransitGatewayRouteTableAssociation {
 	if x != nil {
 		return x.Associations
 	}
@@ -171,6 +195,92 @@ func (x *AwsTransitGatewayRouteTableSpec) GetPrefixListReferences() []*AwsTransi
 	return nil
 }
 
+func (x *AwsTransitGatewayRouteTableSpec) GetSetAsDefaultAssociationTable() bool {
+	if x != nil {
+		return x.SetAsDefaultAssociationTable
+	}
+	return false
+}
+
+func (x *AwsTransitGatewayRouteTableSpec) GetSetAsDefaultPropagationTable() bool {
+	if x != nil {
+		return x.SetAsDefaultPropagationTable
+	}
+	return false
+}
+
+// AwsTransitGatewayRouteTableAssociation is one attachment associated with
+// this table: membership of the routing domain.
+type AwsTransitGatewayRouteTableAssociation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The attachment whose outbound traffic is looked up in this table.
+	// Reference an AwsTransitGatewayVpcAttachment's attachment_id output, or
+	// pass a literal attachment ID for VPN / Direct Connect / peering
+	// attachments created outside the resource graph. Unique within the
+	// table: both engines key the association resource by this ID.
+	AttachmentId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=attachment_id,json=attachmentId,proto3" json:"attachment_id,omitempty"`
+	// Take over the attachment's EXISTING association instead of failing on
+	// it. AWS allows one association per attachment gateway-wide, so
+	// associating an attachment that is already associated somewhere else --
+	// the gateway's default table, or another custom table -- is rejected at
+	// apply time unless this flag is set, in which case the engine
+	// disassociates the existing association first and associates here, in
+	// one apply. Its primary use (per the provider's own guidance) is
+	// attachments on a gateway SHARED INTO this account via RAM, where the
+	// attachment's default-table membership is controlled by the sharing
+	// account and cannot simply be turned off. The flag matters only when the
+	// association is CREATED; changing it on an existing association is a
+	// no-op. Leave it false for attachments whose default-table membership is
+	// already off (the segmented-topology norm).
+	ReplaceExistingAssociation bool `protobuf:"varint,2,opt,name=replace_existing_association,json=replaceExistingAssociation,proto3" json:"replace_existing_association,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
+}
+
+func (x *AwsTransitGatewayRouteTableAssociation) Reset() {
+	*x = AwsTransitGatewayRouteTableAssociation{}
+	mi := &file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsTransitGatewayRouteTableAssociation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsTransitGatewayRouteTableAssociation) ProtoMessage() {}
+
+func (x *AwsTransitGatewayRouteTableAssociation) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsTransitGatewayRouteTableAssociation.ProtoReflect.Descriptor instead.
+func (*AwsTransitGatewayRouteTableAssociation) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsTransitGatewayRouteTableAssociation) GetAttachmentId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.AttachmentId
+	}
+	return nil
+}
+
+func (x *AwsTransitGatewayRouteTableAssociation) GetReplaceExistingAssociation() bool {
+	if x != nil {
+		return x.ReplaceExistingAssociation
+	}
+	return false
+}
+
 // AwsTransitGatewayRouteTableRoute is one static route: a destination CIDR
 // sent to one attachment, or blackholed.
 type AwsTransitGatewayRouteTableRoute struct {
@@ -196,7 +306,7 @@ type AwsTransitGatewayRouteTableRoute struct {
 
 func (x *AwsTransitGatewayRouteTableRoute) Reset() {
 	*x = AwsTransitGatewayRouteTableRoute{}
-	mi := &file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -208,7 +318,7 @@ func (x *AwsTransitGatewayRouteTableRoute) String() string {
 func (*AwsTransitGatewayRouteTableRoute) ProtoMessage() {}
 
 func (x *AwsTransitGatewayRouteTableRoute) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -221,7 +331,7 @@ func (x *AwsTransitGatewayRouteTableRoute) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsTransitGatewayRouteTableRoute.ProtoReflect.Descriptor instead.
 func (*AwsTransitGatewayRouteTableRoute) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AwsTransitGatewayRouteTableRoute) GetDestinationCidrBlock() string {
@@ -268,7 +378,7 @@ type AwsTransitGatewayRouteTablePrefixListReference struct {
 
 func (x *AwsTransitGatewayRouteTablePrefixListReference) Reset() {
 	*x = AwsTransitGatewayRouteTablePrefixListReference{}
-	mi := &file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -280,7 +390,7 @@ func (x *AwsTransitGatewayRouteTablePrefixListReference) String() string {
 func (*AwsTransitGatewayRouteTablePrefixListReference) ProtoMessage() {}
 
 func (x *AwsTransitGatewayRouteTablePrefixListReference) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -293,7 +403,7 @@ func (x *AwsTransitGatewayRouteTablePrefixListReference) ProtoReflect() protoref
 
 // Deprecated: Use AwsTransitGatewayRouteTablePrefixListReference.ProtoReflect.Descriptor instead.
 func (*AwsTransitGatewayRouteTablePrefixListReference) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AwsTransitGatewayRouteTablePrefixListReference) GetPrefixListId() string {
@@ -321,16 +431,21 @@ var File_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto protoreflec
 
 const file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	";catalog/aws/awstransitgatewayroutetable/v1alpha1/spec.proto\x124dev.planton.aws.awstransitgatewayroutetable.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x8e\b\n" +
+	";catalog/aws/awstransitgatewayroutetable/v1alpha1/spec.proto\x124dev.planton.aws.awstransitgatewayroutetable.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xa2\t\n" +
 	"\x1fAwsTransitGatewayRouteTableSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x92\x01\n" +
-	"\x12transit_gateway_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xba\b\x92\xd4a!status.outputs.transit_gateway_idR\x10transitGatewayId\x12}\n" +
-	"\fassociations\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x93\t\x92\xd4a\x1cstatus.outputs.attachment_idR\fassociations\x12}\n" +
+	"\x12transit_gateway_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xba\b\x92\xd4a!status.outputs.transit_gateway_idR\x10transitGatewayId\x12\x80\x01\n" +
+	"\fassociations\x18\x03 \x03(\v2\\.dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableAssociationR\fassociations\x12}\n" +
 	"\fpropagations\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x93\t\x92\xd4a\x1cstatus.outputs.attachment_idR\fpropagations\x12n\n" +
 	"\x06routes\x18\x05 \x03(\v2V.dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableRouteR\x06routes\x12\x9a\x01\n" +
-	"\x16prefix_list_references\x18\x06 \x03(\v2d.dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTablePrefixListReferenceR\x14prefixListReferences:\xa9\x02\xbaH\xa5\x02\x1a\x89\x01\n" +
+	"\x16prefix_list_references\x18\x06 \x03(\v2d.dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTablePrefixListReferenceR\x14prefixListReferences\x12F\n" +
+	" set_as_default_association_table\x18\a \x01(\bR\x1csetAsDefaultAssociationTable\x12F\n" +
+	" set_as_default_propagation_table\x18\b \x01(\bR\x1csetAsDefaultPropagationTable:\xa9\x02\xbaH\xa5\x02\x1a\x89\x01\n" +
 	"\x19route_destinations_unique\x125routes must have unique destination_cidr_block values\x1a5this.routes.map(r, r.destination_cidr_block).unique()\x1a\x96\x01\n" +
-	"\x16prefix_list_ids_unique\x12=prefix_list_references must have unique prefix_list_id values\x1a=this.prefix_list_references.map(p, p.prefix_list_id).unique()\"\x9f\x03\n" +
+	"\x16prefix_list_ids_unique\x12=prefix_list_references must have unique prefix_list_id values\x1a=this.prefix_list_references.map(p, p.prefix_list_id).unique()\"\xf1\x01\n" +
+	"&AwsTransitGatewayRouteTableAssociation\x12\x84\x01\n" +
+	"\rattachment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x93\t\x92\xd4a\x1cstatus.outputs.attachment_idR\fattachmentId\x12@\n" +
+	"\x1creplace_existing_association\x18\x02 \x01(\bR\x1areplaceExistingAssociation\"\x9f\x03\n" +
 	" AwsTransitGatewayRouteTableRoute\x12=\n" +
 	"\x16destination_cidr_block\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x14destinationCidrBlock\x12~\n" +
 	"\rattachment_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x93\t\x92\xd4a\x1cstatus.outputs.attachment_idR\fattachmentId\x12\x1c\n" +
@@ -355,26 +470,28 @@ func file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_rawDescGZI
 	return file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsTransitGatewayRouteTableSpec)(nil),                // 0: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableSpec
-	(*AwsTransitGatewayRouteTableRoute)(nil),               // 1: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableRoute
-	(*AwsTransitGatewayRouteTablePrefixListReference)(nil), // 2: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTablePrefixListReference
-	(*v1.StringValueOrRef)(nil),                            // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsTransitGatewayRouteTableAssociation)(nil),         // 1: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableAssociation
+	(*AwsTransitGatewayRouteTableRoute)(nil),               // 2: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableRoute
+	(*AwsTransitGatewayRouteTablePrefixListReference)(nil), // 3: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTablePrefixListReference
+	(*v1.StringValueOrRef)(nil),                            // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableSpec.transit_gateway_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableSpec.associations:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableSpec.propagations:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 3: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableSpec.routes:type_name -> dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableRoute
-	2, // 4: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableSpec.prefix_list_references:type_name -> dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTablePrefixListReference
-	3, // 5: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableRoute.attachment_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 6: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTablePrefixListReference.attachment_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	4, // 0: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableSpec.transit_gateway_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableSpec.associations:type_name -> dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableAssociation
+	4, // 2: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableSpec.propagations:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 3: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableSpec.routes:type_name -> dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableRoute
+	3, // 4: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableSpec.prefix_list_references:type_name -> dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTablePrefixListReference
+	4, // 5: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableAssociation.attachment_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 6: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTableRoute.attachment_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 7: dev.planton.aws.awstransitgatewayroutetable.v1alpha1.AwsTransitGatewayRouteTablePrefixListReference.attachment_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_init() }
@@ -388,7 +505,7 @@ func file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awstransitgatewayroutetable_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -2232,7 +2232,7 @@ edges:
     to: "AwsTransitGateway"
     target: "status.outputs.transit_gateway_id"
   - from: "AwsTransitGatewayRouteTable"
-    field: "spec.associations"
+    field: "spec.associations[].attachmentId"
     to: "AwsTransitGatewayVpcAttachment"
     target: "status.outputs.attachment_id"
   - from: "AwsTransitGatewayRouteTable"

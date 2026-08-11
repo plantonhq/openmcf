@@ -1486,49 +1486,43 @@ resources:
     reason: "traffic-mirroring surface; deferred pending demand"
   - resource: aws_ec2_transit_gateway_connect
     disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    reason: "Connect (GRE) attachment for SD-WAN appliance integration over a transport attachment -- a standalone attachment type with its own lifecycle, judged as a future AwsTransitGatewayConnect kind (never a fold: the existing kinds model the hub, its VPC spokes, and routing domains)"
   - resource: aws_ec2_transit_gateway_connect_peer
     disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
-  - resource: aws_ec2_transit_gateway_default_route_table_association
-    disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
-  - resource: aws_ec2_transit_gateway_default_route_table_propagation
-    disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    reason: "BGP peer inside a Connect attachment -- connect-scoped satellite with no independent lifecycle; folds into the future AwsTransitGatewayConnect kind as its peers list"
   - resource: aws_ec2_transit_gateway_metering_policy
-    disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    disposition: deferred
+    reason: "Transit Gateway metering policy (provider 6.37.0) -- cross-account data-processing payer attribution for large multi-account estates; deferred pending demand signals"
   - resource: aws_ec2_transit_gateway_metering_policy_entry
-    disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    disposition: deferred
+    reason: "per-rule entry of the deferred metering policy; folds into that surface whenever demand revives it"
   - resource: aws_ec2_transit_gateway_multicast_domain
     disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    reason: "multicast domain on a Transit Gateway -- a standalone routing surface with its own lifecycle and sharing model, judged as a future AwsTransitGatewayMulticastDomain kind"
   - resource: aws_ec2_transit_gateway_multicast_domain_association
     disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    reason: "subnet/attachment membership of a multicast domain -- domain-scoped satellite; folds into the future AwsTransitGatewayMulticastDomain kind"
   - resource: aws_ec2_transit_gateway_multicast_group_member
     disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    reason: "ENI registration as a multicast group member -- domain-scoped satellite; folds into the future AwsTransitGatewayMulticastDomain kind"
   - resource: aws_ec2_transit_gateway_multicast_group_source
     disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    reason: "ENI registration as a multicast group source -- domain-scoped satellite; folds into the future AwsTransitGatewayMulticastDomain kind"
   - resource: aws_ec2_transit_gateway_peering_attachment
     disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    reason: "cross-region/cross-account hub-to-hub peering -- a standalone attachment type whose requester/accepter halves live in different deployment scopes, judged as a future AwsTransitGatewayPeeringAttachment kind"
   - resource: aws_ec2_transit_gateway_peering_attachment_accepter
     disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    reason: "the accepter-side half of transit-gateway peering; designed together with the future AwsTransitGatewayPeeringAttachment kind"
   - resource: aws_ec2_transit_gateway_policy_table
     disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    reason: "dynamic-routing policy table (used with Connect/Cloud WAN peering) -- a standalone table with its own lifecycle, judged as a future AwsTransitGatewayPolicyTable kind"
   - resource: aws_ec2_transit_gateway_policy_table_association
     disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    reason: "attachment membership of a policy table -- table-scoped satellite; folds into the future AwsTransitGatewayPolicyTable kind"
   - resource: aws_ec2_transit_gateway_vpc_attachment_accepter
     disposition: model-planned
-    reason: "transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen"
+    reason: "accepter-side half of a cross-account VPC attachment on a RAM-shared gateway -- runs in the sharing account's deployment scope, judged as a future AwsTransitGatewayVpcAttachmentAccepter kind alongside RAM-share modeling"
   - resource: aws_ecr_account_setting
     disposition: model-planned
     reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"

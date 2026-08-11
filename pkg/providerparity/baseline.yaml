@@ -63,9 +63,6 @@ entries:
   - kind:AwsSesConfigurationSet
   - kind:AwsSesEmailIdentity
   - kind:AwsStepFunction
-  - kind:AwsTransitGateway
-  - kind:AwsTransitGatewayRouteTable
-  - kind:AwsTransitGatewayVpcAttachment
   - kind:AwsVpcEndpoint
   - kind:GcpAddress
   - kind:GcpAlloydbCluster

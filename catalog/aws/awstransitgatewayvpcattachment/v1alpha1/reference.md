@@ -211,7 +211,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
-| AwsTransitGatewayRouteTable | `spec.associations` | `status.outputs.attachment_id` |
+| AwsTransitGatewayRouteTable | `spec.associations[].attachmentId` | `status.outputs.attachment_id` |
 | AwsTransitGatewayRouteTable | `spec.propagations` | `status.outputs.attachment_id` |
 | AwsTransitGatewayRouteTable | `spec.routes[].attachmentId` | `status.outputs.attachment_id` |
 | AwsTransitGatewayRouteTable | `spec.prefixListReferences[].attachmentId` | `status.outputs.attachment_id` |

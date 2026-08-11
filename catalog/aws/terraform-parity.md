@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 241 |
-| Spec fields authored across all kinds | 4312 |
+| Distinct provider resources consumed | 243 |
+| Spec fields authored across all kinds | 4315 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**57 of 112 kinds are at total accounting; 75 proven live.**
+**60 of 112 kinds are at total accounting; 74 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -155,9 +155,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsSqsQueue | 20 | 12 | 4 | 4 | 0 | ✅ | — |
 | AwsStepFunction | 16 | 5 | 0 | 0 | 17 | ❌ | ✅ pulumi, terraform |
 | AwsSubnet | 33 | 22 | 0 | 11 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsTransitGateway | 14 | 12 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
-| AwsTransitGatewayRouteTable | 21 | 6 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
-| AwsTransitGatewayVpcAttachment | 12 | 8 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
+| AwsTransitGateway | 14 | 12 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsTransitGatewayRouteTable | 27 | 11 | 6 | 10 | 0 | ✅ | — |
+| AwsTransitGatewayVpcAttachment | 12 | 8 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsVpc | 39 | 16 | 14 | 9 | 0 | ✅ | — |
 | AwsVpcEndpoint | 23 | 17 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
 | AwsWafIpSet | 9 | 5 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
@@ -170,11 +170,11 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 241 | consumed by a kind's Terraform module today |
+| Modeled | 243 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 12 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 784 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 525 | deliberately not offered, each with the recorded reason |
+| Planned | 780 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 527 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -183,7 +183,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (241)
+### Modeled (243)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -259,6 +259,8 @@ rather than trusted.
 | `aws_ec2_client_vpn_network_association` | consumed by AwsClientVpn |
 | `aws_ec2_client_vpn_route` | consumed by AwsClientVpn |
 | `aws_ec2_transit_gateway` | consumed by AwsTransitGateway |
+| `aws_ec2_transit_gateway_default_route_table_association` | consumed by AwsTransitGatewayRouteTable |
+| `aws_ec2_transit_gateway_default_route_table_propagation` | consumed by AwsTransitGatewayRouteTable |
 | `aws_ec2_transit_gateway_prefix_list_reference` | consumed by AwsTransitGatewayRouteTable |
 | `aws_ec2_transit_gateway_route` | consumed by AwsTransitGatewayRouteTable |
 | `aws_ec2_transit_gateway_route_table` | consumed by AwsTransitGatewayRouteTable |
@@ -446,7 +448,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (784)
+### Planned (780)
 
 | Resource | Recorded reason |
 |---|---|
@@ -738,21 +740,17 @@ rather than trusted.
 | `aws_ec2_managed_prefix_list_entry` | judged as a planned AwsManagedPrefixList kind (lists with entries) |
 | `aws_ec2_serial_console_access` | account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind |
 | `aws_ec2_subnet_cidr_reservation` | subnet CIDR reservations fold into the existing AwsSubnet kind as its spec deepens |
-| `aws_ec2_transit_gateway_connect` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_connect_peer` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_default_route_table_association` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_default_route_table_propagation` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_metering_policy` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_metering_policy_entry` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_multicast_domain` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_multicast_domain_association` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_multicast_group_member` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_multicast_group_source` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_peering_attachment` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_peering_attachment_accepter` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_policy_table` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_policy_table_association` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
-| `aws_ec2_transit_gateway_vpc_attachment_accepter` | transit-gateway companion surface; folds into the existing transit-gateway kinds (AwsTransitGateway, AwsTransitGatewayRouteTable, AwsTransitGatewayVpcAttachment) as their specs deepen |
+| `aws_ec2_transit_gateway_connect` | Connect (GRE) attachment for SD-WAN appliance integration over a transport attachment -- a standalone attachment type with its own lifecycle, judged as a future AwsTransitGatewayConnect kind (never a fold: the existing kinds model the hub, its VPC spokes, and routing domains) |
+| `aws_ec2_transit_gateway_connect_peer` | BGP peer inside a Connect attachment -- connect-scoped satellite with no independent lifecycle; folds into the future AwsTransitGatewayConnect kind as its peers list |
+| `aws_ec2_transit_gateway_multicast_domain` | multicast domain on a Transit Gateway -- a standalone routing surface with its own lifecycle and sharing model, judged as a future AwsTransitGatewayMulticastDomain kind |
+| `aws_ec2_transit_gateway_multicast_domain_association` | subnet/attachment membership of a multicast domain -- domain-scoped satellite; folds into the future AwsTransitGatewayMulticastDomain kind |
+| `aws_ec2_transit_gateway_multicast_group_member` | ENI registration as a multicast group member -- domain-scoped satellite; folds into the future AwsTransitGatewayMulticastDomain kind |
+| `aws_ec2_transit_gateway_multicast_group_source` | ENI registration as a multicast group source -- domain-scoped satellite; folds into the future AwsTransitGatewayMulticastDomain kind |
+| `aws_ec2_transit_gateway_peering_attachment` | cross-region/cross-account hub-to-hub peering -- a standalone attachment type whose requester/accepter halves live in different deployment scopes, judged as a future AwsTransitGatewayPeeringAttachment kind |
+| `aws_ec2_transit_gateway_peering_attachment_accepter` | the accepter-side half of transit-gateway peering; designed together with the future AwsTransitGatewayPeeringAttachment kind |
+| `aws_ec2_transit_gateway_policy_table` | dynamic-routing policy table (used with Connect/Cloud WAN peering) -- a standalone table with its own lifecycle, judged as a future AwsTransitGatewayPolicyTable kind |
+| `aws_ec2_transit_gateway_policy_table_association` | attachment membership of a policy table -- table-scoped satellite; folds into the future AwsTransitGatewayPolicyTable kind |
+| `aws_ec2_transit_gateway_vpc_attachment_accepter` | accepter-side half of a cross-account VPC attachment on a RAM-shared gateway -- runs in the sharing account's deployment scope, judged as a future AwsTransitGatewayVpcAttachmentAccepter kind alongside RAM-share modeling |
 | `aws_ecr_account_setting` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
 | `aws_ecr_pull_through_cache_rule` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
 | `aws_ecr_pull_time_update_exclusion` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
@@ -1235,7 +1233,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (525)
+### Deferred (527)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1398,6 +1396,8 @@ rather than trusted.
 | `aws_ec2_traffic_mirror_filter_rule` | traffic-mirroring surface; deferred pending demand |
 | `aws_ec2_traffic_mirror_session` | traffic-mirroring surface; deferred pending demand |
 | `aws_ec2_traffic_mirror_target` | traffic-mirroring surface; deferred pending demand |
+| `aws_ec2_transit_gateway_metering_policy` | Transit Gateway metering policy (provider 6.37.0) -- cross-account data-processing payer attribution for large multi-account estates; deferred pending demand signals |
+| `aws_ec2_transit_gateway_metering_policy_entry` | per-rule entry of the deferred metering policy; folds into that surface whenever demand revives it |
 | `aws_ecrpublic_repository` | public ECR gallery repositories; deferred pending demand |
 | `aws_ecrpublic_repository_policy` | public ECR gallery repositories; deferred pending demand |
 | `aws_ecs_tag` | imperative state/tag helpers, not durable infrastructure |

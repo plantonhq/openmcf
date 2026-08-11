@@ -18,11 +18,13 @@ locals {
 
   # Folded routing-domain members, each materialized as its own provider
   # resource keyed by a value that is unique within the table (the spec
-  # CELs enforce uniqueness), so adding or removing one member never churns
-  # its neighbors:
+  # CELs and comments enforce/record uniqueness), so adding or removing one
+  # member never churns its neighbors:
   # - associations/propagations are keyed by the attachment ID itself;
   # - routes by destination CIDR; prefix list references by list ID.
-  associations = toset(var.spec.associations)
+  associations_map = {
+    for association in var.spec.associations : association.attachment_id => association
+  }
   propagations = toset(var.spec.propagations)
 
   routes_map = {

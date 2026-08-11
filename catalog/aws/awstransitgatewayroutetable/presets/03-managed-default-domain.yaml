@@ -3,21 +3,22 @@ kind: AwsTransitGatewayRouteTable
 metadata:
   org: example-org
   env: prod
-  name: prod-domain
-  id: prod-domain-id
+  name: managed-default-domain
+  id: managed-default-domain-id
 spec:
   region: <aws-region>
   transitGatewayId:
     valueFrom:
       kind: AwsTransitGateway
-      name: segmented-hub
+      name: flat-hub
       fieldPath: status.outputs.transit_gateway_id
   associations:
     - attachmentId:
         valueFrom:
           kind: AwsTransitGatewayVpcAttachment
-          name: prod-vpc-attachment
+          name: legacy-vpc-attachment
           fieldPath: status.outputs.attachment_id
+      replaceExistingAssociation: true
   propagations:
     - valueFrom:
         kind: AwsTransitGatewayVpcAttachment
@@ -26,3 +27,5 @@ spec:
   routes:
     - destinationCidrBlock: 10.200.0.0/16
       blackhole: true
+  setAsDefaultAssociationTable: true
+  setAsDefaultPropagationTable: true

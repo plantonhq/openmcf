@@ -5,18 +5,38 @@ metadata:
 spec:
   # A Transit Gateway route table under live E2E: the composed lane proves
   # the isolated-routing-domain story -- custom table + explicit
-  # association + propagation + attachment-forwarded static route +
-  # blackhole route -- against the attachment fixture declared via the
-  # scenario's e2e-prerequisites annotation (the registry stays honest
-  # with the gateway alone: an empty table deploys). Teardown ordering is
-  # safe by construction: the associations/routes live in this lane's
-  # stack, which the harness destroys before the attachment and gateway
-  # fixtures. Verification is DescribeTransitGatewayRouteTables keyed on
-  # the table ID, state-aware (deleting/deleted count as absent).
+  # association (now carrying the takeover flag's send path) + propagation
+  # + attachment-forwarded static route + blackhole route -- against the
+  # attachment fixture declared via the scenario's e2e-prerequisites
+  # annotation (the registry stays honest with the gateway alone: an empty
+  # table deploys). Teardown ordering is safe by construction: the
+  # associations/routes live in this lane's stack, which the harness
+  # destroys before the attachment and gateway fixtures. Verification is
+  # DescribeTransitGatewayRouteTables keyed on the table ID, state-aware
+  # (deleting/deleted count as absent).
   #
-  # Deliberately not in the live lane: a prefix_list_references entry --
-  # it needs a managed prefix list, which no catalog kind provisions yet;
-  # the fold is proven by spec tests and the offline contract gate.
+  # pending_proof: the depth closure restructured associations to typed
+  # entries (replace_existing_association) and folded the gateway
+  # default-table designation pair -- the prior green proof predates the
+  # new rendering paths.
+  #
+  # Deliberately not in the live lane, per-arm records (never silent
+  # skips):
+  # - prefix_list_references: needs a managed prefix list, which no
+  #   catalog kind provisions yet; proven by spec tests and the offline
+  #   contract gate. Unblock: an AwsManagedPrefixList kind.
+  # - set_as_default_association_table / set_as_default_propagation_table:
+  #   claiming a designation live would REPOINT the shared segmented
+  #   gateway fixture's default tables (cross-lane state mutation), and
+  #   the fixture gateway's default dials are OFF (no original table to
+  #   restore on destroy). Proven offline via the canonical manifest (both
+  #   designation resources render in tofu plan + Pulumi preview).
+  #   Unblock: a dedicated default-enabled gateway scenario when the proof
+  #   lane's budget allows.
+  # - a REAL association takeover (existing association present): needs an
+  #   attachment auto-associated to a default-enabled gateway's default
+  #   table; the live arm proves the flag's send path on the
+  #   no-existing-association branch instead. Same unblock as above.
   #
   # Live dual-engine run 2026-07-08 (incl. the TGW -> attachment -> VPC ->
   # subnet fixture chain; the composed lane proved association +
@@ -24,8 +44,6 @@ spec:
   # Terraform 10m58s (deploy 1m12s, destroy 1m14s); zero-orphan sweep
   # clean.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 40
