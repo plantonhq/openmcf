@@ -19,7 +19,21 @@ authenticated Cloud Run destinations additionally need
 `roles/run.invoker` ON THE SERVICE so the trigger's identity tokens are
 accepted. Missing the second grant looks like "trigger fires, service
 403s" in the platform logs. Audit-log triggers refuse to create without
-a service account at all.
+a service account at all — and so do WORKFLOW destinations: the API
+rejects the create with "trigger.service_account is empty" (the account
+mints the workflow executions; pair `eventReceiver` with
+`roles/workflows.invoker`). The spec enforces both requirements at
+manifest time so you never meet the raw 400.
+
+## Cloud Run destinations always carry a region on the wire
+
+The API never infers the Cloud Run service's region — a create without
+one is rejected ("cloud_run.region is empty"). Leave
+`destination.cloudRunService.region` empty and the module sends the
+trigger's own location, which is what you want in the common
+same-region case. Set it explicitly when the service lives elsewhere,
+and always on a `global` trigger (audit-log triggers are usually
+global; "global" is not a Cloud Run region — the spec enforces this).
 
 ## Destination validation happens at the API, not at plan
 
@@ -29,6 +43,15 @@ structural mistakes at manifest time, but SEMANTIC mismatches (a GKE
 destination in a project without gke-destinations init, a Cloud Run
 service in another project) surface only live — read the create error,
 it names the real constraint.
+
+## Pub/Sub triggers own neither payload format nor content type
+
+`eventDataContentType` is rejected outright on
+`messagePublished` triggers ("Pub/Sub triggers do not accept any value
+for event_data_content_type") — a Pub/Sub event's payload format is
+whatever the publisher sent. The field belongs to the OTHER event types
+(Storage, audit-log), where Eventarc serializes the event itself. The
+spec enforces this at manifest time.
 
 ## Event types decide the filterable attributes
 

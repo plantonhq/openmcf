@@ -2,6 +2,9 @@
 # hostname entry bound to the PROVISIONING certificate fixture (the
 # registry prerequisite chain deploys it first; the reference resolves
 # its certificate_id output). Also exercises entry labels/description.
+# The entry hostname MUST match the cert fixture's run-scoped domain:
+# the API validates certificate-covers-hostname at entry CREATE time
+# (live-verified 400 on a mismatch), so the two stay in lockstep.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCertificateMap
 metadata:
@@ -20,7 +23,7 @@ spec:
   description: E2E entry map — one hostname entry on the cert fixture.
   entries:
     - entryName: e2e-host
-      hostname: map-e2e.example.com
+      hostname: map-e2e-${E2E_RUN_ID}.example.com
       certificates:
         - valueFrom:
             kind: GcpCertManagerCert

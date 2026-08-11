@@ -1,6 +1,11 @@
+# The module-derived name, not the provider's `name` echo: the provider
+# stores the SHORT name at create but reads back the FULL resource name
+# (projects/{p}/locations/{l}/triggers/{name}) on refresh, so echoing it
+# flips the output between plans (live-caught by the idempotency gate).
+# The name is immutable and the create succeeded with exactly this value.
 output "trigger_name" {
   description = "The trigger name in GCP"
-  value       = google_eventarc_trigger.this.name
+  value       = local.trigger_name
 }
 
 # The full trigger resource name (projects/{p}/locations/{l}/triggers/

@@ -873,6 +873,17 @@ first joins the harness, pre-enable its APIs on the test project once
 (`gcloud services enable <api> --project <test-project>`) before the first
 live run; from then on the in-module enablement carries every future run.
 
+**The same class has a SERVICE-AGENT flavor:** some services also provision
+a per-project service agent asynchronously after enablement, and the first
+create can race it — Workflows rejects with 400 "Workflows service agent
+does not exist" minutes after the API itself reads ENABLED (live-caught:
+the very next scenario, 40 seconds later, passed). Alongside the API
+pre-enable, pre-provision the agent explicitly and idempotently via
+Service Usage (`POST .../v1beta1/projects/{p}/services/{api}:generateServiceIdentity`
+— also the right pre-step for Eventarc's P4SA); a failure of this shape on
+a first-ever run is environmental, never a module defect — re-run before
+touching code.
+
 **Fleet-backed managed services can fail on ZONAL CAPACITY, wearing an
 "internal error" mask:** a Serverless VPC Access connector create failed
 repeatedly with `Error code 13 ... VPC Access connector failed to get

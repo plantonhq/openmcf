@@ -12,6 +12,6 @@ spec:
   # posture); if the live API rejects the attachment, the lane owns the
   # redesign (an ACTIVE-cert fixture chain via DNS authorization).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

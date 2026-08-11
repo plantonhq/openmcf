@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**98 of 98 kinds are at total accounting; 44 proven live.**
+**98 of 98 kinds are at total accounting; 49 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -62,7 +62,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpBigtableTable | 23 | 8 | 14 | 1 | 0 | ✅ | — |
 | GcpCertManagerCert | 12 | 10 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCertManagerDnsAuthorization | 8 | 6 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpCertificateMap | 14 | 4 | 9 | 1 | 0 | ✅ | — |
+| GcpCertificateMap | 14 | 4 | 9 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudArmorPolicy | 61 | 10 | 51 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudComposerEnvironment | 81 | 3 | 66 | 12 | 0 | ✅ | — |
 | GcpCloudComposerUserWorkloadsConfigMap | 6 | 4 | 2 | 0 | 0 | ✅ | — |
@@ -78,13 +78,13 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpCloudTasksQueue | 29 | 22 | 7 | 0 | 0 | ✅ | — |
 | GcpComputeDisk | 36 | 18 | 14 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpComputeInstance | 124 | 47 | 64 | 13 | 0 | ✅ | — |
-| GcpComputeMig | 413 | 70 | 310 | 33 | 0 | ✅ | — |
+| GcpComputeMig | 413 | 70 | 310 | 33 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpDataprocAutoscalingPolicy | 16 | 15 | 1 | 0 | 0 | ✅ | — |
 | GcpDataprocCluster | 148 | 77 | 52 | 19 | 0 | ✅ | — |
 | GcpDnsRecord | 49 | 43 | 6 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpDnsZone | 23 | 18 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpEventarcMessageBus | 56 | 12 | 42 | 2 | 0 | ✅ | — |
-| GcpEventarcTrigger | 35 | 22 | 12 | 1 | 0 | ✅ | — |
+| GcpEventarcMessageBus | 56 | 12 | 42 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpEventarcTrigger | 35 | 22 | 12 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFilestoreInstance | 36 | 14 | 22 | 0 | 0 | ✅ | — |
 | GcpFirestoreBackupSchedule | 5 | 4 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreDatabase | 15 | 11 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
@@ -144,7 +144,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpVertexAiIndexEndpoint | 13 | 10 | 3 | 0 | 0 | ✅ | — |
 | GcpVertexAiNotebook | 46 | 8 | 34 | 4 | 0 | ✅ | — |
 | GcpVpcNetwork | 17 | 10 | 6 | 1 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpWorkflow | 15 | 10 | 4 | 1 | 0 | ✅ | — |
+| GcpWorkflow | 15 | 10 | 4 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpWorkloadIdentityPool | 16 | 15 | 1 | 0 | 0 | ✅ | — |
 | GcpWorkloadIdentityPoolProvider | 16 | 15 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 

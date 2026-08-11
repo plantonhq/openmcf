@@ -20,7 +20,11 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  region: us-central1
+  # us-east1: us-central1 zonal e2-micro pools answered
+  # ZONE_RESOURCE_POOL_EXHAUSTED on 2026-08-11 (audit-log verified) —
+  # the self-contained chain moves to measured capacity, the
+  # session-034 connector precedent.
+  region: us-east1
   template:
     machineType: e2-micro
     disks:
@@ -51,5 +55,9 @@ spec:
   updatePolicy:
     minimalAction: REPLACE
     type: PROACTIVE
-    maxSurgeFixed: 1
+    # Regional groups accept only 0 or >= the zone count for a FIXED
+    # surge (live-verified 400 with 1 on the 3-zone spread) — 3 covers
+    # the default spread; the momentary fleet is bounded by the
+    # autoscaler's max of 2 plus surge during a rollout only.
+    maxSurgeFixed: 3
   deletionPolicy: DELETE

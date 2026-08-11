@@ -16,6 +16,6 @@ spec:
   # activation token; no partner account exists in the test org).
   # Unblock: an org-configured audit-log project / a partner sandbox.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

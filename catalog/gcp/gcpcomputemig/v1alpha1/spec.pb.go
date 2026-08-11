@@ -2347,8 +2347,11 @@ type GcpComputeMigUpdatePolicy struct {
 	ReplacementMethod string `protobuf:"bytes,4,opt,name=replacement_method,json=replacementMethod,proto3" json:"replacement_method,omitempty"`
 	// Extra instances the rollout may create above target_size (fixed
 	// count). Higher surge = faster rollout, more temporary cost.
-	// Regional groups require fixed values >= the number of zones (or
-	// use percent).
+	// Regional groups accept ONLY 0 or a value >= the group's zone count
+	// (live-verified 400: "Fixed updatePolicy.maxSurge for regional
+	// managed instance group has to be either 0 or at least equal to the
+	// number of zones" — a regional group spreads over 3 zones by
+	// default, so 1 and 2 are rejected; use percent for finer budgets).
 	MaxSurgeFixed *int32 `protobuf:"varint,5,opt,name=max_surge_fixed,json=maxSurgeFixed,proto3,oneof" json:"max_surge_fixed,omitempty"`
 	// Extra instances the rollout may create above target_size, as a
 	// percent of the group (0-100).
