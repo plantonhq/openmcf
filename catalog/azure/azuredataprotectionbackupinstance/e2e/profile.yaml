@@ -1,0 +1,36 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuredataprotectionbackupinstance
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests,
+  # both engine builds, per-variant offline tofu plans green across
+  # all six variants); live dual-engine proof has not yet run. The
+  # instance is a FREE binding object -- the lane's cost is the
+  # fixture disk's pennies and its time the fixture chain (resource
+  # group + vault + disk policy + managed disk + the two RBAC grants).
+  #
+  # ONE scenario runs live: `minimal` (the disk variant -- the one
+  # variant whose full fixture chain exists in the estate; the policy
+  # kind's install manifest is the disk shape by design, and the
+  # grants ride this kind's consumer-scoped
+  # e2e/prerequisites/azureroleassignment.yaml). REQUIRES the fixture
+  # vault to carry a system-assigned identity (the grants' principal)
+  # and soft delete Off (a destroyed instance must not ghost and
+  # wedge the fixture vault's teardown).
+  #
+  # The other five variants stay OFFLINE-PROVEN, each for a concrete
+  # fixture reason, unblock conditions recorded: blob and data-lake
+  # need a policy fixture of THEIR variant (the policy kind's install
+  # manifest is deliberately the boring disk shape, and its folder is
+  # frozen while queued -- unblock: the policy kind proven, then a
+  # multi-doc policy install profile); kubernetes needs an AKS cluster
+  # carrying the Backup extension + trusted-access role binding
+  # (cluster-side arms no catalog kind models today); mysql/pg need
+  # flexible-server fixtures (slow, billable). Their wire shapes are
+  # inspected in the per-variant offline plans -- recorded honestly
+  # here rather than shipping lanes that cannot run.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 60

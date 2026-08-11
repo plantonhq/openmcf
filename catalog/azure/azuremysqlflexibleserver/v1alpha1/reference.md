@@ -775,6 +775,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureDataProtectionBackupInstance | `spec.mysqlFlexibleServer.serverId` | `status.outputs.server_id` |
 | AzureMysqlFlexibleServer | `spec.sourceServerId` | `status.outputs.server_id` |
 
 ## See Also

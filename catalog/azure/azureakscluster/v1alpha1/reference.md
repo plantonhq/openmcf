@@ -3119,6 +3119,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AzureAksNodePool | `spec.kubernetesClusterId` | `status.outputs.cluster_id` |
+| AzureDataProtectionBackupInstance | `spec.kubernetesCluster.kubernetesClusterId` | `status.outputs.cluster_id` |
 | AzureFederatedIdentityCredential | `spec.issuer` | `status.outputs.oidc_issuer_url` |
 
 ## See Also

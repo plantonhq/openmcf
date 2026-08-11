@@ -1334,6 +1334,18 @@ enum CloudResourceKind {
     id_prefix: "azkvcert"
     prerequisites: [AzureKeyVault]
   }];
+  // AzureKeyVault is a prerequisite because a secret is a data-plane
+  // object inside a referenced vault -- the vault must exist before the
+  // secret can be written (the resource group chains transitively
+  // through the vault's own prerequisite). Part of the Key Vault family
+  // (2005, 2025-2026) despite the out-of-run number -- enum numbers are
+  // pinned by the registry snapshot; never renumber.
+  AzureKeyVaultSecret = 2183 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azkvsecret"
+    prerequisites: [AzureKeyVault]
+  }];
   // AzureResourceGroup is a prerequisite because a WAF policy is created
   // inside a referenced resource group; the Application Gateways that
   // attach the policy reference it, never the reverse.
@@ -2466,6 +2478,22 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "azdpbp"
     prerequisites: [AzureDataProtectionBackupVault]
+  }];
+  // An ARM child of its vault (.../backupInstances/{name}) -- the
+  // binding that puts ONE datasource (a managed disk, a storage
+  // account's blob services, an AKS cluster, a MySQL/PostgreSQL
+  // flexible server, or a Data Lake storage account) under a Data
+  // Protection backup policy, modeled as one kind with variant
+  // blocks. The vault's managed identity must hold the datasource
+  // roles Azure Backup requires BEFORE the instance is created.
+  AzureDataProtectionBackupInstance = 2182 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdpbi"
+    prerequisites: [
+      AzureDataProtectionBackupVault,
+      AzureDataProtectionBackupPolicy
+    ]
   }];
   // Registers a storage account with a Recovery Services vault as a
   // backup container (.../protectionContainers/StorageContainer;...)

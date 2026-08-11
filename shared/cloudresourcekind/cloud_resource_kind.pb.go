@@ -425,6 +425,13 @@ const (
 	// certificate can be enrolled or imported (the resource group chains
 	// transitively through the vault's own prerequisite).
 	CloudResourceKind_AzureKeyVaultCertificate CloudResourceKind = 2026
+	// AzureKeyVault is a prerequisite because a secret is a data-plane
+	// object inside a referenced vault -- the vault must exist before the
+	// secret can be written (the resource group chains transitively
+	// through the vault's own prerequisite). Part of the Key Vault family
+	// (2005, 2025-2026) despite the out-of-run number -- enum numbers are
+	// pinned by the registry snapshot; never renumber.
+	CloudResourceKind_AzureKeyVaultSecret CloudResourceKind = 2183
 	// AzureResourceGroup is a prerequisite because a WAF policy is created
 	// inside a referenced resource group; the Application Gateways that
 	// attach the policy reference it, never the reverse.
@@ -884,6 +891,14 @@ const (
 	// flexible server, or Data Lake storage), modeled as one kind with
 	// variant blocks.
 	CloudResourceKind_AzureDataProtectionBackupPolicy CloudResourceKind = 2181
+	// An ARM child of its vault (.../backupInstances/{name}) -- the
+	// binding that puts ONE datasource (a managed disk, a storage
+	// account's blob services, an AKS cluster, a MySQL/PostgreSQL
+	// flexible server, or a Data Lake storage account) under a Data
+	// Protection backup policy, modeled as one kind with variant
+	// blocks. The vault's managed identity must hold the datasource
+	// roles Azure Backup requires BEFORE the instance is created.
+	CloudResourceKind_AzureDataProtectionBackupInstance CloudResourceKind = 2182
 	// Registers a storage account with a Recovery Services vault as a
 	// backup container (.../protectionContainers/StorageContainer;...)
 	// -- one registration per storage-account-and-vault pair, required
@@ -1552,6 +1567,7 @@ var (
 		2024:  "AzureVirtualMachineScaleSet",
 		2025:  "AzureKeyVaultKey",
 		2026:  "AzureKeyVaultCertificate",
+		2183:  "AzureKeyVaultSecret",
 		2027:  "AzureWebApplicationFirewallPolicy",
 		2028:  "AzureApplicationSecurityGroup",
 		2029:  "AzureDiskEncryptionSet",
@@ -1671,6 +1687,7 @@ var (
 		2179:  "AzureBackupProtectedFileShare",
 		2180:  "AzureDataProtectionBackupVault",
 		2181:  "AzureDataProtectionBackupPolicy",
+		2182:  "AzureDataProtectionBackupInstance",
 		2213:  "AzureBackupContainerStorageAccount",
 		2214:  "AzureDataProtectionResourceGuard",
 		3000:  "GcpArtifactRegistryRepo",
@@ -2207,6 +2224,7 @@ var (
 		"AzureVirtualMachineScaleSet":                    2024,
 		"AzureKeyVaultKey":                               2025,
 		"AzureKeyVaultCertificate":                       2026,
+		"AzureKeyVaultSecret":                            2183,
 		"AzureWebApplicationFirewallPolicy":              2027,
 		"AzureApplicationSecurityGroup":                  2028,
 		"AzureDiskEncryptionSet":                         2029,
@@ -2326,6 +2344,7 @@ var (
 		"AzureBackupProtectedFileShare":                  2179,
 		"AzureDataProtectionBackupVault":                 2180,
 		"AzureDataProtectionBackupPolicy":                2181,
+		"AzureDataProtectionBackupInstance":              2182,
 		"AzureBackupContainerStorageAccount":             2213,
 		"AzureDataProtectionResourceGuard":               2214,
 		"GcpArtifactRegistryRepo":                        3000,
@@ -2993,7 +3012,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe0\xa3\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe4\xa4\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3145,7 +3164,9 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x10AzureManagedDisk\x10\xe7\x0f\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdisk:\x02\xd0\x0f\x12>\n" +
 	"\x1bAzureVirtualMachineScaleSet\x10\xe8\x0f\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azvmss:\x02\xdb\x0f\x124\n" +
 	"\x10AzureKeyVaultKey\x10\xe9\x0f\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazkvkey:\x02\xd5\x0f\x12=\n" +
-	"\x18AzureKeyVaultCertificate\x10\xea\x0f\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazkvcert:\x02\xd5\x0f\x12F\n" +
+	"\x18AzureKeyVaultCertificate\x10\xea\x0f\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazkvcert:\x02\xd5\x0f\x12:\n" +
+	"\x13AzureKeyVaultSecret\x10\x87\x11\x1a \xa2\xf7\x04\x1c\b\r\x12\bv1alpha1\"\n" +
+	"azkvsecret:\x02\xd5\x0f\x12F\n" +
 	"!AzureWebApplicationFirewallPolicy\x10\xeb\x0f\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazwafpol:\x02\xd0\x0f\x12?\n" +
 	"\x1dAzureApplicationSecurityGroup\x10\xec\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azasg:\x02\xd0\x0f\x128\n" +
 	"\x16AzureDiskEncryptionSet\x10\xed\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azdes:\x02\xe9\x0f\x12>\n" +
@@ -3269,7 +3290,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1aAzureBackupPolicyFileShare\x10\x82\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azbpfs:\x02\xff\x10\x12E\n" +
 	"\x1dAzureBackupProtectedFileShare\x10\x83\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\aazbprfs:\x06\xa5\x11\x82\x11\xab\x10\x12A\n" +
 	"\x1eAzureDataProtectionBackupVault\x10\x84\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbv:\x02\xd0\x0f\x12B\n" +
-	"\x1fAzureDataProtectionBackupPolicy\x10\x85\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbp:\x02\x84\x11\x12G\n" +
+	"\x1fAzureDataProtectionBackupPolicy\x10\x85\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbp:\x02\x84\x11\x12F\n" +
+	"!AzureDataProtectionBackupInstance\x10\x86\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azdpbi:\x04\x84\x11\x85\x11\x12G\n" +
 	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +
 	" AzureDataProtectionResourceGuard\x10\xa6\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdprg:\x02\xd0\x0f\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +

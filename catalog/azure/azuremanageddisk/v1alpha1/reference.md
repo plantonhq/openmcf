@@ -531,6 +531,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureDataProtectionBackupInstance | `spec.disk.diskId` | `status.outputs.disk_id` |
 | AzureVirtualMachine | `spec.osManagedDiskId` | `status.outputs.disk_id` |
 | AzureVirtualMachine | `spec.dataDiskAttachments[].managedDiskId` | `status.outputs.disk_id` |
 

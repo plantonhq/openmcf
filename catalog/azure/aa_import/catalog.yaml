@@ -324,3 +324,33 @@ spec:
     - terraform_type: azurerm_data_protection_backup_policy_data_lake_storage
       pulumi_type: azure:dataprotection/backupPolicyDataLakeStorage:BackupPolicyDataLakeStorage
       id_format: "{backup_policy_id}"
+    # One backup-instance kind, six variant resources -- the SAME
+    # vault-child id shape (.../backupInstances/{name}) serves all six;
+    # which resource imports it follows the spec's variant block. The
+    # blob resource's Pulumi token misspells Blob as "Blog" -- the
+    # bridge's own identifier, never a typo to fix.
+    - terraform_type: azurerm_data_protection_backup_instance_blob_storage
+      pulumi_type: azure:dataprotection/backupInstanceBlogStorage:BackupInstanceBlogStorage
+      id_format: "{backup_instance_id}"
+    - terraform_type: azurerm_data_protection_backup_instance_disk
+      pulumi_type: azure:dataprotection/backupInstanceDisk:BackupInstanceDisk
+      id_format: "{backup_instance_id}"
+    - terraform_type: azurerm_data_protection_backup_instance_kubernetes_cluster
+      pulumi_type: azure:dataprotection/backupInstanceKubernetesCluster:BackupInstanceKubernetesCluster
+      id_format: "{backup_instance_id}"
+    - terraform_type: azurerm_data_protection_backup_instance_mysql_flexible_server
+      pulumi_type: azure:dataprotection/backupInstanceMysqlFlexibleServer:BackupInstanceMysqlFlexibleServer
+      id_format: "{backup_instance_id}"
+    - terraform_type: azurerm_data_protection_backup_instance_postgresql_flexible_server
+      pulumi_type: azure:dataprotection/backupInstancePostgresqlFlexibleServer:BackupInstancePostgresqlFlexibleServer
+      id_format: "{backup_instance_id}"
+    - terraform_type: azurerm_data_protection_backup_instance_data_lake_storage
+      pulumi_type: azure:dataprotection/backupInstanceDataLakeStorage:BackupInstanceDataLakeStorage
+      id_format: "{backup_instance_id}"
+    # --- Key Vault data-plane objects ---------------------------------------
+    # Key Vault nested items import by their versioned DATA-PLANE ID
+    # (https://{vault}.vault.azure.net/...), not an ARM path -- the
+    # provider resolves the vault from the URI.
+    - terraform_type: azurerm_key_vault_secret
+      pulumi_type: azure:keyvault/secret:Secret
+      id_format: "{secret_id}"

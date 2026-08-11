@@ -510,6 +510,7 @@ Fields on other kinds that can point at this resource:
 | AzureAksCluster | `spec.serviceMeshProfile.certificateAuthority.keyVaultId` | `status.outputs.key_vault_id` |
 | AzureKeyVaultCertificate | `spec.keyVaultId` | `status.outputs.key_vault_id` |
 | AzureKeyVaultKey | `spec.keyVaultId` | `status.outputs.key_vault_id` |
+| AzureKeyVaultSecret | `spec.keyVaultId` | `status.outputs.key_vault_id` |
 | AzureMachineLearningWorkspace | `spec.keyVaultId` | `status.outputs.key_vault_id` |
 | AzureMachineLearningWorkspace | `spec.encryption.keyVaultId` | `status.outputs.key_vault_id` |
 | AzureVirtualMachine | `spec.secrets[].keyVaultId` | `status.outputs.key_vault_id` |

@@ -306,6 +306,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureDataProtectionBackupInstance | `spec.vaultId` | `status.outputs.backup_vault_id` |
 | AzureDataProtectionBackupPolicy | `spec.vaultId` | `status.outputs.backup_vault_id` |
 
 ## See Also

@@ -601,6 +601,15 @@ func TestAzureDataProtectionBackupPolicy_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuredataprotectionbackuppolicy", "terraform")
 }
 
+// --- Azure Data Protection Backup Instance (composed: fixture RG -> fixture Data Protection vault + disk policy + managed disk + the vault identity's TWO RBAC grants -> the disk-variant binding; the vault identity's grants are validated by Azure at instance create, and grant propagation lag is the lane's expected retry class. REQUIRES the fixture vault to carry a system-assigned identity -- the grants' principal -- and soft delete Off, so a destroyed instance cannot ghost and wedge the vault's teardown) ---
+
+func TestAzureDataProtectionBackupInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionbackupinstance", "pulumi")
+}
+func TestAzureDataProtectionBackupInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionbackupinstance", "terraform")
+}
+
 // --- Azure Data Protection Resource Guard (composed: fixture RG -> a FREE governance object that creates in seconds; no vault references it in the lane, so create and delete are unconstrained) ---
 
 func TestAzureDataProtectionResourceGuard_Pulumi(t *testing.T) {
@@ -698,6 +707,15 @@ func TestAzureKeyVaultKey_Pulumi(t *testing.T) {
 }
 func TestAzureKeyVaultKey_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurekeyvaultkey", "terraform")
+}
+
+// --- Azure Key Vault Secret (composed: fixture RG -> vault -> one versioned secret with content type and expiry; data-plane create -- the ambient principal's subscription-scoped Key Vault Administrator grant covers it) ---
+
+func TestAzureKeyVaultSecret_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurekeyvaultsecret", "pulumi")
+}
+func TestAzureKeyVaultSecret_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurekeyvaultsecret", "terraform")
 }
 
 // --- Azure Key Vault Certificate (composed: fixture RG -> vault -> self-signed auto-renewing certificate; data-plane create + verify) ---

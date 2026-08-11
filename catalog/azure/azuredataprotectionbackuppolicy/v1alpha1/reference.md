@@ -1078,6 +1078,14 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.vaultId` | AzureDataProtectionBackupVault | `status.outputs.backup_vault_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AzureDataProtectionBackupInstance | `spec.backupPolicyId` | `status.outputs.backup_policy_id` |
+
 ## See Also
 
 - [Overview](../README.md)
