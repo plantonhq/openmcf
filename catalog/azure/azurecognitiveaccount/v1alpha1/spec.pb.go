@@ -1183,6 +1183,15 @@ type AzureCognitiveAccountRaiPolicyContentFilter struct {
 	// For the severity-based filters: the lowest severity that
 	// triggers the filter. Not applicable to the binary filters
 	// (Jailbreak, Indirect Attack, Protected Material Text/Code).
+	//
+	// PARITY-EXCEPTION: severity-less filters deploy through Terraform
+	// ONLY. Terraform (azurerm v5) made this property optional and
+	// REJECTS it on the binary filters; the classic Pulumi SDK bridges
+	// the pre-v5 provider, which requires a severity on EVERY content
+	// filter -- so a filter without one (any binary filter, or a graded
+	// filter relying on ARM's default) is inexpressible on the Pulumi
+	// engine and its module fails loudly. Unblock: a v5-bridged
+	// pulumi-azure major.
 	SeverityThreshold AzureCognitiveAccountRaiPolicyContentLevel `protobuf:"varint,5,opt,name=severity_threshold,json=severityThreshold,proto3,enum=dev.planton.azure.azurecognitiveaccount.v1alpha1.AzureCognitiveAccountRaiPolicyContentLevel" json:"severity_threshold,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache

@@ -1075,7 +1075,14 @@ owns two responsibilities beyond wiring verifiers:
   services must check the recycle bin too (`az keyvault list-deleted`), and
   scenarios should keep purge protection OFF so teardown can actually purge.
   Expect destroys to be slow (a vault purge runs ~10 minutes) and size test
-  timeouts accordingly.
+  timeouts accordingly. Cognitive/AI services accounts are the same class with
+  their own recycle bin: sweep `az cognitiveservices account list-deleted`
+  (both engines purge on destroy by default -- a ghost means a wedged teardown,
+  and it HOLDS the account name plus its globally unique custom subdomain
+  against every future lane). Live-observed once (not reproducible): an
+  account purge can race the enclosing resource group's delete so the RG
+  survives EMPTY even though both destroys reported success -- the group
+  sweep below is the net that catches it; just delete the empty group.
 - **Some ARM resources have no true delete — destroy flips a state field and the
   object stays GETtable, so verify-absent must be STATE-AWARE, not 404-based.**
   An Azure Storage encryption scope is the canonical case: "delete" PATCHes

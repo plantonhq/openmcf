@@ -67,10 +67,16 @@ spec:
           blockEnabled: true
           source: Prompt
           severityThreshold: LOW
-        - name: Jailbreak
+        # Graded filters only: severity-less filters (the binary
+        # Jailbreak/Indirect Attack/Protected Material filters) deploy
+        # through Terraform ONLY -- PARITY-EXCEPTION on the spec's
+        # severity_threshold field. The canonical example stays
+        # engine-portable.
+        - name: Violence
           filterEnabled: true
           blockEnabled: true
-          source: Prompt
+          source: Completion
+          severityThreshold: MEDIUM
       mode: BLOCKING
   tags:
     purpose: hack-test
@@ -638,6 +644,15 @@ the agent-scoped sources "PreRun"/"PostRun" and
 For the severity-based filters: the lowest severity that
 triggers the filter. Not applicable to the binary filters
 (Jailbreak, Indirect Attack, Protected Material Text/Code).
+
+PARITY-EXCEPTION: severity-less filters deploy through Terraform
+ONLY. Terraform (azurerm v5) made this property optional and
+REJECTS it on the binary filters; the classic Pulumi SDK bridges
+the pre-v5 provider, which requires a severity on EVERY content
+filter -- so a filter without one (any binary filter, or a graded
+filter relying on ARM's default) is inexpressible on the Pulumi
+engine and its module fails loudly. Unblock: a v5-bridged
+pulumi-azure major.
 
 Allowed values (use exactly as shown):
 

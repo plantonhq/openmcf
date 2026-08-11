@@ -46,7 +46,7 @@ spec:
   name: chat
   model:
     format: OpenAI
-    name: gpt-4o-mini
+    name: gpt-5.4-mini
   sku:
     name: GlobalStandard
     capacity: 50
@@ -94,7 +94,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**GPT-4o chat** -- GlobalStandard gpt-4o-mini with modest capacity. Start from the **GPT-4o Chat** preset.
+**Chat (mini model)** -- a current mini-class chat model on GlobalStandard with modest capacity. Start from the **Chat (Mini Model)** preset. Model names age: Azure rejects catalog-"Deprecating" models for new deployments, so check `az cognitiveservices model list` for what is currently GenerallyAvailable.
 
 **Embeddings** -- text-embedding-3-large behind a rate limit. Start from the **Text Embeddings** preset.
 

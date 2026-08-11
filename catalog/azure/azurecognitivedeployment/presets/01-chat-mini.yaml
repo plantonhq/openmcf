@@ -9,7 +9,11 @@ spec:
   name: chat
   model:
     format: OpenAI
-    name: gpt-4o-mini
+    # A current mini-class chat model. Azure REJECTS models whose
+    # catalog lifecycle is "Deprecating" for new deployments -- pick
+    # from `az cognitiveservices model list -l <region> --query
+    # "[?model.lifecycleStatus=='GenerallyAvailable'].model.name"`.
+    name: gpt-5.4-mini
   sku:
     # Azure-wide routing -- the widest model availability, per-token
     # billing (capacity is a rate limit, not idle cost).

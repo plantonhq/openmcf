@@ -32,7 +32,12 @@ type AzureCognitiveDeploymentStackOutputs struct {
 	// model/deployment parameter when calling the account's endpoint.
 	DeploymentName string `protobuf:"bytes,2,opt,name=deployment_name,json=deploymentName,proto3" json:"deployment_name,omitempty"`
 	// The deployed model's version as ARM reports it -- the resolved
-	// value when the spec left version unset.
+	// value when the spec left version unset. Engine nuance
+	// (live-proven): with version unset, the Pulumi engine populates
+	// this at create while Terraform leaves it EMPTY until the next
+	// refresh or import (the v5 provider does not read the resolved
+	// version back at create). Pin model.version when automation needs
+	// this output deterministically on both engines.
 	ModelVersion  string `protobuf:"bytes,3,opt,name=model_version,json=modelVersion,proto3" json:"model_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
