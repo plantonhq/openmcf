@@ -1266,7 +1266,12 @@ type AwsKinesisFirehoseCloudwatchLogging struct {
 	// Enable CloudWatch error logging for this delivery target.
 	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	// CloudWatch Logs log group name where errors are published.
-	// Required when enabled is true.
+	// Required when enabled is true. Firehose neither creates nor
+	// validates this group: CreateDeliveryStream accepts a nonexistent
+	// name (live-verified 2026-08-12), and delivery errors are silently
+	// dropped until a log group with exactly this name exists -- create
+	// it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+	// trail you configured here never materializes.
 	LogGroupName string `protobuf:"bytes,2,opt,name=log_group_name,json=logGroupName,proto3" json:"log_group_name,omitempty"`
 	// CloudWatch Logs log stream name within the log group.
 	// Required when enabled is true.
