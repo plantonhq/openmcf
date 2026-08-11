@@ -103,7 +103,10 @@ resource "aws_elasticache_replication_group" "this" {
   network_type       = try(var.spec.network_type, "") != "" ? var.spec.network_type : null
   ip_discovery       = try(var.spec.ip_discovery, "") != "" ? var.spec.ip_discovery : null
 
-  # Encryption
+  # Encryption. Presence-typed enable flags: null omits the argument
+  # entirely (AWS applies its engine default, and a global-datastore
+  # secondary MUST omit them — the provider conflicts their presence
+  # with global_replication_group_id).
   at_rest_encryption_enabled = local.at_rest_encryption_enabled
   transit_encryption_enabled = local.transit_encryption_enabled
   transit_encryption_mode    = local.transit_encryption_mode
@@ -111,9 +114,9 @@ resource "aws_elasticache_replication_group" "this" {
 
   # Authentication: legacy AUTH token or RBAC user groups (mutually
   # exclusive, CEL-enforced).
-  auth_token                  = local.auth_token
-  auth_token_update_strategy  = try(var.spec.auth_token_update_strategy, "") != "" ? var.spec.auth_token_update_strategy : null
-  user_group_ids              = length(local.user_group_ids) > 0 ? toset(local.user_group_ids) : null
+  auth_token                 = local.auth_token
+  auth_token_update_strategy = try(var.spec.auth_token_update_strategy, "") != "" ? var.spec.auth_token_update_strategy : null
+  user_group_ids             = length(local.user_group_ids) > 0 ? toset(local.user_group_ids) : null
 
   # Create-time restore sources (mutually exclusive, CEL-enforced)
   snapshot_arns = length(coalesce(try(var.spec.snapshot_arns, []), [])) > 0 ? var.spec.snapshot_arns : null
@@ -141,10 +144,12 @@ resource "aws_elasticache_replication_group" "this" {
     }
   }
 
-  # Advanced
+  # Advanced. auto_minor_version_upgrade omits when unset so AWS's
+  # enabled-by-default stands; data_tiering renders only when true
+  # (matching the Pulumi module — AWS defaults it off).
   notification_topic_arn     = local.notification_topic_arn
-  auto_minor_version_upgrade = local.auto_minor_version_upgrade ? "true" : "false"
-  data_tiering_enabled       = local.data_tiering_enabled
+  auto_minor_version_upgrade = local.auto_minor_version_upgrade
+  data_tiering_enabled       = local.data_tiering_enabled ? true : null
   cluster_mode               = try(var.spec.cluster_mode, "") != "" ? var.spec.cluster_mode : null
 
   tags = local.aws_tags

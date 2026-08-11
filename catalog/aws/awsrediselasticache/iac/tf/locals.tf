@@ -46,9 +46,14 @@ locals {
   # Networking
   sg_ids = coalesce(try(var.spec.security_group_ids, []), [])
 
-  # Encryption
-  at_rest_encryption_enabled = coalesce(try(var.spec.at_rest_encryption_enabled, null), false)
-  transit_encryption_enabled = coalesce(try(var.spec.transit_encryption_enabled, null), false)
+  # Encryption. The two enable flags are PRESENCE-typed (optional bool):
+  # unset means "let AWS apply its engine default" and must be OMITTED —
+  # the provider rejects the arguments' mere presence alongside
+  # global_replication_group_id, so rendering an explicit false would
+  # break the global-datastore join. The provider types them as nullable
+  # bools (strings), hence the "true"/"false" rendering when set.
+  at_rest_encryption_enabled = try(var.spec.at_rest_encryption_enabled, null) == null ? null : (var.spec.at_rest_encryption_enabled ? "true" : "false")
+  transit_encryption_enabled = try(var.spec.transit_encryption_enabled, null)
   transit_encryption_mode    = try(var.spec.transit_encryption_mode, "") != "" ? var.spec.transit_encryption_mode : null
   kms_key_id                 = try(var.spec.kms_key_id, "") != "" ? var.spec.kms_key_id : null
 
@@ -67,9 +72,12 @@ locals {
   # Logging
   log_configs = coalesce(try(var.spec.log_delivery_configurations, []), [])
 
-  # Advanced
+  # Advanced. auto_minor_version_upgrade is PRESENCE-typed: AWS enables
+  # minor upgrades by default, so unset must be OMITTED (AWS decides),
+  # never forced to "false". The provider types it as a nullable bool
+  # (string), hence the "true"/"false" rendering when set.
   notification_topic_arn     = try(var.spec.notification_topic_arn, "") != "" ? var.spec.notification_topic_arn : null
-  auto_minor_version_upgrade = coalesce(try(var.spec.auto_minor_version_upgrade, null), false)
+  auto_minor_version_upgrade = try(var.spec.auto_minor_version_upgrade, null) == null ? null : (var.spec.auto_minor_version_upgrade ? "true" : "false")
   data_tiering_enabled       = coalesce(try(var.spec.data_tiering_enabled, null), false)
   port                       = try(var.spec.port, null)
 }

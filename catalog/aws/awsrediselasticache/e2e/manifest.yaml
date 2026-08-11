@@ -17,5 +17,9 @@ spec:
   description: Test Redis cluster for development
   nodeType: cache.t3.micro
   numCacheClusters: 1
+  # Presence-typed encryption and upgrade flags: unset omits the argument
+  # (AWS decides, and a global-datastore secondary MUST leave them unset);
+  # explicit values pin the choice.
   atRestEncryptionEnabled: true
   transitEncryptionEnabled: true
+  autoMinorVersionUpgrade: true

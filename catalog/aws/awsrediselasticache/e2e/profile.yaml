@@ -6,13 +6,21 @@ spec:
   # ElastiCache Redis replication group under live E2E: the harness deploys the
   # AwsVpc + two-AZ AwsSubnet prerequisites, runs deploy ->
   # DescribeReplicationGroups verify -> destroy -> verify-destroyed on both
-  # provisioners. The scenario is a single-node cache.t4g.micro with encryption
-  # at rest only (no AUTH token — transit encryption off keeps the footprint
-  # minimal). Replication group provisioning dominates runtime at roughly
-  # ten minutes each way per engine.
+  # provisioners. The scenario is a single-node cache.t4g.micro with an
+  # EXPLICIT at-rest true and an EXPLICIT transit false (both encryption
+  # flags are presence-typed: the lane proves the explicit-send paths, and
+  # the unset auto_minor_version_upgrade proves the omit path — AWS's
+  # enabled-by-default stands). Replication group provisioning dominates
+  # runtime at roughly ten minutes each way per engine.
+  #
+  # Offline-proven-only arm (never a silent skip): the global-datastore
+  # join (global_replication_group_id) needs a real global datastore whose
+  # primary lives in another region — cross-region cost/fixture-bound;
+  # proven by offline plan/preview of the 04-global-datastore-secondary
+  # preset on both engines. Unblocks when an
+  # AwsElasticacheGlobalReplicationGroup kind ships with a shared primary
+  # fixture.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

@@ -133,17 +133,28 @@ type AwsMemcachedElasticacheSpec struct {
 	// window. May cause brief downtime for some operations.
 	ApplyImmediately bool `protobuf:"varint,17,opt,name=apply_immediately,json=applyImmediately,proto3" json:"apply_immediately,omitempty"`
 	// Automatically apply minor engine version upgrades during maintenance
-	// windows. Recommended for staying on supported versions.
-	AutoMinorVersionUpgrade bool `protobuf:"varint,18,opt,name=auto_minor_version_upgrade,json=autoMinorVersionUpgrade,proto3" json:"auto_minor_version_upgrade,omitempty"`
+	// windows. AWS enables this by default: leave unset to keep the default,
+	// set false to pin the running minor version explicitly, set true to pin
+	// the opt-in. Presence matters — unset is forwarded to AWS as "decide",
+	// never as false.
+	AutoMinorVersionUpgrade *bool `protobuf:"varint,18,opt,name=auto_minor_version_upgrade,json=autoMinorVersionUpgrade,proto3,oneof" json:"auto_minor_version_upgrade,omitempty"`
 	// SNS topic ARN for cluster event notifications (node additions, removals,
 	// maintenance events, etc.).
 	NotificationTopicArn *v1.StringValueOrRef `protobuf:"bytes,19,opt,name=notification_topic_arn,json=notificationTopicArn,proto3" json:"notification_topic_arn,omitempty"`
 	// Preferred Availability Zones for the cache nodes. When provided, the list
 	// length must match num_cache_nodes. Nodes are placed in the specified AZs
-	// in order. Leave empty for AWS-managed AZ distribution.
+	// in order. Leave empty for AWS-managed AZ distribution. Mutually exclusive
+	// with `availability_zone` (the single-AZ pin).
 	PreferredAvailabilityZones []string `protobuf:"bytes,20,rep,name=preferred_availability_zones,json=preferredAvailabilityZones,proto3" json:"preferred_availability_zones,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// Pin ALL cache nodes to one Availability Zone (e.g. "us-west-2a") —
+	// AZ-local latency for a client fleet that lives in a single zone.
+	// ForceNew — changing the pin replaces the cluster. Leave empty for an
+	// AWS-chosen AZ. Mutually exclusive with `preferred_availability_zones`
+	// (per-node placement) and with az_mode "cross-az" — a single-AZ pin IS
+	// single-az mode.
+	AvailabilityZone string `protobuf:"bytes,21,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AwsMemcachedElasticacheSpec) Reset() {
@@ -296,8 +307,8 @@ func (x *AwsMemcachedElasticacheSpec) GetApplyImmediately() bool {
 }
 
 func (x *AwsMemcachedElasticacheSpec) GetAutoMinorVersionUpgrade() bool {
-	if x != nil {
-		return x.AutoMinorVersionUpgrade
+	if x != nil && x.AutoMinorVersionUpgrade != nil {
+		return *x.AutoMinorVersionUpgrade
 	}
 	return false
 }
@@ -314,6 +325,13 @@ func (x *AwsMemcachedElasticacheSpec) GetPreferredAvailabilityZones() []string {
 		return x.PreferredAvailabilityZones
 	}
 	return nil
+}
+
+func (x *AwsMemcachedElasticacheSpec) GetAvailabilityZone() string {
+	if x != nil {
+		return x.AvailabilityZone
+	}
+	return ""
 }
 
 // AwsMemcachedElasticacheParameter defines a single cache parameter override
@@ -377,10 +395,10 @@ var File_catalog_aws_awsmemcachedelasticache_v1alpha1_spec_proto protoreflect.Fi
 
 const file_catalog_aws_awsmemcachedelasticache_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7catalog/aws/awsmemcachedelasticache/v1alpha1/spec.proto\x120dev.planton.aws.awsmemcachedelasticache.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xa8\x16\n" +
+	"7catalog/aws/awsmemcachedelasticache/v1alpha1/spec.proto\x120dev.planton.aws.awsmemcachedelasticache.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x88\x1b\n" +
 	"\x1bAwsMemcachedElasticacheSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12%\n" +
-	"\x0eengine_version\x18\x02 \x01(\tR\rengineVersion\x12#\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12@\n" +
+	"\x0eengine_version\x18\x02 \x01(\tB\x19\xbaH\x16\xd8\x01\x01r\x112\x0f^\\d+\\.\\d+\\.\\d+$R\rengineVersion\x12#\n" +
 	"\tnode_type\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bnodeType\x121\n" +
 	"\x0fnum_cache_nodes\x18\x04 \x01(\x05B\t\xbaH\x06\x1a\x04\x18((\x01R\rnumCacheNodes\x12\x17\n" +
 	"\aaz_mode\x18\x05 \x01(\tR\x06azMode\x12-\n" +
@@ -399,10 +417,11 @@ const file_catalog_aws_awsmemcachedelasticache_v1alpha1_spec_proto_rawDesc = "" 
 	"parameters\x120\n" +
 	"\x14parameter_group_name\x18\x0f \x01(\tR\x12parameterGroupName\x12\xb4\x01\n" +
 	"\x12maintenance_window\x18\x10 \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x11maintenanceWindow\x12+\n" +
-	"\x11apply_immediately\x18\x11 \x01(\bR\x10applyImmediately\x12E\n" +
-	"\x1aauto_minor_version_upgrade\x18\x12 \x01(\bB\b\x92\xa6\x1d\x04trueR\x17autoMinorVersionUpgrade\x12\x8b\x01\n" +
+	"\x11apply_immediately\x18\x11 \x01(\bR\x10applyImmediately\x12J\n" +
+	"\x1aauto_minor_version_upgrade\x18\x12 \x01(\bB\b\x92\xa6\x1d\x04trueH\x01R\x17autoMinorVersionUpgrade\x88\x01\x01\x12\x8b\x01\n" +
 	"\x16notification_topic_arn\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\x14notificationTopicArn\x12@\n" +
-	"\x1cpreferred_availability_zones\x18\x14 \x03(\tR\x1apreferredAvailabilityZones:\x8c\v\xbaH\x88\v\x1a\x8b\x01\n" +
+	"\x1cpreferred_availability_zones\x18\x14 \x03(\tR\x1apreferredAvailabilityZones\x12+\n" +
+	"\x11availability_zone\x18\x15 \x01(\tR\x10availabilityZone:\x80\x0f\xbaH\xfc\x0e\x1a\x8b\x01\n" +
 	"\x14az_mode_valid_values\x122az_mode must be 'single-az' or 'cross-az' when set\x1a?this.az_mode == '' || this.az_mode in ['single-az', 'cross-az']\x1a\x87\x01\n" +
 	"\x1ccross_az_requires_multi_node\x12/az_mode 'cross-az' requires num_cache_nodes > 1\x1a6this.az_mode != 'cross-az' || this.num_cache_nodes > 1\x1a\xdd\x01\n" +
 	"\x1aaz_list_matches_node_count\x12Lpreferred_availability_zones length must match num_cache_nodes when provided\x1aqthis.preferred_availability_zones.size() == 0 || this.preferred_availability_zones.size() == this.num_cache_nodes\x1a\x9e\x01\n" +
@@ -410,8 +429,11 @@ const file_catalog_aws_awsmemcachedelasticache_v1alpha1_spec_proto_rawDesc = "" 
 	"\x19network_type_valid_values\x12=network_type must be 'ipv4', 'ipv6', or 'dual_stack' when set\x1aNthis.network_type == '' || this.network_type in ['ipv4', 'ipv6', 'dual_stack']\x1a\x8d\x01\n" +
 	"\x19ip_discovery_valid_values\x12.ip_discovery must be 'ipv4' or 'ipv6' when set\x1a@this.ip_discovery == '' || this.ip_discovery in ['ipv4', 'ipv6']\x1a\xd7\x01\n" +
 	"\x1csubnet_arms_mutual_exclusion\x12xsubnet_ids and subnet_group_name are mutually exclusive — build a subnet group from subnets or bring an existing group\x1a=!(this.subnet_ids.size() > 0 && this.subnet_group_name != '')\x1a\xd5\x01\n" +
-	"\x1fparameter_arms_mutual_exclusion\x12pparameters and parameter_group_name are mutually exclusive — manage parameters here or bring an existing group\x1a@!(this.parameters.size() > 0 && this.parameter_group_name != '')B\a\n" +
-	"\x05_port\"\\\n" +
+	"\x1fparameter_arms_mutual_exclusion\x12pparameters and parameter_group_name are mutually exclusive — manage parameters here or bring an existing group\x1a@!(this.parameters.size() > 0 && this.parameter_group_name != '')\x1a\x81\x02\n" +
+	"\x1daz_placement_mutual_exclusion\x12\x8e\x01availability_zone and preferred_availability_zones are mutually exclusive placement controls — pin all nodes to one AZ or place nodes per-AZ\x1aO!(this.availability_zone != '' && this.preferred_availability_zones.size() > 0)\x1a\xed\x01\n" +
+	"\x17az_pin_forbids_cross_az\x12\x95\x01availability_zone pins all nodes to one AZ — it cannot be combined with az_mode 'cross-az'; use preferred_availability_zones for cross-AZ placement\x1a:this.availability_zone == '' || this.az_mode != 'cross-az'B\a\n" +
+	"\x05_portB\x1d\n" +
+	"\x1b_auto_minor_version_upgrade\"\\\n" +
 	" AwsMemcachedElasticacheParameter\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +
 	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05valueB\x91\x03\n" +

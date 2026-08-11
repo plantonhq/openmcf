@@ -62,8 +62,12 @@ spec:
   description: Test Redis cluster for development
   nodeType: cache.t3.micro
   numCacheClusters: 1
+  # Presence-typed encryption and upgrade flags: unset omits the argument
+  # (AWS decides, and a global-datastore secondary MUST leave them unset);
+  # explicit values pin the choice.
   atRestEncryptionEnabled: true
   transitEncryptionEnabled: true
+  autoMinorVersionUpgrade: true
 ```
 
 ## Spec Fields
@@ -360,7 +364,7 @@ clients migrate address families without replacing the cluster.
 
 ### spec.atRestEncryptionEnabled
 
-`bool`
+`bool` · optional (explicit presence)
 
 Enable encryption at rest for data stored on disk and in snapshots.
 ForceNew — changing this destroys and recreates the cluster.
@@ -369,7 +373,7 @@ ForceNew — changing this destroys and recreates the cluster.
 
 ### spec.transitEncryptionEnabled
 
-`bool`
+`bool` · optional (explicit presence)
 
 Enable encryption in transit (TLS) for all client connections and
 replication traffic. Strongly recommended for production; required for
@@ -586,7 +590,7 @@ configuration changes, etc.).
 
 ### spec.autoMinorVersionUpgrade
 
-`bool`
+`bool` · optional (explicit presence)
 
 Automatically apply minor engine version upgrades during maintenance windows.
 
@@ -613,6 +617,7 @@ decide (the common case).
 
 - `engine_required_or_inherited`: set engine to 'redis' or 'valkey' — or leave it empty only when joining a global datastore (global_replication_group_id), where the primary's engine is inherited
 - `engine_version_inherited_with_global`: leave engine_version empty when joining a global datastore — the primary's engine version is inherited
+- `engine_version_format`: engine_version format is invalid — Redis uses '5.0.6'-style below 6, '6.x' or '7.1'-style from 6; Valkey uses '7.2'-style
 - `node_type_required_or_inherited`: node_type is required — unless joining a global datastore (global_replication_group_id), where the primary's node type is inherited
 - `topology_mode_selection`: specify either num_cache_clusters (non-clustered) or num_node_groups (clustered), not both and not neither — a global-datastore secondary may set only num_cache_clusters
 - `num_cache_clusters_range`: num_cache_clusters must be between 1 and 6 when set (1 primary + up to 5 read replicas)
@@ -629,8 +634,8 @@ decide (the common case).
 - `ip_discovery_valid_values`: ip_discovery must be 'ipv4' or 'ipv6' when set
 - `auth_mutual_exclusion`: auth_token and user_group_ids are mutually exclusive; choose one authentication method (user groups are the recommended RBAC model)
 - `auth_strategy_valid_values`: auth_token_update_strategy must be 'ROTATE', 'SET', or 'DELETE' when set
-- `auth_strategy_requires_token`: auth_token_update_strategy only applies alongside auth_token — it controls how a token change rolls out
-- `transit_mode_requires_encryption`: transit_encryption_mode requires transit_encryption_enabled to be true
+- `auth_strategy_requires_token`: auth_token_update_strategy ROTATE/SET require auth_token; DELETE removes AUTH and requires auth_token to be absent
+- `transit_mode_requires_encryption`: transit_encryption_mode requires transit_encryption_enabled to be explicitly true
 - `transit_mode_valid_values`: transit_encryption_mode must be 'preferred' or 'required' when set
 - `restore_sources_mutual_exclusion`: snapshot_arns and snapshot_name are alternative restore sources — seed from S3 RDB files or from an ElastiCache snapshot, not both
 - `restore_forbidden_with_global`: a global-datastore secondary receives its data from the primary — snapshot_arns and snapshot_name cannot be combined with global_replication_group_id

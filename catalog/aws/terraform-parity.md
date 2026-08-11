@@ -32,7 +32,7 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
 | Distinct provider resources consumed | 235 |
-| Spec fields authored across all kinds | 4253 |
+| Spec fields authored across all kinds | 4254 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**33 of 112 kinds are at total accounting; 75 proven live.**
+**38 of 112 kinds are at total accounting; 73 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -74,7 +74,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCognitoResourceServer | 6 | 4 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
 | AwsCognitoUserPool | 91 | 53 | 0 | 0 | 68 | ❌ | ✅ pulumi, terraform |
 | AwsCognitoUserPoolClient | 31 | 30 | 0 | 0 | 1 | ❌ | ✅ pulumi, terraform |
-| AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | — |
 | AwsDynamodb | 71 | 27 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
 | AwsEc2Instance | 92 | 39 | 0 | 0 | 94 | ❌ | ✅ pulumi, terraform |
 | AwsEcrRepo | 17 | 5 | 0 | 0 | 25 | ❌ | ✅ pulumi, terraform |
@@ -90,8 +90,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsEksNodeGroup | 43 | 26 | 12 | 5 | 0 | ✅ | — |
 | AwsElasticFileSystem | 34 | 13 | 0 | 0 | 35 | ❌ | ✅ pulumi, terraform |
 | AwsElasticIp | 12 | 4 | 0 | 0 | 8 | ❌ | ✅ pulumi, terraform |
-| AwsElasticacheUser | 13 | 6 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
-| AwsElasticacheUserGroup | 6 | 3 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
+| AwsElasticacheUser | 13 | 6 | 0 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsElasticacheUserGroup | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEventBridgeBus | 13 | 8 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
 | AwsEventBridgeRule | 65 | 53 | 5 | 7 | 0 | ✅ | — |
 | AwsFsxDataRepositoryAssociation | 11 | 7 | 0 | 0 | 6 | ❌ | — |
@@ -122,21 +122,21 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsLbListener | 76 | 13 | 59 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 55 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbTargetGroup | 48 | 34 | 7 | 7 | 0 | ✅ | — |
-| AwsMemcachedElasticache | 48 | 20 | 0 | 0 | 31 | ❌ | ✅ pulumi, terraform |
+| AwsMemcachedElasticache | 48 | 21 | 3 | 24 | 0 | ✅ | — |
 | AwsMemorydbAcl | 6 | 2 | 0 | 0 | 4 | ❌ | — |
 | AwsMemorydbCluster | 46 | 31 | 0 | 0 | 18 | ❌ | — |
 | AwsMemorydbUser | 7 | 4 | 0 | 0 | 3 | ❌ | — |
 | AwsMskCluster | 50 | 9 | 0 | 0 | 74 | ❌ | partial: pulumi, terraform |
 | AwsMskServerlessCluster | 7 | 1 | 0 | 0 | 8 | ❌ | partial: pulumi, terraform |
 | AwsMwaaEnvironment | 38 | 32 | 0 | 0 | 9 | ❌ | partial: pulumi, terraform |
-| AwsNatGateway | 15 | 10 | 3 | 2 | 0 | ✅ | — |
+| AwsNatGateway | 15 | 10 | 3 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsNeptuneCluster | 70 | 34 | 0 | 0 | 52 | ❌ | ✅ pulumi, terraform |
-| AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | — |
+| AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsOpenSearchDomain | 77 | 51 | 0 | 0 | 48 | ❌ | partial: pulumi, terraform |
 | AwsPlantonRunner | 216 | 9 | 0 | 0 | 216 | ❌ | ✅ pulumi, terraform |
-| AwsRdsCluster | 143 | 84 | 19 | 40 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsRdsInstance | 119 | 65 | 20 | 34 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsRedisElasticache | 66 | 42 | 0 | 0 | 36 | ❌ | ✅ pulumi, terraform |
+| AwsRdsCluster | 143 | 84 | 19 | 40 | 0 | ✅ | — |
+| AwsRdsInstance | 119 | 65 | 20 | 34 | 0 | ✅ | — |
+| AwsRedisElasticache | 66 | 40 | 12 | 14 | 0 | ✅ | — |
 | AwsRedshiftCluster | 67 | 40 | 0 | 0 | 39 | ❌ | ✅ pulumi, terraform |
 | AwsRedshiftServerlessNamespace | 15 | 10 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
 | AwsRedshiftServerlessWorkgroup | 17 | 12 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
@@ -147,14 +147,14 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsS3ObjectSet | 28 | 3 | 0 | 0 | 46 | ❌ | ✅ pulumi, terraform |
 | AwsSagemakerDomain | 159 | 93 | 0 | 0 | 126 | ❌ | ✅ pulumi, terraform |
 | AwsSecurityGroup | 10 | 4 | 0 | 0 | 26 | ❌ | ✅ pulumi, terraform |
-| AwsServerlessElasticache | 19 | 12 | 0 | 0 | 11 | ❌ | ✅ pulumi, terraform |
+| AwsServerlessElasticache | 19 | 12 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSesConfigurationSet | 27 | 7 | 0 | 0 | 36 | ❌ | ✅ pulumi, terraform |
 | AwsSesEmailIdentity | 19 | 9 | 0 | 0 | 18 | ❌ | ✅ pulumi, terraform |
 | AwsSnsSubscription | 13 | 11 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
 | AwsSnsTopic | 33 | 12 | 0 | 0 | 38 | ❌ | ✅ pulumi, terraform |
 | AwsSqsQueue | 20 | 12 | 0 | 0 | 14 | ❌ | ✅ pulumi, terraform |
 | AwsStepFunction | 16 | 5 | 0 | 0 | 17 | ❌ | ✅ pulumi, terraform |
-| AwsSubnet | 33 | 22 | 0 | 11 | 0 | ✅ | — |
+| AwsSubnet | 33 | 22 | 0 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsTransitGateway | 14 | 12 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsTransitGatewayRouteTable | 21 | 6 | 0 | 0 | 23 | ❌ | ✅ pulumi, terraform |
 | AwsTransitGatewayVpcAttachment | 12 | 8 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
@@ -172,8 +172,8 @@ All resources of `aws@6.58.0` land in exactly one class:
 |---|---|---|
 | Modeled | 235 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 4 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 801 | judged to be covered by a planned kind or planned composition, not built yet |
+| Composed | 5 | capability covered through an existing kind's surface rather than a kind of its own |
+| Planned | 800 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 522 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -423,16 +423,17 @@ rather than trusted.
 | `aws_wafv2_web_acl_association` | consumed by AwsAlb, AwsAppRunnerService |
 | `aws_wafv2_web_acl_logging_configuration` | consumed by AwsWafWebAcl |
 
-### Composed (4)
+### Composed (5)
 
 | Resource | Recorded reason |
 |---|---|
 | `aws_autoscaling_attachment` | covered by AwsAutoScalingGroup: target_groups registers ALB/NLB target groups and traffic_sources covers Classic ELBs -- the standalone attachment is the imperative pattern for a group that owns its attachments |
 | `aws_autoscaling_traffic_source_attachment` | covered by AwsAutoScalingGroup.traffic_sources -- the standalone attachment is the imperative pattern for a group that owns its traffic sources |
+| `aws_elasticache_user_group_association` | covered by AwsElasticacheUserGroup's declarative user_ids membership -- the standalone one-user-at-a-time association is the imperative alternative to membership the group already owns (the autoscaling-attachment class); it attaches users to GROUPS, not to the Redis kind the prior reason named |
 | `aws_kms_key_policy` | covered by AwsKmsKey spec.policy -- the standalone resource is the detached-management pattern for keys owned elsewhere |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
 
-### Planned (801)
+### Planned (800)
 
 | Resource | Recorded reason |
 |---|---|
@@ -759,8 +760,7 @@ rather than trusted.
 | `aws_eks_capability` | EKS managed capabilities (ACK, KRO, Argo CD; provider 6.25.0) with their own configuration tree (IAM Identity Center wiring, RBAC role mappings, network access); a cluster-scoped companion with independent lifecycle -- its own kind (AwsEksCapability) on the EKS family's composition pattern (addon/fargate-profile/access-entry precedent), not a cluster fold-in |
 | `aws_eks_identity_provider_config` | associates an external OIDC identity provider with a cluster for user authentication; an associable cluster companion with independent (create-only) lifecycle -- its own kind (AwsEksIdentityProviderConfig) on the EKS family's composition pattern, not a cluster fold-in |
 | `aws_eks_pod_identity_association` | maps any Kubernetes service account to an IAM role via EKS Pod Identity; the per-ADDON arm is already modeled on AwsEksAddon (pod_identity_associations), and the standalone workload-scoped association is its own kind (AwsEksPodIdentityAssociation) -- per-workload IAM identity is chart-wiring surface, not cluster or addon configuration |
-| `aws_elasticache_global_replication_group` | ElastiCache companion surface; folds into the existing AwsRedisElasticache kind family as its spec deepens |
-| `aws_elasticache_user_group_association` | ElastiCache companion surface; folds into the existing AwsRedisElasticache kind family as its spec deepens |
+| `aws_elasticache_global_replication_group` | cross-region global datastore with its own lifecycle (suffix-named, anchored to a primary replication group, upgraded independently) -- a future AwsElasticacheGlobalReplicationGroup kind; AwsRedisElasticache already models the secondary-side join path (global_replication_group_id) |
 | `aws_emr_block_public_access_configuration` | judged as a planned AwsEmrCluster kind (clusters, instance groups/fleets, managed scaling, security configs, block-public-access) |
 | `aws_emr_cluster` | judged as a planned AwsEmrCluster kind (clusters, instance groups/fleets, managed scaling, security configs, block-public-access) |
 | `aws_emr_instance_fleet` | judged as a planned AwsEmrCluster kind (clusters, instance groups/fleets, managed scaling, security configs, block-public-access) |

@@ -72,7 +72,8 @@ spec:
 | `numCacheNodes` | int32 | 1 | Number of cache nodes (1–40) |
 | `azMode` | string | — | AZ distribution: `single-az` or `cross-az` (cross-az requires > 1 node) |
 | `port` | int32 | 11211 | Port for client connections (ForceNew) |
-| `preferredAvailabilityZones` | list | — | AZ placement per node (length must match `numCacheNodes`) |
+| `preferredAvailabilityZones` | list | — | AZ placement per node (length must match `numCacheNodes`; mutually exclusive with `availabilityZone`) |
+| `availabilityZone` | string | — | Pin ALL nodes to one AZ (e.g. `us-west-2a`). ForceNew; mutually exclusive with `preferredAvailabilityZones` and `cross-az` mode |
 
 ### Encryption
 
@@ -104,7 +105,7 @@ spec:
 |-------|------|---------|-------------|
 | `maintenanceWindow` | string | — | Weekly maintenance window (e.g., `sun:05:00-sun:06:00`) |
 | `applyImmediately` | bool | false | Apply changes immediately instead of waiting for maintenance window |
-| `autoMinorVersionUpgrade` | bool | — | Auto-upgrade minor engine versions during maintenance |
+| `autoMinorVersionUpgrade` | bool | Unset (AWS default: on) | Auto-upgrade minor engine versions during maintenance. Leave unset to keep AWS's enabled-by-default; set `false` to pin the running minor version |
 
 ### Notifications
 

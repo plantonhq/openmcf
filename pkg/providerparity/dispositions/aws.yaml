@@ -1609,13 +1609,13 @@ resources:
     reason: "Elastic Beanstalk is strategically displaced by App Runner and ECS kinds; not deprecated by AWS, deliberately not offered"
   - resource: aws_elasticache_global_replication_group
     disposition: model-planned
-    reason: "ElastiCache companion surface; folds into the existing AwsRedisElasticache kind family as its spec deepens"
+    reason: "cross-region global datastore with its own lifecycle (suffix-named, anchored to a primary replication group, upgraded independently) -- a future AwsElasticacheGlobalReplicationGroup kind; AwsRedisElasticache already models the secondary-side join path (global_replication_group_id)"
   - resource: aws_elasticache_reserved_cache_node
     disposition: deferred
     reason: "reserved nodes are a billing purchase commitment, not infrastructure"
   - resource: aws_elasticache_user_group_association
-    disposition: model-planned
-    reason: "ElastiCache companion surface; folds into the existing AwsRedisElasticache kind family as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsElasticacheUserGroup's declarative user_ids membership -- the standalone one-user-at-a-time association is the imperative alternative to membership the group already owns (the autoscaling-attachment class); it attaches users to GROUPS, not to the Redis kind the prior reason named"
   - resource: aws_elasticsearch_domain
     disposition: excluded-deprecated
     reason: "the legacy Elasticsearch service is superseded by OpenSearch (covered by AwsOpenSearchDomain)"

@@ -15,3 +15,9 @@ spec:
   engineVersion: "1.6.22"
   nodeType: cache.t3.micro
   numCacheNodes: 1
+  # Pin all nodes to one AZ (mutually exclusive with the per-node
+  # preferred_availability_zones list and with az_mode "cross-az").
+  availabilityZone: us-west-2a
+  # Presence-typed: unset lets AWS's enabled-by-default stand; an explicit
+  # value pins it.
+  autoMinorVersionUpgrade: true

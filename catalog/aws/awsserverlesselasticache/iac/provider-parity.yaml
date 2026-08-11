@@ -1,0 +1,29 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_elasticache_serverless_cache:
+    mappings:
+      # The provider nests the usage limits two blocks deep
+      # (cache_usage_limits -> data_storage / ecpu_per_second); the spec
+      # flattens them to four leaves.
+      - spec: spec.data_storage_min_gb
+        arg: cache_usage_limits.data_storage.minimum
+      - spec: spec.data_storage_max_gb
+        arg: cache_usage_limits.data_storage.maximum
+      - spec: spec.ecpu_min
+        arg: cache_usage_limits.ecpu_per_second.minimum
+      - spec: spec.ecpu_max
+        arg: cache_usage_limits.ecpu_per_second.maximum
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the cache name is platform naming, never free-form spec surface
+      - arg: cache_usage_limits.data_storage.unit
+        reason: wired by the module -- "GB" is the only value in AWS's DataStorageUnit enum (re-verified against the pinned SDK); no configuration decision exists
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface

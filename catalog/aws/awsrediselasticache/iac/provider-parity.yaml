@@ -1,0 +1,72 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# aws_elasticache_replication_group is the Redis/Valkey engine side of the
+# family; the Memcached engine's shared aws_elasticache_cluster resource is
+# modeled by AwsMemcachedElasticache.
+
+resources:
+  aws_elasticache_replication_group:
+    mappings:
+      # The provider names the repeated blocks in the singular; the spec
+      # uses the catalog's plural list convention. Subtree mappings bind
+      # the leaves by name beneath each root.
+      - spec: spec.log_delivery_configurations
+        arg: log_delivery_configuration
+      - spec: spec.node_group_configurations
+        arg: node_group_configuration
+    exclusions:
+      - arg: replication_group_id
+        reason: wired by the module from metadata.name -- the group id is platform naming, never free-form spec surface
+      - arg: security_group_names
+        reason: EC2-Classic security group names -- the EC2-Classic platform is retired; access composes through security_group_ids references
+      - arg: node_group_configuration.primary_outpost_arn
+        reason: AWS Outposts shard placement -- Outposts deployment is excluded surface across the catalog (the recorded Outposts exclusion class)
+      - arg: node_group_configuration.replica_outpost_arns
+        reason: AWS Outposts shard placement -- the recorded Outposts exclusion class
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_elasticache_subnet_group:
+    # The subnet group is pure glue (a named list of subnets), managed only
+    # when the spec brings raw subnet_ids; subnet_ids exact-matches
+    # spec.subnet_ids under the default root.
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group is owned by exactly one replication group
+      - arg: description
+        reason: wired by the module (a fixed management notice) -- carries no configuration; recorded explicitly so it never coincidentally matches the spec's own description field
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_elasticache_parameter_group:
+    # The managed group for inline spec.parameters -- pure glue (a named
+    # parameter list), created only when the spec brings parameters. The
+    # family stays a spec field: Redis/Valkey parameter families are chosen
+    # by the user alongside the version pin (e.g. redis7 vs valkey8, or the
+    # ".cluster.on" variants for Cluster Mode Enabled).
+    mappings:
+      # The provider nests entries under a "parameter" block; the spec IS
+      # that list.
+      - spec: spec.parameters
+        arg: parameter
+      - spec: spec.parameter_group_family
+        arg: family
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group is owned by exactly one replication group
+      - arg: description
+        reason: wired by the module (a fixed management notice) -- carries no configuration; recorded explicitly so it never coincidentally matches the spec's own description field
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

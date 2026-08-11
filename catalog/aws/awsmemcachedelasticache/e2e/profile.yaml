@@ -7,11 +7,14 @@ spec:
   # AwsVpc + two-AZ AwsSubnet prerequisites, runs deploy ->
   # DescribeCacheClusters verify -> destroy -> verify-destroyed on both
   # provisioners. The scenario is a single-node cache.t4g.micro with no
-  # transit encryption (Memcached auth does not exist). Cluster provisioning
-  # dominates runtime at roughly eight minutes each way per engine.
+  # transit encryption (Memcached auth does not exist), pinned to
+  # us-west-2a (the availability_zone arm — the prerequisite subnets' AZs
+  # are fixed literals) with an EXPLICIT auto-upgrade opt-out (the
+  # presence-typed field's send path; verify DescribeCacheClusters reports
+  # AutoMinorVersionUpgrade false AND the node's AZ, not apply success
+  # alone). Cluster provisioning dominates runtime at roughly eight
+  # minutes each way per engine.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 25
