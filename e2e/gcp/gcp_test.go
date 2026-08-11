@@ -25,6 +25,7 @@ import (
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/e2e/framework/runner"
 	"github.com/plantonhq/planton/pkg/e2e/profile"
+	componentv1 "github.com/plantonhq/planton/qa/componente2eprofile/v1"
 	gcpstorage "google.golang.org/api/storage/v1"
 )
 
@@ -957,6 +958,24 @@ func TestGcpCertificateMap_Terraform(t *testing.T) {
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
+
+	if cp, err := profile.LoadComponentProfile(repoRoot, "gcp", component); err == nil && cp.Spec != nil {
+		switch cp.Spec.Status {
+		case componentv1.ComponentE2EProfileSpec_deferred,
+			componentv1.ComponentE2EProfileSpec_skip,
+			componentv1.ComponentE2EProfileSpec_stub,
+			// pending_proof: fully authored, offline-validated, awaiting its
+			// first live proof. The proving session flips the profile to green
+			// immediately before executing the lanes; until then a sweep must
+			// never run it.
+			componentv1.ComponentE2EProfileSpec_pending_proof:
+			reason := cp.Spec.DeferredReason
+			if reason == "" {
+				reason = cp.Spec.Status.String()
+			}
+			t.Skipf("component %s E2E profile status is %s: %s", component, cp.Spec.Status, reason)
+		}
+	}
 
 	moduleDir, err := discovery.ModuleDir(repoRoot, "gcp", component, engine)
 	if err != nil {

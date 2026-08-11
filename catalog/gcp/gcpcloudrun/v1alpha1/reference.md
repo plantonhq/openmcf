@@ -92,7 +92,6 @@ spec:
           path: /
       readinessProbe:
         periodSeconds: 10
-        successThreshold: 2
         httpGet:
           path: /
       dependsOn:
@@ -207,7 +206,6 @@ spec:
 | `spec.containers[].readinessProbe` | `GcpCloudRunReadinessProbe` |  |  |  |
 | `spec.containers[].readinessProbe.timeoutSeconds` | `int32` |  |  |  |
 | `spec.containers[].readinessProbe.periodSeconds` | `int32` |  |  |  |
-| `spec.containers[].readinessProbe.successThreshold` | `int32` |  |  |  |
 | `spec.containers[].readinessProbe.failureThreshold` | `int32` |  |  |  |
 | `spec.containers[].readinessProbe.httpGet` | `GcpCloudRunReadinessHttpGetAction` |  |  |  |
 | `spec.containers[].readinessProbe.httpGet.path` | `string` |  |  |  |
@@ -842,15 +840,6 @@ Must not exceed period_seconds.
 Seconds between probe attempts (GCP default 10).
 
 - rule: {"int32":{"lte":3600,"gte":1}}
-
-### spec.containers[].readinessProbe.successThreshold
-
-`int32` · optional (explicit presence)
-
-Consecutive successes required before a previously failing instance
-is re-admitted to serving (GCP default 2).
-
-- rule: {"int32":{"gte":1}}
 
 ### spec.containers[].readinessProbe.failureThreshold
 

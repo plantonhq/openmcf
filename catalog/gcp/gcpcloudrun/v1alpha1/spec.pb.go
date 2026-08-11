@@ -1597,7 +1597,11 @@ func (x *GcpCloudRunGrpcAction) GetService() string {
 // a failing instance is pulled from serving (and re-added when it
 // recovers) without being restarted. Deliberately a different shape from
 // startup/liveness probes — the API gives readiness no initial delay and
-// no TCP handler, and adds a success threshold for re-admission.
+// no TCP handler. There is no success threshold: the GA API's probe
+// message carries no such field (verified live against the v2 discovery
+// document — the control plane silently drops the value the Terraform
+// provider models, leaving a perpetual re-plan diff), so re-admission
+// after recovery is single-success by API design.
 type GcpCloudRunReadinessProbe struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Seconds after which a single probe attempt times out (GCP default 1).
@@ -1605,13 +1609,10 @@ type GcpCloudRunReadinessProbe struct {
 	TimeoutSeconds *int32 `protobuf:"varint,1,opt,name=timeout_seconds,json=timeoutSeconds,proto3,oneof" json:"timeout_seconds,omitempty"`
 	// Seconds between probe attempts (GCP default 10).
 	PeriodSeconds *int32 `protobuf:"varint,2,opt,name=period_seconds,json=periodSeconds,proto3,oneof" json:"period_seconds,omitempty"`
-	// Consecutive successes required before a previously failing instance
-	// is re-admitted to serving (GCP default 2).
-	SuccessThreshold *int32 `protobuf:"varint,3,opt,name=success_threshold,json=successThreshold,proto3,oneof" json:"success_threshold,omitempty"`
 	// Consecutive failures after which the instance is pulled from serving
 	// (GCP default 3). The instance is NOT restarted — that is the liveness
 	// probe's job.
-	FailureThreshold *int32 `protobuf:"varint,4,opt,name=failure_threshold,json=failureThreshold,proto3,oneof" json:"failure_threshold,omitempty"`
+	FailureThreshold *int32 `protobuf:"varint,3,opt,name=failure_threshold,json=failureThreshold,proto3,oneof" json:"failure_threshold,omitempty"`
 	// The check to perform. HTTP and gRPC only — readiness has no TCP arm.
 	//
 	// Types that are valid to be assigned to Handler:
@@ -1667,13 +1668,6 @@ func (x *GcpCloudRunReadinessProbe) GetPeriodSeconds() int32 {
 	return 0
 }
 
-func (x *GcpCloudRunReadinessProbe) GetSuccessThreshold() int32 {
-	if x != nil && x.SuccessThreshold != nil {
-		return *x.SuccessThreshold
-	}
-	return 0
-}
-
 func (x *GcpCloudRunReadinessProbe) GetFailureThreshold() int32 {
 	if x != nil && x.FailureThreshold != nil {
 		return *x.FailureThreshold
@@ -1712,12 +1706,12 @@ type isGcpCloudRunReadinessProbe_Handler interface {
 
 type GcpCloudRunReadinessProbe_HttpGet struct {
 	// HTTP GET against a path on the container; 2xx is success.
-	HttpGet *GcpCloudRunReadinessHttpGetAction `protobuf:"bytes,5,opt,name=http_get,json=httpGet,proto3,oneof"`
+	HttpGet *GcpCloudRunReadinessHttpGetAction `protobuf:"bytes,4,opt,name=http_get,json=httpGet,proto3,oneof"`
 }
 
 type GcpCloudRunReadinessProbe_Grpc struct {
 	// Standard gRPC health-check protocol (grpc.health.v1.Health/Check).
-	Grpc *GcpCloudRunGrpcAction `protobuf:"bytes,6,opt,name=grpc,proto3,oneof"`
+	Grpc *GcpCloudRunGrpcAction `protobuf:"bytes,5,opt,name=grpc,proto3,oneof"`
 }
 
 func (*GcpCloudRunReadinessProbe_HttpGet) isGcpCloudRunReadinessProbe_Handler() {}
@@ -3180,21 +3174,19 @@ const file_catalog_gcp_gcpcloudrun_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15GcpCloudRunGrpcAction\x12$\n" +
 	"\x04port\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x00R\x04port\x88\x01\x01\x12\x18\n" +
 	"\aservice\x18\x02 \x01(\tR\aserviceB\a\n" +
-	"\x05_port\"\xeb\x05\n" +
+	"\x05_port\"\x9a\x05\n" +
 	"\x19GcpCloudRunReadinessProbe\x128\n" +
 	"\x0ftimeout_seconds\x18\x01 \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\x90\x1c(\x01H\x01R\x0etimeoutSeconds\x88\x01\x01\x126\n" +
 	"\x0eperiod_seconds\x18\x02 \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\x90\x1c(\x01H\x02R\rperiodSeconds\x88\x01\x01\x129\n" +
-	"\x11success_threshold\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x03R\x10successThreshold\x88\x01\x01\x129\n" +
-	"\x11failure_threshold\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x04R\x10failureThreshold\x88\x01\x01\x12d\n" +
-	"\bhttp_get\x18\x05 \x01(\v2G.dev.planton.gcp.gcpcloudrun.v1alpha1.GcpCloudRunReadinessHttpGetActionH\x00R\ahttpGet\x12Q\n" +
-	"\x04grpc\x18\x06 \x01(\v2;.dev.planton.gcp.gcpcloudrun.v1alpha1.GcpCloudRunGrpcActionH\x00R\x04grpc:\xc7\x01\xbaH\xc3\x01\x1a\xc0\x01\n" +
+	"\x11failure_threshold\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x03R\x10failureThreshold\x88\x01\x01\x12d\n" +
+	"\bhttp_get\x18\x04 \x01(\v2G.dev.planton.gcp.gcpcloudrun.v1alpha1.GcpCloudRunReadinessHttpGetActionH\x00R\ahttpGet\x12Q\n" +
+	"\x04grpc\x18\x05 \x01(\v2;.dev.planton.gcp.gcpcloudrun.v1alpha1.GcpCloudRunGrpcActionH\x00R\x04grpc:\xc7\x01\xbaH\xc3\x01\x1a\xc0\x01\n" +
 	"\"readiness_probe.timeout_lte_period\x122probe timeout_seconds cannot exceed period_seconds\x1af!has(this.timeout_seconds) || !has(this.period_seconds) || this.timeout_seconds <= this.period_secondsB\x10\n" +
 	"\ahandler\x12\x05\xbaH\x02\b\x01B\x12\n" +
 	"\x10_timeout_secondsB\x11\n" +
 	"\x0f_period_secondsB\x14\n" +
-	"\x12_success_thresholdB\x14\n" +
 	"\x12_failure_threshold\"w\n" +
 	"!GcpCloudRunReadinessHttpGetAction\x12#\n" +
 	"\x04path\x18\x01 \x01(\tB\x0f\xbaH\f\xd8\x01\x01r\a2\x05^/.*$R\x04path\x12$\n" +

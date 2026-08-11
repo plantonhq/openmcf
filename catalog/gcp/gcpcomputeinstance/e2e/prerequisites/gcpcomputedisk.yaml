@@ -1,0 +1,29 @@
+# Consumer-scoped GcpComputeDisk install profile for the compute-instance
+# chain: a small empty pd-balanced volume in the VM scenarios' zone.
+# Attached disks must live in the instance's own zone, and the VM
+# scenarios were relocated to us-east1-b on 2026-08-11 (audit-log-verified
+# us-central1 zonal stockout — see the scenarios), so this override pins
+# the disk beside them; the disk's published install profile keeps its own
+# zone for any future consumer. Disk names are project-scoped with no
+# soft-delete reservation, so the name stays fixed. project_id is omitted
+# and rides the harness-exported GOOGLE_PROJECT.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpComputeDisk
+metadata:
+  name: planton-oss-e2e-gcpdisk-prereq
+  id: planton-oss-e2e-gcpdisk-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcomputedisk
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  diskName: planton-oss-e2e-disk-prereq
+  zone: us-east1-b
+  type: pd-balanced
+  sizeGb: 20
+  description: Ephemeral data volume deployed as an E2E prerequisite; safe to delete

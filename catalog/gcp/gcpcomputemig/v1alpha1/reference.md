@@ -1484,8 +1484,11 @@ How replaced instances are recreated:
 
 Extra instances the rollout may create above target_size (fixed
 count). Higher surge = faster rollout, more temporary cost.
-Regional groups require fixed values >= the number of zones (or
-use percent).
+Regional groups accept ONLY 0 or a value >= the group's zone count
+(live-verified 400: "Fixed updatePolicy.maxSurge for regional
+managed instance group has to be either 0 or at least equal to the
+number of zones" — a regional group spreads over 3 zones by
+default, so 1 and 2 are rejected; use percent for finer budgets).
 
 - rule: {"int32":{"gte":0}}
 

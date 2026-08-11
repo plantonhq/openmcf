@@ -83,6 +83,20 @@ resources:
           and gRPC only); the schema exposes the arm only because the API
           proto shares one Probe message across probe types
 
+      # Same class, readiness flavor: the provider models a readiness
+      # success_threshold ("Defaults to 2"), but the GA v2 API's probe
+      # message carries no such field (verified live 2026-08-11 against
+      # the discovery document) -- the control plane silently drops the
+      # value, so any explicit setting is a perpetual re-plan diff. The
+      # spec deliberately has no such field; re-admission is
+      # single-success by API design.
+      - arg: template.containers.readiness_probe.success_threshold
+        reason: >-
+          the GA Run v2 API's probe message has no successThreshold (the
+          live control plane silently drops the provider-modeled value,
+          leaving a perpetual re-plan diff caught by the apply-idempotency
+          gate); re-admission is single-success by API design
+
       # Not yet bridged by the pinned Pulumi SDK (pulumi-gcp v9.29.0):
       # modeling these only in Terraform would break cross-engine parity
       # -- a spec field one engine silently drops. Re-evaluate at the
