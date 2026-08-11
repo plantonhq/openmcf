@@ -62,13 +62,31 @@ the fallback below.
 
 ## When no pack is reachable
 
-`planton explain <Kind>` prints the same schema-derived facts for one
-component at a time -- fields, validation rules, outputs, outbound
-references -- and works fully offline. Use it as the per-component fallback,
-and be honest about what it cannot give you: the indexes ("what exists"),
-full-text capability search, the inbound `Referenced By` view, the
-catalog-wide graph, and the authored guides and patterns. When an answer
-would have needed one of those, say so instead of approximating.
+Two per-component fallbacks, in order of preference:
+
+1. **`planton explain <Kind>`** (when the CLI exists where you run) prints
+   the same schema-derived facts for one component at a time -- fields,
+   validation rules, outputs, outbound references -- fully offline.
+2. **Fetch the component's pages into your workspace** (when you have
+   network but no CLI): the generated reference page and its neighbors live
+   at stable public paths --
+
+   ```
+   https://raw.githubusercontent.com/plantonhq/planton/main/catalog/<provider>/<kind>/<api-version>/reference.md
+   ```
+
+   Download into the workspace you already own and read there -- the fetch
+   stays inside your filesystem boundary, and the page carries the same
+   facts the pack ships. The provider index
+   (`catalog/<provider>/reference-index.md`) and the commons page fetch the
+   same way when discovery or grammar questions arise. Prefer fetching only
+   the pages the answer needs over mirroring the tree.
+
+Be honest about what per-component fallbacks cannot give you: full-text
+capability search, the inbound `Referenced By` view, the catalog-wide graph,
+and the authored guides and patterns (the fetched index partially covers
+"what exists"). When an answer would have needed one of those, say so
+instead of approximating.
 
 ## Freshness
 
