@@ -2608,10 +2608,11 @@ type CloudResourceKindMeta struct {
 	// (e.g. "aws.planton.dev/v1alpha1" carries version "v1"). the value must match
 	// the maturity grammar ^v\d+((alpha|beta)\d+)?$ (v1alpha1 → v1beta1 → v1):
 	// the name declares the compatibility channel. this is the kind's sole
-	// served version; per-version metadata blocks arrive additively if a kind
-	// ever serves multiple versions at once. enum-value options are
-	// compile-time data, so the grammar is enforced by the crkreflect
-	// registry tests rather than protovalidate.
+	// served version; per-version metadata arrives additively beside it (see
+	// deprecations), and richer blocks follow if a kind ever serves multiple
+	// versions at once. enum-value options are compile-time data, so the
+	// grammar is enforced by the crkreflect registry tests rather than
+	// protovalidate.
 	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	// name of the kind as written in manifests. set only when it differs from the
 	// enum value name; resolution falls back to the enum value name otherwise.
@@ -2681,8 +2682,23 @@ type CloudResourceKindMeta struct {
 	// are the UPSTREAM CRD's group-version-kind, distinct from the Planton
 	// groupVersion returned by crkreflect.GroupVersion.
 	KubernetesManifestProjection *KubernetesManifestProjection `protobuf:"bytes,8,opt,name=kubernetes_manifest_projection,json=kubernetesManifestProjection,proto3" json:"kubernetes_manifest_projection,omitempty"`
-	unknownFields                protoimpl.UnknownFields
-	sizeCache                    protoimpl.SizeCache
+	// schema versions of this kind announced as deprecated. a deprecated version
+	// keeps working exactly as before -- documents authored at it are accepted
+	// and converted like any known version; deprecation is advice, never a gate,
+	// and REMOVING a version stays a separate, telemetry-gated decision. what
+	// changes is visibility: every surface that speaks versions (the discovery
+	// API, dashboards, CLI listings) announces the version as on its way out.
+	// each entry must name a version this release actually ships a schema for,
+	// must not name the served version (there would be nothing to upgrade to),
+	// and must have an authored conversion path to the served version -- the
+	// bundle conformance gate refuses dead ends, so a deprecation can never
+	// outlive its version or strand its writers. the upgrade target is never
+	// authored: it is always the kind's served version, derived, so it cannot
+	// drift. like every kind_meta field this is compile-time data enforced by
+	// the crkreflect registry tests and the bundle conformance gate.
+	Deprecations  []*CloudResourceKindVersionDeprecation `protobuf:"bytes,9,rep,name=deprecations,proto3" json:"deprecations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CloudResourceKindMeta) Reset() {
@@ -2771,6 +2787,74 @@ func (x *CloudResourceKindMeta) GetKubernetesManifestProjection() *KubernetesMan
 	return nil
 }
 
+func (x *CloudResourceKindMeta) GetDeprecations() []*CloudResourceKindVersionDeprecation {
+	if x != nil {
+		return x.Deprecations
+	}
+	return nil
+}
+
+// marks one of a kind's schema versions as deprecated. carried on
+// CloudResourceKindMeta.deprecations; see that field for the contract.
+type CloudResourceKindVersionDeprecation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// the deprecated schema version, e.g. "v1alpha1". must match the maturity
+	// grammar, resolve to a schema this release ships for the kind, and differ
+	// from the kind's served version.
+	Version string `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
+	// optional plain-language context appended to the derived deprecation
+	// notice. surfaces compose the base sentence ("deprecated -- upgrade to
+	// <served version>") from data; this adds the why, or a migration caveat
+	// worth a sentence. empty is legal and common.
+	Note          string `protobuf:"bytes,2,opt,name=note,proto3" json:"note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudResourceKindVersionDeprecation) Reset() {
+	*x = CloudResourceKindVersionDeprecation{}
+	mi := &file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudResourceKindVersionDeprecation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudResourceKindVersionDeprecation) ProtoMessage() {}
+
+func (x *CloudResourceKindVersionDeprecation) ProtoReflect() protoreflect.Message {
+	mi := &file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudResourceKindVersionDeprecation.ProtoReflect.Descriptor instead.
+func (*CloudResourceKindVersionDeprecation) Descriptor() ([]byte, []int) {
+	return file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CloudResourceKindVersionDeprecation) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *CloudResourceKindVersionDeprecation) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
 // identifies the upstream Kubernetes custom resource that a CloudResourceKind
 // projects onto. carried on CloudResourceKindMeta for projection kinds only.
 type KubernetesManifestProjection struct {
@@ -2785,7 +2869,7 @@ type KubernetesManifestProjection struct {
 
 func (x *KubernetesManifestProjection) Reset() {
 	*x = KubernetesManifestProjection{}
-	mi := &file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes[1]
+	mi := &file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2797,7 +2881,7 @@ func (x *KubernetesManifestProjection) String() string {
 func (*KubernetesManifestProjection) ProtoMessage() {}
 
 func (x *KubernetesManifestProjection) ProtoReflect() protoreflect.Message {
-	mi := &file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes[1]
+	mi := &file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2810,7 +2894,7 @@ func (x *KubernetesManifestProjection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesManifestProjection.ProtoReflect.Descriptor instead.
 func (*KubernetesManifestProjection) Descriptor() ([]byte, []int) {
-	return file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDescGZIP(), []int{1}
+	return file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KubernetesManifestProjection) GetApiVersion() string {
@@ -2848,7 +2932,7 @@ var File_shared_cloudresourcekind_cloud_resource_kind_proto protoreflect.FileDes
 
 const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\n" +
-	"2shared/cloudresourcekind/cloud_resource_kind.proto\x12$dev.planton.shared.cloudresourcekind\x1a google/protobuf/descriptor.proto\x1a6shared/cloudresourcekind/cloud_resource_provider.proto\"\xf4\x03\n" +
+	"2shared/cloudresourcekind/cloud_resource_kind.proto\x12$dev.planton.shared.cloudresourcekind\x1a google/protobuf/descriptor.proto\x1a6shared/cloudresourcekind/cloud_resource_provider.proto\"\xe3\x04\n" +
 	"\x15CloudResourceKindMeta\x12W\n" +
 	"\bprovider\x18\x01 \x01(\x0e2;.dev.planton.shared.cloudresourcekind.CloudResourceProviderR\bprovider\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x12\n" +
@@ -2857,14 +2941,19 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x0fis_service_kind\x18\x05 \x01(\bR\risServiceKind\x12%\n" +
 	"\x0econtainer_kind\x18\x06 \x01(\bR\rcontainerKind\x12]\n" +
 	"\rprerequisites\x18\a \x03(\x0e27.dev.planton.shared.cloudresourcekind.CloudResourceKindR\rprerequisites\x12\x88\x01\n" +
-	"\x1ekubernetes_manifest_projection\x18\b \x01(\v2B.dev.planton.shared.cloudresourcekind.KubernetesManifestProjectionR\x1ckubernetesManifestProjection\"S\n" +
+	"\x1ekubernetes_manifest_projection\x18\b \x01(\v2B.dev.planton.shared.cloudresourcekind.KubernetesManifestProjectionR\x1ckubernetesManifestProjection\x12m\n" +
+	"\fdeprecations\x18\t \x03(\v2I.dev.planton.shared.cloudresourcekind.CloudResourceKindVersionDeprecationR\fdeprecations\"S\n" +
+	"#CloudResourceKindVersionDeprecation\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\tR\aversion\x12\x12\n" +
+	"\x04note\x18\x02 \x01(\tR\x04note\"S\n" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x80\x9a\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xae\x9a\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
-	"\vunspecified\x10\x00\x124\n" +
-	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
+	"\vunspecified\x10\x00\x12b\n" +
+	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
+	"\bv1alpha1\x12 superseded by the v1alpha2 shape\x127\n" +
 	"\x1bTestCloudResourceKubernetes\x10\x02\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha1\"\x04tcrk\x12,\n" +
 	"\x0eConfluentKafka\x102\x1a\x18\xa2\xf7\x04\x14\b\x10\x12\bv1alpha1\"\x06conkaf\x12*\n" +
 	"\fAtlasMongodb\x103\x1a\x18\xa2\xf7\x04\x14\b\v\x12\bv1alpha1\"\x06atlmdb\x12/\n" +
@@ -3556,25 +3645,27 @@ func file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDescGZIP() []byt
 }
 
 var file_shared_cloudresourcekind_cloud_resource_kind_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_shared_cloudresourcekind_cloud_resource_kind_proto_goTypes = []any{
-	(CloudResourceKind)(0),                // 0: dev.planton.shared.cloudresourcekind.CloudResourceKind
-	(*CloudResourceKindMeta)(nil),         // 1: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta
-	(*KubernetesManifestProjection)(nil),  // 2: dev.planton.shared.cloudresourcekind.KubernetesManifestProjection
-	(CloudResourceProvider)(0),            // 3: dev.planton.shared.cloudresourcekind.CloudResourceProvider
-	(*descriptorpb.EnumValueOptions)(nil), // 4: google.protobuf.EnumValueOptions
+	(CloudResourceKind)(0),                      // 0: dev.planton.shared.cloudresourcekind.CloudResourceKind
+	(*CloudResourceKindMeta)(nil),               // 1: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta
+	(*CloudResourceKindVersionDeprecation)(nil), // 2: dev.planton.shared.cloudresourcekind.CloudResourceKindVersionDeprecation
+	(*KubernetesManifestProjection)(nil),        // 3: dev.planton.shared.cloudresourcekind.KubernetesManifestProjection
+	(CloudResourceProvider)(0),                  // 4: dev.planton.shared.cloudresourcekind.CloudResourceProvider
+	(*descriptorpb.EnumValueOptions)(nil),       // 5: google.protobuf.EnumValueOptions
 }
 var file_shared_cloudresourcekind_cloud_resource_kind_proto_depIdxs = []int32{
-	3, // 0: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.provider:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceProvider
+	4, // 0: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.provider:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceProvider
 	0, // 1: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.prerequisites:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceKind
-	2, // 2: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.kubernetes_manifest_projection:type_name -> dev.planton.shared.cloudresourcekind.KubernetesManifestProjection
-	4, // 3: dev.planton.shared.cloudresourcekind.kind_meta:extendee -> google.protobuf.EnumValueOptions
-	1, // 4: dev.planton.shared.cloudresourcekind.kind_meta:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceKindMeta
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	4, // [4:5] is the sub-list for extension type_name
-	3, // [3:4] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 2: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.kubernetes_manifest_projection:type_name -> dev.planton.shared.cloudresourcekind.KubernetesManifestProjection
+	2, // 3: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.deprecations:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceKindVersionDeprecation
+	5, // 4: dev.planton.shared.cloudresourcekind.kind_meta:extendee -> google.protobuf.EnumValueOptions
+	1, // 5: dev.planton.shared.cloudresourcekind.kind_meta:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceKindMeta
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	5, // [5:6] is the sub-list for extension type_name
+	4, // [4:5] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_shared_cloudresourcekind_cloud_resource_kind_proto_init() }
@@ -3589,7 +3680,7 @@ func file_shared_cloudresourcekind_cloud_resource_kind_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc), len(file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 1,
 			NumServices:   0,
 		},

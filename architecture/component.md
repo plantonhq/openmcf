@@ -190,6 +190,7 @@ The following sections define the complete, ideal state of any component. This s
   - `prerequisites` - Other `CloudResourceKind`s that must exist first (e.g. an operator or CRD-installer like `KubernetesGatewayApiCrds`); drives resource-graph and infra-chart ordering
   - `is_service_kind` - Whether this kind is a Service Hub deployment target
   - `container_kind` - Whether this kind contains child resources in the org graph
+  - `deprecations` - Schema versions announced as deprecated (each with an optional plain-language `note`). A deprecated version keeps serving and converting; every surface that speaks versions announces it as on the way out. Each entry must name a non-served version this release ships a schema for, with an authored conversion path to the served version — the registry tests and the bundle conformance gate refuse anything else
   - Note: there is no `kubernetes_meta`/`category`/`namespace_prefix` field on `CloudResourceKindMeta`; the Kubernetes layout is flat (`catalog/kubernetes/<component>/`).
 
 **Example:**

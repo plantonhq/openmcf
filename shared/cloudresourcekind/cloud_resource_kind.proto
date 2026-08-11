@@ -19,10 +19,11 @@ message CloudResourceKindMeta {
   //(e.g. "aws.planton.dev/v1alpha1" carries version "v1"). the value must match
   //the maturity grammar ^v\d+((alpha|beta)\d+)?$ (v1alpha1 → v1beta1 → v1):
   //the name declares the compatibility channel. this is the kind's sole
-  //served version; per-version metadata blocks arrive additively if a kind
-  //ever serves multiple versions at once. enum-value options are
-  //compile-time data, so the grammar is enforced by the crkreflect
-  //registry tests rather than protovalidate.
+  //served version; per-version metadata arrives additively beside it (see
+  //deprecations), and richer blocks follow if a kind ever serves multiple
+  //versions at once. enum-value options are compile-time data, so the
+  //grammar is enforced by the crkreflect registry tests rather than
+  //protovalidate.
   string version = 2;
 
   //name of the kind as written in manifests. set only when it differs from the
@@ -98,6 +99,37 @@ message CloudResourceKindMeta {
   //are the UPSTREAM CRD's group-version-kind, distinct from the Planton
   //groupVersion returned by crkreflect.GroupVersion.
   KubernetesManifestProjection kubernetes_manifest_projection = 8;
+
+  //schema versions of this kind announced as deprecated. a deprecated version
+  //keeps working exactly as before -- documents authored at it are accepted
+  //and converted like any known version; deprecation is advice, never a gate,
+  //and REMOVING a version stays a separate, telemetry-gated decision. what
+  //changes is visibility: every surface that speaks versions (the discovery
+  //API, dashboards, CLI listings) announces the version as on its way out.
+  //each entry must name a version this release actually ships a schema for,
+  //must not name the served version (there would be nothing to upgrade to),
+  //and must have an authored conversion path to the served version -- the
+  //bundle conformance gate refuses dead ends, so a deprecation can never
+  //outlive its version or strand its writers. the upgrade target is never
+  //authored: it is always the kind's served version, derived, so it cannot
+  //drift. like every kind_meta field this is compile-time data enforced by
+  //the crkreflect registry tests and the bundle conformance gate.
+  repeated CloudResourceKindVersionDeprecation deprecations = 9;
+}
+
+//marks one of a kind's schema versions as deprecated. carried on
+//CloudResourceKindMeta.deprecations; see that field for the contract.
+message CloudResourceKindVersionDeprecation {
+  //the deprecated schema version, e.g. "v1alpha1". must match the maturity
+  //grammar, resolve to a schema this release ships for the kind, and differ
+  //from the kind's served version.
+  string version = 1;
+
+  //optional plain-language context appended to the derived deprecation
+  //notice. surfaces compose the base sentence ("deprecated -- upgrade to
+  //<served version>") from data; this adds the why, or a migration caveat
+  //worth a sentence. empty is legal and common.
+  string note = 2;
 }
 
 //identifies the upstream Kubernetes custom resource that a CloudResourceKind
@@ -139,6 +171,13 @@ enum CloudResourceKind {
     provider: _test
     version: "v1alpha2"
     id_prefix: "tcrg"
+    // The permanent deprecation fixture: the kind graduated to v1alpha2 with
+    // an authored conversion bridge, so v1alpha1 exercises the deprecation
+    // lane through every gate (registry tests, bundle conformance, discovery).
+    deprecations: {
+      version: "v1alpha1"
+      note: "superseded by the v1alpha2 shape"
+    }
   }];
   TestCloudResourceKubernetes = 2 [(kind_meta) = {
     provider: _test
