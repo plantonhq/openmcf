@@ -10,6 +10,13 @@ created "to get ahead of procurement" burns its monthly fee while
 sitting `NotProvisioned`. Create circuits when the provider order is
 actually in flight, and delete abandoned ones promptly.
 
+Budget real time for the create itself: circuit creation is an
+ARM-side long-running operation that has measured **~17-19 minutes**
+(Equinix / "Washington DC", 50 Mbps metered -- consistent across
+repeated live runs on both engines). Deletion is faster (a minute or
+two). A deploy that appears stuck at "creating" a quarter-hour in is
+normal, not wedged.
+
 ## The handoff is manual and out-of-band
 
 The `service_key` output is what your connectivity provider needs to

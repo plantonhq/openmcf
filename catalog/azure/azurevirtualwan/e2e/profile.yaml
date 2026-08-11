@@ -3,13 +3,13 @@ kind: ComponentE2EProfile
 metadata:
   name: azurevirtualwan
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The WAN is a free policy object that provisions in
-  # minutes; verifiers assert the ARM object and its transit-policy
-  # properties. It is also the fixture root of the Virtual WAN family --
-  # hub-family lanes chain through this kind's install profile.
+  # Live-proven 2026-08-11 on both engines: full lifecycle plus the
+  # Terraform blind import round-trip (single-id, zero-change plan).
+  # The WAN is a free policy object (lane ~2.5-3 min/engine end to end);
+  # verifiers assert the ARM object and its transit-policy properties.
+  # It is also the fixture root of the Virtual WAN family -- hub-family
+  # lanes chain through this kind's install profile.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

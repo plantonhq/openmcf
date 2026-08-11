@@ -54,8 +54,21 @@ func PulumiRemoveStack(moduleDir, stackName, backendURL string) error {
 }
 
 // PulumiStackOutputs retrieves stack outputs as a raw string.
+//
+// --show-secrets is load-bearing: without it Pulumi masks every secret
+// output as the literal string "[secret]", which corrupts a sensitive
+// SCALAR output silently (the sentinel populates the proto field and
+// counts as verified) and fails a sensitive MAP output's JSON parse
+// (first live hit: a name-keyed authorization_keys map). The Terraform
+// path reads real values (`terraform output -json` includes sensitive
+// outputs), so the flag keeps both engines' verification bar identical
+// -- and dependency-output capture rides this same helper, where a
+// consumer's value_from reference to a fixture's sensitive output would
+// otherwise resolve to the sentinel and deploy silently wrong. No
+// caller prints raw output values (counts and names only), so the
+// unmasked values never reach logs.
 func PulumiStackOutputs(moduleDir, stackName, backendURL string) (string, error) {
-	args := []string{"stack", "output", "--stack", stackName, "--json", "--non-interactive"}
+	args := []string{"stack", "output", "--stack", stackName, "--json", "--non-interactive", "--show-secrets"}
 	result, err := runPulumi(moduleDir, backendURL, "", "", args)
 	if err != nil {
 		return "", err

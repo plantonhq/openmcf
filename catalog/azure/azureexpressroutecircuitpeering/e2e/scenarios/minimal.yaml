@@ -1,12 +1,11 @@
 # Minimal AzureExpressRouteCircuitPeering scenario: private peering on
 # the fixture circuit (vlan 100, RFC-1918 /30 pair). The registry chain
 # deploys the fixture circuit; its provider side is NECESSARILY
-# NotProvisioned (no carrier behind the test subscription), and ARM
-# gates peering configuration on the Provisioned state -- so this lane's
-# live outcome is itself the proof point: either ARM accepts private-
-# peering CONFIG on an unprovisioned circuit (assert the ARM child), or
-# it rejects on provisioning state (record the deferral with unblock
-# condition). Never debug that rejection as a module defect.
+# NotProvisioned (no carrier behind the test subscription). LIVE-VERIFIED:
+# ARM accepts and stores private-peering configuration on the
+# unprovisioned circuit -- the lane asserts the ARM child (config
+# stored, session dark until the carrier provisions). Only Microsoft
+# peering's unprovisioned-circuit behavior remains unexercised.
 apiVersion: azure.planton.dev/v1alpha1
 kind: AzureExpressRouteCircuitPeering
 metadata:

@@ -3,13 +3,14 @@ kind: ComponentE2EProfile
 metadata:
   name: azureprivatelinkservice
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The lane composes the fixture load balancer (declared
-  # via the scenario's e2e-prerequisites annotation) and the
-  # policies-disabled subnet fixture; the service itself provisions in
-  # ~1-2 minutes.
+  # Live-proven 2026-08-11 on both engines: full lifecycle (deploy,
+  # verify via ARM, destroy, verify-destroyed) plus the Terraform blind
+  # import round-trip (single-id, zero-change plan). The lane composes
+  # the fixture load balancer (declared via the scenario's
+  # e2e-prerequisites annotation) and the policies-disabled subnet
+  # fixture; the service itself deploys in under a minute -- the
+  # fixture chain dominates the ~11-12 min lane.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

@@ -72,9 +72,11 @@ module "hq_private_peering" {
 
 ## Behavior Notes
 
-- ARM accepts peering configuration only on a PROVISIONED circuit --
-  on a fresh (NotProvisioned) circuit the create fails with the
-  provisioning-state error.
+- ARM accepts and stores peering configuration even on a fresh
+  (NotProvisioned) circuit -- live-verified for private peering. The
+  BGP session only establishes once the connectivity provider completes
+  the cross-connect; Microsoft peering's server-side public-prefix
+  validation has not been exercised on an unprovisioned circuit.
 - `shared_key` is write-only in ARM; the provider never reads it back.
 - The provider serializes all peering operations per circuit through an
   internal lock -- concurrent peerings on one circuit apply in

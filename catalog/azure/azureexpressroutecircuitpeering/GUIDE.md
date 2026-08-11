@@ -2,14 +2,20 @@
 
 Judgment that does not fit in field references.
 
-## The circuit must be PROVISIONED first
+## Peering config deploys BEFORE provisioning -- but nothing routes until the carrier is done
 
-ARM rejects peering configuration on a circuit whose provider state is
-`NotProvisioned` -- the error names the provisioning state, not your
-configuration. This is a sequencing fact, not a bug: circuit first,
-provider handoff second (days-to-weeks of carrier lead time), peering
-third. Watch the circuit's `service_provider_provisioning_state`
-output; deploy peerings only after it reads `Provisioned`.
+ARM accepts and stores private-peering configuration on a circuit whose
+provider state is still `NotProvisioned` (live-verified: a private
+peering with its VLAN and /30 pair deploys, reads back, and destroys
+cleanly on a fresh circuit). Deploying the peering ahead of the carrier
+handoff is therefore legal sequencing -- the configuration waits on the
+circuit, and the BGP session simply cannot establish until the provider
+completes the cross-connect (days-to-weeks of carrier lead time). Watch
+the circuit's `service_provider_provisioning_state` output: `Provisioned`
+is when routes can actually flow, not when the peering may be created.
+One honest boundary: Microsoft peering validates advertised public
+prefixes server-side and has NOT been exercised on an unprovisioned
+circuit -- do not assume its create behaves the same way.
 
 ## The type is the identity
 

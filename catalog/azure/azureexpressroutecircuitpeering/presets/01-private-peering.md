@@ -9,7 +9,7 @@ This preset configures private peering -- the routing configuration virtually ev
 
 ## Key Configuration Choices
 
-- **The circuit must be PROVISIONED** -- ARM rejects peering configuration while the provider handoff is incomplete; watch the circuit's `service_provider_provisioning_state` output first
+- **Config deploys before provisioning; routing waits for it** -- ARM stores private-peering configuration even on a NotProvisioned circuit, but the BGP session only establishes after the provider handoff completes; watch the circuit's `service_provider_provisioning_state` output for `Provisioned`
 - **Addressing comes from the provider's handoff document** -- the VLAN id and both /30s are configured identically on the provider's side; your router takes each /30's first usable address
 - **`peerAsn` can stay 0** -- Azure records the ASN your router presents; declare it only when the provider requires it up front
 - **One private peering per circuit** -- the type is the ARM identity; a "second" one would overwrite this one

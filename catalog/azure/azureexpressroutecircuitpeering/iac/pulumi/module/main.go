@@ -71,6 +71,12 @@ func Resources(ctx *pulumi.Context, stackInput *azureexpressroutecircuitpeeringv
 		peeringArgs.Ipv6 = ipv6Args
 	}
 
+	// ARM accepts and STORES peering configuration even while the circuit's
+	// provider state is "NotProvisioned" (live-verified for private
+	// peering); the BGP session only establishes after the connectivity
+	// provider completes the cross-connect. Microsoft peering's
+	// server-side public-prefix validation has not been exercised on an
+	// unprovisioned circuit.
 	createdPeering, err := network.NewExpressRouteCircuitPeering(ctx,
 		locals.AzureExpressRouteCircuitPeering.Metadata.Name,
 		peeringArgs,

@@ -29,10 +29,14 @@ import "shared/options/options.proto";
 // one per physical link); IPv6 adds /126 pairs via the `ipv6` block.
 // The VLAN id must be unique on the circuit.
 //
-// **Provisioning order**: the circuit must be provider-provisioned
-// (state "Provisioned") before ARM accepts peering configuration --
-// creating a peering on an unprovisioned circuit fails with the
-// provisioning-state error, not a validation error.
+// **Provisioning order**: ARM accepts and STORES peering configuration
+// on a circuit whose provider state is still "NotProvisioned"
+// (live-verified for private peering) -- deploying the peering before
+// the carrier handoff is legal sequencing, and the BGP session simply
+// cannot establish until the provider completes the cross-connect.
+// Microsoft peering validates advertised public prefixes server-side
+// and has not been exercised on an unprovisioned circuit -- do not
+// assume its create behaves the same way.
 //
 // **ForceNew fields**: `express_route_circuit_name`, `resource_group`,
 // and `peering_type` (the ARM identity) -- the routing configuration

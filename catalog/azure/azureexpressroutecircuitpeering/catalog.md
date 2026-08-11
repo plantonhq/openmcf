@@ -18,7 +18,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Azure Subscription
 
-- **A PROVISIONED ExpressRoute circuit** -- ARM rejects peering configuration while the circuit's provider state is NotProvisioned. The circuit must have completed its provider handoff first.
+- **An ExpressRoute circuit** -- the peering may be configured while the circuit's provider state is still NotProvisioned (ARM stores the configuration), but routes only flow after the connectivity provider completes the cross-connect and the circuit reads Provisioned.
 - **The session facts from your provider**: the VLAN id and the /30 address pairs (one per physical link), plus -- for Microsoft peering -- your registered public prefixes.
 
 ## Deploy

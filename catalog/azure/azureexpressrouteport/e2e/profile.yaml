@@ -3,16 +3,21 @@ kind: ComponentE2EProfile
 metadata:
   name: azureexpressrouteport
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The port bills its FULL MONTHLY RATE from creation
-  # (pro-rated cents-to-dollars for a lane-length life at 10 Gbps) and
-  # the create may reject on subscriptions not enrolled for ExpressRoute
-  # Direct -- that outcome is the lane's proof point (accept-and-assert
-  # or reject-and-defer), never a module defect. The physical
-  # cross-connects are out-of-band; verifiers assert ARM object state,
-  # the link pair, and the composed authorization, never link light.
+  # Live-proven 2026-08-11 on both engines: full lifecycle plus the
+  # Terraform blind import round-trip (port AND the composed
+  # authorization child from its address key; zero-change plan with NO
+  # tolerance -- live-confirming the provider reads the port
+  # authorization's key back from ARM, unlike the circuit's). LIVE
+  # FINDING: the shared test subscription created a 10 Gbps Direct port
+  # WITHOUT ExpressRoute Direct enrollment friction -- the anticipated
+  # authorization-class rejection never happened. The port creates in
+  # ~2 min and the lane runs ~4.5-5 min/engine; it bills its full
+  # monthly rate from creation (pro-rated ~a dollar for the two
+  # lane-length lives), so never leave a failed lane's port alive.
+  # The physical cross-connects are out-of-band; verifiers assert ARM
+  # object state, the link pair, and the composed authorization, never
+  # link light.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

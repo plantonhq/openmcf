@@ -380,6 +380,24 @@ Check `pulumi destroy --help | grep run-program` before the first lane on
 any machine, and upgrade the CLI rather than editing the runner -- the flag
 is load-bearing for delete-hook correctness.
 
+### Sensitive stack outputs: the Pulumi output reader passes `--show-secrets`
+
+The runner reads Pulumi outputs with `pulumi stack output --json
+--show-secrets`. The flag is load-bearing: without it Pulumi masks every
+secret output as the literal string `[secret]`, which corrupts a
+sensitive SCALAR output silently (the sentinel populates the proto field
+and counts as verified) and fails a sensitive MAP output's JSON parse
+with `invalid character 's' looking for beginning of value` (first live
+hit: a name-keyed `authorization_keys` map — the transform skipped the
+field and VERIFY-OUT under-reported N-1/N populated). The Terraform path
+reads real values (`terraform output -json` includes sensitive outputs),
+so the flag keeps both engines' verification bar identical. Dependency
+output capture rides the same helper, so without the flag a scenario's
+`value_from` reference to a FIXTURE's sensitive output resolves to the
+sentinel and deploys silently wrong. Runner code never prints raw output
+values (counts and names only), so unmasked values stay out of logs —
+keep it that way when touching output-path logging.
+
 ### Terraform binary selection
 
 Terraform E2E defaults to `tofu` (OpenTofu), matching the Planton CLI.
@@ -428,6 +446,18 @@ gateway and the fixture gateway can never coexist.
 Burstable VM sizes in `eastus` may support only availability zone `1` — multi-zone
 lists fail with `AvailabilityZoneNotSupported`. AKS E2E scenarios in this repo
 use `zones: ["1"]` for the test subscription.
+
+### Long-running Azure components (ExpressRoute circuits)
+
+An ExpressRoute circuit CREATE is a slow ARM long-running operation:
+measured live at **~17-19 minutes** per create (Equinix / "Washington
+DC", 50 Mbps metered, Standard SKU -- consistent across four
+consecutive creates on both engines), while the delete completes in a
+minute or two. Budget it in every lane whose prerequisite chain deploys
+the fixture circuit (the circuit-peering lane pays it inside
+DEPENDENCIES-UP), and note the peering's own DELETE runs ~7-8 minutes.
+The circuit-family component profiles carry `timeout_minutes: 45` for
+exactly this class.
 
 ### Offer-restricted services on free/PAYG subscriptions (probe, don't roulette)
 

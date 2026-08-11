@@ -1,8 +1,11 @@
 # Create the ExpressRoute circuit peering -- the BGP routing
-# configuration that makes routes flow through the circuit. The circuit
-# must be provider-provisioned (state "Provisioned") before ARM accepts
-# this configuration; on a fresh unprovisioned circuit the create fails
-# with the provisioning-state error, not a validation error.
+# configuration that makes routes flow through the circuit. ARM accepts
+# and STORES this configuration even while the circuit's provider state
+# is "NotProvisioned" (live-verified for private peering); the BGP
+# session itself only establishes after the connectivity provider
+# completes the cross-connect. Microsoft peering's server-side
+# public-prefix validation has not been exercised on an unprovisioned
+# circuit.
 resource "azurerm_express_route_circuit_peering" "main" {
   peering_type               = lookup(local.peering_type_wire, var.spec.peering_type, var.spec.peering_type)
   express_route_circuit_name = var.spec.express_route_circuit_name
