@@ -2584,6 +2584,17 @@ enum CloudResourceKind {
     id_prefix: "aztmep"
     prerequisites: [AzureTrafficManagerProfile]
   }];
+  // AzureResourceGroup is a prerequisite because an autoscale setting
+  // is created inside a referenced resource group. The scalable TARGET
+  // it controls is a no-default reference (many kinds can be scaled),
+  // so no target kind is declared here -- scenarios declare their own
+  // target fixture.
+  AzureMonitorAutoscaleSetting = 2191 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azautoscale"
+    prerequisites: [AzureResourceGroup]
+  }];
   // Registers a storage account with a Recovery Services vault as a
   // backup container (.../protectionContainers/StorageContainer;...)
   // -- one registration per storage-account-and-vault pair, required

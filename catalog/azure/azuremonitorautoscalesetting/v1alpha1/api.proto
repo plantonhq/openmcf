@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremonitorautoscalesetting.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuremonitorautoscalesetting/v1alpha1/outputs.proto";
+import "catalog/azure/azuremonitorautoscalesetting/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureMonitorAutoscaleSetting represents an Azure Monitor autoscale
+// setting -- the rule book that automatically adds and removes instances
+// of one scalable target (a VM Scale Set, an App Service plan, ...)
+// based on metric rules and schedules.
+message AzureMonitorAutoscaleSetting {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureMonitorAutoscaleSetting'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureMonitorAutoscaleSettingSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureMonitorAutoscaleSettingStatus status = 5;
+}
+
+// AzureMonitorAutoscaleSettingStatus represents the status of an Azure
+// Monitor autoscale setting deployment.
+message AzureMonitorAutoscaleSettingStatus {
+  //stack-outputs
+  //  azure-monitor-autoscale-setting stack-outputs
+  AzureMonitorAutoscaleSettingStackOutputs outputs = 1;
+}

@@ -447,3 +447,8 @@ spec:
     - terraform_type: azurerm_traffic_manager_nested_endpoint
       pulumi_type: azure:network/trafficManagerNestedEndpoint:TrafficManagerNestedEndpoint
       id_format: "{endpoint_id}"
+
+    # --- Monitor ---------------------------------------------------------------
+    - terraform_type: azurerm_monitor_autoscale_setting
+      pulumi_type: azure:monitoring/autoscaleSetting:AutoscaleSetting
+      id_format: "{autoscale_setting_id}"

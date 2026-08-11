@@ -284,6 +284,7 @@ AzurePrivateDnsResolverForwardingRuleset=2187
 AzurePrivateDnsRecord=2188
 AzureTrafficManagerProfile=2189
 AzureTrafficManagerEndpoint=2190
+AzureMonitorAutoscaleSetting=2191
 AzureBackupContainerStorageAccount=2213
 AzureDataProtectionResourceGuard=2214
 AzurePrivateDnsResolverVirtualNetworkLink=2215

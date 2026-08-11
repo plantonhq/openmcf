@@ -118,6 +118,7 @@ var verifiers = map[string]Verifier{
 	"azuremanagedredisgeoreplication":                &managedRedisGeoReplicationVerifier{},
 	"azuremonitoractiongroup":                        &monitorActionGroupVerifier{},
 	"azuremonitoractivitylogalert":                   &monitorActivityLogAlertVerifier{},
+	"azuremonitorautoscalesetting":                   &monitorAutoscaleSettingVerifier{},
 	"azuremonitordiagnosticsetting":                  &monitorDiagnosticSettingVerifier{},
 	"azuremonitormetricalert":                        &monitorMetricAlertVerifier{},
 	"azuremonitorscheduledqueryalert":                &monitorScheduledQueryAlertVerifier{},

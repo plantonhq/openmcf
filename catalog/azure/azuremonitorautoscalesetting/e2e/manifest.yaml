@@ -1,0 +1,98 @@
+# Offline-plan test manifest. Exercises the DEEP shape the live smoke
+# does not: three profiles (metric rules with dimensions, namespace, and
+# per-instance division; a timezone'd recurrence; a fixed-date window),
+# predictive autoscale, and both notification channels with webhook
+# properties. (The live scenario proves the everyday shape: default
+# profile + rule + recurrence + email.)
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorAutoscaleSetting
+metadata:
+  name: test-autoscale-setting
+  org: test-org
+  env: dev
+spec:
+  resourceGroup:
+    value: test-rg
+  name: web-pool-autoscale
+  region: eastus
+  targetResourceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Compute/virtualMachineScaleSets/web-pool
+  enabled: true
+  predictive:
+    scaleMode: ForecastOnly
+    lookAheadTime: PT10M
+  profiles:
+    - name: default
+      capacity:
+        minimum: 2
+        maximum: 10
+        default: 3
+      rules:
+        - metricTrigger:
+            metricName: Percentage CPU
+            metricResourceId:
+              value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Compute/virtualMachineScaleSets/web-pool
+            timeGrain: PT1M
+            statistic: Average
+            timeWindow: PT10M
+            timeAggregation: Average
+            operator: GreaterThan
+            threshold: 75
+            metricNamespace: microsoft.compute/virtualmachinescalesets
+            divideByInstanceCount: true
+            dimensions:
+              - name: VMName
+                operator: NotEquals
+                values:
+                  - canary-0
+          scaleAction:
+            direction: Increase
+            type: PercentChangeCount
+            value: 20
+            cooldown: PT5M
+        - metricTrigger:
+            metricName: Percentage CPU
+            metricResourceId:
+              value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Compute/virtualMachineScaleSets/web-pool
+            timeGrain: PT1M
+            statistic: Average
+            timeWindow: PT20M
+            timeAggregation: Average
+            operator: LessThan
+            threshold: 25
+          scaleAction:
+            direction: Decrease
+            type: ChangeCount
+            value: 1
+            cooldown: PT15M
+    - name: weekday-business-hours
+      capacity:
+        minimum: 4
+        maximum: 12
+        default: 4
+      recurrence:
+        timezone: Eastern Standard Time
+        days: [Monday, Tuesday, Wednesday, Thursday, Friday]
+        hour: 8
+        minute: 30
+    - name: launch-window
+      capacity:
+        minimum: 8
+        maximum: 20
+        default: 8
+      fixedDate:
+        timezone: Pacific Standard Time
+        start: "2026-11-27T00:00:00Z"
+        end: "2026-11-30T00:00:00Z"
+  notification:
+    email:
+      sendToSubscriptionAdministrator: true
+      sendToSubscriptionCoAdministrator: false
+      customEmails:
+        - oncall@example.com
+    webhooks:
+      - serviceUri: https://hooks.example.com/scale-events
+        properties:
+          channel: ops
+  tags:
+    team: platform

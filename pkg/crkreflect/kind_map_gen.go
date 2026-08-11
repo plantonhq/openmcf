@@ -250,6 +250,7 @@ import (
 	azuremanagedredisgeoreplicationv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremanagedredisgeoreplication/v1alpha1"
 	azuremonitoractiongroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitoractiongroup/v1alpha1"
 	azuremonitoractivitylogalertv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitoractivitylogalert/v1alpha1"
+	azuremonitorautoscalesettingv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitorautoscalesetting/v1alpha1"
 	azuremonitordiagnosticsettingv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitordiagnosticsetting/v1alpha1"
 	azuremonitormetricalertv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitormetricalert/v1alpha1"
 	azuremonitorscheduledqueryalertv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitorscheduledqueryalert/v1alpha1"
@@ -942,6 +943,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureManagedRedisGeoReplication:                &azuremanagedredisgeoreplicationv1alpha1.AzureManagedRedisGeoReplication{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorActionGroup:                        &azuremonitoractiongroupv1alpha1.AzureMonitorActionGroup{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorActivityLogAlert:                   &azuremonitoractivitylogalertv1alpha1.AzureMonitorActivityLogAlert{},
+	cloudresourcekind.CloudResourceKind_AzureMonitorAutoscaleSetting:                   &azuremonitorautoscalesettingv1alpha1.AzureMonitorAutoscaleSetting{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorDiagnosticSetting:                  &azuremonitordiagnosticsettingv1alpha1.AzureMonitorDiagnosticSetting{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorMetricAlert:                        &azuremonitormetricalertv1alpha1.AzureMonitorMetricAlert{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorScheduledQueryAlert:                &azuremonitorscheduledqueryalertv1alpha1.AzureMonitorScheduledQueryAlert{},

@@ -1,0 +1,34 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_monitor_autoscale_setting:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (a resource
+      # group, a region), where the provider inherits ARM's property
+      # names.
+      - spec: spec.resource_group
+        arg: resource_group_name
+      - spec: spec.region
+        arg: location
+      # The spec names say what the lists ARE (plural collections),
+      # where the provider uses singular block names. Specific subtree
+      # mappings precede the general profile mapping -- the derive order
+      # matters.
+      - spec: spec.profiles.rules
+        arg: profile.rule
+      # The provider takes one-item hours/minutes lists (a schedule
+      # fires at ONE time); the spec models the single value.
+      - spec: spec.profiles.recurrence.hour
+        arg: profile.recurrence.hours
+      - spec: spec.profiles.recurrence.minute
+        arg: profile.recurrence.minutes
+      - spec: spec.profiles
+        arg: profile
+      - spec: spec.notification.webhooks
+        arg: notification.webhook
