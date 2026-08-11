@@ -4222,16 +4222,16 @@ resources:
     reason: "WAF Classic (regional) is superseded by WAFv2 (covered by AwsWafWebAcl)"
   - resource: aws_wafv2_api_key
     disposition: model-planned
-    reason: "WAFv2 companion surface (standalone web-ACL rules, rule-group associations, API keys); folds into the existing AwsWafWebAcl kind as its spec deepens"
+    reason: "judged as a planned AwsWafApiKey kind: a scope-level API key for the CAPTCHA/challenge client-side JS integration, create/delete-only with a sensitive key output serving up to 5 token domains -- a standalone lifecycle that does not fold into AwsWafWebAcl (whose 2026-08-11 depth closure completed the spec deepening the prior blanket reason waited on)"
   - resource: aws_wafv2_rule_group
     disposition: model-planned
     reason: "judged as a planned AwsWafRuleGroup kind"
   - resource: aws_wafv2_web_acl_rule
-    disposition: model-planned
-    reason: "WAFv2 companion surface (standalone web-ACL rules, rule-group associations, API keys); folds into the existing AwsWafWebAcl kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set"
   - resource: aws_wafv2_web_acl_rule_group_association
-    disposition: model-planned
-    reason: "WAFv2 companion surface (standalone web-ACL rules, rule-group associations, API keys); folds into the existing AwsWafWebAcl kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set"
   - resource: aws_workmail_default_domain
     disposition: deferred
     reason: "hosted email vertical (WorkMail); deferred pending demand"

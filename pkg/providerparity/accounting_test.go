@@ -256,6 +256,119 @@ func TestBuildAccounting_Hermetic(t *testing.T) {
 // classes always win over the ledger AND that a shadowed entry is a
 // staleness finding: judgment duplicating what the instrument derives on
 // its own is judgment nobody re-evaluates.
+// TestBuildAccounting_CollapseMapping proves the subtree-to-leaf judgment
+// for recursive provider grammars: the provider expands a recursive schema
+// into bounded nesting levels (thousands of leaf paths), the spec census
+// records each re-entry as ONE leaf, and a collapse mapping folds every
+// argument under the re-entry subtree onto that leaf. Without the flag the
+// same mapping resumes exact matching below the subtree and the deep args
+// surface as findings — collapse is never implicit.
+func TestBuildAccounting_CollapseMapping(t *testing.T) {
+	schemas := map[string]*Schema{"aws": {
+		Provider: "aws",
+		Source:   "hashicorp/aws",
+		Version:  "6.58.0",
+		Resources: map[string]*Block{
+			"aws_recursive_thing": {
+				Blocks: map[string]*NestedBlock{
+					// The provider's bounded expansion of a recursive
+					// grammar: statement.kind at the root, and the same
+					// grammar again under and.statement (two levels).
+					"statement": {NestingMode: "single", Block: &Block{
+						Attributes: map[string]*Attribute{"kind": {Optional: true}},
+						Blocks: map[string]*NestedBlock{
+							"and": {NestingMode: "single", Block: &Block{
+								Blocks: map[string]*NestedBlock{
+									"statement": {NestingMode: "list", Block: &Block{
+										Attributes: map[string]*Attribute{"kind": {Optional: true}},
+										Blocks: map[string]*NestedBlock{
+											"and": {NestingMode: "single", Block: &Block{
+												Blocks: map[string]*NestedBlock{
+													"statement": {NestingMode: "list", Block: &Block{
+														Attributes: map[string]*Attribute{"kind": {Optional: true}},
+													}},
+												},
+											}},
+										},
+									}},
+								},
+							}},
+						},
+					}},
+				},
+			},
+		},
+	}}
+	// The spec models the grammar recursively: the census emits the root
+	// arm's leaf plus the re-entry field as ONE leaf.
+	spec := []KindCensus{{
+		Kind: "TestRecursive",
+		SpecFieldPaths: []string{
+			"spec.statement.and.statements",
+			"spec.statement.kind",
+		},
+	}}
+	modules := []ModuleCensus{{
+		Kind:      "TestRecursive",
+		ModuleDir: "catalog/aws/testrecursive/iac/tf",
+		Resources: []string{"aws_recursive_thing"},
+	}}
+	manifest := &Manifest{Resources: map[string]*ResourceManifest{
+		"aws_recursive_thing": {
+			Mappings: []Mapping{
+				{Arg: "statement", Spec: "spec.statement"},
+				{Arg: "statement.and.statement", Spec: "spec.statement.and.statements", Collapse: true},
+			},
+		},
+	}}
+
+	acc := buildAccounting("aws", spec, modules, schemas, "aws",
+		map[string]*Manifest{"TestRecursive": manifest}, nil)
+	ka := kindByName(t, acc, "TestRecursive")
+	// statement.kind (mapped via subtree), statement.and.statement.kind and
+	// statement.and.statement.and.statement.kind (both collapse-mapped).
+	if ka.TotalArgs != 3 || ka.MappedArgs != 3 {
+		t.Errorf("total/mapped = %d/%d, want 3/3", ka.TotalArgs, ka.MappedArgs)
+	}
+	if len(ka.UnaccountedArgs) != 0 {
+		t.Errorf("UnaccountedArgs = %v, want none", ka.UnaccountedArgs)
+	}
+	if len(ka.UncoveredSpecFields) != 0 {
+		t.Errorf("UncoveredSpecFields = %v, want none (the collapse covers the re-entry leaf)", ka.UncoveredSpecFields)
+	}
+	if !ka.Accounted() {
+		t.Error("TestRecursive must be at total accounting")
+	}
+
+	// The same mapping WITHOUT collapse leaves the deep args unaccounted —
+	// proving the fold never happens implicitly.
+	manifest.Resources["aws_recursive_thing"].Mappings[1].Collapse = false
+	acc = buildAccounting("aws", spec, modules, schemas, "aws",
+		map[string]*Manifest{"TestRecursive": manifest}, nil)
+	ka = kindByName(t, acc, "TestRecursive")
+	if len(ka.UnaccountedArgs) != 2 {
+		t.Errorf("UnaccountedArgs = %v, want the two deep args", ka.UnaccountedArgs)
+	}
+
+	// A collapse mapping pointing at a spec SUBTREE (not a leaf) is a
+	// staleness finding: the fold target must be a single census leaf.
+	manifest.Resources["aws_recursive_thing"].Mappings[1] = Mapping{
+		Arg: "statement.and.statement", Spec: "spec.statement", Collapse: true,
+	}
+	acc = buildAccounting("aws", spec, modules, schemas, "aws",
+		map[string]*Manifest{"TestRecursive": manifest}, nil)
+	ka = kindByName(t, acc, "TestRecursive")
+	var sawLeafStale bool
+	for _, s := range ka.ManifestStale {
+		if strings.Contains(s, "must name a spec census leaf") {
+			sawLeafStale = true
+		}
+	}
+	if !sawLeafStale {
+		t.Errorf("ManifestStale = %v, want the collapse-to-subtree finding", ka.ManifestStale)
+	}
+}
+
 func TestBuildAccounting_LedgerShadowsComputedClasses(t *testing.T) {
 	spec, modules, schemas, manifests, _ := accountingFixture()
 	ledger := []LedgerEntry{

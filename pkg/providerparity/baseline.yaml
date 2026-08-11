@@ -71,9 +71,6 @@ entries:
   - kind:AwsTransitGatewayRouteTable
   - kind:AwsTransitGatewayVpcAttachment
   - kind:AwsVpcEndpoint
-  - kind:AwsWafIpSet
-  - kind:AwsWafRegexPatternSet
-  - kind:AwsWafWebAcl
   - kind:GcpAddress
   - kind:GcpAlloydbCluster
   - kind:GcpAlloydbInstance

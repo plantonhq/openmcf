@@ -15,19 +15,27 @@ spec:
   # scenario:
   #   - CLOUDFRONT scope: requires us-east-1 while the shared fixtures live
   #     in us-west-2; the rule engine is identical across scopes.
-  #   - logging: the destination must be named aws-waf-logs-* and would
-  #     drag a CloudWatch log group fixture into every run; the block is a
-  #     single put-style satellite proven by the offline gate.
+  #   - logging (destination, the full redaction surface, and the logging
+  #     filter): the destination must be named aws-waf-logs-* and would
+  #     drag a CloudWatch log group fixture into every run; the whole
+  #     surface is a single put-style satellite proven by the offline gate
+  #     (the canonical manifest carries destination + all four redaction
+  #     arms + a keep-only-enforcement filter; unblock: a shared
+  #     aws-waf-logs-* log-group fixture if one ever ships).
   #   - intelligent-threat configs (ATP/ACFP/Bot Control/anti-DDoS): paid
   #     add-on rule groups with per-request pricing; their JSON serialization
   #     is locked by the module unit tests.
   #   - CAPTCHA/challenge rule actions and token_domains: need a JS client
   #     integration to observe; the immunity-time configs ARE deployed live.
   # Live dual-engine run 2026-07-08 (with both set fixtures deployed by the
-  # prerequisite chain): Pulumi 1m09s / Terraform 1m27s.
+  # prerequisite chain): Pulumi 1m09s / Terraform 1m27s. Flipped to
+  # pending_proof 2026-08-11: the depth closure modeled the logging filter
+  # and method redaction, presence-typed the rule priority (0 now
+  # expressible), and repaired the data-protection field_keys CEL -- the
+  # rule-tree serializers are byte-identical, but the spec and the logging
+  # renderers changed in both engines, so the earned proof no longer covers
+  # the shipped surface.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

@@ -93,9 +93,6 @@ func CollectSpecPaths(specMd protoreflect.MessageDescriptor, prefix string) []st
 }
 
 func walkSpec(md protoreflect.MessageDescriptor, prefix string, visited map[protoreflect.FullName]bool, out *[]string) {
-	if visited[md.FullName()] {
-		return
-	}
 	visited[md.FullName()] = true
 	defer delete(visited, md.FullName())
 
@@ -112,14 +109,29 @@ func walkSpec(md protoreflect.MessageDescriptor, prefix string, visited map[prot
 			// The author configures one map field; message values recurse
 			// because each value's shape is itself configurable surface.
 			if v := fd.MapValue(); v.Kind() == protoreflect.MessageKind && !isOpaqueLeafMessage(string(v.Message().FullName())) {
-				walkSpec(v.Message(), path, visited, out)
+				if visited[v.Message().FullName()] {
+					*out = append(*out, path)
+				} else {
+					walkSpec(v.Message(), path, visited, out)
+				}
 			} else {
 				*out = append(*out, path)
 			}
 		case fd.Kind() == protoreflect.MessageKind:
-			if isOpaqueLeafMessage(string(fd.Message().FullName())) {
+			switch {
+			case isOpaqueLeafMessage(string(fd.Message().FullName())):
 				*out = append(*out, path)
-			} else {
+			case visited[fd.Message().FullName()]:
+				// Recursive re-entry: the field's message is an ancestor on
+				// the current walk path (a recursive grammar, e.g. WAF's
+				// statement tree nesting statements inside and/or/not). The
+				// author configures "the same grammar again" here, so the
+				// field counts as ONE leaf — the opaque-leaf treatment.
+				// Dropping it silently (the previous behavior) hid the field
+				// from the census entirely, which is exactly the
+				// silent-omission class this package exists to eliminate.
+				*out = append(*out, path)
+			default:
 				walkSpec(fd.Message(), path, visited, out)
 			}
 		default:

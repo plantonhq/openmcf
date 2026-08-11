@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -358,6 +359,11 @@ func (m argMatcher) derive(argPath string) (string, bool) {
 			return mp.Spec, true
 		}
 		if strings.HasPrefix(argPath, mp.Arg+".") {
+			if mp.Collapse {
+				// Subtree-to-leaf judgment: everything under the arg
+				// subtree is the one spec leaf (recursive grammars).
+				return mp.Spec, true
+			}
 			return mp.Spec + argPath[len(mp.Arg):], true
 		}
 	}
@@ -450,6 +456,13 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 			if !underPath(kindSpecPaths, mp.Spec) {
 				ka.ManifestStale = append(ka.ManifestStale,
 					fmt.Sprintf("%s: mapping spec %s matches no spec field", res, mp.Spec))
+			}
+			// A collapse mapping folds a whole arg subtree onto ONE leaf, so
+			// its spec side must BE a census leaf — a subtree would make the
+			// fold ambiguous and overclaim silently.
+			if mp.Collapse && !slices.Contains(kindSpecPaths, mp.Spec) {
+				ka.ManifestStale = append(ka.ManifestStale,
+					fmt.Sprintf("%s: collapse mapping spec %s must name a spec census leaf, not a subtree", res, mp.Spec))
 			}
 		}
 		for _, ex := range rm.Exclusions {

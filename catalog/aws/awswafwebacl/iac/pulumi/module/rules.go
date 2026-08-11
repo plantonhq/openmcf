@@ -25,8 +25,10 @@ func buildRulesJSON(spec *awswafwebaclv1alpha1.AwsWafWebAclSpec) (string, error)
 
 	for _, rule := range spec.Rules {
 		ruleMap := map[string]interface{}{
-			"Name":     rule.Name,
-			"Priority": rule.Priority,
+			"Name": rule.Name,
+			// GetPriority: the field is presence-typed so priority 0 is
+			// expressible; requiredness is CEL-enforced, so it is never nil.
+			"Priority": rule.GetPriority(),
 		}
 
 		statement, err := buildStatement(rule.Statement)

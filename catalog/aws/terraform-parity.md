@@ -32,7 +32,7 @@ that has progressed.
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
 | Distinct provider resources consumed | 240 |
-| Spec fields authored across all kinds | 4296 |
+| Spec fields authored across all kinds | 4307 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**50 of 112 kinds are at total accounting; 75 proven live.**
+**53 of 112 kinds are at total accounting; 74 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -160,9 +160,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsTransitGatewayVpcAttachment | 12 | 8 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
 | AwsVpc | 39 | 16 | 14 | 9 | 0 | ✅ | — |
 | AwsVpcEndpoint | 23 | 17 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
-| AwsWafIpSet | 9 | 5 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
-| AwsWafRegexPatternSet | 8 | 3 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
-| AwsWafWebAcl | 9727 | 8 | 0 | 0 | 10019 | ❌ | ✅ pulumi, terraform |
+| AwsWafIpSet | 9 | 5 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsWafRegexPatternSet | 8 | 3 | 1 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsWafWebAcl | 9727 | 7 | 9685 | 35 | 0 | ✅ | — |
 
 ## Breadth: every GA resource, one disposition
 
@@ -172,8 +172,8 @@ All resources of `aws@6.58.0` land in exactly one class:
 |---|---|---|
 | Modeled | 240 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 5 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 792 | judged to be covered by a planned kind or planned composition, not built yet |
+| Composed | 7 | capability covered through an existing kind's surface rather than a kind of its own |
+| Planned | 790 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 525 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -428,7 +428,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_association` | consumed by AwsAlb, AwsAppRunnerService |
 | `aws_wafv2_web_acl_logging_configuration` | consumed by AwsWafWebAcl |
 
-### Composed (5)
+### Composed (7)
 
 | Resource | Recorded reason |
 |---|---|
@@ -437,8 +437,10 @@ rather than trusted.
 | `aws_elasticache_user_group_association` | covered by AwsElasticacheUserGroup's declarative user_ids membership -- the standalone one-user-at-a-time association is the imperative alternative to membership the group already owns (the autoscaling-attachment class); it attaches users to GROUPS, not to the Redis kind the prior reason named |
 | `aws_kms_key_policy` | covered by AwsKmsKey spec.policy -- the standalone resource is the detached-management pattern for keys owned elsewhere |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
+| `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
+| `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (792)
+### Planned (790)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1224,10 +1226,8 @@ rather than trusted.
 | `aws_vpn_gateway` | judged as a planned AwsSiteToSiteVpn kind (customer/VPN gateways, connections, routes, concentrators, route propagation) |
 | `aws_vpn_gateway_attachment` | judged as a planned AwsSiteToSiteVpn kind (customer/VPN gateways, connections, routes, concentrators, route propagation) |
 | `aws_vpn_gateway_route_propagation` | judged as a planned AwsSiteToSiteVpn kind (customer/VPN gateways, connections, routes, concentrators, route propagation) |
-| `aws_wafv2_api_key` | WAFv2 companion surface (standalone web-ACL rules, rule-group associations, API keys); folds into the existing AwsWafWebAcl kind as its spec deepens |
+| `aws_wafv2_api_key` | judged as a planned AwsWafApiKey kind: a scope-level API key for the CAPTCHA/challenge client-side JS integration, create/delete-only with a sensitive key output serving up to 5 token domains -- a standalone lifecycle that does not fold into AwsWafWebAcl (whose 2026-08-11 depth closure completed the spec deepening the prior blanket reason waited on) |
 | `aws_wafv2_rule_group` | judged as a planned AwsWafRuleGroup kind |
-| `aws_wafv2_web_acl_rule` | WAFv2 companion surface (standalone web-ACL rules, rule-group associations, API keys); folds into the existing AwsWafWebAcl kind as its spec deepens |
-| `aws_wafv2_web_acl_rule_group_association` | WAFv2 companion surface (standalone web-ACL rules, rule-group associations, API keys); folds into the existing AwsWafWebAcl kind as its spec deepens |
 | `aws_xray_encryption_config` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_group` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_indexing_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |

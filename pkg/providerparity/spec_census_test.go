@@ -5,6 +5,7 @@ package providerparity
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/plantonhq/planton/pkg/crkreflect"
@@ -52,6 +53,46 @@ func TestCollectSpecPaths_HermeticFixture(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("paths mismatch:\n got %v\nwant %v", got, want)
+	}
+}
+
+// TestCollectSpecPaths_RecursiveReentryIsOneLeaf proves the recursive
+// re-entry rule against a live recursive spec (AwsWafWebAcl's statement
+// tree): a field whose message type is an ancestor on the walk path counts
+// as ONE leaf (the author configures "the same grammar again" there), and
+// the walk never descends into it. The previous behavior dropped such
+// fields silently, hiding them from the census and the reverse-drift check.
+func TestCollectSpecPaths_RecursiveReentryIsOneLeaf(t *testing.T) {
+	msg, err := crkreflect.NewInstance(cloudresourcekind.CloudResourceKind_AwsWafWebAcl)
+	if err != nil {
+		t.Fatalf("new instance: %v", err)
+	}
+	specField := msg.ProtoReflect().Descriptor().Fields().ByName("spec")
+	if specField == nil {
+		t.Fatal("AwsWafWebAcl has no spec field")
+	}
+
+	got := CollectSpecPaths(specField.Message(), "spec")
+	leaves := map[string]bool{}
+	for _, p := range got {
+		leaves[p] = true
+	}
+	wantLeaves := []string{
+		"spec.rules.statement.and_statement.statements",
+		"spec.rules.statement.or_statement.statements",
+		"spec.rules.statement.not_statement.statement",
+		"spec.rules.statement.managed_rule_group.scope_down_statement",
+		"spec.rules.statement.rate_based.scope_down_statement",
+	}
+	for _, want := range wantLeaves {
+		if !leaves[want] {
+			t.Errorf("census must record the recursive re-entry %s as a leaf", want)
+		}
+		for _, p := range got {
+			if strings.HasPrefix(p, want+".") {
+				t.Errorf("census must not descend below the re-entry leaf %s (got %s)", want, p)
+			}
+		}
 	}
 }
 

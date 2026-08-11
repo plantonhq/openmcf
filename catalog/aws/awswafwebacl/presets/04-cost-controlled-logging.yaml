@@ -1,0 +1,41 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsWafWebAcl
+metadata:
+  name: <acl-name>
+spec:
+  region: <aws-region>
+  scope: REGIONAL
+  defaultAction:
+    type: allow
+  rules:
+    - name: aws-common-rules
+      priority: 1
+      overrideAction: none
+      statement:
+        managedRuleGroup:
+          name: AWSManagedRulesCommonRuleSet
+          vendorName: AWS
+    - name: rate-limit-per-ip
+      priority: 2
+      action: block
+      statement:
+        rateBased:
+          limit: 2000
+  logging:
+    destinationArn:
+      value: arn:aws:logs:<aws-region>:<account-id>:log-group:aws-waf-logs-<acl-name>
+    redactedHeaderNames:
+      - authorization
+      - cookie
+    redactQueryString: true
+    filter:
+      defaultBehavior: DROP
+      filters:
+        # Keep every record where WAF acted: blocks, counted matches, and
+        # rules a tuning override demoted to count.
+        - behavior: KEEP
+          requirement: MEETS_ANY
+          conditions:
+            - action: BLOCK
+            - action: COUNT
+            - action: EXCLUDED_AS_COUNT

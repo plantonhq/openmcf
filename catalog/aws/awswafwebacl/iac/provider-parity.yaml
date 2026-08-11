@@ -1,0 +1,492 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# THE RECURSIVE GRAMMAR (the ~9.7k-argument census): the provider expands
+# the WAFv2 statement language to three bounded nesting levels, while the
+# spec models it as a genuinely recursive tree delivered through rule_json.
+# The spec census records each recursive re-entry (and/or/not statement
+# lists, the two scope-downs) as ONE leaf, and the `collapse: true`
+# mappings below fold everything under the provider's re-entry subtrees
+# onto those leaves -- every nesting level of the provider expansion is
+# the SAME grammar the spec models once. Interior renames are recorded at
+# the root statement level only, because that is the one level the spec
+# census enumerates.
+#
+# PARITY-EXCEPTION (recorded in both engines): the Terraform module's
+# bounded rule_json unrolling caps the tree at the provider's own 3 levels
+# (a plan-time precondition), while the Pulumi module recurses without a
+# ceiling. Within 3 levels both engines emit identical JSON.
+
+resources:
+  aws_wafv2_web_acl:
+    mappings:
+      # ------------------------------------------------------------------
+      # Top-level shapes
+      # ------------------------------------------------------------------
+      # The provider nests each per-resource-type body limit in a one-field
+      # block; the spec flattens each to a named leaf.
+      - spec: spec.association_config.api_gateway_request_body_limit
+        arg: association_config.request_body.api_gateway.default_size_inspection_limit
+      - spec: spec.association_config.app_runner_service_request_body_limit
+        arg: association_config.request_body.app_runner_service.default_size_inspection_limit
+      - spec: spec.association_config.cloudfront_request_body_limit
+        arg: association_config.request_body.cloudfront.default_size_inspection_limit
+      - spec: spec.association_config.cognito_user_pool_request_body_limit
+        arg: association_config.request_body.cognito_user_pool.default_size_inspection_limit
+      - spec: spec.association_config.verified_access_instance_request_body_limit
+        arg: association_config.request_body.verified_access_instance.default_size_inspection_limit
+      # The spec carries the unit suffix; the provider wraps the value in a
+      # one-field immunity_time_property block.
+      - spec: spec.captcha_config.immunity_time_sec
+        arg: captcha_config.immunity_time_property.immunity_time
+      - spec: spec.challenge_config.immunity_time_sec
+        arg: challenge_config.immunity_time_property.immunity_time
+      # Singular/plural subtree renames.
+      - spec: spec.custom_response_bodies
+        arg: custom_response_body
+      - spec: spec.data_protection_config.data_protections
+        arg: data_protection_config.data_protection
+      - spec: spec.data_protection_config.data_protections.field_type
+        arg: data_protection_config.data_protection.field.field_type
+      - spec: spec.data_protection_config.data_protections.field_keys
+        arg: data_protection_config.data_protection.field.field_keys
+      # Default action: the spec flattens the provider's per-arm
+      # customization wrappers.
+      - spec: spec.default_action.custom_request_headers
+        arg: default_action.allow.custom_request_handling.insert_header
+      - spec: spec.default_action.custom_response
+        arg: default_action.block.custom_response
+      - spec: spec.default_action.custom_response.response_headers
+        arg: default_action.block.custom_response.response_header
+      # ------------------------------------------------------------------
+      # The rules subtree
+      # ------------------------------------------------------------------
+      - spec: spec.rules
+        arg: rule
+      # Rule-level flattenings: the spec's custom_request_headers apply to
+      # whichever non-block action the rule carries; the provider nests the
+      # same insert_header payload under each action arm.
+      - spec: spec.rules.custom_request_headers
+        arg: rule.action.allow.custom_request_handling.insert_header
+      - spec: spec.rules.custom_request_headers
+        arg: rule.action.captcha.custom_request_handling.insert_header
+      - spec: spec.rules.custom_request_headers
+        arg: rule.action.challenge.custom_request_handling.insert_header
+      - spec: spec.rules.custom_request_headers
+        arg: rule.action.count.custom_request_handling.insert_header
+      - spec: spec.rules.custom_response
+        arg: rule.action.block.custom_response
+      - spec: spec.rules.custom_response.response_headers
+        arg: rule.action.block.custom_response.response_header
+      - spec: spec.rules.captcha_config.immunity_time_sec
+        arg: rule.captcha_config.immunity_time_property.immunity_time
+      - spec: spec.rules.challenge_config.immunity_time_sec
+        arg: rule.challenge_config.immunity_time_property.immunity_time
+      # One-field block flattened to a repeated string.
+      - spec: spec.rules.rule_labels
+        arg: rule.rule_label.name
+      # ------------------------------------------------------------------
+      # Statement arms: the spec drops the provider's _statement suffix.
+      # ------------------------------------------------------------------
+      - spec: spec.rules.statement.asn_match
+        arg: rule.statement.asn_match_statement
+      - spec: spec.rules.statement.byte_match
+        arg: rule.statement.byte_match_statement
+      - spec: spec.rules.statement.geo_match
+        arg: rule.statement.geo_match_statement
+      - spec: spec.rules.statement.ip_set_reference
+        arg: rule.statement.ip_set_reference_statement
+      - spec: spec.rules.statement.label_match
+        arg: rule.statement.label_match_statement
+      - spec: spec.rules.statement.managed_rule_group
+        arg: rule.statement.managed_rule_group_statement
+      - spec: spec.rules.statement.rate_based
+        arg: rule.statement.rate_based_statement
+      - spec: spec.rules.statement.regex_match
+        arg: rule.statement.regex_match_statement
+      - spec: spec.rules.statement.regex_pattern_set_reference
+        arg: rule.statement.regex_pattern_set_reference_statement
+      - spec: spec.rules.statement.rule_group_reference
+        arg: rule.statement.rule_group_reference_statement
+      - spec: spec.rules.statement.size_constraint
+        arg: rule.statement.size_constraint_statement
+      - spec: spec.rules.statement.sqli_match
+        arg: rule.statement.sqli_match_statement
+      - spec: spec.rules.statement.xss_match
+        arg: rule.statement.xss_match_statement
+      # ------------------------------------------------------------------
+      # Recursive re-entries: everything below folds onto the census leaf
+      # (the spec models the same grammar recursively; see the header).
+      # ------------------------------------------------------------------
+      - spec: spec.rules.statement.and_statement.statements
+        arg: rule.statement.and_statement.statement
+        collapse: true
+      - spec: spec.rules.statement.or_statement.statements
+        arg: rule.statement.or_statement.statement
+        collapse: true
+      - spec: spec.rules.statement.not_statement.statement
+        arg: rule.statement.not_statement.statement
+        collapse: true
+      - spec: spec.rules.statement.managed_rule_group.scope_down_statement
+        arg: rule.statement.managed_rule_group_statement.scope_down_statement
+        collapse: true
+      - spec: spec.rules.statement.rate_based.scope_down_statement
+        arg: rule.statement.rate_based_statement.scope_down_statement
+        collapse: true
+      # ------------------------------------------------------------------
+      # Interior renames at the root statement level (the one level the
+      # spec census enumerates; deeper occurrences fold via the collapses).
+      # The spec pluralizes the repeated text_transformation block and
+      # flattens json_body's match_pattern wrapper; header/cookie name
+      # patterns share one spec message (included_names/excluded_names).
+      # ------------------------------------------------------------------
+      - spec: spec.rules.statement.byte_match.text_transformations
+        arg: rule.statement.byte_match_statement.text_transformation
+      - spec: spec.rules.statement.byte_match.field_to_match.json_body.included_paths
+        arg: rule.statement.byte_match_statement.field_to_match.json_body.match_pattern.included_paths
+      - spec: spec.rules.statement.byte_match.field_to_match.headers.match_pattern.included_names
+        arg: rule.statement.byte_match_statement.field_to_match.headers.match_pattern.included_headers
+      - spec: spec.rules.statement.byte_match.field_to_match.headers.match_pattern.excluded_names
+        arg: rule.statement.byte_match_statement.field_to_match.headers.match_pattern.excluded_headers
+      - spec: spec.rules.statement.byte_match.field_to_match.cookies.match_pattern.included_names
+        arg: rule.statement.byte_match_statement.field_to_match.cookies.match_pattern.included_cookies
+      - spec: spec.rules.statement.byte_match.field_to_match.cookies.match_pattern.excluded_names
+        arg: rule.statement.byte_match_statement.field_to_match.cookies.match_pattern.excluded_cookies
+      - spec: spec.rules.statement.regex_match.text_transformations
+        arg: rule.statement.regex_match_statement.text_transformation
+      - spec: spec.rules.statement.regex_match.field_to_match.json_body.included_paths
+        arg: rule.statement.regex_match_statement.field_to_match.json_body.match_pattern.included_paths
+      - spec: spec.rules.statement.regex_match.field_to_match.headers.match_pattern.included_names
+        arg: rule.statement.regex_match_statement.field_to_match.headers.match_pattern.included_headers
+      - spec: spec.rules.statement.regex_match.field_to_match.headers.match_pattern.excluded_names
+        arg: rule.statement.regex_match_statement.field_to_match.headers.match_pattern.excluded_headers
+      - spec: spec.rules.statement.regex_match.field_to_match.cookies.match_pattern.included_names
+        arg: rule.statement.regex_match_statement.field_to_match.cookies.match_pattern.included_cookies
+      - spec: spec.rules.statement.regex_match.field_to_match.cookies.match_pattern.excluded_names
+        arg: rule.statement.regex_match_statement.field_to_match.cookies.match_pattern.excluded_cookies
+      - spec: spec.rules.statement.regex_pattern_set_reference.text_transformations
+        arg: rule.statement.regex_pattern_set_reference_statement.text_transformation
+      - spec: spec.rules.statement.regex_pattern_set_reference.field_to_match.json_body.included_paths
+        arg: rule.statement.regex_pattern_set_reference_statement.field_to_match.json_body.match_pattern.included_paths
+      - spec: spec.rules.statement.regex_pattern_set_reference.field_to_match.headers.match_pattern.included_names
+        arg: rule.statement.regex_pattern_set_reference_statement.field_to_match.headers.match_pattern.included_headers
+      - spec: spec.rules.statement.regex_pattern_set_reference.field_to_match.headers.match_pattern.excluded_names
+        arg: rule.statement.regex_pattern_set_reference_statement.field_to_match.headers.match_pattern.excluded_headers
+      - spec: spec.rules.statement.regex_pattern_set_reference.field_to_match.cookies.match_pattern.included_names
+        arg: rule.statement.regex_pattern_set_reference_statement.field_to_match.cookies.match_pattern.included_cookies
+      - spec: spec.rules.statement.regex_pattern_set_reference.field_to_match.cookies.match_pattern.excluded_names
+        arg: rule.statement.regex_pattern_set_reference_statement.field_to_match.cookies.match_pattern.excluded_cookies
+      - spec: spec.rules.statement.size_constraint.text_transformations
+        arg: rule.statement.size_constraint_statement.text_transformation
+      - spec: spec.rules.statement.size_constraint.field_to_match.json_body.included_paths
+        arg: rule.statement.size_constraint_statement.field_to_match.json_body.match_pattern.included_paths
+      - spec: spec.rules.statement.size_constraint.field_to_match.headers.match_pattern.included_names
+        arg: rule.statement.size_constraint_statement.field_to_match.headers.match_pattern.included_headers
+      - spec: spec.rules.statement.size_constraint.field_to_match.headers.match_pattern.excluded_names
+        arg: rule.statement.size_constraint_statement.field_to_match.headers.match_pattern.excluded_headers
+      - spec: spec.rules.statement.size_constraint.field_to_match.cookies.match_pattern.included_names
+        arg: rule.statement.size_constraint_statement.field_to_match.cookies.match_pattern.included_cookies
+      - spec: spec.rules.statement.size_constraint.field_to_match.cookies.match_pattern.excluded_names
+        arg: rule.statement.size_constraint_statement.field_to_match.cookies.match_pattern.excluded_cookies
+      - spec: spec.rules.statement.sqli_match.text_transformations
+        arg: rule.statement.sqli_match_statement.text_transformation
+      - spec: spec.rules.statement.sqli_match.field_to_match.json_body.included_paths
+        arg: rule.statement.sqli_match_statement.field_to_match.json_body.match_pattern.included_paths
+      - spec: spec.rules.statement.sqli_match.field_to_match.headers.match_pattern.included_names
+        arg: rule.statement.sqli_match_statement.field_to_match.headers.match_pattern.included_headers
+      - spec: spec.rules.statement.sqli_match.field_to_match.headers.match_pattern.excluded_names
+        arg: rule.statement.sqli_match_statement.field_to_match.headers.match_pattern.excluded_headers
+      - spec: spec.rules.statement.sqli_match.field_to_match.cookies.match_pattern.included_names
+        arg: rule.statement.sqli_match_statement.field_to_match.cookies.match_pattern.included_cookies
+      - spec: spec.rules.statement.sqli_match.field_to_match.cookies.match_pattern.excluded_names
+        arg: rule.statement.sqli_match_statement.field_to_match.cookies.match_pattern.excluded_cookies
+      - spec: spec.rules.statement.xss_match.text_transformations
+        arg: rule.statement.xss_match_statement.text_transformation
+      - spec: spec.rules.statement.xss_match.field_to_match.json_body.included_paths
+        arg: rule.statement.xss_match_statement.field_to_match.json_body.match_pattern.included_paths
+      - spec: spec.rules.statement.xss_match.field_to_match.headers.match_pattern.included_names
+        arg: rule.statement.xss_match_statement.field_to_match.headers.match_pattern.included_headers
+      - spec: spec.rules.statement.xss_match.field_to_match.headers.match_pattern.excluded_names
+        arg: rule.statement.xss_match_statement.field_to_match.headers.match_pattern.excluded_headers
+      - spec: spec.rules.statement.xss_match.field_to_match.cookies.match_pattern.included_names
+        arg: rule.statement.xss_match_statement.field_to_match.cookies.match_pattern.included_cookies
+      - spec: spec.rules.statement.xss_match.field_to_match.cookies.match_pattern.excluded_names
+        arg: rule.statement.xss_match_statement.field_to_match.cookies.match_pattern.excluded_cookies
+      # ip_set_reference: the provider names its forwarded-IP block
+      # ip_set_forwarded_ip_config; the spec uses the shared message.
+      - spec: spec.rules.statement.ip_set_reference.forwarded_ip_config
+        arg: rule.statement.ip_set_reference_statement.ip_set_forwarded_ip_config
+      # Managed-group overrides and intelligent-threat configs: the spec
+      # pluralizes the override list and drops the aws_managed_rules_*
+      # block-name prefixes.
+      - spec: spec.rules.statement.managed_rule_group.rule_action_overrides
+        arg: rule.statement.managed_rule_group_statement.rule_action_override
+      - spec: spec.rules.statement.rule_group_reference.rule_action_overrides
+        arg: rule.statement.rule_group_reference_statement.rule_action_override
+      - spec: spec.rules.statement.managed_rule_group.managed_rule_group_configs.bot_control
+        arg: rule.statement.managed_rule_group_statement.managed_rule_group_configs.aws_managed_rules_bot_control_rule_set
+      - spec: spec.rules.statement.managed_rule_group.managed_rule_group_configs.account_takeover_prevention
+        arg: rule.statement.managed_rule_group_statement.managed_rule_group_configs.aws_managed_rules_atp_rule_set
+      - spec: spec.rules.statement.managed_rule_group.managed_rule_group_configs.account_takeover_prevention.response_inspection.body_json
+        arg: rule.statement.managed_rule_group_statement.managed_rule_group_configs.aws_managed_rules_atp_rule_set.response_inspection.json
+      - spec: spec.rules.statement.managed_rule_group.managed_rule_group_configs.account_creation_fraud_prevention
+        arg: rule.statement.managed_rule_group_statement.managed_rule_group_configs.aws_managed_rules_acfp_rule_set
+      - spec: spec.rules.statement.managed_rule_group.managed_rule_group_configs.account_creation_fraud_prevention.response_inspection.body_json
+        arg: rule.statement.managed_rule_group_statement.managed_rule_group_configs.aws_managed_rules_acfp_rule_set.response_inspection.json
+      - spec: spec.rules.statement.managed_rule_group.managed_rule_group_configs.anti_ddos
+        arg: rule.statement.managed_rule_group_statement.managed_rule_group_configs.aws_managed_rules_anti_ddos_rule_set
+      # Anti-DDoS: the provider wraps the client-side action in a
+      # config.challenge pair; the spec flattens to client_side_action and
+      # flattens the one-field regex block to a repeated string.
+      - spec: spec.rules.statement.managed_rule_group.managed_rule_group_configs.anti_ddos.client_side_action
+        arg: rule.statement.managed_rule_group_statement.managed_rule_group_configs.aws_managed_rules_anti_ddos_rule_set.client_side_action_config.challenge
+      - spec: spec.rules.statement.managed_rule_group.managed_rule_group_configs.anti_ddos.client_side_action.exempt_uri_regular_expressions
+        arg: rule.statement.managed_rule_group_statement.managed_rule_group_configs.aws_managed_rules_anti_ddos_rule_set.client_side_action_config.challenge.exempt_uri_regular_expression.regex_string
+      # Rate-based custom keys: plural spec list, pluralized per-key
+      # transformations.
+      - spec: spec.rules.statement.rate_based.custom_keys
+        arg: rule.statement.rate_based_statement.custom_key
+      - spec: spec.rules.statement.rate_based.custom_keys.header.text_transformations
+        arg: rule.statement.rate_based_statement.custom_key.header.text_transformation
+      - spec: spec.rules.statement.rate_based.custom_keys.cookie.text_transformations
+        arg: rule.statement.rate_based_statement.custom_key.cookie.text_transformation
+      - spec: spec.rules.statement.rate_based.custom_keys.query_argument.text_transformations
+        arg: rule.statement.rate_based_statement.custom_key.query_argument.text_transformation
+      - spec: spec.rules.statement.rate_based.custom_keys.query_string.text_transformations
+        arg: rule.statement.rate_based_statement.custom_key.query_string.text_transformation
+      - spec: spec.rules.statement.rate_based.custom_keys.uri_path.text_transformations
+        arg: rule.statement.rate_based_statement.custom_key.uri_path.text_transformation
+    exclusions:
+      # Identity is the kind's own contract.
+      - arg: name
+        reason: derived from metadata.name -- never free-form user surface
+      - arg: name_prefix
+        reason: alternative naming form; names always derive from metadata.name
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+      # Delivery mechanism.
+      - arg: rule_json
+        reason: the module's own delivery mechanism -- both engines serialize spec.rules into this argument (the typed tree is the modeled surface; the provider's typed rule blocks are the alternative form)
+      # Rule-action-override customization payloads: an override names a
+      # rule and the action string to use (spec.rule_action_overrides.action
+      # selects the provider's action_to_use arm). The per-override custom
+      # request/response payloads are deliberately not modeled -- action
+      # customization is modeled once, on the rule's own action.
+      - arg: rule.statement.managed_rule_group_statement.rule_action_override.action_to_use.allow.custom_request_handling.insert_header.name
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.managed_rule_group_statement.rule_action_override.action_to_use.allow.custom_request_handling.insert_header.value
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.managed_rule_group_statement.rule_action_override.action_to_use.block.custom_response.custom_response_body_key
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.managed_rule_group_statement.rule_action_override.action_to_use.block.custom_response.response_code
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.managed_rule_group_statement.rule_action_override.action_to_use.block.custom_response.response_header.name
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.managed_rule_group_statement.rule_action_override.action_to_use.block.custom_response.response_header.value
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.managed_rule_group_statement.rule_action_override.action_to_use.captcha.custom_request_handling.insert_header.name
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.managed_rule_group_statement.rule_action_override.action_to_use.captcha.custom_request_handling.insert_header.value
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.managed_rule_group_statement.rule_action_override.action_to_use.challenge.custom_request_handling.insert_header.name
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.managed_rule_group_statement.rule_action_override.action_to_use.challenge.custom_request_handling.insert_header.value
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.managed_rule_group_statement.rule_action_override.action_to_use.count.custom_request_handling.insert_header.name
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.managed_rule_group_statement.rule_action_override.action_to_use.count.custom_request_handling.insert_header.value
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.rule_group_reference_statement.rule_action_override.action_to_use.allow.custom_request_handling.insert_header.name
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.rule_group_reference_statement.rule_action_override.action_to_use.allow.custom_request_handling.insert_header.value
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.rule_group_reference_statement.rule_action_override.action_to_use.block.custom_response.custom_response_body_key
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.rule_group_reference_statement.rule_action_override.action_to_use.block.custom_response.response_code
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.rule_group_reference_statement.rule_action_override.action_to_use.block.custom_response.response_header.name
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.rule_group_reference_statement.rule_action_override.action_to_use.block.custom_response.response_header.value
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.rule_group_reference_statement.rule_action_override.action_to_use.captcha.custom_request_handling.insert_header.name
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.rule_group_reference_statement.rule_action_override.action_to_use.captcha.custom_request_handling.insert_header.value
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.rule_group_reference_statement.rule_action_override.action_to_use.challenge.custom_request_handling.insert_header.name
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.rule_group_reference_statement.rule_action_override.action_to_use.challenge.custom_request_handling.insert_header.value
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.rule_group_reference_statement.rule_action_override.action_to_use.count.custom_request_handling.insert_header.name
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      - arg: rule.statement.rule_group_reference_statement.rule_action_override.action_to_use.count.custom_request_handling.insert_header.value
+        reason: per-override action customization deliberately not modeled -- the override carries the action string; custom handling is modeled on the rule's own action
+      # Legacy flat ATP fields on managed_rule_group_configs, superseded by
+      # the typed aws_managed_rules_atp_rule_set block (which the spec
+      # models as account_takeover_prevention).
+      - arg: rule.statement.managed_rule_group_statement.managed_rule_group_configs.login_path
+        reason: legacy flat ATP form superseded by the aws_managed_rules_atp_rule_set block -- modeled as managed_rule_group_configs.account_takeover_prevention
+      - arg: rule.statement.managed_rule_group_statement.managed_rule_group_configs.payload_type
+        reason: legacy flat ATP form superseded by the aws_managed_rules_atp_rule_set block -- modeled as managed_rule_group_configs.account_takeover_prevention
+      - arg: rule.statement.managed_rule_group_statement.managed_rule_group_configs.username_field.identifier
+        reason: legacy flat ATP form superseded by the aws_managed_rules_atp_rule_set block -- modeled as managed_rule_group_configs.account_takeover_prevention
+      - arg: rule.statement.managed_rule_group_statement.managed_rule_group_configs.password_field.identifier
+        reason: legacy flat ATP form superseded by the aws_managed_rules_atp_rule_set block -- modeled as managed_rule_group_configs.account_takeover_prevention
+
+  aws_wafv2_web_acl_logging_configuration:
+    specRoot: spec.logging
+    mappings:
+      # AWS allows exactly one logging destination per web ACL (SDK: "You
+      # can associate one logging destination to a web ACL"); the provider's
+      # set-of-100 shape is looser than the service contract, so the spec
+      # deliberately models the single destination.
+      - spec: spec.logging.destination_arn
+        arg: log_destination_configs
+      # The spec names the filter wrapper `filter` and pluralizes the
+      # nested lists; conditions flatten the provider's one-field
+      # action/label wrappers (exactly one per condition, CEL-enforced).
+      - spec: spec.logging.filter.default_behavior
+        arg: logging_filter.default_behavior
+      - spec: spec.logging.filter.filters.behavior
+        arg: logging_filter.filter.behavior
+      - spec: spec.logging.filter.filters.requirement
+        arg: logging_filter.filter.requirement
+      - spec: spec.logging.filter.filters.conditions.action
+        arg: logging_filter.filter.condition.action_condition.action
+      - spec: spec.logging.filter.filters.conditions.label_name
+        arg: logging_filter.filter.condition.label_name_condition.label_name
+      # One-field redaction block flattened to a repeated string.
+      - spec: spec.logging.redacted_header_names
+        arg: redacted_fields.single_header.name
+    exclusions:
+      - arg: resource_arn
+        reason: wired by the module to the web ACL it creates -- never user surface
+      - arg: region
+        reason: wired by the module to the web ACL's own region (the logging configuration cannot live anywhere else) -- never user surface
+
+specExclusions:
+  # Empty-block redaction arms: the spec bool renders the provider's empty
+  # uri_path{} / query_string{} / method{} block -- block presence IS the
+  # configuration, so there is no argument to match.
+  - field: spec.logging.redact_uri_path
+    reason: renders the provider's empty uri_path{} redaction block -- block presence is the configuration
+  - field: spec.logging.redact_query_string
+    reason: renders the provider's empty query_string{} redaction block -- block presence is the configuration
+  - field: spec.logging.redact_method
+    reason: renders the provider's empty method{} redaction block -- block presence is the configuration
+  # Arm-selection strings: the provider encodes the choice as block
+  # presence (allow{}/block{} on actions, action_to_use arms on
+  # overrides), so the selecting string has no argument to match.
+  - field: spec.default_action.type
+    reason: selects the provider's allow/block block -- arm presence carries no argument
+  - field: spec.rules.action
+    reason: selects the provider's per-rule action block (allow/block/count/captcha/challenge) -- arm presence carries no argument
+  - field: spec.rules.override_action
+    reason: selects the provider's override_action block (none/count, both empty) -- arm presence carries no argument
+  - field: spec.rules.statement.managed_rule_group.rule_action_overrides.action
+    reason: selects the provider's action_to_use arm -- arm presence carries no argument
+  - field: spec.rules.statement.rule_group_reference.rule_action_overrides.action
+    reason: selects the provider's action_to_use arm -- arm presence carries no argument
+  # The raw-JSON escape hatch is rendered into rule_json verbatim --
+  # it exists precisely for surface with no typed counterpart yet.
+  - field: spec.rules.statement.custom_statement
+    reason: raw-JSON escape hatch rendered into rule_json verbatim -- no typed provider counterpart by design
+  # The shared forwarded-IP message carries position, which AWS only
+  # honors for IP-set references; the provider omits the argument on
+  # the other arms (the spec field comment records the same).
+  - field: spec.rules.statement.asn_match.forwarded_ip_config.position
+    reason: AWS honors position only for ip_set_reference -- the provider carries no such argument on this arm (shared spec message; the field comment records the scoping)
+  - field: spec.rules.statement.geo_match.forwarded_ip_config.position
+    reason: AWS honors position only for ip_set_reference -- the provider carries no such argument on this arm (shared spec message; the field comment records the scoping)
+  - field: spec.rules.statement.rate_based.forwarded_ip_config.position
+    reason: AWS honors position only for ip_set_reference -- the provider carries no such argument on this arm (shared spec message; the field comment records the scoping)
+  # Empty-block request components: the spec bool renders the
+  # provider's empty block -- block presence IS the configuration.
+  - field: spec.rules.statement.byte_match.field_to_match.uri_path
+    reason: renders the provider's empty uri_path{} block -- block presence is the configuration
+  - field: spec.rules.statement.byte_match.field_to_match.query_string
+    reason: renders the provider's empty query_string{} block -- block presence is the configuration
+  - field: spec.rules.statement.byte_match.field_to_match.method
+    reason: renders the provider's empty method{} block -- block presence is the configuration
+  - field: spec.rules.statement.byte_match.field_to_match.all_query_arguments
+    reason: renders the provider's empty all_query_arguments{} block -- block presence is the configuration
+  - field: spec.rules.statement.byte_match.field_to_match.headers.match_pattern.all
+    reason: renders the provider's empty all{} match-pattern block -- block presence is the configuration
+  - field: spec.rules.statement.byte_match.field_to_match.cookies.match_pattern.all
+    reason: renders the provider's empty all{} match-pattern block -- block presence is the configuration
+  - field: spec.rules.statement.regex_match.field_to_match.uri_path
+    reason: renders the provider's empty uri_path{} block -- block presence is the configuration
+  - field: spec.rules.statement.regex_match.field_to_match.query_string
+    reason: renders the provider's empty query_string{} block -- block presence is the configuration
+  - field: spec.rules.statement.regex_match.field_to_match.method
+    reason: renders the provider's empty method{} block -- block presence is the configuration
+  - field: spec.rules.statement.regex_match.field_to_match.all_query_arguments
+    reason: renders the provider's empty all_query_arguments{} block -- block presence is the configuration
+  - field: spec.rules.statement.regex_match.field_to_match.headers.match_pattern.all
+    reason: renders the provider's empty all{} match-pattern block -- block presence is the configuration
+  - field: spec.rules.statement.regex_match.field_to_match.cookies.match_pattern.all
+    reason: renders the provider's empty all{} match-pattern block -- block presence is the configuration
+  - field: spec.rules.statement.regex_pattern_set_reference.field_to_match.uri_path
+    reason: renders the provider's empty uri_path{} block -- block presence is the configuration
+  - field: spec.rules.statement.regex_pattern_set_reference.field_to_match.query_string
+    reason: renders the provider's empty query_string{} block -- block presence is the configuration
+  - field: spec.rules.statement.regex_pattern_set_reference.field_to_match.method
+    reason: renders the provider's empty method{} block -- block presence is the configuration
+  - field: spec.rules.statement.regex_pattern_set_reference.field_to_match.all_query_arguments
+    reason: renders the provider's empty all_query_arguments{} block -- block presence is the configuration
+  - field: spec.rules.statement.regex_pattern_set_reference.field_to_match.headers.match_pattern.all
+    reason: renders the provider's empty all{} match-pattern block -- block presence is the configuration
+  - field: spec.rules.statement.regex_pattern_set_reference.field_to_match.cookies.match_pattern.all
+    reason: renders the provider's empty all{} match-pattern block -- block presence is the configuration
+  - field: spec.rules.statement.size_constraint.field_to_match.uri_path
+    reason: renders the provider's empty uri_path{} block -- block presence is the configuration
+  - field: spec.rules.statement.size_constraint.field_to_match.query_string
+    reason: renders the provider's empty query_string{} block -- block presence is the configuration
+  - field: spec.rules.statement.size_constraint.field_to_match.method
+    reason: renders the provider's empty method{} block -- block presence is the configuration
+  - field: spec.rules.statement.size_constraint.field_to_match.all_query_arguments
+    reason: renders the provider's empty all_query_arguments{} block -- block presence is the configuration
+  - field: spec.rules.statement.size_constraint.field_to_match.headers.match_pattern.all
+    reason: renders the provider's empty all{} match-pattern block -- block presence is the configuration
+  - field: spec.rules.statement.size_constraint.field_to_match.cookies.match_pattern.all
+    reason: renders the provider's empty all{} match-pattern block -- block presence is the configuration
+  - field: spec.rules.statement.sqli_match.field_to_match.uri_path
+    reason: renders the provider's empty uri_path{} block -- block presence is the configuration
+  - field: spec.rules.statement.sqli_match.field_to_match.query_string
+    reason: renders the provider's empty query_string{} block -- block presence is the configuration
+  - field: spec.rules.statement.sqli_match.field_to_match.method
+    reason: renders the provider's empty method{} block -- block presence is the configuration
+  - field: spec.rules.statement.sqli_match.field_to_match.all_query_arguments
+    reason: renders the provider's empty all_query_arguments{} block -- block presence is the configuration
+  - field: spec.rules.statement.sqli_match.field_to_match.headers.match_pattern.all
+    reason: renders the provider's empty all{} match-pattern block -- block presence is the configuration
+  - field: spec.rules.statement.sqli_match.field_to_match.cookies.match_pattern.all
+    reason: renders the provider's empty all{} match-pattern block -- block presence is the configuration
+  - field: spec.rules.statement.xss_match.field_to_match.uri_path
+    reason: renders the provider's empty uri_path{} block -- block presence is the configuration
+  - field: spec.rules.statement.xss_match.field_to_match.query_string
+    reason: renders the provider's empty query_string{} block -- block presence is the configuration
+  - field: spec.rules.statement.xss_match.field_to_match.method
+    reason: renders the provider's empty method{} block -- block presence is the configuration
+  - field: spec.rules.statement.xss_match.field_to_match.all_query_arguments
+    reason: renders the provider's empty all_query_arguments{} block -- block presence is the configuration
+  - field: spec.rules.statement.xss_match.field_to_match.headers.match_pattern.all
+    reason: renders the provider's empty all{} match-pattern block -- block presence is the configuration
+  - field: spec.rules.statement.xss_match.field_to_match.cookies.match_pattern.all
+    reason: renders the provider's empty all{} match-pattern block -- block presence is the configuration
+  # Empty-block rate-aggregation keys: same class.
+  - field: spec.rules.statement.rate_based.custom_keys.http_method
+    reason: renders the provider's empty http_method{} key block -- block presence is the configuration
+  - field: spec.rules.statement.rate_based.custom_keys.ip
+    reason: renders the provider's empty ip{} key block -- block presence is the configuration
+  - field: spec.rules.statement.rate_based.custom_keys.forwarded_ip
+    reason: renders the provider's empty forwarded_ip{} key block -- block presence is the configuration
+  - field: spec.rules.statement.rate_based.custom_keys.asn
+    reason: renders the provider's empty asn{} key block -- block presence is the configuration

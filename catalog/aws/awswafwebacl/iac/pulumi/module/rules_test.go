@@ -7,6 +7,7 @@ import (
 
 	awswafwebaclv1alpha1 "github.com/plantonhq/planton/catalog/aws/awswafwebacl/v1alpha1"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 // TestBuildRulesJSON_MatchesWafApiShape locks the statement-tree serializer to
@@ -24,7 +25,7 @@ func TestBuildRulesJSON_MatchesWafApiShape(t *testing.T) {
 		Rules: []*awswafwebaclv1alpha1.AwsWafWebAclRule{
 			{
 				Name:           "aws-managed-common",
-				Priority:       1,
+				Priority:       proto.Int32(1),
 				OverrideAction: "none",
 				Statement: &awswafwebaclv1alpha1.AwsWafWebAclStatement{
 					Statement: &awswafwebaclv1alpha1.AwsWafWebAclStatement_ManagedRuleGroup{
@@ -57,7 +58,7 @@ func TestBuildRulesJSON_MatchesWafApiShape(t *testing.T) {
 			},
 			{
 				Name:     "rate-limit-per-api-key",
-				Priority: 2,
+				Priority: proto.Int32(2),
 				Action:   "block",
 				Statement: &awswafwebaclv1alpha1.AwsWafWebAclStatement{
 					Statement: &awswafwebaclv1alpha1.AwsWafWebAclStatement_RateBased{
@@ -81,7 +82,7 @@ func TestBuildRulesJSON_MatchesWafApiShape(t *testing.T) {
 			},
 			{
 				Name:     "block-bad-paths",
-				Priority: 3,
+				Priority: proto.Int32(3),
 				Action:   "block",
 				CustomResponse: &awswafwebaclv1alpha1.AwsWafWebAclCustomResponse{
 					ResponseCode: 403,
@@ -217,7 +218,7 @@ func TestBuildRulesJSON_RefArnsResolve(t *testing.T) {
 		Rules: []*awswafwebaclv1alpha1.AwsWafWebAclRule{
 			{
 				Name:     "office-allow",
-				Priority: 1,
+				Priority: proto.Int32(1),
 				Action:   "allow",
 				Statement: &awswafwebaclv1alpha1.AwsWafWebAclStatement{
 					Statement: &awswafwebaclv1alpha1.AwsWafWebAclStatement_IpSetReference{

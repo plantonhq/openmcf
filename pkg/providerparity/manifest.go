@@ -74,9 +74,20 @@ type ResourceManifest struct {
 // block, e.g. "lifecycle_rule.condition.age") is spec (an absolute
 // spec-rooted path, e.g. "spec.lifecycle_rules.condition.age_days").
 // Both sides may name a subtree; matching resumes exactly below it.
+//
+// Collapse marks a subtree-to-leaf judgment: EVERY argument at or under arg
+// accounts to the ONE spec leaf named by spec. This exists for recursive
+// provider grammars (the provider expands a recursive schema into bounded
+// nesting levels, while the spec census records each re-entry as one leaf —
+// e.g. a WAF and_statement's nested statement list). The flag is explicit
+// so an ordinary mapping can never silently swallow a subtree: without it,
+// matching resumes below the mapped subtree and unmatched leaves surface as
+// findings. A collapse mapping's spec must be an exact census leaf
+// (enforced by the accounting's staleness checks).
 type Mapping struct {
-	Spec string `yaml:"spec"`
-	Arg  string `yaml:"arg"`
+	Spec     string `yaml:"spec"`
+	Arg      string `yaml:"arg"`
+	Collapse bool   `yaml:"collapse,omitempty"`
 }
 
 // ArgExclusion is one deliberately unmodeled argument and its reason.

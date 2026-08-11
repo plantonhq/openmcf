@@ -71,6 +71,18 @@ variable "spec" {
       redacted_header_names = optional(list(string), [])
       redact_uri_path = optional(bool, false)
       redact_query_string = optional(bool, false)
+      redact_method = optional(bool, false)
+      filter = optional(object({
+        default_behavior = string
+        filters = list(object({
+          behavior = string
+          requirement = string
+          conditions = list(object({
+            action = optional(string, "")
+            label_name = optional(string, "")
+          }))
+        }))
+      }))
     }))
   })
 }
