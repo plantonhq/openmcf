@@ -8,7 +8,10 @@ spec:
   # provisioners. Custom-role destroy is a soft delete in GCP (the id stays
   # reserved for up to 14 days); re-running the scenario within that window
   # converges because create-on-a-soft-deleted-id undeletes and patches.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate (2/2 lane runs; soft-delete verify posture held).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

@@ -730,31 +730,21 @@ var _ = ginkgo.Describe("GcpMemorystoreInstanceSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	// ──────────────── Maintenance Minute, CA Mode, Deletion Policy ────────────────
+	// ──────────────── Maintenance Window, CA Mode, Deletion Policy ────────────────
+	// The window has no minute field by API truth: Memorystore rejects a
+	// start time carrying minutes (live 400 "Invalid start time, only
+	// hours are supported"), so the spec models the start hour-only.
 
-	ginkgo.It("should accept a maintenance window pinned to the minute", func() {
+	ginkgo.It("should accept a maintenance window on the hour", func() {
 		msg := minimal()
 		msg.Spec.MaintenancePolicy = &GcpMemorystoreInstanceMaintenancePolicy{
 			WeeklyMaintenanceWindow: &GcpMemorystoreInstanceMaintenanceWindow{
-				Day:    "SUNDAY",
-				Hour:   3,
-				Minute: 30,
+				Day:  "SUNDAY",
+				Hour: 3,
 			},
 		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
-	})
-
-	ginkgo.It("should reject a maintenance window minute out of range", func() {
-		msg := minimal()
-		msg.Spec.MaintenancePolicy = &GcpMemorystoreInstanceMaintenancePolicy{
-			WeeklyMaintenanceWindow: &GcpMemorystoreInstanceMaintenanceWindow{
-				Day:    "SUNDAY",
-				Minute: 60,
-			},
-		}
-		err := validator.Validate(msg)
-		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
 	ginkgo.It("should accept each documented node_type value", func() {

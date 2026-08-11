@@ -210,7 +210,14 @@ record it as an E2E exclusion in the component's `e2e/profile.yaml` with the
 specific reason, and prove the surface offline instead. Fixed prerequisite
 names make this worse (a stranded subnet collides with the next run), so any
 scenario in an async-release blast radius should carry `${E2E_RUN_ID}` in its
-prerequisites' cloud-side names.
+prerequisites' cloud-side names. Probe-confirmed 2026-08-11: the hold applies
+even to an IDLE service (never scaled, deleted seconds after create) and
+equally to Cloud Functions Gen 2 (they run on Cloud Run infrastructure) — do
+not expect a short-lived fixture to dodge it, and budget beyond the old
+"1-2 hours" figure: the probe's reservation was still held at 2h35m and
+released somewhere before the 4h mark. When in doubt, the 10-minute probe
+is: scratch VPC + subnet, `gcloud run deploy --network/--subnet`, delete
+the service, attempt the subnet delete and read the error.
 
 ### Resolving `valueFrom` references in composed scenarios
 
@@ -940,6 +947,19 @@ ADC-authenticated plain HTTP client (`Services.RestClient`) for exactly
 this: probe the service's documented REST GET path and decode the few
 fields the posture assertions need. Swap to the typed client whenever the
 dependency is next upgraded for its own reasons.
+
+**Shell harnesses can DOUBLE-SPAWN a lane invocation — and an interrupted
+invocation orphans the second spawn's fixtures.** Twice-observed signature:
+one launch produces TWO concurrent `go test` processes with different run
+ids; the first runs to a clean PASS while the second either 409s on the
+first's fixtures or — if the invocation is interrupted/killed — dies
+mid-scenario with its run-scoped chain undestroyed. Diagnosis and recovery:
+before sweeping anything after a lane failure or interrupt, `ps` for a
+concurrent sibling process (a live sibling's "orphans" are its own
+resources mid-teardown — racing it corrupts both runs); once no process
+remains, sweep BY RUN ID — list each fixture family and delete objects
+whose names carry a run-id suffix that matches no logged lane (creation
+timestamps from the audit log date the dead spawn precisely).
 
 **Run GCP e2e batches SEQUENTIALLY — never two `go test` processes at once:**
 the GCP dependency deploys write each prerequisite's stack-input into the

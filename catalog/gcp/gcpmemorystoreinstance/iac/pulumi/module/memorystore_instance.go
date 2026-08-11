@@ -203,9 +203,11 @@ func memorystoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.P
 			WeeklyMaintenanceWindows: memorystore.InstanceMaintenancePolicyWeeklyMaintenanceWindowArray{
 				&memorystore.InstanceMaintenancePolicyWeeklyMaintenanceWindowArgs{
 					Day: pulumi.String(spec.MaintenancePolicy.WeeklyMaintenanceWindow.Day),
+					// Hours only: the Memorystore API rejects a start_time
+					// carrying minutes (400 "Invalid start time, only hours
+					// are supported" — live-verified; narrower than Redis).
 					StartTime: &memorystore.InstanceMaintenancePolicyWeeklyMaintenanceWindowStartTimeArgs{
-						Hours:   pulumi.IntPtr(int(spec.MaintenancePolicy.WeeklyMaintenanceWindow.Hour)),
-						Minutes: pulumi.IntPtr(int(spec.MaintenancePolicy.WeeklyMaintenanceWindow.Minute)),
+						Hours: pulumi.IntPtr(int(spec.MaintenancePolicy.WeeklyMaintenanceWindow.Hour)),
 					},
 				},
 			},

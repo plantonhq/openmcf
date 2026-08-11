@@ -79,13 +79,13 @@ spec:
       projectId:
         value: my-gcp-project-123
 
-  # Weekly maintenance window pinned to the minute (UTC) — stagger it
-  # against the systems this cache fronts.
+  # Weekly maintenance window (UTC), starting on the hour — the API
+  # supports no finer granularity. Stagger it against the systems this
+  # cache fronts.
   maintenancePolicy:
     weeklyMaintenanceWindow:
       day: SUNDAY
       hour: 3
-      minute: 30
 
   # Allow hack-manifest teardown without a two-step disable; the policy
   # then deletes the instance.
@@ -126,7 +126,6 @@ spec:
 | `spec.maintenancePolicy.weeklyMaintenanceWindow` | `GcpMemorystoreInstanceMaintenanceWindow` | yes |  |  |
 | `spec.maintenancePolicy.weeklyMaintenanceWindow.day` | `string` | yes |  |  |
 | `spec.maintenancePolicy.weeklyMaintenanceWindow.hour` | `int32` |  |  |  |
-| `spec.maintenancePolicy.weeklyMaintenanceWindow.minute` | `int32` |  |  |  |
 | `spec.automatedBackupConfig` | `GcpMemorystoreInstanceAutomatedBackupConfig` |  |  |  |
 | `spec.automatedBackupConfig.startHour` | `int32` |  |  |  |
 | `spec.automatedBackupConfig.retention` | `string` | yes |  |  |
@@ -433,20 +432,10 @@ Day of the week for the maintenance window.
 
 `int32`
 
-Hour of day (0-23, UTC) when the maintenance window starts.
+Hour of day (0-23, UTC) when the maintenance window starts. The window
+always starts on the hour — the API supports no finer granularity.
 
 - rule: {"int32":{"lte":23,"gte":0}}
-
-### spec.maintenancePolicy.weeklyMaintenanceWindow.minute
-
-`int32`
-
-Minute of the hour (0-59, UTC) when the maintenance window starts.
-Combined with hour, this pins the window start to the exact minute —
-useful for coordinating with maintenance windows of dependent systems
-(e.g. start cache maintenance 30 minutes after the database's window).
-
-- rule: {"int32":{"lte":59,"gte":0}}
 
 ### spec.automatedBackupConfig
 

@@ -5,10 +5,12 @@ metadata:
 spec:
   # Leaf scenario: the schema is a pure control-plane object — create,
   # posture-verify (type + definition), destroy in seconds.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate (full lifecycle incl. deletion_policy DELETE echo clean); the
+  # revision_id output's first live consumption is proven on the topic's
+  # schema-validated scenario.
   tier: 1
-  # The prior green predates the current spec shape (deletion_policy,
-  # the revision_id output the topic's revision pinning consumes) —
-  # awaits live re-proof.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

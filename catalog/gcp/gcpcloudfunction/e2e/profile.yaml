@@ -15,7 +15,36 @@ spec:
   # e2e/fixtures/function-source/ and stages it in a run-scoped bucket
   # BEFORE the runner starts. The scenarios' ${E2E_RUN_ID} bucket tokens
   # land on that staged path.
+  #
+  # DIRECT-VPC EGRESS IS OFFLINE-PROVEN ONLY (deferral, 2026-08-11): a
+  # direct-VPC function leaves a serverless-ipv4-* address reservation in
+  # its subnetwork after destroy, held by the serverless service agent and
+  # released by GCP garbage collection on an hours scale — probe-verified
+  # live (idle Cloud Run service, us-east1: the reservation survived the
+  # service delete and blocked the subnet delete; functions Gen 2 run on
+  # the same infrastructure). The framework's dependency-teardown budget
+  # is ~6 minutes by design, so no live lane can destroy the subnet
+  # fixture behind such a scenario. The directVpcNetworkInterface /
+  # directVpcEgress rendering is offline-proven (tofu plan, both values).
+  # Unblock: GCP releasing the reservation synchronously with the service
+  # delete, or a harness design for hour-scale async releases.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate (http-minimal + vpc-connector-egress; chain relocated to us-east1
+  # the same day — see the prerequisites' notes). The gate's first
+  # connector-egress re-plan caught a REAL cross-engine defect: both
+  # modules treated the egress enum's zero value (PRIVATE_RANGES_ONLY) as
+  # "unset" and sent nothing, while the API materializes that default
+  # server-side — a perpetual remove-diff. Fixed to explicit-send-when-
+  # connector-present in BOTH engines (the direct_vpc_egress grain);
+  # re-proven green.
+  #
+  # The count-gated ambient-project fallback (data.google_project firing
+  # only for ambient-project secret entries) was LIVE-PROVEN via a
+  # throwaway apply (2026-08-12): a function with no projectId and one
+  # projectless secret ref deployed clean once the runtime SA held
+  # secretAccessor, re-planned idempotent, destroyed clean.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

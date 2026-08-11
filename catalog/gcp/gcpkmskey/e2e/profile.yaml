@@ -24,7 +24,12 @@ spec:
   #   - the no-version-template default branch: covered by the offline
   #     converter plan (hack manifest); live coverage would need a second
   #     scenario, blocked by the undeletable-prerequisite constraint above.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate (2/2 lane runs; verify-destroyed asserted every version
+  # DESTROYED/DESTROY_SCHEDULED with rotation off — the undeletable-class
+  # posture — and the rotation + HSM version-template arm applied clean).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

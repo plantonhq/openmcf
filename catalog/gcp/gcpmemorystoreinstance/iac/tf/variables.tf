@@ -84,12 +84,12 @@ variable "spec" {
       zone = optional(string, "")
     }), null)
 
-    # Weekly maintenance window (1h, UTC).
+    # Weekly maintenance window (1h, UTC; starts on the hour — the API
+    # supports no finer granularity).
     maintenance_policy = optional(object({
       weekly_maintenance_window = object({
-        day    = string
-        hour   = number
-        minute = optional(number, 0)
+        day  = string
+        hour = number
       })
     }), null)
 
