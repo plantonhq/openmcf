@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurebackupprotectedfileshare.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureBackupProtectedFileShareSpec** defines a protected file
+// share (ARM: Microsoft.RecoveryServices/vaults/{vault}/.../
+// protectedItems/AzureFileShare;{system-name}) -- the binding that
+// puts one Azure Files share under a backup policy's protection.
+// Creating it only REGISTERS protection: the first backup runs on the
+// policy's schedule, not immediately.
+//
+// **The share's storage account must already be registered with the
+// vault** (AzureBackupContainerStorageAccount) -- Azure discovers
+// protectable shares only inside registered accounts, and the create
+// fails loudly when the account is not registered. Wire
+// source_storage_account_id to the REGISTRATION's echoed output (the
+// default reference) so the registration always deploys first.
+//
+// **Destroying this resource stops protection AND deletes the backup
+// data** (the modules keep the engines' default destroy behavior).
+// Vault soft delete -- always on since Azure's secure-by-default
+// policy -- may retain the deleted item's data for 14 days.
+//
+// Everything except backup_policy_id is fixed at creation (the
+// provider's own contract); re-pointing the policy updates in place.
+message AzureBackupProtectedFileShareSpec {
+  // The Azure resource group the protecting VAULT lives in (NOT
+  // necessarily the storage account's group). Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's
+  // name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The Recovery Services vault that protects the share, by NAME (ARM
+  // addresses protected items as children of a vault). Fixed at
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef recovery_vault_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureRecoveryServicesVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.recovery_services_vault_name"
+  ];
+
+  // The storage account holding the share, by ARM ID. The DEFAULT
+  // reference targets the account's vault REGISTRATION
+  // (AzureBackupContainerStorageAccount echoes the account ID it
+  // registered) so the registration deploys before this protection --
+  // the reference carries both the value and the dependency edge. For
+  // accounts registered outside the catalog, pass the account's ARM
+  // ID as a literal (or reference AzureStorageAccount explicitly with
+  // valueFrom kind + fieldPath). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_storage_account_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureBackupContainerStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The file share to protect, by NAME (3-63 lowercase letters,
+  // digits and hyphens -- the share's own naming rule). The share
+  // must live in the storage account above. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_file_share_name = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageShare,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.share_name"
+  ];
+
+  // The file-share backup policy that governs schedule and retention,
+  // by ARM ID. The policy must live in the protecting vault.
+  // Re-pointing to a different policy updates in place -- the spec's
+  // ONLY updatable field.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef backup_policy_id = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureBackupPolicyFileShare,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.backup_policy_id"
+  ];
+}

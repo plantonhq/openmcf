@@ -556,6 +556,33 @@ func TestAzureBackupProtectedVm_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurebackupprotectedvm", "terraform")
 }
 
+// --- Azure Backup Policy File Share (composed: fixture RG -> fixture vault -> two FREE configuration objects; the minimal daily-snapshot smoke doubles as the protected-share lane's install manifest, and the hourly-vault-standard scenario proves the window dials and the vaulted tier in isolation) ---
+
+func TestAzureBackupPolicyFileShare_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackuppolicyfileshare", "pulumi")
+}
+func TestAzureBackupPolicyFileShare_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackuppolicyfileshare", "terraform")
+}
+
+// --- Azure Backup Container Storage Account (composed: fixture RG -> fixture vault + fixture storage account -> a FREE registration binding; the smoke and the protected-share lane's fixture registration target the SAME ARM identity -- sequential lanes only) ---
+
+func TestAzureBackupContainerStorageAccount_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackupcontainerstorageaccount", "pulumi")
+}
+func TestAzureBackupContainerStorageAccount_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackupcontainerstorageaccount", "terraform")
+}
+
+// --- Azure Backup Protected File Share (composed: the group's deepest chain -- fixture RG -> vault + storage account -> fixture share + the container REGISTRATION + the policy smoke; creation only REGISTERS protection. Protect/unprotect sit in the provider's 80-minute class, and destroy leaves a soft-delete ghost that can delay the fixture registration's unregister -- the queue watch-list leads with it) ---
+
+func TestAzureBackupProtectedFileShare_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackupprotectedfileshare", "pulumi")
+}
+func TestAzureBackupProtectedFileShare_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackupprotectedfileshare", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {
@@ -1413,11 +1440,9 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 	}
 
 	if engine == "pulumi" {
-		stackName := runner.GenerateStackName(component+"-"+scenario.Name, runID)
-		if len(stackName) > 50 {
-			stackName = stackName[:50]
-		}
-		tc.StackName = stackName
+		// GenerateStackName enforces the length cap uniqueness-preservingly
+		// (blind truncation here would collide long kind names' scenarios).
+		tc.StackName = runner.GenerateStackName(component+"-"+scenario.Name, runID)
 		tc.BackendURL = pulumiBackendURL
 	}
 

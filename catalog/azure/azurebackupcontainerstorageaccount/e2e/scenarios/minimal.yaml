@@ -1,0 +1,30 @@
+# Minimal AzureBackupContainerStorageAccount scenario: register the
+# fixture storage account with the fixture vault -- free, data-free,
+# and the whole kind (three references, no dials). Registration is
+# one-per-account-and-vault-pair: this smoke and the protected-share
+# lane's fixture registration create the SAME ARM identity, safe only
+# because lanes run sequentially (the queue watch-list carries it).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupContainerStorageAccount
+metadata:
+  name: planton-oss-e2e-azurebackupcontainerstorageaccount-smoke
+  id: planton-oss-e2e-azurebackupcontainerstorageaccount-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurebackupcontainerstorageaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  recoveryVaultName:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rsv
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sa

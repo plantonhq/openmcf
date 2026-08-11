@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurebackupcontainerstorageaccount
+spec:
+  # The registration's identity is its full ARM resource ID; ARM
+  # derives the container segment from the storage account's group and
+  # name (StorageContainer;storage;{sa-rg};{sa-name}).
+  values:
+    - name: backup_container_id
+      derivations:
+        - from_stack_output: backup_container_id
+      where_to_find: >-
+        `az backup container list -g <rg> -v <vault>
+        --backup-management-type AzureStorage --query "[].id"`, or
+        compose {vault-id}/backupFabrics/Azure/protectionContainers/
+        StorageContainer;storage;{sa-rg};{sa-name}.

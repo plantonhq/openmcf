@@ -1,0 +1,50 @@
+# Minimal AzureBackupPolicyFileShare scenario: a daily snapshot-tier
+# policy with the full retention ladder on the fixture vault -- a free
+# configuration object that proves the schedule and all four retention
+# layers' wire shapes (monthly and yearly in the week-of-month
+# grammar). This scenario doubles as the kind's INSTALL MANIFEST when
+# the protected-share lane deploys a policy as its prerequisite --
+# keep it fixture-safe: the plain daily snapshot shape, fixed name
+# (policy names are vault-scoped; nothing soft-holds them). The hourly
+# window and vault-standard tier are proven by their own scenario
+# (hourly-vault-standard.yaml) so a tier-side failure never couples
+# into the dependent lane.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupPolicyFileShare
+metadata:
+  name: planton-oss-e2e-azurebackuppolicyfileshare-smoke
+  id: planton-oss-e2e-azurebackuppolicyfileshare-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurebackuppolicyfileshare
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  recoveryVaultName:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rsv
+  name: planton-oss-e2e-bpfs-smoke
+  backup:
+    frequency: Daily
+    time: "23:30"
+  retentionDaily:
+    count: 7
+  retentionWeekly:
+    count: 4
+    weekdays: [Sunday]
+  retentionMonthly:
+    count: 3
+    weeks: [First]
+    weekdays: [Sunday]
+  retentionYearly:
+    count: 1
+    months: [January]
+    weeks: [First]
+    weekdays: [Sunday]

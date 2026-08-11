@@ -420,7 +420,10 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureBackupContainerStorageAccount | `spec.recoveryVaultName` | `status.outputs.recovery_services_vault_name` |
+| AzureBackupPolicyFileShare | `spec.recoveryVaultName` | `status.outputs.recovery_services_vault_name` |
 | AzureBackupPolicyVm | `spec.recoveryVaultName` | `status.outputs.recovery_services_vault_name` |
+| AzureBackupProtectedFileShare | `spec.recoveryVaultName` | `status.outputs.recovery_services_vault_name` |
 | AzureBackupProtectedVm | `spec.recoveryVaultName` | `status.outputs.recovery_services_vault_name` |
 
 ## See Also

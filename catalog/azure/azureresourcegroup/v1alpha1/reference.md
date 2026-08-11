@@ -86,7 +86,10 @@ Fields on other kinds that can point at this resource:
 | AzureApplicationInsights | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureApplicationInsightsStandardWebTest | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureApplicationSecurityGroup | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureBackupContainerStorageAccount | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureBackupPolicyFileShare | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureBackupPolicyVm | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureBackupProtectedFileShare | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureBackupProtectedVm | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureCognitiveAccount | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerApp | `spec.resourceGroup` | `status.outputs.resource_group_name` |

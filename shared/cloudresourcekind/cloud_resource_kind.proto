@@ -2071,7 +2071,8 @@ enum CloudResourceKind {
   // with that exact ARM name. AzurePublicIp is a prerequisite because a
   // VPN-type gateway (the default shape) requires a public IP per ip
   // configuration; the address install profile publishes a dedicated
-  // no-zone instance (a gateway binds its address exclusively).
+  // zone-redundant instance (a gateway binds its address exclusively,
+  // and the AZ gateway SKUs require zones on it).
   AzureVirtualNetworkGateway = 2140 [(kind_meta) = {
     provider: azure
     version: "v1alpha1"
@@ -2390,7 +2391,7 @@ enum CloudResourceKind {
     prerequisites: [AzureMachineLearningBatchEndpoint]
   }];
 
-  // --- Backup and data protection (2175-2182) ---
+  // --- Backup and data protection (2175-2182, +2213) ---
 
   // The Recovery Services vault (Microsoft.RecoveryServices/vaults) --
   // the safe that classic Azure Backup data and Site Recovery
@@ -2419,6 +2420,44 @@ enum CloudResourceKind {
     prerequisites: [
       AzureBackupPolicyVm,
       AzureVirtualMachine
+    ]
+  }];
+  // An ARM child of its vault (.../backupPolicies/{name}) -- the
+  // schedule and retention rules that govern Azure Files share
+  // backups (snapshot or vaulted).
+  AzureBackupPolicyFileShare = 2178 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azbpfs"
+    prerequisites: [AzureRecoveryServicesVault]
+  }];
+  // An ARM child of its vault (.../protectedItems/AzureFileShare;...)
+  // -- the binding that puts one Azure Files share under a backup
+  // policy's protection. The share's storage account must already be
+  // registered with the vault (AzureBackupContainerStorageAccount).
+  AzureBackupProtectedFileShare = 2179 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azbprfs"
+    prerequisites: [
+      AzureBackupContainerStorageAccount,
+      AzureBackupPolicyFileShare,
+      AzureStorageShare
+    ]
+  }];
+  // Registers a storage account with a Recovery Services vault as a
+  // backup container (.../protectionContainers/StorageContainer;...)
+  // -- one registration per storage-account-and-vault pair, required
+  // BEFORE any of the account's file shares can be protected. Part of
+  // the backup family (2175-2179) despite the out-of-run number --
+  // enum numbers are pinned by the registry snapshot; never renumber.
+  AzureBackupContainerStorageAccount = 2213 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azbcsa"
+    prerequisites: [
+      AzureRecoveryServicesVault,
+      AzureStorageAccount
     ]
   }];
 

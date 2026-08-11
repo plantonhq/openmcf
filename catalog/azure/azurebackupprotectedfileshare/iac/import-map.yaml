@@ -1,0 +1,20 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurebackupprotectedfileshare
+spec:
+  # The protected item's identity is its full ARM resource ID. The
+  # container segment composes from the storage account's group and
+  # name, but the ITEM segment carries the share's SYSTEM name
+  # (AzureFileShare;{system-name}), which differs from its friendly
+  # name -- the ID cannot be composed from the spec alone.
+  values:
+    - name: backup_protected_file_share_id
+      derivations:
+        - from_stack_output: backup_protected_file_share_id
+      where_to_find: >-
+        `az backup item list -g <rg> -v <vault>
+        --backup-management-type AzureStorage --query
+        "[?properties.friendlyName=='<share-name>'].id"` -- match by
+        friendly name; the ID's item segment carries Azure's system
+        name for the share.

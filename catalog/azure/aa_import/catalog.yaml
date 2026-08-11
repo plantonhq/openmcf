@@ -274,3 +274,19 @@ spec:
     - terraform_type: azurerm_backup_protected_vm
       pulumi_type: azure:backup/protectedVM:ProtectedVM
       id_format: "{backup_protected_vm_id}"
+    - terraform_type: azurerm_backup_policy_file_share
+      pulumi_type: azure:backup/policyFileShare:PolicyFileShare
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_backup_container_storage_account
+      pulumi_type: azure:backup/containerStorageAccount:ContainerStorageAccount
+      id_format: "{backup_container_id}"
+      # ARM derives the container segment from the storage account's
+      # group and name (StorageContainer;storage;{sa-rg};{sa-name});
+      # the id is quoted on import -- it carries semicolons.
+    - terraform_type: azurerm_backup_protected_file_share
+      pulumi_type: azure:backup/protectedFileShare:ProtectedFileShare
+      id_format: "{backup_protected_file_share_id}"
+      # The item segment carries the share's SYSTEM name
+      # (AzureFileShare;{system-name}), not its friendly name -- the id
+      # comes from the stack output or `az backup item list`, never
+      # composed by hand; quoted on import (semicolons).
