@@ -30,9 +30,23 @@ func Resources(ctx *pulumi.Context, stackInput *awsrdsinstancev1alpha1.AwsRdsIns
 		return errors.Wrap(err, "failed to create subnet group")
 	}
 
-	createdInstance, err := rdsInstance(ctx, locals, provider, createdSubnetGroup)
+	createdParameterGroup, err := parameterGroup(ctx, locals, provider)
+	if err != nil {
+		return errors.Wrap(err, "failed to create DB parameter group")
+	}
+
+	createdOptionGroup, err := optionGroup(ctx, locals, provider)
+	if err != nil {
+		return errors.Wrap(err, "failed to create option group")
+	}
+
+	createdInstance, err := rdsInstance(ctx, locals, provider, createdSubnetGroup, createdParameterGroup, createdOptionGroup)
 	if err != nil {
 		return errors.Wrap(err, "failed to create RDS instance")
+	}
+
+	if err := roleAssociations(ctx, locals, provider, createdInstance); err != nil {
+		return errors.Wrap(err, "failed to create role associations")
 	}
 
 	ctx.Export(OpInstanceIdentifier, createdInstance.Identifier)
@@ -55,6 +69,11 @@ func Resources(ctx *pulumi.Context, stackInput *awsrdsinstancev1alpha1.AwsRdsIns
 	}).(pulumi.StringOutput))
 
 	ctx.Export(OpDbSubnetGroupName, createdInstance.DbSubnetGroupName)
+
+	// The groups in use -- the resource echoes back whichever group won
+	// (managed inline, referenced, or the engine default's name).
+	ctx.Export(OpDbParameterGroupName, createdInstance.ParameterGroupName)
+	ctx.Export(OpOptionGroupName, createdInstance.OptionGroupName)
 
 	return nil
 }

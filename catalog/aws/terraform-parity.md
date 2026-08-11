@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 229 |
-| Spec fields authored across all kinds | 4210 |
+| Distinct provider resources consumed | 235 |
+| Spec fields authored across all kinds | 4253 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**30 of 112 kinds are at total accounting; 71 proven live.**
+**33 of 112 kinds are at total accounting; 75 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -70,11 +70,11 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCloudwatchLogGroup | 36 | 9 | 0 | 0 | 45 | ❌ | ✅ pulumi, terraform |
 | AwsCodeBuildProject | 115 | 90 | 0 | 0 | 44 | ❌ | ✅ pulumi, terraform |
 | AwsCodePipeline | 84 | 4 | 0 | 0 | 151 | ❌ | ✅ pulumi, terraform |
-| AwsCognitoIdentityProvider | 7 | 6 | 0 | 0 | 32 | ❌ | — |
+| AwsCognitoIdentityProvider | 7 | 6 | 0 | 0 | 32 | ❌ | ✅ pulumi, terraform |
 | AwsCognitoResourceServer | 6 | 4 | 0 | 0 | 4 | ❌ | ✅ pulumi, terraform |
 | AwsCognitoUserPool | 91 | 53 | 0 | 0 | 68 | ❌ | ✅ pulumi, terraform |
 | AwsCognitoUserPoolClient | 31 | 30 | 0 | 0 | 1 | ❌ | ✅ pulumi, terraform |
-| AwsDocumentDb | 74 | 34 | 0 | 0 | 56 | ❌ | ✅ pulumi, terraform |
+| AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsDynamodb | 71 | 27 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
 | AwsEc2Instance | 92 | 39 | 0 | 0 | 94 | ❌ | ✅ pulumi, terraform |
 | AwsEcrRepo | 17 | 5 | 0 | 0 | 25 | ❌ | ✅ pulumi, terraform |
@@ -89,7 +89,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsEksFargateProfile | 9 | 4 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEksNodeGroup | 43 | 26 | 12 | 5 | 0 | ✅ | — |
 | AwsElasticFileSystem | 34 | 13 | 0 | 0 | 35 | ❌ | ✅ pulumi, terraform |
-| AwsElasticIp | 12 | 4 | 0 | 0 | 8 | ❌ | — |
+| AwsElasticIp | 12 | 4 | 0 | 0 | 8 | ❌ | ✅ pulumi, terraform |
 | AwsElasticacheUser | 13 | 6 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
 | AwsElasticacheUserGroup | 6 | 3 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsEventBridgeBus | 13 | 8 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
@@ -107,9 +107,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsHttpApiGateway | 91 | 42 | 11 | 38 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiVpcLink | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamInstanceProfile | 6 | 2 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
-| AwsIamOidcProvider | 5 | 3 | 0 | 0 | 3 | ❌ | — |
+| AwsIamOidcProvider | 5 | 3 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
 | AwsIamPolicy | 8 | 2 | 1 | 5 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsIamRole | 16 | 5 | 0 | 0 | 20 | ❌ | — |
+| AwsIamRole | 16 | 5 | 0 | 0 | 20 | ❌ | ✅ pulumi, terraform |
 | AwsIamUser | 15 | 3 | 4 | 8 | 0 | ✅ | — |
 | AwsInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | — |
@@ -134,8 +134,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | — |
 | AwsOpenSearchDomain | 77 | 51 | 0 | 0 | 48 | ❌ | partial: pulumi, terraform |
 | AwsPlantonRunner | 216 | 9 | 0 | 0 | 216 | ❌ | ✅ pulumi, terraform |
-| AwsRdsCluster | 126 | 69 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
-| AwsRdsInstance | 88 | 57 | 0 | 0 | 41 | ❌ | ✅ pulumi, terraform |
+| AwsRdsCluster | 143 | 84 | 19 | 40 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsRdsInstance | 119 | 65 | 20 | 34 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRedisElasticache | 66 | 42 | 0 | 0 | 36 | ❌ | ✅ pulumi, terraform |
 | AwsRedshiftCluster | 67 | 40 | 0 | 0 | 39 | ❌ | ✅ pulumi, terraform |
 | AwsRedshiftServerlessNamespace | 15 | 10 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
@@ -170,12 +170,12 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 229 | consumed by a kind's Terraform module today |
+| Modeled | 235 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 4 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 809 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 521 | deliberately not offered, each with the recorded reason |
-| Excluded as deprecated | 128 | deprecated or superseded provider surface |
+| Planned | 801 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 522 | deliberately not offered, each with the recorded reason |
+| Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
 ## The enumerated record
@@ -183,7 +183,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (229)
+### Modeled (235)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -241,6 +241,9 @@ rather than trusted.
 | `aws_cognito_user_pool_client` | consumed by AwsCognitoUserPoolClient |
 | `aws_cognito_user_pool_domain` | consumed by AwsCognitoUserPool |
 | `aws_db_instance` | consumed by AwsRdsInstance |
+| `aws_db_instance_role_association` | consumed by AwsRdsInstance |
+| `aws_db_option_group` | consumed by AwsRdsInstance |
+| `aws_db_parameter_group` | consumed by AwsRdsInstance |
 | `aws_db_subnet_group` | consumed by AwsRdsCluster, AwsRdsInstance |
 | `aws_docdb_cluster` | consumed by AwsDocumentDb |
 | `aws_docdb_cluster_instance` | consumed by AwsDocumentDb |
@@ -355,8 +358,11 @@ rather than trusted.
 | `aws_neptune_subnet_group` | consumed by AwsNeptuneCluster |
 | `aws_opensearch_domain` | consumed by AwsOpenSearchDomain |
 | `aws_rds_cluster` | consumed by AwsRdsCluster |
+| `aws_rds_cluster_activity_stream` | consumed by AwsRdsCluster |
+| `aws_rds_cluster_endpoint` | consumed by AwsRdsCluster |
 | `aws_rds_cluster_instance` | consumed by AwsRdsCluster |
 | `aws_rds_cluster_parameter_group` | consumed by AwsRdsCluster |
+| `aws_rds_cluster_role_association` | consumed by AwsRdsCluster |
 | `aws_redshift_cluster` | consumed by AwsRedshiftCluster |
 | `aws_redshift_logging` | consumed by AwsRedshiftCluster |
 | `aws_redshift_parameter_group` | consumed by AwsRedshiftCluster |
@@ -426,7 +432,7 @@ rather than trusted.
 | `aws_kms_key_policy` | covered by AwsKmsKey spec.policy -- the standalone resource is the detached-management pattern for keys owned elsewhere |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
 
-### Planned (809)
+### Planned (801)
 
 | Resource | Recorded reason |
 |---|---|
@@ -651,11 +657,8 @@ rather than trusted.
 | `aws_datasync_location_s3` | judged as a planned AwsDataSyncLocation kind (agents and every location variant) |
 | `aws_datasync_location_smb` | judged as a planned AwsDataSyncLocation kind (agents and every location variant) |
 | `aws_datasync_task` | judged as a planned AwsDataSyncTask kind |
-| `aws_db_event_subscription` | RDS companion surface; folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen |
-| `aws_db_instance_automated_backups_replication` | RDS companion surface; folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen |
-| `aws_db_instance_role_association` | RDS companion surface; folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen |
-| `aws_db_option_group` | RDS companion surface; folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen |
-| `aws_db_parameter_group` | RDS companion surface; folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen |
+| `aws_db_event_subscription` | judged as a planned AwsRdsEventSubscription kind -- an event subscription binds an SNS topic to account-wide source sets (all instances, all clusters, or explicit lists) with its own lifecycle, never satellite to one database |
+| `aws_db_instance_automated_backups_replication` | judged as a planned AwsRdsAutomatedBackupsReplication kind -- the replication is created in the DESTINATION region, a cross-region lifecycle outside the single-region instance kind (the replica-key class) |
 | `aws_db_proxy` | judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets) |
 | `aws_db_proxy_default_target_group` | judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets) |
 | `aws_db_proxy_endpoint` | judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets) |
@@ -677,9 +680,9 @@ rather than trusted.
 | `aws_dms_replication_subnet_group` | judged as a planned AwsDmsReplication kind family (replication instances/configs, endpoints, tasks, subnet groups, certificates, event subscriptions) |
 | `aws_dms_replication_task` | judged as a planned AwsDmsReplication kind family (replication instances/configs, endpoints, tasks, subnet groups, certificates, event subscriptions) |
 | `aws_dms_s3_endpoint` | judged as a planned AwsDmsReplication kind family (replication instances/configs, endpoints, tasks, subnet groups, certificates, event subscriptions) |
-| `aws_docdb_event_subscription` | DocumentDB companion surface (event subscriptions, global and elastic clusters); folds into the existing AwsDocumentDb kind as its spec deepens |
-| `aws_docdb_global_cluster` | DocumentDB companion surface (event subscriptions, global and elastic clusters); folds into the existing AwsDocumentDb kind as its spec deepens |
-| `aws_docdbelastic_cluster` | DocumentDB companion surface (event subscriptions, global and elastic clusters); folds into the existing AwsDocumentDb kind as its spec deepens |
+| `aws_docdb_event_subscription` | judged as a planned AwsDocumentDbEventSubscription kind -- an event subscription binds an SNS topic to account-wide source sets with its own lifecycle, never satellite to one cluster (the AwsRdsEventSubscription precedent) |
+| `aws_docdb_global_cluster` | judged as a planned AwsDocumentDbGlobalCluster kind -- the cross-region umbrella clusters join through spec.global_cluster_identifier (the AwsRdsGlobalCluster precedent) |
+| `aws_docdbelastic_cluster` | judged as a planned AwsDocumentDbElasticCluster kind -- elastic clusters are a different architecture (sharded, shard-capacity-sized, no instances list), not the instance-based cluster this kind models |
 | `aws_dsql_cluster` | judged as a planned AwsAuroraDsql kind (clusters with peering) |
 | `aws_dsql_cluster_peering` | judged as a planned AwsAuroraDsql kind (clusters with peering) |
 | `aws_dx_bgp_peer` | judged as a planned AwsDxVirtualInterface kind (private/public/transit and hosted virtual interfaces, accepters, BGP peers) |
@@ -950,13 +953,8 @@ rather than trusted.
 | `aws_ram_resource_share_accepter` | judged as a planned AwsResourceShare kind (shares with principal/resource associations, accepters, permissions) |
 | `aws_ram_resource_share_associations_exclusive` | judged as a planned AwsResourceShare kind (shares with principal/resource associations, accepters, permissions) |
 | `aws_ram_sharing_with_organization` | judged as a planned AwsResourceShare kind (shares with principal/resource associations, accepters, permissions) |
-| `aws_rds_certificate` | RDS companion surface (certificates, activity streams, endpoints, role associations, Aurora Limitless shard groups); folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen |
-| `aws_rds_cluster_activity_stream` | RDS companion surface (certificates, activity streams, endpoints, role associations, Aurora Limitless shard groups); folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen |
-| `aws_rds_cluster_endpoint` | RDS companion surface (certificates, activity streams, endpoints, role associations, Aurora Limitless shard groups); folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen |
-| `aws_rds_cluster_role_association` | RDS companion surface (certificates, activity streams, endpoints, role associations, Aurora Limitless shard groups); folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen |
 | `aws_rds_global_cluster` | judged as a planned AwsRdsGlobalCluster kind |
 | `aws_rds_integration` | judged as a planned AwsRdsZeroEtlIntegration kind (pairs with the Redshift-side integration) |
-| `aws_rds_shard_group` | RDS companion surface (certificates, activity streams, endpoints, role associations, Aurora Limitless shard groups); folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen |
 | `aws_redshift_authentication_profile` | cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens |
 | `aws_redshift_cluster_iam_roles` | cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens |
 | `aws_redshift_cluster_snapshot` | cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens |
@@ -1240,7 +1238,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (521)
+### Deferred (522)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1623,6 +1621,7 @@ rather than trusted.
 | `aws_quicksight_user_custom_permission` | QuickSight dashboards/analyses/datasets are BI content authoring, not infrastructure; revisit on customer demand |
 | `aws_quicksight_vpc_connection` | QuickSight dashboards/analyses/datasets are BI content authoring, not infrastructure; revisit on customer demand |
 | `aws_rbin_rule` | Recycle Bin retention rules; deferred pending demand |
+| `aws_rds_certificate` | regional account singleton (sets the account's default CA certificate; its id IS the region) -- account-wide operational posture, never instance or cluster surface; per-database CA choice is already modeled as ca_cert_identifier |
 | `aws_rds_cluster_snapshot_copy` | snapshot/export operations and custom engine versions are imperative lifecycle actions; deferred |
 | `aws_rds_custom_db_engine_version` | snapshot/export operations and custom engine versions are imperative lifecycle actions; deferred |
 | `aws_rds_export_task` | snapshot/export operations and custom engine versions are imperative lifecycle actions; deferred |
@@ -1766,7 +1765,7 @@ rather than trusted.
 | `aws_workspacesweb_user_settings` | secure-browser portal vertical (WorkSpaces Web); deferred pending demand |
 | `aws_workspacesweb_user_settings_association` | secure-browser portal vertical (WorkSpaces Web); deferred pending demand |
 
-### Excluded as deprecated (128)
+### Excluded as deprecated (129)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1857,6 +1856,7 @@ rather than trusted.
 | `aws_proxy_protocol_policy` | Classic Load Balancer surface, superseded by ALB/NLB (covered by AwsAlb and AwsNlb) |
 | `aws_qldb_ledger` | QLDB is deprecated by AWS (2025) |
 | `aws_qldb_stream` | QLDB is deprecated by AWS (2025) |
+| `aws_rds_shard_group` | Aurora Limitless shard group -- AWS discontinued Aurora Limitless Database (the cluster kind excludes cluster_scalability_type on the same judgment); superseded surface not flagged in the schema |
 | `aws_redshift_hsm_client_certificate` | CloudHSM Classic surface is legacy; superseded by KMS-based encryption (covered by AwsRedshiftCluster) |
 | `aws_redshift_hsm_configuration` | CloudHSM Classic surface is legacy; superseded by KMS-based encryption (covered by AwsRedshiftCluster) |
 | `aws_s3_bucket_object` | deprecated in the provider schema |

@@ -1,12 +1,24 @@
 # Minimal postgres instance scenario: the classic single-node RDS shape on
 # the cheapest real footprint (db.t4g.micro, 20 GiB gp3, single-AZ).
 # Exercises the AWS-managed master password (no secret in the manifest or
-# state) and encrypted storage. engine_version is deliberately unpinned so
-# the scenario rides the engine's current AWS default and never goes stale.
-# The subnet pair prerequisite satisfies the two-AZ DB subnet group
-# requirement; no security groups are given, so AWS attaches the VPC's
-# default group. skipFinalSnapshot keeps the destroy phase unconditional.
-# Full metadata is supplied for tagging/orphan cleanup.
+# state) and encrypted storage. engine_version pins the MAJOR only ("16"):
+# the instance-owned parameter group needs a pinned version for its family
+# derivation, and a major-only pin rides the latest 16.x minor so the
+# scenario still never goes stale within the major's lifetime. The subnet
+# pair prerequisite satisfies the two-AZ DB subnet group requirement; no
+# security groups are given, so AWS attaches the VPC's default group.
+# skipFinalSnapshot keeps the destroy phase unconditional. Full metadata is
+# supplied for tagging/orphan cleanup.
+#
+# Free arms proven live on this lane: the instance-owned parameter group
+# (one parameter through the derived postgres16 family -- verify the group
+# name in the outputs), one engine feature role attached BY REFERENCE (the
+# e2e-prerequisites annotation composes the AwsIamRole fixture; feature
+# names are engine-specific and s3Export is postgres-valid -- verify the
+# association via the RDS API), and the explicit extended-support opt-out.
+# The S3-import, option-group, and Active Directory arms are
+# offline-proven (seeded bucket, Oracle/SQL-Server licensing, directory
+# costs) -- see e2e/manifest.yaml and the 04/05 presets.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsInstance
 metadata:
@@ -19,11 +31,13 @@ metadata:
     e2e-component: awsrdsinstance
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
   tags:
     - planton-e2e
 spec:
   region: us-west-2
   engine: postgres
+  engineVersion: "16"
   instanceClass: db.t4g.micro
   allocatedStorageGb: 20
   storageType: gp3
@@ -39,4 +53,16 @@ spec:
   username: e2eadmin
   manageMasterUserPassword: true
   storageEncrypted: true
+  engineLifecycleSupport: open-source-rds-extended-support-disabled
+  parameters:
+    - name: rds.force_ssl
+      value: "1"
+      applyMethod: immediate
+  iamRoles:
+    - role:
+        valueFrom:
+          kind: AwsIamRole
+          name: planton-oss-e2e-awsiamrole-prereq
+          fieldPath: status.outputs.role_arn
+      featureName: s3Export
   skipFinalSnapshot: true

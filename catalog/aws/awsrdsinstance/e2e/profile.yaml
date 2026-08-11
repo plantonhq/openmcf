@@ -8,12 +8,17 @@ spec:
   # single-AZ instance), runs deploy -> DescribeDBInstances verify -> destroy ->
   # verify-destroyed on both provisioners. The scenario is a single-AZ postgres
   # db.t4g.micro on 20 GiB gp3 with the AWS-managed master password -- the
-  # smallest instance class RDS offers, so the run costs cents. RDS instance
-  # provisioning dominates the runtime at five to ten minutes each way per
-  # engine.
+  # smallest instance class RDS offers, so the run costs cents -- plus the
+  # free depth arms: the instance-owned parameter group (major-only version
+  # pin "16" keeps the derived postgres16 family stable), one feature-scoped
+  # role association (composed AwsIamRole fixture), and the extended-support
+  # opt-out. RDS instance provisioning dominates the runtime at five to ten
+  # minutes each way per engine.
+  #
+  # pending_proof: the depth closure changed the module's resource set
+  # (parameter group, option group, and role-association resources are new)
+  # -- the prior green badge predates this surface and must be re-earned
+  # live.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 60

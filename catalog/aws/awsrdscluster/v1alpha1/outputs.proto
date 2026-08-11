@@ -50,4 +50,25 @@ message AwsRdsClusterStackOutputs {
   // as declared in spec.instances. Empty for Aurora Serverless v1 and
   // Multi-AZ RDS clusters, where AWS owns the compute.
   repeated string instance_endpoints = 12;
+
+  // The custom cluster endpoints declared in spec.custom_endpoints --
+  // one entry per endpoint, carrying its DNS name for charts to wire
+  // into consumers.
+  repeated AwsRdsClusterCustomEndpointOutput custom_endpoints = 13;
+
+  // The name of the Kinesis stream receiving the Database Activity
+  // Stream (aws-rds-das-...). Populated only when spec.activity_stream
+  // is set -- the handle audit consumers attach to.
+  string activity_stream_kinesis_stream_name = 14;
+}
+
+// AwsRdsClusterCustomEndpointOutput is one custom endpoint's observable
+// identity: the spec entry name and the DNS endpoint AWS assigned it.
+message AwsRdsClusterCustomEndpointOutput {
+  // The endpoint's spec.custom_endpoints entry name.
+  string name = 1;
+
+  // The DNS name of the custom endpoint -- connect here to reach the
+  // endpoint's member subset.
+  string endpoint = 2;
 }

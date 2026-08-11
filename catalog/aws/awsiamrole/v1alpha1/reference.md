@@ -393,9 +393,13 @@ Fields on other kinds that can point at this resource:
 | AwsOpenSearchDomain | `spec.advancedSecurityOptions.masterUserArn` | `status.outputs.role_arn` |
 | AwsOpenSearchDomain | `spec.cognitoOptions.roleArn` | `status.outputs.role_arn` |
 | AwsPlantonRunner | `spec.taskRole` | `status.outputs.role_arn` |
-| AwsRdsCluster | `spec.iamRoles` | `status.outputs.role_arn` |
+| AwsRdsCluster | `spec.instances[].monitoringRoleArn` | `status.outputs.role_arn` |
+| AwsRdsCluster | `spec.iamRoles[].role` | `status.outputs.role_arn` |
 | AwsRdsCluster | `spec.monitoringRoleArn` | `status.outputs.role_arn` |
+| AwsRdsCluster | `spec.s3Import.ingestionRole` | `status.outputs.role_arn` |
 | AwsRdsInstance | `spec.monitoringRoleArn` | `status.outputs.role_arn` |
+| AwsRdsInstance | `spec.s3Import.ingestionRole` | `status.outputs.role_arn` |
+| AwsRdsInstance | `spec.iamRoles[].role` | `status.outputs.role_arn` |
 | AwsRedshiftCluster | `spec.iamRoles` | `status.outputs.role_arn` |
 | AwsRedshiftCluster | `spec.defaultIamRoleArn` | `status.outputs.role_arn` |
 | AwsRedshiftServerlessNamespace | `spec.iamRoles` | `status.outputs.role_arn` |

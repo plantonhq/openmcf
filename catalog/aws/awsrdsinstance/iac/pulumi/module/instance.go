@@ -19,7 +19,8 @@ import (
 // the next maintenance window, per apply_immediately). Growing storage
 // applies in place; shrinking requires a new instance.
 func rdsInstance(ctx *pulumi.Context, locals *Locals, provider *aws.Provider,
-	createdSubnetGroup *rds.SubnetGroup) (*rds.Instance, error) {
+	createdSubnetGroup *rds.SubnetGroup, createdParameterGroup *rds.ParameterGroup,
+	createdOptionGroup *rds.OptionGroup) (*rds.Instance, error) {
 	spec := locals.AwsRdsInstance.Spec
 
 	args := &rds.InstanceArgs{
@@ -144,9 +145,28 @@ func rdsInstance(ctx *pulumi.Context, locals *Locals, provider *aws.Provider,
 	}
 
 	// Create-time restore sources (mutually exclusive with each other and
-	// with replicate_source_db, CEL-enforced).
+	// with replicate_source_db, CEL-enforced). s3_import is the MySQL
+	// migration on-ramp: restore a Percona XtraBackup straight from S3.
 	if spec.SnapshotIdentifier != "" {
 		args.SnapshotIdentifier = pulumi.String(spec.SnapshotIdentifier)
+	}
+	if spec.S3Import != nil {
+		s3ImportArgs := &rds.InstanceS3ImportArgs{
+			BucketName:          pulumi.String(spec.S3Import.BucketName),
+			IngestionRole:       pulumi.String(spec.S3Import.IngestionRole.GetValue()),
+			SourceEngine:        pulumi.String(spec.S3Import.SourceEngine),
+			SourceEngineVersion: pulumi.String(spec.S3Import.SourceEngineVersion),
+		}
+		if spec.S3Import.BucketPrefix != "" {
+			s3ImportArgs.BucketPrefix = pulumi.String(spec.S3Import.BucketPrefix)
+		}
+		args.S3Import = s3ImportArgs
+	}
+
+	// One-way storage file-system upgrade, consulted on replicas and
+	// snapshot restores whose source still runs the older configuration.
+	if spec.UpgradeStorageConfig {
+		args.UpgradeStorageConfig = pulumi.Bool(true)
 	}
 	if spec.RestoreToPointInTime != nil {
 		restoreArgs := &rds.InstanceRestoreToPointInTimeArgs{}
@@ -214,12 +234,17 @@ func rdsInstance(ctx *pulumi.Context, locals *Locals, provider *aws.Provider,
 		args.DatabaseInsightsMode = pulumi.String(spec.DatabaseInsightsMode)
 	}
 
-	// Engine-configuration attachments by name: parameter groups and
+	// Engine-configuration attachments: the managed inline group, an
+	// existing referenced group, or the engine default -- parameter and
 	// option groups are configuration lists, not composable nodes.
-	if spec.ParameterGroupName != "" {
+	if createdParameterGroup != nil {
+		args.ParameterGroupName = createdParameterGroup.Name
+	} else if spec.ParameterGroupName != "" {
 		args.ParameterGroupName = pulumi.String(spec.ParameterGroupName)
 	}
-	if spec.OptionGroupName != "" {
+	if createdOptionGroup != nil {
+		args.OptionGroupName = createdOptionGroup.Name
+	} else if spec.OptionGroupName != "" {
 		args.OptionGroupName = pulumi.String(spec.OptionGroupName)
 	}
 
@@ -248,6 +273,12 @@ func rdsInstance(ctx *pulumi.Context, locals *Locals, provider *aws.Provider,
 
 	if spec.LicenseModel != "" {
 		args.LicenseModel = pulumi.String(spec.LicenseModel)
+	}
+	// Extended support posture -- empty keeps the AWS default (paid
+	// extended support engages automatically when the version leaves
+	// standard support).
+	if spec.EngineLifecycleSupport != "" {
+		args.EngineLifecycleSupport = pulumi.String(spec.EngineLifecycleSupport)
 	}
 	if spec.CharacterSetName != "" {
 		args.CharacterSetName = pulumi.String(spec.CharacterSetName)

@@ -33,6 +33,7 @@ spec:
     - value: subnet-0a1b2c3d4e5f60001
     - value: subnet-0a1b2c3d4e5f60002
   engine: postgres
+  engineVersion: "16.4"
   instanceClass: db.t4g.micro
   allocatedStorageGb: 20
   storageType: gp3
@@ -40,6 +41,20 @@ spec:
   username: hackadmin
   manageMasterUserPassword: true
   skipFinalSnapshot: true
+  # Opt out of paid extended support: upgrade before standard support ends.
+  engineLifecycleSupport: open-source-rds-extended-support-disabled
+  # Instance-owned parameter group from inline parameters (the family is
+  # derived from engine + engineVersion).
+  parameters:
+    - name: rds.force_ssl
+      value: "1"
+      applyMethod: immediate
+  # Engine feature roles, one association per entry (feature_name is
+  # required on instance associations).
+  iamRoles:
+    - role:
+        value: arn:aws:iam::123456789012:role/rds-s3-export
+      featureName: s3Export
 ```
 
 ## Spec Fields
@@ -114,6 +129,29 @@ spec:
 | `spec.autoMinorVersionUpgrade` | `bool` |  | `true` |  |
 | `spec.allowMajorVersionUpgrade` | `bool` |  |  |  |
 | `spec.applyImmediately` | `bool` |  |  |  |
+| `spec.engineLifecycleSupport` | `string` |  |  |  |
+| `spec.upgradeStorageConfig` | `bool` |  |  |  |
+| `spec.s3Import` | `AwsRdsInstanceS3Import` |  |  |  |
+| `spec.s3Import.bucketName` | `string` | yes |  |  |
+| `spec.s3Import.bucketPrefix` | `string` |  |  |  |
+| `spec.s3Import.ingestionRole` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.s3Import.sourceEngine` | `string` | yes |  |  |
+| `spec.s3Import.sourceEngineVersion` | `string` | yes |  |  |
+| `spec.iamRoles` | `[]AwsRdsInstanceIamRole` |  |  |  |
+| `spec.iamRoles[].role` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.iamRoles[].featureName` | `string` | yes |  |  |
+| `spec.parameters` | `[]AwsRdsInstanceParameter` |  |  |  |
+| `spec.parameters[].name` | `string` | yes |  |  |
+| `spec.parameters[].value` | `string` | yes |  |  |
+| `spec.parameters[].applyMethod` | `string` |  |  |  |
+| `spec.options` | `[]AwsRdsInstanceOption` |  |  |  |
+| `spec.options[].optionName` | `string` | yes |  |  |
+| `spec.options[].optionSettings` | `[]AwsRdsInstanceOptionSetting` |  |  |  |
+| `spec.options[].optionSettings[].name` | `string` | yes |  |  |
+| `spec.options[].optionSettings[].value` | `string` | yes |  |  |
+| `spec.options[].port` | `int32` |  |  |  |
+| `spec.options[].version` | `string` |  |  |  |
+| `spec.options[].vpcSecurityGroupMemberships` | `[]string \| valueFrom` |  |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
 
 ## Field Details
 
@@ -496,6 +534,8 @@ refuses to delete without knowing the snapshot name.
 The name for the final snapshot taken on deletion. Required when
 skip_final_snapshot is false.
 
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[A-Za-z][0-9A-Za-z]*(-[0-9A-Za-z]+)*$"}}
+
 ### spec.deletionProtection
 
 `bool`
@@ -723,6 +763,131 @@ Apply modifications immediately instead of waiting for the next
 maintenance window. Immediate changes can interrupt connections;
 deferred changes wait quietly. AWS defaults to deferred.
 
+### spec.engineLifecycleSupport
+
+`string`
+
+### spec.upgradeStorageConfig
+
+`bool`
+
+### spec.s3Import
+
+`AwsRdsInstanceS3Import`
+
+### spec.s3Import.bucketName
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.s3Import.bucketPrefix
+
+`string`
+
+### spec.s3Import.ingestionRole
+
+`string | valueFrom` · required
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.s3Import.sourceEngine
+
+`string` · required
+
+- rule: {"required":true,"string":{"in":["mysql"]}}
+
+### spec.s3Import.sourceEngineVersion
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.iamRoles
+
+`[]AwsRdsInstanceIamRole`
+
+### spec.iamRoles[].role
+
+`string | valueFrom` · required
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.iamRoles[].featureName
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.parameters
+
+`[]AwsRdsInstanceParameter`
+
+- rule: apply_method must be 'immediate' or 'pending-reboot' when set
+
+### spec.parameters[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.parameters[].value
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.parameters[].applyMethod
+
+`string`
+
+### spec.options
+
+`[]AwsRdsInstanceOption`
+
+### spec.options[].optionName
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.options[].optionSettings
+
+`[]AwsRdsInstanceOptionSetting`
+
+### spec.options[].optionSettings[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.options[].optionSettings[].value
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.options[].port
+
+`int32`
+
+- rule: {"int32":{"lte":65535,"gte":0}}
+
+### spec.options[].version
+
+`string`
+
+### spec.options[].vpcSecurityGroupMemberships
+
+`[]string | valueFrom`
+
+- references: AwsSecurityGroup (`status.outputs.security_group_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSecurityGroup, name: <that resource's name>, fieldPath: status.outputs.security_group_id}} -- a bare string does not parse
+
 ## Validation Rules
 
 - `subnets_or_group`: provide at least two subnet_ids (distinct AZs) or an existing db_subnet_group_name
@@ -732,7 +897,10 @@ deferred changes wait quietly. AWS defaults to deferred.
 - `username_required_unless_derived`: username is required for a new instance -- AWS rejects a blank username; only read replicas and snapshot/point-in-time restores inherit credentials from their source
 - `final_snapshot_id_required_when_not_skipping`: final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the instance without a final snapshot name
 - `multi_az_excludes_availability_zone`: availability_zone cannot be pinned on a Multi-AZ instance -- AWS places the primary and standby itself
-- `one_create_source`: replicate_source_db, snapshot_identifier, and restore_to_point_in_time are mutually exclusive create sources
+- `one_create_source`: replicate_source_db, snapshot_identifier, restore_to_point_in_time, and s3_import are mutually exclusive create sources
+- `s3_import_is_mysql`: s3_import (Percona XtraBackup restore) is a MySQL feature -- engine must be 'mysql'
+- `charset_conflicts_with_create_sources`: character_set_name only applies to a brand-new instance -- it cannot be combined with replicate_source_db, snapshot_identifier, restore_to_point_in_time, or s3_import
+- `timezone_not_with_s3_import`: timezone (SQL Server) cannot be combined with s3_import (a MySQL restore)
 - `replica_inherits_credentials`: username, password, and manage_master_user_password cannot be set on a read replica -- credentials are inherited from the source
 - `replica_mode_requires_replica`: replica_mode only applies to a read replica (replicate_source_db set)
 - `replica_mode_valid`: replica_mode must be 'open-read-only' or 'mounted' when set
@@ -745,7 +913,12 @@ deferred changes wait quietly. AWS defaults to deferred.
 - `monitoring_role_required_with_interval`: monitoring_role_arn is required when monitoring_interval is set -- Enhanced Monitoring publishes through that role
 - `database_insights_mode_valid`: database_insights_mode must be 'standard' or 'advanced' when set
 - `network_type_valid`: network_type must be 'IPV4' or 'DUAL' when set
-- `license_model_valid`: license_model must be 'license-included', 'bring-your-own-license', or 'general-public-license' when set
+- `license_model_valid`: license_model must be one of 'license-included', 'bring-your-own-license', 'general-public-license', 'postgresql-license', 'marketplace-license', or 'bring-your-own-media' when set
+- `engine_lifecycle_support_valid`: engine_lifecycle_support must be 'open-source-rds-extended-support' or 'open-source-rds-extended-support-disabled' when set
+- `own_parameters_xor_existing_group`: parameters and parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group
+- `parameters_require_engine_and_version`: inline parameters require engine and a pinned engine_version -- the managed parameter group's family is derived from them and must match the running engine
+- `own_options_xor_existing_group`: options and option_group_name are mutually exclusive -- manage options here or bring an existing group
+- `options_require_engine_and_version`: inline options require engine and a pinned engine_version -- the managed option group's engine name and major version are derived from them and must match the running engine
 
 ## Outputs
 
@@ -763,6 +936,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRdsInstance, 
 | `status.outputs.engine_version_actual` | `string` | The resolved engine version actually running (meaningful when the spec leaves engine_version to the AWS default). |
 | `status.outputs.master_user_secret_arn` | `string` | The ARN of the AWS-managed master-user secret in Secrets Manager. Populated only when manage_master_user_password is true -- the handle applications use to fetch credentials at runtime. |
 | `status.outputs.db_subnet_group_name` | `string` | The name of the DB subnet group the instance runs in. |
+| `status.outputs.db_parameter_group_name` | `string` |  |
+| `status.outputs.option_group_name` | `string` |  |
 
 ## References
 
@@ -776,6 +951,9 @@ Fields that can point at another resource's outputs:
 | `spec.masterUserSecretKmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.performanceInsightsKmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.monitoringRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.s3Import.ingestionRole` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.iamRoles[].role` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.options[].vpcSecurityGroupMemberships` | AwsSecurityGroup | `status.outputs.security_group_id` |
 
 ## See Also
 

@@ -9,13 +9,14 @@ This is the classic single-node RDS shape. For Aurora's shared-storage clusters 
 - **Credentials** -- `manageMasterUserPassword` (recommended) keeps the master password in Secrets Manager, generated and rotated by AWS, with the secret's ARN exported; or supply `password` directly (sensitive).
 - **Storage** -- gp3/gp2/io1/io2 with IOPS and throughput tuning, autoscaling ceiling (`maxAllocatedStorageGb`), dedicated log volume, encryption (create-time one-way door) with an optional `AwsKmsKey` reference.
 - **Availability** -- `multiAz` synchronous standby with automatic failover, or a single-AZ instance optionally pinned to a zone.
-- **Replicas and restores** -- `replicateSourceDb` read replicas (same- or cross-region, Oracle `mounted` mode), snapshot restore, and point-in-time restore -- each a first-class create shape with inherited engine/storage/credentials.
-- **Updates** -- RDS Blue/Green Deployments (`blueGreenUpdateEnabled`) for near-zero-downtime engine upgrades, tri-state minor-version auto-upgrade, major-version guard, apply-immediately control.
-- **Integrations** -- IAM database authentication, CloudWatch log exports, Performance Insights, Enhanced Monitoring, Database Insights, Active Directory join (AWS-managed or self-managed), license models and character sets for Oracle/SQL Server.
+- **Replicas and restores** -- `replicateSourceDb` read replicas (same- or cross-region, Oracle `mounted` mode, with `upgradeStorageConfig` for older sources), snapshot restore, point-in-time restore, and Percona XtraBackup restore from S3 (`s3Import`, MySQL) -- each a first-class create shape.
+- **Updates and lifecycle** -- RDS Blue/Green Deployments (`blueGreenUpdateEnabled`) for near-zero-downtime engine upgrades, tri-state minor-version auto-upgrade, major-version guard, apply-immediately control, and the extended-support opt-out (`engineLifecycleSupport`).
+- **Engine configuration** -- inline `parameters` and `options` (module-managed parameter and option groups with family/version derived from the pinned engine version -- the same own-XOR-existing idiom as the cluster kind) or existing groups by name.
+- **Integrations** -- IAM database authentication, feature-scoped engine `iamRoles` (one association per entry; `featureName` is required and engine-specific), CloudWatch log exports, Performance Insights, Enhanced Monitoring, Database Insights, Active Directory join (AWS-managed or self-managed), license models and character sets for Oracle/SQL Server.
 
 ## Stack outputs
 
-`instance_identifier`, `arn`, `resource_id`, `endpoint` (address:port), `address`, `port`, `hosted_zone_id`, `engine_version_actual`, `master_user_secret_arn`, `db_subnet_group_name`.
+`instance_identifier`, `arn`, `resource_id`, `endpoint` (address:port), `address`, `port`, `hosted_zone_id`, `engine_version_actual`, `master_user_secret_arn`, `db_subnet_group_name`, `db_parameter_group_name`, `option_group_name`.
 
 ## How it works
 

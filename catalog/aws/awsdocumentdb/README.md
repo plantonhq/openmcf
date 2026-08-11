@@ -11,6 +11,7 @@ The cluster is the shared-storage brain -- endpoints, credentials, backups, encr
 - **Data protection** -- storage encryption (create-time one-way door), continuous backups with `backupRetentionPeriod`, deletion protection, and final-snapshot enforcement.
 - **Restore shapes** -- create from a snapshot (`snapshotIdentifier`) or from another cluster's continuous backup (`restoreToPointInTime`, including copy-on-write fast clones), and join a DocumentDB global cluster (`globalClusterIdentifier`).
 - **Observability** -- `audit` and `profiler` CloudWatch log exports (paired with their cluster parameters) and per-instance Performance Insights.
+- **Per-instance maintenance control** -- each `instances` entry can stagger its maintenance window, pin its CA bundle, defer the CA-rotation restart (`certificateRotationRestart: false` -- unset keeps AWS's restart-on-rotation default), and apply its own changes immediately (`applyImmediately`).
 - **Parameters** -- inline `parameters` (a module-managed cluster parameter group with the family derived from the pinned engine version) or an existing `dbClusterParameterGroupName`.
 
 ## Stack outputs

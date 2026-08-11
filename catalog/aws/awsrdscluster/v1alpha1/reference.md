@@ -44,12 +44,35 @@ spec:
   manageMasterUserPassword: true
   storageEncrypted: true
   skipFinalSnapshot: true
+  autoMinorVersionUpgrade: true
+  # Kerberos authentication through an AWS Managed Microsoft AD.
+  domain: d-9267012345
+  domainIamRoleName: rds-directory-service-role
   serverlessV2Scaling:
     minCapacity: 0
     maxCapacity: 1
   instances:
     - name: writer
       instanceClass: db.serverless
+      copyTagsToSnapshot: true
+      preferredMaintenanceWindow: sun:05:00-sun:06:00
+  # Engine feature roles, one association per entry (feature-scoped).
+  iamRoles:
+    - role:
+        value: arn:aws:iam::123456789012:role/aurora-s3-export
+      featureName: s3Export
+  # A stable analytics endpoint over the chosen instances.
+  customEndpoints:
+    - name: analytics
+      type: READER
+      excludedMembers:
+        - writer
+  # Compliance-grade audit feed: every database event to a KMS-encrypted
+  # Kinesis stream (the stream name surfaces as an output).
+  activityStream:
+    mode: async
+    kmsKeyId:
+      value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
 ```
 
 ## Spec Fields
@@ -78,6 +101,13 @@ spec:
 | `spec.instances[].performanceInsightsEnabled` | `bool` |  |  |  |
 | `spec.instances[].monitoringInterval` | `int32` |  |  |  |
 | `spec.instances[].caCertIdentifier` | `string` |  |  |  |
+| `spec.instances[].copyTagsToSnapshot` | `bool` |  |  |  |
+| `spec.instances[].performanceInsightsKmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
+| `spec.instances[].performanceInsightsRetentionPeriod` | `int32` |  |  |  |
+| `spec.instances[].preferredBackupWindow` | `string` |  |  |  |
+| `spec.instances[].preferredMaintenanceWindow` | `string` |  |  |  |
+| `spec.instances[].monitoringRoleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.instances[].applyImmediately` | `bool` |  |  |  |
 | `spec.serverlessV2Scaling` | `AwsRdsClusterServerlessV2Scaling` |  |  |  |
 | `spec.serverlessV2Scaling.minCapacity` | `double` |  |  |  |
 | `spec.serverlessV2Scaling.maxCapacity` | `double` | yes |  |  |
@@ -110,7 +140,9 @@ spec:
 | `spec.deletionProtection` | `bool` |  |  |  |
 | `spec.backtrackWindowSeconds` | `int32` |  |  |  |
 | `spec.iamDatabaseAuthenticationEnabled` | `bool` |  |  |  |
-| `spec.iamRoles` | `[]string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.iamRoles` | `[]AwsRdsClusterIamRole` |  |  |  |
+| `spec.iamRoles[].role` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.iamRoles[].featureName` | `string` |  |  |  |
 | `spec.enableHttpEndpoint` | `bool` |  |  |  |
 | `spec.enabledCloudwatchLogsExports` | `[]string` |  |  |  |
 | `spec.performanceInsightsEnabled` | `bool` |  |  |  |
@@ -140,6 +172,24 @@ spec:
 | `spec.caCertificateIdentifier` | `string` |  |  |  |
 | `spec.applyImmediately` | `bool` |  |  |  |
 | `spec.allowMajorVersionUpgrade` | `bool` |  |  |  |
+| `spec.domain` | `string` |  |  |  |
+| `spec.domainIamRoleName` | `string` |  |  |  |
+| `spec.autoMinorVersionUpgrade` | `bool` |  | `true` |  |
+| `spec.s3Import` | `AwsRdsClusterS3Import` |  |  |  |
+| `spec.s3Import.bucketName` | `string` | yes |  |  |
+| `spec.s3Import.bucketPrefix` | `string` |  |  |  |
+| `spec.s3Import.ingestionRole` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.s3Import.sourceEngine` | `string` | yes |  |  |
+| `spec.s3Import.sourceEngineVersion` | `string` | yes |  |  |
+| `spec.customEndpoints` | `[]AwsRdsClusterCustomEndpoint` |  |  |  |
+| `spec.customEndpoints[].name` | `string` | yes |  |  |
+| `spec.customEndpoints[].type` | `string` | yes |  |  |
+| `spec.customEndpoints[].staticMembers` | `[]string` |  |  |  |
+| `spec.customEndpoints[].excludedMembers` | `[]string` |  |  |  |
+| `spec.activityStream` | `AwsRdsClusterActivityStream` |  |  |  |
+| `spec.activityStream.mode` | `string` | yes |  |  |
+| `spec.activityStream.kmsKeyId` | `string \| valueFrom` | yes |  | AwsKmsKey (`status.outputs.key_arn`) |
+| `spec.activityStream.engineNativeAuditFieldsIncluded` | `bool` |  |  |  |
 
 ## Field Details
 
@@ -276,6 +326,7 @@ for the two shapes where AWS owns the compute: Aurora Serverless v1
 with no instances stores data but cannot serve a single query.
 
 - rule: monitoring_interval must be 0 (disabled), 1, 5, 10, 15, 30, or 60 seconds
+- rule: performance_insights_retention_period must be 7, 731, or a multiple of 31 (month granularity) when set
 
 ### spec.instances[].name
 
@@ -361,6 +412,44 @@ monitoring_role_arn.
 
 The CA certificate bundle for this instance (e.g.
 "rds-ca-rsa2048-g1"). Empty keeps the AWS default.
+
+### spec.instances[].copyTagsToSnapshot
+
+`bool`
+
+### spec.instances[].performanceInsightsKmsKeyId
+
+`string | valueFrom`
+
+- references: AwsKmsKey (`status.outputs.key_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
+
+### spec.instances[].performanceInsightsRetentionPeriod
+
+`int32`
+
+### spec.instances[].preferredBackupWindow
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$"}}
+
+### spec.instances[].preferredMaintenanceWindow
+
+`string`
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$"}}
+
+### spec.instances[].monitoringRoleArn
+
+`string | valueFrom`
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.instances[].applyImmediately
+
+`bool`
 
 ### spec.serverlessV2Scaling
 
@@ -636,6 +725,8 @@ refuses to delete without knowing the snapshot name.
 The name for the final snapshot taken on deletion. Required when
 skip_final_snapshot is false.
 
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[A-Za-z][0-9A-Za-z]*(-[0-9A-Za-z]+)*$"}}
+
 ### spec.deletionProtection
 
 `bool`
@@ -665,7 +756,7 @@ IAM auth tokens instead of passwords.
 
 ### spec.iamRoles
 
-`[]string | valueFrom`
+`[]AwsRdsClusterIamRole`
 
 IAM roles the cluster assumes for engine features that reach into
 other AWS services (S3 import/export, Lambda invocation, Comprehend
@@ -673,8 +764,17 @@ other AWS services (S3 import/export, Lambda invocation, Comprehend
 or pass literal ARNs -- the roles own their policies; this cluster
 only associates them.
 
+### spec.iamRoles[].role
+
+`string | valueFrom` · required
+
 - references: AwsIamRole (`status.outputs.role_arn`)
+- rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.iamRoles[].featureName
+
+`string`
 
 ### spec.enableHttpEndpoint
 
@@ -931,6 +1031,102 @@ Permit engine_version changes that cross a major version. Off (the
 default) guards against an accidental major upgrade hidden in a
 version bump.
 
+### spec.domain
+
+`string`
+
+### spec.domainIamRoleName
+
+`string`
+
+### spec.autoMinorVersionUpgrade
+
+`bool` · optional (explicit presence)
+
+- default: `true`
+
+### spec.s3Import
+
+`AwsRdsClusterS3Import`
+
+### spec.s3Import.bucketName
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.s3Import.bucketPrefix
+
+`string`
+
+### spec.s3Import.ingestionRole
+
+`string | valueFrom` · required
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.s3Import.sourceEngine
+
+`string` · required
+
+- rule: {"required":true,"string":{"in":["mysql"]}}
+
+### spec.s3Import.sourceEngineVersion
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.customEndpoints
+
+`[]AwsRdsClusterCustomEndpoint`
+
+- rule: static_members and excluded_members are mutually exclusive -- pin the member set or subtract from it, not both
+
+### spec.customEndpoints[].name
+
+`string` · required
+
+- rule: {"required":true,"string":{"pattern":"^[a-z][a-z0-9-]*$"}}
+
+### spec.customEndpoints[].type
+
+`string` · required
+
+- rule: {"required":true,"string":{"in":["READER","ANY"]}}
+
+### spec.customEndpoints[].staticMembers
+
+`[]string`
+
+### spec.customEndpoints[].excludedMembers
+
+`[]string`
+
+### spec.activityStream
+
+`AwsRdsClusterActivityStream`
+
+### spec.activityStream.mode
+
+`string` · required
+
+- rule: {"required":true,"string":{"in":["sync","async"]}}
+
+### spec.activityStream.kmsKeyId
+
+`string | valueFrom` · required
+
+- references: AwsKmsKey (`status.outputs.key_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
+
+### spec.activityStream.engineNativeAuditFieldsIncluded
+
+`bool`
+
 ## Validation Rules
 
 - `subnets_or_group`: provide at least two subnet_ids (distinct AZs) or an existing db_subnet_group_name
@@ -953,7 +1149,10 @@ version bump.
 - `monitoring_interval_valid`: monitoring_interval must be 0 (disabled), 1, 5, 10, 15, 30, or 60 seconds
 - `monitoring_role_required_with_interval`: monitoring_role_arn is required when monitoring_interval is set -- Enhanced Monitoring publishes through that role
 - `database_insights_mode_valid`: database_insights_mode must be 'standard' or 'advanced' when set
-- `snapshot_xor_point_in_time`: snapshot_identifier and restore_to_point_in_time are mutually exclusive create-time restore sources
+- `one_create_source`: snapshot_identifier, restore_to_point_in_time, and s3_import are mutually exclusive create-time sources
+- `s3_import_is_aurora_mysql`: s3_import (Percona XtraBackup restore) is an Aurora MySQL feature -- engine must be 'aurora-mysql'
+- `domain_pair_together`: domain and domain_iam_role_name are required together -- the managed-directory join needs both
+- `activity_stream_is_aurora_only`: activity_stream (Database Activity Streams) is an Aurora feature -- Multi-AZ RDS clusters (mysql/postgres) do not support it
 - `own_parameters_xor_existing_group`: parameters and db_cluster_parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group
 - `parameters_require_engine_version`: inline parameters require a pinned engine_version -- the managed parameter group's family is derived from it and must match the running engine
 - `network_type_valid`: network_type must be 'IPV4' or 'DUAL' when set
@@ -977,6 +1176,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRdsCluster, n
 | `status.outputs.db_subnet_group_name` | `string` | The name of the DB subnet group the cluster runs in. |
 | `status.outputs.db_cluster_parameter_group_name` | `string` | The name of the cluster parameter group in use (module-managed or the referenced existing group). |
 | `status.outputs.instance_endpoints` | `[]string` | Per-instance endpoints of the cluster's folded instances, ordered as declared in spec.instances. Empty for Aurora Serverless v1 and Multi-AZ RDS clusters, where AWS owns the compute. |
+| `status.outputs.custom_endpoints` | `[]AwsRdsClusterCustomEndpointOutput` |  |
+| `status.outputs.custom_endpoints[].name` | `string` |  |
+| `status.outputs.custom_endpoints[].endpoint` | `string` |  |
+| `status.outputs.activity_stream_kinesis_stream_name` | `string` |  |
 
 ## References
 
@@ -986,11 +1189,15 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
+| `spec.instances[].performanceInsightsKmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
+| `spec.instances[].monitoringRoleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.masterUserSecretKmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
-| `spec.iamRoles` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.iamRoles[].role` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.performanceInsightsKmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.monitoringRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.s3Import.ingestionRole` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.activityStream.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 
 ## See Also
 

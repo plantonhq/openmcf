@@ -1,6 +1,6 @@
 # AWS RDS Cluster
 
-Deploys an RDS database cluster in any of its three shapes — Aurora (an instance fleet on shared cluster storage, including Serverless v2), legacy Aurora Serverless v1, or a Multi-AZ community mysql/postgres cluster — with AWS Secrets Manager integration for managed master passwords, storage encryption, continuous backups with backtrack and fast clones, Aurora Global Database membership, the RDS Data API, and CloudWatch log exports. The cluster integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to subnets, security groups, KMS keys, and IAM roles.
+Deploys an RDS database cluster in any of its three shapes — Aurora (an instance fleet on shared cluster storage, including Serverless v2), legacy Aurora Serverless v1, or a Multi-AZ community mysql/postgres cluster — with AWS Secrets Manager integration for managed master passwords, storage encryption, continuous backups with backtrack and fast clones, S3 XtraBackup migration, Kerberos through AWS Managed Microsoft AD, feature-scoped IAM role associations, custom reader endpoints, Database Activity Streams, Aurora Global Database membership, the RDS Data API, and CloudWatch log exports. The cluster integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to subnets, security groups, KMS keys, and IAM roles.
 
 ## What Gets Created
 
@@ -110,7 +110,7 @@ These are the most important decisions when configuring an Aurora cluster. Explo
 
 **Instance fleet** -- Each `instances[]` entry is its own provider resource keyed by `name`: one writer (lowest `promotionTier`) plus readers. Use `db.serverless` as an instance class with `serverlessV2Scaling` ACU bounds for Serverless v2 — `minCapacity: 0` enables scale-to-zero auto-pause.
 
-**Creation source** -- A new cluster configures everything; `snapshotIdentifier` restores a snapshot, `restoreToPointInTime` restores continuous backup (with `restoreType: copy-on-write` for an Aurora fast clone — prod-data staging that pays only for divergence), and `replicationSourceIdentifier` creates a cross-region replica (promote by clearing it).
+**Creation source** -- A new cluster configures everything; `snapshotIdentifier` restores a snapshot, `restoreToPointInTime` restores continuous backup (with `restoreType: copy-on-write` for an Aurora fast clone — prod-data staging that pays only for divergence), `s3Import` restores a Percona XtraBackup from S3 (the Aurora MySQL migration on-ramp), and `replicationSourceIdentifier` creates a cross-region replica (promote by clearing it).
 
 **Password management** -- Set `manageMasterUserPassword: true` (recommended) to let AWS Secrets Manager store and automatically rotate the master password; its ARN is exported as `master_user_secret_arn`. A supplied `masterPassword` is mutually exclusive and must be an org-secret reference.
 
@@ -119,6 +119,8 @@ These are the most important decisions when configuring an Aurora cluster. Explo
 **Encryption and compliance** -- Set `storageEncrypted: true` (create-time only) and optionally `kmsKeyId` for a customer-managed key. Enable `deletionProtection`, keep `skipFinalSnapshot: false` with a `finalSnapshotIdentifier`, and enable `iamDatabaseAuthenticationEnabled` for IAM-based authentication. `backtrackWindowSeconds` (Aurora MySQL only) enables in-place rewind.
 
 **Global and advanced** -- `globalClusterIdentifier` joins an Aurora Global Database (write forwarding available); `enableHttpEndpoint` turns on the Data API for connection-averse callers like Lambda; `parameters` manages inline cluster parameters (mutually exclusive with `dbClusterParameterGroupName`).
+
+**Access and audit** -- `iamRoles` attaches feature-scoped engine roles (one association per entry, with `featureName` like `s3Export` or `Lambda`); `domain` + `domainIamRoleName` join an AWS Managed Microsoft AD for Kerberos authentication; `customEndpoints` carve stable READER/ANY DNS names over chosen instances; `activityStream` streams every database event to a KMS-encrypted Kinesis stream for compliance-grade auditing (Aurora only).
 
 ## Outputs and Dependencies
 
@@ -129,7 +131,8 @@ These are the most important decisions when configuring an Aurora cluster. Explo
 | **AwsSubnet** | `subnetIds` | `status.outputs.subnet_id` |
 | **AwsSecurityGroup** (optional) | `securityGroupIds` | `status.outputs.security_group_id` |
 | **AwsKmsKey** (optional) | `kmsKeyId`, `masterUserSecretKmsKeyId`, `performanceInsightsKmsKeyId` | `status.outputs.key_arn` |
-| **AwsIamRole** (optional) | `iamRoles`, `monitoringRoleArn` | `status.outputs.role_arn` |
+| **AwsIamRole** (optional) | `iamRoles[].role`, `monitoringRoleArn`, `s3Import.ingestionRole`, per-instance `monitoringRoleArn` | `status.outputs.role_arn` |
+| **AwsKmsKey** (optional, audit) | `activityStream.kmsKeyId` | `status.outputs.key_arn` |
 
 ### What This Component Provides
 
@@ -149,6 +152,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `db_subnet_group_name` | DB subnet group name | Audit, related resource lookups |
 | `db_cluster_parameter_group_name` | Cluster parameter group in use | Parameter auditing |
 | `instance_endpoints` | Per-instance endpoints | Instance-pinned diagnostics |
+| `custom_endpoints` | Name + DNS of each custom endpoint | Workload-scoped connection strings (e.g. analytics) |
+| `activity_stream_kinesis_stream_name` | Kinesis stream receiving the Database Activity Stream | Audit/SIEM consumers, GuardDuty RDS Protection |
 
 ## Common Patterns
 
@@ -159,6 +164,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **Aurora MySQL production** -- Same resilience posture as PostgreSQL but with Aurora MySQL 8.0. Exports error and slow query logs to CloudWatch. Suitable for applications that require MySQL-specific features. Start from the **Aurora MySQL** preset.
 
 **Aurora Serverless v2** -- Aurora PostgreSQL with a `db.serverless` writer, ACU bounds with scale-to-zero auto-pause, and the Data API enabled. Ideal for variable or connection-averse workloads. Start from the **Aurora Serverless v2** preset.
+
+**MySQL migration via S3** -- Restore a Percona XtraBackup from S3 into a new Aurora MySQL cluster with a backtrack window for cutover safety. Start from the **MySQL to Aurora via S3 Import** preset.
 
 ## Works With
 

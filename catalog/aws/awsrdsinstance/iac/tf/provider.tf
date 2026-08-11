@@ -10,8 +10,10 @@ terraform {
       #
       # Feature floor: dedicated_log_volume, database_insights_mode,
       # and the self-managed Active Directory arguments are late-v5
-      # additions -- the v6 floor keeps the module on the modern major
-      # where the whole modeled surface is present.
+      # additions; engine_lifecycle_support, s3_import, and the
+      # role-association, parameter-group, and option-group resources
+      # all predate 6.0 -- the v6 floor covers the whole modeled
+      # surface.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

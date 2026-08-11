@@ -1,0 +1,39 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRdsCluster
+metadata:
+  name: my-migrated-aurora-mysql
+spec:
+  region: us-west-2
+  subnetIds:
+    - value: subnet-replace-with-private-az1
+    - value: subnet-replace-with-private-az2
+  securityGroupIds:
+    - value: sg-replace-with-database-sg
+  engine: aurora-mysql
+  # Pin the target engine line; the S3 restore declares the SOURCE
+  # engine version separately below.
+  engineVersion: "8.0.mysql_aurora.3.08.0"
+  # S3 import creates a brand-new cluster, so credentials are required
+  # (unlike snapshot or point-in-time restores, which inherit them).
+  masterUsername: dbadmin # AWS has no default master username -- pick one (avoid reserved names like rdsadmin)
+  manageMasterUserPassword: true # recommended_default -- AWS generates, stores, and rotates the password in Secrets Manager
+  storageEncrypted: true # recommended_default -- create-time-only, cannot be enabled later
+  # Restore a Percona XtraBackup straight from S3 -- the migration
+  # on-ramp from self-managed MySQL to Aurora MySQL without a logical
+  # dump. Aurora MySQL only; create-time only.
+  s3Import:
+    bucketName: replace-with-backup-bucket
+    bucketPrefix: xtrabackup/
+    ingestionRole:
+      value: arn:aws:iam::123456789012:role/replace-with-s3-ingestion-role
+    sourceEngine: mysql
+    sourceEngineVersion: "8.0"
+  # Post-migration safety: 72-hour in-place rewind for fat-fingered
+  # writes during cutover, and a week of point-in-time recovery.
+  backtrackWindowSeconds: 259200
+  backupRetentionPeriod: 7
+  skipFinalSnapshot: false
+  finalSnapshotIdentifier: my-migrated-aurora-mysql-final
+  instances:
+    - name: writer
+      instanceClass: db.r6g.large

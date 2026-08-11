@@ -402,6 +402,7 @@ Fields on other kinds that can point at this resource:
 | AwsPlantonRunner | `spec.securityGroups` | `status.outputs.security_group_id` |
 | AwsRdsCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsRdsInstance | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsRdsInstance | `spec.options[].vpcSecurityGroupMemberships` | `status.outputs.security_group_id` |
 | AwsRedisElasticache | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsRedshiftCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.securityGroupIds` | `status.outputs.security_group_id` |

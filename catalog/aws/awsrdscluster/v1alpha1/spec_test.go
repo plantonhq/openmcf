@@ -418,7 +418,7 @@ var _ = ginkgo.Describe("AwsRdsClusterSpec Custom Validation Tests", func() {
 			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
-			gomega.Expect(err.Error()).To(gomega.ContainSubstring("snapshot_identifier and restore_to_point_in_time are"))
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("snapshot_identifier, restore_to_point_in_time, and s3_import"))
 		})
 
 		ginkgo.It("rejects inline parameters alongside an existing parameter group", func() {
@@ -584,6 +584,232 @@ var _ = ginkgo.Describe("AwsRdsClusterSpec Custom Validation Tests", func() {
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("timeout_action must be 'RollbackCapacityChange' or"))
+		})
+	})
+
+	ginkgo.Describe("directory join validations", func() {
+
+		ginkgo.It("accepts the managed-directory pair", func() {
+			input := validAuroraCluster()
+			input.Spec.Domain = "d-1234567890"
+			input.Spec.DomainIamRoleName = "rds-directory-service-role"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a domain without its IAM role name", func() {
+			input := validAuroraCluster()
+			input.Spec.Domain = "d-1234567890"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("domain and domain_iam_role_name are required together"))
+		})
+	})
+
+	ginkgo.Describe("s3 import validations", func() {
+
+		validS3Import := func() *AwsRdsClusterS3Import {
+			return &AwsRdsClusterS3Import{
+				BucketName: "my-backup-bucket",
+				IngestionRole: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/rds-s3-import"},
+				},
+				SourceEngine:        "mysql",
+				SourceEngineVersion: "8.0",
+			}
+		}
+
+		ginkgo.It("accepts an S3 import on aurora-mysql", func() {
+			input := validAuroraCluster()
+			input.Spec.Engine = "aurora-mysql"
+			input.Spec.S3Import = validS3Import()
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an S3 import on a non-mysql Aurora engine", func() {
+			input := validAuroraCluster()
+			input.Spec.S3Import = validS3Import()
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("s3_import (Percona XtraBackup restore) is an Aurora MySQL"))
+		})
+
+		ginkgo.It("rejects an S3 import alongside a snapshot restore", func() {
+			input := validAuroraCluster()
+			input.Spec.Engine = "aurora-mysql"
+			input.Spec.S3Import = validS3Import()
+			input.Spec.SnapshotIdentifier = "my-snapshot"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("snapshot_identifier, restore_to_point_in_time, and s3_import"))
+		})
+
+		ginkgo.It("rejects an S3 import with an unsupported source engine", func() {
+			input := validAuroraCluster()
+			input.Spec.Engine = "aurora-mysql"
+			input.Spec.S3Import = validS3Import()
+			input.Spec.S3Import.SourceEngine = "postgres"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("iam role association validations", func() {
+
+		ginkgo.It("accepts a role with a feature name and one without", func() {
+			input := validAuroraCluster()
+			input.Spec.IamRoles = []*AwsRdsClusterIamRole{
+				{
+					Role: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/s3-import"},
+					},
+					FeatureName: "s3Import",
+				},
+				{
+					Role: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/general"},
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a role entry without the role reference", func() {
+			input := validAuroraCluster()
+			input.Spec.IamRoles = []*AwsRdsClusterIamRole{{FeatureName: "s3Import"}}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("custom endpoint validations", func() {
+
+		ginkgo.It("accepts a reader endpoint with static members", func() {
+			input := validAuroraCluster()
+			input.Spec.CustomEndpoints = []*AwsRdsClusterCustomEndpoint{
+				{Name: "analytics", Type: "READER", StaticMembers: []string{"writer"}},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects static and excluded members together", func() {
+			input := validAuroraCluster()
+			input.Spec.CustomEndpoints = []*AwsRdsClusterCustomEndpoint{
+				{Name: "analytics", Type: "READER", StaticMembers: []string{"writer"}, ExcludedMembers: []string{"reader-1"}},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("static_members and excluded_members are mutually exclusive"))
+		})
+
+		ginkgo.It("rejects an invalid endpoint type", func() {
+			input := validAuroraCluster()
+			input.Spec.CustomEndpoints = []*AwsRdsClusterCustomEndpoint{
+				{Name: "analytics", Type: "WRITER"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("activity stream validations", func() {
+
+		validActivityStream := func() *AwsRdsClusterActivityStream {
+			return &AwsRdsClusterActivityStream{
+				Mode: "async",
+				KmsKeyId: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:kms:us-west-2:123456789012:key/abcd"},
+				},
+			}
+		}
+
+		ginkgo.It("accepts an async activity stream on an Aurora engine", func() {
+			input := validAuroraCluster()
+			input.Spec.ActivityStream = validActivityStream()
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an activity stream on a Multi-AZ RDS cluster", func() {
+			input := validAuroraCluster()
+			input.Spec.Engine = "postgres"
+			input.Spec.ServerlessV2Scaling = nil
+			input.Spec.Instances = nil
+			input.Spec.DbClusterInstanceClass = "db.m6gd.large"
+			input.Spec.AllocatedStorageGb = 100
+			input.Spec.Iops = 1000
+			input.Spec.StorageType = "io1"
+			input.Spec.ActivityStream = validActivityStream()
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("activity_stream (Database Activity Streams) is an Aurora"))
+		})
+
+		ginkgo.It("rejects an invalid activity stream mode", func() {
+			input := validAuroraCluster()
+			input.Spec.ActivityStream = validActivityStream()
+			input.Spec.ActivityStream.Mode = "batch"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("per-instance override validations", func() {
+
+		ginkgo.It("accepts per-instance windows, PI settings, and snapshot tag copy", func() {
+			input := validAuroraCluster()
+			input.Spec.Instances[0].CopyTagsToSnapshot = true
+			input.Spec.Instances[0].PerformanceInsightsRetentionPeriod = 93
+			input.Spec.Instances[0].PreferredBackupWindow = "04:00-05:00"
+			input.Spec.Instances[0].PreferredMaintenanceWindow = "sun:05:00-sun:06:00"
+			input.Spec.Instances[0].ApplyImmediately = true
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid per-instance performance insights retention", func() {
+			input := validAuroraCluster()
+			input.Spec.Instances[0].PerformanceInsightsRetentionPeriod = 30
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("performance_insights_retention_period must be 7, 731, or a"))
+		})
+
+		ginkgo.It("rejects a malformed per-instance backup window", func() {
+			input := validAuroraCluster()
+			input.Spec.Instances[0].PreferredBackupWindow = "4am-5am"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("final snapshot identifier format", func() {
+
+		ginkgo.It("rejects consecutive hyphens", func() {
+			input := validAuroraCluster()
+			input.Spec.SkipFinalSnapshot = false
+			input.Spec.FinalSnapshotIdentifier = "my--final"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a leading digit", func() {
+			input := validAuroraCluster()
+			input.Spec.SkipFinalSnapshot = false
+			input.Spec.FinalSnapshotIdentifier = "1st-final"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a well-formed identifier", func() {
+			input := validAuroraCluster()
+			input.Spec.SkipFinalSnapshot = false
+			input.Spec.FinalSnapshotIdentifier = "orders-db-final-2026"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 	})
 

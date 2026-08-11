@@ -41,15 +41,25 @@ resource "aws_rds_cluster_instance" "this" {
 
   # Tri-state: null inherits the cluster-level Performance Insights
   # posture; an explicit value overrides it for this instance only.
-  performance_insights_enabled = each.value.performance_insights_enabled
+  performance_insights_enabled          = each.value.performance_insights_enabled
+  performance_insights_kms_key_id       = each.value.performance_insights_kms_key_id != "" ? each.value.performance_insights_kms_key_id : null
+  performance_insights_retention_period = each.value.performance_insights_retention_period != 0 ? each.value.performance_insights_retention_period : null
 
   # Per-instance Enhanced Monitoring cadence, publishing through the
-  # cluster spec's monitoring role (AWS requires the role whenever the
-  # interval is set -- the spec's CEL guarantees it).
+  # instance's own role when given, else the cluster spec's monitoring
+  # role (AWS requires a role whenever the interval is set -- the
+  # spec's CEL guarantees the cluster-level pairing).
   monitoring_interval = each.value.monitoring_interval != 0 ? each.value.monitoring_interval : null
-  monitoring_role_arn = each.value.monitoring_interval != 0 && var.spec.monitoring_role_arn != "" ? var.spec.monitoring_role_arn : null
+  monitoring_role_arn = each.value.monitoring_interval == 0 ? null : (each.value.monitoring_role_arn != "" ? each.value.monitoring_role_arn : (var.spec.monitoring_role_arn != "" ? var.spec.monitoring_role_arn : null))
 
-  ca_cert_identifier = each.value.ca_cert_identifier != "" ? each.value.ca_cert_identifier : null
+  # Per-instance windows: empty inherits AWS scheduling -- stagger
+  # these so readers never back up or patch simultaneously.
+  preferred_backup_window      = each.value.preferred_backup_window != "" ? each.value.preferred_backup_window : null
+  preferred_maintenance_window = each.value.preferred_maintenance_window != "" ? each.value.preferred_maintenance_window : null
+
+  ca_cert_identifier    = each.value.ca_cert_identifier != "" ? each.value.ca_cert_identifier : null
+  copy_tags_to_snapshot = each.value.copy_tags_to_snapshot
+  apply_immediately     = each.value.apply_immediately ? true : null
 
   tags = local.aws_tags
 }

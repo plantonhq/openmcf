@@ -10,11 +10,16 @@ spec:
   # db.t4g.medium instance (DocumentDB's smallest provisioned class) with
   # the AWS-managed master password: it proves the folded per-name instance
   # materialization AND the managed-credential path on the cheapest
-  # provisioned footprint. Instance provisioning dominates the runtime at
-  # roughly ten minutes each way per engine.
+  # provisioned footprint -- plus the free depth arms: the tri-state
+  # certificate_rotation_restart set to an explicit false (verify the value
+  # lands via DescribeDBInstances -- a nullable-bool round-trip) and
+  # instance-level apply_immediately. Instance provisioning dominates the
+  # runtime at roughly ten minutes each way per engine.
+  #
+  # pending_proof: the depth closure changed the instance rendering path
+  # (certificate_rotation_restart bridges as a STRING on Pulumi;
+  # apply_immediately is new) -- the prior green badge predates this
+  # surface and must be re-earned live.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 60

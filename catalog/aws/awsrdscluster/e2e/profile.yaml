@@ -10,11 +10,16 @@ spec:
   # with one db.serverless instance scaling 0-1 ACU: it proves the folded
   # per-name instance materialization AND the AWS-managed master password on
   # the cheapest possible footprint (min 0 ACU auto-pauses; the run is billed
-  # minutes of sub-ACU compute). Aurora instance provisioning dominates the
-  # runtime at roughly ten minutes each way per engine.
+  # minutes of sub-ACU compute), plus the free depth arms -- one feature-
+  # scoped role association (composed AwsIamRole fixture), one custom READER
+  # endpoint, and per-instance window/tag overrides. Aurora instance
+  # provisioning dominates the runtime at roughly ten minutes each way per
+  # engine.
+  #
+  # pending_proof: the depth closure changed the module's resource set
+  # (role associations replace the inline iam_roles argument; custom
+  # endpoints and the activity stream are new resources) -- the prior green
+  # badge predates this surface and must be re-earned live.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 60

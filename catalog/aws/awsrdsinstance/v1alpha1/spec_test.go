@@ -280,7 +280,7 @@ var _ = ginkgo.Describe("AwsRdsInstanceSpec Custom Validation Tests", func() {
 			input.Spec.ManageMasterUserPassword = false
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
-			gomega.Expect(err.Error()).To(gomega.ContainSubstring("replicate_source_db, snapshot_identifier, and"))
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("replicate_source_db, snapshot_identifier,"))
 		})
 
 		ginkgo.It("rejects credentials on a read replica", func() {
@@ -435,6 +435,175 @@ var _ = ginkgo.Describe("AwsRdsInstanceSpec Custom Validation Tests", func() {
 		})
 	})
 
+	ginkgo.Describe("s3 import validations", func() {
+
+		validS3Import := func() *AwsRdsInstanceS3Import {
+			return &AwsRdsInstanceS3Import{
+				BucketName: "my-backup-bucket",
+				IngestionRole: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/rds-s3-import"},
+				},
+				SourceEngine:        "mysql",
+				SourceEngineVersion: "8.0",
+			}
+		}
+
+		ginkgo.It("accepts an S3 import on the mysql engine", func() {
+			input := validInstance()
+			input.Spec.Engine = "mysql"
+			input.Spec.S3Import = validS3Import()
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an S3 import on a non-mysql engine", func() {
+			input := validInstance()
+			input.Spec.S3Import = validS3Import()
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("s3_import (Percona XtraBackup restore) is a MySQL feature"))
+		})
+
+		ginkgo.It("rejects an S3 import alongside a snapshot restore", func() {
+			input := validInstance()
+			input.Spec.Engine = "mysql"
+			input.Spec.S3Import = validS3Import()
+			input.Spec.SnapshotIdentifier = "my-snapshot"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("mutually exclusive create sources"))
+		})
+
+		ginkgo.It("rejects a character set alongside an S3 import", func() {
+			input := validInstance()
+			input.Spec.Engine = "mysql"
+			input.Spec.S3Import = validS3Import()
+			input.Spec.CharacterSetName = "AL32UTF8"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("character_set_name only applies to a brand-new instance"))
+		})
+
+		ginkgo.It("rejects a timezone alongside an S3 import", func() {
+			input := validInstance()
+			input.Spec.Engine = "mysql"
+			input.Spec.S3Import = validS3Import()
+			input.Spec.Timezone = "GMT Standard Time"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("timezone (SQL Server) cannot be combined with s3_import"))
+		})
+	})
+
+	ginkgo.Describe("iam role association validations", func() {
+
+		ginkgo.It("accepts a role with its feature name", func() {
+			input := validInstance()
+			input.Spec.IamRoles = []*AwsRdsInstanceIamRole{
+				{
+					Role: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/s3-import"},
+					},
+					FeatureName: "s3Import",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a role entry without a feature name", func() {
+			input := validInstance()
+			input.Spec.IamRoles = []*AwsRdsInstanceIamRole{
+				{
+					Role: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/s3-import"},
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("parameter and option group validations", func() {
+
+		ginkgo.It("accepts inline parameters with engine and version pinned", func() {
+			input := validInstance()
+			input.Spec.EngineVersion = "16.4"
+			input.Spec.Parameters = []*AwsRdsInstanceParameter{
+				{Name: "rds.force_ssl", Value: "1", ApplyMethod: "immediate"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects inline parameters alongside an existing parameter group", func() {
+			input := validInstance()
+			input.Spec.EngineVersion = "16.4"
+			input.Spec.ParameterGroupName = "existing-group"
+			input.Spec.Parameters = []*AwsRdsInstanceParameter{{Name: "rds.force_ssl", Value: "1"}}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("parameters and parameter_group_name are mutually exclusive"))
+		})
+
+		ginkgo.It("rejects inline parameters without a pinned engine version", func() {
+			input := validInstance()
+			input.Spec.Parameters = []*AwsRdsInstanceParameter{{Name: "rds.force_ssl", Value: "1"}}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("inline parameters require engine and a pinned"))
+		})
+
+		ginkgo.It("accepts inline options with engine and version pinned", func() {
+			input := validInstance()
+			input.Spec.Engine = "sqlserver-se"
+			input.Spec.EngineVersion = "16.00.4085.2.v1"
+			input.Spec.LicenseModel = "license-included"
+			input.Spec.Options = []*AwsRdsInstanceOption{
+				{
+					OptionName: "SQLSERVER_BACKUP_RESTORE",
+					OptionSettings: []*AwsRdsInstanceOptionSetting{
+						{Name: "IAM_ROLE_ARN", Value: "arn:aws:iam::123456789012:role/sql-backup"},
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects inline options alongside an existing option group", func() {
+			input := validInstance()
+			input.Spec.EngineVersion = "16.4"
+			input.Spec.OptionGroupName = "existing-group"
+			input.Spec.Options = []*AwsRdsInstanceOption{{OptionName: "TDE"}}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("options and option_group_name are mutually exclusive"))
+		})
+
+		ginkgo.It("rejects inline options without a pinned engine version", func() {
+			input := validInstance()
+			input.Spec.Options = []*AwsRdsInstanceOption{{OptionName: "TDE"}}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("inline options require engine and a pinned"))
+		})
+
+		ginkgo.It("rejects an option setting without a value", func() {
+			input := validInstance()
+			input.Spec.EngineVersion = "16.4"
+			input.Spec.Options = []*AwsRdsInstanceOption{
+				{
+					OptionName:     "OEM",
+					OptionSettings: []*AwsRdsInstanceOptionSetting{{Name: "PORT"}},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
 	ginkgo.Describe("misc validations", func() {
 
 		ginkgo.It("rejects an invalid license model", func() {
@@ -442,7 +611,39 @@ var _ = ginkgo.Describe("AwsRdsInstanceSpec Custom Validation Tests", func() {
 			input.Spec.LicenseModel = "site-license"
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
-			gomega.Expect(err.Error()).To(gomega.ContainSubstring("license_model must be 'license-included',"))
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("license_model must be one of 'license-included',"))
+		})
+
+		ginkgo.It("accepts the postgresql and marketplace license models", func() {
+			input := validInstance()
+			input.Spec.LicenseModel = "postgresql-license"
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			input.Spec.LicenseModel = "marketplace-license"
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid engine_lifecycle_support value", func() {
+			input := validInstance()
+			input.Spec.EngineLifecycleSupport = "extended"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("engine_lifecycle_support must be"))
+		})
+
+		ginkgo.It("accepts the extended-support opt-out", func() {
+			input := validInstance()
+			input.Spec.EngineLifecycleSupport = "open-source-rds-extended-support-disabled"
+			input.Spec.UpgradeStorageConfig = true
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a final snapshot identifier with consecutive hyphens", func() {
+			input := validInstance()
+			input.Spec.SkipFinalSnapshot = false
+			input.Spec.FinalSnapshotIdentifier = "my--final"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
 		ginkgo.It("rejects a malformed backup window", func() {

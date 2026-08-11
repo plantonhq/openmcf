@@ -3,12 +3,15 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "module",
     srcs = [
+        "activity_stream.go",
         "cluster_instances.go",
         "cluster_param_group.go",
+        "custom_endpoints.go",
         "locals.go",
         "main.go",
         "outputs.go",
         "rds_cluster.go",
+        "role_associations.go",
         "subnet_group.go",
     ],
     importpath = "github.com/plantonhq/planton/catalog/aws/awsrdscluster/iac/pulumi/module",

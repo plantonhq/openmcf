@@ -1138,19 +1138,10 @@ resources:
     reason: "database snapshot operations are imperative backup actions, a poor declarative fit; deferred"
   - resource: aws_db_event_subscription
     disposition: model-planned
-    reason: "RDS companion surface; folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen"
+    reason: "judged as a planned AwsRdsEventSubscription kind -- an event subscription binds an SNS topic to account-wide source sets (all instances, all clusters, or explicit lists) with its own lifecycle, never satellite to one database"
   - resource: aws_db_instance_automated_backups_replication
     disposition: model-planned
-    reason: "RDS companion surface; folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen"
-  - resource: aws_db_instance_role_association
-    disposition: model-planned
-    reason: "RDS companion surface; folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen"
-  - resource: aws_db_option_group
-    disposition: model-planned
-    reason: "RDS companion surface; folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen"
-  - resource: aws_db_parameter_group
-    disposition: model-planned
-    reason: "RDS companion surface; folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen"
+    reason: "judged as a planned AwsRdsAutomatedBackupsReplication kind -- the replication is created in the DESTINATION region, a cross-region lifecycle outside the single-region instance kind (the replica-key class)"
   - resource: aws_db_proxy
     disposition: model-planned
     reason: "judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets)"
@@ -1288,13 +1279,13 @@ resources:
     reason: "database snapshot operations are imperative backup actions, a poor declarative fit; deferred"
   - resource: aws_docdb_event_subscription
     disposition: model-planned
-    reason: "DocumentDB companion surface (event subscriptions, global and elastic clusters); folds into the existing AwsDocumentDb kind as its spec deepens"
+    reason: "judged as a planned AwsDocumentDbEventSubscription kind -- an event subscription binds an SNS topic to account-wide source sets with its own lifecycle, never satellite to one cluster (the AwsRdsEventSubscription precedent)"
   - resource: aws_docdb_global_cluster
     disposition: model-planned
-    reason: "DocumentDB companion surface (event subscriptions, global and elastic clusters); folds into the existing AwsDocumentDb kind as its spec deepens"
+    reason: "judged as a planned AwsDocumentDbGlobalCluster kind -- the cross-region umbrella clusters join through spec.global_cluster_identifier (the AwsRdsGlobalCluster precedent)"
   - resource: aws_docdbelastic_cluster
     disposition: model-planned
-    reason: "DocumentDB companion surface (event subscriptions, global and elastic clusters); folds into the existing AwsDocumentDb kind as its spec deepens"
+    reason: "judged as a planned AwsDocumentDbElasticCluster kind -- elastic clusters are a different architecture (sharded, shard-capacity-sized, no instances list), not the instance-based cluster this kind models"
   - resource: aws_drs_replication_configuration_template
     disposition: deferred
     reason: "Elastic Disaster Recovery vertical; deferred pending demand"
@@ -2955,17 +2946,8 @@ resources:
     disposition: deferred
     reason: "Recycle Bin retention rules; deferred pending demand"
   - resource: aws_rds_certificate
-    disposition: model-planned
-    reason: "RDS companion surface (certificates, activity streams, endpoints, role associations, Aurora Limitless shard groups); folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen"
-  - resource: aws_rds_cluster_activity_stream
-    disposition: model-planned
-    reason: "RDS companion surface (certificates, activity streams, endpoints, role associations, Aurora Limitless shard groups); folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen"
-  - resource: aws_rds_cluster_endpoint
-    disposition: model-planned
-    reason: "RDS companion surface (certificates, activity streams, endpoints, role associations, Aurora Limitless shard groups); folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen"
-  - resource: aws_rds_cluster_role_association
-    disposition: model-planned
-    reason: "RDS companion surface (certificates, activity streams, endpoints, role associations, Aurora Limitless shard groups); folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen"
+    disposition: deferred
+    reason: "regional account singleton (sets the account's default CA certificate; its id IS the region) -- account-wide operational posture, never instance or cluster surface; per-database CA choice is already modeled as ca_cert_identifier"
   - resource: aws_rds_cluster_snapshot_copy
     disposition: deferred
     reason: "snapshot/export operations and custom engine versions are imperative lifecycle actions; deferred"
@@ -2988,8 +2970,8 @@ resources:
     disposition: deferred
     reason: "reserved instances are a billing purchase commitment, not infrastructure"
   - resource: aws_rds_shard_group
-    disposition: model-planned
-    reason: "RDS companion surface (certificates, activity streams, endpoints, role associations, Aurora Limitless shard groups); folds into the existing AwsRdsInstance/AwsRdsCluster kinds as their specs deepen"
+    disposition: excluded-deprecated
+    reason: "Aurora Limitless shard group -- AWS discontinued Aurora Limitless Database (the cluster kind excludes cluster_scalability_type on the same judgment); superseded surface not flagged in the schema"
   - resource: aws_redshift_authentication_profile
     disposition: model-planned
     reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
