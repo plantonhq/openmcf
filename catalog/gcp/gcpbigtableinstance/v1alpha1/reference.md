@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpBigtableInstanceSpec defines the configuration for a Cloud Bigtable
 instance with one or more clusters.
 
@@ -51,6 +53,11 @@ spec:
   displayName: Test Bigtable Instance
   deletionProtection: false
   forceDestroy: true
+  # ENTERPRISE is the provider default; ENTERPRISE_PLUS unlocks
+  # multi-location automated-backup placement on tables.
+  edition: ENTERPRISE
+  # Explicit DELETE (the provider default) proves the round-trip.
+  deletionPolicy: DELETE
   clusters:
     - clusterId: test-cluster-c1
       zone: us-central1-a
@@ -91,6 +98,9 @@ spec:
 | `spec.clusters[].autoscalingConfig.cpuTarget` | `int32` | yes |  |  |
 | `spec.clusters[].autoscalingConfig.storageTarget` | `int32` |  |  |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.edition` | `string` |  |  |  |
+| `spec.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -282,6 +292,46 @@ If not set, Bigtable uses the default for the storage type
 User-defined labels to organize and track the instance (instance-level
 only — GCP has no per-cluster labels). Merged beneath Planton's
 platform attribution labels (platform keys win on conflict).
+
+### spec.edition
+
+`string`
+
+Edition of the instance, gating feature availability. ENTERPRISE
+(the GCP default when unset) is the standard production edition;
+ENTERPRISE_PLUS adds enterprise capabilities such as multi-location
+automated-backup placement for the instance's tables. Upgrading
+ENTERPRISE -> ENTERPRISE_PLUS applies in place; there is no
+downgrade path.
+
+- rule: edition must be ENTERPRISE or ENTERPRISE_PLUS
+
+### spec.resourceManagerTags
+
+`map<string, string>`
+
+Resource Manager tags bound to the instance for org-policy and IAM
+conditions. Keys in the form "tagKeys/{id}" (or the namespaced
+"project/tag-key"), values "tagValues/{id}" (or
+"project/tag-key/tag-value"). Create-time only: changing them later
+replaces the instance — plan tag changes deliberately.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the instance — what happens when this resource
+is destroyed. Applies only once deletion_protection (above) permits
+a destroy at all:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the instance is deleted with every cluster and table
+               on it (backups additionally gated by force_destroy)
+  "PREVENT" -- destroy FAILS; a second wall for the instance a
+               data platform depends on
+  "ABANDON" -- the instance is removed from management but left
+               running (and billing) in GCP with its data intact
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

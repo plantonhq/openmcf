@@ -74,24 +74,90 @@ message GcpSpannerInstanceAutoscalingTargets {
     gte: 0
     lte: 100
   }];
+
+  // Target percentage of TOTAL CPU utilization — user traffic plus
+  // Spanner's background maintenance work — as a second CPU signal
+  // alongside high_priority_cpu_utilization_percent. Useful when
+  // background work (change streams, backups) is a meaningful share of
+  // the load and scaling on user traffic alone would run the instance
+  // hot. Scale 0 (no utilization) to 100 (full utilization).
+  int32 total_cpu_utilization_percent = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
 }
 
-// GcpSpannerInstanceAsymmetricAutoscalingOverrides bounds the autoscaler
-// for one specific replica location, overriding the instance-wide
-// autoscaling_limits there. Only node-based bounds are supported for
-// per-replica overrides.
+// GcpSpannerInstanceAsymmetricAutoscalingOverrides tunes the autoscaler
+// for one specific replica location: capacity bounds (nodes or processing
+// units) that replace the instance-wide autoscaling_limits there, its own
+// CPU targets, or switches disabling a CPU signal for that replica
+// entirely. Every field is optional — an override may set only bounds,
+// only targets, or only disable switches.
 message GcpSpannerInstanceAsymmetricAutoscalingOverrides {
   // Minimum number of nodes for the selected replica location.
-  int32 min_nodes = 1 [(buf.validate.field).int32.gte = 1];
+  // Use together with max_nodes; mutually exclusive with the
+  // processing-unit bounds.
+  int32 min_nodes = 1;
 
   // Maximum number of nodes for the selected replica location.
   // Must be >= min_nodes.
-  int32 max_nodes = 2 [(buf.validate.field).int32.gte = 1];
+  int32 max_nodes = 2;
 
+  // Minimum number of processing units for the selected replica
+  // location — the fine-grained alternative to node bounds. Per-replica
+  // PU bounds must be multiples of 1000 (unlike instance-wide limits,
+  // which allow multiples of 100 below 1000). Use together with
+  // max_processing_units; mutually exclusive with the node bounds.
+  int32 min_processing_units = 3;
+
+  // Maximum number of processing units for the selected replica
+  // location. Must be >= min_processing_units and a multiple of 1000.
+  int32 max_processing_units = 4;
+
+  // Target high-priority CPU utilization percentage for THIS replica,
+  // overriding the instance-wide autoscaling_targets value there.
+  // Scale 0-100.
+  int32 autoscaling_target_high_priority_cpu_utilization_percent = 5 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+
+  // Target total CPU utilization percentage for THIS replica, overriding
+  // the instance-wide autoscaling_targets value there. Scale 0-100.
+  int32 autoscaling_target_total_cpu_utilization_percent = 6 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+
+  // Disable high-priority CPU autoscaling for this replica: the
+  // instance-wide high_priority_cpu_utilization_percent target is
+  // ignored there and only the remaining signals drive scaling.
+  bool disable_high_priority_cpu_autoscaling = 7;
+
+  // Disable total CPU autoscaling for this replica: the instance-wide
+  // total_cpu_utilization_percent target is ignored there.
+  bool disable_total_cpu_autoscaling = 8;
+
+  // Capacity bounds use ONE unit family: nodes or processing units,
+  // never both in one override.
   option (buf.validate.message).cel = {
-    id: "asymmetric_override_max_gte_min"
-    expression: "this.max_nodes >= this.min_nodes"
-    message: "max_nodes must be >= min_nodes"
+    id: "asymmetric_override_one_unit_family"
+    expression: "!((this.min_nodes > 0 || this.max_nodes > 0) && (this.min_processing_units > 0 || this.max_processing_units > 0))"
+    message: "use either nodes (min_nodes + max_nodes) or processing units (min_processing_units + max_processing_units), not both"
+  };
+
+  // When using node bounds, both must be set and coherent.
+  option (buf.validate.message).cel = {
+    id: "asymmetric_override_nodes_max_gte_min"
+    expression: "this.min_nodes == 0 && this.max_nodes == 0 || (this.min_nodes > 0 && this.max_nodes >= this.min_nodes)"
+    message: "max_nodes must be >= min_nodes and both must be positive"
+  };
+
+  // When using processing-unit bounds, both must be set and coherent.
+  option (buf.validate.message).cel = {
+    id: "asymmetric_override_pu_max_gte_min"
+    expression: "this.min_processing_units == 0 && this.max_processing_units == 0 || (this.min_processing_units > 0 && this.max_processing_units >= this.min_processing_units)"
+    message: "max_processing_units must be >= min_processing_units and both must be positive"
   };
 }
 
@@ -106,8 +172,10 @@ message GcpSpannerInstanceAsymmetricAutoscalingOption {
   // e.g. "europe-west1") whose autoscaling this option overrides.
   string replica_location = 1 [(buf.validate.field).required = true];
 
-  // Node bounds for this replica location, replacing the instance-wide
-  // autoscaling_limits for it.
+  // The per-replica tuning applied at this location: capacity bounds
+  // (nodes or processing units) replacing the instance-wide
+  // autoscaling_limits, replica-local CPU targets, or switches disabling
+  // a CPU signal for this replica.
   GcpSpannerInstanceAsymmetricAutoscalingOverrides overrides = 2 [(buf.validate.field).required = true];
 }
 
@@ -127,8 +195,8 @@ message GcpSpannerInstanceAutoscalingConfig {
 
   // Per-replica-location overrides for multi-region instances: scale a
   // read-heavy region independently instead of sizing every region for the
-  // hottest one. Each entry selects one replica location and bounds its
-  // node range.
+  // hottest one. Each entry selects one replica location and overrides its
+  // capacity bounds, CPU targets, or both.
   repeated GcpSpannerInstanceAsymmetricAutoscalingOption asymmetric_autoscaling_options = 3;
 }
 
@@ -268,6 +336,22 @@ message GcpSpannerInstanceSpec {
   // has backups — a safety net against losing the last restore point. Set
   // true only when the backups are intentionally disposable.
   bool force_destroy = 12;
+
+  // Deletion policy for the instance — what happens when this resource
+  // is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the instance is deleted, taking every database and
+  //                backup on it with it (backups additionally gated by
+  //                force_destroy above)
+  //   "PREVENT" -- destroy FAILS; protects the instance every database
+  //                in the topology depends on
+  //   "ABANDON" -- the instance is removed from management but left
+  //                running (and billing) in GCP with its data intact
+  string deletion_policy = 13 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 
   // -- Cross-field validations --
 

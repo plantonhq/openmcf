@@ -1277,8 +1277,13 @@ type GcpCloudArmorAdvancedOptionsConfig struct {
 	// Additional Content-Type values to parse as JSON. Only meaningful
 	// when json_parsing is STANDARD or STANDARD_WITH_GRAPHQL.
 	JsonCustomConfig *GcpCloudArmorJsonCustomConfig `protobuf:"bytes,4,opt,name=json_custom_config,json=jsonCustomConfig,proto3" json:"json_custom_config,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// How much of each request body the WAF inspects. One of "8KB", "16KB",
+	// "32KB", "48KB", "64KB" (provider default 8KB). Larger sizes catch
+	// attacks buried deeper in POST bodies at higher processing cost; bodies
+	// beyond the limit pass uninspected. Mutable.
+	RequestBodyInspectionSize string `protobuf:"bytes,5,opt,name=request_body_inspection_size,json=requestBodyInspectionSize,proto3" json:"request_body_inspection_size,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *GcpCloudArmorAdvancedOptionsConfig) Reset() {
@@ -1337,6 +1342,13 @@ func (x *GcpCloudArmorAdvancedOptionsConfig) GetJsonCustomConfig() *GcpCloudArmo
 		return x.JsonCustomConfig
 	}
 	return nil
+}
+
+func (x *GcpCloudArmorAdvancedOptionsConfig) GetRequestBodyInspectionSize() string {
+	if x != nil {
+		return x.RequestBodyInspectionSize
+	}
+	return ""
 }
 
 // GcpCloudArmorRecaptchaOptionsConfig customizes the reCAPTCHA site key
@@ -1445,9 +1457,23 @@ type GcpCloudArmorPolicySpec struct {
 	//
 	// Leave empty to get the API's automatic default "allow all" rule; a
 	// non-empty set must include the priority-2147483647 default rule.
-	Rules         []*GcpCloudArmorRule `protobuf:"bytes,8,rep,name=rules,proto3" json:"rules,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Rules []*GcpCloudArmorRule `protobuf:"bytes,8,rep,name=rules,proto3" json:"rules,omitempty"`
+	// User labels attached to the security policy, merged with Planton's
+	// platform labels (which win on key conflicts). Mutable.
+	Labels map[string]string `protobuf:"bytes,9,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the security policy — what happens on destroy:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the policy and every rule in it are deleted (GCP
+	//	             refuses while a backend service still attaches it);
+	//	             the traffic it filtered flows unfiltered once detached
+	//	"PREVENT" -- destroy FAILS; protects the WAF/DDoS shield in front
+	//	             of production backends
+	//	"ABANDON" -- the policy is removed from management but keeps
+	//	             enforcing in GCP
+	DeletionPolicy string `protobuf:"bytes,10,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpCloudArmorPolicySpec) Reset() {
@@ -1534,6 +1560,20 @@ func (x *GcpCloudArmorPolicySpec) GetRules() []*GcpCloudArmorRule {
 		return x.Rules
 	}
 	return nil
+}
+
+func (x *GcpCloudArmorPolicySpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GcpCloudArmorPolicySpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 var File_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto protoreflect.FileDescriptor
@@ -1656,17 +1696,19 @@ const file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_rawDesc = "" +
 	"\x11threshold_configs\x18\x03 \x03(\v2J.dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorThresholdConfigR\x10thresholdConfigs:\xad\x01\xbaH\xa9\x01\x1a\xa6\x01\n" +
 	"\x1athresholds_require_defense\x12@threshold_configs require enable_layer_7_ddos_defense to be true\x1aFthis.threshold_configs.size() == 0 || this.enable_layer_7_ddos_defense\"N\n" +
 	"\x1dGcpCloudArmorJsonCustomConfig\x12-\n" +
-	"\rcontent_types\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\fcontentTypes\"\x8b\x06\n" +
+	"\rcontent_types\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\fcontentTypes\"\x85\b\n" +
 	"\"GcpCloudArmorAdvancedOptionsConfig\x12\xcc\x01\n" +
 	"\fjson_parsing\x18\x01 \x01(\tB\xa8\x01\xbaH\xa4\x01\xba\x01\xa0\x01\n" +
 	"\x12json_parsing_valid\x12Ajson_parsing must be DISABLED, STANDARD, or STANDARD_WITH_GRAPHQL\x1aGthis == '' || this in ['DISABLED', 'STANDARD', 'STANDARD_WITH_GRAPHQL']R\vjsonParsing\x12\x86\x01\n" +
 	"\tlog_level\x18\x02 \x01(\tBi\xbaHf\xba\x01c\n" +
 	"\x0flog_level_valid\x12#log_level must be NORMAL or VERBOSE\x1a+this == '' || this in ['NORMAL', 'VERBOSE']R\blogLevel\x125\n" +
 	"\x17user_ip_request_headers\x18\x03 \x03(\tR\x14userIpRequestHeaders\x12y\n" +
-	"\x12json_custom_config\x18\x04 \x01(\v2K.dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorJsonCustomConfigR\x10jsonCustomConfig:\xda\x01\xbaH\xd6\x01\x1a\xd3\x01\n" +
+	"\x12json_custom_config\x18\x04 \x01(\v2K.dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorJsonCustomConfigR\x10jsonCustomConfig\x12\xf7\x01\n" +
+	"\x1crequest_body_inspection_size\x18\x05 \x01(\tB\xb5\x01\xbaH\xb1\x01\xba\x01\xad\x01\n" +
+	"\"request_body_inspection_size_valid\x12Hrequest_body_inspection_size must be one of: 8KB, 16KB, 32KB, 48KB, 64KB\x1a=this == '' || this in ['8KB', '16KB', '32KB', '48KB', '64KB']R\x19requestBodyInspectionSize:\xda\x01\xbaH\xd6\x01\x1a\xd3\x01\n" +
 	"\x1cjson_custom_requires_parsing\x12Vjson_custom_config applies only when json_parsing is STANDARD or STANDARD_WITH_GRAPHQL\x1a[!has(this.json_custom_config) || this.json_parsing in ['STANDARD', 'STANDARD_WITH_GRAPHQL']\"Y\n" +
 	"#GcpCloudArmorRecaptchaOptionsConfig\x122\n" +
-	"\x11redirect_site_key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fredirectSiteKey\"\x8f\f\n" +
+	"\x11redirect_site_key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fredirectSiteKey\"\xf3\x0e\n" +
 	"\x17GcpCloudArmorPolicySpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x8b\x02\n" +
@@ -1680,7 +1722,14 @@ const file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1aadaptive_protection_config\x18\x05 \x01(\v2S.dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorAdaptiveProtectionConfigR\x18adaptiveProtectionConfig\x12\x88\x01\n" +
 	"\x17advanced_options_config\x18\x06 \x01(\v2P.dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorAdvancedOptionsConfigR\x15advancedOptionsConfig\x12\x8b\x01\n" +
 	"\x18recaptcha_options_config\x18\a \x01(\v2Q.dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorRecaptchaOptionsConfigR\x16recaptchaOptionsConfig\x12U\n" +
-	"\x05rules\x18\b \x03(\v2?.dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorRuleR\x05rules:\xea\x02\xbaH\xe6\x02\x1a\xb8\x01\n" +
+	"\x05rules\x18\b \x03(\v2?.dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorRuleR\x05rules\x12i\n" +
+	"\x06labels\x18\t \x03(\v2Q.dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorPolicySpec.LabelsEntryR\x06labels\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\n" +
+	" \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xea\x02\xbaH\xe6\x02\x1a\xb8\x01\n" +
 	"\x15rules_include_default\x12Ua non-empty rule set must include the default rule at priority 2147483647 (match '*')\x1aHthis.rules.size() == 0 || this.rules.exists(r, r.priority == 2147483647)\x1a\xa8\x01\n" +
 	"\x16rule_priorities_unique\x12%each rule must have a unique priority\x1agthis.rules.size() == 0 || this.rules.all(r, this.rules.filter(x, x.priority == r.priority).size() == 1)B\xf5\x02\n" +
 	"0com.dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/catalog/gcp/gcpcloudarmorpolicy/v1alpha1;gcpcloudarmorpolicyv1alpha1\xa2\x02\x04DPGG\xaa\x02,Dev.Planton.Gcp.Gcpcloudarmorpolicy.V1alpha1\xca\x02,Dev\\Planton\\Gcp\\Gcpcloudarmorpolicy\\V1alpha1\xe2\x028Dev\\Planton\\Gcp\\Gcpcloudarmorpolicy\\V1alpha1\\GPBMetadata\xea\x020Dev::Planton::Gcp::Gcpcloudarmorpolicy::V1alpha1b\x06proto3"
@@ -1697,7 +1746,7 @@ func file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_rawDescGZIP() []by
 	return file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpCloudArmorRateThreshold)(nil),            // 0: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorRateThreshold
 	(*GcpCloudArmorRedirectConfig)(nil),           // 1: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorRedirectConfig
@@ -1718,7 +1767,8 @@ var file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpCloudArmorAdvancedOptionsConfig)(nil),    // 16: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorAdvancedOptionsConfig
 	(*GcpCloudArmorRecaptchaOptionsConfig)(nil),   // 17: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorRecaptchaOptionsConfig
 	(*GcpCloudArmorPolicySpec)(nil),               // 18: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorPolicySpec
-	(*v1.StringValueOrRef)(nil),                   // 19: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                                           // 19: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorPolicySpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),                   // 20: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_depIdxs = []int32{
 	2,  // 0: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorRuleMatch.expr_options:type_name -> dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorRecaptchaOptions
@@ -1740,16 +1790,17 @@ var file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_depIdxs = []int32{
 	12, // 16: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorThresholdConfig.traffic_granularity_configs:type_name -> dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorTrafficGranularityConfig
 	13, // 17: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorAdaptiveProtectionConfig.threshold_configs:type_name -> dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorThresholdConfig
 	15, // 18: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorAdvancedOptionsConfig.json_custom_config:type_name -> dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorJsonCustomConfig
-	19, // 19: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorPolicySpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 19: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorPolicySpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	14, // 20: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorPolicySpec.adaptive_protection_config:type_name -> dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorAdaptiveProtectionConfig
 	16, // 21: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorPolicySpec.advanced_options_config:type_name -> dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorAdvancedOptionsConfig
 	17, // 22: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorPolicySpec.recaptcha_options_config:type_name -> dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorRecaptchaOptionsConfig
 	11, // 23: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorPolicySpec.rules:type_name -> dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorRule
-	24, // [24:24] is the sub-list for method output_type
-	24, // [24:24] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	19, // 24: dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorPolicySpec.labels:type_name -> dev.planton.gcp.gcpcloudarmorpolicy.v1alpha1.GcpCloudArmorPolicySpec.LabelsEntry
+	25, // [25:25] is the sub-list for method output_type
+	25, // [25:25] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_init() }
@@ -1764,7 +1815,7 @@ func file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpcloudarmorpolicy_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,0 +1,46 @@
+# Minimal GcpMonitoringAlertPolicy scenario: a threshold condition on a
+# builtin metric, wired to the channel prerequisite fixture — the canonical
+# check-and-page shape. The registry declares GcpMonitoringNotificationChannel
+# as this kind's prerequisite, so the harness deploys the channel fixture
+# first and resolves the reference. project_id is deliberately omitted (the
+# harness-exported test project applies). Policy names are server-assigned,
+# so fixed metadata is safe across runs; the condition never fires during a
+# lane (the test project runs no GCE instances above the threshold).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringAlertPolicy
+metadata:
+  name: planton-oss-e2e-gcpalertpol-smoke
+  id: planton-oss-e2e-gcpalertpol-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmonitoringalertpolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  displayName: E2E cpu saturation smoke
+  combiner: OR
+  severity: WARNING
+  conditions:
+    - displayName: cpu above 99%
+      conditionThreshold:
+        filter: metric.type="compute.googleapis.com/instance/cpu/utilization" AND resource.type="gce_instance"
+        comparison: COMPARISON_GT
+        thresholdValue: 0.99
+        duration: 300s
+        aggregations:
+          - alignmentPeriod: 60s
+            perSeriesAligner: ALIGN_MEAN
+  notificationChannels:
+    - valueFrom:
+        kind: GcpMonitoringNotificationChannel
+        name: planton-oss-e2e-gcpnotifchan-prereq
+        fieldPath: status.outputs.channel_name
+  alertStrategy:
+    autoClose: 1800s
+  documentation:
+    content: E2E smoke policy — never fires; delete freely.
+    mimeType: text/markdown

@@ -28,8 +28,9 @@ classes -- live in "Rules that prevent whole failure classes" below.
   machine for other charts, no hunting through the user's home directory
   for examples, no "let me see what else is on this computer." Everything
   you need comes from exactly three places: this skill, the workspace
-  contents, and your tools (`planton explain`, `planton chart build`, the
-  platform and cloud CLIs). Invitations are the one exception: a path the
+  contents, and your tools -- the `planton` and cloud CLIs where the machine
+  carries them, the platform's own tools in your roster where it does not
+  (see "Know your instruments"). Invitations are the one exception: a path the
   user gives you in conversation, or a file your own tools hand you (an
   attachment), is theirs to give -- go there and nowhere further. Why this
   is absolute: reading Documents, Desktop, Photos, or Music fires the
@@ -81,7 +82,10 @@ postures:
   mutation with the usual one confirmation) or grow it into a chart when
   the request grows. Compose a chart when the request calls for several
   resources wired together, parameterized reuse, or per-environment
-  deployment.
+  deployment. On the platform-tools arm there is no offline validator for a
+  loose manifest: ground it meticulously from its reference page, say
+  plainly that validation happens at apply, and apply through the platform's
+  own apply tool (the same mutation, the same one confirmation).
 
   **The canvas follows your writes.** When several charts exist and the
   user asks to look at or change "the chart" without naming one, confirm
@@ -97,18 +101,43 @@ postures:
   from git, a scaffold, a folder the user picked: compose in place at its
   root, exactly as the anatomy above shows.
 
-## Prerequisites (check once, first)
+## Know your instruments (check once, first)
 
-1. The `planton` CLI must be on PATH: `planton version`.
-2. A control plane must be reachable for `chart build` (a local Planton
-   instance or the hosted platform). Probe cheaply: run
+The craft is the same everywhere; only the instruments differ by where you
+are running. Resolve which arm you are on ONCE, at the start, then commit
+to it -- never re-litigate it mid-conversation, never complain about a
+missing tool, and never ask the user to install anything uninvited. A
+missing instrument is a fact you adapt to, not a problem you report.
+
+1. **Is the `planton` CLI here?** `planton version` (or `command -v
+   planton`). Found -- you are on the **CLI arm**: everything in this skill
+   reads exactly as written. Then probe the control plane cheaply: run
    `planton chart build <dir> -o json` on any chart directory -- exit code 2
-   with an empty stdout means the environment (not the chart) is the problem.
-   Read `references/build-contract.md` for the full exit-code contract.
-3. No backend at all? Ground with `planton explain` (fully offline) and
-   validate draft manifests with `planton validate <file>`.
-   The full compile loop still needs a control plane for template rendering
-   and valueFrom checks.
+   with an empty stdout means the environment (not the chart) is the
+   problem. Read `references/build-contract.md` for the full contract. No
+   backend at all? Ground with `planton explain` (fully offline) and
+   validate draft manifests with `planton validate <file>` -- the full
+   compile loop still needs a control plane.
+2. **No CLI, but your tool roster carries the platform's own operations**
+   (a tool named `build_infra_chart_from_files` and siblings for charts,
+   projects, pipelines, and cloud reads) -- you are on the **platform-tools
+   arm**: the compile loop runs over the wire
+   (`references/build-contract.md`, "The wire channel"), platform lookups
+   and cloud exploration ride the equivalent tools
+   (`references/cloud-exploration.md`), and schema grounding rides the
+   component reference pages (`references/component-grounding.md`). The
+   organization the tools ask for comes from your standing context
+   -- never ask the user for an identifier the session already carries.
+3. **Neither** -- compose from this skill, the catalog research layer, and
+   the workspace, and say plainly at the end what could not be verified
+   ("I couldn't compile this here -- build it in the studio to confirm").
+   Never block, never refuse to compose: an unverified chart built from
+   grounded schemas is worth far more than no chart.
+
+Whichever arm you are on, speak the user's language about it. The arm is
+YOUR concern: the user never hears tool inventories, and when a step is
+genuinely impossible where you run, say what you DID and where the step
+happens instead -- never what infrastructure you lack.
 
 ## The workflow
 
@@ -280,6 +309,14 @@ moves on (`references/personalization.md`).
 planton chart build <chart-dir> -o json
 ```
 
+On the platform-tools arm the loop is the same verdict over the wire: call
+`build_infra_chart_from_files` with the chart folder's files as a map and
+read the identical JSON report (`result` replaces the exit code). **Assemble
+the file map from a fresh directory listing every time** -- a file you
+composed but forgot to submit makes the report silently green for a smaller
+chart than exists on disk. The full wire contract, including how the two
+error classes arrive, is in `references/build-contract.md`.
+
 - **Exit 0** -- the chart is valid. Go to Phase 4.
 - **Exit 1** -- the chart has errors. The JSON report on stdout lists every
   issue with severity, file, message, and the affected resource. Fix and
@@ -311,7 +348,9 @@ file. Check it against the Phase 1 plan:
   without editing any file: `planton chart build . -o json --set
   the_toggle=true`, then compare the two reports' `resources` arrays. The
   report's `overrides` field confirms which variant you are looking at
-  (see `references/build-contract.md`).
+  (see `references/build-contract.md`). On the platform-tools arm the same
+  proof rides the build tool's `params` map — same report, same `overrides`
+  echo.
 
 **Done means:** exit code 0, the resources array matches the intended
 architecture, and every param has a description and a sensible default.
@@ -356,7 +395,9 @@ shared state and needs the user's explicit go-ahead:
 - `planton chart publish <dir> --org <org>` publishes the chart to an
   organization's catalog (`--platform` publishes to the official platform
   catalog -- operators only). Publish runs the same build first and refuses
-  when errors exist.
+  when errors exist. On the platform-tools arm no publish tool exists yet:
+  say the chart is composed and compiled, and that publishing happens from
+  the studio or console -- never fake the step with a different mutation.
 - Deploying the chart (creating an infra project from it) is a separate
   workflow -- offer it, do not perform it as part of composition.
 - **A working copy of a deployed project is different**: there, the save

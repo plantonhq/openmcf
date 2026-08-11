@@ -1,0 +1,55 @@
+# Regional autoscaled GcpComputeMig scenario: the production shape —
+# a REGIONAL group with a CPU-target autoscaler, auto-healing from the
+# health-check fixture (a scenario-level prerequisite: a health check is
+# not a registry prerequisite of this kind), a named port, and proactive
+# rolling updates. Autoscaler bounds 1-2 keep the footprint at most two
+# e2-micro VMs.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpComputeMig
+metadata:
+  name: planton-oss-e2e-gcpmig-regional
+  id: planton-oss-e2e-gcpmig-regional
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcomputemig
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "GcpHealthCheck"
+  tags:
+    - planton-e2e
+spec:
+  region: us-central1
+  template:
+    machineType: e2-micro
+    disks:
+      - boot: true
+        sourceImage: debian-cloud/debian-12
+    networkInterfaces:
+      - network:
+          valueFrom:
+            kind: GcpVpcNetwork
+            name: planton-oss-e2e-gcpvpcnetwork-prereq
+            fieldPath: status.outputs.network_self_link
+  namedPorts:
+    - name: http
+      port: 8080
+  autoscaler:
+    minReplicas: 1
+    maxReplicas: 2
+    cpuTarget: 0.8
+  autoHealing:
+    healthCheck:
+      valueFrom:
+        kind: GcpHealthCheck
+        name: planton-oss-e2e-gcphc-prereq
+        fieldPath: status.outputs.self_link
+    # Generous cold-start allowance so the lane never repair-loops a
+    # booting micro instance.
+    initialDelaySec: 300
+  updatePolicy:
+    minimalAction: REPLACE
+    type: PROACTIVE
+    maxSurgeFixed: 1
+  deletionPolicy: DELETE

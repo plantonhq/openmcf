@@ -88,10 +88,26 @@ func bigtableTable(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 		args.RowKeySchema = pulumi.StringPtr(spec.RowKeySchema)
 	}
 	if spec.AutomatedBackupPolicy != nil {
-		args.AutomatedBackupPolicy = &bigtable.TableAutomatedBackupPolicyArgs{
+		backupPolicyArgs := &bigtable.TableAutomatedBackupPolicyArgs{
 			RetentionPeriod: pulumi.StringPtr(spec.AutomatedBackupPolicy.RetentionPeriod),
 			Frequency:       pulumi.StringPtr(spec.AutomatedBackupPolicy.Frequency),
 		}
+		// Zones backups may be created in (empty = all zones of the
+		// instance); ENTERPRISE_PLUS instances only. Optional+Computed in
+		// the provider — sent only when set so unset never fights the
+		// server-populated read-back.
+		if len(spec.AutomatedBackupPolicy.Locations) > 0 {
+			backupPolicyArgs.Locations = pulumi.ToStringArray(spec.AutomatedBackupPolicy.Locations)
+		}
+		args.AutomatedBackupPolicy = backupPolicyArgs
+	}
+
+	// One spec field drives the destroy behavior of BOTH objects this
+	// kind manages (the table and its per-family GC policies): DELETE
+	// (default), PREVENT (destroy fails), or ABANDON (drop from state,
+	// keep the table).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	createdTable, err := bigtable.NewTable(ctx, "table", args,
@@ -145,6 +161,12 @@ func bigtableTable(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 		// a data-loss safety measure.
 		if cf.GcPolicy.IgnoreWarnings {
 			gcArgs.IgnoreWarnings = pulumi.BoolPtr(true)
+		}
+		// Mirrors the table's policy (one spec field, both objects).
+		// ABANDON is also the escape hatch when Bigtable rejects a
+		// GC-policy delete on a replicated instance.
+		if spec.DeletionPolicy != "" {
+			gcArgs.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 		}
 
 		if _, err := bigtable.NewGCPolicy(ctx, "gc-policy-"+cf.Family, gcArgs,

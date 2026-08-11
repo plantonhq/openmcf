@@ -82,9 +82,21 @@ type GcpPubSubSchemaSpec struct {
 	// replacement); a schema holds at most 20 revisions, and revisions must
 	// be backward-compatible with the encoding topics use, or publishers
 	// pinned to older revisions will keep validating against those.
-	Definition    string `protobuf:"bytes,4,opt,name=definition,proto3" json:"definition,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Definition string `protobuf:"bytes,4,opt,name=definition,proto3" json:"definition,omitempty"`
+	// Deletion policy for the schema — what happens when this resource is
+	// destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the schema is deleted. Topics still referencing it fall
+	//	             back to the "_deleted-schema_" sentinel and their
+	//	             publishes start FAILING — detach topics first
+	//	"PREVENT" -- destroy FAILS; protects a schema that many topics'
+	//	             validation depends on
+	//	"ABANDON" -- the schema is removed from management but left serving
+	//	             in GCP (attached topics keep validating)
+	DeletionPolicy string `protobuf:"bytes,5,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpPubSubSchemaSpec) Reset() {
@@ -145,11 +157,18 @@ func (x *GcpPubSubSchemaSpec) GetDefinition() string {
 	return ""
 }
 
+func (x *GcpPubSubSchemaSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcppubsubschema_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcppubsubschema_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"/catalog/gcp/gcppubsubschema/v1alpha1/spec.proto\x12(dev.planton.gcp.gcppubsubschema.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x94\x04\n" +
+	"/catalog/gcp/gcppubsubschema/v1alpha1/spec.proto\x12(dev.planton.gcp.gcppubsubschema.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xd2\x05\n" +
 	"\x13GcpPubSubSchemaSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xe0\x01\n" +
@@ -160,7 +179,9 @@ const file_catalog_gcp_gcppubsubschema_v1alpha1_spec_proto_rawDesc = "" +
 	"\x11valid_schema_type\x12$type must be AVRO or PROTOCOL_BUFFER\x1a#this in ['AVRO', 'PROTOCOL_BUFFER']\xc8\x01\x01R\x04type\x12&\n" +
 	"\n" +
 	"definition\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"definitionB\xd9\x02\n" +
+	"definition\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x05 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\xd9\x02\n" +
 	",com.dev.planton.gcp.gcppubsubschema.v1alpha1B\tSpecProtoP\x01ZYgithub.com/plantonhq/planton/catalog/gcp/gcppubsubschema/v1alpha1;gcppubsubschemav1alpha1\xa2\x02\x04DPGG\xaa\x02(Dev.Planton.Gcp.Gcppubsubschema.V1alpha1\xca\x02(Dev\\Planton\\Gcp\\Gcppubsubschema\\V1alpha1\xe2\x024Dev\\Planton\\Gcp\\Gcppubsubschema\\V1alpha1\\GPBMetadata\xea\x02,Dev::Planton::Gcp::Gcppubsubschema::V1alpha1b\x06proto3"
 
 var (

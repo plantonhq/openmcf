@@ -1,0 +1,25 @@
+# Transitive prerequisite copy: GcpCertManagerCert declares
+# GcpCertManagerDnsAuthorization in the registry, and transitive
+# prerequisites resolve against the component under test — so the map
+# ships its own run-scoped copy (the cert fixture itself uses
+# load-balancer authorization and never references this resource; it
+# installs and tears down as inert chain plumbing).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCertManagerDnsAuthorization
+metadata:
+  name: planton-oss-e2e-cmda-cmap-prereq
+  id: planton-oss-e2e-cmda-cmap-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcertificatemap
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  authorizationName: planton-oss-e2e-cmda-cmap-${E2E_RUN_ID}
+  domain: map-e2e-${E2E_RUN_ID}.example.com
+  description: Inert DNS-authorization chain plumbing for the certificate-map E2E lanes
+  deletionPolicy: DELETE

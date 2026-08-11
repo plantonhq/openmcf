@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpDataprocAutoscalingPolicySpec defines a reusable Dataproc
 autoscaling policy.
 
@@ -82,6 +84,7 @@ spec:
 | `spec.basicAlgorithm.yarnConfig.scaleDownFactor` | `double` | yes |  |  |
 | `spec.basicAlgorithm.yarnConfig.scaleUpMinWorkerFraction` | `double` |  |  |  |
 | `spec.basicAlgorithm.yarnConfig.scaleDownMinWorkerFraction` | `double` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -271,6 +274,18 @@ Minimum fractional change to the cluster size the autoscaler acts
 on when scaling down (0.0-1.0). Default: 0.0.
 
 - rule: {"double":{"lte":1,"gte":0}}
+
+### spec.deletionPolicy
+
+`string`
+
+Engine-side teardown behavior. "DELETE" (default) deletes the
+policy; "PREVENT" fails any plan that would delete it; "ABANDON"
+removes it from IaC management while leaving it in GCP. Note the API
+refuses to delete a policy while any cluster still references it,
+regardless of this setting.
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

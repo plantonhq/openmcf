@@ -6,8 +6,9 @@ spec:
   # Fast control-plane object. The schema-validated scenario composes the
   # GcpPubSubSchema prerequisite live (schema FK resolution proof).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # The prior green predates the current spec shape (deletion_policy,
+  # revision-range pinning refs, the ai_inference transform arm,
+  # resource-manager tags) — awaits live re-proof.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

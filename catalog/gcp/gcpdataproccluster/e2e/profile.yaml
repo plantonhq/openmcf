@@ -12,8 +12,6 @@ spec:
   # scenario-run — the arm is proven by the offline gate (spec tests +
   # both engines' converters exercised by the spark-on-gke preset).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 60

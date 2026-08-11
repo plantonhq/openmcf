@@ -5,7 +5,9 @@
 # Creates six zip files, each scoped to a single concern:
 #
 #   presets.zip           -- Preset YAML + MD files, kind enum proto
-#   iac-source.zip        -- IaC source (.go, .tf, .md, .yaml under iac/)
+#   iac-source.zip        -- IaC source (.go, .tf, .md, .yaml under iac/) plus
+#                            the provider import catalogs (aa_import/catalog.yaml
+#                            -- read together with each kind's iac/import-map.yaml)
 #   catalog-pages.zip     -- Per-component kind-root catalog.md files
 #   proto-source.zip      -- Raw proto source (spec, api, input, outputs)
 #   reference-pack.zip    -- The component reference pack: generated reference
@@ -142,15 +144,20 @@ fi
 # IaC modules live at the component root (catalog/{provider}/{kind}/iac/).
 # Mirrors the ALLOWED_EXTENSIONS in iac-bundler.ts: .go, .tf, .md, .yaml
 # Excludes hidden dirs, vendor, and node_modules (same as iac-bundler.ts).
+# The provider-level import catalogs (catalog/{provider}/aa_import/catalog.yaml)
+# ride along: consumers resolve each kind's iac/import-map.yaml against them,
+# so an artifact root carrying one without the other cannot answer imports.
 if wants iac-source; then
   echo "IaC source..."
-  find "$CATALOG_ROOT" -path '*/iac/*' ! -path '*/_test/*' \
-      \( -name '*.go' -o -name '*.tf' -o -name '*.md' -o -name '*.yaml' \) \
-      ! -path '*/vendor/*' \
-      ! -path '*/node_modules/*' \
-      ! -path '*/.terraform/*' \
-      ! -path '*/.*' \
-    | create_zip "iac-source.zip" "IaC source"
+  {
+    find "$CATALOG_ROOT" -path '*/iac/*' ! -path '*/_test/*' \
+        \( -name '*.go' -o -name '*.tf' -o -name '*.md' -o -name '*.yaml' \) \
+        ! -path '*/vendor/*' \
+        ! -path '*/node_modules/*' \
+        ! -path '*/.terraform/*' \
+        ! -path '*/.*'
+    find "$CATALOG_ROOT" -path '*/aa_import/*' ! -path '*/_test/*' -name 'catalog.yaml'
+  } | create_zip "iac-source.zip" "IaC source"
 fi
 
 # ─── Catalog Pages ───────────────────────────────────────────────────────────

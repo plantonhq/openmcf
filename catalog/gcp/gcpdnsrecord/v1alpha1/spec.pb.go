@@ -82,8 +82,18 @@ type GcpDnsRecordSpec struct {
 	// caller geography, or target health instead of returning static values.
 	// Mutually exclusive with values.
 	RoutingPolicy *GcpDnsRecordRoutingPolicy `protobuf:"bytes,7,opt,name=routing_policy,json=routingPolicy,proto3" json:"routing_policy,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Deletion policy for the record set — what happens on destroy:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the record set is deleted; resolvers stop getting
+	//	             answers for this name/type as caches expire
+	//	"PREVENT" -- destroy FAILS; protects a name other systems resolve
+	//	             (mail routing, domain verification, service discovery)
+	//	"ABANDON" -- the record set is removed from management but keeps
+	//	             answering queries in GCP
+	DeletionPolicy string `protobuf:"bytes,8,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpDnsRecordSpec) Reset() {
@@ -163,6 +173,13 @@ func (x *GcpDnsRecordSpec) GetRoutingPolicy() *GcpDnsRecordRoutingPolicy {
 		return x.RoutingPolicy
 	}
 	return nil
+}
+
+func (x *GcpDnsRecordSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 // Routing policy for a record set. Exactly one policy style (wrr, geo, or
@@ -641,7 +658,8 @@ var File_catalog_gcp_gcpdnsrecord_v1alpha1_spec_proto protoreflect.FileDescripto
 
 const file_catalog_gcp_gcpdnsrecord_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	",catalog/gcp/gcpdnsrecord/v1alpha1/spec.proto\x12%dev.planton.gcp.gcpdnsrecord.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe3\b\n" +
+	",catalog/gcp/gcpdnsrecord/v1alpha1/spec.proto\x12%dev.planton.gcp.gcpdnsrecord.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xa1\n" +
+	"\n" +
 	"\x10GcpDnsRecordSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12~\n" +
@@ -651,7 +669,9 @@ const file_catalog_gcp_gcpdnsrecord_v1alpha1_spec_proto_rawDesc = "" +
 	"\x06values\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x06values\x124\n" +
 	"\vttl_seconds\x18\x06 \x01(\x05B\x0e\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x03300H\x00R\n" +
 	"ttlSeconds\x88\x01\x01\x12g\n" +
-	"\x0erouting_policy\x18\a \x01(\v2@.dev.planton.gcp.gcpdnsrecord.v1alpha1.GcpDnsRecordRoutingPolicyR\rroutingPolicy:\xdc\x03\xbaH\xd8\x03\x1a\x8b\x01\n" +
+	"\x0erouting_policy\x18\a \x01(\v2@.dev.planton.gcp.gcpdnsrecord.v1alpha1.GcpDnsRecordRoutingPolicyR\rroutingPolicy\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\b \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy:\xdc\x03\xbaH\xd8\x03\x1a\x8b\x01\n" +
 	"\x1espec.values_xor_routing_policy\x123exactly one of values or routing_policy must be set\x1a4(this.values.size() > 0) != has(this.routing_policy)\x1a\xc7\x02\n" +
 	"!spec.name_valid_fqdn_when_literal\x12zname must be a valid DNS domain name ending with a trailing dot when specified as a literal value (e.g., www.example.com.)\x1a\xa5\x01!has(this.name) || !has(this.name.value) || (this.name.value.endsWith('.') && this.name.value.matches('^(?:[*][.])?(?:[_a-z0-9](?:[_a-z0-9-]{0,61}[a-z0-9])?[.])+$'))B\x0e\n" +
 	"\f_ttl_seconds\"\xce\x06\n" +

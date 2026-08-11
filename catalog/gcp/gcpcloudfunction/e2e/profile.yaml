@@ -16,8 +16,6 @@ spec:
   # BEFORE the runner starts. The scenarios' ${E2E_RUN_ID} bucket tokens
   # land on that staged path.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 60

@@ -161,6 +161,20 @@ func backendBucket(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 		args.CdnPolicy = cdnPolicy
 	}
 
+	// Create-time Resource Manager tags; the provider nests them in a
+	// params block that must be omitted entirely when no tags are set.
+	if len(spec.ResourceManagerTags) > 0 {
+		args.Params = &compute.BackendBucketParamsArgs{
+			ResourceManagerTags: pulumi.ToStringMap(spec.ResourceManagerTags),
+		}
+	}
+
+	// What destroy does to the CDN origin: DELETE (default), PREVENT
+	// (refuse), or ABANDON (drop from state, keep serving).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdBackendBucket, err := compute.NewBackendBucket(ctx, "backend-bucket", args,
 		pulumi.Provider(gcpProvider), pulumi.DependsOn([]pulumi.Resource{createdProjectService}))
 	if err != nil {
@@ -182,6 +196,11 @@ func backendBucket(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 		}
 		if spec.ProjectId.GetValue() != "" {
 			signedUrlKeyArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+		}
+		// The kind-level deletion_policy fans out to every key — the keys
+		// have no life apart from the bucket, so one switch governs both.
+		if spec.DeletionPolicy != "" {
+			signedUrlKeyArgs.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 		}
 		if _, err := compute.NewBackendBucketSignedUrlKey(ctx, "signed-url-key-"+signedUrlKey.Name,
 			signedUrlKeyArgs, pulumi.Provider(gcpProvider)); err != nil {

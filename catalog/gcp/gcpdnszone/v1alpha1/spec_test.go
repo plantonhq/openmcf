@@ -281,4 +281,40 @@ var _ = ginkgo.Describe("GcpDnsZoneSpec", func() {
 		z.Spec.Labels = map[string]string{"team": "platform"}
 		expectValid(z)
 	})
+
+	ginkgo.It("accepts an IPv6 forwarding target", func() {
+		z := minimalPublic()
+		z.Spec.Visibility = ptr("private")
+		z.Spec.ForwardingConfig = &GcpDnsZoneForwardingConfig{
+			TargetNameServers: []*GcpDnsZoneForwardingTargetNameServer{
+				{Ipv6Address: "2001:db8::53"},
+			},
+		}
+		expectValid(z)
+	})
+
+	ginkgo.It("rejects a forwarding target with both IPv4 and IPv6", func() {
+		z := minimalPublic()
+		z.Spec.Visibility = ptr("private")
+		z.Spec.ForwardingConfig = &GcpDnsZoneForwardingConfig{
+			TargetNameServers: []*GcpDnsZoneForwardingTargetNameServer{
+				{Ipv4Address: "10.1.2.53", Ipv6Address: "2001:db8::53"},
+			},
+		}
+		expectInvalid(z, "never both")
+	})
+
+	ginkgo.It("accepts each deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			z := minimalPublic()
+			z.Spec.DeletionPolicy = v
+			expectValid(z)
+		}
+	})
+
+	ginkgo.It("rejects an invalid deletion_policy", func() {
+		z := minimalPublic()
+		z.Spec.DeletionPolicy = "KEEP"
+		expectInvalid(z, "deletion_policy")
+	})
 })

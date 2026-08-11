@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpTargetHttpsProxySpec defines a global Compute Engine target HTTPS proxy
 — the TLS-termination node of a global external Application Load Balancer
 (and of Traffic Director meshes). A target HTTPS proxy binds a global
@@ -66,6 +68,10 @@ spec:
 
   # QUIC (HTTP/3) negotiation: NONE lets Google decide.
   quicOverride: NONE
+
+  # DELETE keeps destroys real; PREVENT belongs on production TLS
+  # frontends.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -85,6 +91,7 @@ spec:
 | `spec.tlsEarlyData` | `string` |  |  |  |
 | `spec.httpKeepAliveTimeoutSec` | `int32` |  |  |  |
 | `spec.proxyBind` | `bool` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -263,6 +270,23 @@ Bind the proxy to the private IPs of the Traffic Director mesh instead
 of Google's edge. Only meaningful when the forwarding rule that
 references this proxy uses the INTERNAL_SELF_MANAGED scheme (Traffic
 Director); leave false for internet-facing load balancers. Immutable.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the proxy — what happens when this resource is
+destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the proxy is deleted (GCP refuses while a forwarding
+               rule still references it, so a TLS frontend cannot be
+               torn down out from under its VIP)
+  "PREVENT" -- destroy FAILS; protects a production TLS frontend from
+               accidental teardown
+  "ABANDON" -- the proxy is removed from management but keeps
+               terminating TLS in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

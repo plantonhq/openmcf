@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpFirestoreBackupScheduleSpec defines a backup schedule for a
 Firestore database — Firestore's own managed, periodic backups with
 retention, distinct from point-in-time recovery (PITR covers the last
@@ -48,6 +50,10 @@ spec:
 
   # Daily recurrence — exactly one of daily or weeklyRecurrence.
   daily: true
+
+  # PREVENT protects a compliance-mandated cadence from accidental
+  # teardown; DELETE (the default) keeps destroys real.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -60,6 +66,7 @@ spec:
 | `spec.daily` | `bool` |  |  |  |
 | `spec.weeklyRecurrence` | `GcpFirestoreBackupScheduleWeeklyRecurrence` |  |  |  |
 | `spec.weeklyRecurrence.day` | `string` | yes |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -117,6 +124,21 @@ weekly_recurrence must be set. Immutable after creation.
 Day of the week the weekly backup runs.
 
 - rule: {"required":true,"string":{"in":["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"]}}
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the schedule is deleted (backups already taken
+               outlive it either way, aging out per retention)
+  "PREVENT" -- destroy FAILS; protects a compliance-mandated backup
+               cadence from accidental teardown
+  "ABANDON" -- the schedule is removed from management but keeps
+               taking backups in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

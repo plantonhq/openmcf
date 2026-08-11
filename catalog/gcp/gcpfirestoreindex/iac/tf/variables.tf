@@ -21,14 +21,43 @@ variable "spec" {
     api_scope   = optional(string, "ANY_API")
     density     = optional(string, "")
 
+    # Each field plays exactly one role: order, array_config, vector_config,
+    # or search_config (enforced by the spec's CEL rules before the module
+    # runs).
     fields = list(object({
-      field_path = string
-      order      = optional(string, "")
+      field_path   = string
+      order        = optional(string, "")
       array_config = optional(string, "")
       vector_config = optional(object({
         dimension = number
       }), null)
+      # Firestore Enterprise search surface: text and/or geo indexing.
+      search_config = optional(object({
+        text_spec = optional(object({
+          index_specs = list(object({
+            index_type = optional(string, "")
+            match_type = optional(string, "")
+          }))
+        }), null)
+        geo_spec = optional(object({
+          geo_json_indexing_disabled = optional(bool, false)
+        }), null)
+      }), null)
     }))
+
+    # MongoDB-style array indexing (api_scope MONGODB_COMPATIBLE_API only).
+    multikey = optional(bool, false)
+
+    # Enforce uniqueness of the indexed field values across documents.
+    unique = optional(bool, false)
+
+    # Return as soon as index creation is requested instead of waiting for
+    # the background build.
+    skip_wait = optional(bool, false)
+
+    # Destroy-time guard: "" / "DELETE" deletes, "PREVENT" fails the
+    # destroy, "ABANDON" unmanages without deleting.
+    deletion_policy = optional(string, "")
   })
 
   validation {

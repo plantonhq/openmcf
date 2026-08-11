@@ -245,8 +245,25 @@ type GcpBackendServiceSpec struct {
 	// secret; rotate by adding a new key, re-signing URLs, then removing the
 	// old one.
 	SignedUrlKeys []*GcpBackendServiceSignedUrlKey `protobuf:"bytes,36,rep,name=signed_url_keys,json=signedUrlKeys,proto3" json:"signed_url_keys,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Resource Manager tags bound to the backend service for org-policy and
+	// IAM conditions. Keys in the form "tagKeys/{id}", values
+	// "tagValues/{id}". Create-time only: changing them later replaces the
+	// backend service.
+	ResourceManagerTags map[string]string `protobuf:"bytes,37,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the backend service AND its signed-URL keys — one
+	// switch governs both objects this kind manages:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- both are deleted (GCP refuses to delete the backend
+	//	             service while a URL map or forwarding rule still
+	//	             references it); the backends it pointed at — instance
+	//	             groups, NEGs — are untouched
+	//	"PREVENT" -- destroy FAILS; protects the routing target of a live
+	//	             load balancer
+	//	"ABANDON" -- both are removed from management but keep serving in GCP
+	DeletionPolicy string `protobuf:"bytes,38,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpBackendServiceSpec) Reset() {
@@ -529,6 +546,20 @@ func (x *GcpBackendServiceSpec) GetSignedUrlKeys() []*GcpBackendServiceSignedUrl
 		return x.SignedUrlKeys
 	}
 	return nil
+}
+
+func (x *GcpBackendServiceSpec) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
+func (x *GcpBackendServiceSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 // One backend — an instance group or network endpoint group that serves
@@ -2450,15 +2481,15 @@ var File_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto protoreflect.FileDesc
 
 const file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/gcp/gcpbackendservice/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpbackendservice.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe8F\n" +
+	"1catalog/gcp/gcpbackendservice/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpbackendservice.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x9bJ\n" +
 	"\x15GcpBackendServiceSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xae\x02\n" +
 	"\x14backend_service_name\x18\x02 \x01(\tB\xfb\x01\xbaH\xf7\x01\xba\x01\xf3\x01\n" +
 	"\x1avalid_backend_service_name\x12\x93\x01backend_service_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit\x1a?this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')R\x12backendServiceName\x12*\n" +
-	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12\xe1\x01\n" +
-	"\bprotocol\x18\x04 \x01(\tB\xbf\x01\xbaH\xb3\x01\xba\x01\xaf\x01\n" +
-	"\x0evalid_protocol\x12Gprotocol must be one of HTTP, HTTPS, HTTP2, H2C, TCP, SSL, UDP, or GRPC\x1aTthis == '' || this in ['HTTP', 'HTTPS', 'HTTP2', 'H2C', 'TCP', 'SSL', 'UDP', 'GRPC']\x8a\xa6\x1d\x04HTTPH\x00R\bprotocol\x88\x01\x01\x12\xbd\x02\n" +
+	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12\xfd\x01\n" +
+	"\bprotocol\x18\x04 \x01(\tB\xdb\x01\xbaH\xcf\x01\xba\x01\xcb\x01\n" +
+	"\x0evalid_protocol\x12Tprotocol must be one of HTTP, HTTPS, HTTP2, H2C, TCP, SSL, UDP, GRPC, or UNSPECIFIED\x1acthis == '' || this in ['HTTP', 'HTTPS', 'HTTP2', 'H2C', 'TCP', 'SSL', 'UDP', 'GRPC', 'UNSPECIFIED']\x8a\xa6\x1d\x04HTTPH\x00R\bprotocol\x88\x01\x01\x12\xbd\x02\n" +
 	"\x15load_balancing_scheme\x18\x05 \x01(\tB\x83\x02\xbaH\xf3\x01\xba\x01\xef\x01\n" +
 	"\x1bvalid_load_balancing_scheme\x12kload_balancing_scheme must be one of EXTERNAL, EXTERNAL_MANAGED, INTERNAL_MANAGED, or INTERNAL_SELF_MANAGED\x1acthis == '' || this in ['EXTERNAL', 'EXTERNAL_MANAGED', 'INTERNAL_MANAGED', 'INTERNAL_SELF_MANAGED']\x8a\xa6\x1d\bEXTERNALH\x01R\x13loadBalancingScheme\x88\x01\x01\x12\x83\x02\n" +
 	"\tport_name\x18\x06 \x01(\tB\xe5\x01\xbaH\xe1\x01\xba\x01\xdd\x01\n" +
@@ -2505,7 +2536,13 @@ const file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_rawDesc = "" +
 	"-external_managed_migration_testing_percentage\x18! \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00Y@)\x00\x00\x00\x00\x00\x00\x00\x00R)externalManagedMigrationTestingPercentage\x12p\n" +
 	"\x0ecustom_metrics\x18\" \x03(\v2I.dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceCustomMetricR\rcustomMetrics\x124\n" +
 	"\x11service_lb_policy\x18# \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\x0fserviceLbPolicy\x12{\n" +
-	"\x0fsigned_url_keys\x18$ \x03(\v2I.dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSignedUrlKeyB\b\xbaH\x05\x92\x01\x02\x10\x03R\rsignedUrlKeys:\xa0\x1a\xbaH\x9c\x1a\x1a\x93\x02\n" +
+	"\x0fsigned_url_keys\x18$ \x03(\v2I.dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSignedUrlKeyB\b\xbaH\x05\x92\x01\x02\x10\x03R\rsignedUrlKeys\x12\x8e\x01\n" +
+	"\x15resource_manager_tags\x18% \x03(\v2Z.dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.ResourceManagerTagsEntryR\x13resourceManagerTags\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18& \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa0\x1a\xbaH\x9c\x1a\x1a\x93\x02\n" +
 	"\x1ccdn_requires_external_scheme\x12\x8e\x01Cloud CDN can only be enabled on external backend services (scheme EXTERNAL or EXTERNAL_MANAGED) — it does not front internal load balancers\x1ab!this.enable_cdn || !(this.load_balancing_scheme in ['INTERNAL_MANAGED', 'INTERNAL_SELF_MANAGED'])\x1a\xf5\x01\n" +
 	"\x17circuit_breakers_scheme\x12\x83\x01circuit_breakers only applies to Traffic Director backend services — set load_balancing_scheme INTERNAL_SELF_MANAGED or remove it\x1aT!has(this.circuit_breakers) || this.load_balancing_scheme == 'INTERNAL_SELF_MANAGED'\x1a\xfe\x01\n" +
 	"\x1amax_stream_duration_scheme\x12\x86\x01max_stream_duration only applies to Traffic Director backend services — set load_balancing_scheme INTERNAL_SELF_MANAGED or remove it\x1aW!has(this.max_stream_duration) || this.load_balancing_scheme == 'INTERNAL_SELF_MANAGED'\x1a\xec\x01\n" +
@@ -2523,11 +2560,11 @@ const file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\x16_load_balancing_schemeB\x0e\n" +
 	"\f_timeout_secB\"\n" +
 	" _connection_draining_timeout_secB\x13\n" +
-	"\x11_session_affinity\"\x8b\x11\n" +
+	"\x11_session_affinity\"\xa3\x11\n" +
 	"\x18GcpBackendServiceBackend\x12q\n" +
-	"\x05group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd2\x17\x92\xd4a\x18status.outputs.self_linkR\x05group\x12\xf9\x01\n" +
-	"\x0ebalancing_mode\x18\x02 \x01(\tB\xcc\x01\xbaH\xb9\x01\xba\x01\xb5\x01\n" +
-	"\x14valid_balancing_mode\x12Nbalancing_mode must be one of UTILIZATION, RATE, CONNECTION, or CUSTOM_METRICS\x1aMthis == '' || this in ['UTILIZATION', 'RATE', 'CONNECTION', 'CUSTOM_METRICS']\x8a\xa6\x1d\vUTILIZATIONH\x00R\rbalancingMode\x88\x01\x01\x12L\n" +
+	"\x05group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd2\x17\x92\xd4a\x18status.outputs.self_linkR\x05group\x12\x91\x02\n" +
+	"\x0ebalancing_mode\x18\x02 \x01(\tB\xe4\x01\xbaH\xd1\x01\xba\x01\xcd\x01\n" +
+	"\x14valid_balancing_mode\x12Ybalancing_mode must be one of UTILIZATION, RATE, CONNECTION, CUSTOM_METRICS, or IN_FLIGHT\x1aZthis == '' || this in ['UTILIZATION', 'RATE', 'CONNECTION', 'CUSTOM_METRICS', 'IN_FLIGHT']\x8a\xa6\x1d\vUTILIZATIONH\x00R\rbalancingMode\x88\x01\x01\x12L\n" +
 	"\x0fcapacity_scaler\x18\x03 \x01(\x01B\x1e\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00\x8a\xa6\x1d\x031.0H\x01R\x0ecapacityScaler\x88\x01\x01\x12*\n" +
 	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x120\n" +
 	"\x0fmax_connections\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x0emaxConnections\x12H\n" +
@@ -2700,7 +2737,7 @@ func file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_rawDescGZIP() []byte
 	return file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpBackendServiceSpec)(nil),                        // 0: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec
 	(*GcpBackendServiceBackend)(nil),                     // 1: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceBackend
@@ -2726,18 +2763,19 @@ var file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpBackendServiceTlsSettings)(nil),                 // 21: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceTlsSettings
 	(*GcpBackendServiceTlsSubjectAltName)(nil),           // 22: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceTlsSubjectAltName
 	(*GcpBackendServiceSignedUrlKey)(nil),                // 23: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSignedUrlKey
-	(*v1.StringValueOrRef)(nil),                          // 24: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                                                  // 24: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.ResourceManagerTagsEntry
+	(*v1.StringValueOrRef)(nil),                          // 25: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_depIdxs = []int32{
-	24, // 0: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // 1: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.health_check:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 0: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 1: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.health_check:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 2: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.backends:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceBackend
 	4,  // 3: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.strong_session_affinity_cookie:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceStrongSessionAffinityCookie
 	5,  // 4: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.locality_lb_policies:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceLocalityLbPolicyConfig
 	8,  // 5: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.consistent_hash:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceConsistentHash
 	11, // 6: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.cdn_policy:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceCdnPolicy
-	24, // 7: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.security_policy:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // 8: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.edge_security_policy:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 7: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.security_policy:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 8: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.edge_security_policy:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	15, // 9: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.iap:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceIap
 	16, // 10: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.log_config:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceLogConfig
 	17, // 11: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.circuit_breakers:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceCircuitBreakers
@@ -2747,25 +2785,26 @@ var file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_depIdxs = []int32{
 	21, // 15: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.tls_settings:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceTlsSettings
 	3,  // 16: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.custom_metrics:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceCustomMetric
 	23, // 17: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.signed_url_keys:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSignedUrlKey
-	24, // 18: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceBackend.group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 19: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceBackend.custom_metrics:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceBackendCustomMetric
-	10, // 20: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceStrongSessionAffinityCookie.ttl:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceDuration
-	6,  // 21: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceLocalityLbPolicyConfig.policy:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceLocalityLbPolicy
-	7,  // 22: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceLocalityLbPolicyConfig.custom_policy:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceLocalityLbCustomPolicy
-	9,  // 23: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceConsistentHash.http_cookie:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceConsistentHashHttpCookie
-	10, // 24: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceConsistentHashHttpCookie.ttl:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceDuration
-	12, // 25: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceCdnPolicy.negative_caching_policy:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceNegativeCachingPolicy
-	13, // 26: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceCdnPolicy.cache_key_policy:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceCdnCacheKeyPolicy
-	14, // 27: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceCdnPolicy.bypass_cache_on_request_headers:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceBypassCacheOnRequestHeader
-	10, // 28: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceOutlierDetection.base_ejection_time:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceDuration
-	10, // 29: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceOutlierDetection.interval:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceDuration
-	20, // 30: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSecuritySettings.aws_v4_authentication:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceAwsV4Authentication
-	22, // 31: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceTlsSettings.subject_alt_names:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceTlsSubjectAltName
-	32, // [32:32] is the sub-list for method output_type
-	32, // [32:32] is the sub-list for method input_type
-	32, // [32:32] is the sub-list for extension type_name
-	32, // [32:32] is the sub-list for extension extendee
-	0,  // [0:32] is the sub-list for field type_name
+	24, // 18: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSpec.ResourceManagerTagsEntry
+	25, // 19: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceBackend.group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 20: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceBackend.custom_metrics:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceBackendCustomMetric
+	10, // 21: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceStrongSessionAffinityCookie.ttl:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceDuration
+	6,  // 22: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceLocalityLbPolicyConfig.policy:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceLocalityLbPolicy
+	7,  // 23: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceLocalityLbPolicyConfig.custom_policy:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceLocalityLbCustomPolicy
+	9,  // 24: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceConsistentHash.http_cookie:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceConsistentHashHttpCookie
+	10, // 25: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceConsistentHashHttpCookie.ttl:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceDuration
+	12, // 26: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceCdnPolicy.negative_caching_policy:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceNegativeCachingPolicy
+	13, // 27: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceCdnPolicy.cache_key_policy:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceCdnCacheKeyPolicy
+	14, // 28: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceCdnPolicy.bypass_cache_on_request_headers:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceBypassCacheOnRequestHeader
+	10, // 29: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceOutlierDetection.base_ejection_time:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceDuration
+	10, // 30: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceOutlierDetection.interval:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceDuration
+	20, // 31: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceSecuritySettings.aws_v4_authentication:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceAwsV4Authentication
+	22, // 32: dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceTlsSettings.subject_alt_names:type_name -> dev.planton.gcp.gcpbackendservice.v1alpha1.GcpBackendServiceTlsSubjectAltName
+	33, // [33:33] is the sub-list for method output_type
+	33, // [33:33] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_init() }
@@ -2794,7 +2833,7 @@ func file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   24,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -34,8 +34,10 @@ type GcpDataprocClusterDiskConfig struct {
 	// Size of the boot disk in GB. Minimum 10 GB.
 	// If not specified, GCP defaults to 500 GB for master and worker nodes.
 	BootDiskSizeGb int32 `protobuf:"varint,1,opt,name=boot_disk_size_gb,json=bootDiskSizeGb,proto3" json:"boot_disk_size_gb,omitempty"`
-	// Boot disk type. Valid values: "pd-standard", "pd-ssd", "pd-balanced".
-	// If not specified, GCP defaults to "pd-standard".
+	// Boot disk type: "pd-standard" (GCP default), "pd-ssd", "pd-balanced",
+	// or "hyperdisk-balanced" (the class whose provisioned IOPS/throughput
+	// dials apply). The API validates availability per image version and
+	// machine family at deploy time.
 	BootDiskType string `protobuf:"bytes,2,opt,name=boot_disk_type,json=bootDiskType,proto3" json:"boot_disk_type,omitempty"`
 	// Number of local SSDs to attach. Each local SSD is 375 GB.
 	// Default: 0 (no local SSDs).
@@ -45,8 +47,16 @@ type GcpDataprocClusterDiskConfig struct {
 	// requires an image that ships NVMe drivers (all current Dataproc
 	// images do).
 	LocalSsdInterface string `protobuf:"bytes,4,opt,name=local_ssd_interface,json=localSsdInterface,proto3" json:"local_ssd_interface,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Provisioned I/O operations per second for the boot disk — the IOPS
+	// dial decoupled from disk size, honored by disk types that support
+	// provisioned performance (hyperdisks).
+	BootDiskProvisionedIops *int64 `protobuf:"varint,5,opt,name=boot_disk_provisioned_iops,json=bootDiskProvisionedIops,proto3,oneof" json:"boot_disk_provisioned_iops,omitempty"`
+	// Provisioned throughput in MB/s for the boot disk — the bandwidth
+	// dial decoupled from disk size, honored by disk types that support
+	// provisioned performance (hyperdisks).
+	BootDiskProvisionedThroughput *int64 `protobuf:"varint,6,opt,name=boot_disk_provisioned_throughput,json=bootDiskProvisionedThroughput,proto3,oneof" json:"boot_disk_provisioned_throughput,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *GcpDataprocClusterDiskConfig) Reset() {
@@ -105,6 +115,20 @@ func (x *GcpDataprocClusterDiskConfig) GetLocalSsdInterface() string {
 		return x.LocalSsdInterface
 	}
 	return ""
+}
+
+func (x *GcpDataprocClusterDiskConfig) GetBootDiskProvisionedIops() int64 {
+	if x != nil && x.BootDiskProvisionedIops != nil {
+		return *x.BootDiskProvisionedIops
+	}
+	return 0
+}
+
+func (x *GcpDataprocClusterDiskConfig) GetBootDiskProvisionedThroughput() int64 {
+	if x != nil && x.BootDiskProvisionedThroughput != nil {
+		return *x.BootDiskProvisionedThroughput
+	}
+	return 0
 }
 
 // GcpDataprocClusterAccelerator configures GPU accelerators attached to
@@ -449,8 +473,13 @@ type GcpDataprocClusterGceConfig struct {
 	// Confidential VM (data-in-use encryption) for all cluster nodes.
 	// Requires an N2D machine type.
 	ConfidentialInstanceConfig *GcpDataprocClusterConfidentialInstanceConfig `protobuf:"bytes,12,opt,name=confidential_instance_config,json=confidentialInstanceConfig,proto3" json:"confidential_instance_config,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// Resource manager (secure) tags applied to all cluster instances,
+	// keyed "tagKeys/{tag_key_id}" with values "tagValues/{tag_value_id}".
+	// Unlike network tags, these are IAM-governed and usable in org
+	// policies and firewall rules.
+	ResourceManagerTags map[string]string `protobuf:"bytes,13,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *GcpDataprocClusterGceConfig) Reset() {
@@ -567,6 +596,13 @@ func (x *GcpDataprocClusterGceConfig) GetConfidentialInstanceConfig() *GcpDatapr
 	return nil
 }
 
+func (x *GcpDataprocClusterGceConfig) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
 // GcpDataprocClusterMasterConfig defines the configuration for the
 // master node(s) of the Dataproc cluster.
 //
@@ -590,9 +626,14 @@ type GcpDataprocClusterMasterConfig struct {
 	MinCpuPlatform string `protobuf:"bytes,5,opt,name=min_cpu_platform,json=minCpuPlatform,proto3" json:"min_cpu_platform,omitempty"`
 	// Custom Dataproc image URI. If not specified, GCP uses the image
 	// determined by software_config.image_version.
-	ImageUri      string `protobuf:"bytes,6,opt,name=image_uri,json=imageUri,proto3" json:"image_uri,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ImageUri string `protobuf:"bytes,6,opt,name=image_uri,json=imageUri,proto3" json:"image_uri,omitempty"`
+	// Ranked machine-type preferences for master provisioning — keeps the
+	// cluster creatable when the preferred type's zonal capacity dries up.
+	// Masters are on-demand capacity: provisioning_model_mix does not
+	// apply here (secondary workers only).
+	InstanceFlexibilityPolicy *GcpDataprocClusterInstanceFlexibilityPolicy `protobuf:"bytes,7,opt,name=instance_flexibility_policy,json=instanceFlexibilityPolicy,proto3" json:"instance_flexibility_policy,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *GcpDataprocClusterMasterConfig) Reset() {
@@ -667,6 +708,13 @@ func (x *GcpDataprocClusterMasterConfig) GetImageUri() string {
 	return ""
 }
 
+func (x *GcpDataprocClusterMasterConfig) GetInstanceFlexibilityPolicy() *GcpDataprocClusterInstanceFlexibilityPolicy {
+	if x != nil {
+		return x.InstanceFlexibilityPolicy
+	}
+	return nil
+}
+
 // GcpDataprocClusterWorkerConfig defines the configuration for the
 // primary worker nodes of the Dataproc cluster.
 //
@@ -694,8 +742,13 @@ type GcpDataprocClusterWorkerConfig struct {
 	// Minimum number of primary worker instances when autoscaling is active.
 	// The autoscaler will not scale below this threshold. Updatable in place.
 	MinNumInstances int32 `protobuf:"varint,7,opt,name=min_num_instances,json=minNumInstances,proto3" json:"min_num_instances,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Ranked machine-type preferences for primary-worker provisioning —
+	// keeps scale-ups schedulable when the preferred type's zonal capacity
+	// dries up. Primary workers are on-demand capacity:
+	// provisioning_model_mix does not apply here (secondary workers only).
+	InstanceFlexibilityPolicy *GcpDataprocClusterInstanceFlexibilityPolicy `protobuf:"bytes,8,opt,name=instance_flexibility_policy,json=instanceFlexibilityPolicy,proto3" json:"instance_flexibility_policy,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *GcpDataprocClusterWorkerConfig) Reset() {
@@ -775,6 +828,13 @@ func (x *GcpDataprocClusterWorkerConfig) GetMinNumInstances() int32 {
 		return x.MinNumInstances
 	}
 	return 0
+}
+
+func (x *GcpDataprocClusterWorkerConfig) GetInstanceFlexibilityPolicy() *GcpDataprocClusterInstanceFlexibilityPolicy {
+	if x != nil {
+		return x.InstanceFlexibilityPolicy
+	}
+	return nil
 }
 
 // GcpDataprocClusterInstanceSelection names a ranked machine-type
@@ -1545,8 +1605,16 @@ type GcpDataprocClusterLifecycleConfig struct {
 	// regardless of activity (e.g., "2026-03-01T00:00:00Z").
 	// Useful for time-boxed clusters with a known end date.
 	AutoDeleteTime string `protobuf:"bytes,2,opt,name=auto_delete_time,json=autoDeleteTime,proto3" json:"auto_delete_time,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Duration of inactivity after which the cluster is automatically
+	// STOPPED (not deleted) — VMs shut down, storage and configuration
+	// retained, restartable later. Same format and range as
+	// idle_delete_ttl (e.g., "1800s"; 10 minutes to 14 days).
+	IdleStopTtl string `protobuf:"bytes,3,opt,name=idle_stop_ttl,json=idleStopTtl,proto3" json:"idle_stop_ttl,omitempty"`
+	// RFC3339 timestamp at which the cluster is automatically STOPPED
+	// (not deleted), regardless of activity.
+	AutoStopTime  string `protobuf:"bytes,4,opt,name=auto_stop_time,json=autoStopTime,proto3" json:"auto_stop_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpDataprocClusterLifecycleConfig) Reset() {
@@ -1589,6 +1657,20 @@ func (x *GcpDataprocClusterLifecycleConfig) GetIdleDeleteTtl() string {
 func (x *GcpDataprocClusterLifecycleConfig) GetAutoDeleteTime() string {
 	if x != nil {
 		return x.AutoDeleteTime
+	}
+	return ""
+}
+
+func (x *GcpDataprocClusterLifecycleConfig) GetIdleStopTtl() string {
+	if x != nil {
+		return x.IdleStopTtl
+	}
+	return ""
+}
+
+func (x *GcpDataprocClusterLifecycleConfig) GetAutoStopTime() string {
+	if x != nil {
+		return x.AutoStopTime
 	}
 	return ""
 }
@@ -1966,8 +2048,18 @@ type GcpDataprocClusterConfig struct {
 	// Dedicated DRIVER node groups, separating Spark driver capacity
 	// from the master's control-plane duties.
 	AuxiliaryNodeGroups []*GcpDataprocClusterAuxiliaryNodeGroup `protobuf:"bytes,17,rep,name=auxiliary_node_groups,json=auxiliaryNodeGroups,proto3" json:"auxiliary_node_groups,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// The cluster's structural type. STANDARD (default) has masters and
+	// workers; SINGLE_NODE runs everything on one VM (the modern
+	// alternative to the "dataproc:dataproc.allow.zero.workers" property);
+	// ZERO_SCALE keeps only the control plane warm and provisions workers
+	// on demand. Immutable after creation.
+	ClusterType string `protobuf:"bytes,18,opt,name=cluster_type,json=clusterType,proto3" json:"cluster_type,omitempty"`
+	// The execution engine. DEFAULT runs open-source Spark as-is;
+	// LIGHTNING enables the Lightning Engine (Google's accelerated Spark
+	// runtime, premium tier). Immutable after creation.
+	Engine        string `protobuf:"bytes,19,opt,name=engine,proto3" json:"engine,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpDataprocClusterConfig) Reset() {
@@ -2117,6 +2209,20 @@ func (x *GcpDataprocClusterConfig) GetAuxiliaryNodeGroups() []*GcpDataprocCluste
 		return x.AuxiliaryNodeGroups
 	}
 	return nil
+}
+
+func (x *GcpDataprocClusterConfig) GetClusterType() string {
+	if x != nil {
+		return x.ClusterType
+	}
+	return ""
+}
+
+func (x *GcpDataprocClusterConfig) GetEngine() string {
+	if x != nil {
+		return x.Engine
+	}
+	return ""
 }
 
 // GcpDataprocClusterKubernetesSoftwareConfig pins the Dataproc-on-GKE
@@ -2777,9 +2883,13 @@ type GcpDataprocClusterSpec struct {
 	// VMs). Merged beneath Planton's platform attribution labels
 	// (platform keys win on conflict). Not supported by the API for the
 	// virtual (GKE-based) arm.
-	Labels        map[string]string `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Labels map[string]string `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Engine-side teardown behavior. "DELETE" (default) destroys the
+	// cluster; "PREVENT" fails any plan that would destroy it; "ABANDON"
+	// removes it from IaC management while leaving it running in GCP.
+	DeletionPolicy string `protobuf:"bytes,8,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpDataprocClusterSpec) Reset() {
@@ -2861,19 +2971,30 @@ func (x *GcpDataprocClusterSpec) GetLabels() map[string]string {
 	return nil
 }
 
+func (x *GcpDataprocClusterSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/gcp/gcpdataproccluster/v1alpha1/spec.proto\x12+dev.planton.gcp.gcpdataproccluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xc9\x04\n" +
+	"2catalog/gcp/gcpdataproccluster/v1alpha1/spec.proto\x12+dev.planton.gcp.gcpdataproccluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xd9\x06\n" +
 	"\x1cGcpDataprocClusterDiskConfig\x12\x8c\x01\n" +
 	"\x11boot_disk_size_gb\x18\x01 \x01(\x05Ba\xbaH^\xba\x01[\n" +
-	"\x19boot_disk_size_gb_minimum\x12%boot_disk_size_gb must be at least 10\x1a\x17this == 0 || this >= 10R\x0ebootDiskSizeGb\x12\xc7\x01\n" +
-	"\x0eboot_disk_type\x18\x02 \x01(\tB\xa0\x01\xbaH\x9c\x01\xba\x01\x98\x01\n" +
-	"\x1aboot_disk_type_valid_value\x12:boot_disk_type must be pd-standard, pd-ssd, or pd-balanced\x1a>this == '' || this in ['pd-standard', 'pd-ssd', 'pd-balanced']R\fbootDiskType\x12$\n" +
+	"\x19boot_disk_size_gb_minimum\x12%boot_disk_size_gb must be at least 10\x1a\x17this == 0 || this >= 10R\x0ebootDiskSizeGb\x12\xf1\x01\n" +
+	"\x0eboot_disk_type\x18\x02 \x01(\tB\xca\x01\xbaH\xc6\x01\xba\x01\xc2\x01\n" +
+	"\x1aboot_disk_type_valid_value\x12Nboot_disk_type must be pd-standard, pd-ssd, pd-balanced, or hyperdisk-balanced\x1aTthis == '' || this in ['pd-standard', 'pd-ssd', 'pd-balanced', 'hyperdisk-balanced']R\fbootDiskType\x12$\n" +
 	"\x0enum_local_ssds\x18\x03 \x01(\x05R\fnumLocalSsds\x12\xa9\x01\n" +
 	"\x13local_ssd_interface\x18\x04 \x01(\tBy\xbaHv\xba\x01s\n" +
-	"\x1flocal_ssd_interface_valid_value\x12(local_ssd_interface must be scsi or nvme\x1a&this == '' || this in ['scsi', 'nvme']R\x11localSsdInterface\"\x88\x01\n" +
+	"\x1flocal_ssd_interface_valid_value\x12(local_ssd_interface must be scsi or nvme\x1a&this == '' || this in ['scsi', 'nvme']R\x11localSsdInterface\x12I\n" +
+	"\x1aboot_disk_provisioned_iops\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x00R\x17bootDiskProvisionedIops\x88\x01\x01\x12U\n" +
+	" boot_disk_provisioned_throughput\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x01R\x1dbootDiskProvisionedThroughput\x88\x01\x01B\x1d\n" +
+	"\x1b_boot_disk_provisioned_iopsB#\n" +
+	"!_boot_disk_provisioned_throughput\"\x88\x01\n" +
 	"\x1dGcpDataprocClusterAccelerator\x121\n" +
 	"\x10accelerator_type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0facceleratorType\x124\n" +
 	"\x11accelerator_count\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x10acceleratorCount\"\xb9\x01\n" +
@@ -2891,7 +3012,7 @@ const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x06values\x18\x03 \x03(\tR\x06values:\xea\x01\xbaH\xe6\x01\x1a\xe3\x01\n" +
 	"(specific_reservation_requires_key_values\x12Qkey and values are required when consume_reservation_type is SPECIFIC_RESERVATION\x1adthis.consume_reservation_type != 'SPECIFIC_RESERVATION' || (this.key != '' && size(this.values) > 0)\"S\n" +
 	"#GcpDataprocClusterNodeGroupAffinity\x12,\n" +
-	"\x0enode_group_uri\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fnodeGroupUri\"\x94\v\n" +
+	"\x0enode_group_uri\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fnodeGroupUri\"\xf4\f\n" +
 	"\x1bGcpDataprocClusterGceConfig\x12w\n" +
 	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
 	"\n" +
@@ -2907,11 +3028,15 @@ const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x14reservation_affinity\x18\n" +
 	" \x01(\v2R.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterReservationAffinityR\x13reservationAffinity\x12\x80\x01\n" +
 	"\x13node_group_affinity\x18\v \x01(\v2P.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodeGroupAffinityR\x11nodeGroupAffinity\x12\x9b\x01\n" +
-	"\x1cconfidential_instance_config\x18\f \x01(\v2Y.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfidentialInstanceConfigR\x1aconfidentialInstanceConfig\x1a;\n" +
+	"\x1cconfidential_instance_config\x18\f \x01(\v2Y.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfidentialInstanceConfigR\x1aconfidentialInstanceConfig\x12\x95\x01\n" +
+	"\x15resource_manager_tags\x18\r \x03(\v2a.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.ResourceManagerTagsEntryR\x13resourceManagerTags\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x88\x01\xbaH\x84\x01\x1a\x81\x01\n" +
-	"#network_subnetwork_mutual_exclusion\x12,only one of network or subnetwork may be set\x1a,!(has(this.network) && has(this.subnetwork))\"\x8b\x03\n" +
+	"#network_subnetwork_mutual_exclusion\x12,only one of network or subnetwork may be set\x1a,!(has(this.network) && has(this.subnetwork))\"\xfb\x05\n" +
 	"\x1eGcpDataprocClusterMasterConfig\x12#\n" +
 	"\rnum_instances\x18\x01 \x01(\x05R\fnumInstances\x12!\n" +
 	"\fmachine_type\x18\x02 \x01(\tR\vmachineType\x12j\n" +
@@ -2919,7 +3044,9 @@ const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"diskConfig\x12n\n" +
 	"\faccelerators\x18\x04 \x03(\v2J.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAcceleratorR\faccelerators\x12(\n" +
 	"\x10min_cpu_platform\x18\x05 \x01(\tR\x0eminCpuPlatform\x12\x1b\n" +
-	"\timage_uri\x18\x06 \x01(\tR\bimageUri\"\xb7\x03\n" +
+	"\timage_uri\x18\x06 \x01(\tR\bimageUri\x12\x98\x01\n" +
+	"\x1binstance_flexibility_policy\x18\a \x01(\v2X.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicyR\x19instanceFlexibilityPolicy:\xd2\x01\xbaH\xce\x01\x1a\xcb\x01\n" +
+	"&master_flexibility_no_provisioning_mix\x128provisioning_model_mix applies to secondary workers only\x1ag!has(this.instance_flexibility_policy) || !has(this.instance_flexibility_policy.provisioning_model_mix)\"\xa7\x06\n" +
 	"\x1eGcpDataprocClusterWorkerConfig\x12#\n" +
 	"\rnum_instances\x18\x01 \x01(\x05R\fnumInstances\x12!\n" +
 	"\fmachine_type\x18\x02 \x01(\tR\vmachineType\x12j\n" +
@@ -2928,7 +3055,9 @@ const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\faccelerators\x18\x04 \x03(\v2J.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAcceleratorR\faccelerators\x12(\n" +
 	"\x10min_cpu_platform\x18\x05 \x01(\tR\x0eminCpuPlatform\x12\x1b\n" +
 	"\timage_uri\x18\x06 \x01(\tR\bimageUri\x12*\n" +
-	"\x11min_num_instances\x18\a \x01(\x05R\x0fminNumInstances\"q\n" +
+	"\x11min_num_instances\x18\a \x01(\x05R\x0fminNumInstances\x12\x98\x01\n" +
+	"\x1binstance_flexibility_policy\x18\b \x01(\v2X.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicyR\x19instanceFlexibilityPolicy:\xd2\x01\xbaH\xce\x01\x1a\xcb\x01\n" +
+	"&worker_flexibility_no_provisioning_mix\x128provisioning_model_mix applies to secondary workers only\x1ag!has(this.instance_flexibility_policy) || !has(this.instance_flexibility_policy.provisioning_model_mix)\"q\n" +
 	"#GcpDataprocClusterInstanceSelection\x12-\n" +
 	"\rmachine_types\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\fmachineTypes\x12\x1b\n" +
 	"\x04rank\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x04rank\"\xc2\x01\n" +
@@ -2985,11 +3114,14 @@ const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0fidentity_config\x18\x02 \x01(\v2M.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterIdentityConfigR\x0eidentityConfig:\x9e\x01\xbaH\x9a\x01\x1a\x97\x01\n" +
 	"\x1eexactly_one_security_mechanism\x12=exactly one of kerberos_config or identity_config must be set\x1a6has(this.kerberos_config) != has(this.identity_config)\"Y\n" +
 	" GcpDataprocClusterEndpointConfig\x125\n" +
-	"\x17enable_http_port_access\x18\x01 \x01(\bR\x14enableHttpPortAccess\"\x81\x02\n" +
+	"\x17enable_http_port_access\x18\x01 \x01(\bR\x14enableHttpPortAccess\"\xd1\x03\n" +
 	"!GcpDataprocClusterLifecycleConfig\x12\xb1\x01\n" +
 	"\x0fidle_delete_ttl\x18\x01 \x01(\tB\x88\x01\xbaH\x84\x01\xba\x01\x80\x01\n" +
 	"\x16idle_delete_ttl_format\x12=idle_delete_ttl must be a duration in seconds (e.g., '1800s')\x1a'this == '' || this.matches('^[0-9]+s$')R\ridleDeleteTtl\x12(\n" +
-	"\x10auto_delete_time\x18\x02 \x01(\tR\x0eautoDeleteTime\"\x9d\x01\n" +
+	"\x10auto_delete_time\x18\x02 \x01(\tR\x0eautoDeleteTime\x12\xa7\x01\n" +
+	"\ridle_stop_ttl\x18\x03 \x01(\tB\x82\x01\xbaH\x7f\xba\x01|\n" +
+	"\x14idle_stop_ttl_format\x12;idle_stop_ttl must be a duration in seconds (e.g., '1800s')\x1a'this == '' || this.matches('^[0-9]+s$')R\vidleStopTtl\x12$\n" +
+	"\x0eauto_stop_time\x18\x04 \x01(\tR\fautoStopTime\"\x9d\x01\n" +
 	"!GcpDataprocClusterMetastoreConfig\x12x\n" +
 	"\x1adataproc_metastore_service\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x18dataprocMetastoreService\"\xc5\x01\n" +
 	"\x18GcpDataprocClusterMetric\x12~\n" +
@@ -3009,7 +3141,7 @@ const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"%auxiliary_node_group_role_valid_value\x12\x18each role must be DRIVER\x1a\x12this in ['DRIVER']R\x05roles\x12\x83\x01\n" +
 	"\x11node_group_config\x18\x02 \x01(\v2W.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroupConfigR\x0fnodeGroupConfig\x12\x9c\x01\n" +
 	"\rnode_group_id\x18\x03 \x01(\tBx\xbaHu\xba\x01r\n" +
-	"\x14node_group_id_length\x12%node_group_id must be 3-33 characters\x1a3this == '' || (size(this) >= 3 && size(this) <= 33)R\vnodeGroupId\"\xc4\x11\n" +
+	"\x14node_group_id_length\x12%node_group_id must be 3-33 characters\x1a3this == '' || (size(this) >= 3 && size(this) <= 33)R\vnodeGroupId\"\x93\x14\n" +
 	"\x18GcpDataprocClusterConfig\x12|\n" +
 	"\x0estaging_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\rstagingBucket\x12v\n" +
 	"\vtemp_bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\n" +
@@ -3031,7 +3163,11 @@ const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x10lifecycle_config\x18\x0e \x01(\v2N.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterLifecycleConfigR\x0flifecycleConfig\x12y\n" +
 	"\x10metastore_config\x18\x0f \x01(\v2N.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetastoreConfigR\x0fmetastoreConfig\x12\x81\x01\n" +
 	"\x16dataproc_metric_config\x18\x10 \x01(\v2K.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetricConfigR\x14dataprocMetricConfig\x12\x85\x01\n" +
-	"\x15auxiliary_node_groups\x18\x11 \x03(\v2Q.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroupR\x13auxiliaryNodeGroups\"\xe1\x03\n" +
+	"\x15auxiliary_node_groups\x18\x11 \x03(\v2Q.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroupR\x13auxiliaryNodeGroups\x12\xc2\x01\n" +
+	"\fcluster_type\x18\x12 \x01(\tB\x9e\x01\xbaH\x9a\x01\xba\x01\x96\x01\n" +
+	"\x18cluster_type_valid_value\x129cluster_type must be STANDARD, SINGLE_NODE, or ZERO_SCALE\x1a?this == '' || this in ['STANDARD', 'SINGLE_NODE', 'ZERO_SCALE']R\vclusterType\x12\x87\x01\n" +
+	"\x06engine\x18\x13 \x01(\tBo\xbaHl\xba\x01i\n" +
+	"\x12engine_valid_value\x12#engine must be DEFAULT or LIGHTNING\x1a.this == '' || this in ['DEFAULT', 'LIGHTNING']R\x06engine\"\xe1\x03\n" +
 	"*GcpDataprocClusterKubernetesSoftwareConfig\x12\xa4\x01\n" +
 	"\x11component_version\x18\x01 \x03(\v2m.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.ComponentVersionEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\x10componentVersion\x12\x87\x01\n" +
 	"\n" +
@@ -3076,7 +3212,7 @@ const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"&GcpDataprocClusterVirtualClusterConfig\x12|\n" +
 	"\x0estaging_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\rstagingBucket\x12\x9a\x01\n" +
 	"\x19kubernetes_cluster_config\x18\x02 \x01(\v2V.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesClusterConfigB\x06\xbaH\x03\xc8\x01\x01R\x17kubernetesClusterConfig\x12\x92\x01\n" +
-	"\x19auxiliary_services_config\x18\x03 \x01(\v2V.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryServicesConfigR\x17auxiliaryServicesConfig\"\xf3\t\n" +
+	"\x19auxiliary_services_config\x18\x03 \x01(\v2V.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryServicesConfigR\x17auxiliaryServicesConfig\"\xb1\v\n" +
 	"\x16GcpDataprocClusterSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
@@ -3086,7 +3222,9 @@ const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x16virtual_cluster_config\x18\x05 \x01(\v2S.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterVirtualClusterConfigR\x14virtualClusterConfig\x12\xe9\x01\n" +
 	"\x1dgraceful_decommission_timeout\x18\x06 \x01(\tB\xa4\x01\xbaH\xa0\x01\xba\x01\x9c\x01\n" +
 	"$graceful_decommission_timeout_format\x12Kgraceful_decommission_timeout must be a duration in seconds (e.g., '3600s')\x1a'this == '' || this.matches('^[0-9]+s$')R\x1bgracefulDecommissionTimeout\x12g\n" +
-	"\x06labels\x18\a \x03(\v2O.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.LabelsEntryR\x06labels\x1a9\n" +
+	"\x06labels\x18\a \x03(\v2O.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.LabelsEntryR\x06labels\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\b \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xcd\x02\xbaH\xc9\x02\x1a\x9f\x01\n" +
@@ -3106,7 +3244,7 @@ func file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDescGZIP() []byt
 	return file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
+var file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
 var file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpDataprocClusterDiskConfig)(nil),                 // 0: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterDiskConfig
 	(*GcpDataprocClusterAccelerator)(nil),                // 1: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAccelerator
@@ -3145,81 +3283,85 @@ var file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpDataprocClusterVirtualClusterConfig)(nil),       // 34: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterVirtualClusterConfig
 	(*GcpDataprocClusterSpec)(nil),                       // 35: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec
 	nil,                                                  // 36: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.MetadataEntry
-	nil,                                                  // 37: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSoftwareConfig.PropertiesEntry
-	nil,                                                  // 38: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterIdentityConfig.UserServiceAccountMappingEntry
-	nil,                                                  // 39: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.ComponentVersionEntry
-	nil,                                                  // 40: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.PropertiesEntry
-	nil,                                                  // 41: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.LabelsEntry
-	(*v1.StringValueOrRef)(nil),                          // 42: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                                                  // 37: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.ResourceManagerTagsEntry
+	nil,                                                  // 38: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSoftwareConfig.PropertiesEntry
+	nil,                                                  // 39: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterIdentityConfig.UserServiceAccountMappingEntry
+	nil,                                                  // 40: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.ComponentVersionEntry
+	nil,                                                  // 41: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.PropertiesEntry
+	nil,                                                  // 42: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),                          // 43: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_depIdxs = []int32{
-	42, // 0: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	42, // 1: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	42, // 2: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	43, // 0: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	43, // 1: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	43, // 2: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	36, // 3: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.metadata:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.MetadataEntry
 	2,  // 4: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.shielded_instance_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterShieldedInstanceConfig
 	4,  // 5: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.reservation_affinity:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterReservationAffinity
 	5,  // 6: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.node_group_affinity:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodeGroupAffinity
 	3,  // 7: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.confidential_instance_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfidentialInstanceConfig
-	0,  // 8: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMasterConfig.disk_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterDiskConfig
-	1,  // 9: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMasterConfig.accelerators:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAccelerator
-	0,  // 10: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterWorkerConfig.disk_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterDiskConfig
-	1,  // 11: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterWorkerConfig.accelerators:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAccelerator
-	9,  // 12: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicy.instance_selection_list:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceSelection
-	10, // 13: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicy.provisioning_model_mix:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterProvisioningModelMix
-	0,  // 14: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSecondaryWorkerConfig.disk_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterDiskConfig
-	11, // 15: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSecondaryWorkerConfig.instance_flexibility_policy:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicy
-	37, // 16: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSoftwareConfig.properties:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSoftwareConfig.PropertiesEntry
-	42, // 17: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKerberosConfig.kms_key_uri:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	38, // 18: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterIdentityConfig.user_service_account_mapping:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterIdentityConfig.UserServiceAccountMappingEntry
-	15, // 19: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSecurityConfig.kerberos_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKerberosConfig
-	16, // 20: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSecurityConfig.identity_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterIdentityConfig
-	42, // 21: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetastoreConfig.dataproc_metastore_service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 22: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetricConfig.metrics:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetric
-	0,  // 23: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroupConfig.disk_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterDiskConfig
-	1,  // 24: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroupConfig.accelerators:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAccelerator
-	23, // 25: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroup.node_group_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroupConfig
-	42, // 26: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.staging_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	42, // 27: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.temp_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 28: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.gce_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig
-	7,  // 29: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.master_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMasterConfig
-	8,  // 30: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.worker_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterWorkerConfig
-	12, // 31: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.secondary_worker_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSecondaryWorkerConfig
-	13, // 32: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.software_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSoftwareConfig
-	14, // 33: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.initialization_actions:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInitAction
-	42, // 34: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.autoscaling_policy_uri:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	42, // 35: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.encryption_kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 36: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.security_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSecurityConfig
-	18, // 37: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.endpoint_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterEndpointConfig
-	19, // 38: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.lifecycle_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterLifecycleConfig
-	20, // 39: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.metastore_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetastoreConfig
-	22, // 40: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.dataproc_metric_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetricConfig
-	24, // 41: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.auxiliary_node_groups:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroup
-	39, // 42: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.component_version:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.ComponentVersionEntry
-	40, // 43: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.properties:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.PropertiesEntry
-	27, // 44: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodePoolConfig.autoscaling:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodePoolAutoscaling
-	42, // 45: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodePoolTarget.node_pool:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	28, // 46: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodePoolTarget.node_pool_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodePoolConfig
-	42, // 47: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGkeClusterConfig.gke_cluster_target:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // 48: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGkeClusterConfig.node_pool_target:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodePoolTarget
-	42, // 49: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesClusterConfig.kubernetes_namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 50: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesClusterConfig.gke_cluster_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGkeClusterConfig
-	26, // 51: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesClusterConfig.kubernetes_software_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig
-	42, // 52: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSparkHistoryServerConfig.dataproc_cluster:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	20, // 53: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryServicesConfig.metastore_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetastoreConfig
-	32, // 54: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryServicesConfig.spark_history_server_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSparkHistoryServerConfig
-	42, // 55: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterVirtualClusterConfig.staging_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	31, // 56: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterVirtualClusterConfig.kubernetes_cluster_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesClusterConfig
-	33, // 57: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterVirtualClusterConfig.auxiliary_services_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryServicesConfig
-	42, // 58: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	25, // 59: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.cluster_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig
-	34, // 60: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.virtual_cluster_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterVirtualClusterConfig
-	41, // 61: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.labels:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.LabelsEntry
-	62, // [62:62] is the sub-list for method output_type
-	62, // [62:62] is the sub-list for method input_type
-	62, // [62:62] is the sub-list for extension type_name
-	62, // [62:62] is the sub-list for extension extendee
-	0,  // [0:62] is the sub-list for field type_name
+	37, // 8: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.resource_manager_tags:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig.ResourceManagerTagsEntry
+	0,  // 9: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMasterConfig.disk_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterDiskConfig
+	1,  // 10: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMasterConfig.accelerators:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAccelerator
+	11, // 11: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMasterConfig.instance_flexibility_policy:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicy
+	0,  // 12: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterWorkerConfig.disk_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterDiskConfig
+	1,  // 13: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterWorkerConfig.accelerators:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAccelerator
+	11, // 14: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterWorkerConfig.instance_flexibility_policy:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicy
+	9,  // 15: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicy.instance_selection_list:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceSelection
+	10, // 16: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicy.provisioning_model_mix:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterProvisioningModelMix
+	0,  // 17: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSecondaryWorkerConfig.disk_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterDiskConfig
+	11, // 18: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSecondaryWorkerConfig.instance_flexibility_policy:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicy
+	38, // 19: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSoftwareConfig.properties:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSoftwareConfig.PropertiesEntry
+	43, // 20: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKerberosConfig.kms_key_uri:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	39, // 21: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterIdentityConfig.user_service_account_mapping:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterIdentityConfig.UserServiceAccountMappingEntry
+	15, // 22: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSecurityConfig.kerberos_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKerberosConfig
+	16, // 23: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSecurityConfig.identity_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterIdentityConfig
+	43, // 24: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetastoreConfig.dataproc_metastore_service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // 25: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetricConfig.metrics:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetric
+	0,  // 26: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroupConfig.disk_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterDiskConfig
+	1,  // 27: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroupConfig.accelerators:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAccelerator
+	23, // 28: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroup.node_group_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroupConfig
+	43, // 29: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.staging_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	43, // 30: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.temp_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 31: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.gce_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGceConfig
+	7,  // 32: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.master_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMasterConfig
+	8,  // 33: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.worker_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterWorkerConfig
+	12, // 34: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.secondary_worker_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSecondaryWorkerConfig
+	13, // 35: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.software_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSoftwareConfig
+	14, // 36: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.initialization_actions:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInitAction
+	43, // 37: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.autoscaling_policy_uri:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	43, // 38: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.encryption_kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 39: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.security_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSecurityConfig
+	18, // 40: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.endpoint_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterEndpointConfig
+	19, // 41: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.lifecycle_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterLifecycleConfig
+	20, // 42: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.metastore_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetastoreConfig
+	22, // 43: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.dataproc_metric_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetricConfig
+	24, // 44: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig.auxiliary_node_groups:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryNodeGroup
+	40, // 45: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.component_version:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.ComponentVersionEntry
+	41, // 46: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.properties:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig.PropertiesEntry
+	27, // 47: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodePoolConfig.autoscaling:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodePoolAutoscaling
+	43, // 48: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodePoolTarget.node_pool:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	28, // 49: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodePoolTarget.node_pool_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodePoolConfig
+	43, // 50: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGkeClusterConfig.gke_cluster_target:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // 51: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGkeClusterConfig.node_pool_target:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterNodePoolTarget
+	43, // 52: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesClusterConfig.kubernetes_namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	30, // 53: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesClusterConfig.gke_cluster_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterGkeClusterConfig
+	26, // 54: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesClusterConfig.kubernetes_software_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesSoftwareConfig
+	43, // 55: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSparkHistoryServerConfig.dataproc_cluster:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 56: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryServicesConfig.metastore_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterMetastoreConfig
+	32, // 57: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryServicesConfig.spark_history_server_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSparkHistoryServerConfig
+	43, // 58: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterVirtualClusterConfig.staging_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	31, // 59: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterVirtualClusterConfig.kubernetes_cluster_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterKubernetesClusterConfig
+	33, // 60: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterVirtualClusterConfig.auxiliary_services_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAuxiliaryServicesConfig
+	43, // 61: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 62: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.cluster_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterConfig
+	34, // 63: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.virtual_cluster_config:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterVirtualClusterConfig
+	42, // 64: dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.labels:type_name -> dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterSpec.LabelsEntry
+	65, // [65:65] is the sub-list for method output_type
+	65, // [65:65] is the sub-list for method input_type
+	65, // [65:65] is the sub-list for extension type_name
+	65, // [65:65] is the sub-list for extension extendee
+	0,  // [0:65] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_init() }
@@ -3227,13 +3369,14 @@ func file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_init() {
 	if File_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   42,
+			NumMessages:   43,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -25,9 +25,17 @@ Three mutually exclusive modes:
 
 1. **Public** -- set `publicEndpointEnabled: true`. Queries go to the `public_endpoint_domain_name` output.
 2. **VPC-peered** -- set `network`. Reachable only inside the peered VPC; requires Private Services Access on the network. The IaC modules normalize a network self-link (the `GcpVpcNetwork` reference's canonical output) to the relative form the Vertex AI API expects.
-3. **Private Service Connect** -- set `privateServiceConnectConfig`. Consumers connect through a service attachment (surfaced on the deployed index's outputs); no peering needed.
+3. **Private Service Connect** -- set `privateServiceConnectConfig`. Consumers connect through a service attachment (surfaced on the deployed index's outputs); no peering needed. `pscAutomationConfigs` entries additionally ask Vertex AI to create the consumer-side PSC endpoints itself (per project/network pair) instead of consumers wiring forwarding rules by hand.
 
 Omitting all three creates an endpoint that only Google-internal networks can reach -- almost always you want one of the arms.
+
+### Encryption (immutable)
+
+`kmsKeyName` (reference a `GcpKmsKey`) turns on customer-managed encryption (CMEK) for data on the endpoint's serving replicas; the Vertex AI service agent needs `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key. Empty means Google-managed keys.
+
+### Destroy behavior
+
+`deletionPolicy` is the client-side lever: empty/`DELETE` deletes the endpoint (and stops every deployment on it), `PREVENT` makes destroy fail, `ABANDON` removes it from management but keeps it serving (and billing).
 
 ### Labels
 

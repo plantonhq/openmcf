@@ -5,8 +5,6 @@ metadata:
 spec:
   # Leaf security policy with explicit default rule (~1–2 minutes).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

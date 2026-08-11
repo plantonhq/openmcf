@@ -1,0 +1,27 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpWorkflow
+metadata:
+  name: my-sample-workflow
+spec:
+  # The workflow definition executed on each run (≤128KB). Every change
+  # deploys a NEW revision; running executions finish on the old one.
+  sourceContents: |
+    main:
+      steps:
+        - hello:
+            return: "hello world"
+
+  # Co-locate with the services the steps call.
+  region: us-central1
+
+  # What this workflow orchestrates (shown in the console).
+  description: Sample two-step workflow — returns a constant.
+
+  # The guard is ON by default; the sample allows teardown so the
+  # manifest destroys cleanly.
+  deletionProtection: false
+
+  # What a destroy does: DELETE (cancels running executions and erases
+  # history), PREVENT (the posture for production orchestrations), or
+  # ABANDON (keep running unmanaged).
+  deletionPolicy: DELETE

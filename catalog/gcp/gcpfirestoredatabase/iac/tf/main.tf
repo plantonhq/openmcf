@@ -30,10 +30,20 @@ resource "google_firestore_database" "this" {
   database_edition                  = local.database_edition
   app_engine_integration_mode       = local.app_engine_integration_mode
 
-  # Always DELETE so the IaC tool manages the full lifecycle. Without
-  # this, the provider's default ABANDON would leave the database behind
-  # on destroy — identical to the Pulumi module.
-  deletion_policy = "DELETE"
+  # ENTERPRISE-only data-access switches (spec CELs enforce the edition
+  # pairing pre-deploy, matching the API).
+  firestore_data_access_mode          = local.firestore_data_access_mode
+  mongodb_compatible_data_access_mode = local.mongodb_compatible_data_access_mode
+  realtime_updates_mode               = local.realtime_updates_mode
+
+  # Create-time resource-manager tags (org policy / IAM conditions).
+  tags = length(var.spec.resource_manager_tags) > 0 ? var.spec.resource_manager_tags : null
+
+  # Defaults to DELETE so the IaC tool manages the full lifecycle (the
+  # provider's own default ABANDON would leave the database behind on
+  # destroy). PREVENT and ABANDON are deliberate choices — identical to
+  # the Pulumi module.
+  deletion_policy = local.deletion_policy
 
   dynamic "cmek_config" {
     for_each = local.kms_key_name != null ? [local.kms_key_name] : []

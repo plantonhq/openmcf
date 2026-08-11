@@ -19,4 +19,9 @@ resource "google_composer_user_workloads_secret" "secret" {
   # contract). The provider marks the attribute sensitive — plans redact
   # it — and it is never surfaced in stack outputs.
   data = var.spec.data
+
+  # Client-side destroy behavior: DELETE (default), PREVENT (destroy
+  # fails — protects credentials live pipelines depend on), or ABANDON
+  # (drop from state, keep the Secret in the cluster).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 }

@@ -33,5 +33,9 @@ variable "spec" {
     type = optional(string, "")
 
     labels = optional(map(string), {})
+
+    # What happens to the authorization when this resource is destroyed:
+    # DELETE (default), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
   })
 }

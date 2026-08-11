@@ -12,16 +12,40 @@ resource "google_service_account" "main" {
   # regular update mask); the provider handles that internally, so toggling
   # this field never recreates the account.
   disabled = local.disabled
+
+  # Adopt an existing account with the same email instead of failing —
+  # idempotent bootstrap flows that may race other provisioning paths.
+  create_ignore_already_exists = var.spec.create_ignore_already_exists
+
+  # Destroy-time guard: PREVENT fails any destroy while set. Null falls
+  # back to the provider default (DELETE).
+  deletion_policy = var.spec.deletion_policy != null && var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 }
 
-# Optional user-managed JSON key. Created only when spec.create_key is true —
-# keyless patterns (Workload Identity, impersonation, federation) are the
-# recommended default. The private key is returned once at creation and is
-# marked sensitive in state.
+# Optional user-managed key. Created only when spec.user_managed_key is
+# present — keyless patterns (Workload Identity, impersonation, federation)
+# are the recommended default. In the generate flow the private key is
+# returned once at creation and marked sensitive in state; in the upload
+# flow (public_key_data set) GCP never sees a private key at all.
 resource "google_service_account_key" "main" {
   count = local.create_key ? 1 : 0
 
   service_account_id = google_service_account.main.name
+
+  # Generate-flow shape. Nulls fall back to GCP defaults (2048-bit RSA,
+  # JSON credentials file, X.509 PEM public key).
+  key_algorithm    = var.spec.user_managed_key.algorithm != null && var.spec.user_managed_key.algorithm != "" ? var.spec.user_managed_key.algorithm : null
+  private_key_type = var.spec.user_managed_key.private_key_type != null && var.spec.user_managed_key.private_key_type != "" ? var.spec.user_managed_key.private_key_type : null
+  public_key_type  = var.spec.user_managed_key.public_key_type != null && var.spec.user_managed_key.public_key_type != "" ? var.spec.user_managed_key.public_key_type : null
+
+  # Upload-flow shape: the caller's own public key (base64 X.509 PEM);
+  # mutually exclusive with the *_type args above (spec CEL enforces it).
+  public_key_data = var.spec.user_managed_key.public_key_data != null && var.spec.user_managed_key.public_key_data != "" ? var.spec.user_managed_key.public_key_data : null
+
+  # Rotation trigger: any change to this map replaces the key.
+  keepers = var.spec.user_managed_key.keepers
+
+  deletion_policy = var.spec.user_managed_key.deletion_policy != null && var.spec.user_managed_key.deletion_policy != "" ? var.spec.user_managed_key.deletion_policy : null
 }
 
 # Project-level role grants. google_project_iam_member is ADDITIVE: each grant

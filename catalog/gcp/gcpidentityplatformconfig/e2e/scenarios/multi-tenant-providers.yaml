@@ -1,0 +1,52 @@
+# Multi-tenant + providers scenario: proves the surfaces minimal cannot —
+# the multiTenant.allowTenants gate (the prerequisite every tenant needs),
+# the allowlist SMS-region arm, MFA enablement, one custom OIDC provider,
+# and clientPermissions. The OIDC clientSecret is a placeholder literal;
+# live IdP validation of the issuer (Identity Platform fetches the
+# discovery document at create) may be a watch item for the proof run.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIdentityPlatformConfig
+metadata:
+  name: planton-oss-e2e-gcpidcfg-mt
+  id: planton-oss-e2e-gcpidcfg-mt
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpidentityplatformconfig
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  # The test project's Identity Platform is permanently initialized (the
+  # one-way initializeAuth was spent by this kind's first live proof);
+  # every subsequent deploy adopts — GCP hard-rejects re-initialization.
+  adoptExisting: true
+  signIn:
+    email:
+      enabled: true
+      passwordRequired: true
+  mfa:
+    state: ENABLED
+    enabledProviders:
+      - PHONE_SMS
+  smsRegionConfig:
+    allowlistOnly:
+      allowedRegions:
+        - US
+  clientPermissions:
+    disabledUserSignup: false
+    disabledUserDeletion: true
+  multiTenant:
+    allowTenants: true
+  oauthIdpConfigs:
+    - name: oidc.e2e-provider
+      displayName: E2E OIDC Provider
+      issuer: https://accounts.example.com
+      clientId: e2e-oidc-client
+      clientSecret: e2e-placeholder-secret
+      responseType:
+        code: true
+        idToken: false
+  deletionPolicy: DELETE

@@ -426,4 +426,121 @@ var _ = ginkgo.Describe("GcpFirestoreDatabaseSpec", func() {
 		// This test documents the known limitation.
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
+
+	// ──────────────── ENTERPRISE data-access modes ────────────────
+
+	ginkgo.It("should accept a MongoDB-dedicated ENTERPRISE database", func() {
+		msg := minimal()
+		msg.Spec.DatabaseEdition = "ENTERPRISE"
+		msg.Spec.FirestoreDataAccessMode = "DATA_ACCESS_MODE_DISABLED"
+		msg.Spec.MongodbCompatibleDataAccessMode = "DATA_ACCESS_MODE_ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a Firestore-protocol ENTERPRISE database with realtime updates", func() {
+		msg := minimal()
+		msg.Spec.DatabaseEdition = "ENTERPRISE"
+		msg.Spec.FirestoreDataAccessMode = "DATA_ACCESS_MODE_ENABLED"
+		msg.Spec.RealtimeUpdatesMode = "REALTIME_UPDATES_MODE_ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	// The API enforces single-protocol access: only one of the two
+	// data-access modes may be ENABLED on a database.
+	ginkgo.It("should reject both data-access modes ENABLED together", func() {
+		msg := minimal()
+		msg.Spec.DatabaseEdition = "ENTERPRISE"
+		msg.Spec.FirestoreDataAccessMode = "DATA_ACCESS_MODE_ENABLED"
+		msg.Spec.MongodbCompatibleDataAccessMode = "DATA_ACCESS_MODE_ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// Realtime updates ride the classic Firestore API: the API rejects
+	// realtime ENABLED unless firestore_data_access_mode is explicitly
+	// ENABLED — a disabled OR unset access mode both fail.
+	ginkgo.It("should reject realtime updates on a MongoDB-dedicated database", func() {
+		msg := minimal()
+		msg.Spec.DatabaseEdition = "ENTERPRISE"
+		msg.Spec.FirestoreDataAccessMode = "DATA_ACCESS_MODE_DISABLED"
+		msg.Spec.MongodbCompatibleDataAccessMode = "DATA_ACCESS_MODE_ENABLED"
+		msg.Spec.RealtimeUpdatesMode = "REALTIME_UPDATES_MODE_ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject realtime updates with the firestore access mode unset", func() {
+		msg := minimal()
+		msg.Spec.DatabaseEdition = "ENTERPRISE"
+		msg.Spec.RealtimeUpdatesMode = "REALTIME_UPDATES_MODE_ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject firestore_data_access_mode without ENTERPRISE edition", func() {
+		msg := minimal()
+		msg.Spec.FirestoreDataAccessMode = "DATA_ACCESS_MODE_ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject mongodb_compatible_data_access_mode without ENTERPRISE edition", func() {
+		msg := minimal()
+		msg.Spec.DatabaseEdition = "STANDARD"
+		msg.Spec.MongodbCompatibleDataAccessMode = "DATA_ACCESS_MODE_ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject realtime_updates_mode without ENTERPRISE edition", func() {
+		msg := minimal()
+		msg.Spec.RealtimeUpdatesMode = "REALTIME_UPDATES_MODE_ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid data-access mode value", func() {
+		msg := minimal()
+		msg.Spec.DatabaseEdition = "ENTERPRISE"
+		msg.Spec.FirestoreDataAccessMode = "ENABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid realtime_updates_mode value", func() {
+		msg := minimal()
+		msg.Spec.DatabaseEdition = "ENTERPRISE"
+		msg.Spec.RealtimeUpdatesMode = "ON"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Resource manager tags and deletion policy ────────────────
+
+	ginkgo.It("should accept resource manager tags", func() {
+		msg := minimal()
+		msg.Spec.ResourceManagerTags = map[string]string{"tagKeys/123": "tagValues/456"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept every deletion_policy value", func() {
+		for _, policy := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			p := policy
+			msg.Spec.DeletionPolicy = &p
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimal()
+		p := "KEEP"
+		msg.Spec.DeletionPolicy = &p
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
 })

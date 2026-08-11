@@ -359,6 +359,67 @@ func (x *GcpAlloydbInstancePscInstanceConfig) GetPscInterfaceConfigs() []*GcpAll
 	return nil
 }
 
+// GcpAlloydbInstanceConnectionPoolConfig configures AlloyDB managed
+// connection pooling — a built-in PgBouncer-style pooler in front of the
+// instance, for workloads with many short-lived connections.
+type GcpAlloydbInstanceConnectionPoolConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Turn managed connection pooling on or off. Mutable in place.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Pooler flags, keyed by flag name WITHOUT the "connection-pooling-"
+	// prefix and with underscores instead of dashes (GCP's documented
+	// convention for this provider surface): e.g. the flag
+	// "connection-pooling-pool-mode" is set as key "pool_mode". Only
+	// applied while enabled is true.
+	Flags         map[string]string `protobuf:"bytes,2,rep,name=flags,proto3" json:"flags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpAlloydbInstanceConnectionPoolConfig) Reset() {
+	*x = GcpAlloydbInstanceConnectionPoolConfig{}
+	mi := &file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpAlloydbInstanceConnectionPoolConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpAlloydbInstanceConnectionPoolConfig) ProtoMessage() {}
+
+func (x *GcpAlloydbInstanceConnectionPoolConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpAlloydbInstanceConnectionPoolConfig.ProtoReflect.Descriptor instead.
+func (*GcpAlloydbInstanceConnectionPoolConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GcpAlloydbInstanceConnectionPoolConfig) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *GcpAlloydbInstanceConnectionPoolConfig) GetFlags() map[string]string {
+	if x != nil {
+		return x.Flags
+	}
+	return nil
+}
+
 // GcpAlloydbInstanceSpec defines an AlloyDB instance (`google_alloydb_instance`)
 // attached to an existing cluster.
 //
@@ -386,7 +447,8 @@ type GcpAlloydbInstanceSpec struct {
 	// Read pool sizing. Required when instance_type is READ_POOL.
 	ReadPoolConfig *GcpAlloydbInstanceReadPoolConfig `protobuf:"bytes,7,opt,name=read_pool_config,json=readPoolConfig,proto3" json:"read_pool_config,omitempty"`
 	// ZONAL or REGIONAL placement. Read pools of size 1 can only be ZONAL;
-	// pools with 2+ nodes can be REGIONAL.
+	// pools with 2+ nodes can be REGIONAL. GCP defaults to REGIONAL when
+	// unset.
 	AvailabilityType string `protobuf:"bytes,8,opt,name=availability_type,json=availabilityType,proto3" json:"availability_type,omitempty"`
 	// PostgreSQL database flags as key-value pairs.
 	DatabaseFlags map[string]string `protobuf:"bytes,9,rep,name=database_flags,json=databaseFlags,proto3" json:"database_flags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -403,8 +465,6 @@ type GcpAlloydbInstanceSpec struct {
 	// stop/start lever — a stopped instance keeps its configuration and
 	// storage but serves nothing and stops billing for compute. Mind the
 	// ordering restrictions (stop read pools before the primary).
-	// NOTE: managed connection pooling is deliberately not modeled — the
-	// released google provider does not expose it for AlloyDB instances.
 	ActivationPolicy string `protobuf:"bytes,14,opt,name=activation_policy,json=activationPolicy,proto3" json:"activation_policy,omitempty"`
 	// Enable a public IP on the instance.
 	EnablePublicIp bool `protobuf:"varint,15,opt,name=enable_public_ip,json=enablePublicIp,proto3" json:"enable_public_ip,omitempty"`
@@ -414,13 +474,43 @@ type GcpAlloydbInstanceSpec struct {
 	AuthorizedExternalNetworks []*GcpAlloydbInstanceAuthorizedExternalNetwork `protobuf:"bytes,17,rep,name=authorized_external_networks,json=authorizedExternalNetworks,proto3" json:"authorized_external_networks,omitempty"`
 	// Private Service Connect configuration.
 	PscInstanceConfig *GcpAlloydbInstancePscInstanceConfig `protobuf:"bytes,18,opt,name=psc_instance_config,json=pscInstanceConfig,proto3" json:"psc_instance_config,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// User-defined labels on the instance (cost attribution, team ownership,
+	// environment tagging). Merged with the platform's attribution labels;
+	// on key conflicts the platform labels win. Mutable in place.
+	Labels map[string]string `protobuf:"bytes,19,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Unstructured metadata stored on the instance (annotations, not labels —
+	// not used for billing filtering). Mutable in place.
+	Annotations map[string]string `protobuf:"bytes,20,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Pin a ZONAL instance to a specific Compute Engine zone (e.g.
+	// "us-central1-a"). Only valid when availability_type is ZONAL — GCP
+	// rejects it on REGIONAL instances; leave empty to let GCP pick a zone
+	// with available capacity. Mutable: changing it live-migrates the
+	// instance to the new zone.
+	GceZone string `protobuf:"bytes,21,opt,name=gce_zone,json=gceZone,proto3" json:"gce_zone,omitempty"`
+	// AlloyDB managed connection pooling (built-in pooler). Mutable in place.
+	ConnectionPoolConfig *GcpAlloydbInstanceConnectionPoolConfig `protobuf:"bytes,22,opt,name=connection_pool_config,json=connectionPoolConfig,proto3" json:"connection_pool_config,omitempty"`
+	// Draw this instance's private IPs from a specific Private Service
+	// Access allocated range (RFC 1035 name, e.g.
+	// "google-managed-services-default") instead of the range the parent
+	// cluster uses. Immutable: changing it destroys and recreates the
+	// instance.
+	AllocatedIpRangeOverride string `protobuf:"bytes,23,opt,name=allocated_ip_range_override,json=allocatedIpRangeOverride,proto3" json:"allocated_ip_range_override,omitempty"`
+	// What happens to the instance in GCP when this resource is destroyed.
+	//
+	//	"DELETE"  -- (GCP's default when unset) the instance is deleted;
+	//	             the parent cluster and its data survive
+	//	"PREVENT" -- destroy FAILS; protects serving capacity applications
+	//	             still connect to
+	//	"ABANDON" -- the instance is removed from management but keeps
+	//	             running (and billing) in GCP
+	DeletionPolicy string `protobuf:"bytes,24,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpAlloydbInstanceSpec) Reset() {
 	*x = GcpAlloydbInstanceSpec{}
-	mi := &file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -432,7 +522,7 @@ func (x *GcpAlloydbInstanceSpec) String() string {
 func (*GcpAlloydbInstanceSpec) ProtoMessage() {}
 
 func (x *GcpAlloydbInstanceSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -445,7 +535,7 @@ func (x *GcpAlloydbInstanceSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpAlloydbInstanceSpec.ProtoReflect.Descriptor instead.
 func (*GcpAlloydbInstanceSpec) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+	return file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GcpAlloydbInstanceSpec) GetProjectId() *v1.StringValueOrRef {
@@ -574,6 +664,48 @@ func (x *GcpAlloydbInstanceSpec) GetPscInstanceConfig() *GcpAlloydbInstancePscIn
 	return nil
 }
 
+func (x *GcpAlloydbInstanceSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GcpAlloydbInstanceSpec) GetAnnotations() map[string]string {
+	if x != nil {
+		return x.Annotations
+	}
+	return nil
+}
+
+func (x *GcpAlloydbInstanceSpec) GetGceZone() string {
+	if x != nil {
+		return x.GceZone
+	}
+	return ""
+}
+
+func (x *GcpAlloydbInstanceSpec) GetConnectionPoolConfig() *GcpAlloydbInstanceConnectionPoolConfig {
+	if x != nil {
+		return x.ConnectionPoolConfig
+	}
+	return nil
+}
+
+func (x *GcpAlloydbInstanceSpec) GetAllocatedIpRangeOverride() string {
+	if x != nil {
+		return x.AllocatedIpRangeOverride
+	}
+	return ""
+}
+
+func (x *GcpAlloydbInstanceSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_rawDesc = "" +
@@ -599,7 +731,14 @@ const file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"#GcpAlloydbInstancePscInstanceConfig\x12:\n" +
 	"\x19allowed_consumer_projects\x18\x01 \x03(\tR\x17allowedConsumerProjects\x12\x82\x01\n" +
 	"\x14psc_auto_connections\x18\x02 \x03(\v2P.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscAutoConnectionR\x12pscAutoConnections\x12\x85\x01\n" +
-	"\x15psc_interface_configs\x18\x03 \x03(\v2Q.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInterfaceConfigR\x13pscInterfaceConfigs\"\x9d\x16\n" +
+	"\x15psc_interface_configs\x18\x03 \x03(\v2Q.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInterfaceConfigR\x13pscInterfaceConfigs\"\xf2\x01\n" +
+	"&GcpAlloydbInstanceConnectionPoolConfig\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12t\n" +
+	"\x05flags\x18\x02 \x03(\v2^.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceConnectionPoolConfig.FlagsEntryR\x05flags\x1a8\n" +
+	"\n" +
+	"FlagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc1 \n" +
 	"\x16GcpAlloydbInstanceSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12v\n" +
@@ -610,29 +749,44 @@ const file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x13instance_type_valid\x126instance_type must be PRIMARY, READ_POOL, or SECONDARY\x1a-this in ['PRIMARY', 'READ_POOL', 'SECONDARY']\x8a\xa6\x1d\tREAD_POOLH\x00R\finstanceType\x88\x01\x01\x12\x1b\n" +
 	"\tcpu_count\x18\x05 \x01(\x05R\bcpuCount\x12!\n" +
 	"\fmachine_type\x18\x06 \x01(\tR\vmachineType\x12w\n" +
-	"\x10read_pool_config\x18\a \x01(\v2M.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceReadPoolConfigR\x0ereadPoolConfig\x12\xa6\x01\n" +
-	"\x11availability_type\x18\b \x01(\tBy\xbaHv\xba\x01s\n" +
-	"\x17availability_type_valid\x12+availability_type must be ZONAL or REGIONAL\x1a+this == '' || this in ['ZONAL', 'REGIONAL']R\x10availabilityType\x12}\n" +
+	"\x10read_pool_config\x18\a \x01(\v2M.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceReadPoolConfigR\x0ereadPoolConfig\x12\xea\x01\n" +
+	"\x11availability_type\x18\b \x01(\tB\xbc\x01\xbaH\xb8\x01\xba\x01\xb4\x01\n" +
+	"\x17availability_type_valid\x12Kavailability_type must be ZONAL, REGIONAL, or AVAILABILITY_TYPE_UNSPECIFIED\x1aLthis == '' || this in ['AVAILABILITY_TYPE_UNSPECIFIED', 'ZONAL', 'REGIONAL']R\x10availabilityType\x12}\n" +
 	"\x0edatabase_flags\x18\t \x03(\v2V.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.DatabaseFlagsEntryR\rdatabaseFlags\x12!\n" +
 	"\fdisplay_name\x18\n" +
 	" \x01(\tR\vdisplayName\x12\x86\x01\n" +
 	"\x15query_insights_config\x18\v \x01(\v2R.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceQueryInsightsConfigR\x13queryInsightsConfig\x12-\n" +
 	"\x12require_connectors\x18\f \x01(\bR\x11requireConnectors\x12\xc5\x01\n" +
 	"\bssl_mode\x18\r \x01(\tB\xa9\x01\xbaH\xa5\x01\xba\x01\xa1\x01\n" +
-	"\x0essl_mode_valid\x12Bssl_mode must be ENCRYPTED_ONLY or ALLOW_UNENCRYPTED_AND_ENCRYPTED\x1aKthis == '' || this in ['ENCRYPTED_ONLY', 'ALLOW_UNENCRYPTED_AND_ENCRYPTED']R\asslMode\x12\xa2\x01\n" +
-	"\x11activation_policy\x18\x0e \x01(\tBu\xbaHr\xba\x01o\n" +
-	"\x17activation_policy_valid\x12)activation_policy must be ALWAYS or NEVER\x1a)this == '' || this in ['ALWAYS', 'NEVER']R\x10activationPolicy\x12(\n" +
+	"\x0essl_mode_valid\x12Bssl_mode must be ENCRYPTED_ONLY or ALLOW_UNENCRYPTED_AND_ENCRYPTED\x1aKthis == '' || this in ['ENCRYPTED_ONLY', 'ALLOW_UNENCRYPTED_AND_ENCRYPTED']R\asslMode\x12\xe6\x01\n" +
+	"\x11activation_policy\x18\x0e \x01(\tB\xb8\x01\xbaH\xb4\x01\xba\x01\xb0\x01\n" +
+	"\x17activation_policy_valid\x12Iactivation_policy must be ALWAYS, NEVER, or ACTIVATION_POLICY_UNSPECIFIED\x1aJthis == '' || this in ['ACTIVATION_POLICY_UNSPECIFIED', 'ALWAYS', 'NEVER']R\x10activationPolicy\x12(\n" +
 	"\x10enable_public_ip\x18\x0f \x01(\bR\x0eenablePublicIp\x129\n" +
 	"\x19enable_outbound_public_ip\x18\x10 \x01(\bR\x16enableOutboundPublicIp\x12\x9a\x01\n" +
 	"\x1cauthorized_external_networks\x18\x11 \x03(\v2X.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceAuthorizedExternalNetworkR\x1aauthorizedExternalNetworks\x12\x80\x01\n" +
-	"\x13psc_instance_config\x18\x12 \x01(\v2P.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInstanceConfigR\x11pscInstanceConfig\x1a@\n" +
+	"\x13psc_instance_config\x18\x12 \x01(\v2P.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInstanceConfigR\x11pscInstanceConfig\x12g\n" +
+	"\x06labels\x18\x13 \x03(\v2O.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.LabelsEntryR\x06labels\x12v\n" +
+	"\vannotations\x18\x14 \x03(\v2T.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.AnnotationsEntryR\vannotations\x12\x19\n" +
+	"\bgce_zone\x18\x15 \x01(\tR\agceZone\x12\x89\x01\n" +
+	"\x16connection_pool_config\x18\x16 \x01(\v2S.dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceConnectionPoolConfigR\x14connectionPoolConfig\x12\x91\x02\n" +
+	"\x1ballocated_ip_range_override\x18\x17 \x01(\tB\xd1\x01\xbaH\xcd\x01\xba\x01\xc9\x01\n" +
+	"!valid_allocated_ip_range_override\x12callocated_ip_range_override must be an RFC 1035 range name (1-63 chars: [a-z]([-a-z0-9]*[a-z0-9])?)\x1a?this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')R\x18allocatedIpRangeOverride\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x18 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a@\n" +
 	"\x12DatabaseFlagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x85\x06\xbaH\x81\x06\x1a\x83\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
+	"\x10AnnotationsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xcc\a\xbaH\xc8\a\x1a\x83\x01\n" +
 	"\x1fmachine_config_mutual_exclusion\x120only one of cpu_count or machine_type may be set\x1a.this.cpu_count == 0 || this.machine_type == ''\x1a\xe9\x01\n" +
 	"\x1dread_pool_requires_node_count\x12<READ_POOL instances require read_pool_config.node_count >= 1\x1a\x89\x01!(this.instance_type == 'READ_POOL' || this.instance_type == '') || (has(this.read_pool_config) && this.read_pool_config.node_count >= 1)\x1a\xe3\x01\n" +
 	"#read_pool_config_only_for_read_pool\x124read_pool_config applies to READ_POOL instances only\x1a\x85\x01this.instance_type == 'READ_POOL' || this.instance_type == '' || !has(this.read_pool_config) || this.read_pool_config.node_count == 0\x1a\xa6\x01\n" +
-	"%authorized_networks_require_public_ip\x126authorized_external_networks requires enable_public_ip\x1aEsize(this.authorized_external_networks) == 0 || this.enable_public_ipB\x10\n" +
+	"%authorized_networks_require_public_ip\x126authorized_external_networks requires enable_public_ip\x1aEsize(this.authorized_external_networks) == 0 || this.enable_public_ip\x1a\xc4\x01\n" +
+	"\x17gce_zone_requires_zonal\x12ogce_zone can only be set on ZONAL instances — GCP rejects it when availability_type is REGIONAL (the default)\x1a8this.gce_zone == '' || this.availability_type == 'ZONAL'B\x10\n" +
 	"\x0e_instance_typeB\xee\x02\n" +
 	"/com.dev.planton.gcp.gcpalloydbinstance.v1alpha1B\tSpecProtoP\x01Z_github.com/plantonhq/planton/catalog/gcp/gcpalloydbinstance/v1alpha1;gcpalloydbinstancev1alpha1\xa2\x02\x04DPGG\xaa\x02+Dev.Planton.Gcp.Gcpalloydbinstance.V1alpha1\xca\x02+Dev\\Planton\\Gcp\\Gcpalloydbinstance\\V1alpha1\xe2\x027Dev\\Planton\\Gcp\\Gcpalloydbinstance\\V1alpha1\\GPBMetadata\xea\x02/Dev::Planton::Gcp::Gcpalloydbinstance::V1alpha1b\x06proto3"
 
@@ -648,7 +802,7 @@ func file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_rawDescGZIP() []byt
 	return file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpAlloydbInstanceQueryInsightsConfig)(nil),       // 0: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceQueryInsightsConfig
 	(*GcpAlloydbInstanceReadPoolConfig)(nil),            // 1: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceReadPoolConfig
@@ -656,25 +810,33 @@ var file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpAlloydbInstancePscAutoConnection)(nil),         // 3: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscAutoConnection
 	(*GcpAlloydbInstancePscInterfaceConfig)(nil),        // 4: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInterfaceConfig
 	(*GcpAlloydbInstancePscInstanceConfig)(nil),         // 5: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInstanceConfig
-	(*GcpAlloydbInstanceSpec)(nil),                      // 6: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec
-	nil,                                                 // 7: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.DatabaseFlagsEntry
-	(*v1.StringValueOrRef)(nil),                         // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpAlloydbInstanceConnectionPoolConfig)(nil),      // 6: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceConnectionPoolConfig
+	(*GcpAlloydbInstanceSpec)(nil),                      // 7: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec
+	nil,                                                 // 8: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceConnectionPoolConfig.FlagsEntry
+	nil,                                                 // 9: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.DatabaseFlagsEntry
+	nil,                                                 // 10: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.LabelsEntry
+	nil,                                                 // 11: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.AnnotationsEntry
+	(*v1.StringValueOrRef)(nil),                         // 12: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInstanceConfig.psc_auto_connections:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscAutoConnection
-	4, // 1: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInstanceConfig.psc_interface_configs:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInterfaceConfig
-	8, // 2: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8, // 3: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.cluster:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 4: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.read_pool_config:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceReadPoolConfig
-	7, // 5: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.database_flags:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.DatabaseFlagsEntry
-	0, // 6: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.query_insights_config:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceQueryInsightsConfig
-	2, // 7: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.authorized_external_networks:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceAuthorizedExternalNetwork
-	5, // 8: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.psc_instance_config:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInstanceConfig
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	3,  // 0: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInstanceConfig.psc_auto_connections:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscAutoConnection
+	4,  // 1: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInstanceConfig.psc_interface_configs:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInterfaceConfig
+	8,  // 2: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceConnectionPoolConfig.flags:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceConnectionPoolConfig.FlagsEntry
+	12, // 3: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 4: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.cluster:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 5: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.read_pool_config:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceReadPoolConfig
+	9,  // 6: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.database_flags:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.DatabaseFlagsEntry
+	0,  // 7: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.query_insights_config:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceQueryInsightsConfig
+	2,  // 8: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.authorized_external_networks:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceAuthorizedExternalNetwork
+	5,  // 9: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.psc_instance_config:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstancePscInstanceConfig
+	10, // 10: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.labels:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.LabelsEntry
+	11, // 11: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.annotations:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.AnnotationsEntry
+	6,  // 12: dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceSpec.connection_pool_config:type_name -> dev.planton.gcp.gcpalloydbinstance.v1alpha1.GcpAlloydbInstanceConnectionPoolConfig
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_init() }
@@ -682,14 +844,14 @@ func file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_init() {
 	if File_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto != nil {
 		return
 	}
-	file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_msgTypes[6].OneofWrappers = []any{}
+	file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_msgTypes[7].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

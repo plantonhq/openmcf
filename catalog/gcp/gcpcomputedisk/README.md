@@ -65,8 +65,17 @@ This creates an empty 100 GB pd-balanced data disk named `app-data` (the disk na
 | `storagePool` | string | No | Hyperdisk storage pool URL or name to create the disk in |
 | `labels` | map | No | User labels, merged beneath platform attribution labels |
 | `resourceManagerTags` | map | No | `tagKeys/{id}` → `tagValues/{id}` bindings for org policy and IAM conditions. Create-time only |
+| `sourceInstantSnapshot` | string | No | Instant snapshot to create the disk from — the fast, same-region restore path. Create-time only |
+| `sourceStorageObject` | string | No | Cloud Storage URI of a raw disk image to import (skips the intermediate compute image). Create-time only |
+| `guestOsFeatures` | list(string) | No | Guest OS features for bootable disks (e.g. `UEFI_COMPATIBLE`, `SECURE_BOOT`, `GVNIC`). Create-time only |
+| `licenses` | list(string) | No | License URIs for BYOL imports. Create-time only |
+| `kmsKeyServiceAccount` | string | No | Service account for the CMEK encryption request; empty uses the Compute Engine default agent |
+| `sourceImageEncryption` | object | No | CMEK key (+ optional service account) that decrypts an encrypted source `image` |
+| `sourceSnapshotEncryption` | object | No | CMEK key (+ optional service account) that decrypts an encrypted `sourceSnapshot` |
+| `asyncPrimaryDisk` | StringValueOrRef | No | Primary `GcpComputeDisk` this disk replicates from (makes this the async-replication secondary). Create-time only |
+| `deletionPolicy` | string | No | `PREVENT` fails destroys; `ABANDON` unmanages without deleting; default `DELETE` |
 
-At most one source (`image` / `sourceSnapshot` / `sourceDisk`) may be set — enforced at validation time, before anything deploys.
+At most one source (`image` / `sourceSnapshot` / `sourceInstantSnapshot` / `sourceStorageObject` / `sourceDisk`) may be set — enforced at validation time, before anything deploys. Customer-supplied (raw CSEK) keys are deliberately not modeled: raw key material never flows through manifests or state — use CMEK.
 
 ## Stack Outputs
 

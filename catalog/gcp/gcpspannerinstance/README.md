@@ -38,7 +38,9 @@ Exactly one of three capacity methods may be chosen (if none is set, GCP default
 
 Capacity changes are online operations — scaling up or down (or switching to/from autoscaling) never recreates the instance.
 
-Autoscaling additionally supports **asymmetric per-replica options** on multi-region instances: a read-heavy replica region gets its own node range instead of sizing every region for the hottest one (requires ENTERPRISE or ENTERPRISE_PLUS edition).
+Autoscaling additionally supports **asymmetric per-replica options** on multi-region instances: a read-heavy replica region gets its own capacity bounds (node- or processing-unit-based), its own CPU utilization targets, or switches disabling a CPU signal for that replica — instead of sizing every region for the hottest one (requires ENTERPRISE or ENTERPRISE_PLUS edition). Utilization targets accept a high-priority CPU signal (user traffic), a total CPU signal (user traffic plus background maintenance), and a storage signal.
+
+The `deletionPolicy` field controls what a destroy does: `DELETE` (default), `PREVENT` (destroy fails — protects the instance every database in the topology depends on), or `ABANDON` (drop from management, keep the instance running). Backup deletion on destroy is additionally gated by `forceDestroy`.
 
 ### Editions
 

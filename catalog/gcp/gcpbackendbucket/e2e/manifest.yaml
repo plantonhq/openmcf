@@ -38,3 +38,7 @@ spec:
   # Surface the CDN verdict for debugging.
   customResponseHeaders:
     - "X-Cache-Status: {cdn_cache_status}"
+
+  # Ephemeral test fixture: delete the backend bucket (and any signed-URL
+  # keys) on destroy.
+  deletionPolicy: DELETE

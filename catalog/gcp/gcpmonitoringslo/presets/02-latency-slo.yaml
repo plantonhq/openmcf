@@ -1,0 +1,17 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringSlo
+metadata:
+  name: latency-slo
+spec:
+  service:
+    customService:
+      displayName: Checkout
+  goal: 0.95
+  calendarPeriod: MONTH
+  sli:
+    requestBasedSli:
+      distributionCut:
+        distributionFilter: metric.type="loadbalancing.googleapis.com/https/total_latencies" resource.type="https_lb_rule"
+        range:
+          max: 500
+  deletionPolicy: PREVENT

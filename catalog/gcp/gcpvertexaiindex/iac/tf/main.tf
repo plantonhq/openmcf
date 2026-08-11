@@ -28,6 +28,21 @@ resource "google_vertex_ai_index" "this" {
   # the plan diff stays honest about who chose the value.
   index_update_method = var.spec.index_update_method != "" ? var.spec.index_update_method : null
 
+  # CMEK: the key must be in the index's region and the Vertex AI
+  # service agent needs cryptoKeyEncrypterDecrypter on it. Omitted means
+  # Google-managed encryption. Immutable.
+  dynamic "encryption_spec" {
+    for_each = var.spec.kms_key_name != "" ? [var.spec.kms_key_name] : []
+    content {
+      kms_key_name = encryption_spec.value
+    }
+  }
+
+  # Client-side destroy behavior (DELETE deletes the corpus; PREVENT
+  # refuses; ABANDON drops from state but keeps the index standing).
+  # Empty follows the provider default (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   # The provider models the API's Index.metadata blob as this nested
   # block: data location + geometry together. contents_delta_uri is
   # write-only upstream (GCP never reports it back) and a change to it

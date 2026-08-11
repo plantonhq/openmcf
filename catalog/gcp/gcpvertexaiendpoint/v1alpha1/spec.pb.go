@@ -23,6 +23,70 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// GcpVertexAiEndpointPscAutomationConfig asks Vertex AI to CREATE the
+// consumer-side PSC endpoint automatically: for each entry, GCP provisions
+// a forwarding rule and IP in the given project/network pair, so consumers
+// skip the manual forwarding-rule setup that project_allowlist-only
+// configurations require. The whole list is mutable in place — entries can
+// be added or removed without recreating the endpoint.
+type GcpVertexAiEndpointPscAutomationConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// VPC network where the PSC endpoint is created, as the full relative
+	// resource name projects/{project}/global/networks/{name} (the format
+	// the Vertex AI API requires) — a GcpVpcNetwork reference's self-link
+	// output is normalized to that form by both IaC modules.
+	Network *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
+	// Project in which the PSC endpoint (forwarding rule) is created — a
+	// project ID; a GcpProject reference resolves to it.
+	ProjectId     *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpVertexAiEndpointPscAutomationConfig) Reset() {
+	*x = GcpVertexAiEndpointPscAutomationConfig{}
+	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpVertexAiEndpointPscAutomationConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpVertexAiEndpointPscAutomationConfig) ProtoMessage() {}
+
+func (x *GcpVertexAiEndpointPscAutomationConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpVertexAiEndpointPscAutomationConfig.ProtoReflect.Descriptor instead.
+func (*GcpVertexAiEndpointPscAutomationConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *GcpVertexAiEndpointPscAutomationConfig) GetNetwork() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Network
+	}
+	return nil
+}
+
+func (x *GcpVertexAiEndpointPscAutomationConfig) GetProjectId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ProjectId
+	}
+	return nil
+}
+
 // GcpVertexAiEndpointPrivateServiceConnectConfig configures Private Service
 // Connect (PSC) networking for the endpoint. When this block is present,
 // the endpoint is exposed via PSC rather than VPC peering.
@@ -35,14 +99,20 @@ type GcpVertexAiEndpointPrivateServiceConnectConfig struct {
 	// Projects allowed to create forwarding rules targeting this endpoint's
 	// service attachment. Each entry is a GCP project ID or project number.
 	// If empty, any project in the same organization can connect.
+	// Mutable in place.
 	ProjectAllowlist []string `protobuf:"bytes,1,rep,name=project_allowlist,json=projectAllowlist,proto3" json:"project_allowlist,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// PSC endpoints Vertex AI creates automatically in consumer
+	// projects/networks (instead of consumers wiring forwarding rules by
+	// hand). Online-prediction endpoints are exactly the surface Google
+	// documents this automation for. Mutable in place.
+	PscAutomationConfigs []*GcpVertexAiEndpointPscAutomationConfig `protobuf:"bytes,2,rep,name=psc_automation_configs,json=pscAutomationConfigs,proto3" json:"psc_automation_configs,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) Reset() {
 	*x = GcpVertexAiEndpointPrivateServiceConnectConfig{}
-	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[0]
+	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -54,7 +124,7 @@ func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) String() string {
 func (*GcpVertexAiEndpointPrivateServiceConnectConfig) ProtoMessage() {}
 
 func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[0]
+	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -67,12 +137,19 @@ func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) ProtoReflect() protoref
 
 // Deprecated: Use GcpVertexAiEndpointPrivateServiceConnectConfig.ProtoReflect.Descriptor instead.
 func (*GcpVertexAiEndpointPrivateServiceConnectConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
+	return file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) GetProjectAllowlist() []string {
 	if x != nil {
 		return x.ProjectAllowlist
+	}
+	return nil
+}
+
+func (x *GcpVertexAiEndpointPrivateServiceConnectConfig) GetPscAutomationConfigs() []*GcpVertexAiEndpointPscAutomationConfig {
+	if x != nil {
+		return x.PscAutomationConfigs
 	}
 	return nil
 }
@@ -109,7 +186,7 @@ type GcpVertexAiEndpointRequestResponseLoggingConfig struct {
 
 func (x *GcpVertexAiEndpointRequestResponseLoggingConfig) Reset() {
 	*x = GcpVertexAiEndpointRequestResponseLoggingConfig{}
-	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -121,7 +198,7 @@ func (x *GcpVertexAiEndpointRequestResponseLoggingConfig) String() string {
 func (*GcpVertexAiEndpointRequestResponseLoggingConfig) ProtoMessage() {}
 
 func (x *GcpVertexAiEndpointRequestResponseLoggingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -134,7 +211,7 @@ func (x *GcpVertexAiEndpointRequestResponseLoggingConfig) ProtoReflect() protore
 
 // Deprecated: Use GcpVertexAiEndpointRequestResponseLoggingConfig.ProtoReflect.Descriptor instead.
 func (*GcpVertexAiEndpointRequestResponseLoggingConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GcpVertexAiEndpointRequestResponseLoggingConfig) GetEnabled() bool {
@@ -186,9 +263,9 @@ func (x *GcpVertexAiEndpointRequestResponseLoggingConfig) GetBigqueryDestination
 // Immutable fields (ForceNew): location, network, kms_key_name,
 // endpoint_name, and the PSC block's enablement itself. Changing these
 // requires destroying and recreating the endpoint. Mutable in place:
-// display_name, description, labels, the request/response logging config,
-// and the PSC block's project_allowlist (the provider PATCHes them via
-// updateMask).
+// display_name, description, labels, traffic_split, the request/response
+// logging config, and the PSC block's project_allowlist and
+// psc_automation_configs (the provider PATCHes them via updateMask).
 type GcpVertexAiEndpointSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project where the endpoint will be created.
@@ -252,13 +329,32 @@ type GcpVertexAiEndpointSpec struct {
 	// traffic into a BigQuery table for drift monitoring, debugging, and
 	// audit. Mutable in place.
 	RequestResponseLoggingConfig *GcpVertexAiEndpointRequestResponseLoggingConfig `protobuf:"bytes,11,opt,name=request_response_logging_config,json=requestResponseLoggingConfig,proto3" json:"request_response_logging_config,omitempty"`
-	unknownFields                protoimpl.UnknownFields
-	sizeCache                    protoimpl.SizeCache
+	// Traffic routing across the models deployed on this endpoint: a map
+	// from a DeployedModel's ID (assigned when a model is deployed — an
+	// operational step outside this resource) to the percentage of traffic
+	// it receives. GCP requires the values to add up to exactly 100, and
+	// rejects IDs that are not currently deployed — so leave this EMPTY on
+	// an endpoint with no deployed models (an empty map means the endpoint
+	// accepts no traffic). Mutable in place: update it to shift traffic
+	// between model versions (canary/blue-green serving).
+	TrafficSplit map[string]int32 `protobuf:"bytes,12,rep,name=traffic_split,json=trafficSplit,proto3" json:"traffic_split,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	// What happens to the endpoint in GCP when this resource is destroyed.
+	//
+	//	"DELETE"  -- (GCP's default when unset) the endpoint is deleted;
+	//	             GCP rejects the delete while models are still deployed
+	//	             to it, so undeploy first
+	//	"PREVENT" -- destroy FAILS; protects a serving URL applications
+	//	             still call
+	//	"ABANDON" -- the endpoint is removed from management but keeps
+	//	             serving in GCP (deployed models keep billing)
+	DeletionPolicy string `protobuf:"bytes,13,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpVertexAiEndpointSpec) Reset() {
 	*x = GcpVertexAiEndpointSpec{}
-	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -270,7 +366,7 @@ func (x *GcpVertexAiEndpointSpec) String() string {
 func (*GcpVertexAiEndpointSpec) ProtoMessage() {}
 
 func (x *GcpVertexAiEndpointSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -283,7 +379,7 @@ func (x *GcpVertexAiEndpointSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpVertexAiEndpointSpec.ProtoReflect.Descriptor instead.
 func (*GcpVertexAiEndpointSpec) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GcpVertexAiEndpointSpec) GetProjectId() *v1.StringValueOrRef {
@@ -363,18 +459,37 @@ func (x *GcpVertexAiEndpointSpec) GetRequestResponseLoggingConfig() *GcpVertexAi
 	return nil
 }
 
+func (x *GcpVertexAiEndpointSpec) GetTrafficSplit() map[string]int32 {
+	if x != nil {
+		return x.TrafficSplit
+	}
+	return nil
+}
+
+func (x *GcpVertexAiEndpointSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/gcp/gcpvertexaiendpoint/v1alpha1/spec.proto\x12,dev.planton.gcp.gcpvertexaiendpoint.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x8a\x01\n" +
+	"3catalog/gcp/gcpvertexaiendpoint/v1alpha1/spec.proto\x12,dev.planton.gcp.gcpvertexaiendpoint.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xa9\x02\n" +
+	"&GcpVertexAiEndpointPscAutomationConfig\x12\x81\x01\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\anetwork\x12{\n" +
+	"\n" +
+	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\"\xea\x01\n" +
 	".GcpVertexAiEndpointPrivateServiceConnectConfig\x12+\n" +
-	"\x11project_allowlist\x18\x01 \x03(\tR\x10projectAllowlistJ\x04\b\x02\x10\x03R%enable_secure_private_service_connect\"\xa9\x02\n" +
+	"\x11project_allowlist\x18\x01 \x03(\tR\x10projectAllowlist\x12\x8a\x01\n" +
+	"\x16psc_automation_configs\x18\x02 \x03(\v2T.dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointPscAutomationConfigR\x14pscAutomationConfigs\"\xa9\x02\n" +
 	"/GcpVertexAiEndpointRequestResponseLoggingConfig\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x97\x01\n" +
 	"\rsampling_rate\x18\x02 \x01(\x01Br\xbaHo\xba\x01l\n" +
 	"\x13valid_sampling_rate\x12)sampling_rate must be in the range (0, 1]\x1a*this == 0.0 || (this > 0.0 && this <= 1.0)R\fsamplingRate\x12B\n" +
-	"\x18bigquery_destination_uri\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR\x16bigqueryDestinationUri\"\xab\r\n" +
+	"\x18bigquery_destination_uri\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR\x16bigqueryDestinationUri\"\xb9\x10\n" +
 	"\x17GcpVertexAiEndpointSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12&\n" +
@@ -392,10 +507,16 @@ const file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDesc = "" +
 	"\x13valid_endpoint_name\x12=endpoint_name must be numeric (1-10 digits, no leading zeros)\x1a/this == '' || this.matches('^[1-9][0-9]{0,9}$')R\fendpointName\x12i\n" +
 	"\x06labels\x18\n" +
 	" \x03(\v2Q.dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.LabelsEntryR\x06labels\x12\xa4\x01\n" +
-	"\x1frequest_response_logging_config\x18\v \x01(\v2].dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointRequestResponseLoggingConfigR\x1crequestResponseLoggingConfig\x1a9\n" +
+	"\x1frequest_response_logging_config\x18\v \x01(\v2].dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointRequestResponseLoggingConfigR\x1crequestResponseLoggingConfig\x12\x8c\x01\n" +
+	"\rtraffic_split\x18\f \x03(\v2W.dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.TrafficSplitEntryB\x0e\xbaH\v\x9a\x01\b*\x06\x1a\x04\x18d(\x01R\ftrafficSplit\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\r \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc4\x03\xbaH\xc0\x03\x1a\xc4\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a?\n" +
+	"\x11TrafficSplitEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01:\xc4\x03\xbaH\xc0\x03\x1a\xc4\x01\n" +
 	"\x1cnetwork_psc_mutual_exclusion\x12cnetwork and private_service_connect_config are mutually exclusive; use VPC peering or PSC, not both\x1a?!has(this.network) || !has(this.private_service_connect_config)\x1a\xf6\x01\n" +
 	"\x1ededicated_psc_mutual_exclusion\x12}dedicated_endpoint_enabled and private_service_connect_config are mutually exclusive; dedicated DNS is not available with PSC\x1aUthis.dedicated_endpoint_enabled == false || !has(this.private_service_connect_config)B\xf5\x02\n" +
 	"0com.dev.planton.gcp.gcpvertexaiendpoint.v1alpha1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/catalog/gcp/gcpvertexaiendpoint/v1alpha1;gcpvertexaiendpointv1alpha1\xa2\x02\x04DPGG\xaa\x02,Dev.Planton.Gcp.Gcpvertexaiendpoint.V1alpha1\xca\x02,Dev\\Planton\\Gcp\\Gcpvertexaiendpoint\\V1alpha1\xe2\x028Dev\\Planton\\Gcp\\Gcpvertexaiendpoint\\V1alpha1\\GPBMetadata\xea\x020Dev::Planton::Gcp::Gcpvertexaiendpoint::V1alpha1b\x06proto3"
@@ -412,26 +533,32 @@ func file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDescGZIP() []by
 	return file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_goTypes = []any{
-	(*GcpVertexAiEndpointPrivateServiceConnectConfig)(nil),  // 0: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointPrivateServiceConnectConfig
-	(*GcpVertexAiEndpointRequestResponseLoggingConfig)(nil), // 1: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointRequestResponseLoggingConfig
-	(*GcpVertexAiEndpointSpec)(nil),                         // 2: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec
-	nil,                                                     // 3: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.LabelsEntry
-	(*v1.StringValueOrRef)(nil),                             // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpVertexAiEndpointPscAutomationConfig)(nil),          // 0: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointPscAutomationConfig
+	(*GcpVertexAiEndpointPrivateServiceConnectConfig)(nil),  // 1: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointPrivateServiceConnectConfig
+	(*GcpVertexAiEndpointRequestResponseLoggingConfig)(nil), // 2: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointRequestResponseLoggingConfig
+	(*GcpVertexAiEndpointSpec)(nil),                         // 3: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec
+	nil,                                                     // 4: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.LabelsEntry
+	nil,                                                     // 5: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.TrafficSplitEntry
+	(*v1.StringValueOrRef)(nil),                             // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 1: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 2: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0, // 3: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.private_service_connect_config:type_name -> dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointPrivateServiceConnectConfig
-	3, // 4: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.labels:type_name -> dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.LabelsEntry
-	1, // 5: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.request_response_logging_config:type_name -> dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointRequestResponseLoggingConfig
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	6,  // 0: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointPscAutomationConfig.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 1: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointPscAutomationConfig.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 2: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointPrivateServiceConnectConfig.psc_automation_configs:type_name -> dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointPscAutomationConfig
+	6,  // 3: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 4: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 5: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 6: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.private_service_connect_config:type_name -> dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointPrivateServiceConnectConfig
+	4,  // 7: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.labels:type_name -> dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.LabelsEntry
+	2,  // 8: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.request_response_logging_config:type_name -> dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointRequestResponseLoggingConfig
+	5,  // 9: dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.traffic_split:type_name -> dev.planton.gcp.gcpvertexaiendpoint.v1alpha1.GcpVertexAiEndpointSpec.TrafficSplitEntry
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_init() }
@@ -445,7 +572,7 @@ func file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpvertexaiendpoint_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

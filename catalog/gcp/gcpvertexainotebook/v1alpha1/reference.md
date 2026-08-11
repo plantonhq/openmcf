@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpVertexAiNotebookSpec defines the configuration for a GCP Vertex AI
 Workbench instance (managed notebook).
 
@@ -77,6 +79,7 @@ spec:
     enableSecureBoot: true
     enableVtpm: true
     enableIntegrityMonitoring: true
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -131,6 +134,7 @@ spec:
 | `spec.reservationAffinity.values` | `[]string` |  |  |  |
 | `spec.enableManagedEuc` | `bool` |  |  |  |
 | `spec.enableThirdPartyIdentity` | `bool` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -233,10 +237,12 @@ Google-managed encryption.
 `string`
 
 Disk type for the boot disk.
-Valid values: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME.
+Persistent Disk: PD_STANDARD (HDD), PD_SSD, PD_BALANCED, PD_EXTREME.
+Hyperdisk (newer-generation machine series only): HYPERDISK_BALANCED,
+HYPERDISK_BALANCED_HIGH_AVAILABILITY, HYPERDISK_ML.
 If not specified, defaults to PD_SSD.
 
-- rule: disk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME
+- rule: disk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME, HYPERDISK_BALANCED, HYPERDISK_BALANCED_HIGH_AVAILABILITY, HYPERDISK_ML
 
 ### spec.bootDisk.diskSizeGb
 
@@ -273,10 +279,13 @@ Google-managed encryption.
 `string`
 
 Disk type for the data disk.
-Valid values: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME.
+Persistent Disk: PD_STANDARD (HDD), PD_SSD, PD_BALANCED, PD_EXTREME.
+Hyperdisk (newer-generation machine series only): HYPERDISK_BALANCED,
+HYPERDISK_EXTREME, HYPERDISK_THROUGHPUT,
+HYPERDISK_BALANCED_HIGH_AVAILABILITY, HYPERDISK_ML.
 If not specified, defaults to PD_STANDARD.
 
-- rule: disk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME
+- rule: disk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME, HYPERDISK_BALANCED, HYPERDISK_EXTREME, HYPERDISK_THROUGHPUT, HYPERDISK_BALANCED_HIGH_AVAILABILITY, HYPERDISK_ML
 
 ### spec.dataDisk.diskSizeGb
 
@@ -311,11 +320,16 @@ Requires compatible machine types (e.g., n1-standard-* for Tesla GPUs).
 
 `string`
 
-GPU accelerator type.
+GPU accelerator type. Availability varies by zone and machine type:
+current-generation training/inference GPUs (NVIDIA_H100_80GB,
+NVIDIA_H100_MEGA_80GB, NVIDIA_H200_141GB, NVIDIA_B200) require
+their matching A3/A4 machine series; NVIDIA_L4 and the Tesla
+family run on G2/N1; the _VWS variants are virtual-workstation
+(graphics) licenses of the same silicon.
 See https://cloud.google.com/vertex-ai/docs/workbench/instances/create#accelerator
 for supported types per zone.
 
-- rule: type must be a valid accelerator type (e.g., NVIDIA_TESLA_T4, NVIDIA_L4, NVIDIA_TESLA_A100)
+- rule: type must be a valid accelerator type (e.g., NVIDIA_TESLA_T4, NVIDIA_L4, NVIDIA_TESLA_A100, NVIDIA_H100_80GB, NVIDIA_H200_141GB, NVIDIA_B200)
 
 ### spec.acceleratorConfig.coreCount
 
@@ -591,6 +605,22 @@ Allow access to the notebook through a third-party identity provider
 configured on the organization (workforce identity federation).
 Leave false when all users authenticate with Google identities.
 Mutable in place.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the notebook — what happens when this resource
+is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the instance is deleted, including its boot and data
+               disks; unsynced notebook work on those disks is lost
+  "PREVENT" -- destroy FAILS; a guard for a workstation whose local
+               disks hold work not yet pushed anywhere else
+  "ABANDON" -- the instance is removed from management but left
+               running (and billing) in GCP with its disks intact
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

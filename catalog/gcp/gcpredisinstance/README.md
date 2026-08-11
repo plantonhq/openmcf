@@ -53,10 +53,12 @@ For STANDARD_HA, GCP automatically places the primary and replica in different z
 | **TLS** | `transit_encryption_mode: SERVER_AUTHENTICATION` or `DISABLED` |
 | **Persistence** | `persistence_config` with `RDB` mode, `rdb_snapshot_period` (ONE_HOUR, SIX_HOURS, TWELVE_HOURS, TWENTY_FOUR_HOURS), and `rdb_snapshot_start_time` (RFC3339 schedule anchor) |
 | **Read replicas** | `read_replicas_mode: READ_REPLICAS_ENABLED`, `replica_count` 1–5 (STANDARD_HA only); `secondary_ip_range` when enabling replicas on an existing instance |
-| **Maintenance** | `maintenance_window.day` (MONDAY–SUNDAY), `.hour` (0–23) + `.minute` (0–59) UTC; `maintenance_version` for self-service patching |
+| **Maintenance** | `maintenance_window.day` (MONDAY–SUNDAY), `.hour` (0–23) + `.minute` (0–59) UTC, `.description` (what the window is for, ≤512 chars); `maintenance_version` for self-service patching |
 | **CMEK** | `customer_managed_key` — full KMS key resource name or reference to GcpKmsKey |
 | **Networking** | `authorized_network`, `connect_mode`, `reserved_ip_range`, `secondary_ip_range` |
 | **Placement** | `location_id` (primary zone), `alternative_location_id` (STANDARD_HA replica zone) |
+| **Labels** | `labels` — user labels for cost attribution and fleet queries, merged beneath the platform attribution labels |
+| **Lifecycle** | `deletion_protection` (default `true` — destroy fails until explicitly set `false`); `deletion_policy` — `DELETE` (default), `PREVENT`, or `ABANDON` |
 | **Other** | `redis_version`, `display_name`, `redis_configs` |
 
 **Immutable fields** (require instance replacement if changed): `instance_name`, `tier`, `connect_mode`, `transit_encryption_mode`, `authorized_network`, `reserved_ip_range`, `location_id`, `alternative_location_id`, `customer_managed_key`, `region`.
@@ -86,10 +88,17 @@ For STANDARD_HA, GCP automatically places the primary and replica in different z
 
 ## Deliberately not modeled (recorded reasons)
 
-| Excluded Feature | Why |
-|---|---|
-| `deletion_protection` | Exists only on provider lines newer than the released major the GCP Terraform modules pin, so it would guard on one engine and silently do nothing on the other — false security. Returns when the GCP modules adopt the next provider major. |
-| Redis Cluster mode (sharded, PSC-based) | A structurally different resource (`google_redis_cluster`); a separate kind if demand appears. Valkey-based clusters are covered by GcpMemorystoreInstance. |
+- **Maintenance window `seconds`/`nanos`** — sub-minute precision on a fixed
+  1-hour maintenance window is meaningless; the spec models the start to the
+  minute (recorded in `iac/provider-parity.yaml`).
+- **Redis Cluster mode (sharded, PSC-based)** — a structurally different
+  resource (`google_redis_cluster`); a separate kind if demand appears.
+  Valkey-based clusters are covered by GcpMemorystoreInstance.
+
+Every other configurable argument of `google_redis_instance` at the pinned
+provider version is representable through this spec; the recorded judgment
+lives in `iac/provider-parity.yaml`, checked by
+`planton provider-parity --check`.
 
 ## Related Components
 

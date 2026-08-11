@@ -573,6 +573,20 @@ func backendService(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provid
 		args.CustomMetrics = customMetrics
 	}
 
+	// Create-time Resource Manager tags; the provider nests them in a
+	// params block that must be omitted entirely when no tags are set.
+	if len(spec.ResourceManagerTags) > 0 {
+		args.Params = &compute.BackendServiceParamsArgs{
+			ResourceManagerTags: pulumi.ToStringMap(spec.ResourceManagerTags),
+		}
+	}
+
+	// What destroy does to the routing target: DELETE (default), PREVENT
+	// (refuse), or ABANDON (drop from state, keep serving).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdBackendService, err := compute.NewBackendService(ctx, "backend-service", args,
 		pulumi.Provider(gcpProvider), pulumi.DependsOn([]pulumi.Resource{createdProjectService}))
 	if err != nil {
@@ -594,6 +608,11 @@ func backendService(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provid
 		}
 		if spec.ProjectId.GetValue() != "" {
 			signedUrlKeyArgs.Project = pulumi.String(spec.ProjectId.GetValue())
+		}
+		// The kind-level deletion_policy fans out to every key — the keys
+		// have no life apart from the service, so one switch governs both.
+		if spec.DeletionPolicy != "" {
+			signedUrlKeyArgs.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 		}
 		if _, err := compute.NewBackendServiceSignedUrlKey(ctx, "signed-url-key-"+signedUrlKey.Name,
 			signedUrlKeyArgs, pulumi.Provider(gcpProvider)); err != nil {

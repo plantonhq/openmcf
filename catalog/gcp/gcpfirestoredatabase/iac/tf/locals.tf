@@ -14,4 +14,13 @@ locals {
   database_edition            = var.spec.database_edition != "" ? var.spec.database_edition : null
   kms_key_name                = var.spec.kms_key_name != "" ? var.spec.kms_key_name : null
   app_engine_integration_mode = var.spec.app_engine_integration_mode != "" ? var.spec.app_engine_integration_mode : null
+
+  firestore_data_access_mode          = var.spec.firestore_data_access_mode != "" ? var.spec.firestore_data_access_mode : null
+  mongodb_compatible_data_access_mode = var.spec.mongodb_compatible_data_access_mode != "" ? var.spec.mongodb_compatible_data_access_mode : null
+  realtime_updates_mode               = var.spec.realtime_updates_mode != "" ? var.spec.realtime_updates_mode : null
+
+  # DELETE is the Planton default (the spec contract): the provider's own
+  # default is ABANDON, which would leave the database running unmanaged
+  # after a destroy. An empty value therefore becomes DELETE, never null.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : "DELETE"
 }

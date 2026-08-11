@@ -1,0 +1,593 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpmonitoringalertpolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpMonitoringAlertPolicySpec defines a Cloud Monitoring alerting policy —
+// the rule that watches metrics or logs and opens an incident (and
+// notifies the configured channels) when its conditions are met.
+//
+// A policy is built from three parts:
+//   1. conditions      -- WHAT to watch (a metric threshold, metric absence,
+//                         a matched log entry, an MQL/PromQL query, or a
+//                         SQL condition), combined by `combiner`;
+//   2. notification_channels -- WHO to tell (references to
+//                         GcpMonitoringNotificationChannel resources — the
+//                         composition edge charts wire);
+//   3. alert_strategy  -- HOW to notify (auto-close, rate limiting,
+//                         re-notification cadence).
+//
+// The GCP API allows one to six conditions per policy. Each condition
+// carries exactly one condition type — the API models the choice as a
+// oneof, and this spec enforces it even though the Terraform provider
+// leaves it unchecked client-side (the API rejects violations at apply).
+message GcpMonitoringAlertPolicySpec {
+  // The GCP project that owns the alert policy. Can be a literal project ID
+  // or a reference to a GcpProject resource. If omitted, the provider's
+  // default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Human-friendly name shown in the console, in incidents, and in
+  // notifications. Defaults to metadata.name when left empty (the GCP API
+  // requires a display name).
+  string display_name = 2;
+
+  // How the results of multiple conditions combine into one incident
+  // decision:
+  //   AND -- an incident opens only while ALL conditions are met
+  //   OR  -- an incident opens while ANY condition is met
+  //   AND_WITH_MATCHING_RESOURCE -- AND, but only when the conditions
+  //          trigger on the SAME monitored resource (the strictest form)
+  // Required by the GCP API even for single-condition policies (use OR or
+  // AND — they are equivalent with one condition).
+  string combiner = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_combiner"
+      message: "combiner must be one of: AND, OR, AND_WITH_MATCHING_RESOURCE"
+      expression: "this in ['AND', 'OR', 'AND_WITH_MATCHING_RESOURCE']"
+    }
+  ];
+
+  // Severity reported on incidents this policy opens: CRITICAL, ERROR, or
+  // WARNING. Empty leaves the severity unset in GCP (incidents show no
+  // severity level).
+  string severity = 4 [(buf.validate.field).cel = {
+    id: "valid_severity"
+    message: "severity must be one of: CRITICAL, ERROR, WARNING"
+    expression: "this == '' || this in ['CRITICAL', 'ERROR', 'WARNING']"
+  }];
+
+  // Whether the policy is evaluated (default true). A disabled policy keeps
+  // its configuration but opens no incidents — the safe way to silence a
+  // noisy rule while tuning it. Both IaC engines send the value explicitly
+  // so behavior is identical regardless of engine.
+  optional bool enabled = 5 [(dev.planton.shared.options.default) = "true"];
+
+  // The conditions this policy evaluates (1 to 6 — the GCP API's own
+  // bounds), combined by `combiner`.
+  repeated GcpMonitoringAlertPolicyCondition conditions = 6 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 6
+  ];
+
+  // The notification channels to notify when incidents open, close, or gain
+  // new violations. Each entry is a channel resource name
+  // (projects/{project}/notificationChannels/{id}) — a literal or a
+  // reference to a GcpMonitoringNotificationChannel resource (its
+  // channel_name output is exactly this value).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef notification_channels = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpMonitoringNotificationChannel,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.channel_name"
+  ];
+
+  // How notifications behave once an incident is open: auto-close timing,
+  // rate limiting (log-based policies), and per-channel re-notification.
+  GcpMonitoringAlertPolicyAlertStrategy alert_strategy = 8;
+
+  // Troubleshooting content attached to every notification — the runbook
+  // the on-call engineer sees. Supports Markdown and ${variable}
+  // substitution (e.g. ${resource.label.instance_id}).
+  GcpMonitoringAlertPolicyDocumentation documentation = 9;
+
+  // User labels attached to the policy for organizing and identifying it
+  // (maps to the provider's user_labels), merged with Planton's platform
+  // labels (which win on key conflicts). Keys and values may contain only
+  // lowercase letters, numerals, underscores, and dashes; keys must begin
+  // with a letter.
+  map<string, string> labels = 10;
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the policy is deleted; its open incidents close and no
+  //                further notifications are sent
+  //   "PREVENT" -- destroy FAILS; protects production alerting from
+  //                accidental teardown
+  //   "ABANDON" -- the policy is removed from management but keeps
+  //                evaluating (and paging) in GCP
+  string deletion_policy = 11 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+}
+
+// One condition of an alert policy. Exactly one condition type must be set
+// — the GCP API models the choice as a oneof (the Terraform provider leaves
+// this unchecked client-side; the API rejects violations at apply).
+message GcpMonitoringAlertPolicyCondition {
+  option (buf.validate.message).cel = {
+    id: "exactly_one_condition_type"
+    message: "each condition carries exactly one of: condition_threshold, condition_absent, condition_matched_log, condition_monitoring_query_language, condition_prometheus_query_language, condition_sql"
+    expression: "[has(this.condition_threshold), has(this.condition_absent), has(this.condition_matched_log), has(this.condition_monitoring_query_language), has(this.condition_prometheus_query_language), has(this.condition_sql)].filter(x, x).size() == 1"
+  };
+
+  // Name shown for this condition in the console and in incident detail.
+  string display_name = 1 [(buf.validate.field).required = true];
+
+  // Alert when a metric crosses a threshold — the workhorse condition type
+  // (CPU above 80%, error rate above 1%, uptime-check failures).
+  GcpMonitoringAlertPolicyConditionThreshold condition_threshold = 2;
+
+  // Alert when a metric stops reporting for a duration — the "silence is
+  // failure" condition (a heartbeat metric going quiet).
+  GcpMonitoringAlertPolicyConditionAbsent condition_absent = 3;
+
+  // Alert on every log entry matching a filter. Requires
+  // alert_strategy.notification_rate_limit (the API's own pairing for
+  // log-based policies).
+  GcpMonitoringAlertPolicyConditionMatchedLog condition_matched_log = 4;
+
+  // Alert on a Monitoring Query Language (MQL) query — for conditions the
+  // structured threshold/absent forms cannot express. MQL is deprecated by
+  // Google in favor of PromQL; prefer condition_prometheus_query_language
+  // for new policies.
+  GcpMonitoringAlertPolicyConditionMql condition_monitoring_query_language = 5;
+
+  // Alert on a PromQL query — the expressive form for rate/ratio/quantile
+  // conditions and for teams porting Prometheus alert rules.
+  GcpMonitoringAlertPolicyConditionPromql condition_prometheus_query_language = 6;
+
+  // Alert on a SQL query against log analytics data, evaluated on a
+  // schedule (minutes/hourly/daily) with a row-count or boolean test on the
+  // results.
+  GcpMonitoringAlertPolicyConditionSql condition_sql = 7;
+}
+
+// Threshold condition: alert when an aggregated metric crosses a value.
+message GcpMonitoringAlertPolicyConditionThreshold {
+  // A monitoring filter (https://cloud.google.com/monitoring/api/v3/filters)
+  // selecting the time series to evaluate, e.g.
+  //   metric.type="compute.googleapis.com/instance/cpu/utilization" AND
+  //   resource.type="gce_instance"
+  // The API requires a filter that names a metric.type.
+  string filter = 1 [(buf.validate.field).required = true];
+
+  // How the aggregated value compares to the threshold to trigger:
+  // COMPARISON_GT / _GE / _LT / _LE / _EQ / _NE. GT ("above threshold") is
+  // by far the most common.
+  string comparison = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_comparison"
+      message: "comparison must be one of: COMPARISON_GT, COMPARISON_GE, COMPARISON_LT, COMPARISON_LE, COMPARISON_EQ, COMPARISON_NE"
+      expression: "this in ['COMPARISON_GT', 'COMPARISON_GE', 'COMPARISON_LT', 'COMPARISON_LE', 'COMPARISON_EQ', 'COMPARISON_NE']"
+    }
+  ];
+
+  // The threshold value compared against the aggregated metric.
+  double threshold_value = 3;
+
+  // How long the comparison must hold before the condition triggers, as a
+  // duration in seconds. Must be a multiple of 60s ("0s" triggers on a
+  // single violating point; "300s" requires five sustained minutes — the
+  // usual flap guard). The GCP API rejects non-minute-aligned values.
+  string duration = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_duration"
+      message: "duration must be a seconds duration such as 0s, 60s, or 300s (the GCP API additionally requires whole minutes — a multiple of 60)"
+      expression: "this.matches('^[0-9]+s$')"
+    }
+  ];
+
+  // How raw time series are aligned and combined before comparison. Most
+  // metric-type conditions need at least one aggregation (e.g. align
+  // ALIGN_MEAN over the alignment_period) — without one, GCP compares every
+  // raw point of every series.
+  repeated GcpMonitoringAlertPolicyAggregation aggregations = 5;
+
+  // For ratio conditions: the filter selecting the DENOMINATOR time series
+  // (the condition then evaluates numerator/denominator against the
+  // threshold, e.g. error requests / total requests).
+  string denominator_filter = 6;
+
+  // Aggregations applied to the denominator series. The API requires the
+  // denominator to be aligned identically to the numerator for the ratio to
+  // be meaningful.
+  repeated GcpMonitoringAlertPolicyAggregation denominator_aggregations = 7;
+
+  // Alert on the PREDICTED value instead of the current one: the condition
+  // triggers when GCP forecasts the threshold will be crossed within this
+  // horizon (a duration, minimum "3600s"). The capacity-planning form of a
+  // threshold alert.
+  GcpMonitoringAlertPolicyForecastOptions forecast_options = 8;
+
+  // How many time series (count) or what fraction of them (percent) must
+  // violate before the condition triggers. Default: any single series.
+  GcpMonitoringAlertPolicyTrigger trigger = 9;
+
+  // How the condition evaluates when data stops arriving:
+  // EVALUATION_MISSING_DATA_INACTIVE (missing data closes/keeps the
+  // incident closed), _ACTIVE (missing data violates — the paranoid
+  // setting), or _NO_OP (missing data changes nothing, the API default).
+  string evaluation_missing_data = 10 [(buf.validate.field).cel = {
+    id: "valid_evaluation_missing_data"
+    message: "evaluation_missing_data must be one of: EVALUATION_MISSING_DATA_INACTIVE, EVALUATION_MISSING_DATA_ACTIVE, EVALUATION_MISSING_DATA_NO_OP"
+    expression: "this == '' || this in ['EVALUATION_MISSING_DATA_INACTIVE', 'EVALUATION_MISSING_DATA_ACTIVE', 'EVALUATION_MISSING_DATA_NO_OP']"
+  }];
+}
+
+// Absence condition: alert when a metric stops reporting.
+message GcpMonitoringAlertPolicyConditionAbsent {
+  // A monitoring filter selecting the time series whose ABSENCE triggers
+  // the condition.
+  string filter = 1 [(buf.validate.field).required = true];
+
+  // How long the data must be absent before triggering, as a duration in
+  // seconds (minute-aligned, maximum 24 hours per the API — e.g. "300s").
+  string duration = 2 [(buf.validate.field).required = true];
+
+  // Alignment applied to the series before absence is judged.
+  repeated GcpMonitoringAlertPolicyAggregation aggregations = 3;
+
+  // How many series (count) or what fraction (percent) must be absent
+  // before triggering.
+  GcpMonitoringAlertPolicyTrigger trigger = 4;
+}
+
+// Log-match condition: alert on every log entry matching the filter.
+message GcpMonitoringAlertPolicyConditionMatchedLog {
+  // A logging filter (https://cloud.google.com/logging/docs/view/logging-query-language)
+  // selecting the entries that trigger notifications, e.g.
+  //   resource.type="gce_instance" AND severity>=ERROR
+  string filter = 1 [(buf.validate.field).required = true];
+
+  // Extract values from matched entries into incident labels: map label
+  // name -> extractor expression, e.g.
+  //   { "vm": "EXTRACT(resource.labels.instance_id)" }
+  // Extracted labels appear in notifications and documentation variables.
+  map<string, string> label_extractors = 2;
+}
+
+// MQL condition (deprecated by Google in favor of PromQL — kept because the
+// API still serves it; prefer condition_prometheus_query_language).
+message GcpMonitoringAlertPolicyConditionMql {
+  // The Monitoring Query Language query whose boolean output drives the
+  // condition.
+  string query = 1 [(buf.validate.field).required = true];
+
+  // How long the query output must be true before triggering (duration in
+  // seconds, minute-aligned).
+  string duration = 2 [(buf.validate.field).required = true];
+
+  // How many series (count) or what fraction (percent) must violate before
+  // triggering.
+  GcpMonitoringAlertPolicyTrigger trigger = 3;
+
+  // How the condition evaluates when data stops arriving (same values as
+  // the threshold condition's field).
+  string evaluation_missing_data = 4 [(buf.validate.field).cel = {
+    id: "valid_evaluation_missing_data"
+    message: "evaluation_missing_data must be one of: EVALUATION_MISSING_DATA_INACTIVE, EVALUATION_MISSING_DATA_ACTIVE, EVALUATION_MISSING_DATA_NO_OP"
+    expression: "this == '' || this in ['EVALUATION_MISSING_DATA_INACTIVE', 'EVALUATION_MISSING_DATA_ACTIVE', 'EVALUATION_MISSING_DATA_NO_OP']"
+  }];
+}
+
+// PromQL condition.
+message GcpMonitoringAlertPolicyConditionPromql {
+  // The PromQL expression. The condition fires while the expression
+  // produces any series (Prometheus alert-rule semantics), e.g.
+  //   rate(http_requests_total{code=~"5.."}[5m]) > 0.1
+  string query = 1 [(buf.validate.field).required = true];
+
+  // How long the expression must produce output before triggering
+  // (Prometheus "for" semantics). A duration in seconds, e.g. "300s";
+  // empty means fire immediately.
+  string duration = 2;
+
+  // How often the query is evaluated (default "30s"; must be a multiple of
+  // 30 seconds per the API).
+  string evaluation_interval = 3;
+
+  // Labels added to every incident this condition opens (Prometheus
+  // alert-rule labels; values support PromQL template syntax).
+  map<string, string> labels = 4;
+
+  // The rule group name this condition belongs to when imported from a
+  // Prometheus rule file — carried for round-trip fidelity, no behavioral
+  // effect in GCP.
+  string rule_group = 5;
+
+  // The alert rule name when imported from a Prometheus rule file. Becomes
+  // the incident's alertname label.
+  string alert_rule = 6;
+
+  // Skip GCP's validation that the query only references known metrics
+  // (default false). Enable only when alerting on metrics that do not exist
+  // yet — a typo in the metric name then goes undetected until it never
+  // fires.
+  bool disable_metric_validation = 7;
+}
+
+// SQL condition: a scheduled SQL query over log analytics with a test on
+// its results.
+message GcpMonitoringAlertPolicyConditionSql {
+  // The GCP API requires exactly one evaluation schedule for a SQL
+  // condition.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_schedule"
+    message: "set exactly one schedule: minutes, hourly, or daily"
+    expression: "[has(this.minutes), has(this.hourly), has(this.daily)].filter(x, x).size() == 1"
+  };
+  // ... and exactly one way to judge the results.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_test"
+    message: "set exactly one result test: row_count_test or boolean_test"
+    expression: "[has(this.row_count_test), has(this.boolean_test)].filter(x, x).size() == 1"
+  };
+
+  // The SQL query to run against log analytics (GoogleSQL). The query's
+  // results feed row_count_test or boolean_test.
+  string query = 1 [(buf.validate.field).required = true];
+
+  // Run the query every N minutes.
+  GcpMonitoringAlertPolicySqlMinutes minutes = 2;
+
+  // Run the query every N hours.
+  GcpMonitoringAlertPolicySqlHourly hourly = 3;
+
+  // Run the query every N days at a fixed time.
+  GcpMonitoringAlertPolicySqlDaily daily = 4;
+
+  // Trigger when the query's ROW COUNT compares against a threshold.
+  GcpMonitoringAlertPolicySqlRowCountTest row_count_test = 5;
+
+  // Trigger when a BOOLEAN COLUMN of the first result row is true.
+  GcpMonitoringAlertPolicySqlBooleanTest boolean_test = 6;
+}
+
+// Every-N-minutes schedule for a SQL condition.
+message GcpMonitoringAlertPolicySqlMinutes {
+  // Number of minutes between runs (5 to 1440 per the GCP API).
+  int32 periodicity = 1 [
+    (buf.validate.field).int32.gte = 5,
+    (buf.validate.field).int32.lte = 1440
+  ];
+}
+
+// Every-N-hours schedule for a SQL condition.
+message GcpMonitoringAlertPolicySqlHourly {
+  // Number of hours between runs (1 to 48 per the GCP API).
+  int32 periodicity = 1 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 48
+  ];
+
+  // Minute of the hour the run starts (0-59). Optional; GCP picks one when
+  // unset.
+  optional int32 minute_offset = 2 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 59
+  ];
+}
+
+// Every-N-days schedule for a SQL condition.
+message GcpMonitoringAlertPolicySqlDaily {
+  // Number of days between runs (1 to 31 per the GCP API).
+  int32 periodicity = 1 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 31
+  ];
+
+  // Time of day the run starts (UTC). Omit for GCP's default.
+  GcpMonitoringAlertPolicyTimeOfDay execution_time = 2;
+}
+
+// A time of day, mirroring the API's google.type.TimeOfDay shape.
+message GcpMonitoringAlertPolicyTimeOfDay {
+  // Hour (0-23).
+  int32 hours = 1 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 23
+  ];
+
+  // Minute (0-59).
+  int32 minutes = 2 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 59
+  ];
+
+  // Second (0-59).
+  int32 seconds = 3 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 59
+  ];
+
+  // Nanoseconds (0-999999999). Kept for API-shape fidelity; alert schedules
+  // realistically use whole seconds.
+  int32 nanos = 4 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 999999999
+  ];
+}
+
+// Row-count test for a SQL condition.
+message GcpMonitoringAlertPolicySqlRowCountTest {
+  // How the row count compares to the threshold (same comparison values as
+  // the threshold condition).
+  string comparison = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_comparison"
+      message: "comparison must be one of: COMPARISON_GT, COMPARISON_GE, COMPARISON_LT, COMPARISON_LE, COMPARISON_EQ, COMPARISON_NE"
+      expression: "this in ['COMPARISON_GT', 'COMPARISON_GE', 'COMPARISON_LT', 'COMPARISON_LE', 'COMPARISON_EQ', 'COMPARISON_NE']"
+    }
+  ];
+
+  // The row-count threshold.
+  int64 threshold = 2;
+}
+
+// Boolean-column test for a SQL condition.
+message GcpMonitoringAlertPolicySqlBooleanTest {
+  // The BOOL column of the first result row that decides the condition.
+  string column = 1 [(buf.validate.field).required = true];
+}
+
+// Alignment/aggregation of time series ahead of evaluation — mirrors the
+// GCP Aggregation object.
+message GcpMonitoringAlertPolicyAggregation {
+  // The window each series is aligned over, as a duration in seconds
+  // (minute-aligned, e.g. "60s", "300s").
+  string alignment_period = 1;
+
+  // How points within the window combine per series: ALIGN_NONE,
+  // ALIGN_DELTA, ALIGN_RATE, ALIGN_INTERPOLATE, ALIGN_NEXT_OLDER,
+  // ALIGN_MIN, ALIGN_MAX, ALIGN_MEAN, ALIGN_COUNT, ALIGN_SUM, ALIGN_STDDEV,
+  // ALIGN_COUNT_TRUE, ALIGN_COUNT_FALSE, ALIGN_FRACTION_TRUE,
+  // ALIGN_PERCENTILE_99, ALIGN_PERCENTILE_95, ALIGN_PERCENTILE_50,
+  // ALIGN_PERCENTILE_05, ALIGN_PERCENT_CHANGE.
+  string per_series_aligner = 2 [(buf.validate.field).cel = {
+    id: "valid_per_series_aligner"
+    message: "per_series_aligner must be one of the ALIGN_* values documented on the field"
+    expression: "this == '' || this in ['ALIGN_NONE', 'ALIGN_DELTA', 'ALIGN_RATE', 'ALIGN_INTERPOLATE', 'ALIGN_NEXT_OLDER', 'ALIGN_MIN', 'ALIGN_MAX', 'ALIGN_MEAN', 'ALIGN_COUNT', 'ALIGN_SUM', 'ALIGN_STDDEV', 'ALIGN_COUNT_TRUE', 'ALIGN_COUNT_FALSE', 'ALIGN_FRACTION_TRUE', 'ALIGN_PERCENTILE_99', 'ALIGN_PERCENTILE_95', 'ALIGN_PERCENTILE_50', 'ALIGN_PERCENTILE_05', 'ALIGN_PERCENT_CHANGE']"
+  }];
+
+  // How aligned series combine ACROSS series: REDUCE_NONE, REDUCE_MEAN,
+  // REDUCE_MIN, REDUCE_MAX, REDUCE_SUM, REDUCE_STDDEV, REDUCE_COUNT,
+  // REDUCE_COUNT_TRUE, REDUCE_COUNT_FALSE, REDUCE_FRACTION_TRUE,
+  // REDUCE_PERCENTILE_99, REDUCE_PERCENTILE_95, REDUCE_PERCENTILE_50,
+  // REDUCE_PERCENTILE_05.
+  string cross_series_reducer = 3 [(buf.validate.field).cel = {
+    id: "valid_cross_series_reducer"
+    message: "cross_series_reducer must be one of the REDUCE_* values documented on the field"
+    expression: "this == '' || this in ['REDUCE_NONE', 'REDUCE_MEAN', 'REDUCE_MIN', 'REDUCE_MAX', 'REDUCE_SUM', 'REDUCE_STDDEV', 'REDUCE_COUNT', 'REDUCE_COUNT_TRUE', 'REDUCE_COUNT_FALSE', 'REDUCE_FRACTION_TRUE', 'REDUCE_PERCENTILE_99', 'REDUCE_PERCENTILE_95', 'REDUCE_PERCENTILE_50', 'REDUCE_PERCENTILE_05']"
+  }];
+
+  // Resource/metric label keys that survive cross-series reduction — series
+  // sharing these label values reduce together (e.g. group error rates by
+  // resource.label.zone).
+  repeated string group_by_fields = 4;
+}
+
+// How many series must violate before a condition triggers. The API treats
+// count and percent as alternatives.
+message GcpMonitoringAlertPolicyTrigger {
+  option (buf.validate.message).cel = {
+    id: "count_xor_percent"
+    message: "set either count or percent, not both"
+    expression: "!(this.count != 0 && this.percent != 0.0)"
+  };
+
+  // Absolute number of violating series.
+  int32 count = 1 [(buf.validate.field).int32.gte = 0];
+
+  // Percentage of violating series (0-100).
+  double percent = 2 [
+    (buf.validate.field).double.gte = 0,
+    (buf.validate.field).double.lte = 100
+  ];
+}
+
+// Forecast options for a threshold condition.
+message GcpMonitoringAlertPolicyForecastOptions {
+  // How far ahead GCP forecasts, as a duration in seconds (minimum "3600s"
+  // — one hour — per the API).
+  string forecast_horizon = 1 [(buf.validate.field).required = true];
+}
+
+// Notification behavior for open incidents.
+message GcpMonitoringAlertPolicyAlertStrategy {
+  // Close an incident automatically after its condition has stopped
+  // violating for this long (duration in seconds, minimum "1800s" per the
+  // API; GCP's default is 7 days).
+  string auto_close = 1;
+
+  // Rate limit for LOG-BASED policies (condition_matched_log): at most one
+  // notification per period. The API requires this block for log-match
+  // conditions and rejects it for metric conditions.
+  GcpMonitoringAlertPolicyNotificationRateLimit notification_rate_limit = 2;
+
+  // Per-channel-subset re-notification cadence for open incidents.
+  repeated GcpMonitoringAlertPolicyNotificationChannelStrategy notification_channel_strategy = 3;
+
+  // When to prompt the configured channels beyond incident open/close:
+  // OPENED and/or CLOSED.
+  repeated string notification_prompts = 4 [(buf.validate.field).repeated.items.cel = {
+    id: "valid_notification_prompt"
+    message: "each notification prompt must be OPENED or CLOSED"
+    expression: "this in ['OPENED', 'CLOSED']"
+  }];
+}
+
+// Rate limit for log-based policies.
+message GcpMonitoringAlertPolicyNotificationRateLimit {
+  // Not more than one notification per period (duration in seconds, e.g.
+  // "300s").
+  string period = 1;
+}
+
+// Re-notification cadence for a subset of the policy's channels.
+message GcpMonitoringAlertPolicyNotificationChannelStrategy {
+  // The channels this cadence applies to — full channel resource names,
+  // each a literal or a reference to a GcpMonitoringNotificationChannel.
+  // Every entry must also appear in the policy's notification_channels.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef notification_channel_names = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpMonitoringNotificationChannel,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.channel_name"
+  ];
+
+  // Send reminder notifications for still-open incidents at this interval
+  // (duration in seconds).
+  string renotify_interval = 2;
+}
+
+// Documentation attached to notifications.
+message GcpMonitoringAlertPolicyDocumentation {
+  // The runbook body (at most 8192 bytes). Supports the mime_type's syntax
+  // and ${variable} substitution — write the steps the on-call engineer
+  // should take.
+  string content = 1 [(buf.validate.field).string.max_len = 8192];
+
+  // Content format; "text/markdown" (the default) is the only value the
+  // API currently accepts.
+  string mime_type = 2 [(buf.validate.field).cel = {
+    id: "valid_mime_type"
+    message: "mime_type must be text/markdown (the only format the GCP API accepts)"
+    expression: "this == '' || this == 'text/markdown'"
+  }];
+
+  // Custom subject line for notifications (at most 255 bytes; not all
+  // channel types render it).
+  string subject = 3 [(buf.validate.field).string.max_len = 255];
+
+  // Reference links (runbooks, dashboards, playbooks) attached to
+  // notifications — at most 3 per the API.
+  repeated GcpMonitoringAlertPolicyDocumentationLink links = 4 [(buf.validate.field).repeated.max_items = 3];
+}
+
+// One documentation link.
+message GcpMonitoringAlertPolicyDocumentationLink {
+  // Short display text for the link.
+  string display_name = 1;
+
+  // The URL (http/https). Supports ${variable} substitution.
+  string url = 2;
+}

@@ -1,0 +1,30 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIdentityPlatformConfig
+metadata:
+  name: enterprise-auth
+spec:
+  signIn:
+    email:
+      enabled: true
+      passwordRequired: true
+  authorizedDomains:
+    - app.example.com
+  mfa:
+    state: ENABLED
+    enabledProviders:
+      - PHONE_SMS
+  inboundSamlConfigs:
+    - name: saml.okta-prod
+      displayName: Okta (Production)
+      idpConfig:
+        # From the IdP's metadata XML.
+        idpEntityId: http://www.okta.com/exkexample
+        ssoUrl: https://example.okta.com/app/example/sso/saml
+        idpCertificates:
+          - x509Certificate: |
+              -----BEGIN CERTIFICATE-----
+              MIIC...placeholder...
+              -----END CERTIFICATE-----
+      spConfig:
+        callbackUri: https://app.example.com/__/auth/handler
+        spEntityId: app-example-com

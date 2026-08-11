@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpSslPolicySpec defines a Compute Engine SSL policy — the control for
 which TLS versions and cipher suites a load balancer accepts from clients.
 Without one, GCP's default policy applies: minimum TLS 1.0 with the
@@ -41,12 +43,20 @@ spec:
   # Why this policy exists — shown in the GCP console.
   description: TLS 1.2 floor with MODERN ciphers for production frontends
 
-  # Cipher-suite profile: COMPATIBLE (default), MODERN, RESTRICTED, or CUSTOM.
+  # Cipher-suite profile: COMPATIBLE (default), MODERN, RESTRICTED, CUSTOM,
+  # or FIPS_202205 (requires minTlsVersion TLS_1_2).
   profile: MODERN
 
   # Minimum TLS version clients may negotiate: TLS_1_0 (default), TLS_1_1,
-  # or TLS_1_2.
+  # TLS_1_2, or TLS_1_3 (requires the RESTRICTED profile).
   minTlsVersion: TLS_1_2
+
+  # Post-quantum key exchange rollout stance: DEFAULT (follow GCP's
+  # timeline), ENABLED, or DEFERRED.
+  postQuantumKeyExchange: ENABLED
+
+  # What a destroy does: DELETE (default), PREVENT, or ABANDON.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -60,6 +70,8 @@ spec:
 | `spec.profile` | `string` |  |  |  |
 | `spec.minTlsVersion` | `string` |  |  |  |
 | `spec.customFeatures` | `[]string` |  |  |  |
+| `spec.postQuantumKeyExchange` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -118,10 +130,12 @@ COMPATIBLE allows the widest client range; MODERN drops broken ciphers
 while keeping broad reach; RESTRICTED narrows to ciphers with modern
 security guarantees (and is required when the TLS floor is raised beyond
 what other profiles allow); CUSTOM hand-picks cipher suites via
-custom_features. Mutable — tightening the profile applies to every proxy
+custom_features; FIPS_202205 pins the FIPS 140-2/3 validated suite set
+(and requires min_tls_version TLS_1_2 — the only floor that profile
+supports). Mutable — tightening the profile applies to every proxy
 referencing this policy on its next handshake.
 
-- rule: profile must be COMPATIBLE, MODERN, RESTRICTED, or CUSTOM
+- rule: profile must be COMPATIBLE, MODERN, RESTRICTED, CUSTOM, or FIPS_202205
 
 ### spec.minTlsVersion
 
@@ -129,10 +143,11 @@ referencing this policy on its next handshake.
 
 The minimum TLS protocol version clients may negotiate (default
 TLS_1_0). Raise to TLS_1_2 for PCI DSS and most modern compliance
-regimes. GCP has no maximum-version control; TLS 1.3 is always
-negotiable when the client supports it. Mutable.
+regimes; TLS_1_3 is the strictest floor and requires the RESTRICTED
+profile. GCP has no maximum-version control — TLS 1.3 is always
+negotiable when the client supports it, whatever the floor. Mutable.
 
-- rule: min_tls_version must be TLS_1_0, TLS_1_1, or TLS_1_2
+- rule: min_tls_version must be TLS_1_0, TLS_1_1, TLS_1_2, or TLS_1_3
 
 ### spec.customFeatures
 
@@ -146,10 +161,43 @@ always enables them regardless of this list. Mutable.
 
 - rule: {"repeated":{"items":{"string":{"maxLen":"128","pattern":"^[A-Z0-9_]+$"}}}}
 
+### spec.postQuantumKeyExchange
+
+`string`
+
+Post-quantum key exchange (X25519MLKEM768) posture for TLS handshakes
+(default DEFAULT). GCP rolls the hybrid post-quantum group out on its
+own schedule; this dial controls the rollout stance rather than a
+static on/off:
+  DEFAULT  -- follow GCP's rollout timeline
+  ENABLED  -- allow post-quantum key exchange now
+  DEFERRED -- opt out until GCP's later mandatory date
+Mutable.
+
+- rule: post_quantum_key_exchange must be DEFAULT, ENABLED, or DEFERRED
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the policy is deleted (GCP refuses while any proxy
+               still references it, so destroy fails rather than
+               silently loosening TLS floors)
+  "PREVENT" -- destroy FAILS; protects a compliance-mandated TLS
+               posture from accidental teardown
+  "ABANDON" -- the policy is removed from management but left in
+               GCP, still enforced by every proxy referencing it
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `custom_profile_requires_features`: the CUSTOM profile requires at least one cipher suite in custom_features
 - `features_require_custom_profile`: custom_features is only valid with the CUSTOM profile — GCP rejects it on COMPATIBLE, MODERN, and RESTRICTED
+- `fips_profile_requires_tls12`: the FIPS_202205 profile requires min_tls_version TLS_1_2 — the only floor GCP supports on that profile
+- `tls13_floor_requires_restricted`: min_tls_version TLS_1_3 requires the RESTRICTED profile — GCP rejects a TLS 1.3 floor on any other profile
 
 ## Outputs
 

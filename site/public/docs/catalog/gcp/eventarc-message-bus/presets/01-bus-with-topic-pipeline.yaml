@@ -1,0 +1,25 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpEventarcMessageBus
+metadata:
+  name: central-bus
+spec:
+  location: us-central1
+
+  # INFO while onboarding sources and pipelines; scale back in steady
+  # state.
+  logSeverity: INFO
+
+  # The smallest useful hub: everything into the bus, everything out to
+  # one Pub/Sub topic — downstream consumers subscribe there.
+  pipelines:
+    - pipelineId: deliver-to-topic
+      destination:
+        topic:
+          value: projects/my-project/topics/bus-firehose
+
+  enrollments:
+    - enrollmentId: route-everything
+      celMatch: "true"
+      pipeline: deliver-to-topic
+
+  deletionPolicy: DELETE

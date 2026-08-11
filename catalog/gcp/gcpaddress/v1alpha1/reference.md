@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpAddressSpec defines a regional Compute Engine address reservation
 (`google_compute_address`) — a static IP at regional scope, distinct from
 GcpGlobalAddress which reserves global-scope addresses.
@@ -46,6 +48,13 @@ spec:
   ipVersion: IPV4
 
   description: Static external IP for Cloud NAT in us-central1
+
+  # User labels, merged with the platform labels (the one mutable surface).
+  labels:
+    team: platform
+
+  # Ephemeral test fixture: release the reservation on destroy.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -65,6 +74,9 @@ spec:
 | `spec.prefixLength` | `int32` |  |  |  |
 | `spec.purpose` | `string` |  |  |  |
 | `spec.ipv6EndpointType` | `string` |  |  |  |
+| `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.ipCollection` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -201,6 +213,42 @@ instance or a network load balancer after reservation.
 
 - rule: ipv6_endpoint_type must be empty, VM, or NETLB
 
+### spec.labels
+
+`map<string, string>`
+
+User labels attached to the reserved address, merged with Planton's
+platform labels (which win on key conflicts). The one mutable surface on
+this resource — every other change destroys and re-reserves the address.
+
+### spec.ipCollection
+
+`string`
+
+Source of externally provisioned (BYOIP) addresses: a
+PublicDelegatedPrefix in full or partial URL form, e.g.
+"projects/{project}/regions/{region}/publicDelegatedPrefixes/{pdp-name}".
+An IPv4 PDP must support enhanced IPv4 allocations; an IPv6 PDP must be
+in EXTERNAL_IPV6_FORWARDING_RULE_CREATION mode. Only meaningful for
+EXTERNAL addresses. Create-time only: changing it re-reserves.
+
+- rule: {"string":{"maxLen":"2048"}}
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the reserved address — what happens on destroy:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the reservation is released; the IP returns to Google's
+               pool (an external static IP is gone for good)
+  "PREVENT" -- destroy FAILS; protects an IP that DNS records or
+               allow-lists outside GCP may still point at
+  "ABANDON" -- the reservation is removed from management but stays
+               reserved (and billed while unattached) in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `internal_cannot_have_network_tier`: network_tier cannot be set when address_type is INTERNAL
@@ -238,6 +286,8 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | GcpComputeInstance | `spec.networkInterfaces[].networkIp` | `status.outputs.address` |
 | GcpComputeInstance | `spec.networkInterfaces[].accessConfigs[].natIp` | `status.outputs.address` |
+| GcpComputeMig | `spec.perInstanceConfigs[].preservedState.externalIps[].address` | `status.outputs.address` |
+| GcpComputeMig | `spec.perInstanceConfigs[].preservedState.internalIps[].address` | `status.outputs.address` |
 | GcpDnsRecord | `spec.routingPolicy.wrr[].healthCheckedTargets.internalLoadBalancers[].ipAddress` | `status.outputs.address` |
 | GcpDnsRecord | `spec.routingPolicy.geo[].healthCheckedTargets.internalLoadBalancers[].ipAddress` | `status.outputs.address` |
 | GcpDnsRecord | `spec.routingPolicy.primaryBackup.primary.internalLoadBalancers[].ipAddress` | `status.outputs.address` |

@@ -69,6 +69,8 @@ This reserves a static external IPv4 address that you can attach to an HTTP(S) l
 | `network` | `StringValueOrRef` | — | VPC network for INTERNAL addresses. Accepts a network name or self-link URL. Can reference a GcpVpcNetwork resource. Required when `addressType` is `INTERNAL`. |
 | `prefixLength` | `int32` | — | CIDR prefix length (8-29) for the reserved range. Required when `purpose` is `VPC_PEERING`. E.g., `20` reserves a /20 range (4,096 IPs). |
 | `purpose` | `string` | `""` | Purpose of this INTERNAL address: `VPC_PEERING`, `PRIVATE_SERVICE_CONNECT`, or empty. Only valid for INTERNAL addresses. |
+| `labels` | `map<string,string>` | `{}` | User labels, merged with the platform labels (platform wins on key conflicts). The one mutable surface. |
+| `deletionPolicy` | `string` | `DELETE` | What destroy does: `DELETE`, `PREVENT` (refuse), or `ABANDON` (keep the IP reserved, drop from management). |
 
 ### Validation Rules
 

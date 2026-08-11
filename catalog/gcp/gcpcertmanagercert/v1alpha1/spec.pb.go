@@ -80,9 +80,19 @@ type GcpCertManagerCertSpec struct {
 	// User labels merged onto the certificate beneath the platform's
 	// attribution labels (platform keys win on conflicts).
 	// Keys/values: lowercase letters, digits, underscores, hyphens.
-	Labels        map[string]string `protobuf:"bytes,8,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Labels map[string]string `protobuf:"bytes,8,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy — what happens when this resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the certificate is deleted (GCP refuses while a proxy
+	//	             or certificate map still references it)
+	//	"PREVENT" -- destroy FAILS; a guard rail for a certificate whose
+	//	             replacement is not yet serving
+	//	"ABANDON" -- the certificate is removed from management but left
+	//	             in GCP (useful mid-rotation handoff)
+	DeletionPolicy string `protobuf:"bytes,9,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpCertManagerCertSpec) Reset() {
@@ -169,6 +179,13 @@ func (x *GcpCertManagerCertSpec) GetLabels() map[string]string {
 		return x.Labels
 	}
 	return nil
+}
+
+func (x *GcpCertManagerCertSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 // Configuration for a Google-managed certificate.
@@ -306,8 +323,7 @@ var File_catalog_gcp_gcpcertmanagercert_v1alpha1_spec_proto protoreflect.FileDes
 
 const file_catalog_gcp_gcpcertmanagercert_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/gcp/gcpcertmanagercert/v1alpha1/spec.proto\x12+dev.planton.gcp.gcpcertmanagercert.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb6\n" +
-	"\n" +
+	"2catalog/gcp/gcpcertmanagercert/v1alpha1/spec.proto\x12+dev.planton.gcp.gcpcertmanagercert.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xf4\v\n" +
 	"\x16GcpCertManagerCertSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xe7\x01\n" +
@@ -319,7 +335,9 @@ const file_catalog_gcp_gcpcertmanagercert_v1alpha1_spec_proto_rawDesc = "" +
 	"\vscope.valid\x12>scope must be DEFAULT, EDGE_CACHE, ALL_REGIONS, or CLIENT_AUTH\x1aMthis == '' || this in ['DEFAULT', 'EDGE_CACHE', 'ALL_REGIONS', 'CLIENT_AUTH']R\x05scope\x12`\n" +
 	"\amanaged\x18\x06 \x01(\v2F.dev.planton.gcp.gcpcertmanagercert.v1alpha1.GcpCertManagerCertManagedR\amanaged\x12m\n" +
 	"\fself_managed\x18\a \x01(\v2J.dev.planton.gcp.gcpcertmanagercert.v1alpha1.GcpCertManagerCertSelfManagedR\vselfManaged\x12g\n" +
-	"\x06labels\x18\b \x03(\v2O.dev.planton.gcp.gcpcertmanagercert.v1alpha1.GcpCertManagerCertSpec.LabelsEntryR\x06labels\x1a9\n" +
+	"\x06labels\x18\b \x03(\v2O.dev.planton.gcp.gcpcertmanagercert.v1alpha1.GcpCertManagerCertSpec.LabelsEntryR\x06labels\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\t \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc9\x02\xbaH\xc5\x02\x1aw\n" +

@@ -56,14 +56,17 @@ func workbenchInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		Name:     pulumi.StringPtr(locals.InstanceName),
 		Location: pulumi.String(spec.Location),
 		Labels:   pulumi.ToStringMap(locals.GcpLabels),
-
-		// PARITY: the bridged provider carries a client-side deletion_policy
-		// flag the released 6.x Terraform line does not have. Pinned to
-		// DELETE so destroy really deletes the instance on both engines.
-		DeletionPolicy: pulumi.StringPtr("DELETE"),
 	}
 	if spec.ProjectId.GetValue() != "" {
 		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
+	}
+
+	// Client-side destroy behavior (DELETE deletes the instance and its
+	// disks; PREVENT refuses; ABANDON drops from state but keeps the VM
+	// running). Empty follows the provider default (DELETE) — mirrored
+	// zero-vs-omit with Terraform.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	// desired_state drives declarative stop/start: ACTIVE boots the VM,

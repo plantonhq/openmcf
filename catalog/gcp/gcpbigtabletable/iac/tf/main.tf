@@ -34,6 +34,11 @@ resource "google_bigtable_table" "this" {
   deletion_protection     = var.spec.deletion_protection
   row_key_schema          = var.spec.row_key_schema != "" ? var.spec.row_key_schema : null
 
+  # One spec field drives the destroy behavior of BOTH objects this kind
+  # manages (the table and its per-family GC policies): DELETE (default),
+  # PREVENT (destroy fails), or ABANDON (drop from state, keep the table).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   dynamic "column_family" {
     for_each = var.spec.column_families
     content {
@@ -47,6 +52,11 @@ resource "google_bigtable_table" "this" {
     content {
       retention_period = automated_backup_policy.value.retention_period
       frequency        = automated_backup_policy.value.frequency
+      # Zones backups may be created in (empty = all zones of the
+      # instance); ENTERPRISE_PLUS instances only. Optional+Computed in
+      # the provider — sent only when set so unset never fights the
+      # server-populated read-back.
+      locations = length(automated_backup_policy.value.locations) > 0 ? automated_backup_policy.value.locations : null
     }
   }
 
@@ -89,4 +99,9 @@ resource "google_bigtable_gc_policy" "this" {
   # instance — Bigtable otherwise rejects the change as a data-loss
   # safety measure.
   ignore_warnings = each.value.ignore_warnings
+
+  # Mirrors the table's policy (one spec field, both objects). ABANDON is
+  # also the escape hatch when Bigtable rejects a GC-policy delete on a
+  # replicated instance.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 }

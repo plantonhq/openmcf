@@ -47,6 +47,16 @@ func accountingFixture() (spec []KindCensus, modules []ModuleCensus, schemas map
 							}},
 						},
 					}},
+					// A whole embedded surface the module deliberately fixes:
+					// covered by ONE subtree exclusion, never per-leaf lines.
+					"inline_gadget": {NestingMode: "list", Block: &Block{
+						Attributes: map[string]*Attribute{"size": {Optional: true}},
+						Blocks: map[string]*NestedBlock{
+							"tuning": {NestingMode: "single", Block: &Block{
+								Attributes: map[string]*Attribute{"level": {Optional: true}},
+							}},
+						},
+					}},
 					"timeouts": {NestingMode: "single", Block: &Block{ // machinery
 						Attributes: map[string]*Attribute{"create": {Optional: true}},
 					}},
@@ -125,6 +135,9 @@ func accountingFixture() (spec []KindCensus, modules []ModuleCensus, schemas map
 					},
 					Exclusions: []ArgExclusion{
 						{Arg: "rules.condition.send_age_if_zero", Reason: "proto3 optional presence covers zero-vs-unset"},
+						// Subtree exclusion: one judgment covers the block
+						// and every leaf under it.
+						{Arg: "inline_gadget", Reason: "the module fixes the inline gadget; gadgets are the sibling kind's surface"},
 					},
 				},
 				"google_widget_iam_member": {
@@ -169,15 +182,16 @@ func TestBuildAccounting_Hermetic(t *testing.T) {
 	widget := kindByName(t, acc, "TestWidget")
 	// google_widget: name(mapped) location(matched) settings.enabled(matched)
 	// rules.mode(mapped via subtree) rules.condition.age(mapped via leaf)
-	// send_age_if_zero(excluded); id/timeouts.create machinery and old_knob
-	// deprecated -- all outside accounting.
+	// send_age_if_zero(excluded) inline_gadget.size + inline_gadget.tuning.level
+	// (both excluded by the ONE subtree exclusion); id/timeouts.create
+	// machinery and old_knob deprecated -- all outside accounting.
 	// google_widget_iam_member: role/member/condition.title matched under
 	// specRoot, widget excluded. google_project_service: internal.
-	if widget.TotalArgs != 10 {
-		t.Errorf("TotalArgs = %d, want 10 (machinery and deprecated args must not count)", widget.TotalArgs)
+	if widget.TotalArgs != 12 {
+		t.Errorf("TotalArgs = %d, want 12 (machinery and deprecated args must not count)", widget.TotalArgs)
 	}
-	if widget.MatchedArgs != 5 || widget.MappedArgs != 3 || widget.ExcludedArgs != 2 {
-		t.Errorf("matched/mapped/excluded = %d/%d/%d, want 5/3/2",
+	if widget.MatchedArgs != 5 || widget.MappedArgs != 3 || widget.ExcludedArgs != 4 {
+		t.Errorf("matched/mapped/excluded = %d/%d/%d, want 5/3/4 (the subtree exclusion covers both inline_gadget leaves)",
 			widget.MatchedArgs, widget.MappedArgs, widget.ExcludedArgs)
 	}
 	if !reflect.DeepEqual(widget.InternalResources, []string{"google_project_service"}) {
@@ -253,6 +267,62 @@ func TestBuildAccounting_Hermetic(t *testing.T) {
 	}
 }
 
+// TestBuildAccounting_FanInMappings proves the dual of the name/value
+// idiom: several mappings recording ONE map-typed argument each cover
+// their own spec field — the argument counts as mapped once, and BOTH
+// spec fields are covered in the reverse direction. The shape: a
+// provider packing several honest dials (cpu, memory) into one limits
+// map.
+func TestBuildAccounting_FanInMappings(t *testing.T) {
+	schemas := map[string]*Schema{"google": {
+		Provider: "google",
+		Source:   "hashicorp/google",
+		Version:  "7.43.0",
+		Resources: map[string]*Block{
+			"google_box": {
+				Attributes: map[string]*Attribute{
+					"name":   {Required: true},
+					"limits": {Optional: true},
+				},
+			},
+		},
+	}}
+	spec := []KindCensus{{Kind: "TestBox", SpecFieldPaths: []string{
+		"spec.box_name",
+		"spec.resources.cpu",
+		"spec.resources.memory",
+	}}}
+	modules := []ModuleCensus{{Kind: "TestBox", Resources: []string{"google_box"},
+		Pins: map[string]string{"google": "~> 7.43"}}}
+	manifests := map[string]*Manifest{"TestBox": {
+		Resources: map[string]*ResourceManifest{
+			"google_box": {
+				Mappings: []Mapping{
+					{Spec: "spec.box_name", Arg: "name"},
+					{Spec: "spec.resources.cpu", Arg: "limits"},
+					{Spec: "spec.resources.memory", Arg: "limits"},
+				},
+			},
+		},
+	}}
+
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+	box := kindByName(t, acc, "TestBox")
+	if box.TotalArgs != 2 || box.MappedArgs != 2 || box.MatchedArgs != 0 {
+		t.Errorf("total/mapped/matched = %d/%d/%d, want 2/2/0 (the fan-in arg counts once)",
+			box.TotalArgs, box.MappedArgs, box.MatchedArgs)
+	}
+	if len(box.UnaccountedArgs) != 0 {
+		t.Errorf("UnaccountedArgs = %v, want none", box.UnaccountedArgs)
+	}
+	if len(box.UncoveredSpecFields) != 0 {
+		t.Errorf("UncoveredSpecFields = %v, want none (both map-realized fields are covered)", box.UncoveredSpecFields)
+	}
+	if !box.Accounted() {
+		t.Error("TestBox must be at total accounting")
+	}
+}
+
 // TestBuildAccounting_LedgerShadowsComputedClasses proves the computed
 // classes always win over the ledger AND that a shadowed entry is a
 // staleness finding: judgment duplicating what the instrument derives on
@@ -322,7 +392,7 @@ func TestBuildAccounting_MissingModule(t *testing.T) {
 		t.Errorf("ghost findings = %v, want exactly the missing-module finding", ghostFindings)
 	}
 	// The other kinds' accounting is unaffected by the ghost.
-	if widget := kindByName(t, acc, "TestWidget"); widget.TotalArgs != 10 {
+	if widget := kindByName(t, acc, "TestWidget"); widget.TotalArgs != 12 {
 		t.Errorf("TestWidget accounting disturbed by the missing-module kind: TotalArgs=%d", widget.TotalArgs)
 	}
 }

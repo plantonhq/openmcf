@@ -1,0 +1,41 @@
+# Minimal GcpCloudRunDomainMapping scenario: a subdomain of the
+# owner-verified E2E domain mapped onto the published Cloud Run fixture
+# service. Proves create -> verify -> destroy on both engines WITHOUT
+# publishing DNS: the provider's create poll treats Ready=Unknown with
+# reason CertificatePending ("waiting for external verification of DNS
+# records") as success, so the lane needs domain VERIFICATION only — the
+# one-time, out-of-band `gcloud domains verify` step the required-env
+# annotation below gates on.
+#
+# PLANTON_E2E_VERIFIED_DOMAIN carries the apex domain the E2E identity
+# has verified (e.g. "e2e.planton.dev" — subdomains inherit
+# verification). Lanes SKIP this scenario with the reason wherever the
+# variable is absent. Domain mappings hard-delete (no soft-delete
+# reservation), so the subdomain label stays fixed across runs.
+#
+# NOTE: the raw file does not pass `planton validate` — the domain CEL
+# sees the unexpanded token (validated with a sample value substituted;
+# the runner expands tokens before its own validation).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCloudRunDomainMapping
+metadata:
+  name: planton-oss-e2e-gcprundm-minimal
+  id: planton-oss-e2e-gcprundm-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcloudrundomainmapping
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-required-env: PLANTON_E2E_VERIFIED_DOMAIN
+spec:
+  region: us-central1
+  domain: e2e-rundm.${E2E_ENV:PLANTON_E2E_VERIFIED_DOMAIN}
+  route:
+    valueFrom:
+      kind: GcpCloudRun
+      name: planton-oss-e2e-cldrun-minimal
+      fieldPath: status.outputs.service_name
+  certificateMode: AUTOMATIC
+  deletionPolicy: DELETE

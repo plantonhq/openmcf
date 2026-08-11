@@ -4,6 +4,7 @@ package dev.planton.gcp.gcpredisinstance.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
 
 // GcpRedisInstanceMaintenanceWindow defines a weekly maintenance window for
 // the Redis instance. GCP uses this to schedule updates and patches.
@@ -40,6 +41,11 @@ message GcpRedisInstanceMaintenanceWindow {
     gte: 0
     lte: 59
   }];
+
+  // Human-readable description of what this maintenance policy is for
+  // (e.g. "post-midnight window, after the nightly batch completes").
+  // Maximum 512 characters — the API rejects longer descriptions.
+  string description = 4 [(buf.validate.field).string.max_len = 512];
 }
 
 // GcpRedisInstancePersistenceConfig controls RDB snapshot persistence for
@@ -281,6 +287,33 @@ message GcpRedisInstanceSpec {
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
   ];
+
+  // User-defined labels to organize and track the instance, for cost
+  // attribution and fleet queries. Merged beneath Planton's platform
+  // attribution labels (platform keys win on conflict).
+  map<string, string> labels = 23;
+
+  // Whether deletion protection is enabled. When true (the default —
+  // matching GCP's safety posture for stateful stores), destroying the
+  // instance fails until this is explicitly set to false. Both IaC
+  // engines send the value explicitly so destroy behavior is identical
+  // regardless of engine.
+  optional bool deletion_protection = 24 [(dev.planton.shared.options.default) = "true"];
+
+  // Deletion policy for the instance — what happens when this resource
+  // is destroyed (evaluated only after deletion_protection allows the
+  // destroy at all):
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the instance is deleted; all in-memory data is lost
+  //   "PREVENT" -- destroy FAILS; a second, independent guard for a
+  //                cache whose loss would stampede the backing store
+  //   "ABANDON" -- the instance is removed from management but left
+  //                running (and billing) in GCP with its data intact
+  string deletion_policy = 25 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 
   // -- Cross-field validations --
 

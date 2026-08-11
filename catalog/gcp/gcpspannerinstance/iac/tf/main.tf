@@ -30,6 +30,10 @@ resource "google_spanner_instance" "this" {
   # false (the safe default), destroy fails while any backup exists.
   force_destroy = var.spec.force_destroy
 
+  # Client-side destroy behavior: DELETE (default), PREVENT (destroy
+  # fails), or ABANDON (drop from state, keep the instance running).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   labels = local.final_labels
 
   dynamic "autoscaling_config" {
@@ -47,13 +51,18 @@ resource "google_spanner_instance" "this" {
         content {
           high_priority_cpu_utilization_percent = autoscaling_targets.value.high_priority_cpu_utilization_percent > 0 ? autoscaling_targets.value.high_priority_cpu_utilization_percent : null
           storage_utilization_percent           = autoscaling_targets.value.storage_utilization_percent > 0 ? autoscaling_targets.value.storage_utilization_percent : null
+          total_cpu_utilization_percent         = autoscaling_targets.value.total_cpu_utilization_percent > 0 ? autoscaling_targets.value.total_cpu_utilization_percent : null
         }
       }
 
-      # Per-replica-location node bounds for multi-region instances: a
+      # Per-replica autoscaling tuning for multi-region instances: a
       # read-heavy region scales independently instead of sizing every
       # region for the hottest one. The spec flattens the provider's
-      # single-field replica_selection wrapper to replica_location.
+      # single-field replica_selection wrapper to replica_location and
+      # the overrides' autoscaling_limits wrapper onto the overrides
+      # message; the limits block is emitted only when a bounds family
+      # (nodes or processing units) is actually set, so a targets-only
+      # override never sends an empty block.
       dynamic "asymmetric_autoscaling_options" {
         for_each = autoscaling_config.value.asymmetric_autoscaling_options
         content {
@@ -61,10 +70,20 @@ resource "google_spanner_instance" "this" {
             location = asymmetric_autoscaling_options.value.replica_location
           }
           overrides {
-            autoscaling_limits {
-              min_nodes = asymmetric_autoscaling_options.value.overrides.min_nodes
-              max_nodes = asymmetric_autoscaling_options.value.overrides.max_nodes
+            dynamic "autoscaling_limits" {
+              for_each = (asymmetric_autoscaling_options.value.overrides.min_nodes > 0 || asymmetric_autoscaling_options.value.overrides.max_nodes > 0 || asymmetric_autoscaling_options.value.overrides.min_processing_units > 0 || asymmetric_autoscaling_options.value.overrides.max_processing_units > 0) ? [asymmetric_autoscaling_options.value.overrides] : []
+              content {
+                min_nodes            = autoscaling_limits.value.min_nodes > 0 ? autoscaling_limits.value.min_nodes : null
+                max_nodes            = autoscaling_limits.value.max_nodes > 0 ? autoscaling_limits.value.max_nodes : null
+                min_processing_units = autoscaling_limits.value.min_processing_units > 0 ? autoscaling_limits.value.min_processing_units : null
+                max_processing_units = autoscaling_limits.value.max_processing_units > 0 ? autoscaling_limits.value.max_processing_units : null
+              }
             }
+
+            autoscaling_target_high_priority_cpu_utilization_percent = asymmetric_autoscaling_options.value.overrides.autoscaling_target_high_priority_cpu_utilization_percent > 0 ? asymmetric_autoscaling_options.value.overrides.autoscaling_target_high_priority_cpu_utilization_percent : null
+            autoscaling_target_total_cpu_utilization_percent         = asymmetric_autoscaling_options.value.overrides.autoscaling_target_total_cpu_utilization_percent > 0 ? asymmetric_autoscaling_options.value.overrides.autoscaling_target_total_cpu_utilization_percent : null
+            disable_high_priority_cpu_autoscaling                    = asymmetric_autoscaling_options.value.overrides.disable_high_priority_cpu_autoscaling ? true : null
+            disable_total_cpu_autoscaling                            = asymmetric_autoscaling_options.value.overrides.disable_total_cpu_autoscaling ? true : null
           }
         }
       }

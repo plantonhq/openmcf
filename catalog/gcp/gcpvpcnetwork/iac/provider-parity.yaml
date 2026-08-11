@@ -1,0 +1,45 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_compute_network:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.network_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      # The provider flattens the API's routingConfig sub-object into three
+      # prefixed top-level arguments; the spec keeps the API's message shape.
+      - spec: spec.bgp_best_path_selection.mode
+        arg: bgp_best_path_selection_mode
+      - spec: spec.bgp_best_path_selection.always_compare_med
+        arg: bgp_always_compare_med
+      - spec: spec.bgp_best_path_selection.inter_region_cost
+        arg: bgp_inter_region_cost
+      # The provider nests create-time tags under a params block; the spec
+      # uses the catalog-wide resource_manager_tags vocabulary.
+      - spec: spec.resource_manager_tags
+        arg: params.resource_manager_tags
+    exclusions:
+      - arg: delete_bgp_always_compare_med
+        reason: >-
+          a Terraform state-plumbing flag, not configuration -- it exists to
+          PATCH the API's bgpAlwaysCompareMed to null instead of a value
+          (and the provider hard-errors when it is combined with
+          bgp_always_compare_med true); the module sends always_compare_med
+          explicitly (true or false) whenever the BGP block is present, so
+          the declarative spec already produces the flag's only observable
+          outcome -- the field at its API default
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables compute.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      network never disables the API project-wide); not spec surface.

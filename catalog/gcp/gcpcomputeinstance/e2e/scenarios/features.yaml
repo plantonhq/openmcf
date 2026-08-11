@@ -1,7 +1,10 @@
 # GcpComputeInstance scenario: the composed graph — a Spot VM with
 # shielded boot, a dedicated GcpServiceAccount identity, and a pre-created
 # GcpComputeDisk attached by self-link reference (the disk FK proven
-# live). Private placement: subnetwork only, no external IP.
+# live). Private placement: subnetwork only, no external IP. Also arms
+# the cheap new dials: explicit boot-disk guest OS features (additive to
+# the image's own) and an explicit DELETE deletion policy (the provider
+# default, armed to prove the round-trip stays diff-free).
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpComputeInstance
 metadata:
@@ -23,6 +26,9 @@ spec:
     image: debian-cloud/debian-12
     sizeGb: 10
     type: pd-balanced
+    guestOsFeatures:
+      - UEFI_COMPATIBLE
+      - GVNIC
   attachedDisks:
     - source:
         valueFrom:
@@ -50,5 +56,6 @@ spec:
     instanceTerminationAction: DELETE
   shieldedInstanceConfig:
     enableSecureBoot: true
+  deletionPolicy: DELETE
   labels:
     e2e-suite: gcp

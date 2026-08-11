@@ -90,7 +90,7 @@ The factors express how much of the metric-suggested change the autoscaler appli
 
 ### Deliberately not modeled (recorded reasons)
 
-- **`deletion_policy`** — a client-side lever that conflicts with Planton-managed destroy (catalog-wide skip). Nothing else on the resource is skipped.
+Nothing. Every configurable argument of `google_dataproc_autoscaling_policy` at the pinned provider is representable through this spec — including `deletionPolicy` (the API's own referenced-by-a-cluster guard still applies on top of it).
 
 ## Related Components
 

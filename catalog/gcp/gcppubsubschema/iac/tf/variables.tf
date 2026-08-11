@@ -30,6 +30,10 @@ variable "spec" {
     # The schema definition text (Avro JSON or a protobuf message
     # definition, matching the declared type).
     definition = string
+
+    # Deletion policy: "", "DELETE" (default), "PREVENT" (destroy fails),
+    # or "ABANDON" (remove from management, leave serving in GCP).
+    deletion_policy = optional(string, "")
   })
 
   validation {
@@ -45,5 +49,10 @@ variable "spec" {
   validation {
     condition     = var.spec.definition != ""
     error_message = "definition is required."
+  }
+
+  validation {
+    condition     = contains(["", "DELETE", "PREVENT", "ABANDON"], var.spec.deletion_policy)
+    error_message = "deletion_policy must be one of: DELETE, PREVENT, ABANDON."
   }
 }

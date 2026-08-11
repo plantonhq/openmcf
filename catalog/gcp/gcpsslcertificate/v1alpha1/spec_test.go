@@ -96,7 +96,22 @@ var _ = ginkgo.Describe("GcpSslCertificateSpec", func() {
 		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
 	})
 
+	ginkgo.It("should accept each deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			target := minimal()
+			target.Spec.DeletionPolicy = v
+			gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+		}
+	})
+
 	// ──────────────── Negative Cases ────────────────
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		target := minimal()
+		target.Spec.DeletionPolicy = "KEEP"
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
 
 	ginkgo.It("should reject a missing certificate", func() {
 		target := minimal()

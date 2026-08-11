@@ -1,0 +1,72 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_compute_backend_service:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.backend_service_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      # The provider's singular repeated-block name; the spec uses the
+      # plural. Matching resumes name-for-name below the subtree
+      # (balancing_mode, capacity_scaler, custom_metrics, ...).
+      - spec: spec.backends
+        arg: backend
+      # GCP accepts at most ONE health check per backend service (the
+      # API's own constraint), so the spec models the reference singular
+      # where the provider inherits the API's list shape.
+      - spec: spec.health_check
+        arg: health_checks
+      # The provider nests create-time tags under a params block; the spec
+      # uses the catalog-wide resource_manager_tags vocabulary.
+      - spec: spec.resource_manager_tags
+        arg: params.resource_manager_tags
+    exclusions:
+      - arg: log_config.request_headers.header_name
+        reason: >-
+          SDK gap -- pulumi-gcp v9.29.0's BackendServiceLogConfig bridges
+          enable/sample_rate/optional_mode/optional_fields but not the
+          request_headers list, and cross-engine parity forbids modeling a
+          field only one engine can send; re-evaluate at the next
+          pulumi-gcp bump
+      - arg: log_config.response_headers.header_name
+        reason: >-
+          SDK gap -- pulumi-gcp v9.29.0's BackendServiceLogConfig bridges
+          enable/sample_rate/optional_mode/optional_fields but not the
+          response_headers list, and cross-engine parity forbids modeling
+          a field only one engine can send; re-evaluate at the next
+          pulumi-gcp bump
+
+  # Signed-URL keys are modeled as a list on the spec and fanned out to one
+  # companion resource per key -- the keys have no life apart from the
+  # service, which is why the resource is folded into this kind. The
+  # kind-level deletion_policy matches both resources by name.
+  google_compute_backend_service_signed_url_key:
+    mappings:
+      - spec: spec.signed_url_keys.name
+        arg: name
+      - spec: spec.signed_url_keys.key_value
+        arg: key_value
+      - spec: spec.project_id
+        arg: project
+    exclusions:
+      - arg: backend_service
+        reason: >-
+          wired by the module to the backend service it creates -- a
+          signed-URL key has no independent life apart from its service,
+          which is why the resource is folded into this kind at all
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables compute.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      backend service never disables the API project-wide); not spec
+      surface.

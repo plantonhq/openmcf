@@ -24,3 +24,6 @@ spec:
       fieldPath: status.outputs.database_name
   retention: 86400s
   daily: true
+  # Explicit DELETE (also the provider default): proves the modeled field
+  # round-trips with no diff.
+  deletionPolicy: DELETE

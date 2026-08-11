@@ -8,7 +8,5 @@ spec:
   # in seconds; the chain cost is the database (~1-2 minutes).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

@@ -32,3 +32,6 @@ spec:
         versionedExpr: SRC_IPS_V1
         srcIpRanges:
           - "*"
+
+  # Ephemeral test fixture: fully delete on destroy.
+  deletionPolicy: DELETE

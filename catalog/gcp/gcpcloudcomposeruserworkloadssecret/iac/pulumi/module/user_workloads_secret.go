@@ -38,6 +38,13 @@ func userWorkloadsSecret(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.P
 		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
 	}
 
+	// Client-side destroy behavior: DELETE (default), PREVENT (destroy
+	// fails — protects credentials live pipelines depend on), or ABANDON
+	// (drop from state, keep the Secret in the cluster).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdSecret, err := composer.NewUserWorkloadsSecret(ctx, "user-workloads-secret", args,
 		pulumi.Provider(gcpProvider))
 	if err != nil {

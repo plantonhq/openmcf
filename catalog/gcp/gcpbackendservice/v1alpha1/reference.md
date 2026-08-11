@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpBackendServiceSpec defines a global Compute Engine backend service — the
 hub of GCP's L7 load balancing family. A backend service owns HOW traffic
 reaches a set of backends: which instance groups or network endpoint groups
@@ -105,6 +107,10 @@ spec:
   # Surface the CDN verdict for debugging.
   customResponseHeaders:
     - "X-Cache-Status: {cdn_cache_status}"
+
+  # Ephemeral test fixture: delete the backend service (and any signed-URL
+  # keys) on destroy.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -247,6 +253,8 @@ spec:
 | `spec.signedUrlKeys` | `[]GcpBackendServiceSignedUrlKey` |  |  |  |
 | `spec.signedUrlKeys[].name` | `string` | yes |  |  |
 | `spec.signedUrlKeys[].keyValue` | `string` (sensitive) | yes |  |  |
+| `spec.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -296,7 +304,7 @@ switching protocol families usually also means changing the health
 check and backend ports.
 
 - default: `HTTP`
-- rule: protocol must be one of HTTP, HTTPS, HTTP2, H2C, TCP, SSL, UDP, or GRPC
+- rule: protocol must be one of HTTP, HTTPS, HTTP2, H2C, TCP, SSL, UDP, GRPC, or UNSPECIFIED
 
 ### spec.loadBalancingScheme
 
@@ -410,7 +418,7 @@ CONNECTION (open connections, for TCP/SSL), or CUSTOM_METRICS
 CUSTOM_METRICS); serverless NEGs ignore balancing entirely. Mutable.
 
 - default: `UTILIZATION`
-- rule: balancing_mode must be one of UTILIZATION, RATE, CONNECTION, or CUSTOM_METRICS
+- rule: balancing_mode must be one of UTILIZATION, RATE, CONNECTION, CUSTOM_METRICS, or IN_FLIGHT
 
 ### spec.backends[].capacityScaler
 
@@ -1577,6 +1585,32 @@ new key and removing the old.
 
 - rule: {"required":true,"string":{"pattern":"^[A-Za-z0-9_-]{22}(==)?$"}}
 
+### spec.resourceManagerTags
+
+`map<string, string>`
+
+Resource Manager tags bound to the backend service for org-policy and
+IAM conditions. Keys in the form "tagKeys/{id}", values
+"tagValues/{id}". Create-time only: changing them later replaces the
+backend service.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the backend service AND its signed-URL keys — one
+switch governs both objects this kind manages:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- both are deleted (GCP refuses to delete the backend
+               service while a URL map or forwarding rule still
+               references it); the backends it pointed at — instance
+               groups, NEGs — are untouched
+  "PREVENT" -- destroy FAILS; protects the routing target of a live
+               load balancer
+  "ABANDON" -- both are removed from management but keep serving in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `cdn_requires_external_scheme`: Cloud CDN can only be enabled on external backend services (scheme EXTERNAL or EXTERNAL_MANAGED) — it does not front internal load balancers
@@ -1623,10 +1657,14 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | GcpUrlMap | `spec.defaultRouteAction.weightedBackendServices[].backendService` | `status.outputs.self_link` |
+| GcpUrlMap | `spec.defaultRouteAction.requestMirrorPolicy.backendService` | `status.outputs.self_link` |
 | GcpUrlMap | `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].backendService` | `status.outputs.self_link` |
+| GcpUrlMap | `spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy.backendService` | `status.outputs.self_link` |
 | GcpUrlMap | `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].backendService` | `status.outputs.self_link` |
+| GcpUrlMap | `spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy.backendService` | `status.outputs.self_link` |
 | GcpUrlMap | `spec.pathMatchers[].routeRules[].service` | `status.outputs.self_link` |
 | GcpUrlMap | `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].backendService` | `status.outputs.self_link` |
+| GcpUrlMap | `spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy.backendService` | `status.outputs.self_link` |
 
 ## See Also
 

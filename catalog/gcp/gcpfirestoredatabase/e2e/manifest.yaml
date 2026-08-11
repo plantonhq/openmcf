@@ -14,3 +14,8 @@ spec:
 
   # Keep the database independent of any App Engine app lifecycle.
   appEngineIntegrationMode: DISABLED
+
+  # DELETE (the default) keeps destroys real — the raw provider would
+  # ABANDON the database. Production databases pair PREVENT here with
+  # deleteProtectionState: DELETE_PROTECTION_ENABLED.
+  deletionPolicy: DELETE

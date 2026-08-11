@@ -57,16 +57,13 @@ func kmsKey(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) erro
 		Name:    pulumi.String(spec.KeyName),
 		KeyRing: pulumi.String(keyRingId),
 		Labels:  pulumi.ToStringMap(locals.GcpLabels),
+	}
 
-		// PARITY: the bridged provider tracks a newer line than the
-		// released Terraform google provider and carries a client-side
-		// deletion_policy knob (DELETE / ABANDON / PREVENT) that the
-		// released 6.x TF resource does not have. Its default, DELETE,
-		// is exactly the released TF destroy behavior (destroy all key
-		// versions, disable rotation, keep the key object). Pin it
-		// explicitly so a future bridged-default change can never make
-		// destroy behave differently on one engine only.
-		DeletionPolicy: pulumi.String("DELETE"),
+	// DELETE (provider default) destroys every key version on destroy;
+	// PREVENT fails the destroy; ABANDON leaves versions intact and the
+	// key decryptable. Sent only when set — mirrors the Terraform module.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	// Purpose defaults to ENCRYPT_DECRYPT server-side; send only when set.

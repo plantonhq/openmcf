@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpServerlessVpcConnectorSpec defines a Serverless VPC Access connector
 (`google_vpc_access_connector`) — the managed bridge that lets serverless
 workloads (Cloud Functions, Cloud Run, App Engine) send traffic into a VPC
@@ -52,6 +54,10 @@ spec:
   machineType: e2-micro
   minInstances: 2
   maxInstances: 4
+
+  # DELETE keeps destroys real; PREVENT belongs on the region's
+  # production serverless egress path.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -69,6 +75,7 @@ spec:
 | `spec.machineType` | `string` |  | `e2-micro` |  |
 | `spec.minInstances` | `int32` |  |  |  |
 | `spec.maxInstances` | `int32` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -190,6 +197,22 @@ Decreasing this value forces the connector to be REPLACED (brief
 egress outage); increasing it applies in place.
 
 - rule: {"int32":{"lte":10,"gte":3}}
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the connector — what happens when this resource is
+destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the connector is deleted (GCP tears down the forwarding
+               fleet, ~3-5 minutes; serverless egress through it stops)
+  "PREVENT" -- destroy FAILS; protects the private-egress path every
+               function and service in the region may depend on
+  "ABANDON" -- the connector is removed from management but keeps
+               forwarding traffic in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

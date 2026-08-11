@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpDnsZoneSpec defines a Google Cloud DNS managed zone
 (`google_dns_managed_zone`). DNS records belong in the separate GcpDnsRecord
 kind — this resource owns the zone shell only.
@@ -24,6 +26,9 @@ spec:
     value: my-gcp-project-123
   visibility: public
   description: Public authoritative zone for example.com
+
+  # Ephemeral test fixture: delete the zone shell on destroy.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -51,12 +56,14 @@ spec:
 | `spec.forwardingConfig.targetNameServers[].ipv4Address` | `string` |  |  |  |
 | `spec.forwardingConfig.targetNameServers[].domainName` | `string` |  |  |  |
 | `spec.forwardingConfig.targetNameServers[].forwardingPath` | `string` |  |  |  |
+| `spec.forwardingConfig.targetNameServers[].ipv6Address` | `string` |  |  |  |
 | `spec.peeringConfig` | `GcpDnsZonePeeringConfig` |  |  |  |
 | `spec.peeringConfig.targetNetwork` | `string \| valueFrom` | yes |  | GcpVpcNetwork (`status.outputs.network_self_link`) |
 | `spec.cloudLoggingConfig` | `GcpDnsZoneCloudLoggingConfig` |  |  |  |
 | `spec.cloudLoggingConfig.enableLogging` | `bool` |  |  |  |
 | `spec.forceDestroy` | `bool` |  | `false` |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -197,7 +204,8 @@ Outbound forwarding targets (private forwarding zones).
 `[]GcpDnsZoneForwardingTargetNameServer` · required
 
 - rule: {"repeated":{"minItems":"1"}}
-- rule: each target_name_server requires ipv4_address or domain_name
+- rule: each target_name_server requires ipv4_address, ipv6_address, or domain_name
+- rule: a target_name_server accepts ipv4_address or ipv6_address, never both
 
 ### spec.forwardingConfig.targetNameServers[].ipv4Address
 
@@ -218,6 +226,13 @@ Fully qualified domain name of the forwarding target.
 Query path: default (RFC1918 via VPC, else internet) or private (always VPC).
 
 - rule: forwarding_path must be default or private
+
+### spec.forwardingConfig.targetNameServers[].ipv6Address
+
+`string`
+
+IPv6 address of the upstream resolver. A target carries one address
+family — the provider rejects a target with both IPv4 and IPv6 set.
 
 ### spec.peeringConfig
 
@@ -260,6 +275,24 @@ When true, delete all record sets in the zone on destroy. Default false.
 `map<string, string>`
 
 Additional GCP labels merged with platform labels.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the managed zone — the second of this kind's two
+destroy levers (force_destroy empties the records first; this decides
+the zone shell itself):
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the zone is deleted (GCP refuses while non-default
+               record sets remain unless force_destroy is true); its
+               delegated name servers stop answering
+  "PREVENT" -- destroy FAILS; protects a zone that registrars and
+               parent zones delegate to
+  "ABANDON" -- the zone is removed from management but keeps serving
+               DNS in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

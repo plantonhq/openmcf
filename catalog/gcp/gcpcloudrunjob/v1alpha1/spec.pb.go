@@ -85,9 +85,12 @@ func (GcpCloudRunJobExecutionEnvironment) EnumDescriptor() ([]byte, []int) {
 // task_count tasks with up to parallelism running concurrently.
 //
 // Jobs share the same container/volume/VPC vocabulary as GcpCloudRun but
-// deliberately omit serving concerns — no ingress, no traffic, no probes.
-// Trigger executions with `gcloud run jobs execute`, Cloud Scheduler, or
-// Eventarc; this resource owns the job definition, not individual runs.
+// omit serving concerns — no ingress, no traffic, no liveness/readiness
+// probes (a startup probe IS supported: it gates task start, and a task
+// that never passes it is shut down and retried). Trigger executions with
+// `gcloud run jobs execute`, Cloud Scheduler, Eventarc, or declaratively
+// at deploy time via start_execution_token / run_execution_token; this
+// resource owns the job definition, not individual runs.
 type GcpCloudRunJobSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The GCP project the job is created in. Accepts a literal project ID
@@ -121,6 +124,9 @@ type GcpCloudRunJobSpec struct {
 	Parallelism *int32 `protobuf:"varint,8,opt,name=parallelism,proto3,oneof" json:"parallelism,omitempty"`
 	// Launch-stage gate for preview Cloud Run features. Set BETA (or ALPHA)
 	// only when the spec uses features GCP rejects at the default GA stage.
+	// The provider enum admits more values (UNIMPLEMENTED, PRELAUNCH,
+	// EARLY_ACCESS, DEPRECATED), but Cloud Run itself supports only
+	// ALPHA/BETA/GA — this list encodes the API truth, deliberately.
 	LaunchStage string `protobuf:"bytes,9,opt,name=launch_stage,json=launchStage,proto3" json:"launch_stage,omitempty"`
 	// Binary Authorization: only container images that pass the policy's
 	// attestation checks may deploy.
@@ -132,8 +138,37 @@ type GcpCloudRunJobSpec struct {
 	// Prevents the job from being destroyed while true. Defaults to true
 	// (matching GCP's posture): a delete fails until this is set to false.
 	DeletionProtection *bool `protobuf:"varint,12,opt,name=deletion_protection,json=deletionProtection,proto3,oneof" json:"deletion_protection,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Labels stamped on every EXECUTION the job creates (visible on
+	// execution objects and in billing breakdowns), as opposed to `labels`,
+	// which lands on the job object itself. Same namespace restrictions as
+	// job labels.
+	ExecutionLabels map[string]string `protobuf:"bytes,13,rep,name=execution_labels,json=executionLabels,proto3" json:"execution_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Annotations stamped on every EXECUTION the job creates, as opposed to
+	// `annotations`, which lands on the job object. Same namespace
+	// restrictions.
+	ExecutionAnnotations map[string]string `protobuf:"bytes,14,rep,name=execution_annotations,json=executionAnnotations,proto3" json:"execution_annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Declarative run-on-deploy: a unique suffix string that triggers a new
+	// execution when the job is created or updated, with the job counted
+	// READY as soon as the execution successfully STARTS. Changing the
+	// token on a later update triggers another run. The combined length of
+	// job name and token must stay under 63 characters. Set at most one of
+	// the two token fields.
+	StartExecutionToken string `protobuf:"bytes,15,opt,name=start_execution_token,json=startExecutionToken,proto3" json:"start_execution_token,omitempty"`
+	// Declarative run-on-deploy like start_execution_token, but the job is
+	// counted READY only when the triggered execution successfully
+	// COMPLETES — deploy-and-verify semantics for migrations and one-shot
+	// setup work. The combined length of job name and token must stay under
+	// 63 characters. Set at most one of the two token fields.
+	RunExecutionToken string `protobuf:"bytes,16,opt,name=run_execution_token,json=runExecutionToken,proto3" json:"run_execution_token,omitempty"`
+	// What happens to the Cloud Run job when this resource is destroyed:
+	//
+	//	"" / "DELETE" -- the job is deleted (default)
+	//	"PREVENT"     -- destroy operations fail while this is set
+	//	"ABANDON"     -- the job is removed from management but left
+	//	                 running in GCP
+	DeletionPolicy string `protobuf:"bytes,17,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpCloudRunJobSpec) Reset() {
@@ -248,6 +283,41 @@ func (x *GcpCloudRunJobSpec) GetDeletionProtection() bool {
 		return *x.DeletionProtection
 	}
 	return false
+}
+
+func (x *GcpCloudRunJobSpec) GetExecutionLabels() map[string]string {
+	if x != nil {
+		return x.ExecutionLabels
+	}
+	return nil
+}
+
+func (x *GcpCloudRunJobSpec) GetExecutionAnnotations() map[string]string {
+	if x != nil {
+		return x.ExecutionAnnotations
+	}
+	return nil
+}
+
+func (x *GcpCloudRunJobSpec) GetStartExecutionToken() string {
+	if x != nil {
+		return x.StartExecutionToken
+	}
+	return ""
+}
+
+func (x *GcpCloudRunJobSpec) GetRunExecutionToken() string {
+	if x != nil {
+		return x.RunExecutionToken
+	}
+	return ""
+}
+
+func (x *GcpCloudRunJobSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 // GcpCloudRunJobTemplate describes one task: the container(s), volumes,
@@ -407,7 +477,17 @@ type GcpCloudRunJobContainer struct {
 	// Working directory for the entrypoint.
 	WorkingDir string `protobuf:"bytes,8,opt,name=working_dir,json=workingDir,proto3" json:"working_dir,omitempty"`
 	// Names of containers this one waits for before starting.
-	DependsOn     []string `protobuf:"bytes,9,rep,name=depends_on,json=dependsOn,proto3" json:"depends_on,omitempty"`
+	DependsOn []string `protobuf:"bytes,9,rep,name=depends_on,json=dependsOn,proto3" json:"depends_on,omitempty"`
+	// The port this container listens on — for jobs this exists to give
+	// probes a target (there is no request traffic). If unset and a probe
+	// needs a port, the probe names one explicitly.
+	Ports *GcpCloudRunJobContainerPort `protobuf:"bytes,10,opt,name=ports,proto3" json:"ports,omitempty"`
+	// Probe that gates task start: the task's work does not begin (and
+	// depends_on waiters stay blocked) until this succeeds; a container
+	// that never passes is shut down and the task retried per max_retries.
+	// Supports HTTP, TCP, and gRPC checks — the ONLY probe type jobs have
+	// (no liveness/readiness; those are serving concerns).
+	StartupProbe  *GcpCloudRunJobProbe `protobuf:"bytes,11,opt,name=startup_probe,json=startupProbe,proto3" json:"startup_probe,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -505,6 +585,446 @@ func (x *GcpCloudRunJobContainer) GetDependsOn() []string {
 	return nil
 }
 
+func (x *GcpCloudRunJobContainer) GetPorts() *GcpCloudRunJobContainerPort {
+	if x != nil {
+		return x.Ports
+	}
+	return nil
+}
+
+func (x *GcpCloudRunJobContainer) GetStartupProbe() *GcpCloudRunJobProbe {
+	if x != nil {
+		return x.StartupProbe
+	}
+	return nil
+}
+
+// GcpCloudRunJobContainerPort names the port a job container listens on so
+// startup probes have a default target.
+type GcpCloudRunJobContainerPort struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Port number the container listens on.
+	ContainerPort *int32 `protobuf:"varint,1,opt,name=container_port,json=containerPort,proto3,oneof" json:"container_port,omitempty"`
+	// Protocol selector: "http1" (default) or "h2c".
+	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunJobContainerPort) Reset() {
+	*x = GcpCloudRunJobContainerPort{}
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunJobContainerPort) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunJobContainerPort) ProtoMessage() {}
+
+func (x *GcpCloudRunJobContainerPort) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunJobContainerPort.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunJobContainerPort) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GcpCloudRunJobContainerPort) GetContainerPort() int32 {
+	if x != nil && x.ContainerPort != nil {
+		return *x.ContainerPort
+	}
+	return 0
+}
+
+func (x *GcpCloudRunJobContainerPort) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+// GcpCloudRunJobProbe is the startup check of one job container. Jobs have
+// only startup probes, so the tight startup bounds apply directly: the
+// whole startup window (failure_threshold × period_seconds) is capped at
+// 240 seconds by Cloud Run.
+type GcpCloudRunJobProbe struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Seconds to wait after container start before the first probe (0-240).
+	InitialDelaySeconds *int32 `protobuf:"varint,1,opt,name=initial_delay_seconds,json=initialDelaySeconds,proto3,oneof" json:"initial_delay_seconds,omitempty"`
+	// Seconds after which a single probe attempt times out (1-240; GCP
+	// default 1). Must not exceed period_seconds.
+	TimeoutSeconds *int32 `protobuf:"varint,2,opt,name=timeout_seconds,json=timeoutSeconds,proto3,oneof" json:"timeout_seconds,omitempty"`
+	// Seconds between probe attempts (1-240; GCP default 10).
+	PeriodSeconds *int32 `protobuf:"varint,3,opt,name=period_seconds,json=periodSeconds,proto3,oneof" json:"period_seconds,omitempty"`
+	// Consecutive failures after which the startup probe fails and the
+	// container is shut down (GCP default 3).
+	FailureThreshold *int32 `protobuf:"varint,4,opt,name=failure_threshold,json=failureThreshold,proto3,oneof" json:"failure_threshold,omitempty"`
+	// The check to perform.
+	//
+	// Types that are valid to be assigned to Handler:
+	//
+	//	*GcpCloudRunJobProbe_HttpGet
+	//	*GcpCloudRunJobProbe_TcpSocket
+	//	*GcpCloudRunJobProbe_Grpc
+	Handler       isGcpCloudRunJobProbe_Handler `protobuf_oneof:"handler"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunJobProbe) Reset() {
+	*x = GcpCloudRunJobProbe{}
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunJobProbe) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunJobProbe) ProtoMessage() {}
+
+func (x *GcpCloudRunJobProbe) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunJobProbe.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunJobProbe) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GcpCloudRunJobProbe) GetInitialDelaySeconds() int32 {
+	if x != nil && x.InitialDelaySeconds != nil {
+		return *x.InitialDelaySeconds
+	}
+	return 0
+}
+
+func (x *GcpCloudRunJobProbe) GetTimeoutSeconds() int32 {
+	if x != nil && x.TimeoutSeconds != nil {
+		return *x.TimeoutSeconds
+	}
+	return 0
+}
+
+func (x *GcpCloudRunJobProbe) GetPeriodSeconds() int32 {
+	if x != nil && x.PeriodSeconds != nil {
+		return *x.PeriodSeconds
+	}
+	return 0
+}
+
+func (x *GcpCloudRunJobProbe) GetFailureThreshold() int32 {
+	if x != nil && x.FailureThreshold != nil {
+		return *x.FailureThreshold
+	}
+	return 0
+}
+
+func (x *GcpCloudRunJobProbe) GetHandler() isGcpCloudRunJobProbe_Handler {
+	if x != nil {
+		return x.Handler
+	}
+	return nil
+}
+
+func (x *GcpCloudRunJobProbe) GetHttpGet() *GcpCloudRunJobHttpGetAction {
+	if x != nil {
+		if x, ok := x.Handler.(*GcpCloudRunJobProbe_HttpGet); ok {
+			return x.HttpGet
+		}
+	}
+	return nil
+}
+
+func (x *GcpCloudRunJobProbe) GetTcpSocket() *GcpCloudRunJobTcpSocketAction {
+	if x != nil {
+		if x, ok := x.Handler.(*GcpCloudRunJobProbe_TcpSocket); ok {
+			return x.TcpSocket
+		}
+	}
+	return nil
+}
+
+func (x *GcpCloudRunJobProbe) GetGrpc() *GcpCloudRunJobGrpcAction {
+	if x != nil {
+		if x, ok := x.Handler.(*GcpCloudRunJobProbe_Grpc); ok {
+			return x.Grpc
+		}
+	}
+	return nil
+}
+
+type isGcpCloudRunJobProbe_Handler interface {
+	isGcpCloudRunJobProbe_Handler()
+}
+
+type GcpCloudRunJobProbe_HttpGet struct {
+	// HTTP GET against a path on the container; 2xx is success. The job
+	// code must expose the health endpoint itself.
+	HttpGet *GcpCloudRunJobHttpGetAction `protobuf:"bytes,5,opt,name=http_get,json=httpGet,proto3,oneof"`
+}
+
+type GcpCloudRunJobProbe_TcpSocket struct {
+	// TCP connect to a port; a successful connection is success. The
+	// simplest probe — no code changes needed beyond listening.
+	TcpSocket *GcpCloudRunJobTcpSocketAction `protobuf:"bytes,6,opt,name=tcp_socket,json=tcpSocket,proto3,oneof"`
+}
+
+type GcpCloudRunJobProbe_Grpc struct {
+	// Standard gRPC health-check protocol (grpc.health.v1.Health/Check),
+	// which the job code must implement.
+	Grpc *GcpCloudRunJobGrpcAction `protobuf:"bytes,7,opt,name=grpc,proto3,oneof"`
+}
+
+func (*GcpCloudRunJobProbe_HttpGet) isGcpCloudRunJobProbe_Handler() {}
+
+func (*GcpCloudRunJobProbe_TcpSocket) isGcpCloudRunJobProbe_Handler() {}
+
+func (*GcpCloudRunJobProbe_Grpc) isGcpCloudRunJobProbe_Handler() {}
+
+// GcpCloudRunJobHttpGetAction is an HTTP GET probe check.
+type GcpCloudRunJobHttpGetAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Path to probe, e.g. "/healthz". Defaults to "/".
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// Port to probe. If unset, the container's declared port is used.
+	Port *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	// Custom headers sent with the probe request.
+	HttpHeaders   []*GcpCloudRunJobHttpHeader `protobuf:"bytes,3,rep,name=http_headers,json=httpHeaders,proto3" json:"http_headers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunJobHttpGetAction) Reset() {
+	*x = GcpCloudRunJobHttpGetAction{}
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunJobHttpGetAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunJobHttpGetAction) ProtoMessage() {}
+
+func (x *GcpCloudRunJobHttpGetAction) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunJobHttpGetAction.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunJobHttpGetAction) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GcpCloudRunJobHttpGetAction) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *GcpCloudRunJobHttpGetAction) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+func (x *GcpCloudRunJobHttpGetAction) GetHttpHeaders() []*GcpCloudRunJobHttpHeader {
+	if x != nil {
+		return x.HttpHeaders
+	}
+	return nil
+}
+
+// GcpCloudRunJobHttpHeader is one custom header on an HTTP probe.
+type GcpCloudRunJobHttpHeader struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Header name.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Header value.
+	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunJobHttpHeader) Reset() {
+	*x = GcpCloudRunJobHttpHeader{}
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunJobHttpHeader) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunJobHttpHeader) ProtoMessage() {}
+
+func (x *GcpCloudRunJobHttpHeader) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunJobHttpHeader.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunJobHttpHeader) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GcpCloudRunJobHttpHeader) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GcpCloudRunJobHttpHeader) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+// GcpCloudRunJobTcpSocketAction is a TCP connect probe check.
+type GcpCloudRunJobTcpSocketAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Port to connect to. If unset, the container's declared port is used.
+	Port          *int32 `protobuf:"varint,1,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunJobTcpSocketAction) Reset() {
+	*x = GcpCloudRunJobTcpSocketAction{}
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunJobTcpSocketAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunJobTcpSocketAction) ProtoMessage() {}
+
+func (x *GcpCloudRunJobTcpSocketAction) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunJobTcpSocketAction.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunJobTcpSocketAction) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GcpCloudRunJobTcpSocketAction) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+// GcpCloudRunJobGrpcAction is a gRPC health-check probe.
+type GcpCloudRunJobGrpcAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Port the gRPC health service listens on. If unset, the container's
+	// declared port is used.
+	Port *int32 `protobuf:"varint,1,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	// Service name passed to the health check. If empty, overall server
+	// health is checked.
+	Service       string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudRunJobGrpcAction) Reset() {
+	*x = GcpCloudRunJobGrpcAction{}
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudRunJobGrpcAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudRunJobGrpcAction) ProtoMessage() {}
+
+func (x *GcpCloudRunJobGrpcAction) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudRunJobGrpcAction.ProtoReflect.Descriptor instead.
+func (*GcpCloudRunJobGrpcAction) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GcpCloudRunJobGrpcAction) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+func (x *GcpCloudRunJobGrpcAction) GetService() string {
+	if x != nil {
+		return x.Service
+	}
+	return ""
+}
+
 // GcpCloudRunJobEnvVar is one environment variable: a literal value or a
 // Secret Manager reference, never both.
 type GcpCloudRunJobEnvVar struct {
@@ -521,7 +1041,7 @@ type GcpCloudRunJobEnvVar struct {
 
 func (x *GcpCloudRunJobEnvVar) Reset() {
 	*x = GcpCloudRunJobEnvVar{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -533,7 +1053,7 @@ func (x *GcpCloudRunJobEnvVar) String() string {
 func (*GcpCloudRunJobEnvVar) ProtoMessage() {}
 
 func (x *GcpCloudRunJobEnvVar) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -546,7 +1066,7 @@ func (x *GcpCloudRunJobEnvVar) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobEnvVar.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobEnvVar) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GcpCloudRunJobEnvVar) GetName() string {
@@ -584,7 +1104,7 @@ type GcpCloudRunJobSecretEnvSource struct {
 
 func (x *GcpCloudRunJobSecretEnvSource) Reset() {
 	*x = GcpCloudRunJobSecretEnvSource{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -596,7 +1116,7 @@ func (x *GcpCloudRunJobSecretEnvSource) String() string {
 func (*GcpCloudRunJobSecretEnvSource) ProtoMessage() {}
 
 func (x *GcpCloudRunJobSecretEnvSource) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -609,7 +1129,7 @@ func (x *GcpCloudRunJobSecretEnvSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobSecretEnvSource.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobSecretEnvSource) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GcpCloudRunJobSecretEnvSource) GetSecret() string {
@@ -641,7 +1161,7 @@ type GcpCloudRunJobContainerResources struct {
 
 func (x *GcpCloudRunJobContainerResources) Reset() {
 	*x = GcpCloudRunJobContainerResources{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -653,7 +1173,7 @@ func (x *GcpCloudRunJobContainerResources) String() string {
 func (*GcpCloudRunJobContainerResources) ProtoMessage() {}
 
 func (x *GcpCloudRunJobContainerResources) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -666,7 +1186,7 @@ func (x *GcpCloudRunJobContainerResources) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobContainerResources.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobContainerResources) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GcpCloudRunJobContainerResources) GetCpu() string {
@@ -704,7 +1224,7 @@ type GcpCloudRunJobVolume struct {
 
 func (x *GcpCloudRunJobVolume) Reset() {
 	*x = GcpCloudRunJobVolume{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -716,7 +1236,7 @@ func (x *GcpCloudRunJobVolume) String() string {
 func (*GcpCloudRunJobVolume) ProtoMessage() {}
 
 func (x *GcpCloudRunJobVolume) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -729,7 +1249,7 @@ func (x *GcpCloudRunJobVolume) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobVolume.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobVolume) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GcpCloudRunJobVolume) GetName() string {
@@ -841,7 +1361,7 @@ type GcpCloudRunJobVolumeCloudSql struct {
 
 func (x *GcpCloudRunJobVolumeCloudSql) Reset() {
 	*x = GcpCloudRunJobVolumeCloudSql{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -853,7 +1373,7 @@ func (x *GcpCloudRunJobVolumeCloudSql) String() string {
 func (*GcpCloudRunJobVolumeCloudSql) ProtoMessage() {}
 
 func (x *GcpCloudRunJobVolumeCloudSql) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -866,7 +1386,7 @@ func (x *GcpCloudRunJobVolumeCloudSql) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobVolumeCloudSql.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobVolumeCloudSql) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GcpCloudRunJobVolumeCloudSql) GetInstances() []*v1.StringValueOrRef {
@@ -891,7 +1411,7 @@ type GcpCloudRunJobVolumeSecret struct {
 
 func (x *GcpCloudRunJobVolumeSecret) Reset() {
 	*x = GcpCloudRunJobVolumeSecret{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -903,7 +1423,7 @@ func (x *GcpCloudRunJobVolumeSecret) String() string {
 func (*GcpCloudRunJobVolumeSecret) ProtoMessage() {}
 
 func (x *GcpCloudRunJobVolumeSecret) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -916,7 +1436,7 @@ func (x *GcpCloudRunJobVolumeSecret) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobVolumeSecret.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobVolumeSecret) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GcpCloudRunJobVolumeSecret) GetSecret() string {
@@ -955,7 +1475,7 @@ type GcpCloudRunJobVolumeSecretItem struct {
 
 func (x *GcpCloudRunJobVolumeSecretItem) Reset() {
 	*x = GcpCloudRunJobVolumeSecretItem{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -967,7 +1487,7 @@ func (x *GcpCloudRunJobVolumeSecretItem) String() string {
 func (*GcpCloudRunJobVolumeSecretItem) ProtoMessage() {}
 
 func (x *GcpCloudRunJobVolumeSecretItem) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -980,7 +1500,7 @@ func (x *GcpCloudRunJobVolumeSecretItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobVolumeSecretItem.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobVolumeSecretItem) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GcpCloudRunJobVolumeSecretItem) GetPath() string {
@@ -1017,7 +1537,7 @@ type GcpCloudRunJobVolumeEmptyDir struct {
 
 func (x *GcpCloudRunJobVolumeEmptyDir) Reset() {
 	*x = GcpCloudRunJobVolumeEmptyDir{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1029,7 +1549,7 @@ func (x *GcpCloudRunJobVolumeEmptyDir) String() string {
 func (*GcpCloudRunJobVolumeEmptyDir) ProtoMessage() {}
 
 func (x *GcpCloudRunJobVolumeEmptyDir) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1042,7 +1562,7 @@ func (x *GcpCloudRunJobVolumeEmptyDir) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobVolumeEmptyDir.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobVolumeEmptyDir) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GcpCloudRunJobVolumeEmptyDir) GetMedium() string {
@@ -1065,14 +1585,18 @@ type GcpCloudRunJobVolumeGcs struct {
 	// The bucket to mount. Accepts a literal name or a GcpGcsBucket reference.
 	Bucket *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
 	// Mount read-only.
-	ReadOnly      bool `protobuf:"varint,2,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
+	ReadOnly bool `protobuf:"varint,2,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
+	// Flags passed to the gcsfuse command mounting this volume, without
+	// leading dashes (e.g. "implicit-dirs", "only-dir=media",
+	// "file-cache-max-size-mb=512").
+	MountOptions  []string `protobuf:"bytes,3,rep,name=mount_options,json=mountOptions,proto3" json:"mount_options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpCloudRunJobVolumeGcs) Reset() {
 	*x = GcpCloudRunJobVolumeGcs{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1084,7 +1608,7 @@ func (x *GcpCloudRunJobVolumeGcs) String() string {
 func (*GcpCloudRunJobVolumeGcs) ProtoMessage() {}
 
 func (x *GcpCloudRunJobVolumeGcs) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1097,7 +1621,7 @@ func (x *GcpCloudRunJobVolumeGcs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobVolumeGcs.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobVolumeGcs) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GcpCloudRunJobVolumeGcs) GetBucket() *v1.StringValueOrRef {
@@ -1112,6 +1636,13 @@ func (x *GcpCloudRunJobVolumeGcs) GetReadOnly() bool {
 		return x.ReadOnly
 	}
 	return false
+}
+
+func (x *GcpCloudRunJobVolumeGcs) GetMountOptions() []string {
+	if x != nil {
+		return x.MountOptions
+	}
+	return nil
 }
 
 // GcpCloudRunJobVolumeNfs mounts an NFS share (e.g. Filestore).
@@ -1129,7 +1660,7 @@ type GcpCloudRunJobVolumeNfs struct {
 
 func (x *GcpCloudRunJobVolumeNfs) Reset() {
 	*x = GcpCloudRunJobVolumeNfs{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1141,7 +1672,7 @@ func (x *GcpCloudRunJobVolumeNfs) String() string {
 func (*GcpCloudRunJobVolumeNfs) ProtoMessage() {}
 
 func (x *GcpCloudRunJobVolumeNfs) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1154,7 +1685,7 @@ func (x *GcpCloudRunJobVolumeNfs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobVolumeNfs.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobVolumeNfs) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GcpCloudRunJobVolumeNfs) GetServer() string {
@@ -1184,14 +1715,18 @@ type GcpCloudRunJobVolumeMount struct {
 	// Name of a volume declared in template.volumes.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Absolute path in the container. Cloud SQL volumes must mount at "/cloudsql".
-	MountPath     string `protobuf:"bytes,2,opt,name=mount_path,json=mountPath,proto3" json:"mount_path,omitempty"`
+	MountPath string `protobuf:"bytes,2,opt,name=mount_path,json=mountPath,proto3" json:"mount_path,omitempty"`
+	// Path WITHIN the volume to mount instead of its root — e.g. mount only
+	// one secret item or one bucket directory. Relative path; empty mounts
+	// the volume root.
+	SubPath       string `protobuf:"bytes,3,opt,name=sub_path,json=subPath,proto3" json:"sub_path,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpCloudRunJobVolumeMount) Reset() {
 	*x = GcpCloudRunJobVolumeMount{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1203,7 +1738,7 @@ func (x *GcpCloudRunJobVolumeMount) String() string {
 func (*GcpCloudRunJobVolumeMount) ProtoMessage() {}
 
 func (x *GcpCloudRunJobVolumeMount) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1216,7 +1751,7 @@ func (x *GcpCloudRunJobVolumeMount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobVolumeMount.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobVolumeMount) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GcpCloudRunJobVolumeMount) GetName() string {
@@ -1229,6 +1764,13 @@ func (x *GcpCloudRunJobVolumeMount) GetName() string {
 func (x *GcpCloudRunJobVolumeMount) GetMountPath() string {
 	if x != nil {
 		return x.MountPath
+	}
+	return ""
+}
+
+func (x *GcpCloudRunJobVolumeMount) GetSubPath() string {
+	if x != nil {
+		return x.SubPath
 	}
 	return ""
 }
@@ -1250,7 +1792,7 @@ type GcpCloudRunJobVpcAccess struct {
 
 func (x *GcpCloudRunJobVpcAccess) Reset() {
 	*x = GcpCloudRunJobVpcAccess{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1262,7 +1804,7 @@ func (x *GcpCloudRunJobVpcAccess) String() string {
 func (*GcpCloudRunJobVpcAccess) ProtoMessage() {}
 
 func (x *GcpCloudRunJobVpcAccess) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1275,7 +1817,7 @@ func (x *GcpCloudRunJobVpcAccess) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobVpcAccess.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobVpcAccess) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GcpCloudRunJobVpcAccess) GetConnector() *v1.StringValueOrRef {
@@ -1314,7 +1856,7 @@ type GcpCloudRunJobNetworkInterface struct {
 
 func (x *GcpCloudRunJobNetworkInterface) Reset() {
 	*x = GcpCloudRunJobNetworkInterface{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1326,7 +1868,7 @@ func (x *GcpCloudRunJobNetworkInterface) String() string {
 func (*GcpCloudRunJobNetworkInterface) ProtoMessage() {}
 
 func (x *GcpCloudRunJobNetworkInterface) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1339,7 +1881,7 @@ func (x *GcpCloudRunJobNetworkInterface) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobNetworkInterface.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobNetworkInterface) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GcpCloudRunJobNetworkInterface) GetNetwork() *v1.StringValueOrRef {
@@ -1374,7 +1916,7 @@ type GcpCloudRunJobNodeSelector struct {
 
 func (x *GcpCloudRunJobNodeSelector) Reset() {
 	*x = GcpCloudRunJobNodeSelector{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[16]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1386,7 +1928,7 @@ func (x *GcpCloudRunJobNodeSelector) String() string {
 func (*GcpCloudRunJobNodeSelector) ProtoMessage() {}
 
 func (x *GcpCloudRunJobNodeSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[16]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1399,7 +1941,7 @@ func (x *GcpCloudRunJobNodeSelector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudRunJobNodeSelector.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobNodeSelector) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *GcpCloudRunJobNodeSelector) GetAccelerator() string {
@@ -1424,7 +1966,7 @@ type GcpCloudRunJobBinaryAuthorization struct {
 
 func (x *GcpCloudRunJobBinaryAuthorization) Reset() {
 	*x = GcpCloudRunJobBinaryAuthorization{}
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[17]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1436,7 +1978,7 @@ func (x *GcpCloudRunJobBinaryAuthorization) String() string {
 func (*GcpCloudRunJobBinaryAuthorization) ProtoMessage() {}
 
 func (x *GcpCloudRunJobBinaryAuthorization) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[17]
+	mi := &file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1449,7 +1991,7 @@ func (x *GcpCloudRunJobBinaryAuthorization) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GcpCloudRunJobBinaryAuthorization.ProtoReflect.Descriptor instead.
 func (*GcpCloudRunJobBinaryAuthorization) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+	return file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GcpCloudRunJobBinaryAuthorization) GetUseDefault() bool {
@@ -1477,7 +2019,7 @@ var File_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto protoreflect.FileDescrip
 
 const file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	".catalog/gcp/gcpcloudrunjob/v1alpha1/spec.proto\x12'dev.planton.gcp.gcpcloudrunjob.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb0\f\n" +
+	".catalog/gcp/gcpcloudrunjob/v1alpha1/spec.proto\x12'dev.planton.gcp.gcpcloudrunjob.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd2\x15\n" +
 	"\x12GcpCloudRunJobSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
@@ -1493,15 +2035,28 @@ const file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDesc = "" +
 	"\x14binary_authorization\x18\n" +
 	" \x01(\v2J.dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobBinaryAuthorizationR\x13binaryAuthorization\x12A\n" +
 	"\x1dgpu_zonal_redundancy_disabled\x18\v \x01(\bR\x1agpuZonalRedundancyDisabled\x12>\n" +
-	"\x13deletion_protection\x18\f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x12deletionProtection\x88\x01\x01\x1a9\n" +
+	"\x13deletion_protection\x18\f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x12deletionProtection\x88\x01\x01\x12{\n" +
+	"\x10execution_labels\x18\r \x03(\v2P.dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.ExecutionLabelsEntryR\x0fexecutionLabels\x12\x8a\x01\n" +
+	"\x15execution_annotations\x18\x0e \x03(\v2U.dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.ExecutionAnnotationsEntryR\x14executionAnnotations\x12\xbb\x01\n" +
+	"\x15start_execution_token\x18\x0f \x01(\tB\x86\x01\xbaH\a\xd8\x01\x01r\x02\x18?\xaa\xa6\x1dxtrigger marker, not a credential — an arbitrary uniqueness suffix whose only meaning is 'differs from the last deploy'R\x13startExecutionToken\x12\xb7\x01\n" +
+	"\x13run_execution_token\x18\x10 \x01(\tB\x86\x01\xbaH\a\xd8\x01\x01r\x02\x18?\xaa\xa6\x1dxtrigger marker, not a credential — an arbitrary uniqueness suffix whose only meaning is 'differs from the last deploy'R\x11runExecutionToken\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x11 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
 	"\x10AnnotationsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x9d\x03\xbaH\x99\x03\x1a\xe7\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
+	"\x14ExecutionLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aG\n" +
+	"\x19ExecutionAnnotationsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xf2\x04\xbaH\xee\x04\x1a\xe7\x01\n" +
 	"#gpu.redundancy_requires_accelerator\x12agpu_zonal_redundancy_disabled only applies to GPU jobs — set template.node_selector.accelerator\x1a]!this.gpu_zonal_redundancy_disabled || has(this.template) && has(this.template.node_selector)\x1a\xac\x01\n" +
-	"\x1aparallelism_lte_task_count\x126parallelism cannot exceed task_count when both are set\x1aV!has(this.parallelism) || !has(this.task_count) || this.parallelism <= this.task_countB\r\n" +
+	"\x1aparallelism_lte_task_count\x126parallelism cannot exceed task_count when both are set\x1aV!has(this.parallelism) || !has(this.task_count) || this.parallelism <= this.task_count\x1a\xd2\x01\n" +
+	"\x1dexecution_token.start_xor_run\x12jstart_execution_token and run_execution_token conflict — a deploy triggers at most one kind of execution\x1aE!(this.start_execution_token != '' && this.run_execution_token != '')B\r\n" +
 	"\v_task_countB\x0e\n" +
 	"\f_parallelismB\x16\n" +
 	"\x14_deletion_protection\"\x95\b\n" +
@@ -1520,7 +2075,7 @@ const file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDesc = "" +
 	"vpc_access\x18\b \x01(\v2@.dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVpcAccessR\tvpcAccess\x12h\n" +
 	"\rnode_selector\x18\t \x01(\v2C.dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNodeSelectorR\fnodeSelectorB\x12\n" +
 	"\x10_timeout_secondsB\x0e\n" +
-	"\f_max_retries\"\x9d\x04\n" +
+	"\f_max_retries\"\xba\b\n" +
 	"\x17GcpCloudRunJobContainer\x12<\n" +
 	"\x04name\x18\x01 \x01(\tB(\xbaH%\xd8\x01\x01r \x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x04name\x12 \n" +
 	"\x05image\x18\x02 \x01(\tB\n" +
@@ -1533,7 +2088,49 @@ const file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDesc = "" +
 	"\vworking_dir\x18\b \x01(\tR\n" +
 	"workingDir\x120\n" +
 	"\n" +
-	"depends_on\x18\t \x03(\tB\x11\xbaH\x0e\xd8\x01\x01\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\tdependsOn\"\x85\x03\n" +
+	"depends_on\x18\t \x03(\tB\x11\xbaH\x0e\xd8\x01\x01\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\tdependsOn\x12Z\n" +
+	"\x05ports\x18\n" +
+	" \x01(\v2D.dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainerPortR\x05ports\x12a\n" +
+	"\rstartup_probe\x18\v \x01(\v2<.dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobProbeR\fstartupProbe:\xdb\x02\xbaH\xd7\x02\x1a\xd4\x02\n" +
+	"\x1cstartup_probe.window_max_240\x12dthe startup window (failure_threshold × period_seconds, defaults 3 × 10) cannot exceed 240 seconds\x1a\xcd\x01!has(this.startup_probe) || (has(this.startup_probe.failure_threshold) ? this.startup_probe.failure_threshold : 3) * (has(this.startup_probe.period_seconds) ? this.startup_probe.period_seconds : 10) <= 240\"\x95\x01\n" +
+	"\x1bGcpCloudRunJobContainerPort\x127\n" +
+	"\x0econtainer_port\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x00R\rcontainerPort\x88\x01\x01\x12*\n" +
+	"\x04name\x18\x02 \x01(\tB\x16\xbaH\x13\xd8\x01\x01r\x0eR\x00R\x05http1R\x03h2cR\x04nameB\x11\n" +
+	"\x0f_container_port\"\xd5\x06\n" +
+	"\x13GcpCloudRunJobProbe\x12C\n" +
+	"\x15initial_delay_seconds\x18\x01 \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xf0\x01(\x00H\x01R\x13initialDelaySeconds\x88\x01\x01\x128\n" +
+	"\x0ftimeout_seconds\x18\x02 \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xf0\x01(\x01H\x02R\x0etimeoutSeconds\x88\x01\x01\x126\n" +
+	"\x0eperiod_seconds\x18\x03 \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xf0\x01(\x01H\x03R\rperiodSeconds\x88\x01\x01\x129\n" +
+	"\x11failure_threshold\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x04R\x10failureThreshold\x88\x01\x01\x12a\n" +
+	"\bhttp_get\x18\x05 \x01(\v2D.dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobHttpGetActionH\x00R\ahttpGet\x12g\n" +
+	"\n" +
+	"tcp_socket\x18\x06 \x01(\v2F.dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTcpSocketActionH\x00R\ttcpSocket\x12W\n" +
+	"\x04grpc\x18\a \x01(\v2A.dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobGrpcActionH\x00R\x04grpc:\xbd\x01\xbaH\xb9\x01\x1a\xb6\x01\n" +
+	"\x18probe.timeout_lte_period\x122probe timeout_seconds cannot exceed period_seconds\x1af!has(this.timeout_seconds) || !has(this.period_seconds) || this.timeout_seconds <= this.period_secondsB\x10\n" +
+	"\ahandler\x12\x05\xbaH\x02\b\x01B\x18\n" +
+	"\x16_initial_delay_secondsB\x12\n" +
+	"\x10_timeout_secondsB\x11\n" +
+	"\x0f_period_secondsB\x14\n" +
+	"\x12_failure_threshold\"\xd7\x01\n" +
+	"\x1bGcpCloudRunJobHttpGetAction\x12#\n" +
+	"\x04path\x18\x01 \x01(\tB\x0f\xbaH\f\xd8\x01\x01r\a2\x05^/.*$R\x04path\x12$\n" +
+	"\x04port\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x00R\x04port\x88\x01\x01\x12d\n" +
+	"\fhttp_headers\x18\x03 \x03(\v2A.dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobHttpHeaderR\vhttpHeadersB\a\n" +
+	"\x05_port\"P\n" +
+	"\x18GcpCloudRunJobHttpHeader\x12\x1e\n" +
+	"\x04name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"N\n" +
+	"\x1dGcpCloudRunJobTcpSocketAction\x12$\n" +
+	"\x04port\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x00R\x04port\x88\x01\x01B\a\n" +
+	"\x05_port\"c\n" +
+	"\x18GcpCloudRunJobGrpcAction\x12$\n" +
+	"\x04port\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x00R\x04port\x88\x01\x01\x12\x18\n" +
+	"\aservice\x18\x02 \x01(\tR\aserviceB\a\n" +
+	"\x05_port\"\x85\x03\n" +
 	"\x14GcpCloudRunJobEnvVar\x128\n" +
 	"\x04name\x18\x01 \x01(\tB$\xbaH!\xc8\x01\x01r\x1c2\x1a^[A-Za-z_][A-Za-z0-9_.-]*$R\x04name\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\x12r\n" +
@@ -1573,20 +2170,22 @@ const file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1cGcpCloudRunJobVolumeEmptyDir\x120\n" +
 	"\x06medium\x18\x01 \x01(\tB\x18\xbaH\x15\xd8\x01\x01r\x10R\x00R\x06MEMORYR\x04DISKR\x06medium\x12F\n" +
 	"\n" +
-	"size_limit\x18\x02 \x01(\tB'\xbaH$\xd8\x01\x01r\x1f2\x1d^[0-9]+(Ki|Mi|Gi|Ti|K|M|G|T)$R\tsizeLimit\"\xab\x01\n" +
+	"size_limit\x18\x02 \x01(\tB'\xbaH$\xd8\x01\x01r\x1f2\x1d^[0-9]+(Ki|Mi|Gi|Ti|K|M|G|T)$R\tsizeLimit\"\xd8\x01\n" +
 	"\x17GcpCloudRunJobVolumeGcs\x12s\n" +
 	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x1b\n" +
-	"\tread_only\x18\x02 \x01(\bR\breadOnly\"\x7f\n" +
+	"\tread_only\x18\x02 \x01(\bR\breadOnly\x12+\n" +
+	"\rmount_options\x18\x03 \x03(\tB\x06\xbaH\x03\xd8\x01\x01R\fmountOptions\"\x7f\n" +
 	"\x17GcpCloudRunJobVolumeNfs\x12\"\n" +
 	"\x06server\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06server\x12#\n" +
 	"\x04path\x18\x02 \x01(\tB\x0f\xbaH\f\xc8\x01\x01r\a2\x05^/.*$R\x04path\x12\x1b\n" +
-	"\tread_only\x18\x03 \x01(\bR\breadOnly\"k\n" +
+	"\tread_only\x18\x03 \x01(\bR\breadOnly\"\x86\x01\n" +
 	"\x19GcpCloudRunJobVolumeMount\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12.\n" +
 	"\n" +
-	"mount_path\x18\x02 \x01(\tB\x0f\xbaH\f\xc8\x01\x01r\a2\x05^/.*$R\tmountPath\"\xde\x04\n" +
+	"mount_path\x18\x02 \x01(\tB\x0f\xbaH\f\xc8\x01\x01r\a2\x05^/.*$R\tmountPath\x12\x19\n" +
+	"\bsub_path\x18\x03 \x01(\tR\asubPath\"\xde\x04\n" +
 	"\x17GcpCloudRunJobVpcAccess\x12s\n" +
 	"\tconnector\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xb1\x18\x92\xd4a\x18status.outputs.self_linkR\tconnector\x12v\n" +
 	"\x12network_interfaces\x18\x02 \x03(\v2G.dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNetworkInterfaceR\x11networkInterfaces\x12D\n" +
@@ -1626,65 +2225,81 @@ func file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDescGZIP() []byte {
 }
 
 var file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_goTypes = []any{
 	(GcpCloudRunJobExecutionEnvironment)(0),   // 0: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobExecutionEnvironment
 	(*GcpCloudRunJobSpec)(nil),                // 1: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec
 	(*GcpCloudRunJobTemplate)(nil),            // 2: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate
 	(*GcpCloudRunJobContainer)(nil),           // 3: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainer
-	(*GcpCloudRunJobEnvVar)(nil),              // 4: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobEnvVar
-	(*GcpCloudRunJobSecretEnvSource)(nil),     // 5: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSecretEnvSource
-	(*GcpCloudRunJobContainerResources)(nil),  // 6: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainerResources
-	(*GcpCloudRunJobVolume)(nil),              // 7: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume
-	(*GcpCloudRunJobVolumeCloudSql)(nil),      // 8: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeCloudSql
-	(*GcpCloudRunJobVolumeSecret)(nil),        // 9: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeSecret
-	(*GcpCloudRunJobVolumeSecretItem)(nil),    // 10: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeSecretItem
-	(*GcpCloudRunJobVolumeEmptyDir)(nil),      // 11: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeEmptyDir
-	(*GcpCloudRunJobVolumeGcs)(nil),           // 12: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeGcs
-	(*GcpCloudRunJobVolumeNfs)(nil),           // 13: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeNfs
-	(*GcpCloudRunJobVolumeMount)(nil),         // 14: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeMount
-	(*GcpCloudRunJobVpcAccess)(nil),           // 15: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVpcAccess
-	(*GcpCloudRunJobNetworkInterface)(nil),    // 16: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNetworkInterface
-	(*GcpCloudRunJobNodeSelector)(nil),        // 17: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNodeSelector
-	(*GcpCloudRunJobBinaryAuthorization)(nil), // 18: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobBinaryAuthorization
-	nil,                         // 19: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.LabelsEntry
-	nil,                         // 20: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.AnnotationsEntry
-	(*v1.StringValueOrRef)(nil), // 21: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpCloudRunJobContainerPort)(nil),       // 4: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainerPort
+	(*GcpCloudRunJobProbe)(nil),               // 5: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobProbe
+	(*GcpCloudRunJobHttpGetAction)(nil),       // 6: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobHttpGetAction
+	(*GcpCloudRunJobHttpHeader)(nil),          // 7: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobHttpHeader
+	(*GcpCloudRunJobTcpSocketAction)(nil),     // 8: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTcpSocketAction
+	(*GcpCloudRunJobGrpcAction)(nil),          // 9: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobGrpcAction
+	(*GcpCloudRunJobEnvVar)(nil),              // 10: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobEnvVar
+	(*GcpCloudRunJobSecretEnvSource)(nil),     // 11: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSecretEnvSource
+	(*GcpCloudRunJobContainerResources)(nil),  // 12: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainerResources
+	(*GcpCloudRunJobVolume)(nil),              // 13: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume
+	(*GcpCloudRunJobVolumeCloudSql)(nil),      // 14: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeCloudSql
+	(*GcpCloudRunJobVolumeSecret)(nil),        // 15: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeSecret
+	(*GcpCloudRunJobVolumeSecretItem)(nil),    // 16: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeSecretItem
+	(*GcpCloudRunJobVolumeEmptyDir)(nil),      // 17: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeEmptyDir
+	(*GcpCloudRunJobVolumeGcs)(nil),           // 18: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeGcs
+	(*GcpCloudRunJobVolumeNfs)(nil),           // 19: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeNfs
+	(*GcpCloudRunJobVolumeMount)(nil),         // 20: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeMount
+	(*GcpCloudRunJobVpcAccess)(nil),           // 21: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVpcAccess
+	(*GcpCloudRunJobNetworkInterface)(nil),    // 22: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNetworkInterface
+	(*GcpCloudRunJobNodeSelector)(nil),        // 23: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNodeSelector
+	(*GcpCloudRunJobBinaryAuthorization)(nil), // 24: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobBinaryAuthorization
+	nil,                         // 25: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.LabelsEntry
+	nil,                         // 26: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.AnnotationsEntry
+	nil,                         // 27: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.ExecutionLabelsEntry
+	nil,                         // 28: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.ExecutionAnnotationsEntry
+	(*v1.StringValueOrRef)(nil), // 29: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_depIdxs = []int32{
-	21, // 0: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	19, // 1: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.labels:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.LabelsEntry
-	20, // 2: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.annotations:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.AnnotationsEntry
+	29, // 0: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 1: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.labels:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.LabelsEntry
+	26, // 2: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.annotations:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.AnnotationsEntry
 	2,  // 3: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.template:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate
-	18, // 4: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.binary_authorization:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobBinaryAuthorization
-	3,  // 5: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.containers:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainer
-	7,  // 6: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.volumes:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume
-	21, // 7: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0,  // 8: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.execution_environment:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobExecutionEnvironment
-	21, // 9: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.encryption_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	15, // 10: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.vpc_access:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVpcAccess
-	17, // 11: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.node_selector:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNodeSelector
-	4,  // 12: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainer.env:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobEnvVar
-	6,  // 13: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainer.resources:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainerResources
-	14, // 14: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainer.volume_mounts:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeMount
-	5,  // 15: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobEnvVar.value_from_secret:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSecretEnvSource
-	8,  // 16: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume.cloud_sql_instance:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeCloudSql
-	9,  // 17: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume.secret:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeSecret
-	11, // 18: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume.empty_dir:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeEmptyDir
-	12, // 19: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume.gcs:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeGcs
-	13, // 20: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume.nfs:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeNfs
-	21, // 21: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeCloudSql.instances:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 22: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeSecret.items:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeSecretItem
-	21, // 23: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeGcs.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 24: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVpcAccess.connector:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 25: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVpcAccess.network_interfaces:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNetworkInterface
-	21, // 26: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNetworkInterface.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 27: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNetworkInterface.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	28, // [28:28] is the sub-list for method output_type
-	28, // [28:28] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	24, // 4: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.binary_authorization:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobBinaryAuthorization
+	27, // 5: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.execution_labels:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.ExecutionLabelsEntry
+	28, // 6: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.execution_annotations:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSpec.ExecutionAnnotationsEntry
+	3,  // 7: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.containers:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainer
+	13, // 8: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.volumes:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume
+	29, // 9: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 10: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.execution_environment:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobExecutionEnvironment
+	29, // 11: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.encryption_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // 12: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.vpc_access:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVpcAccess
+	23, // 13: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTemplate.node_selector:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNodeSelector
+	10, // 14: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainer.env:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobEnvVar
+	12, // 15: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainer.resources:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainerResources
+	20, // 16: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainer.volume_mounts:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeMount
+	4,  // 17: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainer.ports:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainerPort
+	5,  // 18: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobContainer.startup_probe:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobProbe
+	6,  // 19: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobProbe.http_get:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobHttpGetAction
+	8,  // 20: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobProbe.tcp_socket:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobTcpSocketAction
+	9,  // 21: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobProbe.grpc:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobGrpcAction
+	7,  // 22: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobHttpGetAction.http_headers:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobHttpHeader
+	11, // 23: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobEnvVar.value_from_secret:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobSecretEnvSource
+	14, // 24: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume.cloud_sql_instance:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeCloudSql
+	15, // 25: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume.secret:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeSecret
+	17, // 26: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume.empty_dir:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeEmptyDir
+	18, // 27: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume.gcs:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeGcs
+	19, // 28: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolume.nfs:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeNfs
+	29, // 29: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeCloudSql.instances:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 30: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeSecret.items:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeSecretItem
+	29, // 31: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVolumeGcs.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // 32: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVpcAccess.connector:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 33: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobVpcAccess.network_interfaces:type_name -> dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNetworkInterface
+	29, // 34: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNetworkInterface.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // 35: dev.planton.gcp.gcpcloudrunjob.v1alpha1.GcpCloudRunJobNetworkInterface.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	36, // [36:36] is the sub-list for method output_type
+	36, // [36:36] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_init() }
@@ -1694,22 +2309,31 @@ func file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_init() {
 	}
 	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
-	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[6].OneofWrappers = []any{
+	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[4].OneofWrappers = []any{
+		(*GcpCloudRunJobProbe_HttpGet)(nil),
+		(*GcpCloudRunJobProbe_TcpSocket)(nil),
+		(*GcpCloudRunJobProbe_Grpc)(nil),
+	}
+	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[7].OneofWrappers = []any{}
+	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[8].OneofWrappers = []any{}
+	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[12].OneofWrappers = []any{
 		(*GcpCloudRunJobVolume_CloudSqlInstance)(nil),
 		(*GcpCloudRunJobVolume_Secret)(nil),
 		(*GcpCloudRunJobVolume_EmptyDir)(nil),
 		(*GcpCloudRunJobVolume_Gcs)(nil),
 		(*GcpCloudRunJobVolume_Nfs)(nil),
 	}
-	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[8].OneofWrappers = []any{}
-	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[14].OneofWrappers = []any{}
+	file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpcloudrunjob_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   20,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

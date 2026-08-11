@@ -1,0 +1,54 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_vertex_ai_endpoint:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.endpoint_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      # CMEK: the provider wraps the key in a one-field block.
+      - spec: spec.kms_key_name
+        arg: encryption_spec.kms_key_name
+      # The logging block keeps its nested names except the BigQuery
+      # destination, which the provider wraps in a one-field block the
+      # spec flattens to a URI.
+      - spec: spec.request_response_logging_config
+        arg: predict_request_response_logging_config
+      - spec: spec.request_response_logging_config.bigquery_destination_uri
+        arg: predict_request_response_logging_config.bigquery_destination.output_uri
+      # PSC: project_allowlist and psc_automation_configs map name-for-name
+      # below this prefix.
+      - spec: spec.private_service_connect_config
+        arg: private_service_connect_config
+    exclusions:
+      - arg: private_service_connect_config.enable_private_service_connect
+        reason: >-
+          PSC enablement is the spec MESSAGE'S PRESENCE, not a separate
+          flag: both modules always send true when
+          private_service_connect_config exists (the provider requires
+          the flag inside the block and ForceNews it; false alongside the
+          block would be a contradiction the API rejects)
+      - arg: region
+        reason: >-
+          dead schema at v7.43.0 -- the argument is declared (ForceNew)
+          but never read anywhere in the resource's implementation (no
+          expander, no flattener, absent from the identity schema). The
+          module still sends it pinned to spec.location because the
+          provider resolves its regional API host from it; as
+          configuration surface it is location under a second name.
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      aiplatform.googleapis.com with fixed arguments (disable_on_destroy
+      false so destroying one endpoint never disables the API
+      project-wide); not spec surface.

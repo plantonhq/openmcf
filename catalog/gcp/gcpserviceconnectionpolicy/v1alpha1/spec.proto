@@ -168,4 +168,20 @@ message GcpServiceConnectionPolicySpec {
   // usable without address space — but optional in the API, so presets
   // always set it.
   GcpServiceConnectionPolicyPscConfig psc_config = 8;
+
+  // Deletion policy for the policy — what happens when this resource is
+  // destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the policy is deleted (existing PSC endpoints are
+  //                stranded and new instances of the service class can no
+  //                longer connect in this region)
+  //   "PREVENT" -- destroy FAILS; protects the connectivity every managed
+  //                instance under this policy depends on
+  //   "ABANDON" -- the policy is removed from management but keeps
+  //                authorizing connections in GCP
+  string deletion_policy = 9 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

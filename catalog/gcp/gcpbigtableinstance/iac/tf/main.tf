@@ -29,6 +29,21 @@ resource "google_bigtable_instance" "this" {
 
   display_name = var.spec.display_name != "" ? var.spec.display_name : null
 
+  # Edition gates feature availability (ENTERPRISE_PLUS unlocks
+  # multi-location automated-backup placement on tables). Unset lets the
+  # provider apply its ENTERPRISE default; upgrades apply in place, there
+  # is no downgrade path.
+  edition = var.spec.edition != "" ? var.spec.edition : null
+
+  # Resource Manager tags for org-policy and IAM conditions. Create-time
+  # only (ForceNew): a tag change replaces the instance.
+  tags = length(var.spec.resource_manager_tags) > 0 ? var.spec.resource_manager_tags : null
+
+  # What a PERMITTED destroy does once deletion_protection allows one:
+  # DELETE (default), PREVENT (destroy fails), or ABANDON (drop from
+  # state, keep the instance running in GCP).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   dynamic "cluster" {
     for_each = var.spec.clusters
     content {

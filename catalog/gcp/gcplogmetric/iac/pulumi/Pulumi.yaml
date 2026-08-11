@@ -1,0 +1,4 @@
+name: gcplogmetric-pulumi-project
+runtime:
+  name: go
+description: Planton GcpLogMetric Pulumi module

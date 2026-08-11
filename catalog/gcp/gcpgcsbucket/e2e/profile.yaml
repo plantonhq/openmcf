@@ -8,10 +8,17 @@ spec:
   # so reruns must never collide with a slow-deleting predecessor. The
   # features scenario composes the GcpServiceAccount prerequisite live
   # (additive IAM member FK resolution proof) and exercises versioning,
-  # lifecycle explicit-zero semantics, and autoclass.
+  # lifecycle explicit-zero semantics, size-band conditions, CSEK
+  # write-restriction enforcement, deletion_policy, and autoclass. The
+  # folders scenario proves the structural companions on an HNS bucket
+  # (nested folders parents-first, managed folders, both force_destroy
+  # semantics, the deletion_policy fan-out); the notifications scenario
+  # proves the event feed against a live topic (the GCS service agent's
+  # publisher grant rides a consumer-scoped prerequisite through the
+  # harness-resolved ${E2E_ENV:PLANTON_E2E_GCS_AGENT_EMAIL} token).
+  # pending_proof: the spec grew the companion surface (folders, managed
+  # folders, notifications) — the prior green described a smaller kind.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

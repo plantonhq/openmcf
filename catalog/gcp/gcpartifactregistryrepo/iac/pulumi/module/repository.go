@@ -58,16 +58,13 @@ func repository(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) 
 		Location:     pulumi.String(spec.Location),
 		Format:       pulumi.String(spec.Format),
 		Labels:       pulumi.ToStringMap(locals.GcpLabels),
+	}
 
-		// PARITY: the bridged provider tracks a newer line than the
-		// released Terraform google provider and carries a client-side
-		// deletion_policy knob (DELETE / ABANDON / PREVENT) that the
-		// released 6.x TF resource does not have. Its default, DELETE,
-		// is exactly the released TF destroy behavior (delete the
-		// repository and its artifacts). Pin it explicitly so a future
-		// bridged-default change can never make destroy behave
-		// differently on one engine only.
-		DeletionPolicy: pulumi.StringPtr("DELETE"),
+	// DELETE (provider default) removes the repository and every artifact
+	// in it on destroy; PREVENT fails the destroy; ABANDON leaves it
+	// serving artifacts. Sent only when set — mirrors the Terraform module.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	if spec.ProjectId.GetValue() != "" {

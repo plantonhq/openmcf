@@ -185,4 +185,19 @@ message GcpVertexAiDeployedIndexSpec {
   // endpoint relies on network reachability alone. Immutable after
   // creation.
   GcpVertexAiDeployedIndexAuthConfig auth_config = 11;
+
+  // Deletion policy for the deployment — what happens when this
+  // resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the index is undeployed from the endpoint; queries
+  //                against this deployment stop being served
+  //   "PREVENT" -- destroy FAILS; a guard for a serving path whose
+  //                disappearance would break live query traffic
+  //   "ABANDON" -- the deployment is removed from management but keeps
+  //                serving (and billing for its replicas) in GCP
+  string deletion_policy = 12 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

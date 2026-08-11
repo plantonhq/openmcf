@@ -7,8 +7,11 @@ spec:
   # minimal scenario proves deterministic endpoint_name derivation; the
   # dedicated-endpoint arm proves dedicated_endpoint_dns output parity.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # pending_proof: the spec grew traffic_split, PSC automation configs
+  # (refs → GcpVpcNetwork/GcpProject), and deletion_policy (the hardcoded
+  # Pulumi DELETE pin is now spec-wired) — the prior green described code
+  # that no longer exists. Offline-proven-only arms: traffic_split (needs a
+  # deployed model) and psc_automation_configs (needs a PSC-enabled
+  # endpoint, which conflicts with the scenarios' public/dedicated shapes).
+  status: pending_proof
   timeout_minutes: 10

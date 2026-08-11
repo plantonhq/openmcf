@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpPubSubSchemaSpec defines a Pub/Sub schema — the message contract
 publishers and subscribers agree on.
 
@@ -58,6 +60,9 @@ spec:
         {"name": "currency", "type": "string"}
       ]
     }
+  # Explicit destroy behavior: DELETE removes the schema with the stack
+  # (PREVENT would refuse; ABANDON would leave it serving unmanaged).
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -68,6 +73,7 @@ spec:
 | `spec.schemaName` | `string` | yes |  |  |
 | `spec.type` | `string` | yes |  |  |
 | `spec.definition` | `string` | yes |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -128,6 +134,23 @@ pinned to older revisions will keep validating against those.
 
 - rule: {"required":true}
 
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the schema — what happens when this resource is
+destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the schema is deleted. Topics still referencing it fall
+               back to the "_deleted-schema_" sentinel and their
+               publishes start FAILING — detach topics first
+  "PREVENT" -- destroy FAILS; protects a schema that many topics'
+               validation depends on
+  "ABANDON" -- the schema is removed from management but left serving
+               in GCP (attached topics keep validating)
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Outputs
 
 Reference an output from another manifest as `valueFrom: {kind: GcpPubSubSchema, name: <resource-name>, fieldPath: status.outputs.<output>}`.
@@ -136,6 +159,7 @@ Reference an output from another manifest as `valueFrom: {kind: GcpPubSubSchema,
 |---|---|---|
 | `status.outputs.schema_id` | `string` | Fully qualified schema resource path: projects/{project}/schemas/{name}. This is the exact string a topic's schema_settings.schema consumes — reference it from GcpPubSubTopic to attach message validation. |
 | `status.outputs.schema_name` | `string` | The short name of the schema (same as the spec's schema_name input). Useful for display, logging, and human-readable references. |
+| `status.outputs.revision_id` | `string` | The current revision ID of the schema (a new one is committed every time the definition changes). This is the exact value a topic's schema_settings.first_revision_id / last_revision_id consume — reference it from GcpPubSubTopic to pin validation to the revision this deploy produced. |
 
 ## References
 
@@ -152,6 +176,8 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | GcpPubSubTopic | `spec.schemaSettings.schema` | `status.outputs.schema_id` |
+| GcpPubSubTopic | `spec.schemaSettings.firstRevisionId` | `status.outputs.revision_id` |
+| GcpPubSubTopic | `spec.schemaSettings.lastRevisionId` | `status.outputs.revision_id` |
 
 ## See Also
 

@@ -14,9 +14,12 @@ import "shared/options/options.proto";
 // task_count tasks with up to parallelism running concurrently.
 //
 // Jobs share the same container/volume/VPC vocabulary as GcpCloudRun but
-// deliberately omit serving concerns — no ingress, no traffic, no probes.
-// Trigger executions with `gcloud run jobs execute`, Cloud Scheduler, or
-// Eventarc; this resource owns the job definition, not individual runs.
+// omit serving concerns — no ingress, no traffic, no liveness/readiness
+// probes (a startup probe IS supported: it gates task start, and a task
+// that never passes it is shut down and retried). Trigger executions with
+// `gcloud run jobs execute`, Cloud Scheduler, Eventarc, or declaratively
+// at deploy time via start_execution_token / run_execution_token; this
+// resource owns the job definition, not individual runs.
 message GcpCloudRunJobSpec {
   option (buf.validate.message).cel = {
     id: "gpu.redundancy_requires_accelerator"
@@ -28,6 +31,12 @@ message GcpCloudRunJobSpec {
     id: "parallelism_lte_task_count"
     message: "parallelism cannot exceed task_count when both are set"
     expression: "!has(this.parallelism) || !has(this.task_count) || this.parallelism <= this.task_count"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "execution_token.start_xor_run"
+    message: "start_execution_token and run_execution_token conflict — a deploy triggers at most one kind of execution"
+    expression: "!(this.start_execution_token != '' && this.run_execution_token != '')"
   };
 
   // The GCP project the job is created in. Accepts a literal project ID
@@ -81,6 +90,9 @@ message GcpCloudRunJobSpec {
 
   // Launch-stage gate for preview Cloud Run features. Set BETA (or ALPHA)
   // only when the spec uses features GCP rejects at the default GA stage.
+  // The provider enum admits more values (UNIMPLEMENTED, PRELAUNCH,
+  // EARLY_ACCESS, DEPRECATED), but Cloud Run itself supports only
+  // ALPHA/BETA/GA — this list encodes the API truth, deliberately.
   string launch_stage = 9 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
@@ -105,6 +117,51 @@ message GcpCloudRunJobSpec {
   // Prevents the job from being destroyed while true. Defaults to true
   // (matching GCP's posture): a delete fails until this is set to false.
   optional bool deletion_protection = 12 [(dev.planton.shared.options.default) = "true"];
+
+  // Labels stamped on every EXECUTION the job creates (visible on
+  // execution objects and in billing breakdowns), as opposed to `labels`,
+  // which lands on the job object itself. Same namespace restrictions as
+  // job labels.
+  map<string, string> execution_labels = 13;
+
+  // Annotations stamped on every EXECUTION the job creates, as opposed to
+  // `annotations`, which lands on the job object. Same namespace
+  // restrictions.
+  map<string, string> execution_annotations = 14;
+
+  // Declarative run-on-deploy: a unique suffix string that triggers a new
+  // execution when the job is created or updated, with the job counted
+  // READY as soon as the execution successfully STARTS. Changing the
+  // token on a later update triggers another run. The combined length of
+  // job name and token must stay under 63 characters. Set at most one of
+  // the two token fields.
+  string start_execution_token = 15 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 63,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "trigger marker, not a credential — an arbitrary uniqueness suffix whose only meaning is 'differs from the last deploy'"
+  ];
+
+  // Declarative run-on-deploy like start_execution_token, but the job is
+  // counted READY only when the triggered execution successfully
+  // COMPLETES — deploy-and-verify semantics for migrations and one-shot
+  // setup work. The combined length of job name and token must stay under
+  // 63 characters. Set at most one of the two token fields.
+  string run_execution_token = 16 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 63,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "trigger marker, not a credential — an arbitrary uniqueness suffix whose only meaning is 'differs from the last deploy'"
+  ];
+
+  // What happens to the Cloud Run job when this resource is destroyed:
+  //   "" / "DELETE" -- the job is deleted (default)
+  //   "PREVENT"     -- destroy operations fail while this is set
+  //   "ABANDON"     -- the job is removed from management but left
+  //                    running in GCP
+  string deletion_policy = 17 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
 }
 
 // GcpCloudRunJobTemplate describes one task: the container(s), volumes,
@@ -166,6 +223,12 @@ message GcpCloudRunJobTemplate {
 // GcpCloudRunJobContainer is one container of a task: the worker or a
 // sidecar sharing localhost and volumes with siblings in the same task.
 message GcpCloudRunJobContainer {
+  option (buf.validate.message).cel = {
+    id: "startup_probe.window_max_240"
+    message: "the startup window (failure_threshold × period_seconds, defaults 3 × 10) cannot exceed 240 seconds"
+    expression: "!has(this.startup_probe) || (has(this.startup_probe.failure_threshold) ? this.startup_probe.failure_threshold : 3) * (has(this.startup_probe.period_seconds) ? this.startup_probe.period_seconds : 10) <= 240"
+  };
+
   // Name of the container. Required when the task runs more than one
   // container (depends_on refers to these names).
   string name = 1 [
@@ -211,6 +274,145 @@ message GcpCloudRunJobContainer {
       }
     }
   ];
+
+  // The port this container listens on — for jobs this exists to give
+  // probes a target (there is no request traffic). If unset and a probe
+  // needs a port, the probe names one explicitly.
+  GcpCloudRunJobContainerPort ports = 10;
+
+  // Probe that gates task start: the task's work does not begin (and
+  // depends_on waiters stay blocked) until this succeeds; a container
+  // that never passes is shut down and the task retried per max_retries.
+  // Supports HTTP, TCP, and gRPC checks — the ONLY probe type jobs have
+  // (no liveness/readiness; those are serving concerns).
+  GcpCloudRunJobProbe startup_probe = 11;
+}
+
+// GcpCloudRunJobContainerPort names the port a job container listens on so
+// startup probes have a default target.
+message GcpCloudRunJobContainerPort {
+  // Port number the container listens on.
+  optional int32 container_port = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 65535
+  }];
+
+  // Protocol selector: "http1" (default) or "h2c".
+  string name = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "",
+        "http1",
+        "h2c"
+      ]
+    }
+  ];
+}
+
+// GcpCloudRunJobProbe is the startup check of one job container. Jobs have
+// only startup probes, so the tight startup bounds apply directly: the
+// whole startup window (failure_threshold × period_seconds) is capped at
+// 240 seconds by Cloud Run.
+message GcpCloudRunJobProbe {
+  option (buf.validate.message).cel = {
+    id: "probe.timeout_lte_period"
+    message: "probe timeout_seconds cannot exceed period_seconds"
+    expression: "!has(this.timeout_seconds) || !has(this.period_seconds) || this.timeout_seconds <= this.period_seconds"
+  };
+
+  // Seconds to wait after container start before the first probe (0-240).
+  optional int32 initial_delay_seconds = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 240
+  }];
+
+  // Seconds after which a single probe attempt times out (1-240; GCP
+  // default 1). Must not exceed period_seconds.
+  optional int32 timeout_seconds = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 240
+  }];
+
+  // Seconds between probe attempts (1-240; GCP default 10).
+  optional int32 period_seconds = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 240
+  }];
+
+  // Consecutive failures after which the startup probe fails and the
+  // container is shut down (GCP default 3).
+  optional int32 failure_threshold = 4 [(buf.validate.field).int32.gte = 1];
+
+  // The check to perform.
+  oneof handler {
+    option (buf.validate.oneof).required = true;
+
+    // HTTP GET against a path on the container; 2xx is success. The job
+    // code must expose the health endpoint itself.
+    GcpCloudRunJobHttpGetAction http_get = 5;
+
+    // TCP connect to a port; a successful connection is success. The
+    // simplest probe — no code changes needed beyond listening.
+    GcpCloudRunJobTcpSocketAction tcp_socket = 6;
+
+    // Standard gRPC health-check protocol (grpc.health.v1.Health/Check),
+    // which the job code must implement.
+    GcpCloudRunJobGrpcAction grpc = 7;
+  }
+}
+
+// GcpCloudRunJobHttpGetAction is an HTTP GET probe check.
+message GcpCloudRunJobHttpGetAction {
+  // Path to probe, e.g. "/healthz". Defaults to "/".
+  string path = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^/.*$"
+  ];
+
+  // Port to probe. If unset, the container's declared port is used.
+  optional int32 port = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 65535
+  }];
+
+  // Custom headers sent with the probe request.
+  repeated GcpCloudRunJobHttpHeader http_headers = 3;
+}
+
+// GcpCloudRunJobHttpHeader is one custom header on an HTTP probe.
+message GcpCloudRunJobHttpHeader {
+  // Header name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Header value.
+  string value = 2;
+}
+
+// GcpCloudRunJobTcpSocketAction is a TCP connect probe check.
+message GcpCloudRunJobTcpSocketAction {
+  // Port to connect to. If unset, the container's declared port is used.
+  optional int32 port = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 65535
+  }];
+}
+
+// GcpCloudRunJobGrpcAction is a gRPC health-check probe.
+message GcpCloudRunJobGrpcAction {
+  // Port the gRPC health service listens on. If unset, the container's
+  // declared port is used.
+  optional int32 port = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 65535
+  }];
+
+  // Service name passed to the health check. If empty, overall server
+  // health is checked.
+  string service = 2;
 }
 
 // GcpCloudRunJobEnvVar is one environment variable: a literal value or a
@@ -378,6 +580,11 @@ message GcpCloudRunJobVolumeGcs {
 
   // Mount read-only.
   bool read_only = 2;
+
+  // Flags passed to the gcsfuse command mounting this volume, without
+  // leading dashes (e.g. "implicit-dirs", "only-dir=media",
+  // "file-cache-max-size-mb=512").
+  repeated string mount_options = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
 }
 
 // GcpCloudRunJobVolumeNfs mounts an NFS share (e.g. Filestore).
@@ -411,6 +618,11 @@ message GcpCloudRunJobVolumeMount {
     (buf.validate.field).required = true,
     (buf.validate.field).string.pattern = "^/.*$"
   ];
+
+  // Path WITHIN the volume to mount instead of its root — e.g. mount only
+  // one secret item or one bucket directory. Relative path; empty mounts
+  // the volume root.
+  string sub_path = 3;
 }
 
 // GcpCloudRunJobVpcAccess routes task OUTBOUND traffic into a VPC.

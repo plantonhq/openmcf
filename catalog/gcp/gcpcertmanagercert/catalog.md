@@ -34,7 +34,7 @@ Open the deployment store, find **GCP Cert Manager Cert**, and click **Create**.
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCertManagerCert
 metadata:
   name: orders-tls

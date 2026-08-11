@@ -32,7 +32,7 @@ Open the deployment store, find **GCP Service Networking Connection**, and click
 ### CLI
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceNetworkingConnection
 metadata:
   name: my-vpc-psa

@@ -29,7 +29,9 @@ const (
 type GcpVertexAiNotebookBootDisk struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Disk type for the boot disk.
-	// Valid values: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME.
+	// Persistent Disk: PD_STANDARD (HDD), PD_SSD, PD_BALANCED, PD_EXTREME.
+	// Hyperdisk (newer-generation machine series only): HYPERDISK_BALANCED,
+	// HYPERDISK_BALANCED_HIGH_AVAILABILITY, HYPERDISK_ML.
 	// If not specified, defaults to PD_SSD.
 	DiskType string `protobuf:"bytes,1,opt,name=disk_type,json=diskType,proto3" json:"disk_type,omitempty"`
 	// Size of the boot disk in GB.
@@ -102,7 +104,10 @@ func (x *GcpVertexAiNotebookBootDisk) GetKmsKey() *v1.StringValueOrRef {
 type GcpVertexAiNotebookDataDisk struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Disk type for the data disk.
-	// Valid values: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME.
+	// Persistent Disk: PD_STANDARD (HDD), PD_SSD, PD_BALANCED, PD_EXTREME.
+	// Hyperdisk (newer-generation machine series only): HYPERDISK_BALANCED,
+	// HYPERDISK_EXTREME, HYPERDISK_THROUGHPUT,
+	// HYPERDISK_BALANCED_HIGH_AVAILABILITY, HYPERDISK_ML.
 	// If not specified, defaults to PD_STANDARD.
 	DiskType string `protobuf:"bytes,1,opt,name=disk_type,json=diskType,proto3" json:"disk_type,omitempty"`
 	// Size of the data disk in GB.
@@ -173,7 +178,12 @@ func (x *GcpVertexAiNotebookDataDisk) GetKmsKey() *v1.StringValueOrRef {
 // configuration per Workbench instance.
 type GcpVertexAiNotebookAcceleratorConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// GPU accelerator type.
+	// GPU accelerator type. Availability varies by zone and machine type:
+	// current-generation training/inference GPUs (NVIDIA_H100_80GB,
+	// NVIDIA_H100_MEGA_80GB, NVIDIA_H200_141GB, NVIDIA_B200) require
+	// their matching A3/A4 machine series; NVIDIA_L4 and the Tesla
+	// family run on G2/N1; the _VWS variants are virtual-workstation
+	// (graphics) licenses of the same silicon.
 	// See https://cloud.google.com/vertex-ai/docs/workbench/instances/create#accelerator
 	// for supported types per zone.
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
@@ -796,8 +806,19 @@ type GcpVertexAiNotebookSpec struct {
 	// Leave false when all users authenticate with Google identities.
 	// Mutable in place.
 	EnableThirdPartyIdentity bool `protobuf:"varint,24,opt,name=enable_third_party_identity,json=enableThirdPartyIdentity,proto3" json:"enable_third_party_identity,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// Deletion policy for the notebook — what happens when this resource
+	// is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the instance is deleted, including its boot and data
+	//	             disks; unsynced notebook work on those disks is lost
+	//	"PREVENT" -- destroy FAILS; a guard for a workstation whose local
+	//	             disks hold work not yet pushed anywhere else
+	//	"ABANDON" -- the instance is removed from management but left
+	//	             running (and billing) in GCP with its disks intact
+	DeletionPolicy string `protobuf:"bytes,25,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpVertexAiNotebookSpec) Reset() {
@@ -998,28 +1019,35 @@ func (x *GcpVertexAiNotebookSpec) GetEnableThirdPartyIdentity() bool {
 	return false
 }
 
+func (x *GcpVertexAiNotebookSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpvertexainotebook_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpvertexainotebook_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/gcp/gcpvertexainotebook/v1alpha1/spec.proto\x12,dev.planton.gcp.gcpvertexainotebook.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x9a\x04\n" +
-	"\x1bGcpVertexAiNotebookBootDisk\x12\xd2\x01\n" +
-	"\tdisk_type\x18\x01 \x01(\tB\xb4\x01\xbaH\xb0\x01\xba\x01\xac\x01\n" +
-	"\x14valid_boot_disk_type\x12Fdisk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME\x1aLthis == '' || this in ['PD_STANDARD', 'PD_SSD', 'PD_BALANCED', 'PD_EXTREME']R\bdiskType\x12\xb8\x01\n" +
+	"3catalog/gcp/gcpvertexainotebook/v1alpha1/spec.proto\x12,dev.planton.gcp.gcpvertexainotebook.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xb2\x05\n" +
+	"\x1bGcpVertexAiNotebookBootDisk\x12\xea\x02\n" +
+	"\tdisk_type\x18\x01 \x01(\tB\xcc\x02\xbaH\xc8\x02\xba\x01\xc4\x02\n" +
+	"\x14valid_boot_disk_type\x12\x8e\x01disk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME, HYPERDISK_BALANCED, HYPERDISK_BALANCED_HIGH_AVAILABILITY, HYPERDISK_ML\x1a\x9a\x01this == '' || this in ['PD_STANDARD', 'PD_SSD', 'PD_BALANCED', 'PD_EXTREME', 'HYPERDISK_BALANCED', 'HYPERDISK_BALANCED_HIGH_AVAILABILITY', 'HYPERDISK_ML']R\bdiskType\x12\xb8\x01\n" +
 	"\fdisk_size_gb\x18\x02 \x01(\x05B\x95\x01\xbaH\x91\x01\xba\x01\x8d\x01\n" +
 	"\x14valid_boot_disk_size\x12Idisk_size_gb must be between 10 and 64000 (or omitted for default 150 GB)\x1a*this == 0 || (this >= 10 && this <= 64000)R\n" +
 	"diskSizeGb\x12k\n" +
-	"\akms_key\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\"\x9a\x04\n" +
-	"\x1bGcpVertexAiNotebookDataDisk\x12\xd2\x01\n" +
-	"\tdisk_type\x18\x01 \x01(\tB\xb4\x01\xbaH\xb0\x01\xba\x01\xac\x01\n" +
-	"\x14valid_data_disk_type\x12Fdisk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME\x1aLthis == '' || this in ['PD_STANDARD', 'PD_SSD', 'PD_BALANCED', 'PD_EXTREME']R\bdiskType\x12\xb8\x01\n" +
+	"\akms_key\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\"\x88\x06\n" +
+	"\x1bGcpVertexAiNotebookDataDisk\x12\xc0\x03\n" +
+	"\tdisk_type\x18\x01 \x01(\tB\xa2\x03\xbaH\x9e\x03\xba\x01\x9a\x03\n" +
+	"\x14valid_data_disk_type\x12\xb7\x01disk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME, HYPERDISK_BALANCED, HYPERDISK_EXTREME, HYPERDISK_THROUGHPUT, HYPERDISK_BALANCED_HIGH_AVAILABILITY, HYPERDISK_ML\x1a\xc7\x01this == '' || this in ['PD_STANDARD', 'PD_SSD', 'PD_BALANCED', 'PD_EXTREME', 'HYPERDISK_BALANCED', 'HYPERDISK_EXTREME', 'HYPERDISK_THROUGHPUT', 'HYPERDISK_BALANCED_HIGH_AVAILABILITY', 'HYPERDISK_ML']R\bdiskType\x12\xb8\x01\n" +
 	"\fdisk_size_gb\x18\x02 \x01(\x05B\x95\x01\xbaH\x91\x01\xba\x01\x8d\x01\n" +
 	"\x14valid_data_disk_size\x12Idisk_size_gb must be between 10 and 64000 (or omitted for default 100 GB)\x1a*this == 0 || (this >= 10 && this <= 64000)R\n" +
 	"diskSizeGb\x12k\n" +
-	"\akms_key\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\"\xa5\x04\n" +
-	"$GcpVertexAiNotebookAcceleratorConfig\x12\xf8\x02\n" +
-	"\x04type\x18\x01 \x01(\tB\xe3\x02\xbaH\xdf\x02\xba\x01\xdb\x02\n" +
-	"\x16valid_accelerator_type\x12[type must be a valid accelerator type (e.g., NVIDIA_TESLA_T4, NVIDIA_L4, NVIDIA_TESLA_A100)\x1a\xe3\x01this == '' || this in ['NVIDIA_TESLA_P100', 'NVIDIA_TESLA_V100', 'NVIDIA_TESLA_P4', 'NVIDIA_TESLA_T4', 'NVIDIA_TESLA_A100', 'NVIDIA_A100_80GB', 'NVIDIA_L4', 'NVIDIA_TESLA_T4_VWS', 'NVIDIA_TESLA_P100_VWS', 'NVIDIA_TESLA_P4_VWS']R\x04type\x12\x81\x01\n" +
+	"\akms_key\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\"\xbb\x05\n" +
+	"$GcpVertexAiNotebookAcceleratorConfig\x12\x8e\x04\n" +
+	"\x04type\x18\x01 \x01(\tB\xf9\x03\xbaH\xf5\x03\xba\x01\xf1\x03\n" +
+	"\x16valid_accelerator_type\x12\x8d\x01type must be a valid accelerator type (e.g., NVIDIA_TESLA_T4, NVIDIA_L4, NVIDIA_TESLA_A100, NVIDIA_H100_80GB, NVIDIA_H200_141GB, NVIDIA_B200)\x1a\xc6\x02this == '' || this in ['NVIDIA_TESLA_P100', 'NVIDIA_TESLA_V100', 'NVIDIA_TESLA_P4', 'NVIDIA_TESLA_T4', 'NVIDIA_TESLA_A100', 'NVIDIA_A100_80GB', 'NVIDIA_L4', 'NVIDIA_H100_80GB', 'NVIDIA_H100_MEGA_80GB', 'NVIDIA_H200_141GB', 'NVIDIA_B200', 'NVIDIA_RTX6000', 'NVIDIA_TESLA_T4_VWS', 'NVIDIA_TESLA_P100_VWS', 'NVIDIA_TESLA_P4_VWS']R\x04type\x12\x81\x01\n" +
 	"\n" +
 	"core_count\x18\x02 \x01(\x05Bb\xbaH_\xba\x01\\\n" +
 	"\x1cvalid_accelerator_core_count\x12%core_count must be a positive integer\x1a\x15this == 0 || this > 0R\tcoreCount\"\x9d\x04\n" +
@@ -1052,7 +1080,7 @@ const file_catalog_gcp_gcpvertexainotebook_v1alpha1_spec_proto_rawDesc = "" +
 	"\x12enable_secure_boot\x18\x01 \x01(\bR\x10enableSecureBoot\x12\x1f\n" +
 	"\venable_vtpm\x18\x02 \x01(\bR\n" +
 	"enableVtpm\x12>\n" +
-	"\x1benable_integrity_monitoring\x18\x03 \x01(\bR\x19enableIntegrityMonitoring\"\x9b\x17\n" +
+	"\x1benable_integrity_monitoring\x18\x03 \x01(\bR\x19enableIntegrityMonitoring\"\xd9\x18\n" +
 	"\x17GcpVertexAiNotebookSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12A\n" +
@@ -1082,7 +1110,9 @@ const file_catalog_gcp_gcpvertexainotebook_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1cconfidential_instance_config\x18\x15 \x01(\v2[.dev.planton.gcp.gcpvertexainotebook.v1alpha1.GcpVertexAiNotebookConfidentialInstanceConfigR\x1aconfidentialInstanceConfig\x12\x87\x01\n" +
 	"\x14reservation_affinity\x18\x16 \x01(\v2T.dev.planton.gcp.gcpvertexainotebook.v1alpha1.GcpVertexAiNotebookReservationAffinityR\x13reservationAffinity\x12,\n" +
 	"\x12enable_managed_euc\x18\x17 \x01(\bR\x10enableManagedEuc\x12=\n" +
-	"\x1benable_third_party_identity\x18\x18 \x01(\bR\x18enableThirdPartyIdentity\x1a;\n" +
+	"\x1benable_third_party_identity\x18\x18 \x01(\bR\x18enableThirdPartyIdentity\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x19 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +

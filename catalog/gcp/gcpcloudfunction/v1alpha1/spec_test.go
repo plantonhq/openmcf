@@ -456,4 +456,65 @@ var _ = Describe("GcpCloudFunctionSpec validations", func() {
 			Expect(protovalidate.Validate(spec)).To(BeNil())
 		})
 	})
+
+	Context("Direct VPC egress", func() {
+		It("accepts a direct VPC interface with a network reference", func() {
+			spec := makeValidSpec()
+			spec.ServiceConfig = &GcpCloudFunctionServiceConfig{
+				DirectVpcNetworkInterface: &GcpCloudFunctionDirectVpcNetworkInterface{
+					Network: strRef("my-vpc"),
+					Tags:    []string{"fn-egress"},
+				},
+				DirectVpcEgress: GcpCloudFunctionVpcEgressSetting_ALL_TRAFFIC,
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts a direct VPC interface with a literal subnetwork only", func() {
+			spec := makeValidSpec()
+			spec.ServiceConfig = &GcpCloudFunctionServiceConfig{
+				DirectVpcNetworkInterface: &GcpCloudFunctionDirectVpcNetworkInterface{
+					Subnetwork: strVal("my-subnet"),
+				},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("rejects a direct VPC interface with neither network nor subnetwork", func() {
+			spec := makeValidSpec()
+			spec.ServiceConfig = &GcpCloudFunctionServiceConfig{
+				DirectVpcNetworkInterface: &GcpCloudFunctionDirectVpcNetworkInterface{
+					Tags: []string{"fn-egress"},
+				},
+			}
+			Expect(protovalidate.Validate(spec)).ToNot(BeNil())
+		})
+
+		It("rejects combining a connector with a direct VPC interface", func() {
+			spec := makeValidSpec()
+			spec.ServiceConfig = &GcpCloudFunctionServiceConfig{
+				VpcConnector: strVal("projects/p/locations/us-central1/connectors/c"),
+				DirectVpcNetworkInterface: &GcpCloudFunctionDirectVpcNetworkInterface{
+					Network: strVal("my-vpc"),
+				},
+			}
+			Expect(protovalidate.Validate(spec)).ToNot(BeNil())
+		})
+	})
+
+	Context("Deletion policy", func() {
+		It("accepts each deletion_policy value", func() {
+			for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+				spec := makeValidSpec()
+				spec.DeletionPolicy = v
+				Expect(protovalidate.Validate(spec)).To(BeNil())
+			}
+		})
+
+		It("rejects an invalid deletion_policy", func() {
+			spec := makeValidSpec()
+			spec.DeletionPolicy = "KEEP"
+			Expect(protovalidate.Validate(spec)).ToNot(BeNil())
+		})
+	})
 })

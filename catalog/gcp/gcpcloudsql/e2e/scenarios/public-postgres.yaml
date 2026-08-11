@@ -3,6 +3,13 @@
 # the service networking prerequisite chain first; this scenario does not
 # consume it. Instance names carry ${E2E_RUN_ID} because Cloud SQL reserves
 # deleted names for about a week.
+# Also proves the delete-time surface live: a final backup armed with
+# 1-day retention (self-expiring — the sweep must still verify it), an
+# explicit COUNT retention unit on daily backups, and the default
+# ExecuteSql posture sent explicitly.
+# Also proves the final-backup-on-delete arm live: destroy-verified must
+# pass with the final backup armed, and the short retention (1 day)
+# self-expires the backup so no orphan outlives the sweep window.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
@@ -25,3 +32,13 @@ spec:
   tier: db-f1-micro
   deletionProtection: false
   deletionProtectionEnabled: false
+  deletionPolicy: DELETE
+  dataApiAccess: DISALLOW_DATA_API
+  backup:
+    enabled: true
+    retainedBackups: 7
+    retentionUnit: COUNT
+  finalBackup:
+    enabled: true
+    retentionDays: 1
+    description: e2e final backup arm

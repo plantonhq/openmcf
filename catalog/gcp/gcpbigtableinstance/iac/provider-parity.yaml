@@ -1,0 +1,33 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_bigtable_instance:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.instance_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      # The provider's singular repeated-block name; the spec uses the
+      # plural (each entry is one physical replica). Matching resumes
+      # name-for-name below the subtree.
+      - spec: spec.clusters
+        arg: cluster
+      # The provider names the arg after its API field; the spec uses the
+      # catalog-wide resource_manager_tags vocabulary.
+      - spec: spec.resource_manager_tags
+        arg: tags
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      bigtableadmin.googleapis.com with fixed arguments
+      (disable_on_destroy false so destroying one instance never disables
+      the API project-wide); not spec surface.

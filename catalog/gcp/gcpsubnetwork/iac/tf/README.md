@@ -4,7 +4,7 @@ This Terraform module provisions a subnetwork in a custom-mode GCP VPC. It is th
 
 ## Overview
 
-The module enables the Compute Engine API (never disabling it on destroy) and creates a `google_compute_subnetwork` with the full address plan: primary IPv4 range, secondary (alias) ranges, purpose/role (proxy-only, PSC), dual-stack IPv6, Private Google Access (v4 and v6), the secondary-range removal latch, and VPC Flow Logs. The subnetwork resource runs on the `google-beta` provider because `allow_subnet_cidr_routes_overlap` is preview-stage on the released 6.x line; everything else is GA and identical in beta.
+The module enables the Compute Engine API (never disabling it on destroy) and creates a `google_compute_subnetwork` with the full address plan: primary IPv4 range (literal or sourced from a Network Connectivity reserved internal range), secondary (alias) ranges, purpose/role (proxy-only, PSC), dual-stack IPv6 (including BYOIP via `ip_collection` and prefix pinning), Private Google Access (v4 and v6), the secondary-range removal latch, create-time Resource Manager tags, and VPC Flow Logs. Everything runs on the GA `hashicorp/google` provider (`allow_subnet_cidr_routes_overlap` is GA on the 7.x line).
 
 `name`, `project`, `region`, `network`, and `description` are immutable (ForceNew). The primary range is asymmetric: expansion updates in place, shrinkage recreates.
 
@@ -35,7 +35,7 @@ terraform apply -var-file=terraform.tfvars.json
 | `metadata` | Resource metadata (name, labels, etc.) | — |
 | `spec` | GcpSubnetwork spec | — |
 
-The `spec` object includes: `vpc_self_link` (required), `subnetwork_name` (required), `region` (required), `ip_cidr_range` (required except IPv6-only), `project_id` (empty falls back to the provider default project), `purpose`/`role`, `secondary_ip_ranges`, `private_ip_google_access` + `private_ipv6_google_access`, `stack_type` + `ipv6_access_type` + `external_ipv6_prefix`, `allow_subnet_cidr_routes_overlap`, `send_secondary_ip_range_if_empty`, and `log_config` (flow logs).
+The `spec` object includes: `vpc_self_link` (required), `subnetwork_name` (required), `region` (required), `ip_cidr_range` (required unless `reserved_internal_range` supplies the primary range, or on IPv6-only subnets), `reserved_internal_range` (Network Connectivity internal range as the primary-range source), `project_id` (empty falls back to the provider default project), `purpose`/`role`, `secondary_ip_ranges` (each with `ip_cidr_range` OR `reserved_internal_range`), `private_ip_google_access` + `private_ipv6_google_access`, `stack_type` + `ipv6_access_type` + `external_ipv6_prefix` + `internal_ipv6_prefix` (ULA pinning) + `ip_collection` (BYOIP sub-PDP), `allow_subnet_cidr_routes_overlap`, `send_secondary_ip_range_if_empty`, `resource_manager_tags` (create-time; changing them replaces the subnet), `resolve_subnet_mask` (ARP resolution mode; immutable), `log_config` (flow logs), and `deletion_policy` (DELETE/PREVENT/ABANDON destroy behavior).
 
 ## Outputs
 

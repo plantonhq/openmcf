@@ -19,6 +19,11 @@ resource "google_dataproc_autoscaling_policy" "policy" {
   location  = local.location
   project   = local.project_id
 
+  # DELETE (default) deletes the policy; ABANDON removes it from IaC
+  # management; PREVENT fails destroying plans. The API's own
+  # referenced-by-a-cluster guard applies on top.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   # Primary workers are the stable base (they carry HDFS DataNodes);
   # min_instances 0 accepts the API's default of 2.
   worker_config {

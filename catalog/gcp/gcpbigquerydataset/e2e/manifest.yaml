@@ -23,3 +23,5 @@ spec:
         projectId: test-project
         datasetId: shared_views
         tableId: revenue_summary
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE

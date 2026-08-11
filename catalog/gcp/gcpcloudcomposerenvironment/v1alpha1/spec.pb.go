@@ -109,9 +109,23 @@ type GcpCloudComposerEnvironmentSpec struct {
 	// User-defined labels to organize and track the environment. Merged
 	// beneath Planton's platform attribution labels (platform keys win on
 	// conflict).
-	Labels        map[string]string `protobuf:"bytes,19,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Labels map[string]string `protobuf:"bytes,19,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the environment — what happens when this
+	// resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the environment is deleted (10-15 minutes: Composer
+	//	             tears down the managed GKE cluster and database).
+	//	             The DAG bucket Composer auto-created survives — GCP
+	//	             never deletes it with the environment
+	//	"PREVENT" -- destroy FAILS; protects the environment whose DAGs
+	//	             a data platform runs on
+	//	"ABANDON" -- the environment is removed from management but keeps
+	//	             running (and billing meaningfully — Composer bills
+	//	             for its infrastructure even when idle) in GCP
+	DeletionPolicy string `protobuf:"bytes,20,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpCloudComposerEnvironmentSpec) Reset() {
@@ -275,6 +289,13 @@ func (x *GcpCloudComposerEnvironmentSpec) GetLabels() map[string]string {
 		return x.Labels
 	}
 	return nil
+}
+
+func (x *GcpCloudComposerEnvironmentSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 // GcpCloudComposerNodeConfig defines networking and compute settings for the
@@ -1550,7 +1571,7 @@ var File_catalog_gcp_gcpcloudcomposerenvironment_v1alpha1_spec_proto protoreflec
 
 const file_catalog_gcp_gcpcloudcomposerenvironment_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	";catalog/gcp/gcpcloudcomposerenvironment/v1alpha1/spec.proto\x124dev.planton.gcp.gcpcloudcomposerenvironment.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xc9\x12\n" +
+	";catalog/gcp/gcpcloudcomposerenvironment/v1alpha1/spec.proto\x124dev.planton.gcp.gcpcloudcomposerenvironment.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x87\x14\n" +
 	"\x1fGcpCloudComposerEnvironmentSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
@@ -1574,7 +1595,9 @@ const file_catalog_gcp_gcpcloudcomposerenvironment_v1alpha1_spec_proto_rawDesc =
 	"\x0estorage_bucket\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\rstorageBucket\x12<\n" +
 	"\x1aenable_private_environment\x18\x11 \x01(\bR\x18enablePrivateEnvironment\x12;\n" +
 	"\x1aenable_private_builds_only\x18\x12 \x01(\bR\x17enablePrivateBuildsOnly\x12y\n" +
-	"\x06labels\x18\x13 \x03(\v2a.dev.planton.gcp.gcpcloudcomposerenvironment.v1alpha1.GcpCloudComposerEnvironmentSpec.LabelsEntryR\x06labels\x1a9\n" +
+	"\x06labels\x18\x13 \x03(\v2a.dev.planton.gcp.gcpcloudcomposerenvironment.v1alpha1.GcpCloudComposerEnvironmentSpec.LabelsEntryR\x06labels\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x14 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf0\x05\n" +

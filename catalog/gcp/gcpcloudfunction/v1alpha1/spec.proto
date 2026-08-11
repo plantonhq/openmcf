@@ -75,6 +75,19 @@ message GcpCloudFunctionSpec {
 
   // What invokes the function. If not specified, defaults to HTTP.
   GcpCloudFunctionTrigger trigger = 9;
+
+  // What destroying this resource does to the function:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the function (and the Cloud Run service serving it) is
+  //                deleted; event triggers stop firing
+  //   "PREVENT" -- destroy FAILS; protects a function other systems invoke
+  //   "ABANDON" -- the function is removed from management but keeps
+  //                serving and consuming events in GCP
+  string deletion_policy = 10 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }
 
 // GcpCloudFunctionBuildConfig defines how Cloud Build turns the source
@@ -345,6 +358,67 @@ message GcpCloudFunctionServiceConfig {
   // Leave false for private functions and grant invoker to specific
   // identities instead.
   bool allow_unauthenticated = 15 [(dev.planton.shared.options.recommended_default) = "false"];
+
+  // Direct VPC egress: attach the function straight to a VPC network or
+  // subnet — no Serverless VPC Access connector to size, pay for, or
+  // saturate. The modern alternative to vpc_connector (mutually
+  // exclusive with it); instances get IPs from the subnet, so size its
+  // range for the scaling ceiling.
+  GcpCloudFunctionDirectVpcNetworkInterface direct_vpc_network_interface = 16;
+
+  // Which egress traffic takes the direct-VPC path: only RFC1918/private
+  // destinations (the API default; public egress keeps the normal path),
+  // or everything (enables static egress IPs via Cloud NAT). Only
+  // meaningful with direct_vpc_network_interface — the connector path is
+  // steered by vpc_connector_egress_settings instead.
+  GcpCloudFunctionVpcEgressSetting direct_vpc_egress = 17 [(dev.planton.shared.options.recommended_default) = "PRIVATE_RANGES_ONLY"];
+
+  option (buf.validate.message).cel = {
+    id: "service_config.one_vpc_path"
+    message: "use direct VPC egress (direct_vpc_network_interface) or a Serverless VPC Access connector (vpc_connector), not both"
+    expression: "!(((has(this.vpc_connector.value) && this.vpc_connector.value != '') || has(this.vpc_connector.value_from)) && has(this.direct_vpc_network_interface))"
+  };
+}
+
+// GcpCloudFunctionDirectVpcNetworkInterface attaches the function directly
+// to a VPC. Set a network, a subnet, or both — if only the network is
+// given, GCP uses the subnet with the same name; if both are given, the
+// subnet must belong to the network. The API supports a single interface.
+message GcpCloudFunctionDirectVpcNetworkInterface {
+  option (buf.validate.message).cel = {
+    id: "direct_vpc.network_or_subnetwork"
+    message: "set at least one of network or subnetwork on the direct VPC interface"
+    expression: "(has(this.network.value) && this.network.value != '') || has(this.network.value_from) || (has(this.subnetwork.value) && this.subnetwork.value != '') || has(this.subnetwork.value_from)"
+  };
+
+  // The VPC network to attach to. Accepts a literal network name or a
+  // reference to a GcpVpcNetwork resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_name"
+  ];
+
+  // The subnetwork instances draw their IPs from. Accepts a literal
+  // subnetwork name or a reference to a GcpSubnetwork resource. The
+  // subnet's free range caps how far the function can scale.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_name"
+  ];
+
+  // Network tags applied to the function's instances — how VPC firewall
+  // rules select their egress.
+  repeated string tags = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {pattern: "^[a-z]([-a-z0-9]*[a-z0-9])?$"}
+      }
+    }
+  ];
 }
 
 // GcpCloudFunctionSecretEnvVar resolves one Secret Manager secret version

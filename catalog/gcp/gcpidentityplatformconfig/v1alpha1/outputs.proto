@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpidentityplatformconfig.v1alpha1;
+
+// Outputs produced after provisioning a project's Identity Platform
+// configuration.
+message GcpIdentityPlatformConfigStackOutputs {
+  // The configuration's resource name: projects/{project}/config.
+  string config_name = 1;
+
+  // The auto-provisioned API key client apps initialize the Identity
+  // Platform / Firebase Auth SDK with. A live credential in the
+  // API-key sense (restrict it by domain/app in the console); the
+  // engines mark it secret in state.
+  string api_key = 2;
+
+  // The project's Firebase subdomain (e.g. "my-project" for
+  // my-project.firebaseapp.com) — the default hosted sign-in domain.
+  string firebase_subdomain = 3;
+}

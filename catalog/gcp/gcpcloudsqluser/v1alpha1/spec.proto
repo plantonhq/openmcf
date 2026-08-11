@@ -90,6 +90,30 @@ message GcpCloudSqlUserSpec {
   // Per-user password policy (BUILT_IN users only), layered on top of the
   // instance-level password validation policy.
   GcpCloudSqlUserPasswordPolicy password_policy = 7;
+
+  // MySQL 8+ / PostgreSQL only: database roles granted to the user at
+  // creation — predefined Cloud SQL roles (e.g. "cloudsqlsuperuser") or
+  // custom roles already created in the database.
+  repeated string database_roles = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {min_len: 1}
+      }
+    }
+  ];
+
+  // Engine-side teardown behavior. "DELETE" (default) drops the user;
+  // "PREVENT" fails any plan that would drop it; "ABANDON" removes it
+  // from IaC management while leaving it on the instance. ABANDON is the
+  // documented answer for PostgreSQL users that cannot be dropped while
+  // they still own database objects.
+  string deletion_policy = 9 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
 }
 
 // GcpCloudSqlUserPasswordPolicy is a per-user login hardening policy.

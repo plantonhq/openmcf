@@ -1,0 +1,36 @@
+# Minimal GcpLoggingSink scenario: a project sink exporting error logs to
+# the GCS bucket prerequisite fixture (the registry prerequisite) — the
+# canonical shape, proving the destination-URI rendering and the
+# writer-identity mint live. project_id is deliberately omitted (the
+# harness-exported test project applies). Sink names are project-scoped
+# and hard-deleted, so a fixed name is safe across runs. NOTE: the lane
+# proves the sink; granting writer_identity on the bucket is chart
+# surface exercised by the destination kind's own iamMembers.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLoggingSink
+metadata:
+  name: planton-oss-e2e-gcplogsink-smoke
+  id: planton-oss-e2e-gcplogsink-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcploggingsink
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  destination:
+    gcsBucket:
+      valueFrom:
+        kind: GcpGcsBucket
+        name: planton-oss-e2e-gcsb-prereq
+        fieldPath: status.outputs.bucket_id
+  filter: severity>=ERROR
+  description: E2E smoke sink — exports errors to the bucket fixture
+  exclusions:
+    - name: drop-health-checks
+      filter: httpRequest.requestUrl:"/healthz"
+      description: exclusion surface exercised live
+  uniqueWriterIdentity: true

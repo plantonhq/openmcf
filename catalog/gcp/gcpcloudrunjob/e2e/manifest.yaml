@@ -1,6 +1,8 @@
 # Development manifest for GcpCloudRunJob — exercises batch semantics
-# (multi-task parallelism, secret env, Cloud SQL volume, direct VPC egress)
-# for offline plan verification.
+# (multi-task parallelism, secret env, Cloud SQL and GCS volumes with a
+# sub_path mount, a TCP startup probe against the declared port, execution
+# metadata, a run-on-deploy token, direct VPC egress, and the teardown
+# policy) for offline plan verification.
 #
 # Usage: planton tofu plan --manifest catalog/gcp/gcpcloudrunjob/e2e/manifest.yaml
 apiVersion: gcp.planton.dev/v1alpha1
@@ -15,6 +17,10 @@ spec:
   jobName: hack-etl
   labels:
     team: platform
+  executionLabels:
+    cost-center: "1234"
+  executionAnnotations:
+    external-tool/trace: enabled
   template:
     containers:
       - name: worker
@@ -32,11 +38,27 @@ spec:
         volumeMounts:
           - name: cloudsql
             mountPath: /cloudsql
+          - name: datalake
+            mountPath: /data
+            subPath: batch-input
+        ports:
+          containerPort: 8080
+        startupProbe:
+          periodSeconds: 2
+          failureThreshold: 3
+          tcpSocket: {}
     volumes:
       - name: cloudsql
         cloudSqlInstance:
           instances:
             - value: my-project:us-central1:hack-db
+      - name: datalake
+        gcs:
+          bucket:
+            value: hack-datalake-bucket
+          readOnly: true
+          mountOptions:
+            - implicit-dirs
     timeoutSeconds: 1800
     maxRetries: 2
     vpcAccess:
@@ -49,4 +71,6 @@ spec:
     executionEnvironment: EXECUTION_ENVIRONMENT_GEN2
   taskCount: 5
   parallelism: 2
+  startExecutionToken: hack-run-once
   deletionProtection: false
+  deletionPolicy: DELETE

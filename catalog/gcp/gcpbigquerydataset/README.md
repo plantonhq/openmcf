@@ -66,6 +66,7 @@ time travel, and default project-level access.
 | `access` | list | No | Authoritative access control entries |
 | `externalDatasetReference` | object | No | BigQuery Omni federated source (immutable) |
 | `externalCatalogOptions` | object | No | Hive Metastore compatibility metadata |
+| `deletionPolicy` | string | No | `DELETE` (default: destroy removes the dataset — non-empty datasets still need `deleteContentsOnDestroy`), `PREVENT` (destroy fails), `ABANDON` (leaves the dataset serving unmanaged) |
 
 ### Access Entry Fields
 
@@ -109,9 +110,6 @@ storage too; switching to PHYSICAL is allowed once every 14 days.
 
 ## Recorded Skips (with reasons)
 
-- `deletion_policy` -- not in the released 6.x provider line (present only on
-  the provider's unreleased main); the `deleteContentsOnDestroy` guard covers
-  the destroy-safety story.
 - `google_bigquery_dataset_access` (the additive single-grant resource) is
   deliberately not modeled as a kind: mixing it with the dataset's
   authoritative inline `access` causes permanent diffs, and the inline ACL is

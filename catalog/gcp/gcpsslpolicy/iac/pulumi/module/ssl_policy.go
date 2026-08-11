@@ -80,6 +80,17 @@ func globalSslPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 		args.CustomFeatures = pulumi.ToStringArray(spec.CustomFeatures)
 	}
 
+	// Post-quantum rollout stance; unset falls through to the API default
+	// (DEFAULT — GCP's own timeline). Matches the Terraform module's null.
+	if spec.PostQuantumKeyExchange != "" {
+		args.PostQuantumKeyExchange = pulumi.String(spec.PostQuantumKeyExchange)
+	}
+
+	// Unset defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.String(spec.DeletionPolicy)
+	}
+
 	// Honor the spec contract: an empty project_id falls back to the provider's
 	// default project. Leaving Project unset lets the gcp provider resolve its
 	// own project (configuration or the GOOGLE_PROJECT / GOOGLE_CLOUD_PROJECT
@@ -123,6 +134,15 @@ func regionalSslPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 
 	if len(spec.CustomFeatures) > 0 {
 		args.CustomFeatures = pulumi.ToStringArray(spec.CustomFeatures)
+	}
+
+	if spec.PostQuantumKeyExchange != "" {
+		args.PostQuantumKeyExchange = pulumi.String(spec.PostQuantumKeyExchange)
+	}
+
+	// Unset defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.String(spec.DeletionPolicy)
 	}
 
 	if spec.ProjectId.GetValue() != "" {

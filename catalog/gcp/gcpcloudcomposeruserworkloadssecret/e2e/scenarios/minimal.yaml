@@ -28,3 +28,4 @@ spec:
     # base64 of "postgresql://e2e-user:e2e-throwaway@10.0.0.5:5432/e2e" —
     # throwaway material that authenticates to nothing.
     airflow-conn-uri: cG9zdGdyZXNxbDovL2UyZS11c2VyOmUyZS10aHJvd2F3YXlAMTAuMC4wLjU6NTQzMi9lMmU=
+  deletionPolicy: DELETE

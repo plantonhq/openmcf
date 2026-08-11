@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpWorkloadIdentityPoolSpec defines a Workload Identity Pool — the container
 GCP uses to trust external identities (GitHub Actions, GitLab CI, AWS
 workloads, on-prem SAML/X.509 estates) without any service-account keys.
@@ -52,6 +54,11 @@ spec:
 
   # Operating mode (default FEDERATION_ONLY; immutable)
   mode: FEDERATION_ONLY
+
+  # Soft-delete the pool on destroy (GCP's default, made explicit): token
+  # exchanges stop immediately, the pool is restorable for ~30 days, and its
+  # ID stays reserved until permanent deletion.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -65,15 +72,20 @@ spec:
 | `spec.disabled` | `bool` |  |  |  |
 | `spec.mode` | `string` |  | `FEDERATION_ONLY` |  |
 | `spec.inlineCertificateIssuanceConfig` | `GcpWorkloadIdentityPoolCertificateIssuance` |  |  |  |
-| `spec.inlineCertificateIssuanceConfig.caPools` | `map<string, string>` | yes |  |  |
+| `spec.inlineCertificateIssuanceConfig.caPools` | `map<string, string>` |  |  |  |
 | `spec.inlineCertificateIssuanceConfig.keyAlgorithm` | `string` |  |  |  |
 | `spec.inlineCertificateIssuanceConfig.lifetime` | `string` |  |  |  |
 | `spec.inlineCertificateIssuanceConfig.rotationWindowPercentage` | `int32` |  |  |  |
+| `spec.inlineCertificateIssuanceConfig.useDefaultSharedCa` | `bool` |  |  |  |
 | `spec.inlineTrustConfig` | `GcpWorkloadIdentityPoolTrustConfig` |  |  |  |
 | `spec.inlineTrustConfig.additionalTrustBundles` | `[]GcpWorkloadIdentityPoolTrustBundle` | yes |  |  |
 | `spec.inlineTrustConfig.additionalTrustBundles[].trustDomain` | `string` | yes |  |  |
 | `spec.inlineTrustConfig.additionalTrustBundles[].trustAnchors` | `[]GcpWorkloadIdentityPoolTrustAnchor` | yes |  |  |
 | `spec.inlineTrustConfig.additionalTrustBundles[].trustAnchors[].pemCertificate` | `string` | yes |  |  |
+| `spec.inlineTrustConfig.additionalTrustBundles[].trustDefaultSharedCa` | `bool` |  |  |  |
+| `spec.attestationRules` | `[]GcpWorkloadIdentityPoolAttestationRule` |  |  |  |
+| `spec.attestationRules[].googleCloudResource` | `string` | yes |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -155,16 +167,17 @@ Configuration for issuing mutual-TLS (mTLS) workload certificates to the
 identities in this pool — the certificate half of a TRUST_DOMAIN pool.
 Leave unset for token-exchange federation (FEDERATION_ONLY pools).
 
+- rule: choose exactly one certificate authority source: ca_pools (your own CA Service pools) or use_default_shared_ca
+
 ### spec.inlineCertificateIssuanceConfig.caPools
 
-`map<string, string>` · required
+`map<string, string>`
 
 Maps a cloud region to the Certificate Authority Service CA pool (full
 resource path projects/<project>/locations/<location>/caPools/<pool>)
 that issues certificates for workloads in that region. The region in the
-key must match the CA pool's own region; at least one entry is required.
-
-- rule: {"map":{"minPairs":"1"}}
+key must match the CA pool's own region. Exactly one of ca_pools or
+use_default_shared_ca supplies the signing authority.
 
 ### spec.inlineCertificateIssuanceConfig.keyAlgorithm
 
@@ -197,6 +210,15 @@ life). Raise it only if workloads tolerate very tight rotation windows.
 
 - rule: {"int32":{"lte":80,"gte":50}}
 
+### spec.inlineCertificateIssuanceConfig.useDefaultSharedCa
+
+`bool`
+
+Issue certificates from the GCP-provisioned default shared CA in the
+workload's own region instead of your own CA Service pools — the
+zero-setup path for managed-identity trust domains. Exactly one of
+ca_pools or use_default_shared_ca supplies the signing authority.
+
 ### spec.inlineTrustConfig
 
 `GcpWorkloadIdentityPoolTrustConfig`
@@ -227,7 +249,9 @@ The foreign trust domain being trusted (e.g. "example.com").
 `[]GcpWorkloadIdentityPoolTrustAnchor` · required
 
 Trust anchors for the domain: incoming end-entity certificates must chain
-up to one of these.
+up to one of these. GCP requires at least one PEM anchor per bundle even
+when trust_default_shared_ca is enabled — the shared CA is ADDED to the
+bundle, never a substitute for it.
 
 - rule: {"repeated":{"minItems":"1"}}
 
@@ -240,6 +264,55 @@ CA certificate (root or intermediate). This is public key material, not a
 secret.
 
 - rule: {"required":true}
+
+### spec.inlineTrustConfig.additionalTrustBundles[].trustDefaultSharedCa
+
+`bool`
+
+Additionally include the GCP-managed regional root certificates (the
+default shared CA) in this bundle's trust set, so certificates issued
+by use_default_shared_ca pools in the foreign domain are accepted.
+Only meaningful for managed-identity (TRUST_DOMAIN) pools.
+
+### spec.attestationRules
+
+`[]GcpWorkloadIdentityPoolAttestationRule`
+
+Which workloads may RECEIVE a managed identity from this pool: each
+rule names a single Google Cloud workload resource (for example
+"//run.googleapis.com/projects/123/type/Service/*"), and matching
+workloads are issued the identity. GCP caps a pool at 50 rules.
+Mutable — but note GCP applies the rules through a separate API call
+after the pool itself is created, so a failed apply can leave a pool
+without its rules; re-apply converges.
+
+- rule: {"repeated":{"maxItems":"50"}}
+
+### spec.attestationRules[].googleCloudResource
+
+`string` · required
+
+A single workload operating on Google Cloud, as a full resource name
+with optional trailing wildcard — for example
+"//run.googleapis.com/projects/123/type/Service/*".
+
+- rule: {"required":true}
+
+### spec.deletionPolicy
+
+`string`
+
+What happens to the pool in GCP when this resource is destroyed.
+  "DELETE"  -- (GCP's default when unset) the pool is soft-deleted:
+               token exchanges stop immediately, the pool is
+               restorable for ~30 days, and its ID stays reserved
+               until permanent deletion
+  "PREVENT" -- destroy FAILS; protects the trust boundary every
+               keyless-CI grant in the project references
+  "ABANDON" -- the pool is removed from management but keeps
+               federating in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

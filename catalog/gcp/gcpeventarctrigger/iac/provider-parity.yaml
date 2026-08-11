@@ -1,0 +1,95 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# One kind, three eventarc resources: the trigger is the primary; the
+# partner channel and the per-project-per-location googleChannelConfig
+# singleton are count-gated companions created only when their spec arms
+# are set. The provider validates destination-arm exclusivity server-side
+# only; the spec's exactly-one CEL fails fast at manifest time.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name (location, service_account,
+# event_data_content_type, labels, deletion_policy, the matching_criteria
+# and destination subtrees all auto-match that way). Every exclusion
+# carries its reason: omission is a decision, never an accident.
+
+resources:
+  google_eventarc_trigger:
+    mappings:
+      # The trigger name defaults from metadata.name; the spec names it
+      # for what it is.
+      - spec: spec.trigger_name
+        arg: name
+
+      - spec: spec.project_id
+        arg: project
+
+      # The provider models the attachment as a sibling network_config
+      # block permitted only with HTTP endpoints -- the spec carries it
+      # inside the arm it belongs to; the modules restore the provider
+      # shape.
+      - spec: spec.destination.http_endpoint.network_attachment
+        arg: destination.network_config.network_attachment
+
+      # GA's retry policy carries exactly one field (only legal value 1,
+      # Cloud-Run-only -- both spec-CEL-enforced from provider truth); the
+      # spec flattens the single-field block.
+      - spec: spec.retry_max_attempts
+        arg: retry_policy.max_attempts
+
+      # The spec names the transport lever for what it configures
+      # (messagePublished triggers only); the modules restore the
+      # transport.pubsub block shape.
+      - spec: spec.transport_pubsub_topic
+        arg: transport.pubsub.topic
+
+      # The trigger's channel argument is the full resource name of the
+      # partner channel this kind CREATES from the partner_channel arm --
+      # the modules assemble it from the created channel's own computed
+      # attributes (correct in the ambient-project case).
+      - spec: spec.partner_channel.channel_name
+        arg: channel
+
+  google_eventarc_channel:
+    mappings:
+      # The channel name defaults from "{trigger name}-channel"; the spec
+      # names it for what it is.
+      - spec: spec.partner_channel.channel_name
+        arg: name
+
+      - spec: spec.project_id
+        arg: project
+
+      - spec: spec.partner_channel.third_party_provider
+        arg: third_party_provider
+
+      # The spec names the CMEK lever for what it references; the provider
+      # suffixes _name.
+      - spec: spec.partner_channel.crypto_key
+        arg: crypto_key_name
+
+  google_eventarc_google_channel_config:
+    mappings:
+      - spec: spec.project_id
+        arg: project
+
+      # The spec names the singleton's one lever for what it does; the
+      # provider suffixes _name.
+      - spec: spec.google_channel_crypto_key
+        arg: crypto_key_name
+    exclusions:
+      - arg: name
+        reason: >-
+          The resource name IS the fixed singleton path
+          (projects/{project}/locations/{location}/googleChannelConfig) --
+          rendered by the modules from the resolved project and the
+          trigger's location; there is nothing for a practitioner to
+          choose.
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      eventarc.googleapis.com with fixed arguments (disable_on_destroy
+      false so destroying one trigger never disables Eventarc
+      project-wide); not spec surface.

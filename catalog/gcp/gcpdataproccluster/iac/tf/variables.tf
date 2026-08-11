@@ -34,6 +34,9 @@ variable "spec" {
     # clusters — the spec validation rejects that combination pre-deploy.
     labels = optional(map(string), {})
 
+    # Engine-side teardown behavior: DELETE, PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
+
     # The standard Compute Engine arm. Mutually exclusive with
     # virtual_cluster_config (enforced pre-deploy by the spec validation;
     # the API enforces it server-side too).
@@ -71,7 +74,15 @@ variable "spec" {
         confidential_instance_config = optional(object({
           enable_confidential_compute = optional(bool, false)
         }), null)
+        # IAM-governed secure tags (tagKeys/... = tagValues/...).
+        resource_manager_tags = optional(map(string), {})
       }), null)
+
+      # Structural type: STANDARD, SINGLE_NODE, or ZERO_SCALE. Immutable.
+      cluster_type = optional(string, "")
+
+      # Execution engine: DEFAULT or LIGHTNING. Immutable.
+      engine = optional(string, "")
 
       master_config = optional(object({
         num_instances    = optional(number, 0)
@@ -83,11 +94,22 @@ variable "spec" {
           boot_disk_type      = optional(string, "")
           num_local_ssds      = optional(number, 0)
           local_ssd_interface = optional(string, "")
+          # Provisioned-performance dials (hyperdisk classes).
+          boot_disk_provisioned_iops       = optional(number, null)
+          boot_disk_provisioned_throughput = optional(number, null)
         }), null)
         accelerators = optional(list(object({
           accelerator_type  = string
           accelerator_count = number
         })), [])
+        # Ranked machine-type fallbacks for master provisioning (no
+        # provisioning mix — masters are always on-demand).
+        instance_flexibility_policy = optional(object({
+          instance_selection_list = optional(list(object({
+            machine_types = list(string)
+            rank          = optional(number, 0)
+          })), [])
+        }), null)
       }), null)
 
       worker_config = optional(object({
@@ -103,11 +125,22 @@ variable "spec" {
           boot_disk_type      = optional(string, "")
           num_local_ssds      = optional(number, 0)
           local_ssd_interface = optional(string, "")
+          # Provisioned-performance dials (hyperdisk classes).
+          boot_disk_provisioned_iops       = optional(number, null)
+          boot_disk_provisioned_throughput = optional(number, null)
         }), null)
         accelerators = optional(list(object({
           accelerator_type  = string
           accelerator_count = number
         })), [])
+        # Ranked machine-type fallbacks for primary-worker provisioning (no
+        # provisioning mix — primary workers are always on-demand).
+        instance_flexibility_policy = optional(object({
+          instance_selection_list = optional(list(object({
+            machine_types = list(string)
+            rank          = optional(number, 0)
+          })), [])
+        }), null)
       }), null)
 
       secondary_worker_config = optional(object({
@@ -118,6 +151,9 @@ variable "spec" {
           boot_disk_type      = optional(string, "")
           num_local_ssds      = optional(number, 0)
           local_ssd_interface = optional(string, "")
+          # Provisioned-performance dials (hyperdisk classes).
+          boot_disk_provisioned_iops       = optional(number, null)
+          boot_disk_provisioned_throughput = optional(number, null)
         }), null)
         # Machine-type flexibility + standard/spot mix — only the secondary
         # group supports flexible provisioning on the released line.
@@ -185,10 +221,13 @@ variable "spec" {
         enable_http_port_access = optional(bool, false)
       }), null)
 
-      # Both TTL fields update in place — the cost-control levers.
+      # All four levers update in place — delete destroys the cluster,
+      # stop shuts the VMs down and keeps it restartable.
       lifecycle_config = optional(object({
         idle_delete_ttl  = optional(string, "")
         auto_delete_time = optional(string, "")
+        idle_stop_ttl    = optional(string, "")
+        auto_stop_time   = optional(string, "")
       }), null)
 
       # Resolved Dataproc Metastore service resource name.
@@ -214,6 +253,9 @@ variable "spec" {
             boot_disk_type      = optional(string, "")
             num_local_ssds      = optional(number, 0)
             local_ssd_interface = optional(string, "")
+            # Provisioned-performance dials (hyperdisk classes).
+            boot_disk_provisioned_iops       = optional(number, null)
+            boot_disk_provisioned_throughput = optional(number, null)
           }), null)
           accelerators = optional(list(object({
             accelerator_type  = string

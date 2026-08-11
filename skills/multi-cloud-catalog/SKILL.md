@@ -16,12 +16,13 @@ look, and the discipline that keeps answers grounded.
 ## The one law: facts are read, never recalled
 
 Every field name, type, enum value, default, validation rule, and output
-path you state must come from a pack file you read while answering -- or
-from `planton explain` when no pack is reachable. Whatever you remember
-about a component's schema is stale by construction: schemas change and the
-pack regenerates with them. A confident answer from memory that names one
-wrong field costs the user a failed deployment; a ten-second file read costs
-nothing.
+path you state must come from a pack file you read while answering -- or,
+when no pack is on disk, from `planton explain` or from a component page
+fetched into your workspace (`references/pack-layout.md` names the fallback
+ladder). Whatever you remember about a component's schema is stale by
+construction: schemas change and the pack regenerates with them. A confident
+answer from memory that names one wrong field costs the user a failed
+deployment; a ten-second file read costs nothing.
 
 ## Locate the pack first
 
@@ -90,9 +91,10 @@ never substitute silently.
   guides and patterns -- IS contributable from here: follow
   `references/contributing-wisdom.md`. Schema and generator changes remain
   out of scope.
-- **No pack, no guessing.** When neither a pack nor the `planton` CLI is
-  reachable, say plainly that schema facts are unavailable rather than
-  answering from memory.
+- **No pack, no guessing.** Exhaust the fallback ladder first -- the CLI's
+  explain report, or component pages fetched into your workspace
+  (`references/pack-layout.md`). Only when every rung is out of reach do you
+  say plainly that schema facts are unavailable -- never answer from memory.
 - **One pack version per answer.** Files within one checkout or one release
   zip are mutually consistent; never mix pages from two pack versions in a
   single answer.

@@ -43,8 +43,34 @@ resource "google_vertex_ai_index_endpoint" "this" {
     content {
       enable_private_service_connect = true
       project_allowlist              = length(private_service_connect_config.value.project_allowlist) > 0 ? private_service_connect_config.value.project_allowlist : null
+
+      # PSC endpoints Vertex AI provisions automatically in consumer
+      # projects. The API wants the relative network form; references
+      # arrive as self-links and are normalized in locals.tf.
+      dynamic "psc_automation_configs" {
+        for_each = private_service_connect_config.value.psc_automation_configs
+        content {
+          network    = replace(psc_automation_configs.value.network, "/^https://www\\.googleapis\\.com/compute/v1//", "")
+          project_id = psc_automation_configs.value.project_id
+        }
+      }
     }
   }
+
+  # CMEK: the key must be in the endpoint's region and the Vertex AI
+  # service agent needs cryptoKeyEncrypterDecrypter on it. Omitted means
+  # Google-managed encryption. Immutable.
+  dynamic "encryption_spec" {
+    for_each = var.spec.kms_key_name != "" ? [var.spec.kms_key_name] : []
+    content {
+      kms_key_name = encryption_spec.value
+    }
+  }
+
+  # Client-side destroy behavior (DELETE deletes the endpoint and stops
+  # every deployment on it; PREVENT refuses; ABANDON drops from state
+  # but keeps serving). Empty follows the provider default (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   depends_on = [
     google_project_service.aiplatform_api,

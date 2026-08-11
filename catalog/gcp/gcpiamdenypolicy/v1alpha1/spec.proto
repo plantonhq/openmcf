@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpiamdenypolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// GcpIamDenyPolicySpec defines an IAM DENY policy — rules that BLOCK
+// principals from using specific permissions regardless of any role
+// grants they hold. Deny always outranks allow: a permission denied here
+// cannot be used even by a project owner, which is what makes deny
+// policies the guardrail layer (protect break-glass secrets, forbid
+// destructive APIs org-wide) rather than another access grant.
+//
+// Attach point: a project, folder, or organization. The policy applies
+// to the attach point and everything below it. Creating deny policies
+// requires org-level permissions (roles/iam.denyAdmin) even for
+// project-attached policies.
+message GcpIamDenyPolicySpec {
+  // Where the policy attaches. Omit entirely to attach to the
+  // provider's default project.
+  GcpIamDenyPolicyParent parent = 1;
+
+  // The policy's resource ID (the last segment of its name). Defaults
+  // to metadata.name when left empty. Immutable: changing it destroys
+  // and recreates the policy.
+  string policy_name = 2;
+
+  // Human-readable name shown in consoles.
+  string display_name = 3;
+
+  // The deny rules — each names the principals denied, the permissions
+  // they are denied, any exceptions, and an optional condition.
+  repeated GcpIamDenyPolicyRule rules = 4 [(buf.validate.field).repeated.min_items = 1];
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the policy is deleted; the permissions it denied
+  //                become usable again wherever roles allow them
+  //   "PREVENT" -- destroy FAILS; protects a guardrail whose silent
+  //                removal would re-open the surface it guards
+  //   "ABANDON" -- the policy is removed from management but keeps
+  //                denying in GCP
+  string deletion_policy = 5 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+}
+
+// The policy's attach point. At most one arm; all empty means "the
+// provider's default project". The module renders the URL-encoded full
+// resource name GCP's API expects (e.g.
+// cloudresourcemanager.googleapis.com%2Fprojects%2Fmy-project) so
+// manifests never hand-assemble it.
+message GcpIamDenyPolicyParent {
+  option (buf.validate.message).cel = {
+    id: "at_most_one_parent"
+    message: "set at most one of project_id, folder_id, or organization_id (empty means the provider's default project)"
+    expression: "[has(this.project_id) && (this.project_id.value != '' || has(this.project_id.value_from)), this.folder_id != '', this.organization_id != ''].filter(x, x).size() <= 1"
+  };
+
+  // Attach to a project — a literal project ID or a reference to a
+  // GcpProject resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Attach to a folder: the folder ID (numeric, with or without the
+  // "folders/" prefix).
+  string folder_id = 2;
+
+  // Attach to an organization: the numeric organization ID.
+  string organization_id = 3;
+}
+
+// One deny rule.
+message GcpIamDenyPolicyRule {
+  // What this rule guards and why — for the operator auditing the
+  // policy later.
+  string description = 1;
+
+  // The rule body.
+  GcpIamDenyPolicyDenyRule deny_rule = 2 [(buf.validate.field).required = true];
+}
+
+// The deny rule body: who is denied what, with exceptions and an
+// optional condition.
+message GcpIamDenyPolicyDenyRule {
+  // The identities denied, in the v2 principal formats:
+  //   principalSet://goog/public:all                       -- everyone
+  //   principal://goog/subject/{email}                     -- one user
+  //   principalSet://goog/group/{group-email}              -- a group
+  //   principal://iam.googleapis.com/projects/-/serviceAccounts/{email}
+  //                                                        -- a service
+  //                                                           account
+  //   principalSet://cloudresourcemanager.googleapis.com/organizations/{org-id}
+  //                                                        -- everyone in
+  //                                                           the org
+  repeated string denied_principals = 1;
+
+  // Identities EXCLUDED from the rule even when denied_principals
+  // covers them — the break-glass carve-out (e.g. deny a group but
+  // exempt the on-call account).
+  repeated string exception_principals = 2;
+
+  // The permissions denied, as {service-fqdn}/{resource}.{verb} — e.g.
+  // "secretmanager.googleapis.com/versions.access",
+  // "iam.googleapis.com/roles.delete". Only permissions the deny API
+  // supports may be listed (see Google's supported-permissions list).
+  repeated string denied_permissions = 3;
+
+  // Permissions EXCLUDED from denied_permissions — a permission
+  // appearing in both lists is NOT denied.
+  repeated string exception_permissions = 4;
+
+  // Optional CEL condition scoping when the denial applies, evaluated
+  // on resource tags (e.g.
+  // !resource.matchTag('12345678/env', 'production') denies everywhere
+  // EXCEPT tagged production resources).
+  GcpIamDenyPolicyCondition denial_condition = 5;
+}
+
+// A CEL condition on a deny rule.
+message GcpIamDenyPolicyCondition {
+  // The CEL expression, e.g.
+  // resource.matchTag('12345678/env', 'sandbox').
+  string expression = 1 [(buf.validate.field).required = true];
+
+  // Short title identifying the condition's purpose.
+  string title = 2;
+
+  // What the condition scopes and why.
+  string description = 3;
+
+  // Where the expression came from, for error attribution in UIs (e.g.
+  // a file/line marker). Rarely set by hand.
+  string location = 4;
+}

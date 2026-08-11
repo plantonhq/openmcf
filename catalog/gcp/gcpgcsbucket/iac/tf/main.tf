@@ -41,6 +41,12 @@ resource "google_storage_bucket" "this" {
   default_event_based_hold    = var.spec.default_event_based_hold
   rpo                         = local.rpo
 
+  # Destroy-time guard: PREVENT fails the destroy; ABANDON unmanages the
+  # bucket without deleting it. Null falls back to the provider default
+  # (DELETE). Orthogonal to force_destroy, which governs whether a
+  # permitted deletion may erase contained objects.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   # Create-time-only surfaces (ForceNew).
   enable_object_retention = var.spec.enable_object_retention ? true : null
 
@@ -95,6 +101,8 @@ resource "google_storage_bucket" "this" {
         days_since_custom_time                  = lifecycle_rule.value.condition.days_since_custom_time
         send_days_since_custom_time_if_zero     = lifecycle_rule.value.condition.days_since_custom_time == 0 ? true : null
         custom_time_before                      = lifecycle_rule.value.condition.custom_time_before != "" ? lifecycle_rule.value.condition.custom_time_before : null
+        size_above_bytes                        = lifecycle_rule.value.condition.size_above_bytes
+        size_below_bytes                        = lifecycle_rule.value.condition.size_below_bytes
       }
     }
   }
@@ -118,12 +126,36 @@ resource "google_storage_bucket" "this" {
     }
   }
 
+  # One provider block carries both the default CMEK key and the
+  # per-encryption-type enforcement for new objects, so the module emits
+  # it when either half is configured.
+  #
   # Default CMEK: the GCS service agent must hold
   # roles/cloudkms.cryptoKeyEncrypterDecrypter on this key before create.
+  # Enforcement changes apply to NEW objects only.
   dynamic "encryption" {
-    for_each = local.kms_key_name != null ? [local.kms_key_name] : []
+    for_each = (local.kms_key_name != null || var.spec.encryption_enforcement != null) ? [1] : []
     content {
-      default_kms_key_name = encryption.value
+      default_kms_key_name = local.kms_key_name
+
+      dynamic "google_managed_encryption_enforcement_config" {
+        for_each = try(var.spec.encryption_enforcement.google_managed_restriction_mode, "") != "" ? [var.spec.encryption_enforcement.google_managed_restriction_mode] : []
+        content {
+          restriction_mode = google_managed_encryption_enforcement_config.value
+        }
+      }
+      dynamic "customer_managed_encryption_enforcement_config" {
+        for_each = try(var.spec.encryption_enforcement.customer_managed_restriction_mode, "") != "" ? [var.spec.encryption_enforcement.customer_managed_restriction_mode] : []
+        content {
+          restriction_mode = customer_managed_encryption_enforcement_config.value
+        }
+      }
+      dynamic "customer_supplied_encryption_enforcement_config" {
+        for_each = try(var.spec.encryption_enforcement.customer_supplied_restriction_mode, "") != "" ? [var.spec.encryption_enforcement.customer_supplied_restriction_mode] : []
+        content {
+          restriction_mode = customer_supplied_encryption_enforcement_config.value
+        }
+      }
     }
   }
 
@@ -211,4 +243,96 @@ resource "google_storage_bucket_iam_member" "members" {
       description = condition.value.description != "" ? condition.value.description : null
     }
   }
+}
+
+# Folders — real directories on hierarchical-namespace buckets. The API
+# never auto-creates missing parents, so the depth groups below chain with
+# depends_on: parents create before children, children destroy before
+# parents (a non-empty parent refuses deletion). One group per nesting
+# level, capped at 5 by the spec. force_destroy sweeps contained objects
+# client-side; deletion_policy guards folders exactly like the bucket.
+resource "google_storage_folder" "folders_l1" {
+  for_each = local.folders_by_depth[1]
+
+  bucket          = google_storage_bucket.this.name
+  name            = each.value.name
+  force_destroy   = each.value.force_destroy
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+}
+
+resource "google_storage_folder" "folders_l2" {
+  for_each = local.folders_by_depth[2]
+
+  bucket          = google_storage_bucket.this.name
+  name            = each.value.name
+  force_destroy   = each.value.force_destroy
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
+  depends_on = [google_storage_folder.folders_l1]
+}
+
+resource "google_storage_folder" "folders_l3" {
+  for_each = local.folders_by_depth[3]
+
+  bucket          = google_storage_bucket.this.name
+  name            = each.value.name
+  force_destroy   = each.value.force_destroy
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
+  depends_on = [google_storage_folder.folders_l2]
+}
+
+resource "google_storage_folder" "folders_l4" {
+  for_each = local.folders_by_depth[4]
+
+  bucket          = google_storage_bucket.this.name
+  name            = each.value.name
+  force_destroy   = each.value.force_destroy
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
+  depends_on = [google_storage_folder.folders_l3]
+}
+
+resource "google_storage_folder" "folders_l5" {
+  for_each = local.folders_by_depth[5]
+
+  bucket          = google_storage_bucket.this.name
+  name            = each.value.name
+  force_destroy   = each.value.force_destroy
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
+  depends_on = [google_storage_folder.folders_l4]
+}
+
+# Managed folders — prefix-scoped IAM anchors, independent of each other.
+# force_destroy here is SERVER-side (allowNonEmpty): a non-empty managed
+# folder deletes and its objects survive, simply losing the managed
+# folder's IAM coverage. Grants on a managed folder are composed through
+# the managed-folder IAM surface, never inlined here — the same
+# additive-grants doctrine as the bucket's iam_members.
+resource "google_storage_managed_folder" "managed_folders" {
+  for_each = local.managed_folders
+
+  bucket          = google_storage_bucket.this.name
+  name            = each.value.name
+  force_destroy   = each.value.force_destroy
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+}
+
+# Pub/Sub notification configs. IMMUTABLE end to end — the provider
+# replaces the config on any change, which is the resource's only change
+# mode. The topic must be the fully-qualified projects/{project}/topics/
+# {name} form (the API rejects bare names), and the project's GCS service
+# agent must already hold roles/pubsub.publisher on it — a composed grant
+# (see the kind's docs); a missing grant fails HERE at create time.
+resource "google_storage_notification" "notifications" {
+  for_each = local.notifications
+
+  bucket         = google_storage_bucket.this.name
+  topic          = each.value.topic
+  payload_format = each.value.payload_format
+
+  event_types        = length(each.value.event_types) > 0 ? each.value.event_types : null
+  object_name_prefix = each.value.object_name_prefix != "" ? each.value.object_name_prefix : null
+  custom_attributes  = length(each.value.custom_attributes) > 0 ? each.value.custom_attributes : null
 }

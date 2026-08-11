@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpmonitoringslo.v1alpha1;
+
+// Outputs produced after provisioning a Cloud Monitoring SLO.
+message GcpMonitoringSloStackOutputs {
+  // The server-assigned resource name of the SLO.
+  // Format: projects/{project}/services/{service_id}/serviceLevelObjectives/{slo_id}
+  // The handle for burn-rate alert conditions
+  // (select_slo_burn_rate("{slo_name}", ...)) and the Monitoring API.
+  string slo_name = 1;
+
+  // The resource name of the Monitoring service the SLO measures —
+  // existing or created by this kind.
+  // Format: projects/{project}/services/{service_id}
+  string service_name = 2;
+}

@@ -202,9 +202,24 @@ type GcpFirewallRuleSpec struct {
 	Disabled bool `protobuf:"varint,15,opt,name=disabled,proto3" json:"disabled,omitempty"`
 	// Logging configuration. When present, firewall logging is enabled.
 	// Omit this field to disable logging (the default).
-	LogConfig     *GcpFirewallLogConfig `protobuf:"bytes,16,opt,name=log_config,json=logConfig,proto3" json:"log_config,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	LogConfig *GcpFirewallLogConfig `protobuf:"bytes,16,opt,name=log_config,json=logConfig,proto3" json:"log_config,omitempty"`
+	// Resource Manager tags bound to the firewall rule at create time, for
+	// org-policy conditions and IAM scoping. Keys are "tagKeys/{tag_key_id}"
+	// and values "tagValues/{tag_value_id}" (IDs, not short names). Changing
+	// tags REPLACES the firewall rule (the provider sends them through a
+	// create-only params block) -- plan tag changes deliberately.
+	ResourceManagerTags map[string]string `protobuf:"bytes,17,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// What happens to the firewall rule in GCP when this resource is destroyed.
+	//
+	//	"DELETE"  -- (GCP's default when unset) the rule is deleted; traffic
+	//	             it allowed is cut over to the next matching rule
+	//	"PREVENT" -- destroy FAILS; protects a rule other teams' traffic
+	//	             may silently depend on
+	//	"ABANDON" -- the rule is removed from management but keeps enforcing
+	//	             in GCP (free at rest; clean it up manually)
+	DeletionPolicy string `protobuf:"bytes,18,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpFirewallRuleSpec) Reset() {
@@ -349,6 +364,20 @@ func (x *GcpFirewallRuleSpec) GetLogConfig() *GcpFirewallLogConfig {
 	return nil
 }
 
+func (x *GcpFirewallRuleSpec) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
+func (x *GcpFirewallRuleSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_rawDesc = "" +
@@ -359,7 +388,7 @@ const file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_rawDesc = "" +
 	"\x05ports\x18\x02 \x03(\tR\x05ports\"\xd5\x01\n" +
 	"\x14GcpFirewallLogConfig\x12\xbc\x01\n" +
 	"\bmetadata\x18\x01 \x01(\tB\x9f\x01\xbaH\x9b\x01\xba\x01\x94\x01\n" +
-	"\x19log_config_metadata_valid\x12=metadata must be EXCLUDE_ALL_METADATA or INCLUDE_ALL_METADATA\x1a8this in ['EXCLUDE_ALL_METADATA', 'INCLUDE_ALL_METADATA']\xc8\x01\x01R\bmetadata\"\x95\x0e\n" +
+	"\x19log_config_metadata_valid\x12=metadata must be EXCLUDE_ALL_METADATA or INCLUDE_ALL_METADATA\x1a8this in ['EXCLUDE_ALL_METADATA', 'INCLUDE_ALL_METADATA']\xc8\x01\x01R\bmetadata\"\xa8\x11\n" +
 	"\x13GcpFirewallRuleSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12}\n" +
@@ -385,7 +414,13 @@ const file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_rawDesc = "" +
 	"R\x15targetServiceAccounts\x12\x1a\n" +
 	"\bdisabled\x18\x0f \x01(\bR\bdisabled\x12]\n" +
 	"\n" +
-	"log_config\x18\x10 \x01(\v2>.dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallLogConfigR\tlogConfig:\xf8\x04\xbaH\xf4\x04\x1a\x85\x02\n" +
+	"log_config\x18\x10 \x01(\v2>.dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallLogConfigR\tlogConfig\x12\x8a\x01\n" +
+	"\x15resource_manager_tags\x18\x11 \x03(\v2V.dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallRuleSpec.ResourceManagerTagsEntryR\x13resourceManagerTags\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x12 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xf8\x04\xbaH\xf4\x04\x1a\x85\x02\n" +
 	"\x17ingress_requires_source\x12aINGRESS rules must specify at least one of source_ranges, source_tags, or source_service_accounts\x1a\x86\x01this.direction != 'INGRESS' || this.source_ranges.size() > 0 || this.source_tags.size() > 0 || this.source_service_accounts.size() > 0\x1a\xe9\x02\n" +
 	",tags_and_service_accounts_mutually_exclusive\x12\x9d\x01tag-based targeting (source_tags, target_tags) and service-account-based targeting (source_service_accounts, target_service_accounts) cannot be used together\x1a\x98\x01(this.source_tags.size() == 0 && this.target_tags.size() == 0) || (this.source_service_accounts.size() == 0 && this.target_service_accounts.size() == 0)B\v\n" +
 	"\t_priorityB\xd9\x02\n" +
@@ -403,23 +438,25 @@ func file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpFirewallProtocolPort)(nil), // 0: dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallProtocolPort
 	(*GcpFirewallLogConfig)(nil),    // 1: dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallLogConfig
 	(*GcpFirewallRuleSpec)(nil),     // 2: dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallRuleSpec
-	(*v1.StringValueOrRef)(nil),     // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                             // 3: dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallRuleSpec.ResourceManagerTagsEntry
+	(*v1.StringValueOrRef)(nil),     // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallRuleSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallRuleSpec.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 0: dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallRuleSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 1: dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallRuleSpec.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0, // 2: dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallRuleSpec.rules:type_name -> dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallProtocolPort
 	1, // 3: dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallRuleSpec.log_config:type_name -> dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallLogConfig
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 4: dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallRuleSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcpfirewallrule.v1alpha1.GcpFirewallRuleSpec.ResourceManagerTagsEntry
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_init() }
@@ -434,7 +471,7 @@ func file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpfirewallrule_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

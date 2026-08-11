@@ -17,3 +17,7 @@ spec:
   # producer. At least one is required; append more to grow capacity.
   reservedPeeringRanges:
     - value: my-vpc-psa-range
+
+  # DELETE keeps destroys real (destroy producer instances first);
+  # PREVENT belongs under production database fleets.
+  deletionPolicy: DELETE

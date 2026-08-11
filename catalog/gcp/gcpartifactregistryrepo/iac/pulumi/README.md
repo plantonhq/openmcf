@@ -6,7 +6,7 @@ This Pulumi (Go) module provisions an Artifact Registry repository (`artifactreg
 
 The module enables the Artifact Registry API (`disable_on_destroy=false`) so a fresh project works first try and teardown never disables the API project-wide. User labels are merged beneath the platform attribution labels (`planton-ai_*`), identically to the Terraform module. The repository ID falls back to `metadata.name`; all three serving modes (standard, remote, virtual) are driven from the spec, with the mode↔config coherence enforced pre-deploy by the spec's CEL rules.
 
-The bridged provider's client-side `deletion_policy` knob is pinned to `DELETE` so destroy behavior is byte-identical to the Terraform module (the released 6.x Terraform resource has no such flag). The `registry_uri` output is constructed from resolved attributes — the released provider exports no registry URI attribute — using the exact expression the Terraform module uses.
+The `deletion_policy` spec field (DELETE / PREVENT / ABANDON, provider default DELETE) is wired identically to the Terraform module — sent only when set. The `registry_uri` output is constructed from resolved attributes — the released provider exports no registry URI attribute — using the exact expression the Terraform module uses.
 
 ## Usage with Planton CLI
 

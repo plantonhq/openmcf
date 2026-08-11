@@ -1,0 +1,31 @@
+# Disabled-channel scenario: proves the EXPLICIT-SEND contract live — the
+# spec's enabled=false must reach the API (the send-true-or-omit class
+# silently no-ops such transitions), and the surface minimal cannot
+# exercise: user labels (user_labels merge), force_delete, and a
+# deletion_policy value. A disabled channel deploys fully and delivers
+# nothing by definition.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringNotificationChannel
+metadata:
+  name: planton-oss-e2e-gcpnotifchan-disabled
+  id: planton-oss-e2e-gcpnotifchan-disabled
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmonitoringnotificationchannel
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  type: email
+  channelLabels:
+    email_address: planton-e2e-disabled@example.com
+  displayName: E2E disabled channel
+  description: Proves enabled=false reaches the API instead of being omitted
+  enabled: false
+  forceDelete: true
+  labels:
+    e2e-arm: disabled
+  deletionPolicy: DELETE

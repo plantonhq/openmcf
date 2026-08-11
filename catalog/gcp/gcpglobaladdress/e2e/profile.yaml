@@ -1,0 +1,15 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpglobaladdress
+spec:
+  # Standalone scenario: the canonical manifest reserves a global EXTERNAL
+  # IPv4 anycast address — no prerequisites (the kind's own
+  # prerequisite.yaml serves OTHER kinds that consume a reserved VIP).
+  # deploy -> compute globalAddresses.get verify -> destroy -> verify gone,
+  # on both provisioners. Global addresses are free while attached and
+  # create in seconds.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 10

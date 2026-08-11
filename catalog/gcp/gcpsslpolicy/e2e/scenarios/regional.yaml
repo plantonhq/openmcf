@@ -21,3 +21,6 @@ spec:
   region: us-central1
   profile: RESTRICTED
   minTlsVersion: TLS_1_2
+  # Explicit DELETE proves the regional resource's own deletion_policy
+  # round-trip (the global variant proves it in the minimal scenario).
+  deletionPolicy: DELETE

@@ -116,6 +116,12 @@ func globalForwardingRule(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.
 		args.ExternalManagedBackendBucketMigrationTestingPercentage = pulumi.Float64(spec.ExternalManagedBackendBucketMigrationTestingPercentage)
 	}
 
+	// What destroy does to the frontend: DELETE (default), PREVENT (refuse),
+	// or ABANDON (drop from state, keep serving traffic).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdRule, err := compute.NewGlobalForwardingRule(ctx, "global-forwarding-rule", args,
 		pulumi.Provider(gcpProvider), pulumi.DependsOn([]pulumi.Resource{createdProjectService}))
 	if err != nil {

@@ -26,3 +26,5 @@ spec:
 
   # Launch stage label (default GA)
   stage: GA
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE

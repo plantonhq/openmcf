@@ -39,6 +39,13 @@ func dataset(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) err
 		Labels:    pulumi.ToStringMap(locals.GcpLabels),
 	}
 
+	// DELETE (provider default) removes the dataset on destroy; PREVENT
+	// fails the destroy; ABANDON leaves the dataset serving. Sent only
+	// when set — mirrors the Terraform module.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	// Honor the spec contract: an empty project_id falls back to the
 	// provider's default project (omit the arg entirely).
 	if spec.ProjectId.GetValue() != "" {

@@ -49,6 +49,10 @@ Omit for `USE_DATABASE_ENCRYPTION` (backups inherit the database's posture — C
 - `GOOGLE_DEFAULT_ENCRYPTION` — Google-managed keys regardless of the database's posture
 - `CUSTOMER_MANAGED_ENCRYPTION` — explicit CMEK: exactly one of `kms_key_name` (regional instance configurations) or `kms_key_names` (one key per region of a multi-region configuration); both reference a `GcpKmsKey`'s `key_id` output
 
+### Destroy Behavior (`deletion_policy`)
+
+`DELETE` (default) removes the schedule — no further backups are taken; `PREVENT` fails the destroy, protecting a cadence a recovery objective depends on; `ABANDON` drops it from management but keeps it running in GCP. None of these touches backups already taken — those live until their retention expires.
+
 ## Outputs
 
 | Output | Description |

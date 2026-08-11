@@ -1,0 +1,67 @@
+# =============================================================================
+# Catalog Artifact Conformance Gate
+# =============================================================================
+# The release ships the catalog as verified artifacts: catalog-bundle.zip
+# (descriptors + conversion specs + presets + catalog entries) and
+# catalog-schemas.zip (per-proto JSON schema documents). Both are DERIVED
+# from more than protos -- entries read each kind's catalog.md and prove its
+# iac/ module directories live; presets are bundle cargo; schema documents
+# carry authored proto source. So this gate triggers on the WHOLE catalog
+# tree plus the projection machinery, not just *.proto: an edit that breaks
+# an artifact must fail the PR, never the release.
+#
+# Local equivalents: `make build-catalog-bundle && make verify-catalog-bundle`
+# and `make build-catalog-schemas && make verify-catalog-schemas`.
+# =============================================================================
+
+name: lint.catalog-artifacts
+
+on:
+  pull_request:
+    paths:
+      - 'catalog/**'
+      - 'shared/**/*.proto'
+      - 'buf.yaml'
+      - 'buf.gen.catalog-schema.yaml'
+      - 'pkg/catalogbundle/**'
+      - 'pkg/catalogschema/**'
+      - '.github/workflows/lint.catalog-artifacts.yaml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  bundle-conformance:
+    name: catalog bundle conforms to the compiled registry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - name: build and verify the bundle
+        run: |
+          make build-catalog-bundle
+          make verify-catalog-bundle
+
+  schemas-conformance:
+    name: catalog schemas serve the compiled registry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - name: build and verify the schema artifact
+        run: |
+          make build-catalog-schemas
+          make verify-catalog-schemas

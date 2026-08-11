@@ -37,7 +37,7 @@ Open the deployment store, find **GCP Service Connection Policy**, and click **D
 ### CLI
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceConnectionPolicy
 metadata:
   name: memorystore-valkey-policy

@@ -130,20 +130,21 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 - **Name reservation**: a deleted instance's name stays reserved for about one week and cannot be reused.
 - **In-place changes**: `databaseVersion` upgrades and `tier`/`edition` changes apply in place (with a restart) — take a backup before major version upgrades.
 - **Private network is one-way**: it can be set or changed in place, but never removed — removing it forces instance replacement.
-- **Read replicas**: a replica is its own `GcpCloudSql` node with `masterInstanceName`; promotion to a standalone primary is an operational action performed outside IaC.
+- **Read replicas**: a replica is its own `GcpCloudSql` node with `masterInstanceName`; promote it to a standalone primary by setting `instanceType: CLOUD_SQL_INSTANCE` and clearing `masterInstanceName`/`replicaConfiguration` in the same change (the instance restarts).
 - **Two delete guards**: `deletionProtection` stops IaC destroys; `deletionProtectionEnabled` makes GCP itself reject deletion from any surface. Set both in production.
 
 ### Deliberately not modeled (recorded reasons)
 
+Everything else on `google_sql_database_instance` at the pinned provider is representable — including clones, backup-run and Backup-and-DR restores, read pools with auto scaling, DR replica pairing, final backups, Entra ID / customer-managed Active Directory, hyperdisk performance dials, and `deletionPolicy`. The recorded exclusions:
+
 | Excluded Feature | Why |
 |---|---|
-| `clone` / `restore_backup_context` / `point_in_time_restore_context` / `backupdr_backup` | Restores and clones are operational actions, not steady-state configuration — running them through a declarative spec invites accidental re-execution. |
-| Read pools (`instance_type` / `node_count` / auto-scale) | Not on the released 6.x provider line. |
-| `replication_cluster` (DR replica pairs) | Enterprise Plus disaster-recovery pairs involve switchover choreography beyond declarative config; revisit on concrete pull. |
-| `maintenance_version` | Pinning a specific maintenance version is an operational action GCP advances out-of-band; modeling it invites permanent drift. |
-| `pricing_plan` | `PER_USE` is the only accepted value. |
-| `root_password_wo`, `entraid_config`, `data_api_access`, `final_backup_config`, `auto_upgrade_enabled`, Hyperdisk IOPS/throughput dials, `performance_capture_config` | Not on the released 6.x provider line (some beta-only). |
-| Instance-level `deletion_policy` (ABANDON) | Client-side lever that conflicts with managed destroy semantics. |
+| `root_password_wo` / `root_password_wo_version` | Write-only variants of the modeled `rootPassword` — same capability through engine-side ergonomics; the spec field is secret-annotated and encrypted in state on both engines. |
+| `switch_transaction_logs_to_cloud_storage_enabled`, `include_replicas_for_major_version_upgrade`, `enforce_new_sql_network_architecture`, PSC `psc_auto_connection_policy_enabled` | GA at the pin but not yet bridged by the pinned Pulumi SDK — modeling them on one engine only would break cross-engine parity; they enter the spec at the next SDK bump. |
+| `pricing_plan` | `PER_USE` is the only accepted value on second-generation instances — no reachable capability. |
+| `follow_gae_application` | Legacy App Engine zone-following; `locationPreference.zone` is the direct modern placement control. |
+| `replication_cluster.psa_write_endpoint` | Documented read-only field; DR pairing is driven through `failoverDrReplicaName`. |
+| `user_labels` | Driven by the platform metadata labels on both engines, not spec surface. |
 
 ## Related Components
 

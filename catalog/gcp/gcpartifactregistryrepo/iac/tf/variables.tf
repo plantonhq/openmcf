@@ -140,6 +140,11 @@ variable "spec" {
         description = optional(string, "")
       }), null)
     })), [])
+
+    # DELETE (default) removes the repository and every artifact in it on
+    # destroy; PREVENT fails the destroy; ABANDON leaves the repository
+    # serving artifacts in GCP.
+    deletion_policy = optional(string, "")
   })
 
   validation {

@@ -14,7 +14,7 @@ Deploys a global Compute Engine URL map — the L7 routing brain of a global ext
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Compute Engine URL Map (global)** -- host rules, path matchers with path or route rules, default targets at every level, header policies, custom error pages, and routing self-tests
+- **Compute Engine URL Map (global)** -- host rules, path matchers with path or route rules, default targets at every level, header policies, custom error pages, routing self-tests, and per-route traffic management (timeouts, retries, mirroring, CORS, fault injection, route-scoped CDN caching)
 
 ## Before You Deploy
 
@@ -97,7 +97,9 @@ These are the most important decisions when configuring a URL map. Explore the f
 
 **Routing tests** -- Self-tests GCP evaluates on every create/update; a failing test BLOCKS the change. One test per critical path is the cheapest routing-regression guard on GCP.
 
-**Advanced traffic management** -- The provider's per-route timeout/retry/mirroring/CORS/fault-injection sub-policies are a deliberate, documented coverage boundary of this kind (they overlap the backend service's own resilience settings); weighted splits and rewrites — the routing-defining parts — are fully modeled.
+**Advanced traffic management** -- Every route action carries the full per-route surface: timeout and retry policies, request mirroring, CORS, fault injection, stream-duration limits, and a route-scoped Cloud CDN cache policy — alongside the weighted splits and rewrites. Route-scoped policies override the backend service's own resilience and CDN settings for matching traffic only, so one backend can serve aggressive-retry API routes and long-timeout upload routes at once. A route action is a routing *target* only via weighted backends; sub-policies may accompany a plain service target.
+
+**Destroy stance** -- `deletionPolicy` decides what a teardown may do: DELETE (default), PREVENT (the destroy fails at this resource), or ABANDON (removed from state, keeps serving unmanaged) — the guard rail for routing that other teams' DNS points at.
 
 ## Outputs and Dependencies
 

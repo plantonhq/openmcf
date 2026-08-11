@@ -7,8 +7,10 @@ spec:
   # chain before every instance create. Redis instances take ~5-10 min each;
   # run the package with a generous go test -timeout.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # The prior green predates the current spec shape (user labels,
+  # deletion_protection defaulting TRUE — both engines now send it
+  # explicitly — maintenance description, deletion_policy) — awaits
+  # live re-proof.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

@@ -6,7 +6,7 @@ Compute Engine API on the target project.
 
 ## Provider
 
-- **Provider**: `hashicorp/google` `~> 6.0`
+- **Provider**: `hashicorp/google` `~> 7.43`
 - Credentials via the ambient environment (Application Default Credentials
   or the runner's provider configuration)
 
@@ -42,10 +42,12 @@ Creating with NO rules lets the API add a default "allow all" rule
 automatically; providing ANY rules requires the set to include that default
 explicitly — the spec enforces this before the module ever runs.
 
-## Deliberately Unmodeled
+## Labels and Destroy Behavior
 
-- **Labels** — `google_compute_security_policy` has no labels attribute on
-  the released `google ~> 6.0` line; neither engine attempts attribution.
-- **`request_body_inspection_size`** — absent from the released provider
-  line (a newer-major-only surface); not modeled on either engine so the
-  spec never advertises intent only one engine honors.
+- **Labels** — the module merges user labels from `spec.labels` with the
+  platform attribution labels (platform wins on key conflicts), the same
+  merge order as every labeled GCP kind.
+- **`deletion_policy`** — DELETE (default), PREVENT, or ABANDON decides
+  what a destroy does to the policy.
+- **`advanced_options_config.request_body_inspection_size`** — how much of
+  each request body the WAF inspects (8KB default, up to 64KB).

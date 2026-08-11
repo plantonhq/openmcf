@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpmonitoringnotificationchannel.v1alpha1;
+
+// Outputs produced after provisioning a Cloud Monitoring notification
+// channel.
+message GcpMonitoringNotificationChannelStackOutputs {
+  // The server-assigned resource name of the channel.
+  // Format: projects/{project}/notificationChannels/{channel_id}
+  // This is THE composition handle: alert policies reference the channel by
+  // exactly this value in their notification_channels list.
+  string channel_name = 1;
+
+  // Whether the channel has been verified (SMS and email channels require
+  // verification before they deliver). One of: VERIFICATION_STATUS_UNSPECIFIED,
+  // UNVERIFIED, VERIFIED. Channel types that need no verification report
+  // UNSPECIFIED — that is normal, not an error.
+  string verification_status = 2;
+}

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpiamdenypolicy.v1alpha1;
+
+// Outputs produced after provisioning an IAM deny policy.
+message GcpIamDenyPolicyStackOutputs {
+  // The policy's identifier as {url-encoded-parent}/{policy_name} —
+  // the handle gcloud and the v2 policies API reference the policy by.
+  string policy_name = 1;
+
+  // The policy's current etag — changes on every update; useful for
+  // optimistic-concurrency tooling reading the policy out of band.
+  string etag = 2;
+}

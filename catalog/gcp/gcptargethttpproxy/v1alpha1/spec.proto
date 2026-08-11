@@ -77,4 +77,20 @@ message GcpTargetHttpProxySpec {
   // references this proxy uses the INTERNAL_SELF_MANAGED scheme (Traffic
   // Director); leave false for internet-facing load balancers. Immutable.
   bool proxy_bind = 6;
+
+  // Deletion policy for the proxy — what happens when this resource is
+  // destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the proxy is deleted (GCP refuses while a forwarding
+  //                rule still references it, so a frontend cannot be torn
+  //                down out from under its VIP)
+  //   "PREVENT" -- destroy FAILS; protects a production frontend from
+  //                accidental teardown
+  //   "ABANDON" -- the proxy is removed from management but keeps
+  //                serving in GCP
+  string deletion_policy = 7 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

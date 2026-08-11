@@ -20,6 +20,18 @@ author a chart correctly.
   path whenever no catalog pack is reachable — it is compiled into the CLI
   and works fully offline.
 
+**On the platform-tools arm (no CLI), the same division holds with one
+substitution**: the drill-down instrument is the component's own generated
+reference page, read from a pack in your tree or fetched into your workspace
+(the catalog skill's pack-layout reference names the sources — the fetched
+page carries the same schema-derived facts the explain report renders). The
+platform's catalog tools (`search_catalog_components`,
+`get_catalog_component`) answer DISCOVERY — what exists, by which name —
+never field-level facts: they return catalog entries, not schemas. And the
+compile loop doubles as the recovery oracle exactly as on the CLI arm: the
+build report's issues carry the schema's own verdicts on every field path
+you got wrong.
+
 **Research never justifies leaving your filesystem boundary.** Probe for
 the catalog pack only inside the tree you were given — the workspace and
 whatever your session already mounts. Your skill mount (the `.stigmer/`
@@ -117,18 +129,23 @@ directly, e.g.
 `https://raw.githubusercontent.com/plantonhq/planton/main/`). No clone and
 no network? The explain report alone is sufficient for correct composition.
 
-1. **Official presets** — worked, valid manifests for common shapes:
+1. **The generated reference page** — the pack page itself:
+   `catalog/<provider>/<component>/<api-version>/reference.md`. On the
+   platform-tools arm this fetch is not "deeper" grounding — it IS the
+   grounding path (the explain report's equal, rendered from the same
+   schemas). Fetch it into your workspace and read it there.
+2. **Official presets** — worked, valid manifests for common shapes:
    `catalog/<provider>/<component>/presets/` (at the component root).
    Read a preset when you need a realistic starting point for a kind you
    have not authored before.
-2. **Catalog pages** — the human-oriented doc at each component's root:
+3. **Catalog pages** — the human-oriented doc at each component's root:
    `catalog/<provider>/<component>/catalog.md`. Good for topology context
    ("this resource usually sits behind a VPC") but the explain report is
    the field-name authority.
-3. **Chart fleet** — production charts that wire many kinds together:
+4. **Chart fleet** — production charts that wire many kinds together:
    `charts/<provider>/<chart-name>/` in the same repo.
    Copy wiring patterns from a chart that already solves a similar topology.
-4. **Proto source** — when you need edge cases beyond the rendered report:
+5. **Proto source** — when you need edge cases beyond the rendered report:
    `catalog/<provider>/<component>/v1alpha1/spec.proto` and
    `…/v1alpha1/outputs.proto`. Same field names and the same comments — the
    explain report is generated from these files, so the report normally
@@ -146,9 +163,12 @@ example for the kind is the complete degradation path.
 
 ## What not to use
 
-- **Search or catalog APIs** for field names — they return metadata and links,
-  not inline schemas. Use `planton explain` instead.
+- **Search or catalog tools/APIs** for field names — they return metadata
+  and links, not inline schemas. They answer "what exists"; the field
+  authority is the explain report (CLI arm) or the component's reference
+  page (platform-tools arm).
 - **Guessing from AWS/Azure/GCP docs** — Planton kinds wrap provider APIs with
-  their own field names and validation. Always ground from the explain report.
-- **MCP or web UIs** — optional conveniences; the CLI commands above are the
-  contract this skill is written against.
+  their own field names and validation. Always ground from the explain report
+  or the reference page.
+- **Web UIs** — the file-based instruments above are the contract this skill
+  is written against; a screenshot of a console is never a schema.

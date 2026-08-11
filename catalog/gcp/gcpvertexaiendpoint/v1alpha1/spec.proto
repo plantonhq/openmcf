@@ -5,6 +5,33 @@ package dev.planton.gcp.gcpvertexaiendpoint.v1alpha1;
 import "buf/validate/validate.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
 
+// GcpVertexAiEndpointPscAutomationConfig asks Vertex AI to CREATE the
+// consumer-side PSC endpoint automatically: for each entry, GCP provisions
+// a forwarding rule and IP in the given project/network pair, so consumers
+// skip the manual forwarding-rule setup that project_allowlist-only
+// configurations require. The whole list is mutable in place — entries can
+// be added or removed without recreating the endpoint.
+message GcpVertexAiEndpointPscAutomationConfig {
+  // VPC network where the PSC endpoint is created, as the full relative
+  // resource name projects/{project}/global/networks/{name} (the format
+  // the Vertex AI API requires) — a GcpVpcNetwork reference's self-link
+  // output is normalized to that form by both IaC modules.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
+  ];
+
+  // Project in which the PSC endpoint (forwarding rule) is created — a
+  // project ID; a GcpProject reference resolves to it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+}
+
 // GcpVertexAiEndpointPrivateServiceConnectConfig configures Private Service
 // Connect (PSC) networking for the endpoint. When this block is present,
 // the endpoint is exposed via PSC rather than VPC peering.
@@ -16,13 +43,18 @@ message GcpVertexAiEndpointPrivateServiceConnectConfig {
   // Projects allowed to create forwarding rules targeting this endpoint's
   // service attachment. Each entry is a GCP project ID or project number.
   // If empty, any project in the same organization can connect.
+  // Mutable in place.
   repeated string project_allowlist = 1;
+
+  // PSC endpoints Vertex AI creates automatically in consumer
+  // projects/networks (instead of consumers wiring forwarding rules by
+  // hand). Online-prediction endpoints are exactly the surface Google
+  // documents this automation for. Mutable in place.
+  repeated GcpVertexAiEndpointPscAutomationConfig psc_automation_configs = 2;
 
   // Secure PSC (IAM authorization on top of network reachability) is not
   // modeled: the GA provider does not expose it (pre-release surface only),
   // and GA is the catalog's parity baseline.
-  reserved 2;
-  reserved "enable_secure_private_service_connect";
 }
 
 // GcpVertexAiEndpointRequestResponseLoggingConfig samples online
@@ -86,9 +118,9 @@ message GcpVertexAiEndpointRequestResponseLoggingConfig {
 // Immutable fields (ForceNew): location, network, kms_key_name,
 // endpoint_name, and the PSC block's enablement itself. Changing these
 // requires destroying and recreating the endpoint. Mutable in place:
-// display_name, description, labels, the request/response logging config,
-// and the PSC block's project_allowlist (the provider PATCHes them via
-// updateMask).
+// display_name, description, labels, traffic_split, the request/response
+// logging config, and the PSC block's project_allowlist and
+// psc_automation_configs (the provider PATCHes them via updateMask).
 message GcpVertexAiEndpointSpec {
   option (buf.validate.message).cel = {
     id: "network_psc_mutual_exclusion"
@@ -196,4 +228,35 @@ message GcpVertexAiEndpointSpec {
   // traffic into a BigQuery table for drift monitoring, debugging, and
   // audit. Mutable in place.
   GcpVertexAiEndpointRequestResponseLoggingConfig request_response_logging_config = 11;
+
+  // Traffic routing across the models deployed on this endpoint: a map
+  // from a DeployedModel's ID (assigned when a model is deployed — an
+  // operational step outside this resource) to the percentage of traffic
+  // it receives. GCP requires the values to add up to exactly 100, and
+  // rejects IDs that are not currently deployed — so leave this EMPTY on
+  // an endpoint with no deployed models (an empty map means the endpoint
+  // accepts no traffic). Mutable in place: update it to shift traffic
+  // between model versions (canary/blue-green serving).
+  map<string, int32> traffic_split = 12 [(buf.validate.field).map = {
+    values: {
+      int32: {
+        gte: 1
+        lte: 100
+      }
+    }
+  }];
+
+  // What happens to the endpoint in GCP when this resource is destroyed.
+  //   "DELETE"  -- (GCP's default when unset) the endpoint is deleted;
+  //                GCP rejects the delete while models are still deployed
+  //                to it, so undeploy first
+  //   "PREVENT" -- destroy FAILS; protects a serving URL applications
+  //                still call
+  //   "ABANDON" -- the endpoint is removed from management but keeps
+  //                serving in GCP (deployed models keep billing)
+  string deletion_policy = 13 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpiamoauthclient
+spec:
+  # Standalone scenarios: a confidential smoke arm (no credentials) and
+  # a confidential arm with one managed credential. PROVEN live 4/4
+  # lanes (both scenarios x both engines), IDEMPOTENCY clean.
+  # LIVE-CAUGHT API truth landed on the spec CEL/docs: GCP REJECTS
+  # PUBLIC_CLIENT creation ("Client type is not supported" — confirmed
+  # at the raw API; no field combination unlocks it), so only
+  # CONFIDENTIAL_CLIENT is representable and the SPA preset was
+  # retired. Deleted client IDs stay reserved ~30 days (soft delete;
+  # VERIFY-CLN accepts state DELETED), so scenarios use run-scoped IDs.
+  # The credential scenario ships its credential DISABLED because GCP
+  # refuses to delete an enabled credential — and a disabled credential
+  # STILL mints its server-generated secret (confirmed live: the
+  # client_secret output populated, sensitive-masked, on both engines).
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 15

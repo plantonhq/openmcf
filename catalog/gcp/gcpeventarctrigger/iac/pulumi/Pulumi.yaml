@@ -1,0 +1,4 @@
+name: gcpeventarctrigger-pulumi-project
+runtime:
+  name: go
+description: Planton GcpEventarcTrigger Pulumi module

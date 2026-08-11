@@ -31,7 +31,7 @@ Open the deployment store, find **Workload Identity Pool Provider on Google Clou
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpWorkloadIdentityPoolProvider
 metadata:
   name: github-oidc

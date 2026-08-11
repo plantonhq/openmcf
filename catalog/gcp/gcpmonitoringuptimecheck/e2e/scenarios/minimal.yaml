@@ -1,0 +1,36 @@
+# Minimal GcpMonitoringUptimeCheck scenario: the canonical public-URL HTTPS
+# probe against example.com (IANA's reserved, always-up domain) with
+# certificate validation and a body assertion — transport truth AND body
+# truth. project_id is deliberately omitted: the module falls back to the
+# provider's default project, which the E2E harness exports as
+# GOOGLE_PROJECT. Uptime check IDs are server-assigned, so fixed metadata
+# is safe across runs.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringUptimeCheck
+metadata:
+  name: planton-oss-e2e-gcpuptime-smoke
+  id: planton-oss-e2e-gcpuptime-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmonitoringuptimecheck
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  timeout: 10s
+  period: 300s
+  monitoredResource:
+    type: uptime_url
+    labels:
+      host: example.com
+  httpCheck:
+    path: /
+    useSsl: true
+    validateSsl: true
+  contentMatchers:
+    - content: Example Domain
+      matcher: CONTAINS_STRING
+  logCheckFailures: true

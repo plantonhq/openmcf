@@ -1,0 +1,17 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringAlertPolicy
+metadata:
+  name: cpu-saturation
+spec:
+  combiner: OR
+  severity: WARNING
+  conditions:
+    - displayName: cpu above 80%
+      conditionThreshold:
+        filter: metric.type="compute.googleapis.com/instance/cpu/utilization" AND resource.type="gce_instance"
+        comparison: COMPARISON_GT
+        thresholdValue: 0.8
+        duration: 300s
+        aggregations:
+          - alignmentPeriod: 60s
+            perSeriesAligner: ALIGN_MEAN

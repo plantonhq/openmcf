@@ -63,6 +63,10 @@ variable "spec" {
       # consulted under CUSTOM_RESOURCE_HIERARCHY_LEVELS.
       allowed_google_producers_resource_hierarchy_levels = optional(list(string), [])
     }), null)
+
+    # DELETE (default) / PREVENT / ABANDON; empty falls through to the
+    # provider default (DELETE).
+    deletion_policy = optional(string, "")
   })
 
   validation {

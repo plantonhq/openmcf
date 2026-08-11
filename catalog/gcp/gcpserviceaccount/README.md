@@ -7,7 +7,7 @@ Deploys a Google Cloud service account (`google_service_account`) — the identi
 When you deploy a GcpServiceAccount resource, Planton provisions:
 
 - **Service Account** — a `google_service_account` in the specified project
-- **JSON Key** (optional, off by default) — a `google_service_account_key` when `createKey` is true
+- **User-managed key** (optional, off by default) — a `google_service_account_key` when the `userManagedKey` block is present, shaped by its algorithm/format/rotation fields
 - **Project role grants** (optional) — one additive `google_project_iam_member` per role in `projectIamRoles`
 - **Organization role grants** (optional) — one additive `google_organization_iam_member` per role in `orgIamRoles`
 
@@ -61,10 +61,25 @@ This creates `my-app-prod@my-gcp-project-123.iam.gserviceaccount.com` with two a
 | `displayName` | `string` | metadata name | Human-readable identity shown in the GCP console. Mutable. |
 | `description` | `string` | `""` | What this identity is for (max 256 bytes). Mutable. |
 | `disabled` | `bool` | `false` | Disabled accounts keep their IAM bindings but cannot authenticate — a kill switch for incident response or staged decommissioning. Mutable. |
-| `createKey` | `bool` | `false` | Create a user-managed JSON key, exported as the sensitive `key_base64` output. Prefer keyless patterns. |
+| `userManagedKey` | `object` | absent (keyless) | Presence creates a user-managed key; see the key table below. Prefer keyless patterns. |
 | `projectIamRoles` | `list(string)` | `[]` | Roles granted at the project scope (additive member grants). |
 | `orgId` | `string` | `""` | Numeric organization ID; required when `orgIamRoles` is set. |
 | `orgIamRoles` | `list(string)` | `[]` | Roles granted at the organization scope (additive; affects every project under the org — grant sparingly). |
+| `createIgnoreAlreadyExists` | `bool` | `false` | Adopt an existing account with the same email instead of failing — idempotent bootstrap flows. |
+| `deletionPolicy` | `string` | `DELETE` | `PREVENT` fails destroys — a guard rail for identities whose deletion would invalidate IAM bindings fleet-wide. |
+
+### User-managed key (`userManagedKey`)
+
+An empty block (`userManagedKey: {}`) creates the classic 2048-bit RSA JSON key. Two mutually exclusive flows: GENERATE (GCP creates the key pair; the private key exports once as `key_base64`) and UPLOAD (`publicKeyData` supplies your own public key; GCP never sees a private key).
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `algorithm` | `string` | `KEY_ALG_RSA_2048` | Key algorithm (`KEY_ALG_RSA_2048` / `KEY_ALG_RSA_1024`). Create-time only. |
+| `privateKeyType` | `string` | `TYPE_GOOGLE_CREDENTIALS_FILE` | Private key format; `TYPE_PKCS12_FILE` for legacy p12 tooling. Generate flow only. |
+| `publicKeyType` | `string` | `TYPE_X509_PEM_FILE` | Public key output format (`TYPE_RAW_PUBLIC_KEY`, `TYPE_NONE`). Generate flow only. |
+| `publicKeyData` | `string` | `""` | Base64 X.509 PEM public key — the upload flow; conflicts with the two `*KeyType` fields. |
+| `keepers` | `map(string)` | `{}` | Rotation trigger: changing any value replaces the key. |
+| `deletionPolicy` | `string` | `DELETE` | `PREVENT` fails destroys while the key exists. |
 
 ### Role lists vs first-class grants
 
@@ -80,7 +95,7 @@ After deployment, the following outputs are available in `status.outputs`:
 | `member` | `string` | Ready-made IAM member string (`serviceAccount:<email>`) — feed directly into IAM grants |
 | `unique_id` | `string` | Stable numeric ID, never reused across delete/recreate |
 | `name` | `string` | Fully-qualified resource name (`projects/<project>/serviceAccounts/<email>`) |
-| `key_base64` | `string` | Base64-encoded JSON private key (only when `createKey` is true; sensitive) |
+| `key_base64` | `string` | Base64-encoded private key (generate flow only — empty for keyless accounts and the `publicKeyData` upload flow; sensitive) |
 
 ## Deployment Methods
 
@@ -96,7 +111,7 @@ See [`iac/tf/README.md`](iac/tf/README.md) for Terraform-specific deployment ins
 
 ## Important Notes
 
-- **Keyless by default**: no user-managed key is created unless `createKey` is set. Prefer Workload Identity (GKE), attached service accounts (Cloud Run/Compute), or Workload Identity Federation (external CI/CD) — a JSON key is a long-lived credential that must be rotated and protected.
+- **Keyless by default**: no user-managed key is created unless the `userManagedKey` block is present. Prefer Workload Identity (GKE), attached service accounts (Cloud Run/Compute), or Workload Identity Federation (external CI/CD) — a key is a long-lived credential that must be rotated and protected. When a key is unavoidable, `keepers` gives you declarative rotation and `publicKeyData` keeps the private key in your custody.
 - **Immutability**: `serviceAccountId` and `projectId` are ForceNew. `displayName`, `description`, and `disabled` update in place (GCP flips disabled state via dedicated Enable/Disable API calls, handled transparently).
 - **Additive grants**: all role grants use member-level (additive) semantics — they never clobber other members' bindings on the same role.
 - **Email reuse caution**: deleting and recreating an account produces the same email but a different `unique_id`; IAM bindings referencing the old account do not transfer.

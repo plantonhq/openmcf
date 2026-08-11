@@ -1,0 +1,15 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringUptimeCheck
+metadata:
+  name: website-https
+spec:
+  timeout: 10s
+  period: 300s
+  monitoredResource:
+    type: uptime_url
+    labels:
+      host: example.com
+  httpCheck:
+    path: /
+    useSsl: true
+    validateSsl: true

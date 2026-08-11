@@ -242,10 +242,26 @@ var _ = ginkgo.Describe("GcpDnsRecordSpec Validation Tests", func() {
 				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 			})
 		})
+
+		ginkgo.Context("deletion policy", func() {
+			ginkgo.It("should accept each deletion_policy value", func() {
+				for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+					input := baseRecord()
+					input.Spec.DeletionPolicy = v
+					gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+				}
+			})
+		})
 	})
 
 	ginkgo.Describe("Invalid configurations", func() {
 		ginkgo.Context("missing required fields", func() {
+
+			ginkgo.It("should reject an invalid deletion_policy", func() {
+				input := baseRecord()
+				input.Spec.DeletionPolicy = "KEEP"
+				gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+			})
 
 			ginkgo.It("should reject a missing managed_zone", func() {
 				input := baseRecord()

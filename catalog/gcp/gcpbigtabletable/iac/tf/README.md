@@ -4,7 +4,7 @@ This Terraform module provisions a Cloud Bigtable table (`google_bigtable_table`
 
 ## Overview
 
-Column families are created on the table with no GC policy; per-family retention lives in the separate GC-policy resources, so a policy change never touches the table object or its data. `deletion_protection` (spec default PROTECTED) is the API-side guard — deletion by ANY client fails until it is set UNPROTECTED. `split_keys` is ForceNew: changing it REPLACES the table and its data. The module enables the Bigtable Admin API so a fresh project works first try, and runs on the plain `google` provider — every modeled field is GA on the released 6.x line.
+Column families are created on the table with no GC policy; per-family retention lives in the separate GC-policy resources, so a policy change never touches the table object or its data. `deletion_protection` (spec default PROTECTED) is the API-side guard — deletion by ANY client fails until it is set UNPROTECTED. `split_keys` is ForceNew: changing it REPLACES the table and its data. The module enables the Bigtable Admin API so a fresh project works first try, and runs on the plain `google` provider — every modeled field is GA at the pinned release.
 
 ## Usage with Planton CLI
 

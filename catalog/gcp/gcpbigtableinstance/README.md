@@ -28,6 +28,9 @@ This component bundles a Bigtable instance (the logical container for data) with
 | `deletionProtection` | No | Prevent accidental deletion; defaults to `true` |
 | `forceDestroy` | No | Delete all backups when destroying the instance |
 | `clusters` | Yes | One or more cluster configurations (min 1) |
+| `edition` | No | `ENTERPRISE` (GCP default) or `ENTERPRISE_PLUS` (unlocks multi-location automated-backup placement on tables); upgrade applies in place, no downgrade |
+| `resourceManagerTags` | No | Org-policy/IAM tags (`tagKeys/{id}` → `tagValues/{id}`); create-time only — changing them replaces the instance |
+| `deletionPolicy` | No | What a permitted destroy does: `DELETE` (default), `PREVENT` (fail), or `ABANDON` (keep the instance, drop from management) |
 
 ## Cluster Options
 

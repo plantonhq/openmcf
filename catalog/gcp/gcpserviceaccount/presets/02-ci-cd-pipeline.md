@@ -10,7 +10,7 @@ This preset creates a GCP service account with a JSON key for CI/CD pipelines (G
 
 ## Key Configuration Choices
 
-- **Key generated** (`createKey: true`) -- produces a JSON key for use in CI/CD secret stores
+- **Key generated** (`userManagedKey` present) -- produces a JSON key for CI/CD secret stores, with `keepers.rotation` as the built-in rotation trigger: bump the value and the key is replaced
 - **Artifact Registry writer** -- push container images and other artifacts
 - **Container developer** -- deploy workloads to GKE clusters
 - **Cloud Run developer** -- deploy and update Cloud Run services

@@ -129,11 +129,19 @@ that has progressed.
 
 `, providerTitle, acc.CloudProvider, acc.GASchema, providerTitle)
 
-	// Measurement baseline.
+	// Measurement baseline. The loaded schema set spans every provider the
+	// repository measures, but each page lists only its own yardsticks: the
+	// GA parity baseline plus any schema whose provider this catalog's
+	// modules actually pin (a beta admission returns its schema to the
+	// table through the pin, automatically). Unrelated providers' artifacts
+	// never appear here.
 	b.WriteString("## Measurement baseline\n\n")
 	b.WriteString("| | |\n|---|---|\n")
 	schemaNames := make([]string, 0, len(rep.SchemaVersions))
 	for name := range rep.SchemaVersions {
+		if name != acc.GASchema && len(rep.PinDistribution[name]) == 0 {
+			continue
+		}
 		schemaNames = append(schemaNames, name)
 	}
 	sort.Strings(schemaNames)

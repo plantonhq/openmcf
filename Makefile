@@ -222,6 +222,29 @@ build-catalog-bundle:
 verify-catalog-bundle:
 	go run ./pkg/catalogbundle/cli verify --bundle build/catalog-bundle.zip
 
+.PHONY: build-catalog-schema-plugin
+build-catalog-schema-plugin:
+	go build -o $(shell go env GOPATH)/bin/protoc-gen-catalog-schema ./pkg/catalogschema/protoc-gen-catalog-schema
+
+# Builds the catalog-schemas artifact -- one JSON schema document per catalog
+# .proto (the pkg/catalogschema published contract, authored source included),
+# for consoles and tools that render API contracts without compiling protos.
+# The tree is regenerated wholesale into build/ (never committed) and zipped
+# deterministically. See pkg/catalogschema/types.go for the contract.
+.PHONY: build-catalog-schemas
+build-catalog-schemas: build-catalog-schema-plugin
+	rm -rf build/catalog-schemas
+	buf generate --template buf.gen.catalog-schema.yaml
+	go run ./pkg/catalogschema/cli package --dir build/catalog-schemas --out build/catalog-schemas.zip
+
+# Verifies the built schema artifact: every user-facing registry kind's four
+# contract documents are present at its declared version, nothing from the
+# _test provider ships, and every document reads back under the published
+# contract. An artifact that fails must never ship.
+.PHONY: verify-catalog-schemas
+verify-catalog-schemas:
+	go run ./pkg/catalogschema/cli verify --zip build/catalog-schemas.zip
+
 .PHONY: generate-cloud-resource-kind-map
 generate-cloud-resource-kind-map:
 	rm -f pkg/crkreflect/kind_map_gen.go
@@ -259,8 +282,8 @@ generate-proto-docs:
 generate-provider-schemas:
 	go run ./pkg/providerparity/distiller \
 		--out-dir pkg/providerparity/schemas \
-		--provider 'google=hashicorp/google@~> 7.0' \
-		--provider 'google-beta=hashicorp/google-beta@~> 7.0' \
+		--provider 'google=hashicorp/google@~> 7.43' \
+		--provider 'google-beta=hashicorp/google-beta@~> 7.43' \
 		--provider 'azurerm=hashicorp/azurerm@5.0.0'
 
 # Regenerate every committed public parity page (catalog/<provider>/terraform-parity.md)
@@ -278,8 +301,14 @@ generate-provider-parity-report:
 # on every other kind's schema, so there is deliberately no way to scope a
 # run. Deterministic: unchanged schemas regenerate byte-identical files
 # (enforced by the drift test in pkg/explain/refgen).
+#
+# Depends on generate-proto-docs: the pages' comment PROSE renders from the
+# embedded pkg/protodocs index (the protobuf runtime strips comments), so
+# regenerating references against a stale index silently reprints old field
+# documentation even though the schema tables update. Chaining the two is
+# cheap and idempotent — both regens are byte-deterministic.
 .PHONY: generate-reference
-generate-reference:
+generate-reference: generate-proto-docs
 	go run ./pkg/explain/refgen
 
 .PHONY: build-go

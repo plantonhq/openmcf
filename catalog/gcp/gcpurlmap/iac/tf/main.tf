@@ -19,13 +19,21 @@ resource "google_project_service" "compute_api" {
 # recreates the map, briefly breaking every target proxy referencing the old
 # self_link. Routing tables, header actions, and tests update in place.
 #
-# Cross-field exclusivity and route_action coverage boundaries are enforced by
-# the spec's CEL rules before deploy — this module maps only
-# weighted_backend_services and url_rewrite inside route_action.
+# Cross-field exclusivity (one default target, path_rules XOR route_rules,
+# redirect vs route_action, path_template_rewrite only in route rules) is
+# enforced by the spec's CEL rules before deploy — no defensive logic here.
+# route_action carries the full traffic-management surface at every site:
+# weighted splits, rewrites, timeout/retry/mirror/CORS/fault-injection/
+# stream-duration policies, and the route-scoped CDN cache_policy.
 resource "google_compute_url_map" "this" {
   name        = local.url_map_name
   project     = local.project_id
   description = local.description
+
+  # Client-side destroy stance (DELETE/PREVENT/ABANDON) — provider-level,
+  # never sent to the GCP API. Empty falls back to the provider default
+  # (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   default_service = local.default_service
 
@@ -49,6 +57,30 @@ resource "google_compute_url_map" "this" {
         content {
           backend_service = weighted_backend_services.value.backend_service
           weight          = weighted_backend_services.value.weight
+
+          dynamic "header_action" {
+            for_each = weighted_backend_services.value.header_action != null ? [weighted_backend_services.value.header_action] : []
+            content {
+              dynamic "request_headers_to_add" {
+                for_each = header_action.value.request_headers_to_add
+                content {
+                  header_name  = request_headers_to_add.value.header_name
+                  header_value = request_headers_to_add.value.header_value
+                  replace      = request_headers_to_add.value.replace
+                }
+              }
+              request_headers_to_remove = length(header_action.value.request_headers_to_remove) > 0 ? header_action.value.request_headers_to_remove : null
+              dynamic "response_headers_to_add" {
+                for_each = header_action.value.response_headers_to_add
+                content {
+                  header_name  = response_headers_to_add.value.header_name
+                  header_value = response_headers_to_add.value.header_value
+                  replace      = response_headers_to_add.value.replace
+                }
+              }
+              response_headers_to_remove = length(header_action.value.response_headers_to_remove) > 0 ? header_action.value.response_headers_to_remove : null
+            }
+          }
         }
       }
 
@@ -57,6 +89,154 @@ resource "google_compute_url_map" "this" {
         content {
           host_rewrite        = url_rewrite.value.host_rewrite
           path_prefix_rewrite = url_rewrite.value.path_prefix_rewrite
+        }
+      }
+
+      dynamic "timeout" {
+        for_each = default_route_action.value.timeout != null ? [default_route_action.value.timeout] : []
+        content {
+          seconds = timeout.value.seconds
+          nanos   = timeout.value.nanos != 0 ? timeout.value.nanos : null
+        }
+      }
+
+      dynamic "retry_policy" {
+        for_each = default_route_action.value.retry_policy != null ? [default_route_action.value.retry_policy] : []
+        content {
+          num_retries      = retry_policy.value.num_retries != 0 ? retry_policy.value.num_retries : null
+          retry_conditions = length(retry_policy.value.retry_conditions) > 0 ? retry_policy.value.retry_conditions : null
+
+          dynamic "per_try_timeout" {
+            for_each = retry_policy.value.per_try_timeout != null ? [retry_policy.value.per_try_timeout] : []
+            content {
+              seconds = per_try_timeout.value.seconds
+              nanos   = per_try_timeout.value.nanos != 0 ? per_try_timeout.value.nanos : null
+            }
+          }
+        }
+      }
+
+      dynamic "request_mirror_policy" {
+        for_each = default_route_action.value.request_mirror_policy != null ? [default_route_action.value.request_mirror_policy] : []
+        content {
+          backend_service = request_mirror_policy.value.backend_service
+        }
+      }
+
+      dynamic "cors_policy" {
+        for_each = default_route_action.value.cors_policy != null ? [default_route_action.value.cors_policy] : []
+        content {
+          allow_credentials    = cors_policy.value.allow_credentials
+          allow_headers        = length(cors_policy.value.allow_headers) > 0 ? cors_policy.value.allow_headers : null
+          allow_methods        = length(cors_policy.value.allow_methods) > 0 ? cors_policy.value.allow_methods : null
+          allow_origin_regexes = length(cors_policy.value.allow_origin_regexes) > 0 ? cors_policy.value.allow_origin_regexes : null
+          allow_origins        = length(cors_policy.value.allow_origins) > 0 ? cors_policy.value.allow_origins : null
+          disabled             = cors_policy.value.disabled
+          expose_headers       = length(cors_policy.value.expose_headers) > 0 ? cors_policy.value.expose_headers : null
+          max_age              = cors_policy.value.max_age != 0 ? cors_policy.value.max_age : null
+        }
+      }
+
+      dynamic "fault_injection_policy" {
+        for_each = default_route_action.value.fault_injection_policy != null ? [default_route_action.value.fault_injection_policy] : []
+        content {
+          dynamic "abort" {
+            for_each = fault_injection_policy.value.abort != null ? [fault_injection_policy.value.abort] : []
+            content {
+              http_status = abort.value.http_status != 0 ? abort.value.http_status : null
+              percentage  = abort.value.percentage
+            }
+          }
+          dynamic "delay" {
+            for_each = fault_injection_policy.value.delay != null ? [fault_injection_policy.value.delay] : []
+            content {
+              percentage = delay.value.percentage
+              dynamic "fixed_delay" {
+                for_each = delay.value.fixed_delay != null ? [delay.value.fixed_delay] : []
+                content {
+                  seconds = fixed_delay.value.seconds
+                  nanos   = fixed_delay.value.nanos != 0 ? fixed_delay.value.nanos : null
+                }
+              }
+            }
+          }
+        }
+      }
+
+      dynamic "max_stream_duration" {
+        for_each = default_route_action.value.max_stream_duration != null ? [default_route_action.value.max_stream_duration] : []
+        content {
+          seconds = max_stream_duration.value.seconds
+          nanos   = max_stream_duration.value.nanos != 0 ? max_stream_duration.value.nanos : null
+        }
+      }
+
+      dynamic "cache_policy" {
+        for_each = default_route_action.value.cache_policy != null ? [default_route_action.value.cache_policy] : []
+        content {
+          cache_mode                        = cache_policy.value.cache_mode != "" ? cache_policy.value.cache_mode : null
+          cache_bypass_request_header_names = length(cache_policy.value.cache_bypass_request_header_names) > 0 ? cache_policy.value.cache_bypass_request_header_names : null
+          negative_caching                  = cache_policy.value.negative_caching
+          request_coalescing                = cache_policy.value.request_coalescing
+
+          dynamic "cache_key_policy" {
+            for_each = cache_policy.value.cache_key_policy != null ? [cache_policy.value.cache_key_policy] : []
+            content {
+              excluded_query_parameters = length(cache_key_policy.value.excluded_query_parameters) > 0 ? cache_key_policy.value.excluded_query_parameters : null
+              include_host              = cache_key_policy.value.include_host
+              include_protocol          = cache_key_policy.value.include_protocol
+              include_query_string      = cache_key_policy.value.include_query_string
+              included_cookie_names     = length(cache_key_policy.value.included_cookie_names) > 0 ? cache_key_policy.value.included_cookie_names : null
+              included_header_names     = length(cache_key_policy.value.included_header_names) > 0 ? cache_key_policy.value.included_header_names : null
+              included_query_parameters = length(cache_key_policy.value.included_query_parameters) > 0 ? cache_key_policy.value.included_query_parameters : null
+            }
+          }
+
+          dynamic "client_ttl" {
+            for_each = cache_policy.value.client_ttl != null ? [cache_policy.value.client_ttl] : []
+            content {
+              seconds = client_ttl.value.seconds
+              nanos   = client_ttl.value.nanos != 0 ? client_ttl.value.nanos : null
+            }
+          }
+
+          dynamic "default_ttl" {
+            for_each = cache_policy.value.default_ttl != null ? [cache_policy.value.default_ttl] : []
+            content {
+              seconds = default_ttl.value.seconds
+              nanos   = default_ttl.value.nanos != 0 ? default_ttl.value.nanos : null
+            }
+          }
+
+          dynamic "max_ttl" {
+            for_each = cache_policy.value.max_ttl != null ? [cache_policy.value.max_ttl] : []
+            content {
+              seconds = max_ttl.value.seconds
+              nanos   = max_ttl.value.nanos != 0 ? max_ttl.value.nanos : null
+            }
+          }
+
+          dynamic "serve_while_stale" {
+            for_each = cache_policy.value.serve_while_stale != null ? [cache_policy.value.serve_while_stale] : []
+            content {
+              seconds = serve_while_stale.value.seconds
+              nanos   = serve_while_stale.value.nanos != 0 ? serve_while_stale.value.nanos : null
+            }
+          }
+
+          dynamic "negative_caching_policy" {
+            for_each = cache_policy.value.negative_caching_policy
+            content {
+              code = negative_caching_policy.value.code != 0 ? negative_caching_policy.value.code : null
+              dynamic "ttl" {
+                for_each = negative_caching_policy.value.ttl != null ? [negative_caching_policy.value.ttl] : []
+                content {
+                  seconds = ttl.value.seconds
+                  nanos   = ttl.value.nanos != 0 ? ttl.value.nanos : null
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -139,6 +319,30 @@ resource "google_compute_url_map" "this" {
             content {
               backend_service = weighted_backend_services.value.backend_service
               weight          = weighted_backend_services.value.weight
+
+              dynamic "header_action" {
+                for_each = weighted_backend_services.value.header_action != null ? [weighted_backend_services.value.header_action] : []
+                content {
+                  dynamic "request_headers_to_add" {
+                    for_each = header_action.value.request_headers_to_add
+                    content {
+                      header_name  = request_headers_to_add.value.header_name
+                      header_value = request_headers_to_add.value.header_value
+                      replace      = request_headers_to_add.value.replace
+                    }
+                  }
+                  request_headers_to_remove = length(header_action.value.request_headers_to_remove) > 0 ? header_action.value.request_headers_to_remove : null
+                  dynamic "response_headers_to_add" {
+                    for_each = header_action.value.response_headers_to_add
+                    content {
+                      header_name  = response_headers_to_add.value.header_name
+                      header_value = response_headers_to_add.value.header_value
+                      replace      = response_headers_to_add.value.replace
+                    }
+                  }
+                  response_headers_to_remove = length(header_action.value.response_headers_to_remove) > 0 ? header_action.value.response_headers_to_remove : null
+                }
+              }
             }
           }
 
@@ -147,6 +351,154 @@ resource "google_compute_url_map" "this" {
             content {
               host_rewrite        = url_rewrite.value.host_rewrite
               path_prefix_rewrite = url_rewrite.value.path_prefix_rewrite
+            }
+          }
+
+          dynamic "timeout" {
+            for_each = default_route_action.value.timeout != null ? [default_route_action.value.timeout] : []
+            content {
+              seconds = timeout.value.seconds
+              nanos   = timeout.value.nanos != 0 ? timeout.value.nanos : null
+            }
+          }
+
+          dynamic "retry_policy" {
+            for_each = default_route_action.value.retry_policy != null ? [default_route_action.value.retry_policy] : []
+            content {
+              num_retries      = retry_policy.value.num_retries != 0 ? retry_policy.value.num_retries : null
+              retry_conditions = length(retry_policy.value.retry_conditions) > 0 ? retry_policy.value.retry_conditions : null
+
+              dynamic "per_try_timeout" {
+                for_each = retry_policy.value.per_try_timeout != null ? [retry_policy.value.per_try_timeout] : []
+                content {
+                  seconds = per_try_timeout.value.seconds
+                  nanos   = per_try_timeout.value.nanos != 0 ? per_try_timeout.value.nanos : null
+                }
+              }
+            }
+          }
+
+          dynamic "request_mirror_policy" {
+            for_each = default_route_action.value.request_mirror_policy != null ? [default_route_action.value.request_mirror_policy] : []
+            content {
+              backend_service = request_mirror_policy.value.backend_service
+            }
+          }
+
+          dynamic "cors_policy" {
+            for_each = default_route_action.value.cors_policy != null ? [default_route_action.value.cors_policy] : []
+            content {
+              allow_credentials    = cors_policy.value.allow_credentials
+              allow_headers        = length(cors_policy.value.allow_headers) > 0 ? cors_policy.value.allow_headers : null
+              allow_methods        = length(cors_policy.value.allow_methods) > 0 ? cors_policy.value.allow_methods : null
+              allow_origin_regexes = length(cors_policy.value.allow_origin_regexes) > 0 ? cors_policy.value.allow_origin_regexes : null
+              allow_origins        = length(cors_policy.value.allow_origins) > 0 ? cors_policy.value.allow_origins : null
+              disabled             = cors_policy.value.disabled
+              expose_headers       = length(cors_policy.value.expose_headers) > 0 ? cors_policy.value.expose_headers : null
+              max_age              = cors_policy.value.max_age != 0 ? cors_policy.value.max_age : null
+            }
+          }
+
+          dynamic "fault_injection_policy" {
+            for_each = default_route_action.value.fault_injection_policy != null ? [default_route_action.value.fault_injection_policy] : []
+            content {
+              dynamic "abort" {
+                for_each = fault_injection_policy.value.abort != null ? [fault_injection_policy.value.abort] : []
+                content {
+                  http_status = abort.value.http_status != 0 ? abort.value.http_status : null
+                  percentage  = abort.value.percentage
+                }
+              }
+              dynamic "delay" {
+                for_each = fault_injection_policy.value.delay != null ? [fault_injection_policy.value.delay] : []
+                content {
+                  percentage = delay.value.percentage
+                  dynamic "fixed_delay" {
+                    for_each = delay.value.fixed_delay != null ? [delay.value.fixed_delay] : []
+                    content {
+                      seconds = fixed_delay.value.seconds
+                      nanos   = fixed_delay.value.nanos != 0 ? fixed_delay.value.nanos : null
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          dynamic "max_stream_duration" {
+            for_each = default_route_action.value.max_stream_duration != null ? [default_route_action.value.max_stream_duration] : []
+            content {
+              seconds = max_stream_duration.value.seconds
+              nanos   = max_stream_duration.value.nanos != 0 ? max_stream_duration.value.nanos : null
+            }
+          }
+
+          dynamic "cache_policy" {
+            for_each = default_route_action.value.cache_policy != null ? [default_route_action.value.cache_policy] : []
+            content {
+              cache_mode                        = cache_policy.value.cache_mode != "" ? cache_policy.value.cache_mode : null
+              cache_bypass_request_header_names = length(cache_policy.value.cache_bypass_request_header_names) > 0 ? cache_policy.value.cache_bypass_request_header_names : null
+              negative_caching                  = cache_policy.value.negative_caching
+              request_coalescing                = cache_policy.value.request_coalescing
+
+              dynamic "cache_key_policy" {
+                for_each = cache_policy.value.cache_key_policy != null ? [cache_policy.value.cache_key_policy] : []
+                content {
+                  excluded_query_parameters = length(cache_key_policy.value.excluded_query_parameters) > 0 ? cache_key_policy.value.excluded_query_parameters : null
+                  include_host              = cache_key_policy.value.include_host
+                  include_protocol          = cache_key_policy.value.include_protocol
+                  include_query_string      = cache_key_policy.value.include_query_string
+                  included_cookie_names     = length(cache_key_policy.value.included_cookie_names) > 0 ? cache_key_policy.value.included_cookie_names : null
+                  included_header_names     = length(cache_key_policy.value.included_header_names) > 0 ? cache_key_policy.value.included_header_names : null
+                  included_query_parameters = length(cache_key_policy.value.included_query_parameters) > 0 ? cache_key_policy.value.included_query_parameters : null
+                }
+              }
+
+              dynamic "client_ttl" {
+                for_each = cache_policy.value.client_ttl != null ? [cache_policy.value.client_ttl] : []
+                content {
+                  seconds = client_ttl.value.seconds
+                  nanos   = client_ttl.value.nanos != 0 ? client_ttl.value.nanos : null
+                }
+              }
+
+              dynamic "default_ttl" {
+                for_each = cache_policy.value.default_ttl != null ? [cache_policy.value.default_ttl] : []
+                content {
+                  seconds = default_ttl.value.seconds
+                  nanos   = default_ttl.value.nanos != 0 ? default_ttl.value.nanos : null
+                }
+              }
+
+              dynamic "max_ttl" {
+                for_each = cache_policy.value.max_ttl != null ? [cache_policy.value.max_ttl] : []
+                content {
+                  seconds = max_ttl.value.seconds
+                  nanos   = max_ttl.value.nanos != 0 ? max_ttl.value.nanos : null
+                }
+              }
+
+              dynamic "serve_while_stale" {
+                for_each = cache_policy.value.serve_while_stale != null ? [cache_policy.value.serve_while_stale] : []
+                content {
+                  seconds = serve_while_stale.value.seconds
+                  nanos   = serve_while_stale.value.nanos != 0 ? serve_while_stale.value.nanos : null
+                }
+              }
+
+              dynamic "negative_caching_policy" {
+                for_each = cache_policy.value.negative_caching_policy
+                content {
+                  code = negative_caching_policy.value.code != 0 ? negative_caching_policy.value.code : null
+                  dynamic "ttl" {
+                    for_each = negative_caching_policy.value.ttl != null ? [negative_caching_policy.value.ttl] : []
+                    content {
+                      seconds = ttl.value.seconds
+                      nanos   = ttl.value.nanos != 0 ? ttl.value.nanos : null
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -219,6 +571,30 @@ resource "google_compute_url_map" "this" {
                 content {
                   backend_service = weighted_backend_services.value.backend_service
                   weight          = weighted_backend_services.value.weight
+
+                  dynamic "header_action" {
+                    for_each = weighted_backend_services.value.header_action != null ? [weighted_backend_services.value.header_action] : []
+                    content {
+                      dynamic "request_headers_to_add" {
+                        for_each = header_action.value.request_headers_to_add
+                        content {
+                          header_name  = request_headers_to_add.value.header_name
+                          header_value = request_headers_to_add.value.header_value
+                          replace      = request_headers_to_add.value.replace
+                        }
+                      }
+                      request_headers_to_remove = length(header_action.value.request_headers_to_remove) > 0 ? header_action.value.request_headers_to_remove : null
+                      dynamic "response_headers_to_add" {
+                        for_each = header_action.value.response_headers_to_add
+                        content {
+                          header_name  = response_headers_to_add.value.header_name
+                          header_value = response_headers_to_add.value.header_value
+                          replace      = response_headers_to_add.value.replace
+                        }
+                      }
+                      response_headers_to_remove = length(header_action.value.response_headers_to_remove) > 0 ? header_action.value.response_headers_to_remove : null
+                    }
+                  }
                 }
               }
 
@@ -227,6 +603,154 @@ resource "google_compute_url_map" "this" {
                 content {
                   host_rewrite        = url_rewrite.value.host_rewrite
                   path_prefix_rewrite = url_rewrite.value.path_prefix_rewrite
+                }
+              }
+
+              dynamic "timeout" {
+                for_each = route_action.value.timeout != null ? [route_action.value.timeout] : []
+                content {
+                  seconds = timeout.value.seconds
+                  nanos   = timeout.value.nanos != 0 ? timeout.value.nanos : null
+                }
+              }
+
+              dynamic "retry_policy" {
+                for_each = route_action.value.retry_policy != null ? [route_action.value.retry_policy] : []
+                content {
+                  num_retries      = retry_policy.value.num_retries != 0 ? retry_policy.value.num_retries : null
+                  retry_conditions = length(retry_policy.value.retry_conditions) > 0 ? retry_policy.value.retry_conditions : null
+
+                  dynamic "per_try_timeout" {
+                    for_each = retry_policy.value.per_try_timeout != null ? [retry_policy.value.per_try_timeout] : []
+                    content {
+                      seconds = per_try_timeout.value.seconds
+                      nanos   = per_try_timeout.value.nanos != 0 ? per_try_timeout.value.nanos : null
+                    }
+                  }
+                }
+              }
+
+              dynamic "request_mirror_policy" {
+                for_each = route_action.value.request_mirror_policy != null ? [route_action.value.request_mirror_policy] : []
+                content {
+                  backend_service = request_mirror_policy.value.backend_service
+                }
+              }
+
+              dynamic "cors_policy" {
+                for_each = route_action.value.cors_policy != null ? [route_action.value.cors_policy] : []
+                content {
+                  allow_credentials    = cors_policy.value.allow_credentials
+                  allow_headers        = length(cors_policy.value.allow_headers) > 0 ? cors_policy.value.allow_headers : null
+                  allow_methods        = length(cors_policy.value.allow_methods) > 0 ? cors_policy.value.allow_methods : null
+                  allow_origin_regexes = length(cors_policy.value.allow_origin_regexes) > 0 ? cors_policy.value.allow_origin_regexes : null
+                  allow_origins        = length(cors_policy.value.allow_origins) > 0 ? cors_policy.value.allow_origins : null
+                  disabled             = cors_policy.value.disabled
+                  expose_headers       = length(cors_policy.value.expose_headers) > 0 ? cors_policy.value.expose_headers : null
+                  max_age              = cors_policy.value.max_age != 0 ? cors_policy.value.max_age : null
+                }
+              }
+
+              dynamic "fault_injection_policy" {
+                for_each = route_action.value.fault_injection_policy != null ? [route_action.value.fault_injection_policy] : []
+                content {
+                  dynamic "abort" {
+                    for_each = fault_injection_policy.value.abort != null ? [fault_injection_policy.value.abort] : []
+                    content {
+                      http_status = abort.value.http_status != 0 ? abort.value.http_status : null
+                      percentage  = abort.value.percentage
+                    }
+                  }
+                  dynamic "delay" {
+                    for_each = fault_injection_policy.value.delay != null ? [fault_injection_policy.value.delay] : []
+                    content {
+                      percentage = delay.value.percentage
+                      dynamic "fixed_delay" {
+                        for_each = delay.value.fixed_delay != null ? [delay.value.fixed_delay] : []
+                        content {
+                          seconds = fixed_delay.value.seconds
+                          nanos   = fixed_delay.value.nanos != 0 ? fixed_delay.value.nanos : null
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+
+              dynamic "max_stream_duration" {
+                for_each = route_action.value.max_stream_duration != null ? [route_action.value.max_stream_duration] : []
+                content {
+                  seconds = max_stream_duration.value.seconds
+                  nanos   = max_stream_duration.value.nanos != 0 ? max_stream_duration.value.nanos : null
+                }
+              }
+
+              dynamic "cache_policy" {
+                for_each = route_action.value.cache_policy != null ? [route_action.value.cache_policy] : []
+                content {
+                  cache_mode                        = cache_policy.value.cache_mode != "" ? cache_policy.value.cache_mode : null
+                  cache_bypass_request_header_names = length(cache_policy.value.cache_bypass_request_header_names) > 0 ? cache_policy.value.cache_bypass_request_header_names : null
+                  negative_caching                  = cache_policy.value.negative_caching
+                  request_coalescing                = cache_policy.value.request_coalescing
+
+                  dynamic "cache_key_policy" {
+                    for_each = cache_policy.value.cache_key_policy != null ? [cache_policy.value.cache_key_policy] : []
+                    content {
+                      excluded_query_parameters = length(cache_key_policy.value.excluded_query_parameters) > 0 ? cache_key_policy.value.excluded_query_parameters : null
+                      include_host              = cache_key_policy.value.include_host
+                      include_protocol          = cache_key_policy.value.include_protocol
+                      include_query_string      = cache_key_policy.value.include_query_string
+                      included_cookie_names     = length(cache_key_policy.value.included_cookie_names) > 0 ? cache_key_policy.value.included_cookie_names : null
+                      included_header_names     = length(cache_key_policy.value.included_header_names) > 0 ? cache_key_policy.value.included_header_names : null
+                      included_query_parameters = length(cache_key_policy.value.included_query_parameters) > 0 ? cache_key_policy.value.included_query_parameters : null
+                    }
+                  }
+
+                  dynamic "client_ttl" {
+                    for_each = cache_policy.value.client_ttl != null ? [cache_policy.value.client_ttl] : []
+                    content {
+                      seconds = client_ttl.value.seconds
+                      nanos   = client_ttl.value.nanos != 0 ? client_ttl.value.nanos : null
+                    }
+                  }
+
+                  dynamic "default_ttl" {
+                    for_each = cache_policy.value.default_ttl != null ? [cache_policy.value.default_ttl] : []
+                    content {
+                      seconds = default_ttl.value.seconds
+                      nanos   = default_ttl.value.nanos != 0 ? default_ttl.value.nanos : null
+                    }
+                  }
+
+                  dynamic "max_ttl" {
+                    for_each = cache_policy.value.max_ttl != null ? [cache_policy.value.max_ttl] : []
+                    content {
+                      seconds = max_ttl.value.seconds
+                      nanos   = max_ttl.value.nanos != 0 ? max_ttl.value.nanos : null
+                    }
+                  }
+
+                  dynamic "serve_while_stale" {
+                    for_each = cache_policy.value.serve_while_stale != null ? [cache_policy.value.serve_while_stale] : []
+                    content {
+                      seconds = serve_while_stale.value.seconds
+                      nanos   = serve_while_stale.value.nanos != 0 ? serve_while_stale.value.nanos : null
+                    }
+                  }
+
+                  dynamic "negative_caching_policy" {
+                    for_each = cache_policy.value.negative_caching_policy
+                    content {
+                      code = negative_caching_policy.value.code != 0 ? negative_caching_policy.value.code : null
+                      dynamic "ttl" {
+                        for_each = negative_caching_policy.value.ttl != null ? [negative_caching_policy.value.ttl] : []
+                        content {
+                          seconds = ttl.value.seconds
+                          nanos   = ttl.value.nanos != 0 ? ttl.value.nanos : null
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -276,6 +800,30 @@ resource "google_compute_url_map" "this" {
                 content {
                   backend_service = weighted_backend_services.value.backend_service
                   weight          = weighted_backend_services.value.weight
+
+                  dynamic "header_action" {
+                    for_each = weighted_backend_services.value.header_action != null ? [weighted_backend_services.value.header_action] : []
+                    content {
+                      dynamic "request_headers_to_add" {
+                        for_each = header_action.value.request_headers_to_add
+                        content {
+                          header_name  = request_headers_to_add.value.header_name
+                          header_value = request_headers_to_add.value.header_value
+                          replace      = request_headers_to_add.value.replace
+                        }
+                      }
+                      request_headers_to_remove = length(header_action.value.request_headers_to_remove) > 0 ? header_action.value.request_headers_to_remove : null
+                      dynamic "response_headers_to_add" {
+                        for_each = header_action.value.response_headers_to_add
+                        content {
+                          header_name  = response_headers_to_add.value.header_name
+                          header_value = response_headers_to_add.value.header_value
+                          replace      = response_headers_to_add.value.replace
+                        }
+                      }
+                      response_headers_to_remove = length(header_action.value.response_headers_to_remove) > 0 ? header_action.value.response_headers_to_remove : null
+                    }
+                  }
                 }
               }
 
@@ -285,6 +833,154 @@ resource "google_compute_url_map" "this" {
                   host_rewrite          = url_rewrite.value.host_rewrite
                   path_prefix_rewrite   = url_rewrite.value.path_prefix_rewrite
                   path_template_rewrite = url_rewrite.value.path_template_rewrite
+                }
+              }
+
+              dynamic "timeout" {
+                for_each = route_action.value.timeout != null ? [route_action.value.timeout] : []
+                content {
+                  seconds = timeout.value.seconds
+                  nanos   = timeout.value.nanos != 0 ? timeout.value.nanos : null
+                }
+              }
+
+              dynamic "retry_policy" {
+                for_each = route_action.value.retry_policy != null ? [route_action.value.retry_policy] : []
+                content {
+                  num_retries      = retry_policy.value.num_retries != 0 ? retry_policy.value.num_retries : null
+                  retry_conditions = length(retry_policy.value.retry_conditions) > 0 ? retry_policy.value.retry_conditions : null
+
+                  dynamic "per_try_timeout" {
+                    for_each = retry_policy.value.per_try_timeout != null ? [retry_policy.value.per_try_timeout] : []
+                    content {
+                      seconds = per_try_timeout.value.seconds
+                      nanos   = per_try_timeout.value.nanos != 0 ? per_try_timeout.value.nanos : null
+                    }
+                  }
+                }
+              }
+
+              dynamic "request_mirror_policy" {
+                for_each = route_action.value.request_mirror_policy != null ? [route_action.value.request_mirror_policy] : []
+                content {
+                  backend_service = request_mirror_policy.value.backend_service
+                }
+              }
+
+              dynamic "cors_policy" {
+                for_each = route_action.value.cors_policy != null ? [route_action.value.cors_policy] : []
+                content {
+                  allow_credentials    = cors_policy.value.allow_credentials
+                  allow_headers        = length(cors_policy.value.allow_headers) > 0 ? cors_policy.value.allow_headers : null
+                  allow_methods        = length(cors_policy.value.allow_methods) > 0 ? cors_policy.value.allow_methods : null
+                  allow_origin_regexes = length(cors_policy.value.allow_origin_regexes) > 0 ? cors_policy.value.allow_origin_regexes : null
+                  allow_origins        = length(cors_policy.value.allow_origins) > 0 ? cors_policy.value.allow_origins : null
+                  disabled             = cors_policy.value.disabled
+                  expose_headers       = length(cors_policy.value.expose_headers) > 0 ? cors_policy.value.expose_headers : null
+                  max_age              = cors_policy.value.max_age != 0 ? cors_policy.value.max_age : null
+                }
+              }
+
+              dynamic "fault_injection_policy" {
+                for_each = route_action.value.fault_injection_policy != null ? [route_action.value.fault_injection_policy] : []
+                content {
+                  dynamic "abort" {
+                    for_each = fault_injection_policy.value.abort != null ? [fault_injection_policy.value.abort] : []
+                    content {
+                      http_status = abort.value.http_status != 0 ? abort.value.http_status : null
+                      percentage  = abort.value.percentage
+                    }
+                  }
+                  dynamic "delay" {
+                    for_each = fault_injection_policy.value.delay != null ? [fault_injection_policy.value.delay] : []
+                    content {
+                      percentage = delay.value.percentage
+                      dynamic "fixed_delay" {
+                        for_each = delay.value.fixed_delay != null ? [delay.value.fixed_delay] : []
+                        content {
+                          seconds = fixed_delay.value.seconds
+                          nanos   = fixed_delay.value.nanos != 0 ? fixed_delay.value.nanos : null
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+
+              dynamic "max_stream_duration" {
+                for_each = route_action.value.max_stream_duration != null ? [route_action.value.max_stream_duration] : []
+                content {
+                  seconds = max_stream_duration.value.seconds
+                  nanos   = max_stream_duration.value.nanos != 0 ? max_stream_duration.value.nanos : null
+                }
+              }
+
+              dynamic "cache_policy" {
+                for_each = route_action.value.cache_policy != null ? [route_action.value.cache_policy] : []
+                content {
+                  cache_mode                        = cache_policy.value.cache_mode != "" ? cache_policy.value.cache_mode : null
+                  cache_bypass_request_header_names = length(cache_policy.value.cache_bypass_request_header_names) > 0 ? cache_policy.value.cache_bypass_request_header_names : null
+                  negative_caching                  = cache_policy.value.negative_caching
+                  request_coalescing                = cache_policy.value.request_coalescing
+
+                  dynamic "cache_key_policy" {
+                    for_each = cache_policy.value.cache_key_policy != null ? [cache_policy.value.cache_key_policy] : []
+                    content {
+                      excluded_query_parameters = length(cache_key_policy.value.excluded_query_parameters) > 0 ? cache_key_policy.value.excluded_query_parameters : null
+                      include_host              = cache_key_policy.value.include_host
+                      include_protocol          = cache_key_policy.value.include_protocol
+                      include_query_string      = cache_key_policy.value.include_query_string
+                      included_cookie_names     = length(cache_key_policy.value.included_cookie_names) > 0 ? cache_key_policy.value.included_cookie_names : null
+                      included_header_names     = length(cache_key_policy.value.included_header_names) > 0 ? cache_key_policy.value.included_header_names : null
+                      included_query_parameters = length(cache_key_policy.value.included_query_parameters) > 0 ? cache_key_policy.value.included_query_parameters : null
+                    }
+                  }
+
+                  dynamic "client_ttl" {
+                    for_each = cache_policy.value.client_ttl != null ? [cache_policy.value.client_ttl] : []
+                    content {
+                      seconds = client_ttl.value.seconds
+                      nanos   = client_ttl.value.nanos != 0 ? client_ttl.value.nanos : null
+                    }
+                  }
+
+                  dynamic "default_ttl" {
+                    for_each = cache_policy.value.default_ttl != null ? [cache_policy.value.default_ttl] : []
+                    content {
+                      seconds = default_ttl.value.seconds
+                      nanos   = default_ttl.value.nanos != 0 ? default_ttl.value.nanos : null
+                    }
+                  }
+
+                  dynamic "max_ttl" {
+                    for_each = cache_policy.value.max_ttl != null ? [cache_policy.value.max_ttl] : []
+                    content {
+                      seconds = max_ttl.value.seconds
+                      nanos   = max_ttl.value.nanos != 0 ? max_ttl.value.nanos : null
+                    }
+                  }
+
+                  dynamic "serve_while_stale" {
+                    for_each = cache_policy.value.serve_while_stale != null ? [cache_policy.value.serve_while_stale] : []
+                    content {
+                      seconds = serve_while_stale.value.seconds
+                      nanos   = serve_while_stale.value.nanos != 0 ? serve_while_stale.value.nanos : null
+                    }
+                  }
+
+                  dynamic "negative_caching_policy" {
+                    for_each = cache_policy.value.negative_caching_policy
+                    content {
+                      code = negative_caching_policy.value.code != 0 ? negative_caching_policy.value.code : null
+                      dynamic "ttl" {
+                        for_each = negative_caching_policy.value.ttl != null ? [negative_caching_policy.value.ttl] : []
+                        content {
+                          seconds = ttl.value.seconds
+                          nanos   = ttl.value.nanos != 0 ? ttl.value.nanos : null
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }

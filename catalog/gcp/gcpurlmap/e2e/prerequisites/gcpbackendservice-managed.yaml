@@ -1,0 +1,32 @@
+# Extra-instance GcpBackendService fixture composed by the URL map's
+# features scenario (declared via its planton.dev/e2e-prerequisites
+# annotation). The registry's standard backend prerequisite is a classic
+# EXTERNAL backend; GCP accepts the advanced per-route traffic-management
+# policies only against EXTERNAL_MANAGED backends, and CDN is enabled so
+# the route-scoped cache_policy is exercised against a backend that can
+# actually cache. Rides the health check the registry chain already
+# deploys.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpBackendService
+metadata:
+  name: planton-oss-e2e-gcpbs-managed
+  id: planton-oss-e2e-gcpbs-managed
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpbackendservice
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral EXTERNAL_MANAGED CDN-enabled backend for the URL map features E2E scenario; safe to delete
+  protocol: HTTP
+  loadBalancingScheme: EXTERNAL_MANAGED
+  enableCdn: true
+  healthCheck:
+    valueFrom:
+      kind: GcpHealthCheck
+      name: planton-oss-e2e-gcphc-prereq
+      fieldPath: status.outputs.self_link

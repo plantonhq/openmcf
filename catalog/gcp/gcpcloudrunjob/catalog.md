@@ -1,6 +1,6 @@
 # GCP Cloud Run Job
 
-Deploys a run-to-completion batch workload on Google Cloud Run v2: a task template (containers, volumes, networking, hardware) plus an execution model (task count, parallelism, per-attempt timeout, retries). Each run — an "execution" — stamps out the tasks and exits; there is no endpoint, no traffic, no probes. The job integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, service accounts, KMS keys, Cloud SQL instances, GCS buckets, VPC networks, and subnetworks.
+Deploys a run-to-completion batch workload on Google Cloud Run v2: a task template (containers, volumes, networking, hardware) plus an execution model (task count, parallelism, per-attempt timeout, retries). Each run — an "execution" — stamps out the tasks and exits; there is no endpoint and no traffic, and the only health check is an optional startup probe gating task start. The job integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, service accounts, KMS keys, Cloud SQL instances, GCS buckets, VPC networks, and subnetworks.
 
 ## What Gets Created
 
@@ -104,7 +104,9 @@ The InfraPipeline resolves the dependency graph, deploys the project, service ac
 
 These are the most important decisions when configuring a Cloud Run job. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Task template** -- `template.containers` holds the task container plus any sidecars (a Cloud SQL Auth Proxy, a collector), ordered with `dependsOn`. Batch containers have no ports and no probes — success is exit code 0. Tasks learn their shard from `$CLOUD_RUN_TASK_INDEX` and `$CLOUD_RUN_TASK_COUNT`.
+**Task template** -- `template.containers` holds the task container plus any sidecars (a Cloud SQL Auth Proxy, a collector), ordered with `dependsOn`. Success is exit code 0; an optional `startupProbe` (HTTP, TCP, or gRPC against the container's declared `ports`) gates task start within a 240-second window — a container that never passes is shut down and retried per `maxRetries`. Tasks learn their shard from `$CLOUD_RUN_TASK_INDEX` and `$CLOUD_RUN_TASK_COUNT`.
+
+**Run on deploy** -- The execution tokens make a deploy itself trigger a run: `startExecutionToken` counts the job READY as soon as the triggered execution starts, while `runExecutionToken` waits for it to complete — deploy-and-verify semantics for migrations and one-shot setup work. Change the token on a later update to trigger another run; set at most one of the two.
 
 **Execution model** -- `taskCount` is the work units per run (GCP default 1); `parallelism` caps concurrency (unset = maximum possible, and it can never exceed the task count). `template.timeoutSeconds` bounds each ATTEMPT (up to 24h; every retry gets a fresh budget) and `template.maxRetries` is the per-task retry budget — set 0 for non-idempotent work.
 

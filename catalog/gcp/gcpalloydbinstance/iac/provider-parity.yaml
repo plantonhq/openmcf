@@ -1,0 +1,44 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_alloydb_instance:
+    mappings:
+      # The spec flattens the provider's one-field wrapper blocks to the
+      # fields users actually reason about.
+      - spec: spec.cpu_count
+        arg: machine_config.cpu_count
+      - spec: spec.machine_type
+        arg: machine_config.machine_type
+      - spec: spec.require_connectors
+        arg: client_connection_config.require_connectors
+      - spec: spec.ssl_mode
+        arg: client_connection_config.ssl_config.ssl_mode
+      # The network_config block is flattened to the connectivity fields.
+      - spec: spec.enable_public_ip
+        arg: network_config.enable_public_ip
+      - spec: spec.enable_outbound_public_ip
+        arg: network_config.enable_outbound_public_ip
+      - spec: spec.allocated_ip_range_override
+        arg: network_config.allocated_ip_range_override
+      - spec: spec.authorized_external_networks
+        arg: network_config.authorized_external_networks
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables alloydb.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      instance never disables the API project-wide); not spec surface.
+
+specExclusions:
+  - field: spec.project_id
+    reason: >-
+      names the project only for API enablement (the internal
+      google_project_service): google_alloydb_instance itself carries no
+      project argument -- it derives its project from the parent cluster's
+      resource path (spec.cluster)

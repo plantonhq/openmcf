@@ -87,6 +87,8 @@ planton apply -f backend-service.yaml
 | `customMetrics` | `list(object)` | `[]` | Service-level ORCA metrics for WEIGHTED_ROUND_ROBIN. |
 | `serviceLbPolicy` | `string` | none | Self-link of a networkservices ServiceLbPolicy. |
 | `signedUrlKeys` | `list(object)` | `[]` | Up to 3 named signing keys for Cloud CDN signed URLs/cookies. `keyValue` is secret material. |
+| `resourceManagerTags` | `map<string,string>` | `{}` | Create-time Resource Manager tags (`tagKeys/{id}` → `tagValues/{id}`) for org policy and IAM conditions. Immutable. |
+| `deletionPolicy` | `string` | `DELETE` | What destroy does to the backend service AND its signed-URL keys: `DELETE`, `PREVENT` (refuse), or `ABANDON` (keep serving, drop from management). |
 
 ### Backends
 

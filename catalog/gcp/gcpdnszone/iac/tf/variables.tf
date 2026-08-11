@@ -32,8 +32,8 @@ variable "spec" {
     }), null)
 
     dnssec_config = optional(object({
-      state              = optional(string, "off")
-      non_existence      = optional(string, "")
+      state         = optional(string, "off")
+      non_existence = optional(string, "")
       default_key_specs = optional(list(object({
         algorithm  = optional(string, "")
         key_length = optional(number, 0)
@@ -46,6 +46,9 @@ variable "spec" {
         ipv4_address    = optional(string, "")
         domain_name     = optional(string, "")
         forwarding_path = optional(string, "")
+        # One address family per target — the spec CEL rejects a target
+        # carrying both IPv4 and IPv6.
+        ipv6_address = optional(string, "")
       })), [])
     }), null)
 
@@ -59,5 +62,9 @@ variable "spec" {
 
     force_destroy = optional(bool, false)
     labels        = optional(map(string), {})
+
+    # DELETE (default), PREVENT, or ABANDON — what destroy does to the zone
+    # shell (force_destroy governs the records inside it).
+    deletion_policy = optional(string, "")
   })
 }

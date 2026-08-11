@@ -23,6 +23,19 @@ When a component has dependencies (see "Component Dependencies" below), the
 framework wraps this lifecycle with a **DEPENDENCIES-UP** phase before VALIDATE
 and a **DEPENDENCIES-DOWN** phase after VERIFY-CLN (teardown in reverse order).
 
+**IDEMPOTENCY phase (per-provider opt-in):** when a provider's E2E profile
+sets `assert_apply_idempotency: true`, every lifecycle gains an IDEMPOTENCY
+phase right after DEPLOY: the runner re-plans the just-applied configuration
+(`terraform plan -detailed-exitcode` must exit 0 / `pulumi preview
+--expect-no-changes`) and fails the lane on any pending change. A dirty
+second plan means the module and the provider disagree about applied state —
+the send-omitted-value and Optional+Computed echo defect classes, which
+users otherwise meet as a perpetual diff on every re-apply (first live
+catch: the Identity Platform config's server-materialized
+`sign_in.phone_number` block). The gate covers the component under test
+only; prerequisite fixtures belong to other kinds' contracts. Arm it per
+provider after the catalog's known no-op re-plan classes are burned down.
+
 ## Directory Layout
 
 ### Component E2E Structure
@@ -777,6 +790,24 @@ with Application Default Credentials.
 E2E_GCP_PROJECT=planton-e2e go test -tags=e2e -timeout=120m -v ./e2e/gcp/...
 ```
 
+**ADC preflight must assert a NON-EMPTY token, not just exit code 0:** with a
+stale-but-present ADC file, `gcloud auth application-default print-access-token`
+can exit 0 while printing an EMPTY token (observed live on a credential file
+whose refresh token had aged out) — so `print-access-token >/dev/null && echo OK`
+false-passes and the failure surfaces minutes later inside a lane. A machine
+preflight should capture the token, assert it is non-empty, and make one live
+API call with it (e.g. GET the test project via Cloud Resource Manager). The
+harness `Setup` itself fail-fasts correctly — this trap only bites pre-session
+checks that trust the exit code.
+
+**IAM service-account read-after-delete is eventually consistent:** a GET
+issued within seconds of a successful `serviceAccounts.delete` can still
+answer 200 from a stale replica (live-caught on the Terraform SA minimal
+scenario: destroy succeeded, VERIFY-CLN 1.5s later still saw the account;
+an identical cycle minutes earlier read 404 immediately). The SA verifier
+polls for up to 90s and treats 403 as a recently-deleted signal alongside
+404 — do not tighten VERIFY-CLN to a single GET for this kind.
+
 **Backend contract:** every scenario's test context must carry the run-scoped
 Pulumi file backend URL — even Terraform scenarios, because dependency
 prerequisites always deploy via Pulumi. An empty backend URL silently falls
@@ -834,17 +865,36 @@ by reference. Prove the second-instance arm with the offline converter plan
 instance) and record the exclusion, rather than pointing both references at
 one instance (semantically wrong) or hand-rolling a second install path.
 
-**Reservation-window resources need consumer-unique prerequisite names:**
-`${E2E_RUN_ID}` makes cloud-side names unique per run — but two scenario
-chains in the SAME run that install the same prerequisite profile still
-produce the same name, and for resource classes that reserve a deleted
-ID for minutes after destroy (Firestore database IDs are held ~3-5
-minutes), the second chain's create collides with the first chain's
-just-deleted ghost ("not available ... retry in N seconds"). When
-multiple consumers chain on such a prerequisite kind, give each consumer
-a consumer-scoped override whose cloud-side name embeds the consumer
-(e.g. `e2e-fsidx-db-${E2E_RUN_ID}` vs `e2e-fsbs-db-${E2E_RUN_ID}`), not
-just the run.
+**Reservation-window resources need consumer-unique AND scenario-unique
+prerequisite names:** `${E2E_RUN_ID}` makes cloud-side names unique per run
+— but two scenario chains in the SAME run that install the same
+prerequisite profile still produce the same name, and for resource classes
+that reserve a deleted ID for minutes after destroy (Firestore database
+IDs are held ~3-5 minutes), the second chain's create collides with the
+first chain's just-deleted ghost ("not available ... retry in N seconds").
+Two grains of the same trap:
+- *Multiple consumers* chaining one prerequisite kind: give each consumer a
+  consumer-scoped override whose cloud-side name embeds the consumer
+  (e.g. `e2e-fsidx-db-...` vs `e2e-fsbs-db-...`).
+- *Multiple scenarios of ONE kind*: the kind's own override redeploys per
+  scenario, so even a consumer-unique run-scoped name is deleted and
+  recreated at every scenario boundary. Embed `${E2E_SCENARIO}` (expanded
+  to the running scenario's slug) alongside the run id
+  (`e2e-fsidx-db-${E2E_SCENARIO}-${E2E_RUN_ID}`) so no name is ever
+  recreated within a run.
+
+**Same-kind dependency stacks and the 50-character bound:** dependency
+stack names carry the manifest name precisely so two instances of one kind
+get two stacks — and the name bound is enforced by a uniqueness-preserving
+truncation (`boundStackName`: readable head + stable hash of the full
+name). This is load-bearing: a plain head-truncate once collapsed a
+two-database Firestore chain onto ONE stack (the kind slug alone is 20
+characters), so the second fixture's `up` silently REPLACED the first and
+teardown destroyed the shared stack once, then failed `no stack named` on
+the other. A `no stack named` error during DEPENDENCIES-DOWN therefore has
+TWO known causes: backend state loss mid-run (see the Azure section) and —
+if two same-kind dependencies' stack names agree — a truncation collision
+in a modified stack-naming path.
 
 **Identity-derived cloud IDs need run-scoped metadata names:** when a module
 derives the cloud-side resource ID deterministically from the resource
@@ -867,6 +917,37 @@ prerequisite deploys. `planton validate <manifest>` (with `${E2E_RUN_ID}`
 text-substituted) catches this in seconds; run it on every new scenario,
 prerequisite, and preset YAML as part of the offline gate.
 
+**Offline fixture-integrity gate (FK resolvability):** a `valueFrom` that
+names a prerequisite the chain never deploys — or an ambiguous name among
+several instances of the same kind — fails only deep into a live run (or
+worse, silently: an unresolvable ref is left untouched, and DEPLOY fails as
+a provider validation error that reads like a module defect). The gate at
+`e2e/framework/runner/fixtureintegrity.go` (`TestCatalogFixtureIntegrity`)
+replays `ResolveDependencies` + `forEachRefField` statically against every
+committed scenario, with no cloud and no credentials. It mirrors
+`lookupRefValue` one for one — including the sole-instance fallback (a
+topology-named reference still resolves when exactly one instance of the
+kind exists; that is design, not a defect). Pre-existing findings live in
+`fixture_integrity_baseline.yaml` and only ever burn down; a new finding is
+a manifest fix, never a new baseline entry. Run it with
+`go test ./e2e/framework/runner/ -run TestCatalogFixtureIntegrity`.
+
+**Inherited fixture orphans 409 the whole chain — sweep the fixture
+families, not just the kinds' own objects:** prerequisite fixtures use
+FIXED names by design (FK resolution keys off `metadata.name`), so a
+leftover fixture from ANY earlier era — a crashed run, a pre-harness
+experiment — collides with a fresh chain as `Error 409: already exists`
+at DEPENDENCIES-UP, from a run-scoped backend that has no state for it.
+Live-caught with a month-old `planton-oss-e2e-gcphc-prereq` health check
+plus its backend service and a serverless NEG: three sequential 409s,
+each surfacing only after the previous one was cleared. The fix is
+always to DELETE the leftover (a pre-existing fixture object is by
+definition unmanaged — no lane is running when a session starts), and
+the honest end-of-session sweep must enumerate every fixture FAMILY the
+session's chains deployed (for LB chains: health checks, backend
+services, NEGs, URL maps, proxies, addresses), not only the proven
+kinds' own resource classes.
+
 **Named image families are a staleness trap in scenarios:** GCP retires
 image families (the deep-learning-VM notebook families like
 `common-cpu-notebooks` no longer resolve), and a scenario pinned to one
@@ -885,6 +966,34 @@ even though the enablement resource completed. When a new service family
 first joins the harness, pre-enable its APIs on the test project once
 (`gcloud services enable <api> --project <test-project>`) before the first
 live run; from then on the in-module enablement carries every future run.
+
+**Some GCP APIs require a quota project on user-credential calls:** the
+Identity Toolkit API (Identity Platform) rejects calls made with plain
+user ADC — 403 "requires a quota project, which is not set by default" —
+and the Terraform provider sends the `X-Goog-User-Project` header ONLY
+when `user_project_override` is armed in the provider config (the ADC
+file's own `quota_project_id` is NOT honored by the provider transport;
+live-verified). Kinds whose APIs carry this requirement wire
+`user_project_override = true` in their TF provider block and build their
+Pulumi provider via `pulumigoogleprovider.GetWithUserProjectOverride` —
+a module-level, customer-facing fix, never a harness export. The typed
+verifier clients are unaffected (google.golang.org/api transports honor
+the ADC quota project).
+
+**Once-only initialization singletons need an adopt arm for every lane
+after the first:** some project singletons initialize exactly once EVER —
+Identity Platform's `initializeAuth` hard-fails a second call with 400
+"Identity Platform has already been enabled for this project"
+(live-verified), and destroy only abandons. The first live lane spends
+the project's single create; every later lane (the same engine's second
+scenario, the other engine, every prerequisite chain) must ADOPT instead.
+The catalog pattern is a spec-level `adopt_existing` switch (TF: a
+for_each-gated `import` block on the deterministic singleton ID; Pulumi:
+a conditional `pulumi.Import` resource option) with the kind's e2e
+fixtures arming it permanently once the test project is initialized —
+Pulumi's import matches because the modules only specify spec-driven
+inputs, and Terraform's config-driven import applies spec drift as an
+update in the same apply.
 
 **Typed-client gaps in the pinned Google API line:** a brand-new GCP service
 may have no typed client in the repo's pinned `google.golang.org/api`
@@ -1017,6 +1126,23 @@ owns two responsibilities beyond wiring verifiers:
 
 ### Authoring verifiers and prerequisite fixtures
 
+- **Never call `ctx.Export` inside an `ApplyT` callback in a Pulumi module.**
+  Apply callbacks run on output-resolution goroutines, and the exports map
+  they write is the same map the SDK's end-of-program stack-output
+  marshaling reads — a data race that kills the whole program with
+  `fatal error: concurrent map read and map write`, timing-dependent and
+  therefore FLAKY (first hit: the subnetwork module's per-index
+  secondary-range exports crashed one chain deploy and passed the next,
+  identical code). A module that needs per-element export keys derives each
+  key's index space from the spec (known before the program returns) and
+  registers every export synchronously with a value DERIVED via `ApplyT`
+  (`ctx.Export(key, out.ApplyT(...))` is safe — it is the export
+  registration itself that must stay on the program goroutine). When a
+  fixture deploy dies this way mid-chain, the created cloud resource
+  usually IS recorded in the run-scoped stack state, so the next scenario's
+  `up --refresh` adopts it — but the failed scenario's own teardown can
+  strand it against the chain's parent (a VPC refusing deletion while the
+  crashed subnet exists) until a later scenario's teardown sweeps both.
 - **Never name a verifier (or any production `.go` file) with a `_test.go`
   suffix.** Go treats every file ending in `_test.go` as a test file and
   excludes it from the normal package build, so a verifier in, say,

@@ -186,8 +186,23 @@ type GcpVpcNetworkSpec struct {
 	// When true, default routes (0.0.0.0/0) are not created automatically.
 	// Immutable.
 	DeleteDefaultRoutesOnCreate bool `protobuf:"varint,12,opt,name=delete_default_routes_on_create,json=deleteDefaultRoutesOnCreate,proto3" json:"delete_default_routes_on_create,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// Resource Manager tags bound to the network for org-policy and IAM
+	// conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
+	// Create-time only: changing them later replaces the network.
+	ResourceManagerTags map[string]string `protobuf:"bytes,13,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the VPC network — what happens when this resource
+	// is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the network is deleted (GCP refuses while subnets,
+	//	             peerings, or attached resources remain in it)
+	//	"PREVENT" -- destroy FAILS; protects the network every subnet,
+	//	             route, and peering in it depends on
+	//	"ABANDON" -- the network is removed from management but left
+	//	             serving in GCP
+	DeletionPolicy string `protobuf:"bytes,14,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpVpcNetworkSpec) Reset() {
@@ -304,6 +319,20 @@ func (x *GcpVpcNetworkSpec) GetDeleteDefaultRoutesOnCreate() bool {
 	return false
 }
 
+func (x *GcpVpcNetworkSpec) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
+func (x *GcpVpcNetworkSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_rawDesc = "" +
@@ -314,7 +343,7 @@ const file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0evalid_bgp_mode\x12\x1fmode must be LEGACY or STANDARD\x1a,this == '' || this in ['LEGACY', 'STANDARD']R\x04mode\x12,\n" +
 	"\x12always_compare_med\x18\x02 \x01(\bR\x10alwaysCompareMed\x12\xba\x01\n" +
 	"\x11inter_region_cost\x18\x03 \x01(\tB\x8d\x01\xbaH\x89\x01\xba\x01\x85\x01\n" +
-	"\x17valid_inter_region_cost\x124inter_region_cost must be DEFAULT or ADD_COST_TO_MED\x1a4this == '' || this in ['DEFAULT', 'ADD_COST_TO_MED']R\x0finterRegionCost\"\xfc\b\n" +
+	"\x17valid_inter_region_cost\x124inter_region_cost must be DEFAULT or ADD_COST_TO_MED\x1a4this == '' || this in ['DEFAULT', 'ADD_COST_TO_MED']R\x0finterRegionCost\"\x8b\f\n" +
 	"\x11GcpVpcNetworkSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x126\n" +
@@ -331,7 +360,13 @@ const file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0fnetwork_profile\x18\n" +
 	" \x01(\tR\x0enetworkProfile\x12\x80\x01\n" +
 	"\x17bgp_best_path_selection\x18\v \x01(\v2I.dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkBgpBestPathSelectionR\x14bgpBestPathSelection\x12D\n" +
-	"\x1fdelete_default_routes_on_create\x18\f \x01(\bR\x1bdeleteDefaultRoutesOnCreateB\x0f\n" +
+	"\x1fdelete_default_routes_on_create\x18\f \x01(\bR\x1bdeleteDefaultRoutesOnCreate\x12\x86\x01\n" +
+	"\x15resource_manager_tags\x18\r \x03(\v2R.dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkSpec.ResourceManagerTagsEntryR\x13resourceManagerTags\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x0e \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x0f\n" +
 	"\r_routing_modeB\x06\n" +
 	"\x04_mtu*4\n" +
 	"\x18GcpVpcNetworkRoutingMode\x12\f\n" +
@@ -353,22 +388,24 @@ func file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_rawDescGZIP() []byte {
 }
 
 var file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_goTypes = []any{
 	(GcpVpcNetworkRoutingMode)(0),             // 0: dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkRoutingMode
 	(*GcpVpcNetworkBgpBestPathSelection)(nil), // 1: dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkBgpBestPathSelection
 	(*GcpVpcNetworkSpec)(nil),                 // 2: dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkSpec
-	(*v1.StringValueOrRef)(nil),               // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                                       // 3: dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkSpec.ResourceManagerTagsEntry
+	(*v1.StringValueOrRef)(nil),               // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 0: dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0, // 1: dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkSpec.routing_mode:type_name -> dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkRoutingMode
 	1, // 2: dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkSpec.bgp_best_path_selection:type_name -> dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkBgpBestPathSelection
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 3: dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcpvpcnetwork.v1alpha1.GcpVpcNetworkSpec.ResourceManagerTagsEntry
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_init() }
@@ -383,7 +420,7 @@ func file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpvpcnetwork_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

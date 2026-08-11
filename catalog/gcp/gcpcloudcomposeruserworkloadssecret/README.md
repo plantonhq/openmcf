@@ -60,6 +60,7 @@ planton apply -f secret.yaml
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `projectId` | `StringValueOrRef` | provider default | GCP project of the Composer environment. |
+| `deletionPolicy` | `string` | `DELETE` | What a destroy does: `DELETE` the Secret, `PREVENT` (fail — protects credentials live pipelines depend on), or `ABANDON` (keep it in the cluster, drop from management). |
 
 ## Stack Outputs
 

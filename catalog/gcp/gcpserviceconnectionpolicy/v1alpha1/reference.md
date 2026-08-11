@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpServiceConnectionPolicySpec defines a service connection policy —
 the per-network authorization that lets Google's service connectivity
 automation create Private Service Connect endpoints in your VPC on a
@@ -64,6 +66,10 @@ spec:
     subnetworks:
       - value: projects/my-gcp-project-123/regions/us-central1/subnetworks/my-subnet
     limit: 10
+
+  # DELETE keeps destroys real; PREVENT belongs on policies live managed
+  # instances depend on.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -82,6 +88,7 @@ spec:
 | `spec.pscConfig.limit` | `int32` |  |  |  |
 | `spec.pscConfig.producerInstanceLocation` | `string` |  |  |  |
 | `spec.pscConfig.allowedGoogleProducersResourceHierarchyLevels` | `[]string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -228,6 +235,23 @@ organizations/123). Only consulted when producer_instance_location is
 CUSTOM_RESOURCE_HIERARCHY_LEVELS.
 
 - rule: {"repeated":{"items":{"cel":[{"id":"hierarchy_level_format","message":"each entry must be projects/{id-or-number}, folders/{number}, or organizations/{number}","expression":"this.matches('^(projects/[a-z0-9-]+|projects/[0-9]+|folders/[0-9]+|organizations/[0-9]+)$')"}]}}}
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the policy — what happens when this resource is
+destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the policy is deleted (existing PSC endpoints are
+               stranded and new instances of the service class can no
+               longer connect in this region)
+  "PREVENT" -- destroy FAILS; protects the connectivity every managed
+               instance under this policy depends on
+  "ABANDON" -- the policy is removed from management but keeps
+               authorizing connections in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

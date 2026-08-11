@@ -1,7 +1,9 @@
 # GcpPubSubTopic scenario: a schema-validated topic composed on the
 # GcpPubSubSchema prerequisite — the live proof that the schema FK
 # resolves to the fully qualified projects/{p}/schemas/{name} path the
-# Pub/Sub API accepts at topic create.
+# Pub/Sub API accepts at topic create, AND that the revision-pinning
+# refs resolve the prerequisite schema's revision_id output (both bounds
+# pinned to the same revision freezes the contract exactly).
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpPubSubTopic
 metadata:
@@ -25,3 +27,14 @@ spec:
         name: planton-oss-e2e-gcppsch-prereq
         fieldPath: status.outputs.schema_id
     encoding: JSON
+    firstRevisionId:
+      valueFrom:
+        kind: GcpPubSubSchema
+        name: planton-oss-e2e-gcppsch-prereq
+        fieldPath: status.outputs.revision_id
+    lastRevisionId:
+      valueFrom:
+        kind: GcpPubSubSchema
+        name: planton-oss-e2e-gcppsch-prereq
+        fieldPath: status.outputs.revision_id
+  deletionPolicy: DELETE

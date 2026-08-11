@@ -1,0 +1,97 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_compute_router:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names (two resources in one kind need the
+      # router_/nat_ prefixes to stay unambiguous).
+      - spec: spec.router_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.vpc_self_link
+        arg: network
+      - spec: spec.router_description
+        arg: description
+      # The whole bgp block mirrors the spec's router_bgp message
+      # (asn, advertise_mode, advertised_groups, advertised_ip_ranges,
+      # keepalive_interval, identifier_range map name-for-name).
+      - spec: spec.router_bgp
+        arg: bgp
+      # The provider nests create-time tags under a params block; the spec
+      # uses the catalog-wide resource_manager_tags vocabulary.
+      - spec: spec.resource_manager_tags
+        arg: params.resource_manager_tags
+    exclusions:
+      - arg: md5_authentication_keys.name
+        reason: >-
+          MD5 authentication keys are consumed only by BGP peers
+          (google_compute_router_peer), a recorded deferred composition in
+          the router family; a key with no peer referencing it is inert,
+          and the surface arrives with the peer kind that needs it
+      - arg: md5_authentication_keys.key
+        reason: >-
+          raw BGP MD5 auth material rides the deferred peer composition
+          (see md5_authentication_keys.name); excluding it also keeps
+          secret material out of a spec that today carries none
+      - arg: ncc_gateway
+        reason: >-
+          an NCC-Gateway-spoke router conflicts with network in the
+          provider (ConflictsWith), so modeling it would relax this kind's
+          required VPC attachment -- the validation every NAT user relies
+          on -- for a cross-site-interconnect arm that belongs to the
+          deferred Network Connectivity Center family
+
+  google_compute_router_nat:
+    mappings:
+      - spec: spec.nat_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      # Allocation is derived, never declared: referencing GcpAddress
+      # reservations in nat_ips selects MANUAL_ONLY, an empty list selects
+      # AUTO_ONLY (the two cannot be combined, so a separate spec field
+      # would only create contradictions).
+      - spec: spec.nat_ips
+        arg: nat_ip_allocate_option
+      # The per-subnetwork scoping block: the subtree maps name-for-name
+      # except the block's `name` argument, which the spec calls what it
+      # is -- a subnetwork reference.
+      - spec: spec.subnetworks
+        arg: subnetwork
+      - spec: spec.subnetworks.subnetwork
+        arg: subnetwork.name
+      # NAT64 scope: each entry is a subnetwork reference; the provider's
+      # block carries a single `name` argument.
+      - spec: spec.nat64_subnetworks
+        arg: nat64_subnetwork.name
+      # One spec dial drives both logging arguments: DISABLED maps to
+      # enable=false (with a placeholder filter the API ignores); every
+      # other value maps to enable=true with that filter.
+      - spec: spec.log_filter
+        arg: log_config.enable
+      - spec: spec.log_filter
+        arg: log_config.filter
+    exclusions:
+      - arg: router
+        reason: wired by the module to the router it creates -- the pair is one node
+      - arg: initial_nat_ips
+        reason: >-
+          meaningful only alongside google_compute_router_nat_address (a
+          recorded deferred composition in the router family) and
+          provider-documented as conflicting with nat_ips/drain_nat_ips --
+          the allocation model this spec already carries; the surface
+          arrives with the nat-address kind that needs it
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables compute.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      gateway never disables the API project-wide); not spec surface.

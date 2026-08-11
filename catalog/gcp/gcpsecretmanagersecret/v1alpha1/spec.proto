@@ -1,0 +1,361 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpsecretmanagersecret.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpSecretManagerSecretSpec defines a Secret Manager secret — the
+// container that stores versioned secret payloads (API keys, passwords,
+// certificates) with replication, rotation notifications, expiry, CMEK,
+// and secret-scoped IAM access grants.
+//
+// One kind covers both scopes. Leave `region` empty for a GLOBAL secret
+// (payloads replicated per the `replication` message — automatically when
+// it is omitted); set it for a REGIONAL secret whose payloads never leave
+// that region (data-residency regimes). The two scopes are separate GCP
+// API surfaces with one behavioral difference this spec mirrors:
+// replication is a global-only concept, and regional secrets take their
+// CMEK directly via `customer_managed_encryption`.
+//
+// The optional `initial_version` stores the first payload at create time,
+// and `iam_members` grants secret-SCOPED access (typically
+// roles/secretmanager.secretAccessor to the workload's service account) —
+// so one manifest takes a consumer from nothing to a readable secret.
+message GcpSecretManagerSecretSpec {
+  // Replication is how GLOBAL secrets place payloads; regional secrets have
+  // exactly one location by definition, so the API drops the concept.
+  option (buf.validate.message).cel = {
+    id: "replication_is_global_only"
+    message: "replication applies only to global secrets — for a regional secret (region set), payloads live in that region by definition"
+    expression: "this.region == '' || !has(this.replication)"
+  };
+  // ... and the regional CMEK field is the regional API's replacement.
+  option (buf.validate.message).cel = {
+    id: "regional_cmek_needs_region"
+    message: "customer_managed_encryption applies only to regional secrets — for a global secret, set CMEK inside replication (auto or per-replica)"
+    expression: "!has(this.customer_managed_encryption) || this.region != ''"
+  };
+  // The provider documents the pair as mutually exclusive on both APIs.
+  option (buf.validate.message).cel = {
+    id: "expire_time_xor_ttl"
+    message: "set at most one of expire_time or ttl — GCP accepts only one expiry form"
+    expression: "!(this.expire_time != '' && this.ttl != '')"
+  };
+  // The provider requires topics whenever rotation is set (rotation is
+  // delivered AS Pub/Sub notifications), and next_rotation_time whenever
+  // rotation_period is set.
+  option (buf.validate.message).cel = {
+    id: "rotation_requires_topics"
+    message: "rotation requires at least one entry in topics — rotation reminders are delivered as Pub/Sub messages"
+    expression: "!has(this.rotation) || size(this.topics) > 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "rotation_period_requires_next_time"
+    message: "rotation_period requires next_rotation_time — GCP needs the first reminder's timestamp to start the cadence"
+    expression: "!has(this.rotation) || this.rotation.rotation_period == '' || this.rotation.next_rotation_time != ''"
+  };
+
+  // The GCP project that owns the secret. Can be a literal project ID or a
+  // reference to a GcpProject resource. If omitted, the provider's default
+  // project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The secret ID — the last segment of the secret's resource name
+  // (projects/{p}/secrets/{id}). Defaults to metadata.name when left
+  // empty. Letters, numbers, underscores, and hyphens; at most 255
+  // characters. Immutable: changing it destroys and recreates the secret
+  // (and every version with it).
+  string secret_id = 2 [(buf.validate.field).cel = {
+    id: "valid_secret_id"
+    message: "secret_id may contain only letters, digits, underscores, and hyphens (at most 255 characters)"
+    expression: "this == '' || this.matches('^[A-Za-z0-9_-]{1,255}$')"
+  }];
+
+  // Region for a REGIONAL secret (e.g. "us-central1") whose payloads never
+  // leave that region — the data-residency posture. Leave empty for a
+  // GLOBAL secret with replication control. Immutable: a secret cannot
+  // move between scopes.
+  string region = 3 [(buf.validate.field).cel = {
+    id: "valid_region"
+    message: "region must be a valid GCP region name such as us-central1, or empty for a global secret"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')"
+  }];
+
+  // GLOBAL secrets only: where payload replicas live. Omit for automatic
+  // replication (Google chooses placement — the right default when no
+  // residency regime applies); the module then configures the API's `auto`
+  // mode. Set user_managed to pin replicas to specific regions.
+  // Immutable: replication cannot change after create.
+  GcpSecretManagerSecretReplication replication = 4;
+
+  // REGIONAL secrets only: encrypt payloads with a customer-managed KMS
+  // key instead of Google-managed encryption. The key must be in the same
+  // region as the secret, and the Secret Manager service agent needs
+  // roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+  GcpSecretManagerSecretCmek customer_managed_encryption = 5;
+
+  // User labels attached to the secret, merged with Planton's platform
+  // labels (which win on key conflicts).
+  map<string, string> labels = 6;
+
+  // Annotations attached to the secret — freeform non-identifying
+  // metadata (up to 64 entries; keys at most 63 characters). Unlike
+  // labels, annotation values are not queryable in filters.
+  map<string, string> annotations = 7;
+
+  // Resource manager tags bound at secret creation, as
+  // tagKeys/{id} -> tagValues/{id} pairs — the org-policy surface (IAM
+  // conditions, CMEK enforcement). Immutable: changing tags destroys and
+  // recreates the secret.
+  map<string, string> tags = 8;
+
+  // Timestamp when the secret auto-DELETES (RFC3339 UTC, e.g.
+  // "2027-01-01T00:00:00Z"). Deletion removes every version — data
+  // unrecoverable. At most one of expire_time or ttl.
+  string expire_time = 9 [(buf.validate.field).cel = {
+    id: "valid_expire_time"
+    message: "expire_time must be an RFC3339 UTC timestamp such as 2027-01-01T00:00:00Z"
+    expression: "this == '' || this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$')"
+  }];
+
+  // Lifetime after which the secret auto-DELETES, as a seconds duration
+  // (e.g. "7776000s" for 90 days). At most one of expire_time or ttl.
+  string ttl = 10 [(buf.validate.field).cel = {
+    id: "valid_ttl"
+    message: "ttl must be a seconds duration such as 7776000s"
+    expression: "this == '' || this.matches('^[0-9]+([.][0-9]+)?s$')"
+  }];
+
+  // Version aliases: friendly name -> version NUMBER (e.g. "prod" -> "3").
+  // Consumers can then address projects/{p}/secrets/{id}/versions/prod and
+  // re-pointing the alias re-targets every consumer without touching them.
+  // TEMPORAL CONSTRAINT (live API truth): GCP validates aliases against
+  // EXISTING versions at secret create/update ("Aliases cannot be assigned
+  // to versions that don't exist"). A first apply that both seeds
+  // initial_version and aliases it is therefore rejected — the version is
+  // created after the secret. Deploy first, then add the alias on a
+  // subsequent apply once the version exists.
+  map<string, string> version_aliases = 11;
+
+  // Delayed version destruction: when set (a seconds duration, minimum
+  // "86400s" — 24h), destroying a version first DISABLES it for this
+  // window, during which it can be restored — the undo buffer for fat
+  // fingers. Empty destroys immediately.
+  string version_destroy_ttl = 12 [(buf.validate.field).cel = {
+    id: "valid_version_destroy_ttl"
+    message: "version_destroy_ttl must be a seconds duration of at least 86400s (24 hours)"
+    expression: "this == '' || this.matches('^(8640[0-9]|864[1-9][0-9]|86[5-9][0-9]{2}|8[7-9][0-9]{3}|9[0-9]{4}|[1-9][0-9]{5,})s$')"
+  }];
+
+  // Rotation REMINDERS: GCP publishes a message to `topics` on the
+  // schedule — it does not rotate anything itself; the subscriber (a
+  // Cloud Function, a pipeline) performs the actual rotation. Requires
+  // topics.
+  GcpSecretManagerSecretRotation rotation = 13;
+
+  // Pub/Sub topics notified on secret lifecycle events (version added,
+  // rotation due, expiry approaching) — at most 10. Each entry is the full
+  // topic path projects/{p}/topics/{t}: a literal or a reference to a
+  // GcpPubSubTopic resource. The Secret Manager service agent needs
+  // roles/pubsub.publisher on each topic.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef topics = 14 [
+    (buf.validate.field).repeated.max_items = 10,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpPubSubTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_id"
+  ];
+
+  // The first secret payload, stored as version 1 at create time — so one
+  // manifest yields a READABLE secret. Omit to create the container only
+  // (versions added later via GCP tooling or rotation pipelines).
+  GcpSecretManagerSecretInitialVersion initial_version = 15;
+
+  // Secret-SCOPED IAM grants — typically roles/secretmanager.secretAccessor
+  // to the service account of each workload that reads this secret. Grants
+  // are additive (iam_member semantics): they compose safely with grants
+  // made elsewhere and never clobber them.
+  repeated GcpSecretManagerSecretIamMember iam_members = 16;
+
+  // Engine-side destroy guard (default false). When true in state, any
+  // plan that would delete the secret FAILS before reaching the API —
+  // flip it to false explicitly, then destroy. Independent of (and
+  // evaluated before) deletion_policy.
+  bool deletion_protection = 17;
+
+  // Deletion policy — what happens when this resource is destroyed
+  // (evaluated only after deletion_protection allows the plan):
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the secret and ALL its versions are deleted; payloads
+  //                unrecoverable (version_destroy_ttl does not apply to
+  //                whole-secret deletion)
+  //   "PREVENT" -- destroy FAILS; belt-and-suspenders with
+  //                deletion_protection for production credentials
+  //   "ABANDON" -- the secret is removed from management but stays
+  //                readable in GCP (IAM grants and versions intact)
+  string deletion_policy = 18 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+}
+
+// Replication for GLOBAL secrets: exactly one of auto or user_managed.
+message GcpSecretManagerSecretReplication {
+  option (buf.validate.message).cel = {
+    id: "exactly_one_replication_mode"
+    message: "set exactly one of auto or user_managed (or omit replication entirely for automatic placement)"
+    expression: "[has(this.auto), has(this.user_managed)].filter(x, x).size() == 1"
+  };
+
+  // Google chooses replica placement. Set this arm explicitly (over
+  // omitting replication) only to attach a CMEK key to automatic
+  // replication.
+  GcpSecretManagerSecretReplicationAuto auto = 1;
+
+  // Pin payload replicas to specific regions — the residency-controlled
+  // form.
+  GcpSecretManagerSecretReplicationUserManaged user_managed = 2;
+}
+
+// Automatic replication, optionally CMEK-encrypted.
+message GcpSecretManagerSecretReplicationAuto {
+  // Encrypt payloads with a customer-managed KMS key. Must be a GLOBAL
+  // KMS key for automatic replication; the Secret Manager service agent
+  // needs roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+  GcpSecretManagerSecretCmek customer_managed_encryption = 1;
+}
+
+// User-managed replica placement.
+message GcpSecretManagerSecretReplicationUserManaged {
+  // The regions holding payload replicas (at least one). Reads are served
+  // from the nearest replica; writes go to all.
+  repeated GcpSecretManagerSecretReplica replicas = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// One user-managed replica.
+message GcpSecretManagerSecretReplica {
+  // The replica's region (e.g. "us-east1").
+  string location = 1 [(buf.validate.field).required = true];
+
+  // Encrypt this replica with a customer-managed KMS key IN THE SAME
+  // region. With multiple replicas, either every replica sets a key or
+  // none does (the API's own rule).
+  GcpSecretManagerSecretCmek customer_managed_encryption = 2;
+}
+
+// A customer-managed encryption key reference.
+message GcpSecretManagerSecretCmek {
+  // Full KMS crypto key resource path
+  // (projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{k}) — a literal or
+  // a reference to a GcpKmsKey resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+}
+
+// Rotation reminder schedule.
+message GcpSecretManagerSecretRotation {
+  // Time between rotation reminders, as a seconds duration — at least
+  // "3600s" (1 hour), at most "3153600000s" (100 years). Setting it
+  // requires next_rotation_time.
+  string rotation_period = 1 [(buf.validate.field).cel = {
+    id: "valid_rotation_period"
+    message: "rotation_period must be a seconds duration of at least 3600s (1 hour)"
+    expression: "this == '' || this.matches('^(3[6-9][0-9]{2}|[4-9][0-9]{3}|[1-9][0-9]{4,})s$')"
+  }];
+
+  // When the FIRST (or next) rotation reminder fires (RFC3339 UTC, e.g.
+  // "2026-09-01T00:00:00Z"). GCP advances it by rotation_period after each
+  // reminder.
+  string next_rotation_time = 2 [(buf.validate.field).cel = {
+    id: "valid_next_rotation_time"
+    message: "next_rotation_time must be an RFC3339 UTC timestamp such as 2026-09-01T00:00:00Z"
+    expression: "this == '' || this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$')"
+  }];
+}
+
+// The first payload, stored as version 1 at create time.
+message GcpSecretManagerSecretInitialVersion {
+  // The secret payload (at most 64KiB). A secret value: the platform
+  // stores it as a managed-secret reference and resolves it just-in-time
+  // at deploy — it never sits in plaintext in the control plane. In
+  // charts, wire it via valueFrom from a producing resource's sensitive
+  // output (e.g. a generated credential) instead of a literal.
+  // Immutable: changing the payload creates a NEW version through GCP
+  // tooling or rotation — this field only seeds version 1.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef data = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Whether version 1 starts ENABLED (default true). A disabled version
+  // exists but cannot be accessed — staging a payload ahead of cut-over.
+  // Both IaC engines send the value explicitly so behavior is identical
+  // regardless of engine.
+  optional bool enabled = 2 [(dev.planton.shared.options.default) = "true"];
+
+  // Set true when `data` is base64-encoded binary (the API stores the
+  // DECODED bytes). Leave false for text payloads. Immutable.
+  bool is_base64 = 3;
+
+  // What destroying this resource does to version 1 specifically:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the version is destroyed (or disabled-then-destroyed
+  //                when the secret sets version_destroy_ttl)
+  //   "DISABLE" -- the version is disabled but kept — recoverable
+  //   "ABANDON" -- the version is left untouched in GCP
+  // Distinct from the secret-level deletion_policy: deleting the whole
+  // secret always removes every version regardless of this setting.
+  string deletion_policy = 4 [(buf.validate.field).cel = {
+    id: "valid_version_deletion_policy"
+    message: "initial_version.deletion_policy must be one of: DELETE, DISABLE, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'DISABLE', 'ABANDON']"
+  }];
+}
+
+// One secret-scoped IAM grant (additive iam_member semantics — composes
+// safely with grants made elsewhere; authoritative bindings/policies are
+// deliberately not modeled because they clobber grants they don't list).
+message GcpSecretManagerSecretIamMember {
+  // The role to grant — most commonly roles/secretmanager.secretAccessor
+  // (read payloads); also roles/secretmanager.viewer (metadata only) or
+  // roles/secretmanager.secretVersionManager (add/destroy versions).
+  string role = 1 [(buf.validate.field).required = true];
+
+  // The identity receiving the grant, in GCP IAM member format:
+  //   serviceAccount:<email>  -- a workload identity (the most common in
+  //                              IaC; reference a GcpServiceAccount — its
+  //                              `member` output is exactly this value)
+  //   user:<email> / group:<email> / domain:<domain>
+  dev.planton.shared.foreignkey.v1.StringValueOrRef member = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.member"
+  ];
+
+  // Optional IAM Condition restricting when this grant applies. The
+  // condition is part of the grant's identity: the same role with and
+  // without a condition are two independent grants.
+  GcpSecretManagerSecretIamCondition condition = 3;
+}
+
+// An IAM Condition — a CEL expression that must evaluate true for the
+// grant to apply. See https://cloud.google.com/iam/docs/conditions-overview.
+message GcpSecretManagerSecretIamCondition {
+  // Short title identifying the condition's purpose (shown in the console).
+  string title = 1 [(buf.validate.field).required = true];
+
+  // The CEL condition expression, e.g.
+  // request.time < timestamp("2027-01-01T00:00:00Z").
+  string expression = 2 [(buf.validate.field).required = true];
+
+  // What the condition enforces and why — for the operator auditing
+  // access later.
+  string description = 3;
+}

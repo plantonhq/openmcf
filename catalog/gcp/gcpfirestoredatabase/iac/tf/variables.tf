@@ -53,6 +53,21 @@ variable "spec" {
     # Engine app (legacy); DISABLED keeps it independent. Immutable
     # (ForceNew).
     app_engine_integration_mode = optional(string, "")
+
+    # ENTERPRISE-only data-access switches: whether the classic Firestore
+    # API, the MongoDB-compatible API, and realtime query snapshots are
+    # available on this database. Empty leaves GCP's defaults.
+    firestore_data_access_mode          = optional(string, "")
+    mongodb_compatible_data_access_mode = optional(string, "")
+    realtime_updates_mode               = optional(string, "")
+
+    # Resource Manager tags (tagKeys/{id} -> tagValues/{id}). Create-time
+    # only: mutating them replaces the database.
+    resource_manager_tags = optional(map(string), {})
+
+    # DELETE (the Planton default — the raw provider defaults to ABANDON,
+    # which would orphan the database on destroy), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "DELETE")
   })
 
   validation {

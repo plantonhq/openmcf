@@ -12,8 +12,8 @@ spec:
   # both provisioners. Peering creation is a producer-side operation and can
   # take a few minutes.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # The prior proof predates this spec surface (deletion_policy) — the
+  # kind awaits live re-proof at the current shape.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

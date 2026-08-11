@@ -52,6 +52,9 @@ variable "spec" {
       size_gb           = optional(number, 10)
       auto_resize       = optional(bool, true)
       auto_resize_limit = optional(number, 0)
+      # HYPERDISK_BALANCED only: provisioned performance dials.
+      provisioned_iops       = optional(number, null)
+      provisioned_throughput = optional(number, null)
     }), null)
 
     # Connectivity. Null means public IPv4 with no authorized networks
@@ -94,7 +97,12 @@ variable "spec" {
           consumer_network            = string
           consumer_service_project_id = optional(string, "")
         })), [])
+        auto_dns_enabled           = optional(bool, false)
+        write_endpoint_dns_enabled = optional(bool, false)
       }), null)
+
+      # Automatic server certificate rotation (CAS CA modes only).
+      server_certificate_rotation_mode = optional(string, "")
     }), null)
 
     # Preferred primary/standby zones.
@@ -112,6 +120,7 @@ variable "spec" {
       point_in_time_recovery_enabled = optional(bool, false)
       transaction_log_retention_days = optional(number, null)
       retained_backups               = optional(number, null)
+      retention_unit                 = optional(string, "")
     }), null)
 
     # Weekly one-hour maintenance window.
@@ -130,11 +139,12 @@ variable "spec" {
 
     # Query Insights telemetry.
     insights_config = optional(object({
-      query_insights_enabled  = optional(bool, false)
-      query_string_length     = optional(number, null)
-      record_application_tags = optional(bool, false)
-      record_client_address   = optional(bool, false)
-      query_plans_per_minute  = optional(number, null)
+      query_insights_enabled          = optional(bool, false)
+      query_string_length             = optional(number, null)
+      record_application_tags         = optional(bool, false)
+      record_client_address           = optional(bool, false)
+      query_plans_per_minute          = optional(number, null)
+      enhanced_query_insights_enabled = optional(bool, false)
     }), null)
 
     # Password rules for built-in users.
@@ -168,7 +178,21 @@ variable "spec" {
       retention_interval = optional(string, "")
       upload_interval    = optional(string, "")
     }), null)
-    active_directory_domain = optional(string, "")
+
+    # SQL Server only: Active Directory join (managed or customer-managed).
+    active_directory = optional(object({
+      domain                       = string
+      mode                         = optional(string, "")
+      dns_servers                  = optional(list(string), [])
+      admin_credential_secret_name = optional(string, "")
+      organizational_unit          = optional(string, "")
+    }), null)
+
+    # SQL Server only: Microsoft Entra ID authentication.
+    entra_id = optional(object({
+      application_id = string
+      tenant_id      = string
+    }), null)
 
     # NOT_REQUIRED or REQUIRED (connectors-only access).
     connector_enforcement = optional(string, "")
@@ -212,5 +236,82 @@ variable "spec" {
     # Initial admin password (root/postgres/sqlserver user). Write-only in
     # GCP; required for SQL Server.
     root_password = optional(string, "")
+
+    # Engine-side teardown behavior: DELETE, PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
+
+    # Instance role; set READ_POOL_INSTANCE for read pools, or
+    # CLOUD_SQL_INSTANCE to promote a replica to standalone.
+    instance_type = optional(string, "")
+
+    # Read pools: node count behind the pool endpoint.
+    node_count = optional(number, null)
+
+    # Read pools: automatic node-count scaling.
+    read_pool_auto_scale = optional(object({
+      enabled                    = optional(bool, false)
+      min_node_count             = optional(number, null)
+      max_node_count             = optional(number, null)
+      disable_scale_in           = optional(bool, false)
+      scale_in_cooldown_seconds  = optional(number, null)
+      scale_out_cooldown_seconds = optional(number, null)
+      target_metrics = optional(list(object({
+        metric       = string
+        target_value = optional(number, null)
+      })), [])
+    }), null)
+
+    # Create-time clone source.
+    clone = optional(object({
+      source_instance_name          = string
+      source_project                = optional(string, "")
+      point_in_time                 = optional(string, "")
+      preferred_zone                = optional(string, "")
+      database_names                = optional(list(string), [])
+      allocated_ip_range            = optional(string, "")
+      source_instance_deletion_time = optional(string, "")
+    }), null)
+
+    # Backup-run restore trigger.
+    restore_backup_context = optional(object({
+      backup_run_id = number
+      instance_id   = optional(string, "")
+      project       = optional(string, "")
+    }), null)
+
+    # Backup and DR point-in-time restore trigger.
+    point_in_time_restore_context = optional(object({
+      datasource         = string
+      point_in_time      = string
+      target_instance    = optional(string, "")
+      region             = optional(string, "")
+      preferred_zone     = optional(string, "")
+      allocated_ip_range = optional(string, "")
+    }), null)
+
+    # Backup and DR backup name restore trigger.
+    backupdr_backup = optional(string, "")
+
+    # Pinned maintenance (patch) version; updating restarts the instance.
+    maintenance_version = optional(string, "")
+
+    # Replica names declared from the primary's side.
+    replica_names = optional(list(string), [])
+
+    # DR replica pairing for cross-region switchover (MySQL/PostgreSQL).
+    failover_dr_replica_name = optional(string, "")
+
+    # MySQL 8.0 automatic minor-version upgrades.
+    auto_upgrade_enabled = optional(bool, false)
+
+    # ExecuteSql API posture: ALLOW_DATA_API or DISALLOW_DATA_API.
+    data_api_access = optional(string, "")
+
+    # Final backup taken when the instance is deleted.
+    final_backup = optional(object({
+      enabled        = optional(bool, false)
+      retention_days = optional(number, null)
+      description    = optional(string, "")
+    }), null)
   })
 }

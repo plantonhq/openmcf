@@ -57,9 +57,15 @@ type GcpCloudSqlDatabaseSpec struct {
 	// Collation. MySQL: e.g. "utf8mb4_0900_ai_ci". PostgreSQL: an OS locale
 	// such as "en_US.UTF8". SQL Server: a SQL Server collation name. If
 	// empty, the engine default applies.
-	Collation     string `protobuf:"bytes,5,opt,name=collation,proto3" json:"collation,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Collation string `protobuf:"bytes,5,opt,name=collation,proto3" json:"collation,omitempty"`
+	// Engine-side teardown behavior. "DELETE" (default) drops the database;
+	// "PREVENT" fails any plan that would drop it; "ABANDON" removes it
+	// from IaC management while leaving it in the instance. ABANDON is the
+	// documented answer for PostgreSQL databases that cannot be dropped
+	// while clients hold connections.
+	DeletionPolicy string `protobuf:"bytes,6,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpCloudSqlDatabaseSpec) Reset() {
@@ -127,11 +133,18 @@ func (x *GcpCloudSqlDatabaseSpec) GetCollation() string {
 	return ""
 }
 
+func (x *GcpCloudSqlDatabaseSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpcloudsqldatabase_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpcloudsqldatabase_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/gcp/gcpcloudsqldatabase/v1alpha1/spec.proto\x12,dev.planton.gcp.gcpcloudsqldatabase.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xf9\x02\n" +
+	"3catalog/gcp/gcpcloudsqldatabase/v1alpha1/spec.proto\x12,dev.planton.gcp.gcpcloudsqldatabase.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xb7\x04\n" +
 	"\x17GcpCloudSqlDatabaseSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
@@ -139,7 +152,9 @@ const file_catalog_gcp_gcpcloudsqldatabase_v1alpha1_spec_proto_rawDesc = "" +
 	"\rdatabase_name\x18\x03 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\fdatabaseName\x12\x18\n" +
 	"\acharset\x18\x04 \x01(\tR\acharset\x12\x1c\n" +
-	"\tcollation\x18\x05 \x01(\tR\tcollationB\xf5\x02\n" +
+	"\tcollation\x18\x05 \x01(\tR\tcollation\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x06 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\xf5\x02\n" +
 	"0com.dev.planton.gcp.gcpcloudsqldatabase.v1alpha1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/catalog/gcp/gcpcloudsqldatabase/v1alpha1;gcpcloudsqldatabasev1alpha1\xa2\x02\x04DPGG\xaa\x02,Dev.Planton.Gcp.Gcpcloudsqldatabase.V1alpha1\xca\x02,Dev\\Planton\\Gcp\\Gcpcloudsqldatabase\\V1alpha1\xe2\x028Dev\\Planton\\Gcp\\Gcpcloudsqldatabase\\V1alpha1\\GPBMetadata\xea\x020Dev::Planton::Gcp::Gcpcloudsqldatabase::V1alpha1b\x06proto3"
 
 var (

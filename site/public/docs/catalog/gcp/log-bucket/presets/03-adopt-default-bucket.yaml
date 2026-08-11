@@ -1,0 +1,9 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLogBucket
+metadata:
+  name: adopt-default-bucket
+spec:
+  bucketId: _Default
+  retentionDays: 90
+  description: Project _Default bucket — retention managed declaratively
+  deletionPolicy: ABANDON

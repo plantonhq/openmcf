@@ -329,9 +329,28 @@ type GcpVertexAiIndexSpec struct {
 	// label rules: lowercase letters, digits, underscores, and dashes,
 	// at most 63 characters. Merged with the platform's attribution
 	// labels; on key conflicts the platform labels win. Mutable in place.
-	Labels        map[string]string `protobuf:"bytes,9,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Labels map[string]string `protobuf:"bytes,9,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Cloud KMS key for customer-managed encryption at rest (CMEK) of the
+	// index data, as the full key resource path
+	// projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
+	// — a GcpKmsKey reference resolves to it. The key must live in the
+	// same region as the index, and the Vertex AI service agent needs
+	// roles/cloudkms.cryptoKeyEncrypterDecrypter on it. If omitted, data
+	// is encrypted with Google-managed keys. Immutable after creation.
+	KmsKeyName *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=kms_key_name,json=kmsKeyName,proto3" json:"kms_key_name,omitempty"`
+	// Deletion policy for the index — what happens when this resource is
+	// destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the index and every vector in it are deleted
+	//	"PREVENT" -- destroy FAILS; a guard for a corpus that took hours
+	//	             of batch builds (or months of streaming upserts) to
+	//	             load
+	//	"ABANDON" -- the index is removed from management but left
+	//	             standing (and billing for its stored vectors) in GCP
+	DeletionPolicy string `protobuf:"bytes,11,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpVertexAiIndexSpec) Reset() {
@@ -427,6 +446,20 @@ func (x *GcpVertexAiIndexSpec) GetLabels() map[string]string {
 	return nil
 }
 
+func (x *GcpVertexAiIndexSpec) GetKmsKeyName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KmsKeyName
+	}
+	return nil
+}
+
+func (x *GcpVertexAiIndexSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpvertexaiindex_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpvertexaiindex_v1alpha1_spec_proto_rawDesc = "" +
@@ -456,7 +489,8 @@ const file_catalog_gcp_gcpvertexaiindex_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15at_most_one_algorithm\x12\x8b\x01tree_ah_config and brute_force_config are mutually exclusive; pick the approximate (tree-AH) or the exact (brute-force) algorithm, not both\x1a;!(has(this.tree_ah_config) && has(this.brute_force_config))\x1a\x83\x02\n" +
 	" tree_ah_requires_neighbors_count\x12\x9b\x01approximate_neighbors_count is required when tree_ah_config is set — it is the number of candidates fetched by approximate search before exact reordering\x1aA!has(this.tree_ah_config) || this.approximate_neighbors_count > 0B\x18\n" +
 	"\x16_distance_measure_typeB\x14\n" +
-	"\x12_feature_norm_type\"\x8c\b\n" +
+	"\x12_feature_norm_type\"\xc0\n" +
+	"\n" +
 	"\x14GcpVertexAiIndexSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12&\n" +
@@ -471,7 +505,12 @@ const file_catalog_gcp_gcpvertexaiindex_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1ccontents_delta_uri_gs_scheme\x12Lcontents_delta_uri must be a Cloud Storage directory URI starting with gs://\x1a&this == '' || this.startsWith('gs://')R\x10contentsDeltaUri\x122\n" +
 	"\x15is_complete_overwrite\x18\a \x01(\bR\x13isCompleteOverwrite\x12a\n" +
 	"\x06config\x18\b \x01(\v2A.dev.planton.gcp.gcpvertexaiindex.v1alpha1.GcpVertexAiIndexConfigB\x06\xbaH\x03\xc8\x01\x01R\x06config\x12c\n" +
-	"\x06labels\x18\t \x03(\v2K.dev.planton.gcp.gcpvertexaiindex.v1alpha1.GcpVertexAiIndexSpec.LabelsEntryR\x06labels\x1a9\n" +
+	"\x06labels\x18\t \x03(\v2K.dev.planton.gcp.gcpvertexaiindex.v1alpha1.GcpVertexAiIndexSpec.LabelsEntryR\x06labels\x12t\n" +
+	"\fkms_key_name\x18\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
+	"kmsKeyName\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\v \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x16\n" +
@@ -505,11 +544,12 @@ var file_catalog_gcp_gcpvertexaiindex_v1alpha1_spec_proto_depIdxs = []int32{
 	5, // 2: dev.planton.gcp.gcpvertexaiindex.v1alpha1.GcpVertexAiIndexSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	2, // 3: dev.planton.gcp.gcpvertexaiindex.v1alpha1.GcpVertexAiIndexSpec.config:type_name -> dev.planton.gcp.gcpvertexaiindex.v1alpha1.GcpVertexAiIndexConfig
 	4, // 4: dev.planton.gcp.gcpvertexaiindex.v1alpha1.GcpVertexAiIndexSpec.labels:type_name -> dev.planton.gcp.gcpvertexaiindex.v1alpha1.GcpVertexAiIndexSpec.LabelsEntry
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	5, // 5: dev.planton.gcp.gcpvertexaiindex.v1alpha1.GcpVertexAiIndexSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpvertexaiindex_v1alpha1_spec_proto_init() }

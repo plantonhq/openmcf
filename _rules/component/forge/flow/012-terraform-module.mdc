@@ -178,9 +178,11 @@ NOTES
 - **Use the provider's ONE repo-wide pin shape, and check what the lock
   resolves.** Each provider's modules share a single `required_providers`
   constraint convention — some providers pin a floor (`>= 5.0.0`), others a
-  major-capped range (`~> 7.0`) because the next major's fields are
-  deliberately excluded from the modeled surface; follow the sibling modules
-  of the SAME provider, never mix shapes within one provider. Either way, a
+  major-capped range whose floor is the audited release (`~> 7.43`) because
+  the next major's fields are deliberately excluded from the modeled surface
+  and a lower floor could lie about what a module's arguments need; follow
+  the sibling modules of the SAME provider, never mix shapes within one
+  provider. Either way, a
   stale `.terraform.lock.hcl` silently freezes the resolved provider -- so
   when adding fields that need a newer provider, run `terraform init -upgrade`
   and confirm the lock file's resolved version, or `terraform validate` fails

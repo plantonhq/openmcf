@@ -30,7 +30,7 @@ Open the deployment store, find **GCP AlloyDB User**, and click **Deploy**. Star
 ### CLI
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAlloydbUser
 metadata:
   name: orders-app

@@ -305,4 +305,17 @@ message GcpCloudSchedulerJobSpec {
   // Controls exponential backoff behavior, maximum attempts, and
   // retry duration limits.
   GcpCloudSchedulerJobRetryConfig retry_config = 12;
+
+  // What destroying this resource does to the job:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the job is deleted and its schedule stops firing
+  //   "PREVENT" -- destroy FAILS; protects a job whose missed runs would
+  //                break downstream systems
+  //   "ABANDON" -- the job is removed from management but keeps firing on
+  //                schedule in GCP
+  string deletion_policy = 13 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

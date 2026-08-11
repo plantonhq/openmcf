@@ -83,6 +83,10 @@ func serviceNetworkingConnection(ctx *pulumi.Context, locals *Locals, gcpProvide
 	if spec.UpdateOnCreationFail {
 		args.UpdateOnCreationFail = pulumi.BoolPtr(true)
 	}
+	// Empty defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
 
 	createdConnection, err := servicenetworking.NewConnection(ctx, "connection", args,
 		pulumi.Provider(gcpProvider),

@@ -195,4 +195,24 @@ message GcpKmsKeySpec {
   // fleet queries. Merged with Planton's platform labels (which win on
   // key conflicts). Mutable in place.
   map<string, string> labels = 10;
+
+  // What destroying this resource does to the key. KMS keys can NEVER be
+  // deleted from GCP — only their versions can — so the choice here is
+  // about the versions, and it is the most consequential destroy switch
+  // in this spec:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- EVERY key version is scheduled for destruction (after
+  //                destroy_scheduled_duration) and rotation is disabled;
+  //                data encrypted under this key becomes UNRECOVERABLE
+  //                once the versions are destroyed. The key shell remains
+  //                in the project.
+  //   "PREVENT" -- destroy FAILS; the right default posture for any key
+  //                protecting data you cannot afford to lose
+  //   "ABANDON" -- the key leaves management with every version intact
+  //                and enabled — encrypted data stays decryptable
+  string deletion_policy = 11 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

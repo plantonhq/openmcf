@@ -1,0 +1,11 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringNotificationChannel
+metadata:
+  name: slack-alerts
+spec:
+  type: slack
+  channelLabels:
+    channel_name: "#alerts"
+  sensitiveLabels:
+    authToken: xoxb-your-slack-app-token
+  description: Posts incidents into the #alerts Slack channel

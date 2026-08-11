@@ -1,0 +1,59 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIamDenyPolicy
+metadata:
+  name: my-sample-deny-policy
+spec:
+  # Where the policy attaches — at most ONE of projectId, folderId, or
+  # organizationId; the policy applies to the attach point and everything
+  # below it. Omit the whole message to attach to the provider's default
+  # project. The module renders the URL-ENCODED full resource name GCP's
+  # API expects, so manifests never hand-assemble it.
+  parent:
+    projectId:
+      value: my-gcp-project-123
+    # folderId: "987654321098"          # attach to a folder instead
+    # organizationId: "123456789012"    # attach to the organization instead
+
+  # The policy's resource ID (the last segment of its name). Defaults to
+  # metadata.name when omitted. Immutable: changing it destroys and
+  # recreates the policy.
+  policyName: my-sample-deny-policy
+
+  # Shown in consoles.
+  displayName: Sample deny policy
+
+  # The deny rules (min 1). Deny always outranks allow — a permission
+  # denied here cannot be used even by a project owner.
+  rules:
+    - # What this rule guards and why — for the operator auditing later.
+      description: Nobody reads secret versions except the break-glass account
+      denyRule:
+        # Identities denied, in the v2 principal formats
+        # (principalSet://goog/public:all, principal://goog/subject/{email},
+        # principalSet://goog/group/{email}, ...).
+        deniedPrincipals:
+          - principalSet://goog/public:all
+        # Identities EXCLUDED from the rule even when deniedPrincipals
+        # covers them — the break-glass carve-out.
+        exceptionPrincipals:
+          - principal://iam.googleapis.com/projects/-/serviceAccounts/break-glass@my-gcp-project-123.iam.gserviceaccount.com
+        # Permissions denied, as {service-fqdn}/{resource}.{verb}. Only
+        # permissions on Google's supported-permissions list.
+        deniedPermissions:
+          - secretmanager.googleapis.com/versions.access
+          - secretmanager.googleapis.com/versions.destroy
+        # Permissions EXCLUDED from deniedPermissions — a permission in
+        # both lists is NOT denied.
+        exceptionPermissions:
+          - secretmanager.googleapis.com/versions.destroy
+        # Optional CEL condition on resource tags scoping when the denial
+        # applies. The tag key is namespaced by the org's numeric ID.
+        denialCondition:
+          expression: "!resource.matchTag('12345678/env', 'sandbox')"
+          title: exempt-sandboxes
+          description: Denial applies everywhere except sandbox-tagged resources
+
+  # What a destroy does: DELETE (default), PREVENT, or ABANDON. Prefer
+  # PREVENT for production guardrails — silently removing a deny policy
+  # re-opens the surface it guards.
+  deletionPolicy: DELETE

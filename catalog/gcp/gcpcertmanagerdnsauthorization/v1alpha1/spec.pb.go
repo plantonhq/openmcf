@@ -72,9 +72,20 @@ type GcpCertManagerDnsAuthorizationSpec struct {
 	// User labels merged onto the authorization beneath the platform's
 	// attribution labels (platform keys win on conflicts).
 	// Keys/values: lowercase letters, digits, underscores, hyphens.
-	Labels        map[string]string `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Labels map[string]string `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy — what happens when this resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the authorization is deleted (certificates already
+	//	             issued against it keep serving; renewal for domains
+	//	             not yet serving through the LB stops validating)
+	//	"PREVENT" -- destroy FAILS; protects the validation chain a
+	//	             certificate migration depends on
+	//	"ABANDON" -- the authorization is removed from management but
+	//	             left in GCP, still validating its domain
+	DeletionPolicy string `protobuf:"bytes,8,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpCertManagerDnsAuthorizationSpec) Reset() {
@@ -156,11 +167,18 @@ func (x *GcpCertManagerDnsAuthorizationSpec) GetLabels() map[string]string {
 	return nil
 }
 
+func (x *GcpCertManagerDnsAuthorizationSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpcertmanagerdnsauthorization_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpcertmanagerdnsauthorization_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	">catalog/gcp/gcpcertmanagerdnsauthorization/v1alpha1/spec.proto\x127dev.planton.gcp.gcpcertmanagerdnsauthorization.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x95\b\n" +
+	">catalog/gcp/gcpcertmanagerdnsauthorization/v1alpha1/spec.proto\x127dev.planton.gcp.gcpcertmanagerdnsauthorization.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xd3\t\n" +
 	"\"GcpCertManagerDnsAuthorizationSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x8b\x02\n" +
@@ -173,7 +191,9 @@ const file_catalog_gcp_gcpcertmanagerdnsauthorization_v1alpha1_spec_proto_rawDes
 	"\x04type\x18\x06 \x01(\tB\x81\x01\xbaH~\xba\x01{\n" +
 	"\n" +
 	"type.valid\x12/type must be FIXED_RECORD or PER_PROJECT_RECORD\x1a<this == '' || this in ['FIXED_RECORD', 'PER_PROJECT_RECORD']R\x04type\x12\x7f\n" +
-	"\x06labels\x18\a \x03(\v2g.dev.planton.gcp.gcpcertmanagerdnsauthorization.v1alpha1.GcpCertManagerDnsAuthorizationSpec.LabelsEntryR\x06labels\x1a9\n" +
+	"\x06labels\x18\a \x03(\v2g.dev.planton.gcp.gcpcertmanagerdnsauthorization.v1alpha1.GcpCertManagerDnsAuthorizationSpec.LabelsEntryR\x06labels\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\b \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xc2\x03\n" +

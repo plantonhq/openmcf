@@ -10,8 +10,8 @@ spec:
   # both provisioners. The domain carries ${E2E_RUN_ID} so parallel runs and
   # re-runs never collide on the same hostname in audit logs.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # The 6.x-era proof predates this spec surface (deletion_policy) — the
+  # kind awaits live re-proof at the current shape.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 10

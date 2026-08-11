@@ -28,3 +28,6 @@ spec:
     autoscalingTargets:
       highPriorityCpuUtilizationPercent: 65
       storageUtilizationPercent: 80
+      # The total-CPU signal (user traffic + background maintenance).
+      totalCpuUtilizationPercent: 70
+  deletionPolicy: DELETE

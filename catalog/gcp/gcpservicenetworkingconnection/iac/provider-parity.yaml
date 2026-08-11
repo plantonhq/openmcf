@@ -1,0 +1,29 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+# The primary resource (google_service_networking_connection) needs no
+# entry: network, service, reserved_peering_ranges, update_on_creation_fail,
+# and deletion_policy all match their spec fields by name.
+resources:
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      servicenetworking.googleapis.com and compute.googleapis.com with
+      fixed arguments (disable_on_destroy false so destroying one
+      connection never disables the APIs project-wide); not spec surface.
+
+specExclusions:
+  # The connection itself carries no project argument -- GCP derives the
+  # owning project from the network. The spec's project_id exists only to
+  # scope the API-enablement plumbing (the internal google_project_service
+  # above) for the non-default-project case.
+  - field: spec.project_id
+    reason: >-
+      drives API enablement only -- the connection is addressed by the
+      network (GCP derives the owning project from it), and the provider
+      resource has no project argument

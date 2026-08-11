@@ -508,6 +508,47 @@ var _ = ginkgo.Describe("GcpCloudTasksQueueSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should accept each desired_state value", func() {
+		for _, v := range []string{"RUNNING", "PAUSED"} {
+			msg := minimal()
+			msg.Spec.DesiredState = v
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should reject an invalid desired_state", func() {
+		msg := minimal()
+		msg.Spec.DesiredState = "DISABLED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept each deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = v
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "KEEP"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept the explicit HTTP_METHOD_UNSPECIFIED sentinel", func() {
+		msg := minimal()
+		msg.Spec.HttpTarget = &GcpCloudTasksQueueHttpTarget{
+			HttpMethod: "HTTP_METHOD_UNSPECIFIED",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
 	// Verify proto is importable and not nil (compile-time sanity).
 	ginkgo.It("should produce a non-nil proto message", func() {
 		msg := minimal()

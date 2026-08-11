@@ -40,7 +40,7 @@ Open the deployment store, find **SSL Policy on Google Cloud**, and click **Depl
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSslPolicy
 metadata:
   name: modern-tls12
@@ -79,9 +79,11 @@ The InfraPipeline resolves the dependency graph, deploys the project first, then
 
 These are the most important decisions when configuring an SSL policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Cipher profile** -- COMPATIBLE allows the widest client range (GCP's default); MODERN drops broken ciphers while keeping broad reach — the recommended floor; RESTRICTED narrows to modern-guarantee ciphers for strict compliance; CUSTOM hand-picks exact suites via `customFeatures`. Untouched records no choice (COMPATIBLE applies). Mutable.
+**Cipher profile** -- COMPATIBLE allows the widest client range (GCP's default); MODERN drops broken ciphers while keeping broad reach — the recommended floor; RESTRICTED narrows to modern-guarantee ciphers for strict compliance; CUSTOM hand-picks exact suites via `customFeatures`; FIPS_202205 pins the FIPS 140-2/3 validated suite set and requires a `TLS_1_2` floor. Untouched records no choice (COMPATIBLE applies). Mutable.
 
-**Minimum TLS version** -- Raise to `TLS_1_2` for PCI DSS and modern compliance regimes. GCP has no maximum-version control — TLS 1.3 is always negotiable when the client supports it. Untouched records no choice (TLS 1.0 applies). Mutable.
+**Minimum TLS version** -- Raise to `TLS_1_2` for PCI DSS and modern compliance regimes; `TLS_1_3` is the strictest floor and requires the RESTRICTED profile. GCP has no maximum-version control — TLS 1.3 is always negotiable when the client supports it, whatever the floor. Untouched records no choice (TLS 1.0 applies). Mutable.
+
+**Post-quantum key exchange** -- A rollout stance for the X25519MLKEM768 hybrid group, not an on/off switch: `DEFAULT` follows GCP's own timeline, `ENABLED` opts in now, `DEFERRED` opts out until GCP's later mandatory date. Mutable.
 
 **Custom cipher suites** -- Required with, and only valid with, the CUSTOM profile: IANA-style suite names from GCP's supported set (unknown names are rejected at deploy). TLS 1.3 suites are never listable — GCP always enables them. A too-narrow list locks out real clients; prefer RESTRICTED unless a compliance regime names exact suites.
 

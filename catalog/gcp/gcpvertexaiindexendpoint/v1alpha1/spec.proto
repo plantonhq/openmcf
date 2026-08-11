@@ -5,6 +5,33 @@ package dev.planton.gcp.gcpvertexaiindexendpoint.v1alpha1;
 import "buf/validate/validate.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
 
+// GcpVertexAiIndexEndpointPscAutomationConfig asks Vertex AI to CREATE
+// the consumer-side PSC endpoint automatically: for each entry, GCP
+// provisions a forwarding rule and IP in the given project/network
+// pair, so consumers skip the manual forwarding-rule setup that
+// project_allowlist-only configurations require.
+message GcpVertexAiIndexEndpointPscAutomationConfig {
+  // VPC network where the PSC endpoint is created, as the full
+  // relative resource name projects/{project}/global/networks/{name}
+  // (the format the Vertex AI API requires) — a GcpVpcNetwork
+  // reference's self-link output is normalized to that form by both
+  // IaC modules. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
+  ];
+
+  // Project in which the PSC endpoint (forwarding rule) is created —
+  // a project ID; a GcpProject reference resolves to it. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+}
+
 // GcpVertexAiIndexEndpointPrivateServiceConnectConfig exposes the index
 // endpoint via Private Service Connect: consumer projects create
 // forwarding rules targeting the endpoint's service attachment (the
@@ -25,6 +52,14 @@ message GcpVertexAiIndexEndpointPrivateServiceConnectConfig {
   // endpoint's service attachment. Each entry is a GCP project ID or
   // project number. Immutable.
   repeated string project_allowlist = 2;
+
+  // PSC endpoints Vertex AI creates automatically in consumer
+  // projects/networks (instead of consumers wiring forwarding rules by
+  // hand). The provider documents this field as used by online
+  // inference (prediction) endpoints only — on index endpoints, prefer
+  // project_allowlist with consumer-managed forwarding rules until
+  // Google extends automation to vector search. Immutable.
+  repeated GcpVertexAiIndexEndpointPscAutomationConfig psc_automation_configs = 3;
 }
 
 // GcpVertexAiIndexEndpointSpec defines a Vertex AI Vector Search index
@@ -134,4 +169,32 @@ message GcpVertexAiIndexEndpointSpec {
   // platform's attribution labels; on key conflicts the platform
   // labels win. Mutable in place.
   map<string, string> labels = 8;
+
+  // Cloud KMS key for customer-managed encryption at rest (CMEK) of
+  // data on the endpoint's serving replicas, as the full key resource
+  // path
+  // projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
+  // — a GcpKmsKey reference resolves to it. The key must live in the
+  // same region as the endpoint, and the Vertex AI service agent needs
+  // roles/cloudkms.cryptoKeyEncrypterDecrypter on it. If omitted, data
+  // is encrypted with Google-managed keys. Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_name = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Deletion policy for the index endpoint — what happens when this
+  // resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the endpoint is deleted; every index deployed onto
+  //                it stops serving
+  //   "PREVENT" -- destroy FAILS; a guard for the serving surface all
+  //                of this endpoint's deployed indexes depend on
+  //   "ABANDON" -- the endpoint is removed from management but left
+  //                standing (and billing for its replicas) in GCP
+  string deletion_policy = 10 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

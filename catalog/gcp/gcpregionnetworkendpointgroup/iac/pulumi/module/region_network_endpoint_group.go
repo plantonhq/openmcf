@@ -124,6 +124,10 @@ func regionNetworkEndpointGroup(ctx *pulumi.Context, locals *Locals, gcpProvider
 		}
 		args.AppEngine = appEngine
 	}
+	// Empty defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
 
 	createdNeg, err := compute.NewRegionNetworkEndpointGroup(ctx, "region-network-endpoint-group", args,
 		pulumi.Provider(gcpProvider), pulumi.DependsOn([]pulumi.Resource{createdProjectService}))

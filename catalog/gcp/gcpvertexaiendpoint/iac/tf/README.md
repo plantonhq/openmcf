@@ -28,7 +28,6 @@ default project.
 |------|------|----------|-------------|
 | metadata | object | yes | Planton resource metadata |
 | spec | object | yes | GcpVertexAiEndpoint specification |
-| provider_config | object | no | GCP provider configuration |
 
 ## Outputs
 
@@ -59,4 +58,4 @@ the same endpoint ID on either engine.
 
 ## Provider Requirements
 
-- `hashicorp/google` ~> 6.0
+- `hashicorp/google` ~> 7.43

@@ -1,0 +1,70 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# One kind, two provider resources: GCP models global and regional SSL
+# certificates as separate API collections with an identical surface, so
+# the two resource blocks below mirror each other (the regional variant's
+# `region` name-matches spec.region).
+
+resources:
+  google_compute_ssl_certificate:
+    mappings:
+      # Renames: the spec says what each field IS where the provider
+      # inherits terser API names.
+      - spec: spec.certificate_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+    exclusions:
+      - arg: name_prefix
+        reason: >-
+          random-suffix name generation exists for create-before-destroy
+          rotation, and the catalog's rotation pattern is explicit
+          versioned names (the rotation-versioned-name preset) -- the
+          stable certificate_name contract every output and proxy
+          reference relies on; name_prefix without a hardcoded
+          create_before_destroy lifecycle would be a dead lever, and
+          hardcoding one would change destroy semantics for every user
+      - arg: private_key_wo
+        reason: >-
+          the write-only variant of the modeled private_key -- same key
+          material, differing only in Terraform-state hygiene; adopting
+          it would raise this one module's toolchain floor to
+          Terraform/OpenTofu >= 1.11 (write-only arguments), a divergence
+          from the catalog-wide assumption; re-evaluate when the catalog
+          declares a >= 1.11 floor
+      - arg: private_key_wo_version
+        reason: >-
+          the re-send trigger for private_key_wo; rides the same
+          judgment and re-evaluate trigger (see private_key_wo)
+
+  google_compute_region_ssl_certificate:
+    mappings:
+      - spec: spec.certificate_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+    exclusions:
+      - arg: name_prefix
+        reason: >-
+          same judgment as the global variant -- versioned-name rotation
+          is the catalog pattern (see google_compute_ssl_certificate)
+      - arg: private_key_wo
+        reason: >-
+          same judgment and re-evaluate trigger as the global variant
+          (see google_compute_ssl_certificate)
+      - arg: private_key_wo_version
+        reason: >-
+          same judgment and re-evaluate trigger as the global variant
+          (see google_compute_ssl_certificate)
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables compute.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      certificate never disables the API project-wide); not spec surface.

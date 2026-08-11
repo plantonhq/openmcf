@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpWorkloadIdentityPoolProviderSpec defines one external identity issuer
 trusted by a Workload Identity Pool — the piece that turns a pool into a
 working keyless-auth path. A pool holds many providers, one per issuer
@@ -63,6 +65,10 @@ spec:
   # The issuer — exactly one of aws / oidc / saml / x509
   oidc:
     issuerUri: https://token.actions.githubusercontent.com
+
+  # DELETE keeps destroys real; PREVENT belongs on providers live
+  # pipelines federate through (deletion also locks the ID ~30 days).
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -91,6 +97,7 @@ spec:
 | `spec.x509.trustStore.trustAnchors[].pemCertificate` | `string` | yes |  |  |
 | `spec.x509.trustStore.intermediateCas` | `[]GcpWorkloadIdentityPoolProviderIntermediateCa` |  |  |  |
 | `spec.x509.trustStore.intermediateCas[].pemCertificate` | `string` | yes |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -307,6 +314,22 @@ CA certificate (either root or intermediate cert). Public key material,
 not a secret.
 
 - rule: {"required":true}
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the provider — what happens when this resource is
+destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the provider is deleted (starts the ~30-day soft-delete
+               clock and blocks the ID from reuse until it expires)
+  "PREVENT" -- destroy FAILS; protects the keyless-auth path every
+               pipeline federating through this issuer depends on
+  "ABANDON" -- the provider is removed from management but keeps
+               exchanging tokens in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

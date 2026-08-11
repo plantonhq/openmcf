@@ -103,6 +103,10 @@ func serviceConnectionPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *g
 		}
 		args.PscConfig = pscConfig
 	}
+	// Empty defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
 
 	createdPolicy, err := networkconnectivity.NewServiceConnectionPolicy(ctx, "policy", args,
 		pulumi.Provider(gcpProvider),

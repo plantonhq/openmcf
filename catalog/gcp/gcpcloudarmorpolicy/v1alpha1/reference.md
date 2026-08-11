@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCloudArmorPolicySpec defines the configuration for a Google Cloud
 Armor security policy -- a WAF and DDoS protection layer that sits
 in front of backend services, load balancers, and CDN-enabled backends.
@@ -54,6 +56,13 @@ spec:
   advancedOptionsConfig:
     jsonParsing: STANDARD
     logLevel: VERBOSE
+    # Inspect deeper request bodies than the 8KB default.
+    requestBodyInspectionSize: 16KB
+  # User labels, merged with the platform labels.
+  labels:
+    team: security
+  # Ephemeral test fixture: delete the policy on destroy.
+  deletionPolicy: DELETE
   rules:
     - action: allow
       priority: 100
@@ -121,6 +130,7 @@ spec:
 | `spec.advancedOptionsConfig.userIpRequestHeaders` | `[]string` |  |  |  |
 | `spec.advancedOptionsConfig.jsonCustomConfig` | `GcpCloudArmorJsonCustomConfig` |  |  |  |
 | `spec.advancedOptionsConfig.jsonCustomConfig.contentTypes` | `[]string` | yes |  |  |
+| `spec.advancedOptionsConfig.requestBodyInspectionSize` | `string` |  |  |  |
 | `spec.recaptchaOptionsConfig` | `GcpCloudArmorRecaptchaOptionsConfig` |  |  |  |
 | `spec.recaptchaOptionsConfig.redirectSiteKey` | `string` | yes |  |  |
 | `spec.rules` | `[]GcpCloudArmorRule` |  |  |  |
@@ -176,6 +186,8 @@ spec:
 | `spec.rules[].preconfiguredWafConfig.exclusions[].requestQueryParams` | `[]GcpCloudArmorWafExclusionFieldParams` |  |  |  |
 | `spec.rules[].preconfiguredWafConfig.exclusions[].requestQueryParams[].operator` | `string` | yes |  |  |
 | `spec.rules[].preconfiguredWafConfig.exclusions[].requestQueryParams[].value` | `string` |  |  |  |
+| `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -397,6 +409,17 @@ Custom Content-Type header values to parse as JSON
 (e.g. "application/vnd.api+json").
 
 - rule: {"repeated":{"minItems":"1"}}
+
+### spec.advancedOptionsConfig.requestBodyInspectionSize
+
+`string`
+
+How much of each request body the WAF inspects. One of "8KB", "16KB",
+"32KB", "48KB", "64KB" (provider default 8KB). Larger sizes catch
+attacks buried deeper in POST bodies at higher processing cost; bodies
+beyond the limit pass uninspected. Mutable.
+
+- rule: request_body_inspection_size must be one of: 8KB, 16KB, 32KB, 48KB, 64KB
 
 ### spec.recaptchaOptionsConfig
 
@@ -886,6 +909,29 @@ Comparison operator for matching the field.
 
 Value to match against. Required unless operator is EQUALS_ANY
 (which matches any value for the given field).
+
+### spec.labels
+
+`map<string, string>`
+
+User labels attached to the security policy, merged with Planton's
+platform labels (which win on key conflicts). Mutable.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the security policy — what happens on destroy:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the policy and every rule in it are deleted (GCP
+               refuses while a backend service still attaches it);
+               the traffic it filtered flows unfiltered once detached
+  "PREVENT" -- destroy FAILS; protects the WAF/DDoS shield in front
+               of production backends
+  "ABANDON" -- the policy is removed from management but keeps
+               enforcing in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

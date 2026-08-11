@@ -25,6 +25,8 @@ resource "google_iam_workload_identity_pool_provider" "this" {
   attribute_mapping   = local.attribute_mapping
   attribute_condition = var.spec.attribute_condition
 
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   # Exactly one issuer arm renders (enforced by the variable validation); the
   # API enforces the same exclusivity server-side.
   dynamic "aws" {

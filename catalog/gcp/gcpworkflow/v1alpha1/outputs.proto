@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpworkflow.v1alpha1;
+
+// Outputs produced after provisioning a Cloud Workflows workflow.
+message GcpWorkflowStackOutputs {
+  // The full workflow resource name
+  // (projects/{project}/locations/{region}/workflows/{name}) — the value
+  // Eventarc consumes: a GcpEventarcTrigger's destination.workflow and a
+  // GcpEventarcMessageBus pipeline's destination.workflow both take
+  // exactly this form.
+  string workflow_id = 1;
+
+  // The short workflow name (the last segment of workflow_id).
+  string workflow_name = 2;
+
+  // The currently deployed revision (e.g. "000001-a4d"). A new revision is
+  // minted on every source / env-var / service-account change — compare
+  // across applies to confirm a deploy actually rolled.
+  string revision_id = 3;
+
+  // The workflow state reported by GCP ("ACTIVE" when deployable and
+  // executable; "UNAVAILABLE" while the underlying KMS key is unusable).
+  string state = 4;
+}

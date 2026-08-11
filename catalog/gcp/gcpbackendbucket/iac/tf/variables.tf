@@ -75,6 +75,14 @@ variable "spec" {
       name      = string
       key_value = string
     })), [])
+
+    # Resource Manager tags bound at create time (tagKeys/{id} ->
+    # tagValues/{id}). Immutable.
+    resource_manager_tags = optional(map(string), {})
+
+    # DELETE (default), PREVENT, or ABANDON — one switch governing destroy
+    # for the backend bucket AND its signed-URL keys.
+    deletion_policy = optional(string, "")
   })
 
   # NOTE: never guard optional strings with coalesce() here — HCL's coalesce

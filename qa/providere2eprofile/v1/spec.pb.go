@@ -215,8 +215,19 @@ type ProviderE2EProfileSpec struct {
 	GithubEnvironment string `protobuf:"bytes,6,opt,name=github_environment,json=githubEnvironment,proto3" json:"github_environment,omitempty"`
 	// Maximum number of parallel test cells for this provider.
 	MaxConcurrentTests int32 `protobuf:"varint,7,opt,name=max_concurrent_tests,json=maxConcurrentTests,proto3" json:"max_concurrent_tests,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// When true, every component lifecycle gains an IDEMPOTENCY phase right
+	// after DEPLOY: the runner re-plans the just-applied configuration
+	// (terraform plan -detailed-exitcode / pulumi preview --expect-no-changes)
+	// and fails the lane if any change is still pending. A dirty second plan
+	// means the module and the provider disagree about the applied state —
+	// the send-omitted-value and Optional+Computed echo defect classes — which
+	// otherwise surface as perpetual diffs on users' own re-applies. Scoped to
+	// the component under test; prerequisite fixtures are exempt (they belong
+	// to other kinds' contracts). Providers arm this once their catalog's
+	// no-op re-plan classes are burned down.
+	AssertApplyIdempotency bool `protobuf:"varint,8,opt,name=assert_apply_idempotency,json=assertApplyIdempotency,proto3" json:"assert_apply_idempotency,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ProviderE2EProfileSpec) Reset() {
@@ -298,11 +309,18 @@ func (x *ProviderE2EProfileSpec) GetMaxConcurrentTests() int32 {
 	return 0
 }
 
+func (x *ProviderE2EProfileSpec) GetAssertApplyIdempotency() bool {
+	if x != nil {
+		return x.AssertApplyIdempotency
+	}
+	return false
+}
+
 var File_qa_providere2eprofile_v1_spec_proto protoreflect.FileDescriptor
 
 const file_qa_providere2eprofile_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"#qa/providere2eprofile/v1/spec.proto\x12$dev.planton.qa.providere2eprofile.v1\x1a\x1aqa/shared/cost_class.proto\"\xab\a\n" +
+	"#qa/providere2eprofile/v1/spec.proto\x12$dev.planton.qa.providere2eprofile.v1\x1a\x1aqa/shared/cost_class.proto\"\xe5\a\n" +
 	"\x16ProviderE2EProfileSpec\x12\x80\x01\n" +
 	"\x13credential_approach\x18\x01 \x01(\x0e2O.dev.planton.qa.providere2eprofile.v1.ProviderE2EProfileSpec.CredentialApproachR\x12credentialApproach\x12q\n" +
 	"\x0etest_substrate\x18\x02 \x01(\x0e2J.dev.planton.qa.providere2eprofile.v1.ProviderE2EProfileSpec.TestSubstrateR\rtestSubstrate\x12N\n" +
@@ -310,7 +328,8 @@ const file_qa_providere2eprofile_v1_spec_proto_rawDesc = "" +
 	"\x15default_schedule_lane\x18\x04 \x01(\x0e2I.dev.planton.qa.providere2eprofile.v1.ProviderE2EProfileSpec.ScheduleLaneR\x13defaultScheduleLane\x12%\n" +
 	"\x0erequired_tools\x18\x05 \x03(\tR\rrequiredTools\x12-\n" +
 	"\x12github_environment\x18\x06 \x01(\tR\x11githubEnvironment\x120\n" +
-	"\x14max_concurrent_tests\x18\a \x01(\x05R\x12maxConcurrentTests\"\x86\x01\n" +
+	"\x14max_concurrent_tests\x18\a \x01(\x05R\x12maxConcurrentTests\x128\n" +
+	"\x18assert_apply_idempotency\x18\b \x01(\bR\x16assertApplyIdempotency\"\x86\x01\n" +
 	"\x12CredentialApproach\x12#\n" +
 	"\x1fcredential_approach_unspecified\x10\x00\x12\b\n" +
 	"\x04none\x10\x01\x12\b\n" +

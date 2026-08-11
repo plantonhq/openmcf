@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpmonitoringdashboard
+spec:
+  # Two scenarios: minimal (one-chart grid dashboard) and multi-widget
+  # (a mosaic golden-signals page). Dashboards are free, create in
+  # seconds, and hold no data — deploy -> dashboards.get verify ->
+  # destroy -> verify gone, on both provisioners. PROVEN live 4/4 lanes
+  # (both scenarios x both engines); the JSON normalization echo is
+  # clean — the IDEMPOTENCY phase (re-plan after apply) passed on every
+  # lane, mosaic arm included.
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 15

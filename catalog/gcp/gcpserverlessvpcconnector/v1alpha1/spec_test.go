@@ -272,4 +272,20 @@ var _ = Describe("GcpServerlessVpcConnectorSpec validations", func() {
 			Expect(protovalidate.Validate(spec)).To(BeNil())
 		})
 	})
+
+	Context("Deletion policy", func() {
+		It("accepts each deletion_policy value", func() {
+			for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+				spec := makeValidSpec()
+				spec.DeletionPolicy = v
+				Expect(protovalidate.Validate(spec)).To(BeNil())
+			}
+		})
+
+		It("rejects an invalid deletion_policy", func() {
+			spec := makeValidSpec()
+			spec.DeletionPolicy = "KEEP"
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+	})
 })

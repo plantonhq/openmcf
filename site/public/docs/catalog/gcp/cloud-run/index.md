@@ -117,7 +117,13 @@ The InfraPipeline resolves the dependency graph, deploys the project, VPC, and s
 
 These are the most important decisions when configuring a Cloud Run service. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Containers** -- The `containers` list holds the serving container plus any sidecars (log collectors, auth proxies); exactly one container may declare a `ports.containerPort` (injected as `$PORT`). Per-container `resources` set CPU/memory and the two cost levers: `cpuIdle` (request-based vs instance-based billing) and `startupCpuBoost` (faster cold starts for JIT-heavy runtimes). Startup and liveness probes gate first traffic and restart unhealthy instances (TCP checks are startup-only).
+**Containers** -- The `containers` list holds the serving container plus any sidecars (log collectors, auth proxies); exactly one container may declare a `ports.containerPort` (injected as `$PORT`). Per-container `resources` set CPU/memory and the two cost levers: `cpuIdle` (request-based vs instance-based billing) and `startupCpuBoost` (faster cold starts for JIT-heavy runtimes).
+
+**Health checking** -- Three probe types, each modeled with exactly the shape the API accepts: the startup probe (HTTP/TCP/gRPC) gates first traffic within a 240-second window, the liveness probe (HTTP/gRPC) restarts unhealthy instances, and the readiness probe (HTTP/gRPC) pulls a failing instance from serving -- and re-admits it after `successThreshold` consecutive successes -- without restarting it. `healthCheckDisabled` switches all probing off for workloads whose serving model breaks the probe contract.
+
+**Deploy from source** -- `buildConfig` runs the Cloud Run functions build path: point `sourceLocation` at a Cloud Storage source archive and Cloud Build produces the serving image (optionally in a private `workerPool`, as a dedicated build `serviceAccount`, with build-time `environmentVariables`). Pair `enableAutomaticUpdates` with the containers' `baseImageUri` for managed OS/runtime patching without redeploys.
+
+**Multi-region and front doors** -- `multiRegionSettings.regions` turns the service into one identity serving from several regions (set `region: global`). `iapEnabled` puts Google's Identity-Aware Proxy in front of the service; `defaultUriDisabled` removes the default *.run.app URL so custom-domain or load-balancer paths are the only front doors.
 
 **Scaling and performance** -- `scaling.minInstanceCount` keeps instances warm (eliminates cold starts at idle cost) and `scaling.maxInstanceCount` caps scale-out. `maxInstanceRequestConcurrency` decides how many requests one instance serves before scale-out; `timeoutSeconds` bounds each request. `serviceScaling.scalingMode: MANUAL` pins the total instance count -- an emergency brake or load-test lever.
 

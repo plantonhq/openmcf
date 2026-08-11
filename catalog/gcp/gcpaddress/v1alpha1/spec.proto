@@ -165,4 +165,31 @@ message GcpAddressSpec {
     message: "ipv6_endpoint_type must be empty, VM, or NETLB"
     expression: "this == '' || this in ['VM', 'NETLB']"
   }];
+
+  // User labels attached to the reserved address, merged with Planton's
+  // platform labels (which win on key conflicts). The one mutable surface on
+  // this resource — every other change destroys and re-reserves the address.
+  map<string, string> labels = 14;
+
+  // Source of externally provisioned (BYOIP) addresses: a
+  // PublicDelegatedPrefix in full or partial URL form, e.g.
+  // "projects/{project}/regions/{region}/publicDelegatedPrefixes/{pdp-name}".
+  // An IPv4 PDP must support enhanced IPv4 allocations; an IPv6 PDP must be
+  // in EXTERNAL_IPV6_FORWARDING_RULE_CREATION mode. Only meaningful for
+  // EXTERNAL addresses. Create-time only: changing it re-reserves.
+  string ip_collection = 15 [(buf.validate.field).string.max_len = 2048];
+
+  // Deletion policy for the reserved address — what happens on destroy:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the reservation is released; the IP returns to Google's
+  //                pool (an external static IP is gone for good)
+  //   "PREVENT" -- destroy FAILS; protects an IP that DNS records or
+  //                allow-lists outside GCP may still point at
+  //   "ABANDON" -- the reservation is removed from management but stays
+  //                reserved (and billed while unattached) in GCP
+  string deletion_policy = 16 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

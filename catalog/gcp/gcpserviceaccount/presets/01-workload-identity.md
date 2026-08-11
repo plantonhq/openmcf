@@ -10,7 +10,7 @@ This preset creates a GCP service account designed for GKE Workload Identity. No
 
 ## Key Configuration Choices
 
-- **No key** (`createKey: false`) -- Workload Identity eliminates exported keys, reducing secret sprawl
+- **No key** (no `userManagedKey` block) -- Workload Identity eliminates exported keys, reducing secret sprawl
 - **Logging** (`roles/logging.logWriter`) -- write application logs to Cloud Logging
 - **Monitoring** (`roles/monitoring.metricWriter`) -- write custom metrics to Cloud Monitoring
 - **Secrets** (`roles/secretmanager.secretAccessor`) -- read secrets from Secret Manager

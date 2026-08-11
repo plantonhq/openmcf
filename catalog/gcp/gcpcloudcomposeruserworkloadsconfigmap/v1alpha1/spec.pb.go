@@ -54,9 +54,20 @@ type GcpCloudComposerUserWorkloadsConfigMapSpec struct {
 	// number. Immutable after creation.
 	ConfigMapName string `protobuf:"bytes,4,opt,name=config_map_name,json=configMapName,proto3" json:"config_map_name,omitempty"`
 	// The ConfigMap's key-value entries (plain configuration data).
-	Data          map[string]string `protobuf:"bytes,5,rep,name=data,proto3" json:"data,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Data map[string]string `protobuf:"bytes,5,rep,name=data,proto3" json:"data,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the ConfigMap — what happens when this resource
+	// is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the Kubernetes ConfigMap is removed from the
+	//	             environment; DAGs consuming it start failing
+	//	"PREVENT" -- destroy FAILS; protects configuration live pipelines
+	//	             depend on from riding along with a stack teardown
+	//	"ABANDON" -- the ConfigMap is removed from management but stays
+	//	             in the environment's cluster
+	DeletionPolicy string `protobuf:"bytes,6,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpCloudComposerUserWorkloadsConfigMapSpec) Reset() {
@@ -124,18 +135,27 @@ func (x *GcpCloudComposerUserWorkloadsConfigMapSpec) GetData() map[string]string
 	return nil
 }
 
+func (x *GcpCloudComposerUserWorkloadsConfigMapSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpcloudcomposeruserworkloadsconfigmap_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpcloudcomposeruserworkloadsconfigmap_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fcatalog/gcp/gcpcloudcomposeruserworkloadsconfigmap/v1alpha1/spec.proto\x12?dev.planton.gcp.gcpcloudcomposeruserworkloadsconfigmap.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x87\x05\n" +
+	"Fcatalog/gcp/gcpcloudcomposeruserworkloadsconfigmap/v1alpha1/spec.proto\x12?dev.planton.gcp.gcpcloudcomposeruserworkloadsconfigmap.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xc5\x06\n" +
 	"*GcpCloudComposerUserWorkloadsConfigMapSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
 	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12\x84\x01\n" +
 	"\venvironment\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x18\x92\xd4a\x1fstatus.outputs.environment_nameR\venvironment\x12S\n" +
 	"\x0fconfig_map_name\x18\x04 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\rconfigMapName\x12\x93\x01\n" +
-	"\x04data\x18\x05 \x03(\v2u.dev.planton.gcp.gcpcloudcomposeruserworkloadsconfigmap.v1alpha1.GcpCloudComposerUserWorkloadsConfigMapSpec.DataEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\x04data\x1a7\n" +
+	"\x04data\x18\x05 \x03(\v2u.dev.planton.gcp.gcpcloudcomposeruserworkloadsconfigmap.v1alpha1.GcpCloudComposerUserWorkloadsConfigMapSpec.DataEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\x04data\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x06 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xfb\x03\n" +

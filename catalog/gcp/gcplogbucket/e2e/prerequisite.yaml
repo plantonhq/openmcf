@@ -1,0 +1,26 @@
+# Published install profile: consumers (a bucket-scoped GcpLogMetric's
+# bucket_name reference, a GcpLoggingSink routing into a managed bucket)
+# attach in their chains. Kept schema-free so the profile is a pure leaf.
+# The cloud-side bucket_id carries ${E2E_RUN_ID} (the Logging API holds
+# deleted buckets in a 7-day DELETE_REQUESTED state — fixed IDs collide
+# with their own previous runs); metadata.name stays fixed for FK
+# resolution.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLogBucket
+metadata:
+  name: planton-oss-e2e-gcplogbk-prereq
+  id: planton-oss-e2e-gcplogbk-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcplogbucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  bucketId: e2e-logbk-prereq-${E2E_RUN_ID}
+  retentionDays: 30
+  description: E2E prerequisite bucket — consumers attach in their chains.
+  deletionPolicy: DELETE
