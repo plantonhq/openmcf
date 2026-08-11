@@ -48,12 +48,12 @@ variable "spec" {
     })
 
     service_config = optional(object({
-      service_account_email             = optional(string, "")
-      available_memory                  = optional(string, "")
-      available_cpu                     = optional(string, "")
-      timeout_seconds                   = optional(number, null)
-      max_instance_request_concurrency  = optional(number, null)
-      environment_variables             = optional(map(string), {})
+      service_account_email            = optional(string, "")
+      available_memory                 = optional(string, "")
+      available_cpu                    = optional(string, "")
+      timeout_seconds                  = optional(number, null)
+      max_instance_request_concurrency = optional(number, null)
+      environment_variables            = optional(map(string), {})
       secret_environment_variables = optional(list(object({
         key        = string
         secret     = string
@@ -69,9 +69,9 @@ variable "spec" {
           path    = string
         })), [])
       })), [])
-      vpc_connector                  = optional(string, "")
-      vpc_connector_egress_settings  = optional(string, "")
-      ingress_settings               = optional(string, "")
+      vpc_connector                 = optional(string, "")
+      vpc_connector_egress_settings = optional(string, "")
+      ingress_settings              = optional(string, "")
       scaling = optional(object({
         min_instance_count = optional(number, null)
         max_instance_count = optional(number, null)
@@ -79,6 +79,18 @@ variable "spec" {
       all_traffic_on_latest_revision = optional(bool, true)
       binary_authorization_policy    = optional(string, "")
       allow_unauthenticated          = optional(bool, false)
+
+      # Direct VPC egress — the connectorless alternative to
+      # vpc_connector (mutually exclusive with it, enforced pre-deploy).
+      direct_vpc_network_interface = optional(object({
+        network    = optional(string, "")
+        subnetwork = optional(string, "")
+        tags       = optional(list(string), [])
+      }), null)
+
+      # PRIVATE_RANGES_ONLY (default) or ALL_TRAFFIC; only meaningful
+      # with direct_vpc_network_interface.
+      direct_vpc_egress = optional(string, "")
     }), null)
 
     trigger = optional(object({
@@ -96,5 +108,9 @@ variable "spec" {
         service_account_email = optional(string, "")
       }), null)
     }), null)
+
+    # DELETE (default) removes the function on destroy; PREVENT fails the
+    # destroy; ABANDON leaves the function serving and consuming events.
+    deletion_policy = optional(string, "")
   })
 }

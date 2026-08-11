@@ -31,3 +31,6 @@ spec:
         name: planton-oss-e2e-gcpmssl-prereq
         fieldPath: status.outputs.self_link
   quicOverride: NONE
+  # Explicit DELETE keeps the destroy real and proves the no-op-diff
+  # behavior of the new arm.
+  deletionPolicy: DELETE

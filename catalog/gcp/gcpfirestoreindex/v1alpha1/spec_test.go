@@ -127,7 +127,156 @@ var _ = ginkgo.Describe("GcpFirestoreIndexSpec", func() {
 		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
 	})
 
+	// The MongoDB-compatible scope requires an explicit COLLECTION_GROUP
+	// query scope (API-enforced; the COLLECTION default is rejected).
+	ginkgo.It("should accept MONGODB_COMPATIBLE_API api_scope with COLLECTION_GROUP", func() {
+		msg := minimal()
+		msg.Spec.ApiScope = proto.String("MONGODB_COMPATIBLE_API")
+		msg.Spec.QueryScope = proto.String("COLLECTION_GROUP")
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept a multikey index under the MongoDB-compatible scope", func() {
+		msg := minimal()
+		msg.Spec.ApiScope = proto.String("MONGODB_COMPATIBLE_API")
+		msg.Spec.QueryScope = proto.String("COLLECTION_GROUP")
+		msg.Spec.Multikey = true
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept a unique index and skip_wait", func() {
+		msg := minimal()
+		msg.Spec.Unique = true
+		msg.Spec.SkipWait = true
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept each valid deletion_policy value", func() {
+		for _, policy := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = policy
+			gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should accept a text search field", func() {
+		msg := minimal()
+		msg.Spec.ApiScope = proto.String("MONGODB_COMPATIBLE_API")
+		msg.Spec.QueryScope = proto.String("COLLECTION_GROUP")
+		msg.Spec.Fields = []*GcpFirestoreIndexField{
+			{
+				FieldPath: "description",
+				SearchConfig: &GcpFirestoreIndexSearchConfig{
+					TextSpec: &GcpFirestoreIndexTextSpec{
+						IndexSpecs: []*GcpFirestoreIndexTextIndexSpec{
+							{IndexType: "TOKENIZED", MatchType: "MATCH_GLOBALLY"},
+						},
+					},
+				},
+			},
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept a geo search field under the default scope", func() {
+		msg := minimal()
+		msg.Spec.Fields = []*GcpFirestoreIndexField{
+			{
+				FieldPath: "location",
+				SearchConfig: &GcpFirestoreIndexSearchConfig{
+					GeoSpec: &GcpFirestoreIndexGeoSpec{GeoJsonIndexingDisabled: true},
+				},
+			},
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
 	// ──────────────── Negative Cases ────────────────
+
+	ginkgo.It("should reject multikey outside the MongoDB-compatible scope", func() {
+		msg := minimal()
+		msg.Spec.Multikey = true
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("MONGODB_COMPATIBLE_API"))
+	})
+
+	ginkgo.It("should reject the MongoDB-compatible scope without COLLECTION_GROUP", func() {
+		msg := minimal()
+		msg.Spec.ApiScope = proto.String("MONGODB_COMPATIBLE_API")
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("COLLECTION_GROUP"))
+	})
+
+	// The API rejects indexes mixing search and non-search fields.
+	ginkgo.It("should reject mixed search and non-search fields", func() {
+		msg := minimal()
+		msg.Spec.ApiScope = proto.String("MONGODB_COMPATIBLE_API")
+		msg.Spec.QueryScope = proto.String("COLLECTION_GROUP")
+		msg.Spec.Fields = []*GcpFirestoreIndexField{
+			{FieldPath: "category", Order: "ASCENDING"},
+			{
+				FieldPath: "title",
+				SearchConfig: &GcpFirestoreIndexSearchConfig{
+					TextSpec: &GcpFirestoreIndexTextSpec{
+						IndexSpecs: []*GcpFirestoreIndexTextIndexSpec{
+							{IndexType: "TOKENIZED", MatchType: "MATCH_GLOBALLY"},
+						},
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("search"))
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "KEEP"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an empty search_config (neither text nor geo)", func() {
+		msg := minimal()
+		msg.Spec.Fields = []*GcpFirestoreIndexField{
+			{FieldPath: "description", SearchConfig: &GcpFirestoreIndexSearchConfig{}},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a text_spec without index_specs", func() {
+		msg := minimal()
+		msg.Spec.Fields = []*GcpFirestoreIndexField{
+			{
+				FieldPath: "description",
+				SearchConfig: &GcpFirestoreIndexSearchConfig{
+					TextSpec: &GcpFirestoreIndexTextSpec{},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject search_config combined with order (two roles)", func() {
+		msg := minimal()
+		msg.Spec.Fields = []*GcpFirestoreIndexField{
+			{
+				FieldPath: "description",
+				Order:     "ASCENDING",
+				SearchConfig: &GcpFirestoreIndexSearchConfig{
+					GeoSpec: &GcpFirestoreIndexGeoSpec{},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("exactly one of order"))
+	})
 
 	ginkgo.It("should reject a missing collection", func() {
 		msg := minimal()

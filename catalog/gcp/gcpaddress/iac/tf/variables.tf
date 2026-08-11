@@ -59,5 +59,17 @@ variable "spec" {
 
     # VM or NETLB — external IPv6 endpoint type. Immutable.
     ipv6_endpoint_type = optional(string, "")
+
+    # User labels merged with the platform labels (platform wins on key
+    # conflicts). The one mutable surface on this resource.
+    labels = optional(map(string), {})
+
+    # BYOIP source: a PublicDelegatedPrefix URL for EXTERNAL addresses.
+    # Immutable.
+    ip_collection = optional(string, "")
+
+    # DELETE (default), PREVENT, or ABANDON — what destroy does to the
+    # reservation.
+    deletion_policy = optional(string, "")
   })
 }

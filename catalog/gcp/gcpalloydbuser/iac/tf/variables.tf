@@ -23,5 +23,9 @@ variable "spec" {
     password  = optional(string, "")
 
     database_roles = optional(list(string), [])
+
+    # What happens to the user in GCP on destroy:
+    # DELETE (provider default), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
   })
 }

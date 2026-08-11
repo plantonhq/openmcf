@@ -1,0 +1,49 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringUptimeCheck
+metadata:
+  name: my-sample-uptime-check
+spec:
+  # GCP project that owns the uptime check.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Shown in the Cloud Monitoring console; omit to default to
+  # metadata.name.
+  displayName: Website HTTPS availability
+
+  # Max wait for the probe before recording a failure (1s-60s).
+  timeout: 10s
+
+  # Cadence: 60s, 300s (default), 600s, or 900s — the only values GCP
+  # accepts.
+  period: 300s
+
+  # The canonical public-URL target: probe https://example.com/.
+  monitoredResource:
+    type: uptime_url
+    labels:
+      host: example.com
+
+  # HTTPS probe with certificate validation — an expired certificate
+  # fails the probe instead of passing silently.
+  httpCheck:
+    path: /
+    useSsl: true
+    validateSsl: true
+
+  # Fail the probe when the body lacks the marker, even on a 200 — the
+  # lying-error-page guard.
+  contentMatchers:
+    - content: Example Domain
+      matcher: CONTAINS_STRING
+
+  # Log failed probes to Cloud Logging for diagnosis.
+  logCheckFailures: true
+
+  # User metadata labels, merged with Planton's platform labels.
+  labels:
+    team: platform
+
+  # What a destroy does: DELETE (default), PREVENT, or ABANDON.
+  deletionPolicy: DELETE

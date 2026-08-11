@@ -406,11 +406,83 @@ var _ = ginkgo.Describe("GcpPubSubSubscriptionSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject a message transform missing javascript_udf", func() {
+	ginkgo.It("should reject a message transform with no transform arm", func() {
 		msg := minimal()
 		msg.Spec.MessageTransforms = []*GcpPubSubSubscriptionMessageTransform{
 			{Disabled: true},
 		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept an ai_inference message transform", func() {
+		msg := minimal()
+		msg.Spec.MessageTransforms = []*GcpPubSubSubscriptionMessageTransform{
+			{
+				AiInference: &GcpPubSubSubscriptionMessageTransformAiInference{
+					Endpoint:            svr("projects/my-project/locations/us-central1/endpoints/1234567890"),
+					ServiceAccountEmail: svr("sa@project.iam.gserviceaccount.com"),
+					UnstructuredInference: &GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference{
+						Parameters: map[string]string{"temperature": "0.2"},
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a message transform with both javascript_udf and ai_inference", func() {
+		msg := minimal()
+		msg.Spec.MessageTransforms = []*GcpPubSubSubscriptionMessageTransform{
+			{
+				JavascriptUdf: &GcpPubSubSubscriptionMessageTransformJavascriptUdf{
+					FunctionName: "f",
+					Code:         "function f(message, metadata) { return message; }",
+				},
+				AiInference: &GcpPubSubSubscriptionMessageTransformAiInference{
+					Endpoint: svr("projects/my-project/locations/us-central1/endpoints/1234567890"),
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an ai_inference transform missing endpoint", func() {
+		msg := minimal()
+		msg.Spec.MessageTransforms = []*GcpPubSubSubscriptionMessageTransform{
+			{
+				AiInference: &GcpPubSubSubscriptionMessageTransformAiInference{
+					ServiceAccountEmail: svr("sa@project.iam.gserviceaccount.com"),
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept resource manager tags", func() {
+		msg := minimal()
+		msg.Spec.ResourceManagerTags = map[string]string{
+			"tagKeys/123456789": "tagValues/987654321",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept each valid deletion_policy value", func() {
+		for _, policy := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = policy
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "deletion_policy %q should be accepted", policy)
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy value", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "KEEP"
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})

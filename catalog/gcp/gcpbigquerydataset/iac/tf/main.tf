@@ -16,6 +16,10 @@ resource "google_bigquery_dataset" "this" {
   project    = local.project_id
   location   = var.spec.location
 
+  # DELETE (provider default) removes the dataset on destroy; PREVENT
+  # fails the destroy; ABANDON leaves the dataset serving in GCP.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   friendly_name                   = local.friendly_name
   description                     = local.description
   default_table_expiration_ms     = local.default_table_expiration_ms

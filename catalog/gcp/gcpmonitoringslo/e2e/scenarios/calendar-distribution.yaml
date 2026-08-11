@@ -1,0 +1,33 @@
+# Calendar-period + distribution-cut GcpMonitoringSlo scenario: the
+# latency-SLO shape — a distribution cut with an explicit slo_id and a
+# calendar MONTH budget on a second custom service. Proves the other
+# period arm, the distribution SLI family, the optional-bound range
+# rendering (max only — min stays unbounded), and slo_id pinning.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringSlo
+metadata:
+  name: planton-oss-e2e-gcpslo-latency
+  id: planton-oss-e2e-gcpslo-latency
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmonitoringslo
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  service:
+    customService:
+      displayName: E2E latency service
+  sloId: e2e-latency-slo
+  goal: 0.95
+  calendarPeriod: MONTH
+  sli:
+    requestBasedSli:
+      distributionCut:
+        distributionFilter: metric.type="loadbalancing.googleapis.com/https/total_latencies" resource.type="https_lb_rule"
+        range:
+          max: 500
+  deletionPolicy: DELETE

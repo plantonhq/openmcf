@@ -366,11 +366,13 @@ func DeployDependencies(ctx context.Context, repoRoot, componentProvider, compon
 		for docIndex, docPath := range docPaths {
 			docDep := Dependency{KindSlug: dep.KindSlug, ManifestPath: docPath}
 
-			// Prerequisites redeploy for every engine run, so their manifests need
-			// the same per-run unique-id expansion as the scenario under test (same
-			// token, same run id — a dependent's ${E2E_RUN_ID}-suffixed reference
-			// lines up with the prerequisite it points at).
-			expandedManifestPath, err := ExpandManifestTokens(docDep.ManifestPath, runID)
+			// Prerequisites redeploy for every engine run AND for every scenario,
+			// so their manifests get the same per-run unique-id expansion as the
+			// scenario under test (same tokens, same values — a dependent's
+			// token-suffixed reference lines up with the prerequisite it points
+			// at) plus the scenario slug, so reservation-window identifiers can
+			// be scenario-unique (see ScenarioToken).
+			expandedManifestPath, err := ExpandManifestTokens(docDep.ManifestPath, runID, ScenarioSlug(scenarioManifestPath))
 			if err != nil {
 				return deployed, errors.Wrapf(err, "failed to expand manifest tokens for dependency %q", dep.KindSlug)
 			}
@@ -430,10 +432,17 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 	if docIndex > 0 {
 		stackLabel = fmt.Sprintf("%s-%d", stackLabel, docIndex)
 	}
-	stackName := GenerateStackName(stackLabel, runID)
-	if len(stackName) > 50 {
-		stackName = stackName[:50]
-	}
+	// Truncation must preserve UNIQUENESS: a plain head-truncate erases
+	// exactly the parts that disambiguate (the manifest-name tail and the
+	// run-id suffix), so two same-kind dependencies with long names collapse
+	// onto ONE stack -- the second `up` silently REPLACES the first fixture,
+	// and teardown destroys the shared stack once then fails "no stack
+	// named" on the other (live-caught on a two-database Firestore chain
+	// whose kind slug alone is 20 characters). boundStackName keeps a
+	// readable head and replaces the tail with a stable hash of the full
+	// name, so up and destroy always agree and distinct labels stay
+	// distinct.
+	stackName := boundStackName(GenerateStackName(stackLabel, runID))
 
 	fmt.Printf("  [deps] Deploying dependency %s (%s)...\n", dep.KindSlug, manifestName)
 	start := time.Now()

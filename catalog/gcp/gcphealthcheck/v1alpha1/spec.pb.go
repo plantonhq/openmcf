@@ -88,6 +88,17 @@ type GcpHealthCheckSpec struct {
 	// proxy_header must be NONE; TCP request payload unsupported; a check with
 	// source_regions cannot be used by managed-instance-group auto-healing.
 	SourceRegions []string `protobuf:"bytes,10,rep,name=source_regions,json=sourceRegions,proto3" json:"source_regions,omitempty"`
+	// What happens to the health check in GCP when this resource is destroyed.
+	// Applies to whichever scope the check was created in (global or regional).
+	//
+	//	"DELETE"  -- (GCP's default when unset) the health check is deleted;
+	//	             any backend service still referencing it makes the delete
+	//	             fail on the API side, so tear consumers down first
+	//	"PREVENT" -- destroy FAILS; protects a probe that many backend
+	//	             services may share
+	//	"ABANDON" -- the health check is removed from management but keeps
+	//	             probing in GCP (free at rest; clean it up manually)
+	DeletionPolicy string `protobuf:"bytes,18,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
 	// The probe protocol — exactly one. The choice decides which optional
 	// request/response knobs apply: HTTP-family checks probe a request_path and
 	// can match a response prefix; TCP/SSL checks open a connection and can
@@ -206,6 +217,13 @@ func (x *GcpHealthCheckSpec) GetSourceRegions() []string {
 		return x.SourceRegions
 	}
 	return nil
+}
+
+func (x *GcpHealthCheckSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 func (x *GcpHealthCheckSpec) GetProtocol() isGcpHealthCheckSpec_Protocol {
@@ -1014,7 +1032,7 @@ var File_catalog_gcp_gcphealthcheck_v1alpha1_spec_proto protoreflect.FileDescrip
 
 const file_catalog_gcp_gcphealthcheck_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	".catalog/gcp/gcphealthcheck/v1alpha1/spec.proto\x12'dev.planton.gcp.gcphealthcheck.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x95\x19\n" +
+	".catalog/gcp/gcphealthcheck/v1alpha1/spec.proto\x12'dev.planton.gcp.gcphealthcheck.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd3\x1a\n" +
 	"\x12GcpHealthCheckSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xa2\x02\n" +
@@ -1031,7 +1049,9 @@ const file_catalog_gcp_gcphealthcheck_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0eenable_logging\x18\t \x01(\bR\renableLogging\x12\xf7\x01\n" +
 	"\x0esource_regions\x18\n" +
 	" \x03(\tB\xcf\x01\xbaH\xcb\x01\xba\x01\xa2\x01\n" +
-	"\x1csource_regions_exactly_three\x12^source_regions must list exactly 3 GCP regions (or be omitted to use Google's default probers)\x1a\"size(this) == 0 || size(this) == 3\x92\x01\"\" r\x1e2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\rsourceRegions\x12Q\n" +
+	"\x1csource_regions_exactly_three\x12^source_regions must list exactly 3 GCP regions (or be omitted to use Google's default probers)\x1a\"size(this) == 0 || size(this) == 3\x92\x01\"\" r\x1e2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\rsourceRegions\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x12 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x12Q\n" +
 	"\x04http\x18\v \x01(\v2;.dev.planton.gcp.gcphealthcheck.v1alpha1.GcpHealthCheckHttpH\x00R\x04http\x12T\n" +
 	"\x05https\x18\f \x01(\v2<.dev.planton.gcp.gcphealthcheck.v1alpha1.GcpHealthCheckHttpsH\x00R\x05https\x12T\n" +
 	"\x05http2\x18\r \x01(\v2<.dev.planton.gcp.gcphealthcheck.v1alpha1.GcpHealthCheckHttp2H\x00R\x05http2\x12N\n" +

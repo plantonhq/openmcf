@@ -42,12 +42,13 @@ Omit for Google-managed encryption. For CMEK, set exactly one shape — both imm
 
 How far back data can be read at a previous timestamp. Range: 1 hour to 7 days (default 1h). Longer windows consume more storage. Mutable.
 
-### Two Deletion Guards
+### Three Deletion Levers
 
-| Guard | Enforced by | Effect |
+| Lever | Enforced by | Effect |
 |---|---|---|
 | `deletion_protection` (default **true**) | IaC engines | A destroy plan fails before touching GCP. Set false explicitly before intentional teardown. |
 | `enable_drop_protection` (default false) | GCP API | NO interface (console, gcloud, API, IaC) can delete the database — and the parent instance cannot be deleted either. Compliance-grade lock. |
+| `deletion_policy` (default DELETE) | IaC engines | What a PERMITTED destroy does once the guards above allow one: `DELETE` the database, `PREVENT` (fail — a third explicit wall), or `ABANDON` it in GCP with its data intact. |
 
 ### Labels
 

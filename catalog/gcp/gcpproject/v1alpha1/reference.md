@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpProjectSpec creates one Google Cloud project — the Layer-0 container
 every other GCP resource lives in. It attaches the project to the
 resource hierarchy (organization or folder), links a billing account,
@@ -182,12 +184,14 @@ Fields on other kinds that can point at this resource:
 | GcpBigtableTable | `spec.projectId` | `status.outputs.project_id` |
 | GcpCertManagerCert | `spec.projectId` | `status.outputs.project_id` |
 | GcpCertManagerDnsAuthorization | `spec.projectId` | `status.outputs.project_id` |
+| GcpCertificateMap | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudArmorPolicy | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudComposerEnvironment | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudComposerUserWorkloadsConfigMap | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudComposerUserWorkloadsSecret | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudFunction | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudRun | `spec.projectId` | `status.outputs.project_id` |
+| GcpCloudRunDomainMapping | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudRunJob | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudSchedulerJob | `spec.projectId` | `status.outputs.project_id` |
 | GcpCloudSql | `spec.projectId` | `status.outputs.project_id` |
@@ -196,6 +200,7 @@ Fields on other kinds that can point at this resource:
 | GcpCloudTasksQueue | `spec.projectId` | `status.outputs.project_id` |
 | GcpComputeDisk | `spec.projectId` | `status.outputs.project_id` |
 | GcpComputeInstance | `spec.projectId` | `status.outputs.project_id` |
+| GcpComputeMig | `spec.projectId` | `status.outputs.project_id` |
 | GcpDataprocAutoscalingPolicy | `spec.projectId` | `status.outputs.project_id` |
 | GcpDataprocCluster | `spec.projectId` | `status.outputs.project_id` |
 | GcpDnsRecord | `spec.projectId` | `status.outputs.project_id` |
@@ -204,7 +209,10 @@ Fields on other kinds that can point at this resource:
 | GcpDnsRecord | `spec.routingPolicy.primaryBackup.primary.internalLoadBalancers[].project` | `status.outputs.project_id` |
 | GcpDnsRecord | `spec.routingPolicy.primaryBackup.backupGeo[].healthCheckedTargets.internalLoadBalancers[].project` | `status.outputs.project_id` |
 | GcpDnsZone | `spec.projectId` | `status.outputs.project_id` |
+| GcpEventarcMessageBus | `spec.projectId` | `status.outputs.project_id` |
+| GcpEventarcTrigger | `spec.projectId` | `status.outputs.project_id` |
 | GcpFilestoreInstance | `spec.projectId` | `status.outputs.project_id` |
+| GcpFilestoreInstance | `spec.networkConfig.pscEndpointProject` | `status.outputs.project_id` |
 | GcpFirestoreBackupSchedule | `spec.projectId` | `status.outputs.project_id` |
 | GcpFirestoreDatabase | `spec.projectId` | `status.outputs.project_id` |
 | GcpFirestoreIndex | `spec.projectId` | `status.outputs.project_id` |
@@ -217,10 +225,22 @@ Fields on other kinds that can point at this resource:
 | GcpGlobalForwardingRule | `spec.projectId` | `status.outputs.project_id` |
 | GcpHealthCheck | `spec.projectId` | `status.outputs.project_id` |
 | GcpIamCustomRole | `spec.projectId` | `status.outputs.project_id` |
+| GcpIamDenyPolicy | `spec.parent.projectId` | `status.outputs.project_id` |
+| GcpIamOauthClient | `spec.projectId` | `status.outputs.project_id` |
+| GcpIdentityPlatformConfig | `spec.projectId` | `status.outputs.project_id` |
+| GcpIdentityPlatformTenant | `spec.projectId` | `status.outputs.project_id` |
 | GcpKmsKeyRing | `spec.projectId` | `status.outputs.project_id` |
+| GcpLogBucket | `spec.scope.projectId` | `status.outputs.project_id` |
+| GcpLogMetric | `spec.projectId` | `status.outputs.project_id` |
+| GcpLoggingSink | `spec.scope.projectId` | `status.outputs.project_id` |
 | GcpManagedSslCertificate | `spec.projectId` | `status.outputs.project_id` |
 | GcpMemorystoreInstance | `spec.projectId` | `status.outputs.project_id` |
 | GcpMemorystoreInstance | `spec.pscAutoConnections[].projectId` | `status.outputs.project_id` |
+| GcpMonitoringAlertPolicy | `spec.projectId` | `status.outputs.project_id` |
+| GcpMonitoringDashboard | `spec.projectId` | `status.outputs.project_id` |
+| GcpMonitoringNotificationChannel | `spec.projectId` | `status.outputs.project_id` |
+| GcpMonitoringSlo | `spec.projectId` | `status.outputs.project_id` |
+| GcpMonitoringUptimeCheck | `spec.projectId` | `status.outputs.project_id` |
 | GcpProjectIamMember | `spec.projectId` | `status.outputs.project_id` |
 | GcpPubSubSchema | `spec.projectId` | `status.outputs.project_id` |
 | GcpPubSubSubscription | `spec.projectId` | `status.outputs.project_id` |
@@ -228,6 +248,7 @@ Fields on other kinds that can point at this resource:
 | GcpRedisInstance | `spec.projectId` | `status.outputs.project_id` |
 | GcpRegionNetworkEndpointGroup | `spec.projectId` | `status.outputs.project_id` |
 | GcpRouterNat | `spec.projectId` | `status.outputs.project_id` |
+| GcpSecretManagerSecret | `spec.projectId` | `status.outputs.project_id` |
 | GcpServerlessVpcConnector | `spec.projectId` | `status.outputs.project_id` |
 | GcpServiceAccount | `spec.projectId` | `status.outputs.project_id` |
 | GcpServiceConnectionPolicy | `spec.projectId` | `status.outputs.project_id` |
@@ -242,10 +263,13 @@ Fields on other kinds that can point at this resource:
 | GcpTargetHttpsProxy | `spec.projectId` | `status.outputs.project_id` |
 | GcpUrlMap | `spec.projectId` | `status.outputs.project_id` |
 | GcpVertexAiEndpoint | `spec.projectId` | `status.outputs.project_id` |
+| GcpVertexAiEndpoint | `spec.privateServiceConnectConfig.pscAutomationConfigs[].projectId` | `status.outputs.project_id` |
 | GcpVertexAiIndex | `spec.projectId` | `status.outputs.project_id` |
 | GcpVertexAiIndexEndpoint | `spec.projectId` | `status.outputs.project_id` |
+| GcpVertexAiIndexEndpoint | `spec.privateServiceConnectConfig.pscAutomationConfigs[].projectId` | `status.outputs.project_id` |
 | GcpVertexAiNotebook | `spec.projectId` | `status.outputs.project_id` |
 | GcpVpcNetwork | `spec.projectId` | `status.outputs.project_id` |
+| GcpWorkflow | `spec.projectId` | `status.outputs.project_id` |
 | GcpWorkloadIdentityPool | `spec.projectId` | `status.outputs.project_id` |
 | GcpWorkloadIdentityPoolProvider | `spec.projectId` | `status.outputs.project_id` |
 | KubernetesClusterSecretStore | `spec.config.gcpSecretManager.projectId` | `status.outputs.project_id` |

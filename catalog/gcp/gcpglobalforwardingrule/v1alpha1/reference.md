@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpGlobalForwardingRuleSpec defines a global Compute Engine forwarding rule
 — the VIP node of a global load balancer. The forwarding rule is where
 traffic enters: it binds an IP address and port to a target proxy, and
@@ -66,6 +68,9 @@ spec:
   labels:
     env: production
     team: platform
+
+  # Ephemeral test fixture: delete the frontend on destroy.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -96,6 +101,7 @@ spec:
 | `spec.labels` | `map<string, string>` |  |  |  |
 | `spec.externalManagedBackendBucketMigrationState` | `string` |  |  |  |
 | `spec.externalManagedBackendBucketMigrationTestingPercentage` | `double` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -366,6 +372,23 @@ meaningful with external_managed_backend_bucket_migration_state
 TEST_BY_PERCENTAGE. Mutable.
 
 - rule: {"double":{"lte":100,"gte":0}}
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the global forwarding rule — what happens on
+destroy:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the frontend is deleted; the reserved IP it served stays
+               reserved (its own kind's policy governs it), but traffic
+               to that IP stops routing the moment the rule is gone
+  "PREVENT" -- destroy FAILS; protects the entry point of a live load
+               balancer chain
+  "ABANDON" -- the rule is removed from management but keeps serving
+               traffic in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

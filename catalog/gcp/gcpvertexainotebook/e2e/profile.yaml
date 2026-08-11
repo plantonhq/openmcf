@@ -7,8 +7,9 @@ spec:
   # Workbench instances take ~5-15 minutes per engine; batch runs with a
   # go test -timeout of at least 60m.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # The prior green predates the current spec shape (deletion_policy
+  # modeled from the spec instead of the Pulumi-side DELETE pin, the
+  # widened accelerator/hyperdisk value sets) — awaits live re-proof.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

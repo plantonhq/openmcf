@@ -13,10 +13,27 @@ spec:
 
   description: Routes www.example.com traffic to the web backend
 
+  # What a destroy may do: DELETE (default), PREVENT, or ABANDON.
+  deletionPolicy: DELETE
+
   # Exactly one top-level default target. Here: send unmatched traffic to
   # the web backend service (reference a GcpBackendService or self-link).
   defaultService:
     value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/backendServices/web-backend
+
+  # A route action may accompany a plain service target when it carries
+  # only sub-policies (no weighted split): here the default route gets an
+  # edge-enforced time budget and deliberate retries.
+  defaultRouteAction:
+    timeout:
+      seconds: 15
+    retryPolicy:
+      numRetries: 2
+      retryConditions:
+        - 5xx
+        - connect-failure
+      perTryTimeout:
+        seconds: 5
 
   # Host-based fan-out: map hosts to named path matchers.
   hostRules:

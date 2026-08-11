@@ -2,6 +2,8 @@ package runner
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -32,6 +34,19 @@ func PulumiDeploy(moduleDir, stackName, backendURL, stackInputFilePath string) (
 	// actual cloud resource is gone.
 	args := []string{"up", "--stack", stackName, "--yes", "--skip-preview", "--non-interactive", "--refresh"}
 	return runPulumi(moduleDir, backendURL, stackInputFilePath, "", args)
+}
+
+// PulumiPreviewExpectNoChanges re-plans the just-applied stack and fails if
+// any change is still pending — the Pulumi arm of the IDEMPOTENCY phase. No
+// --refresh here: the point is whether the program's desired state matches
+// what the apply recorded, not whether the cloud drifted in the seconds since.
+func PulumiPreviewExpectNoChanges(moduleDir, stackName, backendURL, stackInputFilePath string) (*PulumiResult, error) {
+	args := []string{"preview", "--stack", stackName, "--expect-no-changes", "--non-interactive"}
+	result, err := runPulumi(moduleDir, backendURL, stackInputFilePath, "", args)
+	if err != nil {
+		return result, errors.Wrap(err, "pulumi preview reported pending changes after apply (idempotency violation)")
+	}
+	return result, nil
 }
 
 // PulumiDestroy runs `pulumi destroy` for the given module directory and stack.
@@ -145,4 +160,23 @@ func GenerateStackName(component string, runID string) string {
 		short = short[:8]
 	}
 	return fmt.Sprintf("e2e-%s-%s", component, short)
+}
+
+// maxStackNameLen bounds generated stack names. The bound itself is a
+// conservative readability/tooling limit; what matters is HOW names shrink
+// to it -- see boundStackName.
+const maxStackNameLen = 50
+
+// boundStackName truncates a stack name to maxStackNameLen while preserving
+// uniqueness: the head stays readable and the tail is replaced by a short
+// stable hash of the FULL name. A plain head-truncate is a correctness bug,
+// not a cosmetic one -- it cuts off exactly the disambiguating parts (a
+// dependency's manifest-name tail, the run-id suffix), collapsing distinct
+// stacks onto one name.
+func boundStackName(name string) string {
+	if len(name) <= maxStackNameLen {
+		return name
+	}
+	sum := sha256.Sum256([]byte(name))
+	return name[:maxStackNameLen-9] + "-" + hex.EncodeToString(sum[:4])
 }

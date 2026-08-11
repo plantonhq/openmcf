@@ -1,0 +1,4 @@
+name: gcpmonitoringdashboard-pulumi-project
+runtime:
+  name: go
+description: Planton GcpMonitoringDashboard Pulumi module

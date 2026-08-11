@@ -86,4 +86,20 @@ message GcpPubSubSchemaSpec {
   // be backward-compatible with the encoding topics use, or publishers
   // pinned to older revisions will keep validating against those.
   string definition = 4 [(buf.validate.field).required = true];
+
+  // Deletion policy for the schema — what happens when this resource is
+  // destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the schema is deleted. Topics still referencing it fall
+  //                back to the "_deleted-schema_" sentinel and their
+  //                publishes start FAILING — detach topics first
+  //   "PREVENT" -- destroy FAILS; protects a schema that many topics'
+  //                validation depends on
+  //   "ABANDON" -- the schema is removed from management but left serving
+  //                in GCP (attached topics keep validating)
+  string deletion_policy = 5 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

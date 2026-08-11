@@ -211,7 +211,13 @@ type GcpBigtableTableAutomatedBackupPolicy struct {
 	RetentionPeriod string `protobuf:"bytes,1,opt,name=retention_period,json=retentionPeriod,proto3" json:"retention_period,omitempty"`
 	// How often automated backups are taken (e.g. "24h" for daily).
 	// Duration string in Go format.
-	Frequency     string `protobuf:"bytes,2,opt,name=frequency,proto3" json:"frequency,omitempty"`
+	Frequency string `protobuf:"bytes,2,opt,name=frequency,proto3" json:"frequency,omitempty"`
+	// Cloud Bigtable zones where automated backups are ALLOWED to be
+	// created, each in the format "projects/{project}/locations/{zone}".
+	// Empty means backups may be created in all zones of the instance.
+	// Can only be set for tables in ENTERPRISE_PLUS instances (see the
+	// GcpBigtableInstance edition field).
+	Locations     []string `protobuf:"bytes,3,rep,name=locations,proto3" json:"locations,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -258,6 +264,13 @@ func (x *GcpBigtableTableAutomatedBackupPolicy) GetFrequency() string {
 		return x.Frequency
 	}
 	return ""
+}
+
+func (x *GcpBigtableTableAutomatedBackupPolicy) GetLocations() []string {
+	if x != nil {
+		return x.Locations
+	}
+	return nil
 }
 
 // GcpBigtableTableSpec defines a table inside a Cloud Bigtable instance —
@@ -321,9 +334,21 @@ type GcpBigtableTableSpec struct {
 	// streams). In-place update is not supported by the API: to change an
 	// existing schema, clear this field, apply, then set the new schema
 	// and apply again. Byte delimiters must be base64-encoded.
-	RowKeySchema  string `protobuf:"bytes,9,opt,name=row_key_schema,json=rowKeySchema,proto3" json:"row_key_schema,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RowKeySchema string `protobuf:"bytes,9,opt,name=row_key_schema,json=rowKeySchema,proto3" json:"row_key_schema,omitempty"`
+	// Deletion policy — what a destroy does to BOTH objects this component
+	// manages: the table and its per-family GC policies. Applies only once
+	// deletion_protection (above) is UNPROTECTED:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the table (and its data) is deleted; GC policies go
+	//	             with it
+	//	"PREVENT" -- destroy FAILS; a second wall for data-bearing tables
+	//	"ABANDON" -- the table is removed from management but left intact
+	//	             in Bigtable — also the escape hatch when a GC-policy
+	//	             delete is rejected on a replicated instance
+	DeletionPolicy string `protobuf:"bytes,10,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpBigtableTableSpec) Reset() {
@@ -419,6 +444,13 @@ func (x *GcpBigtableTableSpec) GetRowKeySchema() string {
 	return ""
 }
 
+func (x *GcpBigtableTableSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpbigtabletable_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpbigtabletable_v1alpha1_spec_proto_rawDesc = "" +
@@ -438,11 +470,11 @@ const file_catalog_gcp_gcpbigtabletable_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1cGcpBigtableTableColumnFamily\x12$\n" +
 	"\x06family\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18@R\x06family\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12`\n" +
-	"\tgc_policy\x18\x03 \x01(\v2C.dev.planton.gcp.gcpbigtabletable.v1alpha1.GcpBigtableTableGcPolicyR\bgcPolicy\"\xc8\x01\n" +
+	"\tgc_policy\x18\x03 \x01(\v2C.dev.planton.gcp.gcpbigtabletable.v1alpha1.GcpBigtableTableGcPolicyR\bgcPolicy\"\xe6\x01\n" +
 	"%GcpBigtableTableAutomatedBackupPolicy\x12U\n" +
 	"\x10retention_period\x18\x01 \x01(\tB*\xbaH'\xc8\x01\x01r\"2 ^([0-9]+(\\.[0-9]+)?(h|m|s|ms))+$R\x0fretentionPeriod\x12H\n" +
-	"\tfrequency\x18\x02 \x01(\tB*\xbaH'\xc8\x01\x01r\"2 ^([0-9]+(\\.[0-9]+)?(h|m|s|ms))+$R\tfrequency\"\x9b\n" +
-	"\n" +
+	"\tfrequency\x18\x02 \x01(\tB*\xbaH'\xc8\x01\x01r\"2 ^([0-9]+(\\.[0-9]+)?(h|m|s|ms))+$R\tfrequency\x12\x1c\n" +
+	"\tlocations\x18\x03 \x03(\tR\tlocations\"\xd9\v\n" +
 	"\x14GcpBigtableTableSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
@@ -458,7 +490,10 @@ const file_catalog_gcp_gcpbigtabletable_v1alpha1_spec_proto_rawDesc = "" +
 	"\x17automated_backup_policy\x18\a \x01(\v2P.dev.planton.gcp.gcpbigtabletable.v1alpha1.GcpBigtableTableAutomatedBackupPolicyR\x15automatedBackupPolicy\x12\xd7\x01\n" +
 	"\x13deletion_protection\x18\b \x01(\tB\xa0\x01\xbaH\x8f\x01\xba\x01\x8b\x01\n" +
 	"\x1fdeletion_protection_valid_value\x124deletion_protection must be PROTECTED or UNPROTECTED\x1a2this == '' || this in ['PROTECTED', 'UNPROTECTED']\x8a\xa6\x1d\tPROTECTEDH\x00R\x12deletionProtection\x88\x01\x01\x12$\n" +
-	"\x0erow_key_schema\x18\t \x01(\tR\frowKeySchemaB\x16\n" +
+	"\x0erow_key_schema\x18\t \x01(\tR\frowKeySchema\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\n" +
+	" \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\x16\n" +
 	"\x14_deletion_protectionB\xe0\x02\n" +
 	"-com.dev.planton.gcp.gcpbigtabletable.v1alpha1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/catalog/gcp/gcpbigtabletable/v1alpha1;gcpbigtabletablev1alpha1\xa2\x02\x04DPGG\xaa\x02)Dev.Planton.Gcp.Gcpbigtabletable.V1alpha1\xca\x02)Dev\\Planton\\Gcp\\Gcpbigtabletable\\V1alpha1\xe2\x025Dev\\Planton\\Gcp\\Gcpbigtabletable\\V1alpha1\\GPBMetadata\xea\x02-Dev::Planton::Gcp::Gcpbigtabletable::V1alpha1b\x06proto3"
 

@@ -574,4 +574,70 @@ var _ = ginkgo.Describe("GcpVertexAiNotebookSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	// ──────────────── Current-generation accelerators and disks ────────────────
+
+	ginkgo.It("should accept current-generation accelerator types", func() {
+		for _, accel := range []string{"NVIDIA_H100_80GB", "NVIDIA_H100_MEGA_80GB", "NVIDIA_H200_141GB", "NVIDIA_B200", "NVIDIA_RTX6000"} {
+			msg := minimal()
+			msg.Spec.AcceleratorConfig = &GcpVertexAiNotebookAcceleratorConfig{
+				Type:      accel,
+				CoreCount: 1,
+			}
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should still reject an unknown accelerator type", func() {
+		msg := minimal()
+		msg.Spec.AcceleratorConfig = &GcpVertexAiNotebookAcceleratorConfig{
+			Type: "NVIDIA_GTX_1080",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept hyperdisk types on boot and data disks", func() {
+		msg := minimal()
+		msg.Spec.BootDisk = &GcpVertexAiNotebookBootDisk{DiskType: "HYPERDISK_BALANCED"}
+		msg.Spec.DataDisk = &GcpVertexAiNotebookDataDisk{DiskType: "HYPERDISK_ML"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept data-disk-only hyperdisk variants", func() {
+		for _, dt := range []string{"HYPERDISK_EXTREME", "HYPERDISK_THROUGHPUT", "HYPERDISK_BALANCED_HIGH_AVAILABILITY"} {
+			msg := minimal()
+			msg.Spec.DataDisk = &GcpVertexAiNotebookDataDisk{DiskType: dt}
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should reject a data-disk-only hyperdisk variant on the boot disk", func() {
+		msg := minimal()
+		msg.Spec.BootDisk = &GcpVertexAiNotebookBootDisk{DiskType: "HYPERDISK_THROUGHPUT"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Deletion policy ────────────────
+
+	ginkgo.It("should accept all deletion_policy values", func() {
+		for _, policy := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = policy
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "RETAIN"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("deletion_policy"))
+	})
 })

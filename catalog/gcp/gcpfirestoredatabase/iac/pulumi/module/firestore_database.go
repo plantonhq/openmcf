@@ -67,6 +67,23 @@ func firestoreDatabase(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		args.AppEngineIntegrationMode = pulumi.StringPtr(spec.AppEngineIntegrationMode)
 	}
 
+	// ENTERPRISE-only data-access switches (spec CELs enforce the edition
+	// pairing pre-deploy, matching the API).
+	if spec.FirestoreDataAccessMode != "" {
+		args.FirestoreDataAccessMode = pulumi.StringPtr(spec.FirestoreDataAccessMode)
+	}
+	if spec.MongodbCompatibleDataAccessMode != "" {
+		args.MongodbCompatibleDataAccessMode = pulumi.StringPtr(spec.MongodbCompatibleDataAccessMode)
+	}
+	if spec.RealtimeUpdatesMode != "" {
+		args.RealtimeUpdatesMode = pulumi.StringPtr(spec.RealtimeUpdatesMode)
+	}
+
+	// Create-time resource-manager tags (org policy / IAM conditions).
+	if len(spec.ResourceManagerTags) > 0 {
+		args.Tags = pulumi.ToStringMap(spec.ResourceManagerTags)
+	}
+
 	// CMEK encryption.
 	if spec.KmsKeyName.GetValue() != "" {
 		args.CmekConfig = &firestore.DatabaseCmekConfigArgs{
@@ -74,10 +91,15 @@ func firestoreDatabase(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		}
 	}
 
-	// Always DELETE so the IaC tool manages the full lifecycle. Without
-	// this, the provider's default ABANDON would leave the database
-	// behind on destroy — identical to the Terraform module.
-	args.DeletionPolicy = pulumi.StringPtr("DELETE")
+	// Defaults to DELETE so the IaC tool manages the full lifecycle (the
+	// provider's own default ABANDON would leave the database behind on
+	// destroy). PREVENT and ABANDON are deliberate choices — identical to
+	// the Terraform module.
+	deletionPolicy := spec.GetDeletionPolicy()
+	if deletionPolicy == "" {
+		deletionPolicy = "DELETE"
+	}
+	args.DeletionPolicy = pulumi.StringPtr(deletionPolicy)
 
 	createdDatabase, err := firestore.NewDatabase(ctx, "firestore-database", args,
 		pulumi.Provider(gcpProvider),

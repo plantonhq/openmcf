@@ -1,0 +1,70 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringAlertPolicy
+metadata:
+  name: my-sample-alert-policy
+spec:
+  # GCP project that owns the alert policy.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Shown in the console, incidents, and notifications; omit to default
+  # to metadata.name.
+  displayName: CPU saturation
+
+  # How condition results combine (required by GCP even with one
+  # condition): AND, OR, or AND_WITH_MATCHING_RESOURCE.
+  combiner: OR
+
+  # Severity reported on opened incidents: CRITICAL, ERROR, or WARNING.
+  severity: WARNING
+
+  # Whether the policy evaluates (default true). Disable to silence a
+  # noisy rule without deleting it.
+  enabled: true
+
+  # 1-6 conditions, each with exactly one condition-type arm.
+  conditions:
+    - displayName: cpu above 80%
+      conditionThreshold:
+        # Which time series to evaluate (must name a metric.type).
+        filter: metric.type="compute.googleapis.com/instance/cpu/utilization" AND resource.type="gce_instance"
+        comparison: COMPARISON_GT
+        thresholdValue: 0.8
+        # Sustained-violation window (whole minutes; 0s pages on a
+        # single point — the classic noisy-policy mistake).
+        duration: 300s
+        aggregations:
+          - alignmentPeriod: 60s
+            perSeriesAligner: ALIGN_MEAN
+
+  # The channels to page — reference GcpMonitoringNotificationChannel
+  # resources (their channel_name output) or supply literal names.
+  notificationChannels:
+    - valueFrom:
+        kind: GcpMonitoringNotificationChannel
+        # The channel kind's PUBLISHED prerequisite fixture name.
+        name: planton-oss-e2e-gcpnotifchan-prereq
+        fieldPath: status.outputs.channel_name
+
+  # Notification behavior for open incidents.
+  alertStrategy:
+    # Close incidents automatically after the condition has stopped
+    # violating for this long.
+    autoClose: 1800s
+
+  # The runbook the on-call engineer sees in every notification.
+  documentation:
+    content: |
+      1. Check the instance dashboard for the saturated VM.
+      2. If load is legitimate, scale the instance group; otherwise
+         investigate the offending process.
+    mimeType: text/markdown
+    subject: CPU saturation on ${resource.label.instance_id}
+
+  # User metadata labels, merged with Planton's platform labels.
+  labels:
+    team: platform
+
+  # What a destroy does: DELETE (default), PREVENT, or ABANDON.
+  deletionPolicy: DELETE

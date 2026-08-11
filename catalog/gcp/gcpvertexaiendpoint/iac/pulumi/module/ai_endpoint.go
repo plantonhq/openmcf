@@ -1,6 +1,9 @@
 package module
 
 import (
+	"encoding/json"
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
@@ -50,14 +53,13 @@ func aiEndpoint(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) 
 		// pins region to location and the spec keeps a single honest field.
 		Region: pulumi.StringPtr(spec.Location),
 		Labels: pulumi.ToStringMap(locals.GcpLabels),
-
-		// PARITY: the bridged provider carries a client-side deletion_policy
-		// flag the released 6.x Terraform line does not have. Pinned to
-		// DELETE so destroy really deletes the endpoint on both engines.
-		DeletionPolicy: pulumi.StringPtr("DELETE"),
 	}
 	if spec.ProjectId.GetValue() != "" {
 		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
+	}
+
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	if spec.Description != "" {
@@ -95,7 +97,37 @@ func aiEndpoint(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) 
 		if len(spec.PrivateServiceConnectConfig.ProjectAllowlist) > 0 {
 			pscArgs.ProjectAllowlists = pulumi.ToStringArray(spec.PrivateServiceConnectConfig.ProjectAllowlist)
 		}
+		// PSC endpoints Vertex AI provisions automatically in consumer
+		// projects. The API wants the relative network form; references
+		// arrive as self-links and are normalized here (mirrors the
+		// Terraform module).
+		if len(spec.PrivateServiceConnectConfig.PscAutomationConfigs) > 0 {
+			automationConfigs := vertex.AiEndpointPrivateServiceConnectConfigPscAutomationConfigArray{}
+			for _, config := range spec.PrivateServiceConnectConfig.PscAutomationConfigs {
+				automationConfigs = append(automationConfigs,
+					&vertex.AiEndpointPrivateServiceConnectConfigPscAutomationConfigArgs{
+						Network: pulumi.String(strings.TrimPrefix(
+							config.Network.GetValue(), "https://www.googleapis.com/compute/v1/")),
+						ProjectId: pulumi.String(config.ProjectId.GetValue()),
+					})
+			}
+			pscArgs.PscAutomationConfigs = automationConfigs
+		}
 		args.PrivateServiceConnectConfig = pscArgs
+	}
+
+	// Traffic routing across deployed models: the provider takes the split
+	// as a JSON string; json.Marshal renders map keys in sorted order, so
+	// the same spec always produces the same string (matching the Terraform
+	// module's jsonencode). Empty means "no traffic accepted" and is
+	// deliberately omitted — GCP rejects IDs that are not currently
+	// deployed.
+	if len(spec.TrafficSplit) > 0 {
+		trafficSplitJson, err := json.Marshal(spec.TrafficSplit)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal traffic_split to json")
+		}
+		args.TrafficSplit = pulumi.StringPtr(string(trafficSplitJson))
 	}
 
 	// Request/response logging: samples online predictions into BigQuery —

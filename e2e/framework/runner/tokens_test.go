@@ -20,7 +20,7 @@ func TestExpandManifestTokens_ReplacesAllOccurrences(t *testing.T) {
 		"  displayName: pool ${E2E_RUN_ID}",
 	}, "\n"))
 
-	out, err := ExpandManifestTokens(src, "ab12cd34")
+	out, err := ExpandManifestTokens(src, "ab12cd34", "minimal")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestExpandManifestTokens_ReplacesAllOccurrences(t *testing.T) {
 func TestExpandManifestTokens_PassthroughWithoutToken(t *testing.T) {
 	src := writeTempManifest(t, "apiVersion: gcp.planton.dev/v1alpha1\nkind: GcpServiceAccount\n")
 
-	out, err := ExpandManifestTokens(src, "ab12cd34")
+	out, err := ExpandManifestTokens(src, "ab12cd34", "minimal")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestExpandManifestTokens_PassthroughWithoutToken(t *testing.T) {
 func TestExpandManifestTokens_ErrorsOnTokenWithoutRunID(t *testing.T) {
 	src := writeTempManifest(t, "spec:\n  id: e2e-${E2E_RUN_ID}\n")
 
-	if _, err := ExpandManifestTokens(src, ""); err == nil {
+	if _, err := ExpandManifestTokens(src, "", "minimal"); err == nil {
 		t.Fatal("expected an error when the manifest uses the token but no run id is provided")
 	}
 }
@@ -77,7 +77,7 @@ func TestExpandManifestTokens_ErrorsOnTokenWithoutRunID(t *testing.T) {
 func TestExpandManifestTokens_KeepsScenarioBasename(t *testing.T) {
 	src := writeTempManifest(t, "spec:\n  id: e2e-${E2E_RUN_ID}\n")
 
-	out, err := ExpandManifestTokens(src, "ab12cd34")
+	out, err := ExpandManifestTokens(src, "ab12cd34", "minimal")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestExpandManifestTokens_ExpandsEnvTokens(t *testing.T) {
 		"  bucket: e2e-${E2E_RUN_ID}",
 	}, "\n"))
 
-	out, err := ExpandManifestTokens(src, "ab12cd34")
+	out, err := ExpandManifestTokens(src, "ab12cd34", "minimal")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestExpandManifestTokens_ExpandsEnvTokens(t *testing.T) {
 func TestExpandManifestTokens_ErrorsOnUnsetEnvToken(t *testing.T) {
 	src := writeTempManifest(t, "spec:\n  arn: ${E2E_ENV:PLANTON_E2E_DEFINITELY_UNSET_VAR}\n")
 
-	if _, err := ExpandManifestTokens(src, "ab12cd34"); err == nil {
+	if _, err := ExpandManifestTokens(src, "ab12cd34", "minimal"); err == nil {
 		t.Fatal("expected an error when an env token's variable is unset")
 	}
 }
@@ -129,7 +129,7 @@ func TestExpandManifestTokens_RejectsNonPrefixedEnvToken(t *testing.T) {
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "leak-me")
 	src := writeTempManifest(t, "spec:\n  arn: ${E2E_ENV:AWS_SECRET_ACCESS_KEY}\n")
 
-	if _, err := ExpandManifestTokens(src, "ab12cd34"); err == nil {
+	if _, err := ExpandManifestTokens(src, "ab12cd34", "minimal"); err == nil {
 		t.Fatal("expected an error for env tokens outside the allowed prefix")
 	}
 }
@@ -138,11 +138,45 @@ func TestExpandManifestTokens_EnvTokensWithoutRunID(t *testing.T) {
 	t.Setenv("PLANTON_E2E_TEST_VALUE", "some-value")
 	src := writeTempManifest(t, "spec:\n  v: ${E2E_ENV:PLANTON_E2E_TEST_VALUE}\n")
 
-	out, err := ExpandManifestTokens(src, "")
+	out, err := ExpandManifestTokens(src, "", "minimal")
 	if err != nil {
 		t.Fatalf("env-token-only manifests must not require a run id: %v", err)
 	}
 	t.Cleanup(func() { os.Remove(out) })
+}
+
+// The scenario token gives reservation-window prerequisite identifiers a
+// scenario-unique cloud-side name, so a multi-scenario kind never deletes
+// and recreates the same name within one engine run.
+func TestExpandManifestTokens_ExpandsScenarioToken(t *testing.T) {
+	src := writeTempManifest(t, "spec:\n  databaseName: e2e-db-${E2E_SCENARIO}-${E2E_RUN_ID}\n")
+
+	out, err := ExpandManifestTokens(src, "ab12cd34", "enterprise")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Cleanup(func() { os.Remove(out) })
+	got, _ := os.ReadFile(out)
+	if !strings.Contains(string(got), "databaseName: e2e-db-enterprise-ab12cd34") {
+		t.Errorf("scenario token not expanded:\n%s", got)
+	}
+}
+
+func TestExpandManifestTokens_ErrorsOnScenarioTokenWithoutScenario(t *testing.T) {
+	src := writeTempManifest(t, "spec:\n  databaseName: e2e-db-${E2E_SCENARIO}\n")
+
+	if _, err := ExpandManifestTokens(src, "ab12cd34", ""); err == nil {
+		t.Fatal("expected an error when the scenario token has no scenario in scope")
+	}
+}
+
+func TestScenarioSlug(t *testing.T) {
+	if got := ScenarioSlug("/tmp/x/enterprise.yaml"); got != "enterprise" {
+		t.Errorf("slug = %q, want enterprise", got)
+	}
+	if got := ScenarioSlug(""); got != "" {
+		t.Errorf("empty path should give empty slug, got %q", got)
+	}
 }
 
 func TestEngineScopedRunID_DistinctPerEngine(t *testing.T) {

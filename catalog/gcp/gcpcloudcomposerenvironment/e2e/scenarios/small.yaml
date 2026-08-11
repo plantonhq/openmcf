@@ -45,3 +45,4 @@ spec:
   softwareConfig:
     imageVersion: composer-3-airflow-2
   environmentSize: ENVIRONMENT_SIZE_SMALL
+  deletionPolicy: DELETE

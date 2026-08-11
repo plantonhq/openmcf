@@ -34,9 +34,10 @@ const (
 //
 // Important behavioral notes:
 //
-//   - disk_name, zone, type, source (image/snapshot/disk), encryption,
-//     and architecture are create-time decisions — changing them replaces
-//     the disk (and its data). size_gb grows in place but never shrinks.
+//   - disk_name, zone, type, source (image / snapshot / instant
+//     snapshot / storage object / disk), encryption, and architecture
+//     are create-time decisions — changing them replaces the disk (and
+//     its data). size_gb grows in place but never shrinks.
 //   - At most one source may be set. With no source the disk is created
 //     empty (the common case for data volumes).
 //   - Deleting a disk that is still attached to a running instance fails;
@@ -128,8 +129,56 @@ type GcpComputeDiskSpec struct {
 	// conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
 	// Create-time only.
 	ResourceManagerTags map[string]string `protobuf:"bytes,21,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Guest OS features to enable when this disk is used as a boot disk,
+	// e.g. ["UEFI_COMPATIBLE", "SECURE_BOOT", "GVNIC", "MULTI_IP_SUBNET",
+	// "WINDOWS"]. The accepted set evolves with GCP — see "Enabling guest
+	// operating system features" in the Compute Engine docs. Create-time
+	// only.
+	GuestOsFeatures []string `protobuf:"bytes,22,rep,name=guest_os_features,json=guestOsFeatures,proto3" json:"guest_os_features,omitempty"`
+	// License URIs applicable to this disk, e.g. a Windows Server or
+	// SQL Server license
+	// ("https://www.googleapis.com/compute/v1/projects/windows-cloud/global/licenses/windows-server-core").
+	// Normally inherited from the source image; set explicitly when
+	// importing raw disks that need bring-your-own-license attribution.
+	// Create-time only.
+	Licenses []string `protobuf:"bytes,23,rep,name=licenses,proto3" json:"licenses,omitempty"`
+	// Source INSTANT snapshot to create the disk from (name, partial or
+	// full URL). Instant snapshots are near-instant, same-region-only
+	// point-in-time copies — the fast restore path, vs. standard
+	// snapshots' cross-region durability. Create-time only.
+	SourceInstantSnapshot string `protobuf:"bytes,24,opt,name=source_instant_snapshot,json=sourceInstantSnapshot,proto3" json:"source_instant_snapshot,omitempty"`
+	// Full Google Cloud Storage URI of a raw disk image to create the
+	// disk from (e.g. "https://storage.googleapis.com/bucket/image.vmdk"
+	// or a gs:// URI) — the import-a-disk-file path, skipping the
+	// intermediate compute image. Create-time only.
+	SourceStorageObject string `protobuf:"bytes,25,opt,name=source_storage_object,json=sourceStorageObject,proto3" json:"source_storage_object,omitempty"`
+	// Deletion policy — what happens when this resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the disk (and its data) is deleted
+	//	"PREVENT" -- destroy FAILS; a guard rail for precious data volumes
+	//	             (create_snapshot_before_destroy is the softer net)
+	//	"ABANDON" -- the disk is removed from management but left running
+	//	             in GCP
+	DeletionPolicy string `protobuf:"bytes,26,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	// Service account used for the encryption request of kms_key (CMEK).
+	// When omitted, the Compute Engine default service agent is used.
+	// Only meaningful together with kms_key. Immutable after creation.
+	KmsKeyServiceAccount string `protobuf:"bytes,27,opt,name=kms_key_service_account,json=kmsKeyServiceAccount,proto3" json:"kms_key_service_account,omitempty"`
+	// Decrypts the source image when it is itself CMEK-encrypted. Only
+	// valid together with image.
+	SourceImageEncryption *GcpComputeDiskSourceEncryption `protobuf:"bytes,28,opt,name=source_image_encryption,json=sourceImageEncryption,proto3" json:"source_image_encryption,omitempty"`
+	// Decrypts the source snapshot when it is itself CMEK-encrypted. Only
+	// valid together with source_snapshot.
+	SourceSnapshotEncryption *GcpComputeDiskSourceEncryption `protobuf:"bytes,29,opt,name=source_snapshot_encryption,json=sourceSnapshotEncryption,proto3" json:"source_snapshot_encryption,omitempty"`
+	// Makes this disk an ASYNC REPLICATION SECONDARY of the referenced
+	// primary disk (another GcpComputeDisk, or a literal disk self link in
+	// another region). Replication starts when the pair is activated on
+	// the primary; the secondary must match the primary's size and type.
+	// Create-time only.
+	AsyncPrimaryDisk *v1.StringValueOrRef `protobuf:"bytes,30,opt,name=async_primary_disk,json=asyncPrimaryDisk,proto3" json:"async_primary_disk,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GcpComputeDiskSpec) Reset() {
@@ -309,11 +358,135 @@ func (x *GcpComputeDiskSpec) GetResourceManagerTags() map[string]string {
 	return nil
 }
 
+func (x *GcpComputeDiskSpec) GetGuestOsFeatures() []string {
+	if x != nil {
+		return x.GuestOsFeatures
+	}
+	return nil
+}
+
+func (x *GcpComputeDiskSpec) GetLicenses() []string {
+	if x != nil {
+		return x.Licenses
+	}
+	return nil
+}
+
+func (x *GcpComputeDiskSpec) GetSourceInstantSnapshot() string {
+	if x != nil {
+		return x.SourceInstantSnapshot
+	}
+	return ""
+}
+
+func (x *GcpComputeDiskSpec) GetSourceStorageObject() string {
+	if x != nil {
+		return x.SourceStorageObject
+	}
+	return ""
+}
+
+func (x *GcpComputeDiskSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
+func (x *GcpComputeDiskSpec) GetKmsKeyServiceAccount() string {
+	if x != nil {
+		return x.KmsKeyServiceAccount
+	}
+	return ""
+}
+
+func (x *GcpComputeDiskSpec) GetSourceImageEncryption() *GcpComputeDiskSourceEncryption {
+	if x != nil {
+		return x.SourceImageEncryption
+	}
+	return nil
+}
+
+func (x *GcpComputeDiskSpec) GetSourceSnapshotEncryption() *GcpComputeDiskSourceEncryption {
+	if x != nil {
+		return x.SourceSnapshotEncryption
+	}
+	return nil
+}
+
+func (x *GcpComputeDiskSpec) GetAsyncPrimaryDisk() *v1.StringValueOrRef {
+	if x != nil {
+		return x.AsyncPrimaryDisk
+	}
+	return nil
+}
+
+// CMEK decryption parameters for an encrypted disk source (image or
+// snapshot). Customer-supplied raw keys (CSEK) are deliberately not
+// modeled: raw key material does not belong in declarative manifests or
+// state — use CMEK, where the key stays in Cloud KMS.
+type GcpComputeDiskSourceEncryption struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The KMS key the source was encrypted with, referenced as a GcpKmsKey
+	// or a literal self link. The service agent performing the read needs
+	// roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+	KmsKey *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=kms_key,json=kmsKey,proto3" json:"kms_key,omitempty"`
+	// Service account used for the decryption request. When omitted, the
+	// Compute Engine default service agent is used.
+	KmsKeyServiceAccount string `protobuf:"bytes,2,opt,name=kms_key_service_account,json=kmsKeyServiceAccount,proto3" json:"kms_key_service_account,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *GcpComputeDiskSourceEncryption) Reset() {
+	*x = GcpComputeDiskSourceEncryption{}
+	mi := &file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpComputeDiskSourceEncryption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpComputeDiskSourceEncryption) ProtoMessage() {}
+
+func (x *GcpComputeDiskSourceEncryption) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpComputeDiskSourceEncryption.ProtoReflect.Descriptor instead.
+func (*GcpComputeDiskSourceEncryption) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GcpComputeDiskSourceEncryption) GetKmsKey() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KmsKey
+	}
+	return nil
+}
+
+func (x *GcpComputeDiskSourceEncryption) GetKmsKeyServiceAccount() string {
+	if x != nil {
+		return x.KmsKeyServiceAccount
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	".catalog/gcp/gcpcomputedisk/v1alpha1/spec.proto\x12'dev.planton.gcp.gcpcomputedisk.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x94\x17\n" +
+	".catalog/gcp/gcpcomputedisk/v1alpha1/spec.proto\x12'dev.planton.gcp.gcpcomputedisk.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xeb!\n" +
 	"\x12GcpComputeDiskSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xf8\x01\n" +
@@ -342,19 +515,34 @@ const file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1esnapshot_before_destroy_prefix\x18\x12 \x01(\tR\x1bsnapshotBeforeDestroyPrefix\x12!\n" +
 	"\fstorage_pool\x18\x13 \x01(\tR\vstoragePool\x12_\n" +
 	"\x06labels\x18\x14 \x03(\v2G.dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.LabelsEntryR\x06labels\x12\x88\x01\n" +
-	"\x15resource_manager_tags\x18\x15 \x03(\v2T.dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.ResourceManagerTagsEntryR\x13resourceManagerTags\x1a9\n" +
+	"\x15resource_manager_tags\x18\x15 \x03(\v2T.dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.ResourceManagerTagsEntryR\x13resourceManagerTags\x12*\n" +
+	"\x11guest_os_features\x18\x16 \x03(\tR\x0fguestOsFeatures\x12\x1a\n" +
+	"\blicenses\x18\x17 \x03(\tR\blicenses\x126\n" +
+	"\x17source_instant_snapshot\x18\x18 \x01(\tR\x15sourceInstantSnapshot\x122\n" +
+	"\x15source_storage_object\x18\x19 \x01(\tR\x13sourceStorageObject\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x1a \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x125\n" +
+	"\x17kms_key_service_account\x18\x1b \x01(\tR\x14kmsKeyServiceAccount\x12\x7f\n" +
+	"\x17source_image_encryption\x18\x1c \x01(\v2G.dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSourceEncryptionR\x15sourceImageEncryption\x12\x85\x01\n" +
+	"\x1asource_snapshot_encryption\x18\x1d \x01(\v2G.dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSourceEncryptionR\x18sourceSnapshotEncryption\x12\x83\x01\n" +
+	"\x12async_primary_disk\x18\x1e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xba\x18\x92\xd4a\x18status.outputs.self_linkR\x10asyncPrimaryDisk\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aF\n" +
 	"\x18ResourceManagerTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe8\x06\xbaH\xe4\x06\x1a\xbc\x02\n" +
-	"\x17disk_at_most_one_source\x12oat most one disk source may be set: image, source_snapshot, or source_disk — omit all three for an empty disk\x1a\xaf\x01(this.image != '' ? 1 : 0) + (this.source_snapshot != '' ? 1 : 0) + ((has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) ? 1 : 0) <= 1\x1a\x88\x02\n" +
-	"\x18empty_disk_requires_size\x12Gan empty disk (no image, snapshot, or source disk) must declare size_gb\x1a\xa2\x01this.image != '' || this.source_snapshot != '' || (has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) || this.size_gb > 0\x1a\x97\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x87\v\xbaH\x83\v\x1a\xc3\x03\n" +
+	"\x17disk_at_most_one_source\x12\x99\x01at most one disk source may be set: image, source_snapshot, source_instant_snapshot, source_storage_object, or source_disk — omit all for an empty disk\x1a\x8b\x02(this.image != '' ? 1 : 0) + (this.source_snapshot != '' ? 1 : 0) + (this.source_instant_snapshot != '' ? 1 : 0) + (this.source_storage_object != '' ? 1 : 0) + ((has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) ? 1 : 0) <= 1\x1a\xd2\x02\n" +
+	"\x18empty_disk_requires_size\x12Gan empty disk (no image, snapshot, or source disk) must declare size_gb\x1a\xec\x01this.image != '' || this.source_snapshot != '' || this.source_instant_snapshot != '' || this.source_storage_object != '' || (has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) || this.size_gb > 0\x1a\x94\x01\n" +
+	"\x1fimage_encryption_requires_image\x129source_image_encryption is only valid together with image\x1a6!has(this.source_image_encryption) || this.image != ''\x1a\xb4\x01\n" +
+	"%snapshot_encryption_requires_snapshot\x12Fsource_snapshot_encryption is only valid together with source_snapshot\x1aC!has(this.source_snapshot_encryption) || this.source_snapshot != ''\x1a\x97\x02\n" +
 	"%confidential_compute_requires_kms_key\x12wconfidential-compute disks require customer-managed encryption — set kms_key when enable_confidential_compute is true\x1au!this.enable_confidential_compute || (has(this.kms_key) && (has(this.kms_key.value) || has(this.kms_key.value_from)))B\x13\n" +
 	"\x11_provisioned_iopsB\x19\n" +
 	"\x17_provisioned_throughputB\x1c\n" +
-	"\x1a_physical_block_size_bytesB\xd2\x02\n" +
+	"\x1a_physical_block_size_bytes\"\xca\x01\n" +
+	"\x1eGcpComputeDiskSourceEncryption\x12q\n" +
+	"\akms_key\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\x125\n" +
+	"\x17kms_key_service_account\x18\x02 \x01(\tR\x14kmsKeyServiceAccountB\xd2\x02\n" +
 	"+com.dev.planton.gcp.gcpcomputedisk.v1alpha1B\tSpecProtoP\x01ZWgithub.com/plantonhq/planton/catalog/gcp/gcpcomputedisk/v1alpha1;gcpcomputediskv1alpha1\xa2\x02\x04DPGG\xaa\x02'Dev.Planton.Gcp.Gcpcomputedisk.V1alpha1\xca\x02'Dev\\Planton\\Gcp\\Gcpcomputedisk\\V1alpha1\xe2\x023Dev\\Planton\\Gcp\\Gcpcomputedisk\\V1alpha1\\GPBMetadata\xea\x02+Dev::Planton::Gcp::Gcpcomputedisk::V1alpha1b\x06proto3"
 
 var (
@@ -369,24 +557,29 @@ func file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_goTypes = []any{
-	(*GcpComputeDiskSpec)(nil),  // 0: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec
-	nil,                         // 1: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.LabelsEntry
-	nil,                         // 2: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.ResourceManagerTagsEntry
-	(*v1.StringValueOrRef)(nil), // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpComputeDiskSpec)(nil),             // 0: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec
+	(*GcpComputeDiskSourceEncryption)(nil), // 1: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSourceEncryption
+	nil,                                    // 2: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.LabelsEntry
+	nil,                                    // 3: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.ResourceManagerTagsEntry
+	(*v1.StringValueOrRef)(nil),            // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.source_disk:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 3: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.labels:type_name -> dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.LabelsEntry
-	2, // 4: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.ResourceManagerTagsEntry
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	4, // 0: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 1: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.source_disk:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 2: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 3: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.labels:type_name -> dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.LabelsEntry
+	3, // 4: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.ResourceManagerTagsEntry
+	1, // 5: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.source_image_encryption:type_name -> dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSourceEncryption
+	1, // 6: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.source_snapshot_encryption:type_name -> dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSourceEncryption
+	4, // 7: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSpec.async_primary_disk:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 8: dev.planton.gcp.gcpcomputedisk.v1alpha1.GcpComputeDiskSourceEncryption.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_init() }
@@ -401,7 +594,7 @@ func file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpcomputedisk_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

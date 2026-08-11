@@ -66,13 +66,16 @@ type GcpSslPolicySpec struct {
 	// while keeping broad reach; RESTRICTED narrows to ciphers with modern
 	// security guarantees (and is required when the TLS floor is raised beyond
 	// what other profiles allow); CUSTOM hand-picks cipher suites via
-	// custom_features. Mutable — tightening the profile applies to every proxy
+	// custom_features; FIPS_202205 pins the FIPS 140-2/3 validated suite set
+	// (and requires min_tls_version TLS_1_2 — the only floor that profile
+	// supports). Mutable — tightening the profile applies to every proxy
 	// referencing this policy on its next handshake.
 	Profile string `protobuf:"bytes,5,opt,name=profile,proto3" json:"profile,omitempty"`
 	// The minimum TLS protocol version clients may negotiate (default
 	// TLS_1_0). Raise to TLS_1_2 for PCI DSS and most modern compliance
-	// regimes. GCP has no maximum-version control; TLS 1.3 is always
-	// negotiable when the client supports it. Mutable.
+	// regimes; TLS_1_3 is the strictest floor and requires the RESTRICTED
+	// profile. GCP has no maximum-version control — TLS 1.3 is always
+	// negotiable when the client supports it, whatever the floor. Mutable.
 	MinTlsVersion string `protobuf:"bytes,6,opt,name=min_tls_version,json=minTlsVersion,proto3" json:"min_tls_version,omitempty"`
 	// Exact cipher suites to allow — required with (and only valid with) the
 	// CUSTOM profile. Names are IANA-style suite identifiers from GCP's
@@ -80,6 +83,28 @@ type GcpSslPolicySpec struct {
 	// unknown names at deploy time. TLS 1.3 suites are not listable — GCP
 	// always enables them regardless of this list. Mutable.
 	CustomFeatures []string `protobuf:"bytes,7,rep,name=custom_features,json=customFeatures,proto3" json:"custom_features,omitempty"`
+	// Post-quantum key exchange (X25519MLKEM768) posture for TLS handshakes
+	// (default DEFAULT). GCP rolls the hybrid post-quantum group out on its
+	// own schedule; this dial controls the rollout stance rather than a
+	// static on/off:
+	//
+	//	DEFAULT  -- follow GCP's rollout timeline
+	//	ENABLED  -- allow post-quantum key exchange now
+	//	DEFERRED -- opt out until GCP's later mandatory date
+	//
+	// Mutable.
+	PostQuantumKeyExchange string `protobuf:"bytes,8,opt,name=post_quantum_key_exchange,json=postQuantumKeyExchange,proto3" json:"post_quantum_key_exchange,omitempty"`
+	// Deletion policy — what happens when this resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the policy is deleted (GCP refuses while any proxy
+	//	             still references it, so destroy fails rather than
+	//	             silently loosening TLS floors)
+	//	"PREVENT" -- destroy FAILS; protects a compliance-mandated TLS
+	//	             posture from accidental teardown
+	//	"ABANDON" -- the policy is removed from management but left in
+	//	             GCP, still enforced by every proxy referencing it
+	DeletionPolicy string `protobuf:"bytes,9,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -163,11 +188,25 @@ func (x *GcpSslPolicySpec) GetCustomFeatures() []string {
 	return nil
 }
 
+func (x *GcpSslPolicySpec) GetPostQuantumKeyExchange() string {
+	if x != nil {
+		return x.PostQuantumKeyExchange
+	}
+	return ""
+}
+
+func (x *GcpSslPolicySpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpsslpolicy_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpsslpolicy_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	",catalog/gcp/gcpsslpolicy/v1alpha1/spec.proto\x12%dev.planton.gcp.gcpsslpolicy.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xd9\v\n" +
+	",catalog/gcp/gcpsslpolicy/v1alpha1/spec.proto\x12%dev.planton.gcp.gcpsslpolicy.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xcd\x12\n" +
 	"\x10GcpSslPolicySpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x9a\x02\n" +
@@ -175,14 +214,20 @@ const file_catalog_gcp_gcpsslpolicy_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15valid_ssl_policy_name\x12\x8e\x01ssl_policy_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit\x1a?this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')R\rsslPolicyName\x12\xc9\x01\n" +
 	"\x06region\x18\x03 \x01(\tB\xb0\x01\xbaH\xac\x01\xba\x01\xa8\x01\n" +
 	"\fvalid_region\x12\\region must be a valid GCP region name such as us-central1, or empty for a global SSL policy\x1a:this == '' || this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')R\x06region\x12*\n" +
-	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12\xb5\x01\n" +
-	"\aprofile\x18\x05 \x01(\tB\x9a\x01\xbaH\x96\x01\xba\x01\x92\x01\n" +
-	"\rvalid_profile\x129profile must be COMPATIBLE, MODERN, RESTRICTED, or CUSTOM\x1aFthis == '' || this in ['COMPATIBLE', 'MODERN', 'RESTRICTED', 'CUSTOM']R\aprofile\x12\xb7\x01\n" +
-	"\x0fmin_tls_version\x18\x06 \x01(\tB\x8e\x01\xbaH\x8a\x01\xba\x01\x86\x01\n" +
-	"\x15valid_min_tls_version\x124min_tls_version must be TLS_1_0, TLS_1_1, or TLS_1_2\x1a7this == '' || this in ['TLS_1_0', 'TLS_1_1', 'TLS_1_2']R\rminTlsVersion\x12D\n" +
-	"\x0fcustom_features\x18\a \x03(\tB\x1b\xbaH\x18\x92\x01\x15\"\x13r\x11\x18\x80\x012\f^[A-Z0-9_]+$R\x0ecustomFeatures:\x80\x03\xbaH\xfc\x02\x1a\xa8\x01\n" +
+	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12\xd1\x01\n" +
+	"\aprofile\x18\x05 \x01(\tB\xb6\x01\xbaH\xb2\x01\xba\x01\xae\x01\n" +
+	"\rvalid_profile\x12Fprofile must be COMPATIBLE, MODERN, RESTRICTED, CUSTOM, or FIPS_202205\x1aUthis == '' || this in ['COMPATIBLE', 'MODERN', 'RESTRICTED', 'CUSTOM', 'FIPS_202205']R\aprofile\x12\xcb\x01\n" +
+	"\x0fmin_tls_version\x18\x06 \x01(\tB\xa2\x01\xbaH\x9e\x01\xba\x01\x9a\x01\n" +
+	"\x15valid_min_tls_version\x12=min_tls_version must be TLS_1_0, TLS_1_1, TLS_1_2, or TLS_1_3\x1aBthis == '' || this in ['TLS_1_0', 'TLS_1_1', 'TLS_1_2', 'TLS_1_3']R\rminTlsVersion\x12D\n" +
+	"\x0fcustom_features\x18\a \x03(\tB\x1b\xbaH\x18\x92\x01\x15\"\x13r\x11\x18\x80\x012\f^[A-Z0-9_]+$R\x0ecustomFeatures\x12\xe0\x01\n" +
+	"\x19post_quantum_key_exchange\x18\b \x01(\tB\xa4\x01\xbaH\xa0\x01\xba\x01\x9c\x01\n" +
+	"\x1fvalid_post_quantum_key_exchange\x12?post_quantum_key_exchange must be DEFAULT, ENABLED, or DEFERRED\x1a8this == '' || this in ['DEFAULT', 'ENABLED', 'DEFERRED']R\x16postQuantumKeyExchange\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\t \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy:\xa3\x06\xbaH\x9f\x06\x1a\xa8\x01\n" +
 	" custom_profile_requires_features\x12Hthe CUSTOM profile requires at least one cipher suite in custom_features\x1a:this.profile != 'CUSTOM' || size(this.custom_features) > 0\x1a\xce\x01\n" +
-	"\x1ffeatures_require_custom_profile\x12ncustom_features is only valid with the CUSTOM profile — GCP rejects it on COMPATIBLE, MODERN, and RESTRICTED\x1a;size(this.custom_features) == 0 || this.profile == 'CUSTOM'B\xc4\x02\n" +
+	"\x1ffeatures_require_custom_profile\x12ncustom_features is only valid with the CUSTOM profile — GCP rejects it on COMPATIBLE, MODERN, and RESTRICTED\x1a;size(this.custom_features) == 0 || this.profile == 'CUSTOM'\x1a\xcb\x01\n" +
+	"\x1bfips_profile_requires_tls12\x12hthe FIPS_202205 profile requires min_tls_version TLS_1_2 — the only floor GCP supports on that profile\x1aBthis.profile != 'FIPS_202205' || this.min_tls_version == 'TLS_1_2'\x1a\xd2\x01\n" +
+	"\x1ftls13_floor_requires_restricted\x12lmin_tls_version TLS_1_3 requires the RESTRICTED profile — GCP rejects a TLS 1.3 floor on any other profile\x1aAthis.min_tls_version != 'TLS_1_3' || this.profile == 'RESTRICTED'B\xc4\x02\n" +
 	")com.dev.planton.gcp.gcpsslpolicy.v1alpha1B\tSpecProtoP\x01ZSgithub.com/plantonhq/planton/catalog/gcp/gcpsslpolicy/v1alpha1;gcpsslpolicyv1alpha1\xa2\x02\x04DPGG\xaa\x02%Dev.Planton.Gcp.Gcpsslpolicy.V1alpha1\xca\x02%Dev\\Planton\\Gcp\\Gcpsslpolicy\\V1alpha1\xe2\x021Dev\\Planton\\Gcp\\Gcpsslpolicy\\V1alpha1\\GPBMetadata\xea\x02)Dev::Planton::Gcp::Gcpsslpolicy::V1alpha1b\x06proto3"
 
 var (

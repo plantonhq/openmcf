@@ -1,0 +1,44 @@
+---
+title: "Log Stream to Pub/Sub"
+description: "The front door to third-party log pipelines: entries stream to a Pub/Sub topic in near real time, where Datadog/Splunk-class collectors (or your own subscribers) consume them."
+type: "preset"
+rank: "03"
+presetSlug: "03-log-stream-to-pubsub"
+componentSlug: "logging-sink"
+componentTitle: "Logging Sink"
+provider: "gcp"
+icon: "package"
+order: 3
+---
+
+# Log Stream to Pub/Sub
+
+The front door to third-party log pipelines: entries stream to a
+Pub/Sub topic in near real time, where Datadog/Splunk-class collectors
+(or your own subscribers) consume them.
+
+## What it configures
+
+- A `pubsubTopic` destination — the module renders the
+  `pubsub.googleapis.com/...` URI from the full topic path.
+- An EMPTY main filter (everything streams) with a sampling exclusion
+  that drops 90% of DEBUG noise — the volume/completeness trade made
+  explicit.
+
+## The deploy's second half
+
+Grant the sink's `writer_identity` output `roles/pubsub.publisher` on
+the topic — through the topic's `iamMembers` in the same chart.
+
+## Adjust before deploying
+
+- **pubsubTopic** — reference a GcpPubSubTopic resource via valueFrom
+  (its `topic_id` output is the full path this field wants).
+- Tune the exclusion sampling to your pipeline's ingest pricing; add
+  more carve-outs per noisy service.
+
+## When to choose something else
+
+If the consumer is a human with SQL, the **Audit Logs to BigQuery**
+preset removes the pipeline entirely; if it is a compliance archive,
+GCS is cheaper than any stream.

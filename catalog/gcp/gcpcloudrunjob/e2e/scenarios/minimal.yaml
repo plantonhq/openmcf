@@ -1,7 +1,10 @@
-# Minimal GcpCloudRunJob scenario: a single-task batch hello job.
-# project_id is deliberately omitted (ambient project). Job names are
-# project-scoped with no soft-delete reservation. deletion_protection
-# must be false so DESTROY can run.
+# Minimal GcpCloudRunJob scenario: a single-task batch hello job, extended
+# with execution-level metadata and the explicit teardown policy. The
+# execution tokens are deliberately NOT armed here: a token-armed create
+# triggers a real execution, an arm the proof lane designs deliberately
+# (see the proof queue's watch-list). project_id is deliberately omitted
+# (ambient project). Job names are project-scoped with no soft-delete
+# reservation. deletion_protection must be false so DESTROY can run.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudRunJob
 metadata:
@@ -19,6 +22,10 @@ metadata:
 spec:
   region: us-central1
   jobName: planton-oss-e2e-cldrunjob-${E2E_RUN_ID}
+  executionLabels:
+    planton-e2e-arm: execution-labels
+  executionAnnotations:
+    planton-e2e/arm: execution-annotations
   template:
     containers:
       - image: us-docker.pkg.dev/cloudrun/container/job:latest
@@ -30,3 +37,4 @@ spec:
     maxRetries: 1
   taskCount: 1
   deletionProtection: false
+  deletionPolicy: DELETE

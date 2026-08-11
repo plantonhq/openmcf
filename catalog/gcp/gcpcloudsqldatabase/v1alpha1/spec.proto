@@ -56,4 +56,15 @@ message GcpCloudSqlDatabaseSpec {
   // such as "en_US.UTF8". SQL Server: a SQL Server collation name. If
   // empty, the engine default applies.
   string collation = 5;
+
+  // Engine-side teardown behavior. "DELETE" (default) drops the database;
+  // "PREVENT" fails any plan that would drop it; "ABANDON" removes it
+  // from IaC management while leaving it in the instance. ABANDON is the
+  // documented answer for PostgreSQL databases that cannot be dropped
+  // while clients hold connections.
+  string deletion_policy = 6 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
 }

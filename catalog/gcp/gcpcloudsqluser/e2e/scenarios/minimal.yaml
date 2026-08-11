@@ -1,5 +1,8 @@
 # GcpCloudSqlUser scenario: a BUILT_IN application user on the prerequisite
 # instance. Password is a throwaway E2E credential — never reuse outside tests.
+# Also proves database_roles live (the predefined cloudsqlsuperuser role on
+# PostgreSQL) and the explicit DELETE teardown policy (no-op against the
+# provider default on re-plan).
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSqlUser
 metadata:
@@ -23,3 +26,6 @@ spec:
   userName: e2e-app
   password: E2eAppPassword123!
   type: BUILT_IN
+  databaseRoles:
+    - cloudsqlsuperuser
+  deletionPolicy: DELETE

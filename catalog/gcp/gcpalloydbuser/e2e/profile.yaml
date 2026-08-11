@@ -6,8 +6,9 @@ spec:
   # Composed scenario: deploys the GcpAlloydbCluster prerequisite then creates
   # a BUILT_IN user on it.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # pending_proof: the spec grew deletion_policy (the write-only password
+  # pair is a recorded exclusion, not spec surface) — the prior green
+  # described code that no longer exists. The scenario arms
+  # deletionPolicy: DELETE explicitly.
+  status: pending_proof
   timeout_minutes: 90

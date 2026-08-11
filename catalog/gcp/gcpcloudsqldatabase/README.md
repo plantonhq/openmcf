@@ -81,9 +81,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 
 ### Deliberately not modeled (recorded reasons)
 
-| Excluded Feature | Why |
-|---|---|
-| `deletion_policy` (ABANDON) | Client-side lever that conflicts with managed destroy semantics. |
+Nothing. Every configurable argument of `google_sql_database` at the pinned provider is representable through this spec — including `deletionPolicy`, whose `ABANDON` mode is the documented answer for PostgreSQL databases that cannot be dropped while clients hold connections.
 
 ## Related Components
 

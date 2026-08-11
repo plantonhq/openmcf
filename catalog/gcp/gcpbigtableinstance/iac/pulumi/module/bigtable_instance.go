@@ -109,6 +109,27 @@ func bigtableInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Prov
 		args.DisplayName = pulumi.StringPtr(spec.DisplayName)
 	}
 
+	// Edition gates feature availability (ENTERPRISE_PLUS unlocks
+	// multi-location automated-backup placement on tables). Unset lets
+	// the provider apply its ENTERPRISE default; upgrades apply in
+	// place, there is no downgrade path.
+	if spec.Edition != "" {
+		args.Edition = pulumi.StringPtr(spec.Edition)
+	}
+
+	// Resource Manager tags for org-policy and IAM conditions.
+	// Create-time only (ForceNew): a tag change replaces the instance.
+	if len(spec.ResourceManagerTags) > 0 {
+		args.Tags = pulumi.ToStringMap(spec.ResourceManagerTags)
+	}
+
+	// What a PERMITTED destroy does once deletion_protection allows one:
+	// DELETE (default), PREVENT (destroy fails), or ABANDON (drop from
+	// state, keep the instance running in GCP).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdInstance, err := bigtable.NewInstance(ctx, "bigtable-instance", args,
 		pulumi.Provider(gcpProvider),
 		pulumi.DependsOn([]pulumi.Resource{createdAdminApi}))

@@ -36,3 +36,6 @@ spec:
   attributeCondition: assertion.repository_owner == "plantonhq"
   oidc:
     issuerUri: https://token.actions.githubusercontent.com
+  # Explicit DELETE keeps the destroy real and proves the no-op-diff
+  # behavior of the new arm.
+  deletionPolicy: DELETE

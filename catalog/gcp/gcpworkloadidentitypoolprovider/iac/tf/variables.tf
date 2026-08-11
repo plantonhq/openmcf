@@ -83,6 +83,10 @@ variable "spec" {
         })), [])
       })
     }))
+
+    # DELETE (default) / PREVENT / ABANDON; empty falls through to the
+    # provider default (DELETE).
+    deletion_policy = optional(string, "")
   })
 
   validation {

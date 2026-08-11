@@ -13,3 +13,6 @@ spec:
   values:
     - value: 192.0.2.1
   ttlSeconds: 300
+
+  # Ephemeral test fixture: delete the record set on destroy.
+  deletionPolicy: DELETE

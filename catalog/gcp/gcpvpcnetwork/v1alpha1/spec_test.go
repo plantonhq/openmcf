@@ -106,6 +106,20 @@ var _ = ginkgo.Describe("GcpVpcNetworkSpec Custom Validation Tests", func() {
 		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
 	})
 
+	ginkgo.It("should accept resource manager tags", func() {
+		target := minimal()
+		target.Spec.ResourceManagerTags = map[string]string{"tagKeys/123456": "tagValues/789012"}
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept each deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			target := minimal()
+			target.Spec.DeletionPolicy = v
+			gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+		}
+	})
+
 	// ──────────────── Negative Cases ────────────────
 
 	ginkgo.It("should reject a missing network_name", func() {
@@ -159,6 +173,12 @@ var _ = ginkgo.Describe("GcpVpcNetworkSpec Custom Validation Tests", func() {
 			long[i] = 'a'
 		}
 		target.Spec.Description = string(long)
+		gomega.Expect(validator.Validate(target)).ToNot(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		target := minimal()
+		target.Spec.DeletionPolicy = "KEEP"
 		gomega.Expect(validator.Validate(target)).ToNot(gomega.Succeed())
 	})
 })

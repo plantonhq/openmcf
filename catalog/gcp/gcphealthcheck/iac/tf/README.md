@@ -4,7 +4,7 @@ This Terraform module provisions a GCP Compute Engine health check. It is the Te
 
 ## Overview
 
-The module creates exactly one of `google_compute_health_check` (global, when `spec.region` is empty) or `google_compute_region_health_check` (regional, when it is set) — GCP models the two scopes as separate API collections with an identical probe surface. Both resources run on the `google-beta` provider because the gRPC-with-TLS protocol block is preview-stage on the released 6.x line; everything else is GA and identical in beta.
+The module creates exactly one of `google_compute_health_check` (global, when `spec.region` is empty) or `google_compute_region_health_check` (regional, when it is set) — GCP models the two scopes as separate API collections with an identical probe surface. Everything, including the gRPC-with-TLS protocol block, is GA on the `hashicorp/google` 7.x line; no beta provider is involved.
 
 `name` and `project` are immutable (ForceNew); all probe knobs (cadence, thresholds, protocol settings) update in place. Ports left unset fall through to the API's protocol defaults (http/tcp 80, https/http2/ssl 443).
 
@@ -35,7 +35,7 @@ terraform apply -var-file=terraform.tfvars.json
 | `metadata` | Resource metadata (name, labels, etc.) | — |
 | `spec` | GcpHealthCheck spec | — |
 
-The `spec` object includes: exactly one protocol block (`http`/`https`/`http2`/`tcp`/`ssl`/`grpc`/`grpc_tls`), `project_id` (empty falls back to the provider default project), `health_check_name` (empty defaults to `metadata.name`), `region` (empty = global), `check_interval_sec`/`timeout_sec`/`healthy_threshold`/`unhealthy_threshold` (defaults 5/5/2/2), `enable_logging`, and global-only `source_regions` (exactly 3 regions).
+The `spec` object includes: exactly one protocol block (`http`/`https`/`http2`/`tcp`/`ssl`/`grpc`/`grpc_tls`), `project_id` (empty falls back to the provider default project), `health_check_name` (empty defaults to `metadata.name`), `region` (empty = global), `check_interval_sec`/`timeout_sec`/`healthy_threshold`/`unhealthy_threshold` (defaults 5/5/2/2), `enable_logging`, global-only `source_regions` (exactly 3 regions), and `deletion_policy` (DELETE/PREVENT/ABANDON destroy behavior — applies to whichever scope the check was created in).
 
 ## Outputs
 

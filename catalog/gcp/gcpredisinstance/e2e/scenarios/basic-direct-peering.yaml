@@ -1,6 +1,9 @@
 # BASIC-tier leaf over direct peering: the smallest Memorystore shape, peered
 # to the run-scoped prerequisite VPC. Exercises the ambient-project contract
-# (no spec.project_id) and the VPC reference wiring.
+# (no spec.project_id), the VPC reference wiring, and the user-label merge.
+# Deletion protection is explicitly disabled (the spec defaults it TRUE) so
+# the ephemeral create -> verify -> destroy cycle can tear down without a
+# two-step disable.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRedisInstance
 metadata:
@@ -26,3 +29,12 @@ spec:
       kind: GcpVpcNetwork
       name: planton-oss-e2e-gcpvpc-prereq
       fieldPath: status.outputs.network_self_link
+  labels:
+    team: platform-e2e
+  maintenanceWindow:
+    day: SUNDAY
+    hour: 3
+    minute: 30
+    description: e2e window pinned to the minute
+  deletionProtection: false
+  deletionPolicy: DELETE

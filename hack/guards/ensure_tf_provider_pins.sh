@@ -38,6 +38,7 @@ catalog_root="catalog"
 # monthly sweep updates the constraint here and in every module together.
 canonical_pins=(
   "aws|aws|~> 6.58"
+  "gcp|google|~> 7.43"
 )
 
 violations=()

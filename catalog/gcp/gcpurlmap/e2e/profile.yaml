@@ -3,14 +3,23 @@ kind: ComponentE2EProfile
 metadata:
   name: gcpurlmap
 spec:
-  # Composed scenario: the harness deploys GcpBackendService (and its
-  # GcpHealthCheck prerequisite) via the kind registry, resolves the URL
-  # map's default_service reference from the backend service outputs, then
-  # runs deploy -> compute urlMaps.get verify -> destroy -> verify 404, on
-  # both provisioners.
+  # Composed scenarios: the harness deploys GcpBackendService (and its
+  # GcpHealthCheck prerequisite) via the kind registry; the features
+  # scenario additionally composes two EXTERNAL_MANAGED backend fixtures
+  # through its e2e-prerequisites annotation to exercise the full
+  # per-route traffic-management surface (weighted header attribution,
+  # timeouts/retries, mirroring, CORS, route-scoped CDN caching, fault
+  # injection). Deploy -> compute urlMaps.get verify -> destroy -> verify
+  # 404, on both provisioners.
+  #
+  #
+  # Offline-proven-only arm (deferred, with unblock condition):
+  #   - max_stream_duration: LIVE-VERIFIED rejection — the API refuses it
+  #     unless the backend service's load-balancing scheme is
+  #     INTERNAL_SELF_MANAGED (Traffic Director), and the harness has no
+  #     Traffic Director fixture chain. Unblock: an INTERNAL_SELF_MANAGED
+  #     backend + URL map lane.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
-  timeout_minutes: 15
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 20

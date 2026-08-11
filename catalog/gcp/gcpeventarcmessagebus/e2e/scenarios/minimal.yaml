@@ -1,0 +1,20 @@
+# Minimal GcpEventarcMessageBus scenario: the bus alone — the smallest
+# Advanced hub, INFO platform logging.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpEventarcMessageBus
+metadata:
+  name: planton-oss-e2e-gcpevbus-minimal
+  id: planton-oss-e2e-gcpevbus-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpeventarcmessagebus
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  location: us-central1
+  logSeverity: INFO
+  deletionPolicy: DELETE

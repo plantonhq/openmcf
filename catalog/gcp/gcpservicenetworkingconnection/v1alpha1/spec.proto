@@ -87,4 +87,22 @@ message GcpServiceNetworkingConnectionSpec {
   // ranges, adopting it instead of erroring. Leave false unless you are
   // deliberately taking over a pre-existing connection.
   bool update_on_creation_fail = 5;
+
+  // Deletion policy for the connection — what happens when this resource
+  // is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the peering is deleted (GCP refuses while any service
+  //                producer still holds subnets in the reserved ranges —
+  //                destroy the Cloud SQL / AlloyDB / Memorystore instances
+  //                first; see the teardown note above)
+  //   "PREVENT" -- destroy FAILS; protects the private connectivity every
+  //                producer instance on this network depends on
+  //   "ABANDON" -- the connection is removed from management but keeps
+  //                serving private IPs in GCP — the historical workaround
+  //                for stuck teardowns, at the cost of an unmanaged peering
+  string deletion_policy = 6 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

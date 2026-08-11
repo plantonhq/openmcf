@@ -19,8 +19,9 @@ import (
 //     immutable — changing them replaces the disk and its data. size
 //     grows in place but never shrinks.
 //
-//   - At most one source (image / snapshot / source_disk); none creates
-//     an empty disk — the common case for data volumes.
+//   - At most one source (image / snapshot / instant snapshot / storage
+//     object / source_disk); none creates an empty disk — the common case
+//     for data volumes.
 //
 //   - Deleting a disk still attached to a running instance fails; detach
 //     first (or delete the instance).
@@ -74,6 +75,12 @@ func computeDisk(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider)
 	if spec.SourceSnapshot != "" {
 		args.Snapshot = pulumi.StringPtr(spec.SourceSnapshot)
 	}
+	if spec.SourceInstantSnapshot != "" {
+		args.SourceInstantSnapshot = pulumi.StringPtr(spec.SourceInstantSnapshot)
+	}
+	if spec.SourceStorageObject != "" {
+		args.SourceStorageObject = pulumi.StringPtr(spec.SourceStorageObject)
+	}
 	if spec.SourceDisk.GetValue() != "" {
 		args.SourceDisk = pulumi.StringPtr(spec.SourceDisk.GetValue())
 	}
@@ -107,10 +114,66 @@ func computeDisk(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider)
 
 	// CMEK: the Compute Engine service agent must hold
 	// roles/cloudkms.cryptoKeyEncrypterDecrypter on this key before
-	// create.
+	// create. KmsKeyServiceAccount overrides which identity performs the
+	// encryption request. Raw CSEK keys are deliberately not supported —
+	// key material never flows through manifests or state.
 	if spec.KmsKey.GetValue() != "" {
-		args.DiskEncryptionKey = &compute.DiskDiskEncryptionKeyArgs{
+		diskEncryptionKeyArgs := &compute.DiskDiskEncryptionKeyArgs{
 			KmsKeySelfLink: pulumi.StringPtr(spec.KmsKey.GetValue()),
+		}
+		if spec.KmsKeyServiceAccount != "" {
+			diskEncryptionKeyArgs.KmsKeyServiceAccount = pulumi.StringPtr(spec.KmsKeyServiceAccount)
+		}
+		args.DiskEncryptionKey = diskEncryptionKeyArgs
+	}
+
+	// CMEK decryption of an encrypted source image / snapshot.
+	if spec.SourceImageEncryption != nil {
+		imageKeyArgs := &compute.DiskSourceImageEncryptionKeyArgs{
+			KmsKeySelfLink: pulumi.StringPtr(spec.SourceImageEncryption.KmsKey.GetValue()),
+		}
+		if spec.SourceImageEncryption.KmsKeyServiceAccount != "" {
+			imageKeyArgs.KmsKeyServiceAccount = pulumi.StringPtr(spec.SourceImageEncryption.KmsKeyServiceAccount)
+		}
+		args.SourceImageEncryptionKey = imageKeyArgs
+	}
+	if spec.SourceSnapshotEncryption != nil {
+		snapshotKeyArgs := &compute.DiskSourceSnapshotEncryptionKeyArgs{
+			KmsKeySelfLink: pulumi.StringPtr(spec.SourceSnapshotEncryption.KmsKey.GetValue()),
+		}
+		if spec.SourceSnapshotEncryption.KmsKeyServiceAccount != "" {
+			snapshotKeyArgs.KmsKeyServiceAccount = pulumi.StringPtr(spec.SourceSnapshotEncryption.KmsKeyServiceAccount)
+		}
+		args.SourceSnapshotEncryptionKey = snapshotKeyArgs
+	}
+
+	// Guest OS features for bootable disks; licenses for BYOL imports.
+	// Both create-time only.
+	if len(spec.GuestOsFeatures) > 0 {
+		guestOsFeatures := compute.DiskGuestOsFeatureArray{}
+		for _, featureType := range spec.GuestOsFeatures {
+			guestOsFeatures = append(guestOsFeatures, &compute.DiskGuestOsFeatureArgs{
+				Type: pulumi.String(featureType),
+			})
+		}
+		args.GuestOsFeatures = guestOsFeatures
+	}
+	if len(spec.Licenses) > 0 {
+		args.Licenses = pulumi.ToStringArray(spec.Licenses)
+	}
+
+	// Destroy-time guard: PREVENT fails the destroy; ABANDON unmanages the
+	// disk without deleting it. Unset falls back to the provider default
+	// (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
+	// Async replication: pairing this disk (the SECONDARY) to its primary.
+	// Replication starts when the pair is activated on the primary.
+	if spec.AsyncPrimaryDisk.GetValue() != "" {
+		args.AsyncPrimaryDisk = &compute.DiskAsyncPrimaryDiskArgs{
+			Disk: pulumi.String(spec.AsyncPrimaryDisk.GetValue()),
 		}
 	}
 

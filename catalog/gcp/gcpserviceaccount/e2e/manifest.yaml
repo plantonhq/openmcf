@@ -18,9 +18,12 @@ spec:
   # What this identity is for — surfaces in the console and gcloud describe
   description: Sample identity used to exercise the module locally
 
-  # Whether to create a JSON key for this service account
-  # Default: false (keyless is recommended for security)
-  createKey: false
+  # User-managed key: omit entirely for keyless (recommended). When present,
+  # the block's fields shape the key — e.g. keepers as the rotation trigger:
+  #   userManagedKey:
+  #     keepers:
+  #       rotation: "2026-08"
+  # This canonical example stays keyless.
 
   # Project-level IAM roles to grant to this service account (additive grants)
   projectIamRoles:

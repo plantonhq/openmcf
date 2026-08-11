@@ -20,3 +20,14 @@ spec:
   autoCreateSubnetworks: false
   description: Ephemeral VPC for the networking-depth E2E smoke; safe to delete
   mtu: 1460
+  # STANDARD best-path selection with MED comparison armed: proves the
+  # explicit-send wiring (alwaysCompareMed is sent true AND false — the
+  # re-plan after deploy must show no diff, and a live edit to false must
+  # actually land).
+  bgpBestPathSelection:
+    mode: STANDARD
+    alwaysCompareMed: true
+    interRegionCost: ADD_COST_TO_MED
+  # Explicit DELETE keeps the destroy real and proves the no-op-diff
+  # behavior of the new arm.
+  deletionPolicy: DELETE

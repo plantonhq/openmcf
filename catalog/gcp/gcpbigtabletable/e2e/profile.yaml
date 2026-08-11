@@ -8,8 +8,6 @@ spec:
   # destroy -> verify gone, on both provisioners. The table itself
   # creates in seconds; the chain cost is the instance prerequisite.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 45

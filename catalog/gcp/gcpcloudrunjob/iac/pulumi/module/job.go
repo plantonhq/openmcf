@@ -54,6 +54,15 @@ func job(
 		executionTemplate.Parallelism = pulumi.Int(int(spec.GetParallelism()))
 	}
 
+	// Execution-level metadata, stamped on every execution the job creates
+	// (distinct from the job-object labels/annotations below).
+	if len(spec.ExecutionLabels) > 0 {
+		executionTemplate.Labels = pulumi.ToStringMap(spec.ExecutionLabels)
+	}
+	if len(spec.ExecutionAnnotations) > 0 {
+		executionTemplate.Annotations = pulumi.ToStringMap(spec.ExecutionAnnotations)
+	}
+
 	args := &cloudrunv2.JobArgs{
 		Name:               pulumi.String(locals.JobName),
 		Location:           pulumi.String(spec.Region),
@@ -70,6 +79,22 @@ func job(
 	}
 	if len(spec.Annotations) > 0 {
 		args.Annotations = pulumi.ToStringMap(spec.Annotations)
+	}
+
+	// Engine-side destroy stance: PREVENT fails destroys, ABANDON removes
+	// the job from management without deleting it in GCP.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.String(spec.DeletionPolicy)
+	}
+
+	// Declarative run-on-deploy tokens (mutually exclusive —
+	// proto-enforced): start_* counts the job ready when the triggered
+	// execution STARTS; run_* when it COMPLETES.
+	if spec.StartExecutionToken != "" {
+		args.StartExecutionToken = pulumi.String(spec.StartExecutionToken)
+	}
+	if spec.RunExecutionToken != "" {
+		args.RunExecutionToken = pulumi.String(spec.RunExecutionToken)
 	}
 
 	if spec.BinaryAuthorization != nil {
@@ -214,10 +239,14 @@ func buildTaskTemplate(
 				}
 				volumeArgs.EmptyDir = emptyDir
 			case *gcpcloudrunjobv1alpha1.GcpCloudRunJobVolume_Gcs:
-				volumeArgs.Gcs = &cloudrunv2.JobTemplateTemplateVolumeGcsArgs{
+				gcs := &cloudrunv2.JobTemplateTemplateVolumeGcsArgs{
 					Bucket:   pulumi.String(source.Gcs.Bucket.GetValue()),
 					ReadOnly: pulumi.Bool(source.Gcs.ReadOnly),
 				}
+				if len(source.Gcs.MountOptions) > 0 {
+					gcs.MountOptions = pulumi.ToStringArray(source.Gcs.MountOptions)
+				}
+				volumeArgs.Gcs = gcs
 			case *gcpcloudrunjobv1alpha1.GcpCloudRunJobVolume_Nfs:
 				volumeArgs.Nfs = &cloudrunv2.JobTemplateTemplateVolumeNfsArgs{
 					Server:   pulumi.String(source.Nfs.Server),
@@ -299,12 +328,88 @@ func buildContainers(tmpl *gcpcloudrunjobv1alpha1.GcpCloudRunJobTemplate) cloudr
 		if len(container.VolumeMounts) > 0 {
 			mounts := cloudrunv2.JobTemplateTemplateContainerVolumeMountArray{}
 			for _, mount := range container.VolumeMounts {
-				mounts = append(mounts, &cloudrunv2.JobTemplateTemplateContainerVolumeMountArgs{
+				mountArgs := &cloudrunv2.JobTemplateTemplateContainerVolumeMountArgs{
 					Name:      pulumi.String(mount.Name),
 					MountPath: pulumi.String(mount.MountPath),
-				})
+				}
+				if mount.SubPath != "" {
+					mountArgs.SubPath = pulumi.String(mount.SubPath)
+				}
+				mounts = append(mounts, mountArgs)
 			}
 			containerArgs.VolumeMounts = mounts
+		}
+
+		// The port a probe targets by default — jobs serve no traffic, so
+		// this exists purely for the startup probe. The provider models
+		// job ports as a list; the spec's single message lands as its one
+		// element (the API accepts at most one).
+		if container.Ports != nil {
+			port := &cloudrunv2.JobTemplateTemplateContainerPortArgs{}
+			if container.Ports.ContainerPort != nil {
+				port.ContainerPort = pulumi.Int(int(container.Ports.GetContainerPort()))
+			}
+			if container.Ports.Name != "" {
+				port.Name = pulumi.String(container.Ports.Name)
+			}
+			containerArgs.Ports = cloudrunv2.JobTemplateTemplateContainerPortArray{port}
+		}
+
+		// Startup probe: gates task start; a container that never passes
+		// is shut down and the task retried per max_retries. The only
+		// probe type jobs have.
+		if container.StartupProbe != nil {
+			probe := container.StartupProbe
+			startupProbe := &cloudrunv2.JobTemplateTemplateContainerStartupProbeArgs{}
+			if probe.InitialDelaySeconds != nil {
+				startupProbe.InitialDelaySeconds = pulumi.Int(int(probe.GetInitialDelaySeconds()))
+			}
+			if probe.TimeoutSeconds != nil {
+				startupProbe.TimeoutSeconds = pulumi.Int(int(probe.GetTimeoutSeconds()))
+			}
+			if probe.PeriodSeconds != nil {
+				startupProbe.PeriodSeconds = pulumi.Int(int(probe.GetPeriodSeconds()))
+			}
+			if probe.FailureThreshold != nil {
+				startupProbe.FailureThreshold = pulumi.Int(int(probe.GetFailureThreshold()))
+			}
+			switch handler := probe.Handler.(type) {
+			case *gcpcloudrunjobv1alpha1.GcpCloudRunJobProbe_HttpGet:
+				httpGet := &cloudrunv2.JobTemplateTemplateContainerStartupProbeHttpGetArgs{}
+				if handler.HttpGet.Path != "" {
+					httpGet.Path = pulumi.String(handler.HttpGet.Path)
+				}
+				if handler.HttpGet.Port != nil {
+					httpGet.Port = pulumi.Int(int(handler.HttpGet.GetPort()))
+				}
+				if len(handler.HttpGet.HttpHeaders) > 0 {
+					headers := cloudrunv2.JobTemplateTemplateContainerStartupProbeHttpGetHttpHeaderArray{}
+					for _, header := range handler.HttpGet.HttpHeaders {
+						headers = append(headers, &cloudrunv2.JobTemplateTemplateContainerStartupProbeHttpGetHttpHeaderArgs{
+							Name:  pulumi.String(header.Name),
+							Value: pulumi.String(header.Value),
+						})
+					}
+					httpGet.HttpHeaders = headers
+				}
+				startupProbe.HttpGet = httpGet
+			case *gcpcloudrunjobv1alpha1.GcpCloudRunJobProbe_TcpSocket:
+				tcpSocket := &cloudrunv2.JobTemplateTemplateContainerStartupProbeTcpSocketArgs{}
+				if handler.TcpSocket.Port != nil {
+					tcpSocket.Port = pulumi.Int(int(handler.TcpSocket.GetPort()))
+				}
+				startupProbe.TcpSocket = tcpSocket
+			case *gcpcloudrunjobv1alpha1.GcpCloudRunJobProbe_Grpc:
+				grpc := &cloudrunv2.JobTemplateTemplateContainerStartupProbeGrpcArgs{}
+				if handler.Grpc.Port != nil {
+					grpc.Port = pulumi.Int(int(handler.Grpc.GetPort()))
+				}
+				if handler.Grpc.Service != "" {
+					grpc.Service = pulumi.String(handler.Grpc.Service)
+				}
+				startupProbe.Grpc = grpc
+			}
+			containerArgs.StartupProbe = startupProbe
 		}
 
 		containers = append(containers, containerArgs)

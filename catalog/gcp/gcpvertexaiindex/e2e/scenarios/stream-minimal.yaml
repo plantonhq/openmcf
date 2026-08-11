@@ -30,5 +30,8 @@ spec:
     treeAhConfig:
       leafNodeEmbeddingCount: 1000
       leafNodesToSearchPercent: 10
+  # Explicit DELETE proves the client-side lever round-trips (the
+  # provider defaults it server-side; every scenario arms it).
+  deletionPolicy: DELETE
   labels:
     e2e: stream-minimal

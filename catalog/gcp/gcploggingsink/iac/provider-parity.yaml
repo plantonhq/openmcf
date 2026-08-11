@@ -1,0 +1,93 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# One kind, four sink resources -- the spec's scope message selects which
+# one the module creates, and each resource's entry below records the same
+# judgment set: the scope arm that names the parent, the sink_name rename,
+# and the destination FAN-IN (four spec arms -- gcs_bucket /
+# bigquery_dataset / pubsub_topic / raw_uri -- all rendering into the one
+# provider `destination` URI; the module assembles the service-scheme
+# string so manifests never hand-assemble it).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_logging_project_sink:
+    mappings:
+      - spec: spec.scope.project_id
+        arg: project
+      - spec: spec.sink_name
+        arg: name
+      # Destination fan-in: each arm renders into the one destination URI.
+      - spec: spec.destination.gcs_bucket
+        arg: destination
+      - spec: spec.destination.bigquery_dataset
+        arg: destination
+      - spec: spec.destination.pubsub_topic
+        arg: destination
+      - spec: spec.destination.raw_uri
+        arg: destination
+      - spec: spec.destination.use_partitioned_tables
+        arg: bigquery_options.use_partitioned_tables
+
+  google_logging_folder_sink:
+    mappings:
+      - spec: spec.scope.folder_id
+        arg: folder
+      - spec: spec.sink_name
+        arg: name
+      - spec: spec.destination.gcs_bucket
+        arg: destination
+      - spec: spec.destination.bigquery_dataset
+        arg: destination
+      - spec: spec.destination.pubsub_topic
+        arg: destination
+      - spec: spec.destination.raw_uri
+        arg: destination
+      - spec: spec.destination.use_partitioned_tables
+        arg: bigquery_options.use_partitioned_tables
+
+  google_logging_organization_sink:
+    mappings:
+      - spec: spec.scope.organization_id
+        arg: org_id
+      - spec: spec.sink_name
+        arg: name
+      - spec: spec.destination.gcs_bucket
+        arg: destination
+      - spec: spec.destination.bigquery_dataset
+        arg: destination
+      - spec: spec.destination.pubsub_topic
+        arg: destination
+      - spec: spec.destination.raw_uri
+        arg: destination
+      - spec: spec.destination.use_partitioned_tables
+        arg: bigquery_options.use_partitioned_tables
+
+  google_logging_billing_account_sink:
+    mappings:
+      - spec: spec.scope.billing_account
+        arg: billing_account
+      - spec: spec.sink_name
+        arg: name
+      - spec: spec.destination.gcs_bucket
+        arg: destination
+      - spec: spec.destination.bigquery_dataset
+        arg: destination
+      - spec: spec.destination.pubsub_topic
+        arg: destination
+      - spec: spec.destination.raw_uri
+        arg: destination
+      - spec: spec.destination.use_partitioned_tables
+        arg: bigquery_options.use_partitioned_tables
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables logging.googleapis.com
+      (project-scope sinks only; folder/org/billing sinks are not project
+      resources) with fixed arguments (disable_on_destroy false so
+      destroying one sink never disables logging project-wide); not spec
+      surface.

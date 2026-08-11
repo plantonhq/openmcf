@@ -52,5 +52,7 @@ resource "google_compute_target_https_proxy" "this" {
   # Traffic Director binding; null lets the API compute its default (false).
   proxy_bind = local.proxy_bind
 
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.compute_api]
 }

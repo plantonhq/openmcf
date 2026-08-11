@@ -35,8 +35,18 @@ locals {
   tcp_transitory_idle_timeout_sec  = var.spec.tcp_transitory_idle_timeout_sec > 0 ? var.spec.tcp_transitory_idle_timeout_sec : null
   tcp_time_wait_timeout_sec        = var.spec.tcp_time_wait_timeout_sec > 0 ? var.spec.tcp_time_wait_timeout_sec : null
 
-  router_asn                = var.spec.router_asn > 0 ? var.spec.router_asn : null
-  router_keepalive_interval = var.spec.router_keepalive_interval > 0 ? var.spec.router_keepalive_interval : null
+  # NAT64 mode mirrors the v4 derivation: an explicit value wins; listing
+  # nat64 subnetworks implies LIST_OF_IPV6_SUBNETWORKS; nothing means no
+  # NAT64 (null keeps the argument out of the API payload entirely).
+  source_subnetwork_ip_ranges_to_nat64 = (
+    var.spec.source_subnetwork_ip_ranges_to_nat64 != ""
+    ? var.spec.source_subnetwork_ip_ranges_to_nat64
+    : (length(var.spec.nat64_subnetworks) > 0 ? "LIST_OF_IPV6_SUBNETWORKS" : null)
+  )
+
+  # Applied to both the router and the NAT. Empty defers to the provider
+  # default (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   # Logging: the DISABLED sentinel turns logging off; every other filter
   # value enables it. The filter must still be a valid value when disabled,

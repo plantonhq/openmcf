@@ -10,21 +10,54 @@ resource "google_project_service" "compute_api" {
 }
 
 # The Cloud Router carrying the NAT configuration. NAT-only routers need no
-# BGP surface at all — the asn/keepalive knobs matter only when the router
-# will also terminate BGP sessions (Interconnect/VPN).
+# BGP surface at all — router_bgp matters only when the router will also
+# terminate BGP sessions (Interconnect/VPN), where it controls the ASN and
+# what routes are advertised to every peer.
 resource "google_compute_router" "router" {
-  name    = var.spec.router_name
-  region  = var.spec.region
-  network = var.spec.vpc_self_link
-  project = local.project_id
+  name        = var.spec.router_name
+  region      = var.spec.region
+  network     = var.spec.vpc_self_link
+  project     = local.project_id
+  description = var.spec.router_description != "" ? var.spec.router_description : null
 
+  # Dedicates the router to encrypted VLAN attachments (HA VPN over
+  # Interconnect). Immutable, and an encrypted router cannot be converted.
+  encrypted_interconnect_router = var.spec.encrypted_interconnect_router
+
+  # Message presence IS the block: the spec's router_bgp carries a valid
+  # ASN whenever it is set (CEL-enforced), so no derivation is needed.
   dynamic "bgp" {
-    for_each = local.router_asn != null || local.router_keepalive_interval != null ? [1] : []
+    for_each = var.spec.router_bgp != null ? [var.spec.router_bgp] : []
     content {
-      asn                = local.router_asn
-      keepalive_interval = local.router_keepalive_interval
+      asn = bgp.value.asn
+      # advertise_mode empty means DEFAULT; custom groups/ranges are legal
+      # only in CUSTOM mode (spec CELs mirror the provider's constraint).
+      advertise_mode     = bgp.value.advertise_mode != "" ? bgp.value.advertise_mode : null
+      advertised_groups  = length(bgp.value.advertised_groups) > 0 ? bgp.value.advertised_groups : null
+      keepalive_interval = bgp.value.keepalive_interval > 0 ? bgp.value.keepalive_interval : null
+      # identifier_range is Optional+Computed: an empty string must stay out
+      # of the payload or it would fight the API's computed value.
+      identifier_range = bgp.value.identifier_range != "" ? bgp.value.identifier_range : null
+
+      dynamic "advertised_ip_ranges" {
+        for_each = bgp.value.advertised_ip_ranges
+        content {
+          range       = advertised_ip_ranges.value.range
+          description = advertised_ip_ranges.value.description != "" ? advertised_ip_ranges.value.description : null
+        }
+      }
     }
   }
+
+  # Create-time resource-manager tags (org policy / IAM conditions).
+  dynamic "params" {
+    for_each = length(var.spec.resource_manager_tags) > 0 ? [1] : []
+    content {
+      resource_manager_tags = var.spec.resource_manager_tags
+    }
+  }
+
+  deletion_policy = local.deletion_policy
 
   depends_on = [google_project_service.compute_api]
 }
@@ -68,6 +101,17 @@ resource "google_compute_router_nat" "nat" {
       # An empty list means everything: primary + all secondary ranges.
       source_ip_ranges_to_nat  = length(subnetwork.value.source_ip_ranges_to_nat) > 0 ? subnetwork.value.source_ip_ranges_to_nat : ["ALL_IP_RANGES"]
       secondary_ip_range_names = length(subnetwork.value.secondary_ip_range_names) > 0 ? subnetwork.value.secondary_ip_range_names : null
+    }
+  }
+
+  # NAT64 (IPv6-to-IPv4 translation). Null means no NAT64; only one NAT
+  # per region in the network may claim ALL_IPV6_SUBNETWORKS.
+  source_subnetwork_ip_ranges_to_nat64 = local.source_subnetwork_ip_ranges_to_nat64
+
+  dynamic "nat64_subnetwork" {
+    for_each = var.spec.nat64_subnetworks
+    content {
+      name = nat64_subnetwork.value
     }
   }
 
@@ -117,4 +161,6 @@ resource "google_compute_router_nat" "nat" {
     enable = local.enable_logging
     filter = local.log_filter
   }
+
+  deletion_policy = local.deletion_policy
 }

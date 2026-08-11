@@ -16,6 +16,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Firestore Composite Index** -- an index on the specified collection (or collection group) with the declared fields in order; Firestore builds it in the background and appends `__name__` automatically
 - **Vector Index** -- created when a field carries `vectorConfig`; enables `find_nearest` queries against embeddings of the declared dimension (flat index type)
+- **Search Index** -- created when a field carries `searchConfig` (text and/or geo); the Firestore Enterprise search surface, requiring an ENTERPRISE-edition database
 
 Single-field indexes are built by Firestore automatically and never need this resource. Every index property is immutable at the API — changing the definition replaces the index with a background rebuild, and the old index keeps serving queries until the new one is ready (create-before-destroy).
 
@@ -83,13 +84,17 @@ The InfraPipeline resolves the dependency graph, deploys the database first, the
 
 These are the most important decisions when configuring a Firestore index. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Fields and order** -- Declare the fields in QUERY order: equality filters first, then the inequality or sort field, then array/vector fields. Each field plays exactly one role — `order` (`ASCENDING`/`DESCENDING`), `arrayConfig` (`CONTAINS` for array-contains queries), or `vectorConfig` (nearest-neighbor). Sort direction matters: an index on `(customerId ASC, createdAt DESC)` does not serve the reverse ordering.
+**Fields and order** -- Declare the fields in QUERY order: equality filters first, then the inequality or sort field, then array/vector fields. Each field plays exactly one role — `order` (`ASCENDING`/`DESCENDING`), `arrayConfig` (`CONTAINS` for array-contains queries), `vectorConfig` (nearest-neighbor), or `searchConfig` (Enterprise text/geo search). Sort direction matters: an index on `(customerId ASC, createdAt DESC)` does not serve the reverse ordering.
 
 **Query scope** -- `COLLECTION` (the default) serves queries against a single collection at one path. `COLLECTION_GROUP` serves fan-out queries across every collection with this ID anywhere in the database — those need their own indexes.
 
 **Vector fields** -- A field with `vectorConfig.dimension` enables Firestore's `find_nearest` embedding queries. The dimension must match the embedding model's output size exactly (768 for text-embedding-004, 1536 for OpenAI ada-002), and the vector field must be the LAST field of the index.
 
 **Density** -- Leave empty for GCP's default (`SPARSE_ALL`). `DENSE` also indexes documents missing the indexed fields — required for some Datastore Mode query shapes, at higher storage and write cost.
+
+**Enterprise surface** -- On an ENTERPRISE-edition database (`GcpFirestoreDatabase` `databaseEdition: ENTERPRISE`), `searchConfig` builds text (`indexType: TOKENIZED`, `matchType: MATCH_GLOBALLY`) or geo search indexes, `apiScope: MONGODB_COMPATIBLE_API` serves MongoDB-compatible queries, `multikey` allows one indexed path to traverse arrays, and `unique` enforces uniqueness across documents.
+
+**Lifecycle controls** -- `skipWait` returns as soon as index creation is requested (useful when orchestrating many indexes; the background build continues). `deletionPolicy: PREVENT` protects indexes whose rebuild would be expensive on large collections; `ABANDON` unmanages without deleting.
 
 ## Outputs and Dependencies
 

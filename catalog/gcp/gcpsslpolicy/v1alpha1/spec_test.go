@@ -95,6 +95,36 @@ var _ = ginkgo.Describe("GcpSslPolicySpec", func() {
 		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
 	})
 
+	ginkgo.It("should accept the FIPS_202205 profile with its required TLS_1_2 floor", func() {
+		target := minimal()
+		target.Spec.Profile = "FIPS_202205"
+		target.Spec.MinTlsVersion = "TLS_1_2"
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept a TLS_1_3 floor on the RESTRICTED profile", func() {
+		target := minimal()
+		target.Spec.Profile = "RESTRICTED"
+		target.Spec.MinTlsVersion = "TLS_1_3"
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept each post_quantum_key_exchange stance", func() {
+		for _, v := range []string{"DEFAULT", "ENABLED", "DEFERRED"} {
+			target := minimal()
+			target.Spec.PostQuantumKeyExchange = v
+			gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should accept each deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			target := minimal()
+			target.Spec.DeletionPolicy = v
+			gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+		}
+	})
+
 	ginkgo.It("should accept a CUSTOM profile with cipher suites", func() {
 		target := minimal()
 		target.Spec.Profile = "CUSTOM"
@@ -115,16 +145,45 @@ var _ = ginkgo.Describe("GcpSslPolicySpec", func() {
 		gomega.Expect(strings.Contains(err.Error(), "COMPATIBLE")).To(gomega.BeTrue())
 	})
 
-	ginkgo.It("should reject an unreleased profile value", func() {
+	ginkgo.It("should reject an invalid min_tls_version", func() {
 		target := minimal()
-		target.Spec.Profile = "FIPS_202205"
+		target.Spec.MinTlsVersion = "TLS_1_4"
 		err := validator.Validate(target)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject an invalid min_tls_version", func() {
+	ginkgo.It("should reject the FIPS_202205 profile without a TLS_1_2 floor", func() {
+		for _, v := range []string{"", "TLS_1_0", "TLS_1_1"} {
+			target := minimal()
+			target.Spec.Profile = "FIPS_202205"
+			target.Spec.MinTlsVersion = v
+			err := validator.Validate(target)
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(strings.Contains(err.Error(), "TLS_1_2")).To(gomega.BeTrue())
+		}
+	})
+
+	ginkgo.It("should reject a TLS_1_3 floor on any profile but RESTRICTED", func() {
+		for _, p := range []string{"", "COMPATIBLE", "MODERN"} {
+			target := minimal()
+			target.Spec.Profile = p
+			target.Spec.MinTlsVersion = "TLS_1_3"
+			err := validator.Validate(target)
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(strings.Contains(err.Error(), "RESTRICTED")).To(gomega.BeTrue())
+		}
+	})
+
+	ginkgo.It("should reject an invalid post_quantum_key_exchange stance", func() {
 		target := minimal()
-		target.Spec.MinTlsVersion = "TLS_1_3"
+		target.Spec.PostQuantumKeyExchange = "ALWAYS"
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		target := minimal()
+		target.Spec.DeletionPolicy = "KEEP"
 		err := validator.Validate(target)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})

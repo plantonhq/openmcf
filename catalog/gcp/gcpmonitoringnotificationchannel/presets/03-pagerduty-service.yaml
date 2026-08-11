@@ -1,0 +1,10 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringNotificationChannel
+metadata:
+  name: pagerduty-escalation
+spec:
+  type: pagerduty
+  sensitiveLabels:
+    serviceKey: your-pagerduty-integration-key
+  description: Escalation path into the production PagerDuty service
+  deletionPolicy: PREVENT

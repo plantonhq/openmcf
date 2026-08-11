@@ -1,0 +1,25 @@
+# Minimal GcpIdentityPlatformTenant scenario: displayName (the only
+# naming input — the tenant ID is server-generated) plus password
+# sign-up. projectId is deliberately omitted: the module falls back to
+# the provider's default project, which the E2E harness exports as
+# GOOGLE_PROJECT from the resolved test project. The registry
+# prerequisite chain deploys the GcpIdentityPlatformConfig fixture
+# (planton-oss-e2e-gcpidcfg-prereq) first, arming
+# multiTenant.allowTenants — without it the tenant API rejects creation.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIdentityPlatformTenant
+metadata:
+  name: planton-oss-e2e-gcpidtenant-minimal
+  id: planton-oss-e2e-gcpidtenant-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpidentityplatformtenant
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  displayName: e2e-minimal
+  allowPasswordSignup: true

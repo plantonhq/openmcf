@@ -1,0 +1,49 @@
+# Minimal GcpMonitoringDashboard scenario: one grid-layout chart — the
+# canonical shape, proving the JSON document reaches the API, the
+# server-assigned resource name lands on outputs, and a re-apply plans
+# clean (the provider's diff suppression on server-added keys).
+# Dashboards are project-scoped and hard-deleted, so a fixed name is safe
+# across runs.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringDashboard
+metadata:
+  name: planton-oss-e2e-gcpdash-smoke
+  id: planton-oss-e2e-gcpdash-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmonitoringdashboard
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dashboardJson: |
+    {
+      "displayName": "E2E smoke dashboard",
+      "gridLayout": {
+        "columns": "1",
+        "widgets": [
+          {
+            "title": "CPU utilization",
+            "xyChart": {
+              "dataSets": [
+                {
+                  "timeSeriesQuery": {
+                    "timeSeriesFilter": {
+                      "filter": "metric.type=\"compute.googleapis.com/instance/cpu/utilization\" resource.type=\"gce_instance\"",
+                      "aggregation": {
+                        "alignmentPeriod": "60s",
+                        "perSeriesAligner": "ALIGN_MEAN"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  deletionPolicy: DELETE

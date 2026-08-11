@@ -47,7 +47,7 @@ Open the deployment store, find **GCP AlloyDB Cluster**, and click **Deploy**. T
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAlloydbCluster
 metadata:
   name: app-alloydb
@@ -70,7 +70,7 @@ spec:
 planton apply -f alloydb-cluster.yaml
 ```
 
-This creates a regional AlloyDB cluster with a 4-CPU primary instance, private networking via the specified VPC, and GCP default backup policies. No initial user is created. (A cluster-level deletion-protection flag is deliberately not modeled -- the released terraform provider has no such attribute for AlloyDB; guard destroys at the plan level.)
+This creates a regional AlloyDB cluster with a 4-CPU primary instance, private networking via the specified VPC, and GCP default backup policies. No initial user is created. The cluster ships destroy-guarded: `deletionProtection` defaults to TRUE, so a destroy fails until the spec flips it false and that change is applied first.
 
 ### InfraChart
 

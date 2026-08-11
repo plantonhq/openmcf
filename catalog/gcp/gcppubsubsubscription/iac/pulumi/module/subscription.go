@@ -198,15 +198,34 @@ func subscription(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider
 	// Ordered transform pipeline: transforms run in list order on every
 	// message before delivery to THIS subscription only; a disabled
 	// transform keeps its position (the staging lever) without being
-	// applied.
+	// applied. Each step carries exactly one arm — a JavaScript UDF or
+	// an AI inference call (spec-enforced).
 	if len(spec.MessageTransforms) > 0 {
 		transforms := pubsub.SubscriptionMessageTransformArray{}
 		for _, transform := range spec.MessageTransforms {
-			transformArgs := &pubsub.SubscriptionMessageTransformArgs{
-				JavascriptUdf: &pubsub.SubscriptionMessageTransformJavascriptUdfArgs{
+			transformArgs := &pubsub.SubscriptionMessageTransformArgs{}
+			if transform.JavascriptUdf != nil {
+				transformArgs.JavascriptUdf = &pubsub.SubscriptionMessageTransformJavascriptUdfArgs{
 					FunctionName: pulumi.String(transform.JavascriptUdf.FunctionName),
 					Code:         pulumi.String(transform.JavascriptUdf.Code),
-				},
+				}
+			}
+			if transform.AiInference != nil {
+				// The endpoint reference is resolved to a literal
+				// dedicated-endpoint / publisher-model path before the
+				// module runs.
+				aiArgs := &pubsub.SubscriptionMessageTransformAiInferenceArgs{
+					Endpoint: pulumi.String(transform.AiInference.Endpoint.GetValue()),
+				}
+				if transform.AiInference.ServiceAccountEmail.GetValue() != "" {
+					aiArgs.ServiceAccountEmail = pulumi.StringPtr(transform.AiInference.ServiceAccountEmail.GetValue())
+				}
+				if transform.AiInference.UnstructuredInference != nil && len(transform.AiInference.UnstructuredInference.Parameters) > 0 {
+					aiArgs.UnstructuredInference = &pubsub.SubscriptionMessageTransformAiInferenceUnstructuredInferenceArgs{
+						Parameters: pulumi.ToStringMap(transform.AiInference.UnstructuredInference.Parameters),
+					}
+				}
+				transformArgs.AiInference = aiArgs
 			}
 			if transform.Disabled {
 				transformArgs.Disabled = pulumi.BoolPtr(true)
@@ -214,6 +233,18 @@ func subscription(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider
 			transforms = append(transforms, transformArgs)
 		}
 		args.MessageTransforms = transforms
+	}
+
+	// Resource Manager tags bind at create time only (ForceNew): a later
+	// tag change replaces the subscription and drops its backlog.
+	if len(spec.ResourceManagerTags) > 0 {
+		args.Tags = pulumi.ToStringMap(spec.ResourceManagerTags)
+	}
+
+	// Client-side destroy behavior: DELETE (default), PREVENT, or ABANDON.
+	// Sent only when set so the provider default stays in charge otherwise.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	createdSubscription, err := pubsub.NewSubscription(ctx, "pubsub-subscription", args,

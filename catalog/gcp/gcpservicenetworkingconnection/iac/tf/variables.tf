@@ -40,6 +40,10 @@ variable "spec" {
     # by converting the create-time "Cannot modify allocated ranges" failure
     # into an in-place update of its reserved ranges.
     update_on_creation_fail = optional(bool, false)
+
+    # DELETE (default) / PREVENT / ABANDON; empty falls through to the
+    # provider default (DELETE).
+    deletion_policy = optional(string, "")
   })
 
   validation {

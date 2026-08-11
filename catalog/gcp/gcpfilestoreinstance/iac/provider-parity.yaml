@@ -1,0 +1,46 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_filestore_instance:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.instance_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      # Singular in the spec (a Filestore instance has exactly one file
+      # share and one VPC attachment -- the plural provider blocks are
+      # MaxItems: 1). Matching resumes exactly below each subtree.
+      - spec: spec.file_share
+        arg: file_shares
+      - spec: spec.network_config
+        arg: networks
+      # The spec flattens the provider's single-child psc_config
+      # wrapper: the consumer project IS the PSC configuration.
+      # Longest-mapping-wins places it here, not under the
+      # network_config mapping above.
+      - spec: spec.network_config.psc_endpoint_project
+        arg: networks.psc_config.endpoint_project
+      # The spec flattens the provider's single-child
+      # directory_services wrapper: LDAP is the only directory service
+      # the API offers, so the extra nesting level records nothing.
+      - spec: spec.ldap
+        arg: directory_services.ldap
+      # Replication peers: the spec models the relationship from this
+      # instance's side (role + peer references); each peer reference
+      # resolves to one replicas block's peer_instance.
+      - spec: spec.initial_replication.peer_instances
+        arg: initial_replication.replicas.peer_instance
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables file.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      instance never disables the API project-wide); not spec surface.

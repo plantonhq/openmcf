@@ -51,6 +51,9 @@ func buildExternalDataConfiguration(
 	if config.JsonExtension != "" {
 		configArgs.JsonExtension = pulumi.StringPtr(config.JsonExtension)
 	}
+	if len(config.DecimalTargetTypes) > 0 {
+		configArgs.DecimalTargetTypes = pulumi.ToStringArray(config.DecimalTargetTypes)
+	}
 
 	if config.CsvOptions != nil {
 		// The provider requires quote; an unset spec value means the API
@@ -77,6 +80,9 @@ func buildExternalDataConfiguration(
 		}
 		if config.CsvOptions.SkipLeadingRows > 0 {
 			csvArgs.SkipLeadingRows = pulumi.IntPtr(int(config.CsvOptions.SkipLeadingRows))
+		}
+		if config.CsvOptions.SourceColumnMatch != "" {
+			csvArgs.SourceColumnMatch = pulumi.StringPtr(config.CsvOptions.SourceColumnMatch)
 		}
 		configArgs.CsvOptions = csvArgs
 	}

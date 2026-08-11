@@ -33,7 +33,7 @@ Open the deployment store, find **GCP AlloyDB Instance**, and click **Deploy**. 
 ### CLI
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAlloydbInstance
 metadata:
   name: orders-read-pool

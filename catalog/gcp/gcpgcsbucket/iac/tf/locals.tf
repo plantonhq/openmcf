@@ -51,4 +51,34 @@ locals {
     for m in var.spec.iam_members :
     "${m.role}/${m.member}" => m
   }
+
+  # Folders split by nesting depth (1-5, the spec's cap). The Storage API
+  # never auto-creates missing parents, and instances of one for_each
+  # cannot depend on each other — so each depth is its own resource
+  # group, chained with depends_on: parents create first, children
+  # destroy first. Keys are the folder paths — the same identity the
+  # Pulumi module names its folder resources with.
+  folders_by_depth = {
+    for depth in range(1, 6) :
+    depth => {
+      for f in var.spec.folders :
+      f.name => f if length(regexall("/", f.name)) == depth
+    }
+  }
+
+  # Managed folders keyed by path — independent prefix anchors, no
+  # ordering concerns.
+  managed_folders = {
+    for f in var.spec.managed_folders :
+    f.name => f
+  }
+
+  # Notifications keyed by list index: the resource is immutable end to
+  # end (every change is a replace), so index-keyed churn on reorder is
+  # the resource's only change mode anyway. Matches the Pulumi module's
+  # notification-<index> names.
+  notifications = {
+    for idx, n in var.spec.notifications :
+    tostring(idx) => n
+  }
 }

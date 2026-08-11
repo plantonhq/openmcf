@@ -323,4 +323,20 @@ var _ = ginkgo.Describe("GcpHealthCheckSpec", func() {
 		err := validator.Validate(target)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("should accept every deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON", ""} {
+			target := minimal()
+			target.Spec.DeletionPolicy = v
+			gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should reject an unknown deletion_policy", func() {
+		target := minimal()
+		target.Spec.DeletionPolicy = "DESTROY"
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "deletion_policy")).To(gomega.BeTrue())
+	})
 })

@@ -72,6 +72,21 @@ message GcpAlloydbInstancePscInstanceConfig {
   repeated GcpAlloydbInstancePscInterfaceConfig psc_interface_configs = 3;
 }
 
+// GcpAlloydbInstanceConnectionPoolConfig configures AlloyDB managed
+// connection pooling — a built-in PgBouncer-style pooler in front of the
+// instance, for workloads with many short-lived connections.
+message GcpAlloydbInstanceConnectionPoolConfig {
+  // Turn managed connection pooling on or off. Mutable in place.
+  bool enabled = 1;
+
+  // Pooler flags, keyed by flag name WITHOUT the "connection-pooling-"
+  // prefix and with underscores instead of dashes (GCP's documented
+  // convention for this provider surface): e.g. the flag
+  // "connection-pooling-pool-mode" is set as key "pool_mode". Only
+  // applied while enabled is true.
+  map<string, string> flags = 2;
+}
+
 // GcpAlloydbInstanceSpec defines an AlloyDB instance (`google_alloydb_instance`)
 // attached to an existing cluster.
 //
@@ -150,11 +165,12 @@ message GcpAlloydbInstanceSpec {
   GcpAlloydbInstanceReadPoolConfig read_pool_config = 7;
 
   // ZONAL or REGIONAL placement. Read pools of size 1 can only be ZONAL;
-  // pools with 2+ nodes can be REGIONAL.
+  // pools with 2+ nodes can be REGIONAL. GCP defaults to REGIONAL when
+  // unset.
   string availability_type = 8 [(buf.validate.field).cel = {
     id: "availability_type_valid"
-    message: "availability_type must be ZONAL or REGIONAL"
-    expression: "this == '' || this in ['ZONAL', 'REGIONAL']"
+    message: "availability_type must be ZONAL, REGIONAL, or AVAILABILITY_TYPE_UNSPECIFIED"
+    expression: "this == '' || this in ['AVAILABILITY_TYPE_UNSPECIFIED', 'ZONAL', 'REGIONAL']"
   }];
 
   // PostgreSQL database flags as key-value pairs.
@@ -181,12 +197,10 @@ message GcpAlloydbInstanceSpec {
   // stop/start lever — a stopped instance keeps its configuration and
   // storage but serves nothing and stops billing for compute. Mind the
   // ordering restrictions (stop read pools before the primary).
-  // NOTE: managed connection pooling is deliberately not modeled — the
-  // released google provider does not expose it for AlloyDB instances.
   string activation_policy = 14 [(buf.validate.field).cel = {
     id: "activation_policy_valid"
-    message: "activation_policy must be ALWAYS or NEVER"
-    expression: "this == '' || this in ['ALWAYS', 'NEVER']"
+    message: "activation_policy must be ALWAYS, NEVER, or ACTIVATION_POLICY_UNSPECIFIED"
+    expression: "this == '' || this in ['ACTIVATION_POLICY_UNSPECIFIED', 'ALWAYS', 'NEVER']"
   }];
 
   // Enable a public IP on the instance.
@@ -200,4 +214,53 @@ message GcpAlloydbInstanceSpec {
 
   // Private Service Connect configuration.
   GcpAlloydbInstancePscInstanceConfig psc_instance_config = 18;
+
+  // User-defined labels on the instance (cost attribution, team ownership,
+  // environment tagging). Merged with the platform's attribution labels;
+  // on key conflicts the platform labels win. Mutable in place.
+  map<string, string> labels = 19;
+
+  // Unstructured metadata stored on the instance (annotations, not labels —
+  // not used for billing filtering). Mutable in place.
+  map<string, string> annotations = 20;
+
+  // Pin a ZONAL instance to a specific Compute Engine zone (e.g.
+  // "us-central1-a"). Only valid when availability_type is ZONAL — GCP
+  // rejects it on REGIONAL instances; leave empty to let GCP pick a zone
+  // with available capacity. Mutable: changing it live-migrates the
+  // instance to the new zone.
+  string gce_zone = 21;
+
+  // AlloyDB managed connection pooling (built-in pooler). Mutable in place.
+  GcpAlloydbInstanceConnectionPoolConfig connection_pool_config = 22;
+
+  // Draw this instance's private IPs from a specific Private Service
+  // Access allocated range (RFC 1035 name, e.g.
+  // "google-managed-services-default") instead of the range the parent
+  // cluster uses. Immutable: changing it destroys and recreates the
+  // instance.
+  string allocated_ip_range_override = 23 [(buf.validate.field).cel = {
+    id: "valid_allocated_ip_range_override"
+    message: "allocated_ip_range_override must be an RFC 1035 range name (1-63 chars: [a-z]([-a-z0-9]*[a-z0-9])?)"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')"
+  }];
+
+  // What happens to the instance in GCP when this resource is destroyed.
+  //   "DELETE"  -- (GCP's default when unset) the instance is deleted;
+  //                the parent cluster and its data survive
+  //   "PREVENT" -- destroy FAILS; protects serving capacity applications
+  //                still connect to
+  //   "ABANDON" -- the instance is removed from management but keeps
+  //                running (and billing) in GCP
+  string deletion_policy = 24 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "gce_zone_requires_zonal"
+    message: "gce_zone can only be set on ZONAL instances — GCP rejects it when availability_type is REGIONAL (the default)"
+    expression: "this.gce_zone == '' || this.availability_type == 'ZONAL'"
+  };
 }

@@ -44,6 +44,10 @@ func boolPtr(b bool) *bool {
 	return &b
 }
 
+func int64Ptr(i int64) *int64 {
+	return &i
+}
+
 var _ = ginkgo.Describe("GcpCloudSqlSpec", func() {
 	var validator protovalidate.Validator
 
@@ -534,7 +538,7 @@ var _ = ginkgo.Describe("GcpCloudSqlSpec", func() {
 			r.Spec.TimeZone = "Pacific Standard Time"
 			r.Spec.Collation = "SQL_Latin1_General_CP1_CI_AS"
 			r.Spec.ThreadsPerCore = intPtr(1)
-			r.Spec.ActiveDirectoryDomain = "ad.example.com"
+			r.Spec.ActiveDirectory = &GcpCloudSqlActiveDirectoryConfig{Domain: "ad.example.com"}
 			r.Spec.SqlServerAuditConfig = &GcpCloudSqlSqlServerAuditConfig{
 				Bucket:            "gs://audit-bucket",
 				RetentionInterval: "86400s",
@@ -689,6 +693,293 @@ var _ = ginkgo.Describe("GcpCloudSqlSpec", func() {
 			r.Spec.RetainBackupsOnDelete = true
 			r.Spec.RootPassword = "SuperSecret123!"
 			expectValid(r)
+		})
+	})
+
+	ginkgo.Context("deletion policy", func() {
+		ginkgo.It("accepts every valid deletion_policy", func() {
+			for _, policy := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+				r := minimalPostgres()
+				r.Spec.DeletionPolicy = policy
+				expectValid(r)
+			}
+		})
+
+		ginkgo.It("rejects an unknown deletion_policy", func() {
+			r := minimalPostgres()
+			r.Spec.DeletionPolicy = "RETAIN"
+			expectInvalid(r, "deletion_policy")
+		})
+	})
+
+	ginkgo.Context("read pools", func() {
+		ginkgo.It("accepts a read pool with node_count", func() {
+			r := minimalPostgres()
+			r.Spec.InstanceType = "READ_POOL_INSTANCE"
+			r.Spec.NodeCount = intPtr(3)
+			expectValid(r)
+		})
+
+		ginkgo.It("accepts a read pool with auto scaling", func() {
+			r := minimalPostgres()
+			r.Spec.InstanceType = "READ_POOL_INSTANCE"
+			r.Spec.ReadPoolAutoScale = &GcpCloudSqlReadPoolAutoScale{
+				Enabled:      true,
+				MinNodeCount: intPtr(1),
+				MaxNodeCount: intPtr(5),
+				TargetMetrics: []*GcpCloudSqlReadPoolTargetMetric{
+					{Metric: "cpu_utilization", TargetValue: 0.6},
+				},
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects node_count without READ_POOL_INSTANCE", func() {
+			r := minimalPostgres()
+			r.Spec.NodeCount = intPtr(3)
+			expectInvalid(r, "READ_POOL_INSTANCE")
+		})
+
+		ginkgo.It("rejects read_pool_auto_scale without READ_POOL_INSTANCE", func() {
+			r := minimalPostgres()
+			r.Spec.ReadPoolAutoScale = &GcpCloudSqlReadPoolAutoScale{Enabled: true}
+			expectInvalid(r, "READ_POOL_INSTANCE")
+		})
+
+		ginkgo.It("rejects inverted auto-scale bounds", func() {
+			r := minimalPostgres()
+			r.Spec.InstanceType = "READ_POOL_INSTANCE"
+			r.Spec.ReadPoolAutoScale = &GcpCloudSqlReadPoolAutoScale{
+				Enabled:      true,
+				MinNodeCount: intPtr(5),
+				MaxNodeCount: intPtr(2),
+			}
+			expectInvalid(r, "max_node_count")
+		})
+
+		ginkgo.It("rejects an unknown instance_type", func() {
+			r := minimalPostgres()
+			r.Spec.InstanceType = "POOL"
+			expectInvalid(r, "instance_type")
+		})
+	})
+
+	ginkgo.Context("restore sources", func() {
+		ginkgo.It("accepts a clone from a source instance", func() {
+			r := minimalPostgres()
+			r.Spec.Clone = &GcpCloudSqlClone{
+				SourceInstanceName: "orders-db-prod",
+				PointInTime:        "2026-01-01T00:00:00Z",
+				PreferredZone:      "us-central1-a",
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects a clone without a source instance", func() {
+			r := minimalPostgres()
+			r.Spec.Clone = &GcpCloudSqlClone{PointInTime: "2026-01-01T00:00:00Z"}
+			expectInvalid(r, "source_instance_name")
+		})
+
+		ginkgo.It("accepts a backup-run restore context", func() {
+			r := minimalPostgres()
+			r.Spec.RestoreBackupContext = &GcpCloudSqlRestoreBackupContext{
+				BackupRunId: 1234567890,
+				InstanceId:  "orders-db-prod",
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("accepts a Backup and DR point-in-time restore context", func() {
+			r := minimalPostgres()
+			r.Spec.PointInTimeRestoreContext = &GcpCloudSqlPointInTimeRestoreContext{
+				Datasource:  "projects/p/locations/us-central1/backupVaults/v/dataSources/d",
+				PointInTime: "2026-01-01T00:00:00Z",
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects a PITR restore context without a datasource", func() {
+			r := minimalPostgres()
+			r.Spec.PointInTimeRestoreContext = &GcpCloudSqlPointInTimeRestoreContext{
+				PointInTime: "2026-01-01T00:00:00Z",
+			}
+			expectInvalid(r, "datasource")
+		})
+	})
+
+	ginkgo.Context("final backup", func() {
+		ginkgo.It("accepts an enabled final backup with description", func() {
+			r := minimalPostgres()
+			r.Spec.FinalBackup = &GcpCloudSqlFinalBackup{
+				Enabled:       true,
+				RetentionDays: intPtr(30),
+				Description:   "decommission snapshot",
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects a description on a disabled final backup", func() {
+			r := minimalPostgres()
+			r.Spec.FinalBackup = &GcpCloudSqlFinalBackup{Description: "orphaned note"}
+			expectInvalid(r, "final_backup")
+		})
+	})
+
+	ginkgo.Context("Active Directory and Entra ID", func() {
+		sqlServer := func() *GcpCloudSql {
+			r := minimalPostgres()
+			r.Spec.DatabaseEngine = "SQLSERVER"
+			r.Spec.DatabaseVersion = "SQLSERVER_2022_STANDARD"
+			r.Spec.RootPassword = "SqlServer123!"
+			return r
+		}
+
+		ginkgo.It("accepts a managed AD join on SQL Server", func() {
+			r := sqlServer()
+			r.Spec.ActiveDirectory = &GcpCloudSqlActiveDirectoryConfig{Domain: "ad.example.com"}
+			expectValid(r)
+		})
+
+		ginkgo.It("accepts a customer-managed AD join with bootstrap fields", func() {
+			r := sqlServer()
+			r.Spec.ActiveDirectory = &GcpCloudSqlActiveDirectoryConfig{
+				Domain:                    "corp.example.com",
+				Mode:                      "CUSTOMER_MANAGED_ACTIVE_DIRECTORY",
+				DnsServers:                []string{"10.0.0.2", "10.0.0.3"},
+				AdminCredentialSecretName: "projects/p/secrets/ad-admin",
+				OrganizationalUnit:        "OU=SQL,DC=corp,DC=example,DC=com",
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects AD on a non-SQL-Server engine", func() {
+			r := minimalPostgres()
+			r.Spec.ActiveDirectory = &GcpCloudSqlActiveDirectoryConfig{Domain: "ad.example.com"}
+			expectInvalid(r, "SQL Server")
+		})
+
+		ginkgo.It("rejects customer-managed bootstrap fields in managed mode", func() {
+			r := sqlServer()
+			r.Spec.ActiveDirectory = &GcpCloudSqlActiveDirectoryConfig{
+				Domain:     "ad.example.com",
+				DnsServers: []string{"10.0.0.2"},
+			}
+			expectInvalid(r, "CUSTOMER_MANAGED_ACTIVE_DIRECTORY")
+		})
+
+		ginkgo.It("accepts a paired Entra ID config on SQL Server", func() {
+			r := sqlServer()
+			r.Spec.EntraId = &GcpCloudSqlEntraIdConfig{
+				ApplicationId: "11111111-1111-1111-1111-111111111111",
+				TenantId:      "22222222-2222-2222-2222-222222222222",
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects an Entra ID config missing its tenant", func() {
+			r := sqlServer()
+			r.Spec.EntraId = &GcpCloudSqlEntraIdConfig{ApplicationId: "1111"}
+			expectInvalid(r, "tenant_id")
+		})
+
+		ginkgo.It("rejects Entra ID on a non-SQL-Server engine", func() {
+			r := minimalPostgres()
+			r.Spec.EntraId = &GcpCloudSqlEntraIdConfig{
+				ApplicationId: "1111",
+				TenantId:      "2222",
+			}
+			expectInvalid(r, "SQL Server")
+		})
+	})
+
+	ginkgo.Context("disk provisioned performance", func() {
+		ginkgo.It("accepts IOPS and throughput on a hyperdisk", func() {
+			r := minimalPostgres()
+			r.Spec.Disk = &GcpCloudSqlDisk{
+				Type:                  ptr("HYPERDISK_BALANCED"),
+				SizeGb:                intPtr(100),
+				ProvisionedIops:       int64Ptr(3000),
+				ProvisionedThroughput: int64Ptr(290),
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects provisioned IOPS on a PD_SSD disk", func() {
+			r := minimalPostgres()
+			r.Spec.Disk = &GcpCloudSqlDisk{
+				Type:            ptr("PD_SSD"),
+				SizeGb:          intPtr(100),
+				ProvisionedIops: int64Ptr(3000),
+			}
+			expectInvalid(r, "HYPERDISK_BALANCED")
+		})
+	})
+
+	ginkgo.Context("network additions", func() {
+		ginkgo.It("accepts automatic certificate rotation with a CAS CA", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
+				Ipv4Enabled:                   true,
+				ServerCaMode:                  "GOOGLE_MANAGED_CAS_CA",
+				ServerCertificateRotationMode: "AUTOMATIC_ROTATION_DURING_MAINTENANCE",
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects automatic certificate rotation without a CAS CA", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
+				Ipv4Enabled:                   true,
+				ServerCertificateRotationMode: "AUTOMATIC_ROTATION_DURING_MAINTENANCE",
+			}
+			expectInvalid(r, "server_ca_mode")
+		})
+
+		ginkgo.It("rejects PSC DNS toggles without psc.enabled", func() {
+			r := minimalPostgres()
+			r.Spec.Network = &GcpCloudSqlNetwork{
+				Ipv4Enabled: true,
+				Psc:         &GcpCloudSqlPscConfig{AutoDnsEnabled: true},
+			}
+			expectInvalid(r, "psc.enabled")
+		})
+	})
+
+	ginkgo.Context("backup retention unit", func() {
+		ginkgo.It("accepts COUNT", func() {
+			r := minimalPostgres()
+			r.Spec.Backup = &GcpCloudSqlBackup{
+				Enabled:         true,
+				RetainedBackups: intPtr(14),
+				RetentionUnit:   "COUNT",
+			}
+			expectValid(r)
+		})
+
+		ginkgo.It("rejects an unknown retention unit", func() {
+			r := minimalPostgres()
+			r.Spec.Backup = &GcpCloudSqlBackup{
+				Enabled:       true,
+				RetentionUnit: "DAYS",
+			}
+			expectInvalid(r, "retention_unit")
+		})
+	})
+
+	ginkgo.Context("data API access", func() {
+		ginkgo.It("accepts the two documented postures", func() {
+			for _, v := range []string{"ALLOW_DATA_API", "DISALLOW_DATA_API"} {
+				r := minimalPostgres()
+				r.Spec.DataApiAccess = v
+				expectValid(r)
+			}
+		})
+
+		ginkgo.It("rejects an unknown posture", func() {
+			r := minimalPostgres()
+			r.Spec.DataApiAccess = "OPEN"
+			expectInvalid(r, "data_api_access")
 		})
 	})
 })

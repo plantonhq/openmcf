@@ -436,6 +436,14 @@ func composerEnvironment(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.P
 		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
 	}
 
+	// Client-side destroy behavior: DELETE (default), PREVENT (destroy
+	// fails), or ABANDON (drop from state, keep the environment — and its
+	// meaningful idle bill — running in GCP). The auto-created DAG bucket
+	// survives a DELETE either way.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	// Existing bucket for DAGs/plugins/data instead of the auto-created one.
 	if spec.StorageBucket.GetValue() != "" {
 		args.StorageConfig = &composer.EnvironmentStorageConfigArgs{

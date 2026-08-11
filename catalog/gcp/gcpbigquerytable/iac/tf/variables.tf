@@ -75,6 +75,7 @@ variable "spec" {
       metadata_cache_mode       = optional(string, "")
       file_set_spec_type        = optional(string, "")
       json_extension            = optional(string, "")
+      decimal_target_types      = optional(list(string), [])
 
       csv_options = optional(object({
         quote                 = optional(string)
@@ -83,6 +84,7 @@ variable "spec" {
         encoding              = optional(string, "")
         field_delimiter       = optional(string, "")
         skip_leading_rows     = optional(number, 0)
+        source_column_match   = optional(string, "")
       }), null)
 
       json_options = optional(object({
@@ -182,5 +184,21 @@ variable "spec" {
     }), null)
 
     deletion_protection = optional(bool, true)
+
+    # DELETE (default) attempts table deletion on destroy (still gated by
+    # deletion_protection); PREVENT fails the destroy outright; ABANDON
+    # leaves the table serving, bypassing deletion_protection.
+    deletion_policy = optional(string, "")
+
+    # Hide diffs from columns BigQuery adds on its own.
+    ignore_auto_generated_schema = optional(bool, false)
+
+    # Schema sub-fields treated as non-authoritative per column; the
+    # provider currently honors exactly "dataPolicies".
+    ignore_schema_changes = optional(list(string), [])
+
+    # How much table metadata the provider requests on reads:
+    # BASIC, STORAGE_STATS (API default), or FULL.
+    table_metadata_view = optional(string, "")
   })
 }

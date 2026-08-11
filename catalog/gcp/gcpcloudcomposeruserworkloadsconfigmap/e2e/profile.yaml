@@ -8,8 +8,6 @@ spec:
   # both engines needs >=240m. The ConfigMap itself creates/destroys in
   # seconds.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 240

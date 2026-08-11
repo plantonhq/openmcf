@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpeventarcmessagebus
+spec:
+  # Two scenarios: minimal (the bus alone) and routed (bus + a Pub/Sub
+  # topic pipeline + a route-everything enrollment — the full family
+  # fan-out, topic via a scenario-level GcpPubSubTopic prerequisite).
+  # WATCH: Eventarc Advanced REGION availability is API-side (the
+  # provider accepts any location string; the create call decides) —
+  # us-central1 is in the documented set today; if the create rejects
+  # the region, that is the availability wall, not a module defect.
+  # The http_endpoint pipeline arm is offline-plan-proven only (needs a
+  # VPC network attachment + a private HTTPS endpoint — heavy fixture;
+  # unblock: a PSC/network-attachment fixture chain).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

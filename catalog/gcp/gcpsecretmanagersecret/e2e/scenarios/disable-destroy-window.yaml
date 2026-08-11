@@ -1,0 +1,38 @@
+# Destroy-semantics scenario: the version-lifecycle levers minimal cannot
+# exercise — version_destroy_ttl (destroy first DISABLES, restore window
+# applies) with the version-level DISABLE deletion policy, annotations,
+# and expiry via ttl. The destroy phase is the proof: the version must
+# end DISABLED (not destroyed) and the secret must delete cleanly
+# regardless (whole-secret deletion ignores the TTL).
+# version_aliases is deliberately ABSENT: GCP validates aliases against
+# EXISTING versions at secret create ("Aliases cannot be assigned to
+# versions that don't exist" — live-caught on both engines), so a
+# create-time alias to the seeded version is impossible in one apply;
+# the lever is update-only and a single-apply lane cannot exercise it.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpSecretManagerSecret
+metadata:
+  name: planton-oss-e2e-gcpsecret-window
+  id: planton-oss-e2e-gcpsecret-window
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpsecretmanagersecret
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  initialVersion:
+    data:
+      value: cGxhbnRvbi1lMmUtYmFzZTY0    # base64("planton-e2e-base64")
+    isBase64: true
+    deletionPolicy: DISABLE
+  versionDestroyTtl: 86400s
+  annotations:
+    e2e-arm: destroy-window
+  ttl: 604800s
+  labels:
+    e2e-arm: window
+  deletionPolicy: DELETE

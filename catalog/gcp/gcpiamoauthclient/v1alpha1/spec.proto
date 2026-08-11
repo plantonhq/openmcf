@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpiamoauthclient.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpIamOauthClientSpec defines a WORKFORCE Identity Federation OAuth
+// client — the registration that lets an application obtain Google Cloud
+// access tokens on behalf of workforce-federated users via OAuth 2.0,
+// with its allowed grant types, scopes, redirect URIs, and managed
+// credentials (client secrets).
+//
+// Scope honesty: this is the only kind of OAuth client Google's APIs can
+// create programmatically. Classic consent-screen OAuth clients (end-user
+// Google Sign-In) have NO programmatic path — Google shut down the IAP
+// OAuth Admin API that once created them (March 2026). Those clients
+// remain a documented console step whose ID/secret feed
+// GcpIdentityPlatformConfig's default_supported_idps or a
+// GcpSecretManagerSecret.
+message GcpIamOauthClientSpec {
+  // The GCP project that owns the OAuth client. Can be a literal project
+  // ID or a reference to a GcpProject resource. If omitted, the
+  // provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The location of the OAuth client. "global" is the documented home
+  // for workforce OAuth clients and the default here. Immutable.
+  string location = 2 [(dev.planton.shared.options.default) = "global"];
+
+  // The client's resource ID (the last segment of its name). Defaults to
+  // metadata.name when left empty. Immutable: changing it destroys and
+  // recreates the client — consumers must re-register.
+  string oauth_client_id = 3;
+
+  // Human-readable name shown in consoles and consent surfaces.
+  string display_name = 4;
+
+  // What this client is for — the operator-facing record.
+  string description = 5;
+
+  // When true, the client stops accepting new authorizations without
+  // being deleted — the reversible kill switch.
+  bool disabled = 6;
+
+  // The client's confidentiality model. Only "CONFIDENTIAL_CLIENT"
+  // (server-side apps that can keep a secret; manage secrets via
+  // credentials below) can be created: GCP's enum also lists
+  // PUBLIC_CLIENT (mobile/SPA), but the service rejects creating one
+  // with 400 "Client type is not supported" (live-verified at the raw
+  // API — no field combination unlocks it). Re-admit PUBLIC_CLIENT here
+  // when GCP ships support. Immutable.
+  string client_type = 7 [(buf.validate.field).cel = {
+    id: "valid_client_type"
+    message: "client_type must be CONFIDENTIAL_CLIENT — GCP rejects PUBLIC_CLIENT creation (\"Client type is not supported\")"
+    expression: "this == '' || this == 'CONFIDENTIAL_CLIENT'"
+  }];
+
+  // OAuth grant types the client may use — Google's API accepts exactly
+  // these values (a closed enum in the IAM REST API):
+  //   "AUTHORIZATION_CODE_GRANT" -- the standard code flow
+  //   "REFRESH_TOKEN_GRANT"      -- long-lived sessions via refresh
+  //                                 tokens
+  repeated string allowed_grant_types = 8 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.cel = {
+      id: "valid_grant_type"
+      message: "allowed_grant_types entries must be AUTHORIZATION_CODE_GRANT or REFRESH_TOKEN_GRANT"
+      expression: "this in ['AUTHORIZATION_CODE_GRANT', 'REFRESH_TOKEN_GRANT']"
+    }
+  ];
+
+  // OAuth scopes the client may request during flows (e.g.
+  // "https://www.googleapis.com/auth/cloud-platform", "openid",
+  // "email", "profile", "groups").
+  repeated string allowed_scopes = 9 [(buf.validate.field).repeated.min_items = 1];
+
+  // Redirect URIs allowed when authorization completes. Each entry is a
+  // literal URL or a reference to another resource's URL output (e.g. a
+  // GcpCloudRun service's url) — referencing kills the drift between the
+  // deployed app's address and the client's registration.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef allowed_redirect_uris = 10 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpCloudRun,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.url"
+  ];
+
+  // Managed client secrets (CONFIDENTIAL_CLIENT only). Each entry
+  // creates one credential whose secret value GCP generates server-side
+  // — read it from this resource's client_secret output. Rotation story:
+  // add a second credential, cut consumers over, remove the first.
+  repeated GcpIamOauthClientCredential credentials = 11;
+
+  // Deletion policy — one switch governs the client AND its credentials:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the client and its credentials are deleted; the
+  //                client ID remains reserved briefly by GCP
+  //   "PREVENT" -- destroy FAILS; protects a client live apps depend on
+  //   "ABANDON" -- everything is removed from management but keeps
+  //                working in GCP
+  string deletion_policy = 12 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+}
+
+// One managed client secret.
+message GcpIamOauthClientCredential {
+  // The credential's resource ID (the last segment of its name), e.g.
+  // "primary". Immutable.
+  string credential_id = 1 [(buf.validate.field).required = true];
+
+  // Human-readable name recording what consumes this credential.
+  string display_name = 2;
+
+  // When true, the credential cannot be used to authenticate. GCP
+  // requires a credential to be DISABLED before it can be deleted —
+  // removing an entry from this list while it is still enabled fails at
+  // the API; disable it in one apply, remove it in the next.
+  bool disabled = 3;
+}

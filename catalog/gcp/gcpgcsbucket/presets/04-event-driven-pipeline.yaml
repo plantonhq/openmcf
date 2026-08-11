@@ -1,0 +1,40 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGcsBucket
+metadata:
+  name: upload-intake
+spec:
+  bucketName: acme-upload-intake-prod # replace — globally unique across ALL of GCP
+  location: us-central1 # replace — co-locate with the pipeline that consumes events
+  # The modern security posture: IAM-only access, no public access ever.
+  uniformBucketLevelAccessEnabled: true
+  publicAccessPrevention: enforced
+  notifications:
+    # New uploads under uploads/ publish to the pipeline topic; deletes are
+    # also observed so consumers can reconcile. The full object metadata
+    # rides each message (JSON_API_V1), so consumers skip the extra GET.
+    #
+    # HARD PREREQUISITE: the project's GCS service agent
+    # (service-{projectNumber}@gs-project-accounts.iam.gserviceaccount.com —
+    # projectNumber is this bucket's own output) must hold
+    # roles/pubsub.publisher on the topic BEFORE this deploys. Compose a
+    # GcpProjectIamMember (or grant on the topic's own IAM surface).
+    - topic:
+        valueFrom:
+          kind: GcpPubSubTopic
+          name: upload-events # replace — your pipeline's topic resource
+          fieldPath: status.outputs.topic_id
+      payloadFormat: JSON_API_V1
+      eventTypes:
+        - OBJECT_FINALIZE
+        - OBJECT_DELETE
+      objectNamePrefix: uploads/
+  lifecycleRules:
+    # Processed uploads are derived data — age them out after 30 days.
+    - action:
+        type: Delete
+      condition:
+        ageDays: 30
+        matchesPrefix:
+          - uploads/
+  labels:
+    team: platform # replace with your cost-attribution labels

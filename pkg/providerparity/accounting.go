@@ -325,17 +325,19 @@ func buildAccounting(cloudProvider string, spec []KindCensus, modules []ModuleCe
 	return acc
 }
 
-// argMatcher applies one resource's recorded judgment: exclusions by exact
-// path, then the longest recorded mapping prefix, then the default spec
-// root. No name heuristics, by design.
+// argMatcher applies one resource's recorded judgment: exclusions first
+// (exact path or subtree prefix — one judgment covers an excluded block and
+// everything under it, mirroring mappings and specExclusions), then the
+// longest recorded mapping prefix, then the default spec root. No name
+// heuristics, by design.
 type argMatcher struct {
 	specRoot   string
 	mappings   []Mapping // sorted by arg length, longest first
-	exclusions map[string]string
+	exclusions []string  // arg paths; each excludes itself and its subtree
 }
 
 func newArgMatcher(rm *ResourceManifest) argMatcher {
-	m := argMatcher{specRoot: specPathRoot, exclusions: map[string]string{}}
+	m := argMatcher{specRoot: specPathRoot}
 	if rm == nil {
 		return m
 	}
@@ -345,23 +347,49 @@ func newArgMatcher(rm *ResourceManifest) argMatcher {
 	m.mappings = append(m.mappings, rm.Mappings...)
 	sort.Slice(m.mappings, func(i, j int) bool { return len(m.mappings[i].Arg) > len(m.mappings[j].Arg) })
 	for _, ex := range rm.Exclusions {
-		m.exclusions[ex.Arg] = ex.Reason
+		m.exclusions = append(m.exclusions, ex.Arg)
 	}
 	return m
 }
 
-// derive returns the spec path an argument must match, and whether a
-// recorded mapping produced it.
-func (m argMatcher) derive(argPath string) (string, bool) {
-	for _, mp := range m.mappings {
-		if argPath == mp.Arg {
-			return mp.Spec, true
-		}
-		if strings.HasPrefix(argPath, mp.Arg+".") {
-			return mp.Spec + argPath[len(mp.Arg):], true
+// excluded reports whether an argument is covered by a recorded exclusion,
+// either exactly or as a descendant of an excluded subtree. Blocks never
+// appear as arguments themselves (the census walks leaves), so a
+// block-naming exclusion is meaningful ONLY through this prefix form.
+func (m argMatcher) excluded(argPath string) bool {
+	for _, ex := range m.exclusions {
+		if argPath == ex || strings.HasPrefix(argPath, ex+".") {
+			return true
 		}
 	}
-	return m.specRoot + "." + argPath, false
+	return false
+}
+
+// derive returns the spec path(s) an argument must match, and whether a
+// recorded mapping produced them. An argument normally derives to exactly
+// one path; a FAN-IN argument (several mappings recording the same arg —
+// e.g. a map-typed limits argument realizing several honest spec fields)
+// derives to every mapped path. Only the longest matching arg prefix
+// contributes, preserving the longest-mapping-wins contract.
+func (m argMatcher) derive(argPath string) ([]string, bool) {
+	var specs []string
+	matchLen := -1
+	for _, mp := range m.mappings { // sorted by arg length, longest first
+		if matchLen >= 0 && len(mp.Arg) < matchLen {
+			break
+		}
+		if argPath == mp.Arg {
+			specs = append(specs, mp.Spec)
+			matchLen = len(mp.Arg)
+		} else if strings.HasPrefix(argPath, mp.Arg+".") {
+			specs = append(specs, mp.Spec+argPath[len(mp.Arg):])
+			matchLen = len(mp.Arg)
+		}
+	}
+	if len(specs) > 0 {
+		return specs, true
+	}
+	return []string{m.specRoot + "." + argPath}, false
 }
 
 // accountKind runs both accounting directions for one kind.
@@ -410,13 +438,22 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 			}
 			argPaths[arg.Path] = true
 			ka.TotalArgs++
-			if _, excluded := matcher.exclusions[arg.Path]; excluded {
+			if matcher.excluded(arg.Path) {
 				ka.ExcludedArgs++
 				continue
 			}
 			derived, mapped := matcher.derive(arg.Path)
-			if specSet[derived] {
-				coveredSpec[derived] = true
+			// A fan-in argument covers every mapped spec field that
+			// exists; per-entry manifest hygiene below still flags any
+			// mapping whose spec side has gone stale.
+			matchedAny := false
+			for _, d := range derived {
+				if specSet[d] {
+					coveredSpec[d] = true
+					matchedAny = true
+				}
+			}
+			if matchedAny {
 				if mapped {
 					ka.MappedArgs++
 				} else {
@@ -453,7 +490,7 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 			}
 		}
 		for _, ex := range rm.Exclusions {
-			if !argPaths[ex.Arg] {
+			if !underPath(sortedArgs, ex.Arg) {
 				ka.ManifestStale = append(ka.ManifestStale,
 					fmt.Sprintf("%s: exclusion %s matches no configurable argument at the pin -- remove it", res, ex.Arg))
 			}

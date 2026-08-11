@@ -24,3 +24,7 @@ spec:
   # Keep destroy possible for the hack manifest without a two-step
   # unprotect.
   deletionProtection: UNPROTECTED
+
+  # Explicit DELETE (the provider default) proves the round-trip on both
+  # the table and its per-family GC policies.
+  deletionPolicy: DELETE

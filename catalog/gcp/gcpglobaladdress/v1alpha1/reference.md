@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpGlobalAddressSpec defines the configuration for a GCP global address reservation.
 
 A global address reserves a static IP address at global scope. Two primary use cases:
@@ -40,6 +42,13 @@ spec:
   ipVersion: IPV4
 
   description: Static IP for the production HTTPS load balancer
+
+  # User labels, merged with the platform labels (the one mutable surface).
+  labels:
+    team: platform
+
+  # Ephemeral test fixture: release the reservation on destroy.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -55,6 +64,8 @@ spec:
 | `spec.network` | `string \| valueFrom` |  |  | GcpVpcNetwork (`status.outputs.network_self_link`) |
 | `spec.prefixLength` | `int32` |  |  |  |
 | `spec.purpose` | `string` |  |  |  |
+| `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -150,6 +161,31 @@ PRIVATE_SERVICE_CONNECT — reserves an address for a Private Service Connect en
 Leave empty for standard external address reservations.
 
 - rule: purpose must be empty, VPC_PEERING, or PRIVATE_SERVICE_CONNECT
+
+### spec.labels
+
+`map<string, string>`
+
+User labels attached to the reserved global address, merged with
+Planton's platform labels (which win on key conflicts). The one mutable
+surface on this resource — every other change destroys and re-reserves.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the reserved global address — what happens on
+destroy:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the reservation is released (GCP refuses while a global
+               forwarding rule or PSA range still uses it); a released
+               external anycast IP is gone for good
+  "PREVENT" -- destroy FAILS; protects an IP that external DNS and
+               client allow-lists may still point at
+  "ABANDON" -- the reservation is removed from management but stays
+               reserved in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

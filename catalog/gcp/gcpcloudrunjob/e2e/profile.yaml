@@ -6,9 +6,12 @@ spec:
   # Minimal scenario: a single-task hello job (~3-5 minutes per engine).
   # Jobs do not hold serverless address reservations after destroy the way
   # direct-VPC services do, so the minimal path is a clean create/destroy.
+  #
+  # The execution tokens (start/run) are offline-proven only: a token-armed
+  # create triggers a REAL execution, so proving them live is a deliberate
+  # proof-lane design (does the run bill, does destroy interrupt it) rather
+  # than a scenario default.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

@@ -40,6 +40,11 @@ func dnsAuthorization(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Prov
 		args.Type = pulumi.StringPtr(spec.Type)
 	}
 
+	// Unset defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdAuthorization, err := certificatemanager.NewDnsAuthorization(ctx,
 		locals.GcpCertManagerDnsAuthorization.Metadata.Name,
 		args,

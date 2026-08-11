@@ -1,0 +1,43 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_cloud_tasks_queue:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.queue_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+
+      # Header overrides: the provider wraps each key/value pair in a
+      # required single-item block redundantly named "header"; the spec
+      # flattens the wrapper away.
+      - spec: spec.http_target.header_overrides.key
+        arg: http_target.header_overrides.header.key
+      - spec: spec.http_target.header_overrides.value
+        arg: http_target.header_overrides.header.value
+
+      # URI override: the provider nests path and query in one-field
+      # wrapper blocks; the spec carries them directly (documented on the
+      # message: path_override.path -> path, query_override.query_params
+      # -> query_params).
+      - spec: spec.http_target.uri_override.path
+        arg: http_target.uri_override.path_override.path
+      - spec: spec.http_target.uri_override.query_params
+        arg: http_target.uri_override.query_override.query_params
+      - spec: spec.http_target.uri_override.enforce_mode
+        arg: http_target.uri_override.uri_override_enforce_mode
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      cloudtasks.googleapis.com with fixed arguments (disable_on_destroy
+      false so destroying one queue never disables the API project-wide);
+      not spec surface.

@@ -29,7 +29,10 @@ default project.
 |------|------|----------|-------------|
 | metadata | object | yes | Planton resource metadata |
 | spec | object | yes | GcpVertexAiIndexEndpoint specification |
-| provider_config | object | no | GCP provider configuration |
+
+Credentials are never module inputs: the provider block is empty and the
+runner injects `GOOGLE_CREDENTIALS` (or the ambient ADC chain applies) —
+the catalog-wide contract.
 
 ## Outputs
 
@@ -48,8 +51,18 @@ Three mutually exclusive, immutable modes:
 1. **Public** -- Set `spec.public_endpoint_enabled = true`
 2. **VPC-peered** -- Set `spec.network` (self-links are normalized to the
    API's relative `projects/{project}/global/networks/{name}` form)
-3. **Private Service Connect** -- Set `spec.private_service_connect_config`
+3. **Private Service Connect** -- Set `spec.private_service_connect_config`.
+   `psc_automation_configs` entries additionally ask Vertex AI to create
+   the consumer-side PSC endpoints itself (network self-links normalized
+   like `spec.network`).
+
+## Encryption and Destroy Behavior
+
+CMEK (`spec.kms_key_name`) renders as the `encryption_spec` block.
+`spec.deletion_policy` is the client-side destroy lever: empty/`DELETE`
+deletes the endpoint (and stops every deployment on it), `PREVENT` makes
+destroy fail, `ABANDON` drops it from state but leaves it serving.
 
 ## Provider Requirements
 
-- `hashicorp/google` ~> 6.0
+- `hashicorp/google` ~> 7.43

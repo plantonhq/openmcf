@@ -72,12 +72,24 @@ func vpc(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*compu
 		if bgp.Mode != "" {
 			networkArgs.BgpBestPathSelectionMode = pulumi.StringPtr(bgp.Mode)
 		}
-		if bgp.AlwaysCompareMed {
-			networkArgs.BgpAlwaysCompareMed = pulumi.BoolPtr(true)
-		}
+		// Sent explicitly (true or false) whenever the block is present: the
+		// provider attribute is Optional+Computed, so omitting it on a
+		// true→false transition would silently keep the old value on the
+		// live network.
+		networkArgs.BgpAlwaysCompareMed = pulumi.BoolPtr(bgp.AlwaysCompareMed)
 		if bgp.InterRegionCost != "" {
 			networkArgs.BgpInterRegionCost = pulumi.StringPtr(bgp.InterRegionCost)
 		}
+	}
+	// Create-time resource-manager tags (org policy / IAM conditions).
+	if len(spec.ResourceManagerTags) > 0 {
+		networkArgs.Params = &compute.NetworkParamsArgs{
+			ResourceManagerTags: pulumi.ToStringMap(spec.ResourceManagerTags),
+		}
+	}
+	// Empty defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		networkArgs.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	createdNetwork, err := compute.NewNetwork(ctx,

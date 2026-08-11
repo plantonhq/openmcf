@@ -36,12 +36,19 @@ variable "spec" {
       autoscaling_targets = optional(object({
         high_priority_cpu_utilization_percent = optional(number, 0)
         storage_utilization_percent           = optional(number, 0)
+        total_cpu_utilization_percent         = optional(number, 0)
       }), null)
       asymmetric_autoscaling_options = optional(list(object({
         replica_location = string
         overrides = object({
-          min_nodes = number
-          max_nodes = number
+          min_nodes                                                = optional(number, 0)
+          max_nodes                                                = optional(number, 0)
+          min_processing_units                                     = optional(number, 0)
+          max_processing_units                                     = optional(number, 0)
+          autoscaling_target_high_priority_cpu_utilization_percent = optional(number, 0)
+          autoscaling_target_total_cpu_utilization_percent         = optional(number, 0)
+          disable_high_priority_cpu_autoscaling                    = optional(bool, false)
+          disable_total_cpu_autoscaling                            = optional(bool, false)
         })
       })), [])
     }), null)
@@ -50,5 +57,6 @@ variable "spec" {
     edition                      = optional(string, "")
     default_backup_schedule_type = optional(string, "")
     force_destroy                = optional(bool, false)
+    deletion_policy              = optional(string, "")
   })
 }

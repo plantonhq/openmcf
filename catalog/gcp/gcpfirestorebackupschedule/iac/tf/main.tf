@@ -35,5 +35,10 @@ resource "google_firestore_backup_schedule" "this" {
     }
   }
 
+  # Empty defers to the provider default (DELETE). PREVENT protects a
+  # compliance-mandated cadence; ABANDON stops managing (backups keep
+  # being taken).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.firestore_api]
 }

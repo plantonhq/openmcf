@@ -1,0 +1,30 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCertificateMap
+metadata:
+  name: hostname-routing
+spec:
+  description: Per-domain certificates selected by SNI, wildcard fallback.
+
+  entries:
+    # Per-domain entries: the client's SNI picks the certificate.
+    - entryName: www
+      hostname: www.example.com
+      certificates:
+        - value: projects/my-project/locations/global/certificates/www-cert
+
+    - entryName: api
+      hostname: api.example.com
+      certificates:
+        - value: projects/my-project/locations/global/certificates/api-cert
+
+    # The safety net: served when no hostname entry matches (including
+    # clients that send no SNI). A PRIMARY-less production map fails
+    # those handshakes cold.
+    - entryName: fallback
+      matcher: PRIMARY
+      certificates:
+        - value: projects/my-project/locations/global/certificates/wildcard-cert
+
+  # Live TLS routing: destroy stays blocked while proxies reference the
+  # map.
+  deletionPolicy: PREVENT

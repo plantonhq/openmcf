@@ -1,0 +1,57 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCloudRunDomainMapping
+metadata:
+  name: my-app-domain
+spec:
+  # GCP project that owns the mapping. Omit to use the provider's
+  # default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Region of the Cloud Run service being mapped. Mappings are regional
+  # and must live in the SAME region as their target service. Immutable —
+  # like every field here except deletionPolicy: the underlying resource
+  # is create-only end to end, so any change replaces the mapping (cheap:
+  # free object, re-creates in seconds, brief serving gap while the
+  # certificate re-issues).
+  region: us-central1
+
+  # The custom domain to map — this IS the mapping's name in GCP. MUST
+  # already be verified by the deploying identity (Search Console /
+  # `gcloud domains verify`); GCP rejects the create otherwise.
+  # Subdomains of a verified domain need no separate verification.
+  domain: app.example.com
+
+  # The Cloud Run service this domain routes to. Reference a GcpCloudRun
+  # resource's service_name output (shown here against the published E2E
+  # fixture) or provide the service name literally. The service must
+  # exist, in this same region and project, before the mapping.
+  route:
+    valueFrom:
+      kind: GcpCloudRun
+      name: planton-oss-e2e-cldrun-minimal
+      fieldPath: status.outputs.service_name
+
+  # AUTOMATIC (default): Cloud Run provisions and renews the TLS
+  # certificate once the emitted DNS records are published. NONE skips
+  # the managed certificate (migration shape — see the presets).
+  certificateMode: AUTOMATIC
+
+  # Leave false for the safe behavior: GCP fails the create with a
+  # conflict error when the domain is already mapped elsewhere, instead
+  # of silently stealing it.
+  forceOverride: false
+
+  # Labels and annotations stored on the mapping object (non-authoritative
+  # Knative metadata; the Cloud Run API adds server-side annotations of
+  # its own — those never show as drift).
+  labels:
+    team: payments
+  annotations:
+    note: primary customer-facing domain
+
+  # DELETE (default): destroying the resource deletes the mapping — the
+  # domain stops routing; the service is untouched. PREVENT refuses the
+  # destroy; ABANDON keeps the mapping serving but drops it from
+  # management.
+  deletionPolicy: DELETE

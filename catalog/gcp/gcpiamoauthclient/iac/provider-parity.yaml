@@ -1,0 +1,42 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# One kind, two resources: the workforce OAuth client plus one credential
+# per spec.credentials entry (secrets generated server-side by GCP). The
+# spec's ONE deletion_policy matches the client by name and maps onto each
+# credential -- the credentials have no life apart from the client.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_iam_oauth_client:
+    mappings:
+      - spec: spec.project_id
+        arg: project
+
+  # Instantiated per spec.credentials entry. The list context already names
+  # the client, so the spec calls the ID credential_id where the provider
+  # repeats the full oauth_client_credential_id.
+  google_iam_oauth_client_credential:
+    specRoot: spec.credentials
+    mappings:
+      - spec: spec.credentials.credential_id
+        arg: oauth_client_credential_id
+      - spec: spec.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      - arg: oauthclient
+        reason: wired by the module to the client it creates -- never user surface
+      - arg: location
+        reason: wired by the module to the client's location -- never user surface
+      - arg: project
+        reason: wired by the module to the client's project -- never user surface
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables iam.googleapis.com with
+      fixed arguments (disable_on_destroy false so destroying one client
+      never disables IAM project-wide); not spec surface.

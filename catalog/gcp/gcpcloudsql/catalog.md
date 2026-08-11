@@ -99,11 +99,13 @@ These are the most important decisions when configuring a Cloud SQL instance. Ex
 
 **Backups and recovery** -- `backup.enabled` with `startTime` (UTC `"HH:MM"`), `retainedBackups` (count of daily backups kept), and `transactionLogRetentionDays` (how far point-in-time recovery reaches, 1-35). PITR is `pointInTimeRecoveryEnabled` on PostgreSQL/SQL Server and `binaryLogEnabled` on MySQL.
 
-**Read replicas** -- Set `masterInstanceName` (a name or a GcpCloudSql reference) to create this instance as a read replica. Immutable; the primary must have backups (and binary logs on MySQL) enabled. `replicaConfiguration` tunes failover/cascading and carries the replication channel for external sources.
+**Read replicas and read pools** -- Set `masterInstanceName` (a name or a GcpCloudSql reference) to create this instance as a read replica. Immutable; the primary must have backups (and binary logs on MySQL) enabled. `replicaConfiguration` tunes failover/cascading and carries the replication channel for external sources. Promote a replica to a standalone primary with `instanceType: CLOUD_SQL_INSTANCE` (clearing `masterInstanceName` in the same change). `instanceType: READ_POOL_INSTANCE` turns the resource into a read pool — a single endpoint over `nodeCount` read-serving nodes, optionally autoscaled between bounds with `readPoolAutoScale`.
 
-**Instance sizing** -- `tier` sets CPU and memory (`"db-custom-4-15360"` = 4 vCPU / 15 GB; `"db-f1-micro"` for shared-core dev). The `disk` block sets type (`PD_SSD` default), size (10-65536 GB, grows but never shrinks), auto-resize, and the auto-resize limit.
+**Restore provenance** -- An instance can be born from existing data: `clone` copies another instance (optionally at a point in time), `restoreBackupContext` restores a specific backup run, and `pointInTimeRestoreContext` / `backupdrBackup` restore from Backup and DR. These are triggers as much as configuration — adding or changing them on an existing instance runs the restore.
 
-**Deletion guards** -- `deletionProtection` makes the IaC engines refuse a destroy; `deletionProtectionEnabled` makes GCP itself reject deletion from every surface; `retainBackupsOnDelete` keeps backups alive after deletion. Set all three on production.
+**Instance sizing** -- `tier` sets CPU and memory (`"db-custom-4-15360"` = 4 vCPU / 15 GB; `"db-f1-micro"` for shared-core dev). The `disk` block sets type (`PD_SSD` default), size (10-65536 GB, grows but never shrinks), auto-resize, the auto-resize limit, and — on `HYPERDISK_BALANCED` — provisioned IOPS and throughput decoupled from size.
+
+**Deletion guards** -- `deletionProtection` makes the IaC engines refuse a destroy; `deletionProtectionEnabled` makes GCP itself reject deletion from every surface; `retainBackupsOnDelete` keeps backups alive after deletion; `finalBackup` takes a last backup during the delete itself. Set the guards on production, and use `deletionPolicy: ABANDON` when an instance must leave IaC management without being destroyed.
 
 ## Outputs and Dependencies
 

@@ -1,0 +1,49 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpComputeMig
+metadata:
+  name: web-tier
+spec:
+  # Regional: VMs spread across the region's zones — a zone outage takes
+  # down only part of the fleet.
+  region: us-central1
+
+  template:
+    machineType: e2-small
+    disks:
+      - boot: true
+        sourceImage: debian-cloud/debian-12
+    networkInterfaces:
+      # Private fleet (no accessConfigs) — pair with Cloud NAT for
+      # egress. Reference your subnetwork; its region must match.
+      - subnetwork:
+          valueFrom:
+            kind: GcpSubnetwork
+            name: prod-subnet
+            fieldPath: status.outputs.subnetwork_self_link
+    # Boot-time app start; every change rotates the template and rolls
+    # the fleet per updatePolicy.
+    startupScript: |
+      #!/bin/bash
+      systemctl enable --now my-app
+
+  # The backend service maps its port_name to this.
+  namedPorts:
+    - name: http
+      port: 8080
+
+  # CPU-target autoscaling with a scale-in cap: never remove more than
+  # one instance per 10-minute window (protects against flapping).
+  autoscaler:
+    minReplicas: 2
+    maxReplicas: 10
+    cpuTarget: 0.6
+    scaleInControl:
+      maxScaledInReplicasFixed: 1
+      timeWindowSec: 600
+
+  # Proactive rolling updates with surge: template changes roll through
+  # the fleet at zero unavailability, at temporary +3-instance cost.
+  updatePolicy:
+    minimalAction: REPLACE
+    type: PROACTIVE
+    maxSurgeFixed: 3

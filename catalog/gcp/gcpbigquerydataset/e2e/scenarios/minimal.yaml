@@ -18,3 +18,5 @@ metadata:
 spec:
   datasetId: e2e_bqds_smoke
   location: US
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE

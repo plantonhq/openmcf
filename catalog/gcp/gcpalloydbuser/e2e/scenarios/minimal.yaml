@@ -24,3 +24,5 @@ spec:
   password: E2eTestPassword123!
   databaseRoles:
     - alloydbsuperuser
+  # Explicit provider default: proves the DELETE round-trip on re-plan.
+  deletionPolicy: DELETE

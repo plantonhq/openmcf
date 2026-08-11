@@ -514,7 +514,45 @@ var _ = ginkgo.Describe("GcpCloudArmorPolicySpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should accept user labels", func() {
+		target := minimal()
+		target.Spec.Labels = map[string]string{"team": "platform"}
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept each request_body_inspection_size value", func() {
+		for _, v := range []string{"8KB", "16KB", "32KB", "48KB", "64KB"} {
+			target := minimal()
+			target.Spec.AdvancedOptionsConfig = &GcpCloudArmorAdvancedOptionsConfig{
+				RequestBodyInspectionSize: v,
+			}
+			gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should accept each deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			target := minimal()
+			target.Spec.DeletionPolicy = v
+			gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+		}
+	})
+
 	// ──────────────── Negative Cases ────────────────
+
+	ginkgo.It("should reject an invalid request_body_inspection_size", func() {
+		target := minimal()
+		target.Spec.AdvancedOptionsConfig = &GcpCloudArmorAdvancedOptionsConfig{
+			RequestBodyInspectionSize: "128KB",
+		}
+		gomega.Expect(validator.Validate(target)).ToNot(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		target := minimal()
+		target.Spec.DeletionPolicy = "KEEP"
+		gomega.Expect(validator.Validate(target)).ToNot(gomega.Succeed())
+	})
 
 	ginkgo.It("should accept an omitted project_id (ambient project)", func() {
 		msg := minimal()

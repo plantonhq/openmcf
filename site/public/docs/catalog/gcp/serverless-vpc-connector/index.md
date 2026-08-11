@@ -41,7 +41,7 @@ Open the deployment store, find **GCP Serverless VPC Connector**, and click **De
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServerlessVpcConnector
 metadata:
   name: svcless-uc1

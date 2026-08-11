@@ -37,7 +37,7 @@ Open the deployment store, find **GCP Cloud Tasks Queue**, and click **Deploy**.
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudTasksQueue
 metadata:
   name: background-jobs

@@ -27,6 +27,8 @@ variable "spec" {
     # Proto default "FULL" is materialized by the converter; guard anyway.
     backup_type = optional(string, "FULL")
 
+    deletion_policy = optional(string, "")
+
     encryption_config = optional(object({
       encryption_type = string
       kms_key_name    = optional(string, "")

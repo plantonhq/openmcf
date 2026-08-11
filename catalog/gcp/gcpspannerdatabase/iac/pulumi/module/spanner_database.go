@@ -97,6 +97,13 @@ func spannerDatabase(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 		args.DefaultTimeZone = pulumi.StringPtr(spec.DefaultTimeZone)
 	}
 
+	// What a PERMITTED destroy does once the guards above allow one:
+	// DELETE (default), PREVENT (destroy fails), or ABANDON (drop from
+	// state, keep the database and its data in GCP).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdDatabase, err := spanner.NewDatabase(ctx, "spanner-database", args,
 		pulumi.Provider(gcpProvider),
 		pulumi.DependsOn([]pulumi.Resource{createdProjectService}),

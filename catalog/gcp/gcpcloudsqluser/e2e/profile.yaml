@@ -6,8 +6,6 @@ spec:
   # Composed scenario: deploys the GcpCloudSql prerequisite then creates a
   # BUILT_IN user on it.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

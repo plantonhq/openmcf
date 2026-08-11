@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpFirewallRuleSpec defines the configuration for a Google Compute Engine firewall rule.
 
 A firewall rule controls traffic to and from VM instances in a VPC network.
@@ -47,6 +49,14 @@ spec:
     - "0.0.0.0/0"
   targetTags:
     - web-server
+  # Resource Manager tags for org-policy conditions and IAM scoping
+  # (tagKeys/tagValues IDs, not short names). Changing them REPLACES the
+  # firewall rule — plan tag changes deliberately.
+  resourceManagerTags:
+    tagKeys/281475123456789: tagValues/281476987654321
+  # Delete the rule on destroy (GCP's default, made explicit). PREVENT
+  # protects a rule other teams' traffic may silently depend on.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -72,6 +82,8 @@ spec:
 | `spec.disabled` | `bool` |  |  |  |
 | `spec.logConfig` | `GcpFirewallLogConfig` |  |  |  |
 | `spec.logConfig.metadata` | `string` | yes |  |  |
+| `spec.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -250,6 +262,30 @@ Metadata inclusion mode for firewall logs.
 
 - rule: metadata must be EXCLUDE_ALL_METADATA or INCLUDE_ALL_METADATA
 - rule: {"required":true}
+
+### spec.resourceManagerTags
+
+`map<string, string>`
+
+Resource Manager tags bound to the firewall rule at create time, for
+org-policy conditions and IAM scoping. Keys are "tagKeys/{tag_key_id}"
+and values "tagValues/{tag_value_id}" (IDs, not short names). Changing
+tags REPLACES the firewall rule (the provider sends them through a
+create-only params block) -- plan tag changes deliberately.
+
+### spec.deletionPolicy
+
+`string`
+
+What happens to the firewall rule in GCP when this resource is destroyed.
+  "DELETE"  -- (GCP's default when unset) the rule is deleted; traffic
+               it allowed is cut over to the next matching rule
+  "PREVENT" -- destroy FAILS; protects a rule other teams' traffic
+               may silently depend on
+  "ABANDON" -- the rule is removed from management but keeps enforcing
+               in GCP (free at rest; clean it up manually)
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

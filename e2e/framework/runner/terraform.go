@@ -33,6 +33,27 @@ func TerraformDeploy(t testing.TB, opts *terraform.Options) (*TerraformResult, e
 	return result, nil
 }
 
+// TerraformPlanNoChanges re-plans the just-applied configuration with
+// -detailed-exitcode and fails unless the plan is empty — the Terraform arm
+// of the IDEMPOTENCY phase. Exit code 0 means no changes; 2 means the module
+// and the provider disagree about the applied state; anything else is a plan
+// error in its own right.
+func TerraformPlanNoChanges(t testing.TB, opts *terraform.Options) (*TerraformResult, error) {
+	start := time.Now()
+	exitCode, err := terraform.PlanExitCodeE(t, opts)
+	result := &TerraformResult{
+		Duration: time.Since(start),
+		ExitCode: exitCode,
+	}
+	if err != nil {
+		return result, errors.Wrap(err, "terraform re-plan failed")
+	}
+	if exitCode != 0 {
+		return result, errors.Errorf("terraform re-plan reported pending changes after apply (idempotency violation, exit code %d)", exitCode)
+	}
+	return result, nil
+}
+
 // TerraformDestroy runs tofu/terraform destroy via Terratest.
 func TerraformDestroy(t testing.TB, opts *terraform.Options) (*TerraformResult, error) {
 	start := time.Now()

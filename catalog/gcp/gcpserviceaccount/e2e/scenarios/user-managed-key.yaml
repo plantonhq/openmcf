@@ -1,0 +1,28 @@
+# GcpServiceAccount scenario: the generate-flow user-managed key with the
+# keepers rotation trigger — proves the key surface (algorithm/format
+# defaults, key_base64 export) and that destroy removes the key with the
+# account. Keyless remains the minimal scenario's shape.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpServiceAccount
+metadata:
+  name: planton-oss-e2e-gsa-key
+  id: planton-oss-e2e-gsa-key
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpserviceaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  serviceAccountId: planton-e2e-key-sa
+  displayName: E2E user-managed key
+  description: Exercises the generate flow with keepers-based rotation
+  userManagedKey:
+    algorithm: KEY_ALG_RSA_2048
+    keepers:
+      rotation: e2e-initial
+  projectIamRoles:
+    - roles/logging.logWriter

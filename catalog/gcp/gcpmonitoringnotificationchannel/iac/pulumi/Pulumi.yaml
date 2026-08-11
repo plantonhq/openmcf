@@ -1,0 +1,4 @@
+name: gcpmonitoringnotificationchannel-pulumi-project
+runtime:
+  name: go
+description: Planton GcpMonitoringNotificationChannel Pulumi module

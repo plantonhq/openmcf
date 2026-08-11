@@ -11,8 +11,6 @@ spec:
   # -> compute addresses.get verify -> destroy -> verify gone, on both
   # provisioners. Regional addresses are free and create in seconds.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 10

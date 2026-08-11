@@ -118,6 +118,10 @@ These are the most important decisions when configuring a node pool. Explore the
 
 **Scheduling fence** (`nodeConfig.labels` / `taints`) — labels let workloads choose this pool; taints keep everything else out. Special-purpose pools want both.
 
+**Node tuning** (`nodeConfig.kubeletConfig` / `linuxNodeConfig`) — the full kubelet and OS surface is modeled: CPU/memory/topology managers for latency-critical pinning, soft-eviction thresholds with grace periods, crash-loop backoff caps, image GC by threshold and age, sysctls, cgroup mode, transparent hugepages, and swap with sizing profiles. Set only what you need — unset fields keep GKE defaults.
+
+**Teardown behavior** (`nodeDrainConfig`, `deletionPolicy`) — pace how nodes drain when the pool is deleted (grace periods, PodDisruptionBudget respect with a timeout), and control what a destroy is allowed to do: PREVENT fails the plan, ABANDON drops the pool from state without touching GKE.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes

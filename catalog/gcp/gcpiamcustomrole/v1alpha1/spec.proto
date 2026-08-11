@@ -76,4 +76,21 @@ message GcpIamCustomRoleSpec {
       expression: "this in ['ALPHA', 'BETA', 'GA', 'DEPRECATED', 'DISABLED', 'EAP']"
     }
   ];
+
+  // What destroying this resource does to the role. Custom-role deletion
+  // is a SOFT delete in GCP — the role enters a deleted state (recoverable
+  // by undelete for 7 days, purged after 37), so DELETE and ABANDON differ
+  // less here than on hard-delete resources:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the role is soft-deleted; existing bindings to it stop
+  //                granting access
+  //   "PREVENT" -- destroy FAILS; protects a role that live bindings
+  //                depend on
+  //   "ABANDON" -- the role is removed from management but stays active,
+  //                and every binding to it keeps working
+  string deletion_policy = 7 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

@@ -39,11 +39,13 @@ func cloudSchedulerJob(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		Name:     pulumi.StringPtr(jobName),
 		Region:   pulumi.StringPtr(spec.Location),
 		Schedule: pulumi.StringPtr(spec.Schedule),
+	}
 
-		// PARITY: the bridged provider carries a client-side deletion_policy
-		// flag the released 6.x Terraform line does not have. Pinned to
-		// DELETE so destroy really deletes the job on both engines.
-		DeletionPolicy: pulumi.StringPtr("DELETE"),
+	// DELETE (provider default) removes the job on destroy; PREVENT fails
+	// the destroy; ABANDON leaves the job firing on schedule. Sent only
+	// when set — mirrors the Terraform module.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	// Honor the spec contract: an empty project_id falls back to the

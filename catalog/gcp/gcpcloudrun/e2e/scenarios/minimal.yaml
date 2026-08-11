@@ -1,9 +1,11 @@
 # Minimal GcpCloudRun scenario: a public hello service — the smallest useful
 # Cloud Run deployment, exercising the container/port/resources core, the
-# public-invoker IAM grant, scale-to-zero, and the startup CPU boost.
-# project_id is deliberately omitted (ambient project). Cloud Run service
-# names are project-scoped with no soft-delete reservation, so the name
-# stays fixed. deletion_protection must be false so DESTROY can run.
+# public-invoker IAM grant, scale-to-zero, the startup CPU boost, a
+# readiness probe (traffic-gating without restart), service and revision
+# annotations, the service-wide scaling max, and the explicit teardown
+# policy. project_id is deliberately omitted (ambient project). Cloud Run
+# service names are project-scoped with no soft-delete reservation, so the
+# name stays fixed. deletion_protection must be false so DESTROY can run.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudRun
 metadata:
@@ -20,6 +22,10 @@ metadata:
     - planton-e2e
 spec:
   region: us-central1
+  annotations:
+    planton-e2e/arm: service-annotations
+  revisionAnnotations:
+    planton-e2e/arm: revision-annotations
   containers:
     - image: us-docker.pkg.dev/cloudrun/container/hello:latest
       ports:
@@ -28,10 +34,18 @@ spec:
         cpu: "1"
         memory: 512Mi
         startupCpuBoost: true
+      readinessProbe:
+        periodSeconds: 10
+        successThreshold: 1
+        httpGet:
+          path: /
   scaling:
     minInstanceCount: 0
     maxInstanceCount: 2
+  serviceScaling:
+    maxInstanceCount: 4
   allowUnauthenticated: true
   ingress: INGRESS_TRAFFIC_ALL
   executionEnvironment: EXECUTION_ENVIRONMENT_GEN2
   deletionProtection: false
+  deletionPolicy: DELETE

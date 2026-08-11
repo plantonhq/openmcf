@@ -11,8 +11,9 @@ spec:
   # consumer wiring the test project does not carry — proven offline via
   # converter plans (the GcpVertexAiEndpoint precedent).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # The prior green predates the current spec shape (CMEK encryption_spec,
+  # PSC automation configs, deletion_policy modeled from the spec instead
+  # of the Pulumi-side DELETE pin) — awaits live re-proof.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

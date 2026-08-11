@@ -2,8 +2,11 @@
 # nodes, a peering-based /28 control plane, NAMED secondary ranges from the
 # consumer-scoped subnetwork, Dataplane V2, and a maintenance window — the
 # production shape, exercising the ip_allocation named-range branch and the
-# private_cluster_config block live. No node pools attach (control plane
-# only), so no NAT is needed for the cluster itself to converge.
+# private_cluster_config block live — plus the expanded surface: RBAC
+# binding lockdown, node-pool creation defaults, Secret Manager CSI with
+# rotation, the DNS endpoint's token serving, read-side performance
+# switches, and an explicit deletion policy. No node pools attach (control
+# plane only), so no NAT is needed for the cluster itself to converge.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeCluster
 metadata:
@@ -40,7 +43,24 @@ spec:
   privateCluster:
     enablePrivateNodes: true
     masterIpv4CidrBlock: "172.16.0.16/28"
+  controlPlaneEndpoints:
+    dnsEndpointAllowExternalTraffic: true
+    enableK8sTokensViaDns: true
   maintenancePolicy:
     dailyWindow:
       startTime: "03:00"
+  rbacBindingConfig:
+    enableInsecureBindingSystemAuthenticated: false
+    enableInsecureBindingSystemUnauthenticated: false
+  nodePoolDefaults:
+    insecureKubeletReadonlyPortEnabled: "FALSE"
+    loggingVariant: DEFAULT
+  enableSecretManagerCsi: true
+  secretManagerRotation:
+    enabled: true
+    rotationInterval: "120s"
+  # Safe in this composition (pools are never inline) and proves the
+  # read-side performance switch live.
+  skipNodePoolRefresh: true
+  deletionPolicy: DELETE
   deletionProtection: false

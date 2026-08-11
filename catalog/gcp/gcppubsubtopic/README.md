@@ -54,6 +54,8 @@ retention -- subscribers control their own retention via subscriptions.
 | `schemaSettings` | object | No | Schema validation settings |
 | `schemaSettings.schema` | StringValueOrRef | Yes* | Schema to validate against; reference `GcpPubSubSchema` (* required when schemaSettings is set) |
 | `schemaSettings.encoding` | string | No | Message encoding: JSON or BINARY |
+| `schemaSettings.firstRevisionId` | StringValueOrRef | No | Minimum (inclusive) accepted schema revision; reference the schema's `revision_id` output to pin to the revision a deploy produced |
+| `schemaSettings.lastRevisionId` | StringValueOrRef | No | Maximum (inclusive) accepted schema revision; pin both bounds to the same revision to freeze the contract exactly |
 | `ingestionDataSourceSettings` | object | No | External data source ingestion |
 | `ingestionDataSourceSettings.awsKinesis` | object | No | AWS Kinesis Data Streams ingestion (`gcpServiceAccount` references `GcpServiceAccount`) |
 | `ingestionDataSourceSettings.awsMsk` | object | No | AWS MSK (Kafka) ingestion (`gcpServiceAccount` references `GcpServiceAccount`) |
@@ -61,7 +63,9 @@ retention -- subscribers control their own retention via subscriptions.
 | `ingestionDataSourceSettings.cloudStorage` | object | No | GCS bucket ingestion (`bucket` references `GcpGcsBucket`) |
 | `ingestionDataSourceSettings.confluentCloud` | object | No | Confluent Cloud ingestion (`gcpServiceAccount` references `GcpServiceAccount`) |
 | `ingestionDataSourceSettings.platformLogsSettings` | object | No | Ingestion pipeline logging |
-| `messageTransforms` | list | No | Ordered JavaScript UDF pipeline applied to every published message |
+| `messageTransforms` | list | No | Ordered transform pipeline applied to every published message; each step is exactly one of `javascriptUdf` (a JS function) or `aiInference` (a Vertex AI model call — `endpoint` references `GcpVertexAiEndpoint`, `serviceAccountEmail` references `GcpServiceAccount`) |
+| `resourceManagerTags` | map | No | Resource Manager tags (`tagKeys/{id}` → `tagValues/{id}`) bound at create time; changing them later replaces the topic |
+| `deletionPolicy` | string | No | `DELETE` (default), `PREVENT` (destroy fails), or `ABANDON` (remove from management, leave serving) |
 
 ## Important Notes
 
@@ -87,20 +91,13 @@ transform keeps its position in the pipeline without being applied.
 
 ### Deliberately not modeled (recorded reasons)
 
-- **`tags` (resource-manager tags)** — absent from the released `google ~> 6.x`
-  line (present only on the provider's unreleased line); revisit when the
-  catalog's provider line carries it.
-- **`message_transforms.ai_inference` (Vertex AI transform arm)** — absent from
-  the released `google ~> 6.x` line; only the JavaScript UDF arm is released.
-- **`deletion_policy`** — a client-side lever that conflicts with
-  Planton-managed destroy (catalog-wide skip; also absent from the released
-  6.x line).
-- **`schema_settings.first_revision_id`/`last_revision_id` (revision pinning)** —
-  absent from the released `google ~> 6.x` line; topics validate against all
-  available schema revisions.
 - **Per-topic IAM (`google_pubsub_topic_iam_*`)** — resource-scoped IAM stays
   out of the catalog pending concrete pull (the additive project-level grant,
   `GcpProjectIamMember`, covers the real cases).
+
+Every configurable argument of `google_pubsub_topic` at the pinned provider
+version is representable through this spec; the recorded judgment lives in
+`iac/provider-parity.yaml`, checked by `planton provider-parity --check`.
 
 ## Related Components
 

@@ -34,3 +34,6 @@ spec:
       kind: GcpKmsKey
       name: my-cache-cmek # replace with your GcpKmsKey resource name
       fieldPath: status.outputs.key_id
+  # Destroying a production cache must be a deliberate two-step:
+  # flip this to false, apply, then destroy.
+  deletionProtection: true

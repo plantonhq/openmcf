@@ -43,6 +43,14 @@ variable "spec" {
 
     private_service_connect_config = optional(object({
       project_allowlist = optional(list(string), [])
+      # PSC endpoints Vertex AI creates automatically in consumer
+      # projects/networks. network arrives as a self-link from a
+      # GcpVpcNetwork reference and is normalized to the relative form
+      # in main.tf.
+      psc_automation_configs = optional(list(object({
+        network    = string
+        project_id = string
+      })), [])
     }), null)
 
     # User labels; merged beneath the platform attribution labels.
@@ -53,6 +61,14 @@ variable "spec" {
       sampling_rate            = optional(number, 0)
       bigquery_destination_uri = optional(string, "")
     }), null)
+
+    # DeployedModel ID -> percentage of traffic (values sum to 100).
+    # Rendered as the provider's JSON-string argument.
+    traffic_split = optional(map(number), {})
+
+    # What happens to the endpoint in GCP on destroy:
+    # DELETE (provider default), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {
@@ -64,12 +80,4 @@ variable "spec" {
     condition     = var.spec.display_name != ""
     error_message = "display_name is required."
   }
-}
-
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = optional(string, "")
-  })
-  default = { service_account_key = "" }
 }

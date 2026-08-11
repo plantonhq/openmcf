@@ -10,12 +10,14 @@ import "shared/foreignkey/v1/foreign_key.proto";
 // boot disk with Google-managed encryption.
 message GcpVertexAiNotebookBootDisk {
   // Disk type for the boot disk.
-  // Valid values: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME.
+  // Persistent Disk: PD_STANDARD (HDD), PD_SSD, PD_BALANCED, PD_EXTREME.
+  // Hyperdisk (newer-generation machine series only): HYPERDISK_BALANCED,
+  // HYPERDISK_BALANCED_HIGH_AVAILABILITY, HYPERDISK_ML.
   // If not specified, defaults to PD_SSD.
   string disk_type = 1 [(buf.validate.field).cel = {
     id: "valid_boot_disk_type"
-    expression: "this == '' || this in ['PD_STANDARD', 'PD_SSD', 'PD_BALANCED', 'PD_EXTREME']"
-    message: "disk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME"
+    expression: "this == '' || this in ['PD_STANDARD', 'PD_SSD', 'PD_BALANCED', 'PD_EXTREME', 'HYPERDISK_BALANCED', 'HYPERDISK_BALANCED_HIGH_AVAILABILITY', 'HYPERDISK_ML']"
+    message: "disk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME, HYPERDISK_BALANCED, HYPERDISK_BALANCED_HIGH_AVAILABILITY, HYPERDISK_ML"
   }];
 
   // Size of the boot disk in GB.
@@ -42,12 +44,15 @@ message GcpVertexAiNotebookBootDisk {
 // encryption.
 message GcpVertexAiNotebookDataDisk {
   // Disk type for the data disk.
-  // Valid values: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME.
+  // Persistent Disk: PD_STANDARD (HDD), PD_SSD, PD_BALANCED, PD_EXTREME.
+  // Hyperdisk (newer-generation machine series only): HYPERDISK_BALANCED,
+  // HYPERDISK_EXTREME, HYPERDISK_THROUGHPUT,
+  // HYPERDISK_BALANCED_HIGH_AVAILABILITY, HYPERDISK_ML.
   // If not specified, defaults to PD_STANDARD.
   string disk_type = 1 [(buf.validate.field).cel = {
     id: "valid_data_disk_type"
-    expression: "this == '' || this in ['PD_STANDARD', 'PD_SSD', 'PD_BALANCED', 'PD_EXTREME']"
-    message: "disk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME"
+    expression: "this == '' || this in ['PD_STANDARD', 'PD_SSD', 'PD_BALANCED', 'PD_EXTREME', 'HYPERDISK_BALANCED', 'HYPERDISK_EXTREME', 'HYPERDISK_THROUGHPUT', 'HYPERDISK_BALANCED_HIGH_AVAILABILITY', 'HYPERDISK_ML']"
+    message: "disk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME, HYPERDISK_BALANCED, HYPERDISK_EXTREME, HYPERDISK_THROUGHPUT, HYPERDISK_BALANCED_HIGH_AVAILABILITY, HYPERDISK_ML"
   }];
 
   // Size of the data disk in GB.
@@ -72,13 +77,18 @@ message GcpVertexAiNotebookDataDisk {
 // to the notebook instance. GCP supports exactly one accelerator
 // configuration per Workbench instance.
 message GcpVertexAiNotebookAcceleratorConfig {
-  // GPU accelerator type.
+  // GPU accelerator type. Availability varies by zone and machine type:
+  // current-generation training/inference GPUs (NVIDIA_H100_80GB,
+  // NVIDIA_H100_MEGA_80GB, NVIDIA_H200_141GB, NVIDIA_B200) require
+  // their matching A3/A4 machine series; NVIDIA_L4 and the Tesla
+  // family run on G2/N1; the _VWS variants are virtual-workstation
+  // (graphics) licenses of the same silicon.
   // See https://cloud.google.com/vertex-ai/docs/workbench/instances/create#accelerator
   // for supported types per zone.
   string type = 1 [(buf.validate.field).cel = {
     id: "valid_accelerator_type"
-    expression: "this == '' || this in ['NVIDIA_TESLA_P100', 'NVIDIA_TESLA_V100', 'NVIDIA_TESLA_P4', 'NVIDIA_TESLA_T4', 'NVIDIA_TESLA_A100', 'NVIDIA_A100_80GB', 'NVIDIA_L4', 'NVIDIA_TESLA_T4_VWS', 'NVIDIA_TESLA_P100_VWS', 'NVIDIA_TESLA_P4_VWS']"
-    message: "type must be a valid accelerator type (e.g., NVIDIA_TESLA_T4, NVIDIA_L4, NVIDIA_TESLA_A100)"
+    expression: "this == '' || this in ['NVIDIA_TESLA_P100', 'NVIDIA_TESLA_V100', 'NVIDIA_TESLA_P4', 'NVIDIA_TESLA_T4', 'NVIDIA_TESLA_A100', 'NVIDIA_A100_80GB', 'NVIDIA_L4', 'NVIDIA_H100_80GB', 'NVIDIA_H100_MEGA_80GB', 'NVIDIA_H200_141GB', 'NVIDIA_B200', 'NVIDIA_RTX6000', 'NVIDIA_TESLA_T4_VWS', 'NVIDIA_TESLA_P100_VWS', 'NVIDIA_TESLA_P4_VWS']"
+    message: "type must be a valid accelerator type (e.g., NVIDIA_TESLA_T4, NVIDIA_L4, NVIDIA_TESLA_A100, NVIDIA_H100_80GB, NVIDIA_H200_141GB, NVIDIA_B200)"
   }];
 
   // Number of accelerator cores.
@@ -439,4 +449,19 @@ message GcpVertexAiNotebookSpec {
   // Leave false when all users authenticate with Google identities.
   // Mutable in place.
   bool enable_third_party_identity = 24;
+
+  // Deletion policy for the notebook — what happens when this resource
+  // is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the instance is deleted, including its boot and data
+  //                disks; unsynced notebook work on those disks is lost
+  //   "PREVENT" -- destroy FAILS; a guard for a workstation whose local
+  //                disks hold work not yet pushed anywhere else
+  //   "ABANDON" -- the instance is removed from management but left
+  //                running (and billing) in GCP with its disks intact
+  string deletion_policy = 25 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

@@ -17,4 +17,9 @@ resource "google_sql_database" "this" {
 
   charset   = local.charset
   collation = local.collation
+
+  # DELETE (default) drops the database; ABANDON removes it from IaC
+  # management — the documented workaround when live connections block a
+  # PostgreSQL drop; PREVENT fails destroying plans.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 }

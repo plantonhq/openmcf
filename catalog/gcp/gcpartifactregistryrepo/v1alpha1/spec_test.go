@@ -605,4 +605,42 @@ var _ = ginkgo.Describe("GcpArtifactRegistryRepoSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("should accept a remote apt repository from the Debian snapshot archive", func() {
+		msg := minimal()
+		msg.Spec.Format = "APT"
+		msg.Spec.Mode = "REMOTE_REPOSITORY"
+		msg.Spec.RemoteRepositoryConfig = &GcpArtifactRegistryRepoRemoteConfig{
+			AptRepository: &GcpArtifactRegistryRepoRemoteAptRepository{
+				RepositoryBase: "DEBIAN_SNAPSHOT",
+				RepositoryPath: "debian/20240101T000000Z/dists/bookworm",
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept the explicit VERSION_POLICY_UNSPECIFIED maven sentinel", func() {
+		msg := minimal()
+		msg.Spec.Format = "MAVEN"
+		msg.Spec.MavenConfig = &GcpArtifactRegistryRepoMavenConfig{VersionPolicy: "VERSION_POLICY_UNSPECIFIED"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept each deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = v
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "KEEP"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
 })

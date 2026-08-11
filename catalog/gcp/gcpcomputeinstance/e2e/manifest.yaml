@@ -11,6 +11,11 @@ spec:
     image: debian-cloud/debian-12
     sizeGb: 10
     type: pd-balanced
+    # Explicit guest OS features are additive to what the image already
+    # declares — modern Debian images carry both of these natively.
+    guestOsFeatures:
+      - UEFI_COMPATIBLE
+      - GVNIC
   networkInterfaces:
     - network:
         value: default
@@ -22,6 +27,9 @@ spec:
     instanceTerminationAction: DELETE
   shieldedInstanceConfig:
     enableSecureBoot: true
+  # DELETE is the provider default — armed explicitly to prove the
+  # round-trip stays diff-free.
+  deletionPolicy: DELETE
   labels:
     env: testing
   tags:

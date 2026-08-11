@@ -69,6 +69,7 @@ The provider's `name` output is the audience your CI mints tokens for.
 | `disabled` | `bool` | `false` | Kill switch: a disabled provider rejects new token exchanges (already-issued Google credentials remain valid until expiry). Mutable. |
 | `attributeMapping` | `map(string)` | issuer defaults | Claim → Google-attribute CEL mappings. **Required for OIDC** (must include `google.subject`); AWS/SAML/X.509 have server-side defaults. |
 | `attributeCondition` | `string` | accept all | CEL gate over `assertion`/`google`/`attribute` restricting which otherwise valid credentials are accepted. Max 4096 chars. |
+| `deletionPolicy` | `string` | `DELETE` | What destroy does: `DELETE` removes the provider (starting the ~30-day soft-delete/ID-reuse clock), `PREVENT` fails the destroy to protect a live federation path, `ABANDON` leaves it exchanging tokens unmanaged. |
 
 ### Issuer Arms
 

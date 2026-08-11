@@ -169,6 +169,22 @@ message GcpTargetHttpsProxySpec {
   // Director); leave false for internet-facing load balancers. Immutable.
   bool proxy_bind = 13;
 
+  // Deletion policy for the proxy — what happens when this resource is
+  // destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the proxy is deleted (GCP refuses while a forwarding
+  //                rule still references it, so a TLS frontend cannot be
+  //                torn down out from under its VIP)
+  //   "PREVENT" -- destroy FAILS; protects a production TLS frontend from
+  //                accidental teardown
+  //   "ABANDON" -- the proxy is removed from management but keeps
+  //                terminating TLS in GCP
+  string deletion_policy = 14 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+
   option (buf.validate.message).cel = {
     id: "single_certificate_source"
     message: "choose one certificate mechanism: ssl_certificates (classic compute certificates), certificate_manager_certificates (cross-region internal ALB), or certificate_map (SNI-scale external ALB) — GCP rejects combinations"

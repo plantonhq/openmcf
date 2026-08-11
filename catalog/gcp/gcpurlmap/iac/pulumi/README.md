@@ -24,7 +24,6 @@ A URL map is the routing brain of a global external Application Load Balancer �
 iac/pulumi/
 ├── main.go           # Pulumi program entry point
 ├── Pulumi.yaml       # Pulumi project configuration
-├── Makefile          # Build and deployment targets
 ├── README.md         # This file
 └── module/
     ├── main.go       # Module coordinator
@@ -59,10 +58,9 @@ target:
       value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/backendServices/web-backend
 ```
 
-### 3. Build, Preview, and Deploy
+### 3. Preview and Deploy
 
 ```bash
-make build
 pulumi preview
 pulumi up
 ```
@@ -97,7 +95,8 @@ The module consumes `GcpUrlMapStackInput`:
 - **Immutability**: `url_map_name` and `project_id` are ForceNew; routing tables update in place.
 - **Default target**: exactly one of `default_service`, `default_url_redirect`, or `default_route_action` with weighted backends (enforced pre-deploy by CEL).
 - **Path matcher rules**: each path matcher uses either `path_rules` or `route_rules`, not both.
-- **route_action scope**: only weighted splits and URL rewrites are mapped; timeout/retry/cors/fault/mirror are intentionally omitted.
+- **route_action scope**: the full traffic-management surface is mapped at every routing level — weighted splits (with per-backend header actions), URL rewrites, timeout/retry policies, request mirroring, CORS, fault injection, stream-duration limits, and route-scoped CDN cache policies.
+- **Destroy stance**: `deletion_policy` (DELETE/PREVENT/ABANDON) is client-side — PREVENT fails a destroy outright; ABANDON drops the map from state without deleting it.
 
 ## Related
 

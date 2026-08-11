@@ -250,8 +250,8 @@ generate-proto-docs:
 generate-provider-schemas:
 	go run ./pkg/providerparity/distiller \
 		--out-dir pkg/providerparity/schemas \
-		--provider 'google=hashicorp/google@~> 7.0' \
-		--provider 'google-beta=hashicorp/google-beta@~> 7.0'
+		--provider 'google=hashicorp/google@~> 7.43' \
+		--provider 'google-beta=hashicorp/google-beta@~> 7.43'
 
 # Regenerate every committed public parity page (catalog/<provider>/terraform-parity.md)
 # from the accounting. Each page embeds its own generation parameters, so this
@@ -268,8 +268,14 @@ generate-provider-parity-report:
 # on every other kind's schema, so there is deliberately no way to scope a
 # run. Deterministic: unchanged schemas regenerate byte-identical files
 # (enforced by the drift test in pkg/explain/refgen).
+#
+# Depends on generate-proto-docs: the pages' comment PROSE renders from the
+# embedded pkg/protodocs index (the protobuf runtime strips comments), so
+# regenerating references against a stale index silently reprints old field
+# documentation even though the schema tables update. Chaining the two is
+# cheap and idempotent — both regens are byte-deterministic.
 .PHONY: generate-reference
-generate-reference:
+generate-reference: generate-proto-docs
 	go run ./pkg/explain/refgen
 
 .PHONY: build-go

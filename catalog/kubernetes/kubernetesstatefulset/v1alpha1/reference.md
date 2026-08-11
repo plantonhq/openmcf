@@ -1449,7 +1449,7 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -1524,9 +1524,28 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpMonitoringDashboard`
+- `GcpMonitoringSlo`
+- `GcpLogBucket`
+- `GcpLogMetric`
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
+- `GcpIdentityPlatformConfig`
+- `GcpIdentityPlatformTenant` -- GcpIdentityPlatformConfig is a prerequisite because tenants exist only in projects whose Identity Platform config enables multi_tenant.allow_tenants — a tenant without the initialized, tenant-enabled project config cannot be created at all.
+- `GcpIamOauthClient`
+- `GcpIamDenyPolicy`
+- `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -2231,7 +2250,7 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -2306,9 +2325,28 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpMonitoringDashboard`
+- `GcpMonitoringSlo`
+- `GcpLogBucket`
+- `GcpLogMetric`
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
+- `GcpIdentityPlatformConfig`
+- `GcpIdentityPlatformTenant` -- GcpIdentityPlatformConfig is a prerequisite because tenants exist only in projects whose Identity Platform config enables multi_tenant.allow_tenants — a tenant without the initialized, tenant-enabled project config cannot be created at all.
+- `GcpIamOauthClient`
+- `GcpIamDenyPolicy`
+- `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -4162,7 +4200,7 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -4237,9 +4275,28 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpMonitoringDashboard`
+- `GcpMonitoringSlo`
+- `GcpLogBucket`
+- `GcpLogMetric`
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
+- `GcpIdentityPlatformConfig`
+- `GcpIdentityPlatformTenant` -- GcpIdentityPlatformConfig is a prerequisite because tenants exist only in projects whose Identity Platform config enables multi_tenant.allow_tenants — a tenant without the initialized, tenant-enabled project config cannot be created at all.
+- `GcpIamOauthClient`
+- `GcpIamDenyPolicy`
+- `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -4944,7 +5001,7 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -5019,9 +5076,28 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpMonitoringDashboard`
+- `GcpMonitoringSlo`
+- `GcpLogBucket`
+- `GcpLogMetric`
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
+- `GcpIdentityPlatformConfig`
+- `GcpIdentityPlatformTenant` -- GcpIdentityPlatformConfig is a prerequisite because tenants exist only in projects whose Identity Platform config enables multi_tenant.allow_tenants — a tenant without the initialized, tenant-enabled project config cannot be created at all.
+- `GcpIamOauthClient`
+- `GcpIamDenyPolicy`
+- `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -6916,7 +6992,7 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -6991,9 +7067,28 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpMonitoringDashboard`
+- `GcpMonitoringSlo`
+- `GcpLogBucket`
+- `GcpLogMetric`
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
+- `GcpIdentityPlatformConfig`
+- `GcpIdentityPlatformTenant` -- GcpIdentityPlatformConfig is a prerequisite because tenants exist only in projects whose Identity Platform config enables multi_tenant.allow_tenants — a tenant without the initialized, tenant-enabled project config cannot be created at all.
+- `GcpIamOauthClient`
+- `GcpIamDenyPolicy`
+- `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -7698,7 +7793,7 @@ Allowed values (use exactly as shown):
 - `AzureVirtualNetworkGatewayConnection` -- Both gateways are prerequisites: a connection joins a virtual network gateway to a far side, and the site-to-site far side is a local network gateway (the GatewaySubnet, VNet, and resource group chain transitively through the virtual network gateway).
 - `AzureLocalNetworkGateway`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -7773,9 +7868,28 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpMonitoringDashboard`
+- `GcpMonitoringSlo`
+- `GcpLogBucket`
+- `GcpLogMetric`
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
+- `GcpIdentityPlatformConfig`
+- `GcpIdentityPlatformTenant` -- GcpIdentityPlatformConfig is a prerequisite because tenants exist only in projects whose Identity Platform config enables multi_tenant.allow_tenants — a tenant without the initialized, tenant-enabled project config cannot be created at all.
+- `GcpIamOauthClient`
+- `GcpIamDenyPolicy`
+- `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`

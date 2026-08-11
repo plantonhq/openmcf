@@ -101,8 +101,25 @@ type GcpBackendBucketSpec struct {
 	// secret; rotate by adding a new key, re-signing URLs, then removing the
 	// old one.
 	SignedUrlKeys []*GcpBackendBucketSignedUrlKey `protobuf:"bytes,11,rep,name=signed_url_keys,json=signedUrlKeys,proto3" json:"signed_url_keys,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Resource Manager tags bound to the backend bucket for org-policy and
+	// IAM conditions. Keys in the form "tagKeys/{id}", values
+	// "tagValues/{id}". Create-time only: changing them later replaces the
+	// backend bucket.
+	ResourceManagerTags map[string]string `protobuf:"bytes,12,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the backend bucket AND its signed-URL keys — one
+	// switch governs both objects this kind manages:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- both are deleted (GCP refuses to delete the backend
+	//	             bucket while a URL map still references it); the GCS
+	//	             bucket behind it is untouched — it belongs to its own
+	//	             kind
+	//	"PREVENT" -- destroy FAILS; protects a CDN origin that URL maps may
+	//	             still route to
+	//	"ABANDON" -- both are removed from management but keep serving in GCP
+	DeletionPolicy string `protobuf:"bytes,13,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpBackendBucketSpec) Reset() {
@@ -210,6 +227,20 @@ func (x *GcpBackendBucketSpec) GetSignedUrlKeys() []*GcpBackendBucketSignedUrlKe
 		return x.SignedUrlKeys
 	}
 	return nil
+}
+
+func (x *GcpBackendBucketSpec) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
+func (x *GcpBackendBucketSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 // How Cloud CDN caches responses from this backend bucket. TTLs are only
@@ -611,7 +642,7 @@ var File_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto protoreflect.FileDescr
 
 const file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/gcp/gcpbackendbucket/v1alpha1/spec.proto\x12)dev.planton.gcp.gcpbackendbucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb2\r\n" +
+	"0catalog/gcp/gcpbackendbucket/v1alpha1/spec.proto\x12)dev.planton.gcp.gcpbackendbucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xc7\x10\n" +
 	"\x14GcpBackendBucketSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xaa\x02\n" +
@@ -632,7 +663,13 @@ const file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15load_balancing_scheme\x18\n" +
 	" \x01(\tB\xaa\x01\xbaH\xa6\x01\xba\x01\xa2\x01\n" +
 	"\x1bvalid_load_balancing_scheme\x12Yload_balancing_scheme must be INTERNAL_MANAGED, or left unset for external load balancers\x1a(this == '' || this == 'INTERNAL_MANAGED'R\x13loadBalancingScheme\x12y\n" +
-	"\x0fsigned_url_keys\x18\v \x03(\v2G.dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSignedUrlKeyB\b\xbaH\x05\x92\x01\x02\x10\x03R\rsignedUrlKeys:\xda\x01\xbaH\xd6\x01\x1a\xd3\x01\n" +
+	"\x0fsigned_url_keys\x18\v \x03(\v2G.dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSignedUrlKeyB\b\xbaH\x05\x92\x01\x02\x10\x03R\rsignedUrlKeys\x12\x8c\x01\n" +
+	"\x15resource_manager_tags\x18\f \x03(\v2X.dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec.ResourceManagerTagsEntryR\x13resourceManagerTags\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\r \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xda\x01\xbaH\xd6\x01\x1a\xd3\x01\n" +
 	"\x1ccdn_requires_external_scheme\x12mCloud CDN cannot be enabled on an INTERNAL_MANAGED backend bucket — CDN only fronts external load balancers\x1aD!this.enable_cdn || this.load_balancing_scheme != 'INTERNAL_MANAGED'\"\xbb\x10\n" +
 	"\x19GcpBackendBucketCdnPolicy\x12\xdc\x01\n" +
 	"\n" +
@@ -686,7 +723,7 @@ func file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_rawDescGZIP() []byte 
 	return file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpBackendBucketSpec)(nil),                       // 0: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec
 	(*GcpBackendBucketCdnPolicy)(nil),                  // 1: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketCdnPolicy
@@ -694,22 +731,24 @@ var file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpBackendBucketCacheKeyPolicy)(nil),             // 3: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketCacheKeyPolicy
 	(*GcpBackendBucketBypassCacheOnRequestHeader)(nil), // 4: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketBypassCacheOnRequestHeader
 	(*GcpBackendBucketSignedUrlKey)(nil),               // 5: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSignedUrlKey
-	(*v1.StringValueOrRef)(nil),                        // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                                                // 6: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec.ResourceManagerTagsEntry
+	(*v1.StringValueOrRef)(nil),                        // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_depIdxs = []int32{
-	6, // 0: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6, // 1: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec.bucket_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7, // 0: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7, // 1: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec.bucket_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 2: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec.cdn_policy:type_name -> dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketCdnPolicy
-	6, // 3: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec.edge_security_policy:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7, // 3: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec.edge_security_policy:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	5, // 4: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec.signed_url_keys:type_name -> dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSignedUrlKey
-	2, // 5: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketCdnPolicy.negative_caching_policy:type_name -> dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketNegativeCachingPolicy
-	3, // 6: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketCdnPolicy.cache_key_policy:type_name -> dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketCacheKeyPolicy
-	4, // 7: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketCdnPolicy.bypass_cache_on_request_headers:type_name -> dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketBypassCacheOnRequestHeader
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	6, // 5: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketSpec.ResourceManagerTagsEntry
+	2, // 6: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketCdnPolicy.negative_caching_policy:type_name -> dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketNegativeCachingPolicy
+	3, // 7: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketCdnPolicy.cache_key_policy:type_name -> dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketCacheKeyPolicy
+	4, // 8: dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketCdnPolicy.bypass_cache_on_request_headers:type_name -> dev.planton.gcp.gcpbackendbucket.v1alpha1.GcpBackendBucketBypassCacheOnRequestHeader
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_init() }
@@ -723,7 +762,7 @@ func file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

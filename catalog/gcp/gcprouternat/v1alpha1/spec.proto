@@ -61,6 +61,80 @@ message GcpRouterNatSubnetwork {
   };
 }
 
+// GcpRouterNatRouterBgpAdvertisedIpRange is one custom IP range the router
+// advertises to all its BGP peers.
+message GcpRouterNatRouterBgpAdvertisedIpRange {
+  // The IP range to advertise, in CIDR form (e.g. "10.10.0.0/16").
+  string range = 1 [(buf.validate.field).required = true];
+
+  // Human-readable description of this advertised range.
+  string description = 2;
+}
+
+// GcpRouterNatRouterBgp configures the Cloud Router's BGP behavior — the
+// ASN it speaks as and what routes it advertises to every peer. Only
+// needed when the router also serves BGP sessions (Cloud VPN or
+// Interconnect attachments on the same router); a NAT-only router can omit
+// this entirely and GCP assigns an ASN.
+message GcpRouterNatRouterBgp {
+  // Local BGP Autonomous System Number. Must be an RFC6996 private ASN,
+  // 16-bit (64512-65534) or 32-bit (4200000000-4294967294). Fixed for the
+  // router's lifetime; every VPN tunnel and Interconnect attachment on
+  // this router shares it.
+  uint32 asn = 1 [(buf.validate.field).cel = {
+    id: "asn_must_be_private"
+    expression: "(this >= 64512u && this <= 65534u) || this >= 4200000000u"
+    message: "asn must be a private ASN (64512-65534 or 4200000000-4294967294)"
+  }];
+
+  // Route advertisement mode. DEFAULT (the value when empty): advertise
+  // all subnets visible to the router. CUSTOM: advertise only what
+  // advertised_groups and advertised_ip_ranges specify — the shape for
+  // exposing a curated set of ranges over VPN/Interconnect.
+  string advertise_mode = 2 [(buf.validate.field).cel = {
+    id: "advertise_mode_valid_value"
+    expression: "this == '' || this in ['DEFAULT', 'CUSTOM']"
+    message: "advertise_mode must be DEFAULT or CUSTOM"
+  }];
+
+  // Prefix groups to advertise in CUSTOM mode, in addition to
+  // advertised_ip_ranges. The API accepts exactly one group value:
+  // ALL_SUBNETS (re-adds the default subnet advertisement on top of the
+  // custom ranges).
+  repeated string advertised_groups = 3 [(buf.validate.field).repeated.items.string = {in: ["ALL_SUBNETS"]}];
+
+  // Individual IP ranges to advertise in CUSTOM mode, sent to all peers
+  // of the router in addition to any advertised_groups.
+  repeated GcpRouterNatRouterBgpAdvertisedIpRange advertised_ip_ranges = 4;
+
+  // Interval in seconds between BGP keepalive messages (20-60, default
+  // 20). Hold time — how long a peer waits before declaring the session
+  // dead — is three times this value.
+  int32 keepalive_interval = 5 [(buf.validate.field).cel = {
+    id: "keepalive_interval_range"
+    expression: "this == 0 || (this >= 20 && this <= 60)"
+    message: "keepalive_interval must be between 20 and 60 seconds"
+  }];
+
+  // Explicit range of valid BGP identifiers (what other vendors call the
+  // router ID), as a link-local IPv4 CIDR from 169.254.0.0/16 of size at
+  // least /30 (e.g. "169.254.8.0/30"). Must not overlap any IPv4 BGP
+  // session range on the router. Leave empty to let GCP choose.
+  string identifier_range = 6;
+
+  option (buf.validate.message).cel = {
+    id: "advertised_groups_require_custom_mode"
+    expression: "this.advertised_groups.size() == 0 || this.advertise_mode == 'CUSTOM'"
+    message: "advertised_groups can only be set when advertise_mode is CUSTOM"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "advertised_ip_ranges_require_custom_mode"
+    expression: "this.advertised_ip_ranges.size() == 0 || this.advertise_mode == 'CUSTOM'"
+    message: "advertised_ip_ranges can only be set when advertise_mode is CUSTOM"
+  };
+}
+
 // GcpRouterNatRuleAction defines the NAT IPs or ranges a rule uses for
 // connections matching its expression.
 message GcpRouterNatRuleAction {
@@ -118,11 +192,12 @@ message GcpRouterNatRule {
 // egress path that lets instances without external IPs reach the internet
 // (public NAT) or other private networks (private NAT).
 //
-// The router and the NAT are provisioned together as one node: the 90% case
-// is exactly one NAT per router, and a router without NAT (dedicated BGP for
-// Interconnect/VPN) is a different concern. The router's BGP surface here is
-// limited to the ASN and keepalive; interface- and peer-level BGP belongs to
-// dedicated interconnect tooling.
+// The router and the NAT are provisioned together as one node, and the
+// router's full inline surface is configurable here: BGP ASN and route
+// advertisement (router_bgp), description, encrypted-Interconnect
+// dedication, and resource-manager tags. Interface- and peer-level BGP
+// (the objects that terminate VPN tunnels and Interconnect attachments on
+// the router) are separate resources composed on top of this node.
 //
 // Important behavioral notes:
 //
@@ -177,20 +252,14 @@ message GcpRouterNatSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
   ];
 
-  // BGP autonomous system number for the router. Only needed when the
-  // router will also serve BGP sessions (Interconnect/VPN); NAT-only
-  // routers can leave this unset and GCP assigns one. Must be a private
-  // ASN (64512-65534 or 4200000000-4294967294).
-  uint32 router_asn = 6;
+  // The router's BGP configuration — ASN, route advertisement, keepalive,
+  // identifier range. Only needed when the router also serves BGP
+  // sessions (Cloud VPN / Interconnect on the same router); NAT-only
+  // routers leave this unset and GCP assigns an ASN.
+  GcpRouterNatRouterBgp router_bgp = 6;
 
-  // BGP keepalive interval in seconds (20-60, default 20). The hold time —
-  // three times this value — is how long a BGP peer waits before declaring
-  // the session dead.
-  int32 router_keepalive_interval = 7 [(buf.validate.field).cel = {
-    id: "router_keepalive_interval_range"
-    expression: "this == 0 || (this >= 20 && this <= 60)"
-    message: "router_keepalive_interval must be between 20 and 60 seconds"
-  }];
+  // Human-readable description of the Cloud Router's purpose.
+  string router_description = 7;
 
   // NAT gateway type. PUBLIC (default): NAT to the internet using external
   // IPs. PRIVATE: NAT between VPC networks (Network Connectivity Center
@@ -308,6 +377,52 @@ message GcpRouterNatSpec {
   // Use ALL for security auditing or detailed troubleshooting (generates significant log volume).
   optional GcpRouterNatLogFilter log_filter = 25 [(dev.planton.shared.options.default) = "ERRORS_ONLY"];
 
+  // Dedicate the router to encrypted VLAN attachments (HA VPN over Cloud
+  // Interconnect). An encrypted-Interconnect router carries only
+  // encrypted attachments and cannot be converted later. Immutable after
+  // creation.
+  bool encrypted_interconnect_router = 26;
+
+  // Resource Manager tags bound to the Cloud Router for org-policy and
+  // IAM conditions. Keys in the form "tagKeys/{id}", values
+  // "tagValues/{id}". Create-time only: changing them later replaces the
+  // router.
+  map<string, string> resource_manager_tags = 27;
+
+  // Deletion policy for the router and NAT — what happens when this
+  // resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the router and NAT are deleted
+  //   "PREVENT" -- destroy FAILS; protects the egress path of a
+  //                production fleet from accidental teardown
+  //   "ABANDON" -- the router and NAT are removed from management but
+  //                keep serving traffic in GCP
+  string deletion_policy = 28 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
+
+  // NAT64 scope — which subnetworks get IPv6-to-IPv4 translation.
+  // ALL_IPV6_SUBNETWORKS: every subnetwork's IPv6 ranges are translated
+  // (only ONE NAT per region in the network may claim this).
+  // LIST_OF_IPV6_SUBNETWORKS: only the subnetworks in nat64_subnetworks.
+  // Leave empty for no NAT64 (IPv4-only NAT).
+  string source_subnetwork_ip_ranges_to_nat64 = 29 [(buf.validate.field).cel = {
+    id: "nat64_mode_valid_value"
+    expression: "this == '' || this in ['ALL_IPV6_SUBNETWORKS', 'LIST_OF_IPV6_SUBNETWORKS']"
+    message: "source_subnetwork_ip_ranges_to_nat64 must be ALL_IPV6_SUBNETWORKS or LIST_OF_IPV6_SUBNETWORKS"
+  }];
+
+  // Subnetworks whose IPv6 traffic the NAT64 gateway translates. Each
+  // entry references a dual-stack GcpSubnetwork by self link. Listing any
+  // subnetwork here selects LIST_OF_IPV6_SUBNETWORKS mode (mirroring how
+  // subnetworks implies LIST_OF_SUBNETWORKS).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef nat64_subnetworks = 30 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+
   // -- Cross-field validations --
 
   option (buf.validate.message).cel = {
@@ -371,8 +486,14 @@ message GcpRouterNatSpec {
   };
 
   option (buf.validate.message).cel = {
-    id: "router_asn_must_be_private"
-    expression: "this.router_asn == 0u || (this.router_asn >= 64512u && this.router_asn <= 65534u) || this.router_asn >= 4200000000u"
-    message: "router_asn must be a private ASN (64512-65534 or 4200000000-4294967294)"
+    id: "nat64_list_mode_requires_subnetworks"
+    expression: "this.source_subnetwork_ip_ranges_to_nat64 != 'LIST_OF_IPV6_SUBNETWORKS' || this.nat64_subnetworks.size() > 0"
+    message: "nat64_subnetworks must be listed when source_subnetwork_ip_ranges_to_nat64 is LIST_OF_IPV6_SUBNETWORKS"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "nat64_subnetworks_require_list_mode"
+    expression: "this.nat64_subnetworks.size() == 0 || this.source_subnetwork_ip_ranges_to_nat64 == '' || this.source_subnetwork_ip_ranges_to_nat64 == 'LIST_OF_IPV6_SUBNETWORKS'"
+    message: "listing nat64_subnetworks requires source_subnetwork_ip_ranges_to_nat64 LIST_OF_IPV6_SUBNETWORKS (or leave it empty to imply it)"
   };
 }

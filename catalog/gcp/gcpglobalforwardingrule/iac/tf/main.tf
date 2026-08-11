@@ -80,8 +80,12 @@ resource "google_compute_global_forwarding_rule" "this" {
   labels = local.labels
 
   # EXTERNAL → EXTERNAL_MANAGED backend-bucket canary migration.
-  external_managed_backend_bucket_migration_state               = local.migration_state
-  external_managed_backend_bucket_migration_testing_percentage  = local.migration_testing_percentage
+  external_managed_backend_bucket_migration_state              = local.migration_state
+  external_managed_backend_bucket_migration_testing_percentage = local.migration_testing_percentage
+
+  # What destroy does to the frontend: DELETE (default), PREVENT (refuse),
+  # or ABANDON (drop from state, keep serving traffic).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   depends_on = [google_project_service.compute_api]
 }

@@ -1,0 +1,457 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpeventarcmessagebus.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// GcpEventarcMessageBusSpec defines an Eventarc ADVANCED message bus with
+// its satellites — the enterprise eventing hub, modeled as one kind
+// because the satellites exist only in service of their bus:
+//
+//   - the BUS is the central conduit messages flow through;
+//   - GOOGLE API SOURCES feed it (they publish Google-service events INTO
+//     the bus — each is auto-wired to this kind's own bus, never someone
+//     else's);
+//   - PIPELINES deliver messages OUT (to an HTTP endpoint, a Pub/Sub
+//     topic, a Workflow, or another bus), with per-pipeline auth, payload
+//     conversion, transformation, and retry policy;
+//   - ENROLLMENTS bind the two: a CEL match expression selects messages
+//     from the bus and routes them to one of this kind's pipelines
+//     (referenced by its pipeline_id — the module renders the full
+//     resource name).
+//
+// Eventarc Advanced is distinct from Eventarc Standard (GcpEventarcTrigger)
+// — Standard routes single event types point-to-point; Advanced is the
+// many-sources-many-destinations hub with mediation. Advanced is available
+// in a subset of regions; the API decides at create time.
+message GcpEventarcMessageBusSpec {
+  // Every enrollment must route to a pipeline DEFINED IN THIS SPEC — the
+  // module wires enrollment.destination to the sibling pipeline's full
+  // resource name, so a dangling id would fail only at apply time without
+  // this wall.
+  option (buf.validate.message).cel = {
+    id: "enrollment_pipeline_must_exist"
+    message: "every enrollment's pipeline must match the pipeline_id of a pipeline defined in this spec"
+    expression: "this.enrollments.all(e, this.pipelines.exists(p, p.pipeline_id == e.pipeline))"
+  };
+
+  // The GCP project to create the bus (and all satellites) in. Can be a
+  // literal project ID or a reference to a GcpProject resource. If
+  // omitted, the provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The region for the bus and every satellite (e.g. us-central1).
+  // Eventarc Advanced serves a subset of regions
+  // (https://cloud.google.com/eventarc/docs/locations) — the API rejects
+  // unsupported ones at create time. Immutable.
+  string location = 2 [(buf.validate.field).required = true];
+
+  // The bus ID in GCP (also its short name). Defaults to metadata.name
+  // when left empty. Format: 1–63 chars, lowercase letters, digits, and
+  // hyphens; must start with a letter and end alphanumeric (the API's
+  // documented pattern). Immutable: changing it replaces the bus.
+  string message_bus_id = 3 [(buf.validate.field).cel = {
+    id: "valid_message_bus_id"
+    message: "message_bus_id must be 1-63 characters of lowercase letters, digits, and hyphens, starting with a letter and ending alphanumeric"
+    expression: "this == '' || this.matches('^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$')"
+  }];
+
+  // Display name shown in the console.
+  string display_name = 4;
+
+  // User labels attached to the bus (merged with the platform's standard
+  // labels by the module).
+  map<string, string> labels = 5;
+
+  // Free-form annotations attached to the bus
+  // (https://google.aip.dev/128#annotations) — non-identifying metadata
+  // for tools; unlike labels they are not usable in filters or billing.
+  map<string, string> annotations = 6;
+
+  // CMEK for messages at rest in the bus. The full crypto key resource
+  // name (projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{k}) — a
+  // literal or a reference to a GcpKmsKey resource. The key must be in the
+  // same region as the bus; grant the Eventarc service agent
+  // roles/cloudkms.cryptoKeyEncrypterDecrypter BEFORE creating. Omit for
+  // Google-managed encryption.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef crypto_key = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // The minimum severity of bus activity recorded to Cloud Logging.
+  // Empty uses the API default (NONE — no platform logs). One of: NONE,
+  // DEBUG, INFO, NOTICE, WARNING, ERROR, CRITICAL, ALERT, EMERGENCY
+  // (the provider's ValidateEnum list). INFO is the operational sweet
+  // spot while onboarding sources and pipelines.
+  string log_severity = 8 [(buf.validate.field).cel = {
+    id: "valid_log_severity"
+    message: "log_severity must be one of: NONE, DEBUG, INFO, NOTICE, WARNING, ERROR, CRITICAL, ALERT, EMERGENCY"
+    expression: "this == '' || this in ['NONE', 'DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY']"
+  }];
+
+  // Google API sources publishing Google-service events INTO this bus.
+  // Each becomes a google_api_source resource whose destination the module
+  // wires to THIS bus (byte-identically on both IaC engines) — an api
+  // source feeding someone else's bus belongs to that bus's kind instance.
+  repeated GcpEventarcMessageBusGoogleApiSource google_api_sources = 9;
+
+  // Pipelines delivering messages OUT of the bus. Referenced by
+  // enrollments below via pipeline_id.
+  repeated GcpEventarcMessageBusPipeline pipelines = 10;
+
+  // Enrollments — the routing table: each selects messages from the bus
+  // with a CEL expression and delivers them to one of this spec's
+  // pipelines.
+  repeated GcpEventarcMessageBusEnrollment enrollments = 11;
+
+  // Deletion policy — what happens when this resource is destroyed
+  // (applied to the bus and every satellite):
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- bus, sources, enrollments, and pipelines are deleted;
+  //                undelivered messages are lost
+  //   "PREVENT" -- destroy FAILS; protects a production eventing hub
+  //   "ABANDON" -- resources are removed from management but keep running
+  //                in GCP
+  string deletion_policy = 12 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+}
+
+// A Google API source — publishes Google-service events (audit logs,
+// direct events) into the bus.
+message GcpEventarcMessageBusGoogleApiSource {
+  // The source ID in GCP. Format: 1–63 chars, lowercase letters, digits,
+  // and hyphens; starts with a letter, ends alphanumeric. Immutable:
+  // changing it replaces the source.
+  string source_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_source_id"
+      message: "source_id must be 1-63 characters of lowercase letters, digits, and hyphens, starting with a letter and ending alphanumeric"
+      expression: "this.matches('^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$')"
+    }
+  ];
+
+  // Display name shown in the console.
+  string display_name = 2;
+
+  // User labels attached to the source.
+  map<string, string> labels = 3;
+
+  // Free-form annotations attached to the source.
+  map<string, string> annotations = 4;
+
+  // CMEK for this source's data. The full crypto key resource name — a
+  // literal or a reference to a GcpKmsKey resource. Omit for
+  // Google-managed encryption.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef crypto_key = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // The minimum severity of this source's activity recorded to Cloud
+  // Logging (same value set as the bus's log_severity).
+  string log_severity = 6 [(buf.validate.field).cel = {
+    id: "valid_log_severity"
+    message: "log_severity must be one of: NONE, DEBUG, INFO, NOTICE, WARNING, ERROR, CRITICAL, ALERT, EMERGENCY"
+    expression: "this == '' || this in ['NONE', 'DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY']"
+  }];
+}
+
+// An enrollment — selects messages from the bus and routes them to one of
+// this spec's pipelines.
+message GcpEventarcMessageBusEnrollment {
+  // The enrollment ID in GCP. Format: 1–63 chars, lowercase letters,
+  // digits, and hyphens; starts with a letter, ends alphanumeric.
+  // Immutable: changing it replaces the enrollment.
+  string enrollment_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_enrollment_id"
+      message: "enrollment_id must be 1-63 characters of lowercase letters, digits, and hyphens, starting with a letter and ending alphanumeric"
+      expression: "this.matches('^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$')"
+    }
+  ];
+
+  // The CEL expression selecting which bus messages this enrollment
+  // routes (evaluated against the CloudEvent, e.g.
+  // message.type == "google.cloud.storage.object.v1.finalized"). "true"
+  // routes everything.
+  string cel_match = 2 [(buf.validate.field).required = true];
+
+  // The pipeline_id of the pipeline (defined in this spec) that delivers
+  // the selected messages. The module renders the full pipeline resource
+  // name the API demands; a spec-level rule rejects ids that match no
+  // sibling pipeline.
+  string pipeline = 3 [(buf.validate.field).required = true];
+
+  // Display name shown in the console.
+  string display_name = 4;
+
+  // User labels attached to the enrollment.
+  map<string, string> labels = 5;
+
+  // Free-form annotations attached to the enrollment.
+  map<string, string> annotations = 6;
+}
+
+// A pipeline — delivers messages from the bus to one destination, with
+// optional payload conversion, transformation, authentication, and retry
+// policy.
+message GcpEventarcMessageBusPipeline {
+  // The API supports exactly one destination per pipeline today ("List of
+  // destinations ... Currently, exactly one destination is supported per
+  // Pipeline" — the provider's own schema note), and exactly one target
+  // within it.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_destination_target"
+    message: "set exactly one destination target: http_endpoint, topic, workflow, or message_bus"
+    expression: "[has(this.destination) && has(this.destination.http_endpoint), has(this.destination) && (this.destination.topic.value != '' || has(this.destination.topic.value_from)), has(this.destination) && (this.destination.workflow.value != '' || has(this.destination.workflow.value_from)), has(this.destination) && this.destination.message_bus != ''].filter(x, x).size() == 1"
+  };
+  // Provider truth: "Required for HTTP endpoint destinations. Must not be
+  // specified for Workflows, MessageBus, or Topic destinations." The
+  // forbidden half is structural (the field lives inside the http arm);
+  // the required half needs this wall.
+  option (buf.validate.message).cel = {
+    id: "http_endpoint_requires_network_attachment"
+    message: "http_endpoint destinations require network_attachment (the provider's own rule)"
+    expression: "!has(this.destination) || !has(this.destination.http_endpoint) || this.destination.http_endpoint.network_attachment != ''"
+  };
+
+  // The pipeline ID in GCP. Format: 1–63 chars, lowercase letters, digits,
+  // and hyphens; starts with a letter, ends alphanumeric. Immutable:
+  // changing it replaces the pipeline.
+  string pipeline_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_pipeline_id"
+      message: "pipeline_id must be 1-63 characters of lowercase letters, digits, and hyphens, starting with a letter and ending alphanumeric"
+      expression: "this.matches('^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$')"
+    }
+  ];
+
+  // Where this pipeline delivers. Exactly one target arm.
+  GcpEventarcMessageBusPipelineDestination destination = 2 [(buf.validate.field).required = true];
+
+  // How the pipeline authenticates to the destination (HTTP endpoints
+  // that verify identity). At most one mechanism.
+  GcpEventarcMessageBusPipelineAuthentication authentication = 3;
+
+  // The payload format messages ARRIVE in (from the bus). Set input and
+  // output together to convert between formats; leave both unset to pass
+  // payloads through untouched.
+  GcpEventarcMessageBusPayloadFormat input_payload_format = 4;
+
+  // The payload format messages are DELIVERED in. Avro/Protobuf require a
+  // schema_definition; converting between Avro and Protobuf requires both
+  // sides to define schemas.
+  GcpEventarcMessageBusPayloadFormat output_payload_format = 5;
+
+  // A CEL expression rewriting the message before delivery (e.g.
+  // 'message.removeFields(["data.secret"])'). The API allows at most ONE
+  // mediation (transformation) per pipeline — hence a single template
+  // rather than a list.
+  string mediation_transformation_template = 6;
+
+  // Delivery retry policy. Unset uses the API defaults (5 attempts,
+  // 5s–60s exponential backoff).
+  GcpEventarcMessageBusPipelineRetryPolicy retry_policy = 7;
+
+  // Display name shown in the console.
+  string display_name = 8;
+
+  // User labels attached to the pipeline.
+  map<string, string> labels = 9;
+
+  // Free-form annotations attached to the pipeline.
+  map<string, string> annotations = 10;
+
+  // CMEK for this pipeline's data. The full crypto key resource name — a
+  // literal or a reference to a GcpKmsKey resource. Omit for
+  // Google-managed encryption.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef crypto_key = 11 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // The minimum severity of this pipeline's activity recorded to Cloud
+  // Logging (same value set as the bus's log_severity).
+  string log_severity = 12 [(buf.validate.field).cel = {
+    id: "valid_log_severity"
+    message: "log_severity must be one of: NONE, DEBUG, INFO, NOTICE, WARNING, ERROR, CRITICAL, ALERT, EMERGENCY"
+    expression: "this == '' || this in ['NONE', 'DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY']"
+  }];
+}
+
+// A pipeline's destination — exactly one target arm (enforced on the
+// pipeline message).
+message GcpEventarcMessageBusPipelineDestination {
+  // Deliver to an HTTP endpoint reachable through a VPC network
+  // attachment.
+  GcpEventarcMessageBusHttpEndpoint http_endpoint = 1;
+
+  // Publish to a Pub/Sub topic. A literal topic resource name or a
+  // reference to a GcpPubSubTopic resource (its topic_id output,
+  // projects/{project}/topics/{topic}). The provider documents the form
+  // projects/{project}/locations/{location}/topics/{topic} for this field;
+  // both name the same topic — the live API accepts the canonical Pub/Sub
+  // form.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef topic = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpPubSubTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_id"
+  ];
+
+  // Trigger a Cloud Workflows EXECUTION per message. The full workflow
+  // resource name — a literal or a reference to a GcpWorkflow resource
+  // (its workflow_id output). Must be deployed in the same project as the
+  // pipeline.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workflow = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpWorkflow,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workflow_id"
+  ];
+
+  // Chain into ANOTHER message bus (cross-bus routing). The full bus
+  // resource name
+  // (projects/{project}/locations/{location}/messageBuses/{bus}) — e.g.
+  // another GcpEventarcMessageBus's message_bus_name output. Must be in
+  // the same project as the pipeline.
+  string message_bus = 4;
+}
+
+// An HTTP endpoint destination for a pipeline.
+message GcpEventarcMessageBusHttpEndpoint {
+  // The endpoint URI (RFC2396). Only HTTPS is supported (the API rejects
+  // http://), e.g. https://svc.us-central1.p.local:8080/route.
+  string uri = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "https_only"
+      message: "http_endpoint uri must use https:// (the API supports only the HTTPS protocol)"
+      expression: "this.startsWith('https://')"
+    }
+  ];
+
+  // A CEL expression shaping the outgoing HTTP request (headers, body
+  // binding) — see
+  // https://cloud.google.com/eventarc/advanced/docs/receive-events/create-message-binding.
+  // Empty uses the default CloudEvents HTTP binding.
+  string message_binding_template = 2;
+
+  // The network attachment that lets the pipeline reach the endpoint's
+  // VPC (format:
+  // projects/{project}/regions/{region}/networkAttachments/{name}).
+  // REQUIRED for HTTP endpoint destinations; forbidden for every other
+  // target (the provider's own rule, enforced at the pipeline level).
+  string network_attachment = 3;
+}
+
+// How a pipeline authenticates to its destination — at most one mechanism.
+message GcpEventarcMessageBusPipelineAuthentication {
+  option (buf.validate.message).cel = {
+    id: "at_most_one_mechanism"
+    message: "set at most one of google_oidc or oauth_token"
+    expression: "!(has(this.google_oidc) && has(this.oauth_token))"
+  };
+
+  // Authenticate with a Google OIDC ID token — for endpoints that verify
+  // Google-signed identity tokens (Cloud Run, IAP-protected services).
+  GcpEventarcMessageBusOidcAuth google_oidc = 1;
+
+  // Authenticate with an OAuth access token — preferred for Google APIs
+  // that accept OAuth.
+  GcpEventarcMessageBusOauthAuth oauth_token = 2;
+}
+
+// OIDC token authentication.
+message GcpEventarcMessageBusOidcAuth {
+  // The service account email the token is minted for — a literal or a
+  // reference to a GcpServiceAccount resource. The Eventarc service agent
+  // must hold roles/iam.serviceAccountTokenCreator on it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+
+  // The audience claim in the minted token. Empty uses the destination
+  // URI.
+  string audience = 2;
+}
+
+// OAuth access-token authentication.
+message GcpEventarcMessageBusOauthAuth {
+  // The service account email the token is minted for — a literal or a
+  // reference to a GcpServiceAccount resource. The Eventarc service agent
+  // must hold roles/iam.serviceAccountTokenCreator on it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+
+  // The OAuth scope in the minted token. Empty uses
+  // https://www.googleapis.com/auth/cloud-platform.
+  string scope = 2;
+}
+
+// A message payload format — exactly one form. Avro and Protobuf carry
+// their schema; JSON is schemaless (a presence marker).
+message GcpEventarcMessageBusPayloadFormat {
+  option (buf.validate.message).cel = {
+    id: "exactly_one_format"
+    message: "set exactly one payload format: avro, json, or protobuf"
+    expression: "[has(this.avro), this.json, has(this.protobuf)].filter(x, x).size() == 1"
+  };
+
+  // Avro format with its schema definition.
+  GcpEventarcMessageBusSchemaFormat avro = 1;
+
+  // JSON format (no schema).
+  bool json = 2;
+
+  // Protobuf format with its schema definition.
+  GcpEventarcMessageBusSchemaFormat protobuf = 3;
+}
+
+// A schema-bearing payload format.
+message GcpEventarcMessageBusSchemaFormat {
+  // The schema definition text (an Avro schema JSON or a protobuf
+  // definition). Required by the API when converting formats.
+  string schema_definition = 1;
+}
+
+// Delivery retry policy for a pipeline.
+message GcpEventarcMessageBusPipelineRetryPolicy {
+  // Maximum delivery attempts, 1–100 (the API's documented range).
+  // 0 means unset — the API default of 5.
+  int32 max_attempts = 1 [(buf.validate.field).cel = {
+    id: "max_attempts_range"
+    message: "max_attempts must be between 1 and 100 (0 leaves the API default of 5)"
+    expression: "this == 0 || (this >= 1 && this <= 100)"
+  }];
+
+  // Minimum wait between attempts, in seconds-suffixed form (e.g. "5s").
+  // The API accepts 1–600 seconds; its default is 5s.
+  string min_retry_delay = 2 [(buf.validate.field).cel = {
+    id: "valid_min_retry_delay"
+    message: "min_retry_delay must be a seconds-suffixed duration like '5s' (the API accepts 1-600 seconds)"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+
+  // Maximum wait between attempts, in seconds-suffixed form (e.g. "60s").
+  // The API accepts 1–600 seconds; its default is 60s. Note the API quirk
+  // its docs call out: when setting min and max, they may be required to
+  // be EQUAL on some surfaces — live behavior decides.
+  string max_retry_delay = 3 [(buf.validate.field).cel = {
+    id: "valid_max_retry_delay"
+    message: "max_retry_delay must be a seconds-suffixed duration like '60s' (the API accepts 1-600 seconds)"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+}

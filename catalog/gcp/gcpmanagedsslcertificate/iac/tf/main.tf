@@ -33,5 +33,8 @@ resource "google_compute_managed_ssl_certificate" "this" {
     domains = var.spec.domains
   }
 
+  # Empty defers to the provider default (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.compute_api]
 }

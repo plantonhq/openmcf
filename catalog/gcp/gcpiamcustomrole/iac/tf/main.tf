@@ -16,4 +16,8 @@ resource "google_project_iam_custom_role" "this" {
   description = var.spec.description
   permissions = local.permissions
   stage       = local.stage
+
+  # DELETE (provider default) soft-deletes the role on destroy; PREVENT
+  # fails the destroy; ABANDON leaves the role active.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 }

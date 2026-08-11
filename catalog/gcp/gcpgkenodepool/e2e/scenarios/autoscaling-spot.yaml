@@ -1,8 +1,10 @@
 # Autoscaling Spot GcpGkeNodePool scenario: exercises the autoscaling sizing
 # arm (scale-to-zero minimum, ANY location policy), Spot capacity, taints,
-# Kubernetes node labels, explicit management/upgrade settings, and kubelet
-# hardening — the depth surface of the rebuilt spec, live on the
-# prerequisite cluster.
+# Kubernetes node labels, explicit management/upgrade settings, kubelet
+# hardening AND tuning (soft-eviction trio, crash-loop backoff, image GC
+# ages), drain pacing on deletion, an explicit deletion policy, and cgroup
+# v2 — the depth surface of the expanded spec, live on the prerequisite
+# cluster.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeNodePool
 metadata:
@@ -42,6 +44,13 @@ spec:
   upgradeSettings:
     maxSurge: 1
     maxUnavailable: 0
+  # Explicit destroy stance and drain pacing: the destroy-verified phase
+  # proves the pool deletes cleanly with PDB respect armed.
+  deletionPolicy: DELETE
+  nodeDrainConfig:
+    graceTerminationDuration: "60s"
+    pdbTimeoutDuration: "600s"
+    respectPdbDuringNodePoolDeletion: true
   nodeConfig:
     machineType: e2-standard-2
     diskSizeGb: 50
@@ -58,3 +67,17 @@ spec:
     kubeletConfig:
       insecureKubeletReadonlyPortEnabled: "FALSE"
       podPidsLimit: 4096
+      # The expanded tuning families, one representative each: eviction
+      # (threshold + grace + reclaim as a coherent trio), restart backoff,
+      # and age-based image GC.
+      evictionSoft:
+        memoryAvailable: 200Mi
+      evictionSoftGracePeriod:
+        memoryAvailable: "90s"
+      evictionMinimumReclaim:
+        memoryAvailable: 100Mi
+      crashLoopBackOff:
+        maxContainerRestartPeriod: "300s"
+      imageMinimumGcAge: "120s"
+    linuxNodeConfig:
+      cgroupMode: CGROUP_MODE_V2

@@ -92,11 +92,11 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 
 ### Deliberately not modeled (recorded reasons)
 
+Everything else on `google_sql_user` at the pinned provider is representable — including `databaseRoles` (roles granted at creation on MySQL 8+ / PostgreSQL) and `deletionPolicy`, whose `ABANDON` mode is the documented answer for PostgreSQL users that still own database objects. The one recorded exclusion:
+
 | Excluded Feature | Why |
 |---|---|
-| `password_wo` / `password_wo_version` | Write-only fields are an HCL plan-mechanics concern; Planton's secret handling already keeps the credential out of rendered state surfaces. |
-| `database_roles`, `iam_email` | Not on the released 6.x provider line. |
-| `deletion_policy` (ABANDON) | Client-side lever that conflicts with managed destroy semantics. |
+| `password_wo` / `password_wo_version` | Write-only variants of the modeled `password` — same capability through engine-side ergonomics; the spec field is secret-annotated and encrypted in state on both engines. |
 
 ## Related Components
 

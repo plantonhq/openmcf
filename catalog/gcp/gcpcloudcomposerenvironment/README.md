@@ -63,11 +63,11 @@ This creates a small public-endpoint environment in the provider's default proje
 - **The triggerer block requires all three fields** (`cpu`, `memory_gb`, `count`) when present — the API rejects partial triggerer configs.
 - **Per-range XOR in `ip_allocation_policy`**: name an existing secondary range or give a CIDR for GKE to carve — never both for the same range.
 - **Composer 2.x vs 3 fields**: `private_environment_config` and `task_logs_storage_mode` are Composer 2.x surfaces; `composer_network_attachment`, `enable_private_environment`, `web_server_plugins_mode`, the DAG processor, and Airflow metadata retention are Composer 3 surfaces. The image version decides which apply.
+- **`deletionPolicy` controls what a destroy does**: `DELETE` (default), `PREVENT` (destroy fails — protects the environment a data platform runs on), or `ABANDON` (drop from management, keep the environment — and its meaningful idle bill — running). The auto-created DAG bucket survives a DELETE either way.
 
 ### Deliberately not modeled (recorded reasons)
 
 - **Composer 1.x fields** (`node_count`; node_config `zone`, `machine_type`, `disk_size_gb`, `oauth_scopes`; `ip_allocation_policy.use_ip_aliases`; software_config `python_version`, `scheduler_count`; `database_config`; `web_server_config`; private_environment_config `web_server_ipv4_cidr_block`) — Composer 1 is a deprecated generation.
-- **`deletion_policy`** — client-side Terraform lever conflicting with Planton-managed destroy (catalog-wide decision).
 
 ## Related Components
 

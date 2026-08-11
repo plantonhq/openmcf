@@ -58,6 +58,13 @@ func firestoreBackupSchedule(ctx *pulumi.Context, locals *Locals, gcpProvider *g
 		}
 	}
 
+	// Empty defers to the provider default (DELETE). PREVENT protects a
+	// compliance-mandated cadence; ABANDON stops managing (backups keep
+	// being taken).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdSchedule, err := firestore.NewBackupSchedule(ctx, "firestore-backup-schedule", args,
 		pulumi.Provider(gcpProvider),
 		pulumi.DependsOn([]pulumi.Resource{createdFirestoreApi}),

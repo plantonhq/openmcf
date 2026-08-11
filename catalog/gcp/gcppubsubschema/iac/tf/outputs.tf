@@ -10,3 +10,11 @@ output "schema_name" {
   description = "The short name of the schema"
   value       = google_pubsub_schema.schema.name
 }
+
+# A new revision is committed every time the definition changes. Topics
+# consume this in schema_settings.first_revision_id / last_revision_id
+# to pin validation to the revision this deploy produced.
+output "revision_id" {
+  description = "The current revision ID of the schema"
+  value       = google_pubsub_schema.schema.revision_id
+}

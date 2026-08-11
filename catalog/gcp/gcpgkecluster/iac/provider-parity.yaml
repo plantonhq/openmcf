@@ -1,0 +1,367 @@
+# Provider-parity mapping manifest for GcpGkeCluster.
+#
+# Records the judgment half of total accounting against the pinned google
+# provider: every configurable argument of every consumed resource is
+# name-matched, mapped here, or excluded here with a reason. Only
+# divergences are recorded — an argument absent from this file must match
+# its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The dominant judgment on this resource is the composition boundary: the
+# provider embeds the ENTIRE node-pool surface inline (node_pool, the
+# default pool's node_config), and this kind deliberately excludes all of
+# it — node pools are first-class GcpGkeNodePool resources, and the module
+# removes the API-mandated default pool at create time.
+resources:
+  google_container_cluster:
+    mappings:
+      # Identity: the spec names follow the platform grammar.
+      - spec: spec.cluster_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+
+      # Flattened single-field provider blocks.
+      - spec: spec.in_transit_encryption
+        arg: in_transit_encryption_config
+      - spec: spec.disable_default_snat
+        arg: default_snat_status.disabled
+      - spec: spec.total_egress_bandwidth_tier
+        arg: network_performance_config.total_egress_bandwidth_tier
+      - spec: spec.gateway_api_channel
+        arg: gateway_api_config.channel
+      - spec: spec.enable_service_external_ips
+        arg: service_external_ips_config.enabled
+      - spec: spec.enable_network_policy
+        arg: network_policy.enabled
+      # Calico is two coupled provider settings (the enforcement block
+      # and its companion addon); both mirror the single spec toggle so
+      # they can never drift apart. The addon side is inverted (disabled).
+      - spec: spec.enable_network_policy
+        arg: addons_config.network_policy_config.disabled
+      - spec: spec.hpa_profile
+        arg: pod_autoscaling.hpa_profile
+      - spec: spec.enable_vertical_pod_autoscaling
+        arg: vertical_pod_autoscaling.enabled
+      - spec: spec.enable_cost_management
+        arg: cost_management_config.enabled
+      - spec: spec.enable_identity_service
+        arg: identity_service_config.enabled
+      - spec: spec.enable_mesh_certificates
+        arg: mesh_certificates.enable_certificates
+      - spec: spec.anonymous_authentication_mode
+        arg: anonymous_authentication_config.mode
+      - spec: spec.authenticator_security_group
+        arg: authenticator_groups_config.security_group
+      - spec: spec.binary_authorization_evaluation_mode
+        arg: binary_authorization.evaluation_mode
+      - spec: spec.release_channel
+        arg: release_channel.channel
+      - spec: spec.k8s_beta_apis
+        arg: enable_k8s_beta_apis.enabled_apis
+      - spec: spec.issue_client_certificate
+        arg: master_auth.client_certificate_config.issue_client_certificate
+      - spec: spec.node_creation_mode
+        arg: node_creation_config.node_creation_mode
+      - spec: spec.gke_auto_upgrade_patch_mode
+        arg: gke_auto_upgrade_config.patch_mode
+      - spec: spec.autopilot_privileged_admission_paths
+        arg: autopilot_privileged_admission
+
+      # Secret Manager CSI and the sync add-on: the spec splits the
+      # toggle (enable_secret_manager_csi) from the rotation message.
+      - spec: spec.enable_secret_manager_csi
+        arg: secret_manager_config.enabled
+      - spec: spec.secret_manager_rotation
+        arg: secret_manager_config.rotation_config
+      - spec: spec.secret_sync.enabled
+        arg: secret_sync_config.enabled
+      - spec: spec.secret_sync.rotation_enabled
+        arg: secret_sync_config.rotation_config.enabled
+      - spec: spec.secret_sync.rotation_interval
+        arg: secret_sync_config.rotation_config.rotation_interval
+
+      # Subtree renames (exact matching resumes below each).
+      - spec: spec.security_posture
+        arg: security_posture_config
+      - spec: spec.ip_allocation
+        arg: ip_allocation_policy
+      - spec: spec.ip_allocation.additional_pod_range_names
+        arg: ip_allocation_policy.additional_pod_ranges_config.pod_range_names
+      - spec: spec.ip_allocation.pod_cidr_overprovision_disabled
+        arg: ip_allocation_policy.pod_cidr_overprovision_config.disabled
+      - spec: spec.ip_allocation.additional_ip_ranges
+        arg: ip_allocation_policy.additional_ip_ranges_config
+      - spec: spec.ip_allocation.auto_ipam_enabled
+        arg: ip_allocation_policy.auto_ipam_config.enabled
+      - spec: spec.ip_allocation.network_tier
+        arg: ip_allocation_policy.network_tier_config.network_tier
+      - spec: spec.private_cluster
+        arg: private_cluster_config
+      - spec: spec.private_cluster.enable_master_global_access
+        arg: private_cluster_config.master_global_access_config.enabled
+      - spec: spec.master_authorized_networks
+        arg: master_authorized_networks_config
+      - spec: spec.control_plane_endpoints.dns_endpoint_allow_external_traffic
+        arg: control_plane_endpoints_config.dns_endpoint_config.allow_external_traffic
+      - spec: spec.control_plane_endpoints.enable_k8s_tokens_via_dns
+        arg: control_plane_endpoints_config.dns_endpoint_config.enable_k8s_tokens_via_dns
+      - spec: spec.control_plane_endpoints.enable_k8s_certs_via_dns
+        arg: control_plane_endpoints_config.dns_endpoint_config.enable_k8s_certs_via_dns
+      - spec: spec.control_plane_endpoints.ip_endpoints_enabled
+        arg: control_plane_endpoints_config.ip_endpoints_config.enabled
+      - spec: spec.maintenance_policy.daily_window
+        arg: maintenance_policy.daily_maintenance_window
+      - spec: spec.maintenance_policy.exclusions
+        arg: maintenance_policy.maintenance_exclusion
+      - spec: spec.maintenance_policy.exclusions.scope
+        arg: maintenance_policy.maintenance_exclusion.exclusion_options.scope
+      - spec: spec.maintenance_policy.exclusions.end_time_behavior
+        arg: maintenance_policy.maintenance_exclusion.exclusion_options.end_time_behavior
+      - spec: spec.notification_pubsub
+        arg: notification_config.pubsub
+      - spec: spec.notification_pubsub.event_types
+        arg: notification_config.pubsub.filter.event_type
+      - spec: spec.resource_usage_export
+        arg: resource_usage_export_config
+      - spec: spec.resource_usage_export.bigquery_dataset_id
+        arg: resource_usage_export_config.bigquery_destination.dataset_id
+      - spec: spec.autopilot_policy
+        arg: autopilot_cluster_policy_config
+
+      # NAP defaults: renames inside auto_provisioning_defaults.
+      - spec: spec.cluster_autoscaling.auto_provisioning_defaults.disk_size_gb
+        arg: cluster_autoscaling.auto_provisioning_defaults.disk_size
+      - spec: spec.cluster_autoscaling.auto_provisioning_defaults.auto_repair
+        arg: cluster_autoscaling.auto_provisioning_defaults.management.auto_repair
+      - spec: spec.cluster_autoscaling.auto_provisioning_defaults.auto_upgrade
+        arg: cluster_autoscaling.auto_provisioning_defaults.management.auto_upgrade
+      - spec: spec.cluster_autoscaling.auto_provisioning_defaults.enable_secure_boot
+        arg: cluster_autoscaling.auto_provisioning_defaults.shielded_instance_config.enable_secure_boot
+      - spec: spec.cluster_autoscaling.auto_provisioning_defaults.enable_integrity_monitoring
+        arg: cluster_autoscaling.auto_provisioning_defaults.shielded_instance_config.enable_integrity_monitoring
+
+      # Observability: the spec drops the provider's _config suffixes.
+      - spec: spec.logging.components
+        arg: logging_config.enable_components
+      - spec: spec.monitoring.components
+        arg: monitoring_config.enable_components
+      - spec: spec.monitoring.managed_prometheus_enabled
+        arg: monitoring_config.managed_prometheus.enabled
+      - spec: spec.monitoring.auto_monitoring_scope
+        arg: monitoring_config.managed_prometheus.auto_monitoring_config.scope
+      - spec: spec.monitoring.advanced_datapath_metrics_enabled
+        arg: monitoring_config.advanced_datapath_observability_config.enable_metrics
+      - spec: spec.monitoring.advanced_datapath_relay_enabled
+        arg: monitoring_config.advanced_datapath_observability_config.enable_relay
+
+      # Addons: the spec keeps one affirmative *_enabled grammar; the
+      # provider mixes enabled/disabled forms (the module inverts where
+      # needed).
+      - spec: spec.addons.http_load_balancing_enabled
+        arg: addons_config.http_load_balancing.disabled
+      - spec: spec.addons.horizontal_pod_autoscaling_enabled
+        arg: addons_config.horizontal_pod_autoscaling.disabled
+      - spec: spec.addons.gce_persistent_disk_csi_driver_enabled
+        arg: addons_config.gce_persistent_disk_csi_driver_config.enabled
+      - spec: spec.addons.gcp_filestore_csi_driver_enabled
+        arg: addons_config.gcp_filestore_csi_driver_config.enabled
+      - spec: spec.addons.gcs_fuse_csi_driver_enabled
+        arg: addons_config.gcs_fuse_csi_driver_config.enabled
+      - spec: spec.addons.gke_backup_agent_enabled
+        arg: addons_config.gke_backup_agent_config.enabled
+      - spec: spec.addons.dns_cache_enabled
+        arg: addons_config.dns_cache_config.enabled
+      - spec: spec.addons.config_connector_enabled
+        arg: addons_config.config_connector_config.enabled
+      - spec: spec.addons.stateful_ha_enabled
+        arg: addons_config.stateful_ha_config.enabled
+      - spec: spec.addons.ray_operator_enabled
+        arg: addons_config.ray_operator_config.enabled
+      - spec: spec.addons.ray_cluster_logging_enabled
+        arg: addons_config.ray_operator_config.ray_cluster_logging_config.enabled
+      - spec: spec.addons.ray_cluster_monitoring_enabled
+        arg: addons_config.ray_operator_config.ray_cluster_monitoring_config.enabled
+      - spec: spec.addons.cloudrun_enabled
+        arg: addons_config.cloudrun_config.disabled
+      - spec: spec.addons.cloudrun_load_balancer_type
+        arg: addons_config.cloudrun_config.load_balancer_type
+      - spec: spec.addons.parallelstore_csi_driver_enabled
+        arg: addons_config.parallelstore_csi_driver_config.enabled
+      - spec: spec.addons.lustre_csi_driver_enabled
+        arg: addons_config.lustre_csi_driver_config.enabled
+      - spec: spec.addons.lustre_csi_legacy_port_enabled
+        arg: addons_config.lustre_csi_driver_config.enable_legacy_lustre_port
+      - spec: spec.addons.lustre_csi_disable_multi_nic
+        arg: addons_config.lustre_csi_driver_config.disable_multi_nic
+      - spec: spec.addons.pod_snapshot_enabled
+        arg: addons_config.pod_snapshot_config.enabled
+      - spec: spec.addons.agent_sandbox_enabled
+        arg: addons_config.agent_sandbox_config.enabled
+      - spec: spec.addons.slice_controller_enabled
+        arg: addons_config.slice_controller_config.enabled
+      - spec: spec.addons.slurm_operator_enabled
+        arg: addons_config.slurm_operator_config.enabled
+
+      # Fleet registration.
+      - spec: spec.fleet_project
+        arg: fleet.project
+      - spec: spec.fleet_membership_type
+        arg: fleet.membership_type
+
+      # Autopilot managed-node settings: the spec flattens the provider's
+      # nested single-field blocks.
+      - spec: spec.node_pool_auto_config
+        arg: node_pool_auto_config
+      - spec: spec.node_pool_auto_config.network_tags
+        arg: node_pool_auto_config.network_tags.tags
+      - spec: spec.node_pool_auto_config.cgroup_mode
+        arg: node_pool_auto_config.linux_node_config.cgroup_mode
+      - spec: spec.node_pool_auto_config.node_kernel_module_loading_policy
+        arg: node_pool_auto_config.linux_node_config.node_kernel_module_loading.policy
+      - spec: spec.node_pool_auto_config.insecure_kubelet_readonly_port_enabled
+        arg: node_pool_auto_config.node_kubelet_config.insecure_kubelet_readonly_port_enabled
+
+      # Node-pool creation defaults: the spec flattens the provider's
+      # node_config_defaults wrapper.
+      - spec: spec.node_pool_defaults
+        arg: node_pool_defaults.node_config_defaults
+      - spec: spec.node_pool_defaults.gcfs_enabled
+        arg: node_pool_defaults.node_config_defaults.gcfs_config.enabled
+      - spec: spec.node_pool_defaults.containerd_config.private_registry_access
+        arg: node_pool_defaults.node_config_defaults.containerd_config.private_registry_access_config
+      - spec: spec.node_pool_defaults.containerd_config.private_registry_access.certificate_authority_domains
+        arg: node_pool_defaults.node_config_defaults.containerd_config.private_registry_access_config.certificate_authority_domain_config
+      - spec: spec.node_pool_defaults.containerd_config.private_registry_access.certificate_authority_domains.gcp_secret_manager_certificate_uri
+        arg: node_pool_defaults.node_config_defaults.containerd_config.private_registry_access_config.certificate_authority_domain_config.gcp_secret_manager_certificate_config.secret_uri
+      - spec: spec.node_pool_defaults.containerd_config.registry_hosts.hosts.ca_secret_uri
+        arg: node_pool_defaults.node_config_defaults.containerd_config.registry_hosts.hosts.ca.gcp_secret_manager_secret_uri
+      - spec: spec.node_pool_defaults.containerd_config.registry_hosts.hosts.client_cert_secret_uri
+        arg: node_pool_defaults.node_config_defaults.containerd_config.registry_hosts.hosts.client.cert.gcp_secret_manager_secret_uri
+      - spec: spec.node_pool_defaults.containerd_config.registry_hosts.hosts.client_key_secret_uri
+        arg: node_pool_defaults.node_config_defaults.containerd_config.registry_hosts.hosts.client.key.gcp_secret_manager_secret_uri
+      # The provider models headers as key/value pairs; the spec holds one
+      # map — both argument sides land on the same map field.
+      - spec: spec.node_pool_defaults.containerd_config.registry_hosts.hosts.headers
+        arg: node_pool_defaults.node_config_defaults.containerd_config.registry_hosts.hosts.header.key
+      - spec: spec.node_pool_defaults.containerd_config.registry_hosts.hosts.headers
+        arg: node_pool_defaults.node_config_defaults.containerd_config.registry_hosts.hosts.header.value
+      - spec: spec.node_pool_defaults.containerd_config.writable_cgroups_enabled
+        arg: node_pool_defaults.node_config_defaults.containerd_config.writable_cgroups.enabled
+
+      # Customer-managed control-plane trust.
+      - spec: spec.user_managed_keys
+        arg: user_managed_keys_config
+    exclusions:
+      # THE composition boundary: inline node pools and the default
+      # pool's node configuration are deliberately not modeled — node
+      # pools are first-class GcpGkeNodePool resources with their own
+      # lifecycle, and the module removes the API-mandated default pool
+      # at create time. One judgment covers each whole subtree.
+      - arg: node_pool
+        reason: >-
+          Inline node pools are deliberately not modeled: node pools are
+          first-class GcpGkeNodePool resources with their own lifecycle
+          (the platform's composition boundary), and mixing inline pools
+          with external pool resources is the provider's own documented
+          anti-pattern.
+      - arg: node_config
+        reason: >-
+          The default pool's node configuration is deliberately not
+          modeled: the module removes the API-mandated default node pool
+          at create time on Standard clusters, so this block would
+          configure nodes that never survive creation. Node configuration
+          lives on GcpGkeNodePool.
+      - arg: initial_node_count
+        reason: >-
+          Module-fixed to 1: the API requires a default pool at create
+          time; the module creates the minimum and removes it immediately
+          (remove_default_node_pool). Pool sizing lives on GcpGkeNodePool.
+      - arg: remove_default_node_pool
+        reason: >-
+          Module-fixed to true on Standard clusters (null on Autopilot) —
+          the composition boundary that makes every pool a first-class
+          GcpGkeNodePool resource.
+      - arg: networking_mode
+        reason: >-
+          Module-fixed to VPC_NATIVE: legacy ROUTES-based networking is
+          deliberately not modeled (the spec's founding design stance);
+          alias-IP is a GKE best practice and a prerequisite for
+          VPC-native features the spec models.
+      - arg: cluster_ipv4_cidr
+        reason: >-
+          Legacy routes-era pod CIDR field superseded by
+          ip_allocation_policy on VPC-native clusters — the only cluster
+          shape this kind creates.
+      - arg: node_version
+        reason: >-
+          Sets the version of the inline default pool, which the module
+          removes at create time. Node Kubernetes versions are per-pool
+          surface (GcpGkeNodePool.version).
+      - arg: logging_service
+        reason: >-
+          Legacy StackDriver selector superseded by logging_config
+          (spec.logging.components), which the spec models fully; carrying
+          both invites contradictory manifests.
+      - arg: monitoring_service
+        reason: >-
+          Legacy StackDriver selector superseded by monitoring_config
+          (spec.monitoring), which the spec models fully; carrying both
+          invites contradictory manifests.
+      - arg: enable_tpu
+        reason: >-
+          Legacy Cloud TPU (v1) cluster integration; TPU capacity is
+          provisioned today through TPU node pools
+          (GcpGkeNodePool.placement_policy.tpu_topology), which the
+          catalog models.
+      - arg: network_policy.provider
+        reason: >-
+          CALICO is the only legal value; the module wires it whenever
+          enable_network_policy is true, so a spec field would be a
+          one-value pass-through.
+      - arg: workload_identity_config.workload_pool
+        reason: >-
+          Derived by the module from workload_identity_enabled: the API
+          fixes the pool name to PROJECT_ID.svc.id.goog, so the spec
+          models the decision (on/off) and the module composes the only
+          possible value.
+      - arg: control_plane_endpoints_config.dns_endpoint_config.endpoint
+        reason: >-
+          The cluster's Google-assigned DNS endpoint name — output
+          surface the provider marks settable only for state
+          round-tripping; there is no operational reason to author it.
+      # Not yet bridged by the pinned Pulumi SDK (pulumi-gcp v9.29.0,
+      # google-beta 7.38): modeling these only in Terraform would break
+      # cross-engine parity. Re-evaluate at the next SDK bump.
+      - arg: maintenance_policy.recurring_maintenance_window
+        reason: >-
+          GA at the pin but not yet bridged by the pinned Pulumi SDK;
+          modeling it would break cross-engine parity. The RFC5545
+          recurring_window form is modeled. Re-evaluate at the next
+          pulumi-gcp bump.
+      - arg: rollback_safe_upgrade
+        reason: >-
+          GA at the pin but not yet bridged by the pinned Pulumi SDK;
+          modeling it would break cross-engine parity. Re-evaluate at the
+          next pulumi-gcp bump (pairs with desired_emulated_version).
+      - arg: desired_emulated_version
+        reason: >-
+          GA at the pin but not yet bridged by the pinned Pulumi SDK;
+          modeling it would break cross-engine parity. Re-evaluate at the
+          next pulumi-gcp bump (pairs with rollback_safe_upgrade).
+      - arg: addons_config.node_readiness_config
+        reason: >-
+          GA at the pin but not yet bridged by the pinned Pulumi SDK;
+          modeling it would break cross-engine parity. Re-evaluate at the
+          next pulumi-gcp bump.
+  google_project_service:
+    internal: >-
+      API enablement plumbing — the module enables
+      container.googleapis.com with fixed arguments so a fresh project
+      works on the first deploy; not spec surface.
+specExclusions:
+  - field: spec.workload_identity_enabled
+    reason: >-
+      Drives the module-derived workload_identity_config.workload_pool
+      argument (the API fixes the pool name to PROJECT_ID.svc.id.goog);
+      the spec holds the decision, the module composes the value.

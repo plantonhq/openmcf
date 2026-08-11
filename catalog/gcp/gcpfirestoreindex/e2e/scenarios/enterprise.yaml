@@ -1,0 +1,43 @@
+# GcpFirestoreIndex scenario: the Firestore Enterprise index surface in the
+# one shape the API accepts for all three arms at once — a search index
+# (every field carries search_config; search and non-search fields cannot
+# mix), MONGODB_COMPATIBLE_API scoped (which requires an explicit
+# COLLECTION_GROUP query scope), and multikey — against a MongoDB-dedicated
+# ENTERPRISE database deployed as an extra-instance fixture via the
+# e2e-prerequisites annotation (the kind's standard prerequisite stays the
+# Native-mode database the minimal scenario uses). The database reference
+# names its instance exactly: this chain deploys TWO GcpFirestoreDatabase
+# instances, so the sole-instance fallback does not apply.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpFirestoreIndex
+metadata:
+  name: planton-oss-e2e-gcpfsidx-ent
+  id: planton-oss-e2e-gcpfsidx-ent
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpfirestoreindex
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/gcp/gcpfirestoreindex/e2e/prerequisites/gcpfirestoredatabase-enterprise.yaml"
+  tags:
+    - planton-e2e
+spec:
+  database:
+    valueFrom:
+      kind: GcpFirestoreDatabase
+      name: planton-oss-e2e-gcpfsdb-ent-idx
+      fieldPath: status.outputs.database_name
+  collection: e2e-mongo-docs
+  queryScope: COLLECTION_GROUP
+  apiScope: MONGODB_COMPATIBLE_API
+  multikey: true
+  fields:
+    - fieldPath: title
+      searchConfig:
+        textSpec:
+          indexSpecs:
+            - indexType: TOKENIZED
+              matchType: MATCH_GLOBALLY
+  deletionPolicy: DELETE

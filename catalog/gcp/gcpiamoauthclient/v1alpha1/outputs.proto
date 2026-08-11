@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpiamoauthclient.v1alpha1;
+
+// Outputs produced after provisioning a workforce OAuth client.
+message GcpIamOauthClientStackOutputs {
+  // The system-generated OAuth client ID applications present in OAuth
+  // flows (distinct from the user-chosen resource ID).
+  string client_id = 1;
+
+  // The client's full resource name:
+  // projects/{project}/locations/{location}/oauthClients/{id}.
+  string client_name = 2;
+
+  // The client's lifecycle state (e.g. "ACTIVE", "DELETED" during the
+  // 30-day soft-delete window).
+  string state = 3;
+
+  // The system-generated secret of the FIRST credential in
+  // spec.credentials (empty when no credentials are defined). The
+  // single-credential case is the operating norm — rotation adds a
+  // second credential and swaps consumers over, at which point the
+  // remaining credential is again the first. A live, long-lived
+  // credential — the engines mark it secret in state; feed it to
+  // consumers via valueFrom (e.g. into a GcpSecretManagerSecret
+  // initial_version), never by copy-paste.
+  string client_secret = 4;
+}

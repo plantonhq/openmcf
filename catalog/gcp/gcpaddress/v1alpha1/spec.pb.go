@@ -94,8 +94,29 @@ type GcpAddressSpec struct {
 	// Determines whether the reserved IPv6 address can be used by a VM
 	// instance or a network load balancer after reservation.
 	Ipv6EndpointType string `protobuf:"bytes,13,opt,name=ipv6_endpoint_type,json=ipv6EndpointType,proto3" json:"ipv6_endpoint_type,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// User labels attached to the reserved address, merged with Planton's
+	// platform labels (which win on key conflicts). The one mutable surface on
+	// this resource — every other change destroys and re-reserves the address.
+	Labels map[string]string `protobuf:"bytes,14,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Source of externally provisioned (BYOIP) addresses: a
+	// PublicDelegatedPrefix in full or partial URL form, e.g.
+	// "projects/{project}/regions/{region}/publicDelegatedPrefixes/{pdp-name}".
+	// An IPv4 PDP must support enhanced IPv4 allocations; an IPv6 PDP must be
+	// in EXTERNAL_IPV6_FORWARDING_RULE_CREATION mode. Only meaningful for
+	// EXTERNAL addresses. Create-time only: changing it re-reserves.
+	IpCollection string `protobuf:"bytes,15,opt,name=ip_collection,json=ipCollection,proto3" json:"ip_collection,omitempty"`
+	// Deletion policy for the reserved address — what happens on destroy:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the reservation is released; the IP returns to Google's
+	//	             pool (an external static IP is gone for good)
+	//	"PREVENT" -- destroy FAILS; protects an IP that DNS records or
+	//	             allow-lists outside GCP may still point at
+	//	"ABANDON" -- the reservation is removed from management but stays
+	//	             reserved (and billed while unattached) in GCP
+	DeletionPolicy string `protobuf:"bytes,16,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpAddressSpec) Reset() {
@@ -219,11 +240,32 @@ func (x *GcpAddressSpec) GetIpv6EndpointType() string {
 	return ""
 }
 
+func (x *GcpAddressSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GcpAddressSpec) GetIpCollection() string {
+	if x != nil {
+		return x.IpCollection
+	}
+	return ""
+}
+
+func (x *GcpAddressSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpaddress_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpaddress_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"*catalog/gcp/gcpaddress/v1alpha1/spec.proto\x12#dev.planton.gcp.gcpaddress.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xeb\x14\n" +
+	"*catalog/gcp/gcpaddress/v1alpha1/spec.proto\x12#dev.planton.gcp.gcpaddress.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xec\x17\n" +
 	"\x0eGcpAddressSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
@@ -248,7 +290,14 @@ const file_catalog_gcp_gcpaddress_v1alpha1_spec_proto_rawDesc = "" +
 	"\apurpose\x18\f \x01(\tB\xf5\x01\xbaH\xf1\x01\xba\x01\xed\x01\n" +
 	"\rpurpose_valid\x12npurpose must be empty, GCE_ENDPOINT, SHARED_LOADBALANCER_VIP, VPC_PEERING, IPSEC_INTERCONNECT, or DNS_RESOLVER\x1althis in ['', 'GCE_ENDPOINT', 'SHARED_LOADBALANCER_VIP', 'VPC_PEERING', 'IPSEC_INTERCONNECT', 'DNS_RESOLVER']R\apurpose\x12\xa5\x01\n" +
 	"\x12ipv6_endpoint_type\x18\r \x01(\tBw\xbaHt\xba\x01q\n" +
-	"\x18ipv6_endpoint_type_valid\x12.ipv6_endpoint_type must be empty, VM, or NETLB\x1a%this == '' || this in ['VM', 'NETLB']R\x10ipv6EndpointType:\xda\a\xbaH\xd6\a\x1a\x99\x01\n" +
+	"\x18ipv6_endpoint_type_valid\x12.ipv6_endpoint_type must be empty, VM, or NETLB\x1a%this == '' || this in ['VM', 'NETLB']R\x10ipv6EndpointType\x12W\n" +
+	"\x06labels\x18\x0e \x03(\v2?.dev.planton.gcp.gcpaddress.v1alpha1.GcpAddressSpec.LabelsEntryR\x06labels\x12-\n" +
+	"\rip_collection\x18\x0f \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\fipCollection\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x10 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xda\a\xbaH\xd6\a\x1a\x99\x01\n" +
 	"!internal_cannot_have_network_tier\x128network_tier cannot be set when address_type is INTERNAL\x1a:this.address_type != 'INTERNAL' || this.network_tier == ''\x1a\x89\x01\n" +
 	"\x19purpose_requires_internal\x125purpose can only be set when address_type is INTERNAL\x1a5this.purpose == '' || this.address_type == 'INTERNAL'\x1a\xf8\x01\n" +
 	" peering_purpose_requires_network\x12Enetwork is required when purpose is VPC_PEERING or IPSEC_INTERCONNECT\x1a\x8c\x01!(this.purpose in ['VPC_PEERING', 'IPSEC_INTERCONNECT']) || (has(this.network) && (has(this.network.value) || has(this.network.value_from)))\x1a\xfe\x01\n" +
@@ -271,20 +320,22 @@ func file_catalog_gcp_gcpaddress_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_gcp_gcpaddress_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpaddress_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_gcp_gcpaddress_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_gcp_gcpaddress_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpAddressSpec)(nil),      // 0: dev.planton.gcp.gcpaddress.v1alpha1.GcpAddressSpec
-	(*v1.StringValueOrRef)(nil), // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                         // 1: dev.planton.gcp.gcpaddress.v1alpha1.GcpAddressSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil), // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpaddress_v1alpha1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.gcp.gcpaddress.v1alpha1.GcpAddressSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.gcp.gcpaddress.v1alpha1.GcpAddressSpec.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.gcp.gcpaddress.v1alpha1.GcpAddressSpec.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	2, // 0: dev.planton.gcp.gcpaddress.v1alpha1.GcpAddressSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 1: dev.planton.gcp.gcpaddress.v1alpha1.GcpAddressSpec.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 2: dev.planton.gcp.gcpaddress.v1alpha1.GcpAddressSpec.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 3: dev.planton.gcp.gcpaddress.v1alpha1.GcpAddressSpec.labels:type_name -> dev.planton.gcp.gcpaddress.v1alpha1.GcpAddressSpec.LabelsEntry
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpaddress_v1alpha1_spec_proto_init() }
@@ -299,7 +350,7 @@ func file_catalog_gcp_gcpaddress_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpaddress_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpaddress_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

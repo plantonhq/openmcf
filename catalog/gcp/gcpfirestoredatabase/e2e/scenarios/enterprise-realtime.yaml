@@ -1,0 +1,32 @@
+# GcpFirestoreDatabase scenario: an ENTERPRISE database on the classic
+# Firestore protocol with realtime updates enabled — the only pairing the
+# API accepts for realtime (it requires firestore_data_access_mode
+# explicitly ENABLED, and the two data-access modes are mutually
+# exclusive, so this is realtime's one live-provable home). Together with
+# the enterprise scenario this covers both legal single-protocol postures.
+# An empty ENTERPRISE database bills by usage, so the run cost is ~zero.
+# Same run-scoped name discipline as the minimal scenario (deleted
+# database names are reserved for a window).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpFirestoreDatabase
+metadata:
+  name: planton-oss-e2e-gcpfsdb-rt
+  id: planton-oss-e2e-gcpfsdb-rt
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpfirestoredatabase
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  databaseName: e2e-fsdb-rt-${E2E_RUN_ID}
+  locationId: nam5
+  type: FIRESTORE_NATIVE
+  databaseEdition: ENTERPRISE
+  firestoreDataAccessMode: DATA_ACCESS_MODE_ENABLED
+  realtimeUpdatesMode: REALTIME_UPDATES_MODE_ENABLED
+  deleteProtectionState: DELETE_PROTECTION_DISABLED
+  deletionPolicy: DELETE

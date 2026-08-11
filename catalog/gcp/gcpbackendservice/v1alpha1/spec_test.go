@@ -290,7 +290,41 @@ var _ = ginkgo.Describe("GcpBackendServiceSpec", func() {
 		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
 	})
 
+	ginkgo.It("should accept the UNSPECIFIED protocol", func() {
+		target := minimal()
+		target.Spec.Protocol = str("UNSPECIFIED")
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept the IN_FLIGHT balancing mode", func() {
+		target := minimal()
+		backend := instanceGroupBackend()
+		backend.BalancingMode = str("IN_FLIGHT")
+		target.Spec.Backends = []*GcpBackendServiceBackend{backend}
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept resource manager tags", func() {
+		target := minimal()
+		target.Spec.ResourceManagerTags = map[string]string{"tagKeys/123456": "tagValues/789012"}
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept each deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			target := minimal()
+			target.Spec.DeletionPolicy = v
+			gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+		}
+	})
+
 	// ──────────────── Negative Cases ────────────────
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		target := minimal()
+		target.Spec.DeletionPolicy = "KEEP"
+		gomega.Expect(validator.Validate(target)).ToNot(gomega.Succeed())
+	})
 
 	ginkgo.It("should reject an invalid backend_service_name", func() {
 		target := minimal()

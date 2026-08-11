@@ -40,7 +40,7 @@ Open the deployment store, find **Target HTTP Proxy on Google Cloud**, and click
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpTargetHttpProxy
 metadata:
   name: web-http-proxy

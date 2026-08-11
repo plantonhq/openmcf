@@ -93,4 +93,11 @@ type ComponentTestContext struct {
 
 	// TerraformCleanup removes the temporary TF working directory.
 	TerraformCleanup func()
+
+	// AssertApplyIdempotency adds an IDEMPOTENCY phase after DEPLOY that
+	// re-plans the just-applied configuration and fails on any pending
+	// change. Populated by the provider test entrypoint from the provider
+	// E2E profile's assert_apply_idempotency field; applies only to the
+	// component under test, never to prerequisite fixtures.
+	AssertApplyIdempotency bool
 }

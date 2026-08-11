@@ -1,7 +1,7 @@
 # Minimal GcpServiceAccount scenario. project_id is deliberately omitted: the
 # module falls back to the provider's default project, which the E2E harness
 # exports as GOOGLE_PROJECT from the resolved test project — no manifest in the
-# repo ever hardcodes a project id. Keyless (create_key defaults to false), so
+# repo ever hardcodes a project id. Keyless (no user_managed_key block), so
 # the scenario creates the identity, its display metadata, and nothing secret.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceAccount

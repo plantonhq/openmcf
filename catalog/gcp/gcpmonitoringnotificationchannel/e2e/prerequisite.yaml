@@ -1,0 +1,16 @@
+# GcpMonitoringNotificationChannel install profile used when the channel is
+# an E2E PREREQUISITE for another component (GcpMonitoringAlertPolicy's
+# canonical shape references a channel to notify). An email channel is the
+# cheapest possible fixture: free, instant, and its address never receives
+# anything because the consuming policies' conditions never fire during a
+# lane. metadata.name stays fixed — prerequisite FK resolution and consumer
+# manifests key off it.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringNotificationChannel
+metadata:
+  name: planton-oss-e2e-gcpnotifchan-prereq
+spec:
+  type: email
+  channelLabels:
+    email_address: planton-e2e-noreply@example.com
+  description: E2E prerequisite fixture for alert-policy lanes

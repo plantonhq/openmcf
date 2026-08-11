@@ -58,10 +58,33 @@ var _ = ginkgo.Describe("GcpServiceAccountSpec", func() {
 		msg.Spec.DisplayName = "CI/CD Deployer"
 		msg.Spec.Description = "Deploys application releases from the pipeline"
 		msg.Spec.Disabled = boolPtr(false)
-		msg.Spec.CreateKey = boolPtr(true)
+		msg.Spec.UserManagedKey = &GcpServiceAccountUserManagedKey{
+			Algorithm:      "KEY_ALG_RSA_2048",
+			PrivateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
+			Keepers:        map[string]string{"rotation": "2026-08"},
+			DeletionPolicy: "DELETE",
+		}
 		msg.Spec.ProjectIamRoles = []string{"roles/logging.logWriter", "roles/storage.objectViewer"}
 		msg.Spec.OrgId = "123456789012"
 		msg.Spec.OrgIamRoles = []string{"roles/resourcemanager.organizationViewer"}
+		msg.Spec.CreateIgnoreAlreadyExists = true
+		msg.Spec.DeletionPolicy = "PREVENT"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept an empty user_managed_key (GCP defaults: 2048-bit RSA JSON key)", func() {
+		msg := minimal()
+		msg.Spec.UserManagedKey = &GcpServiceAccountUserManagedKey{}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept the upload flow: public_key_data without key types", func() {
+		msg := minimal()
+		msg.Spec.UserManagedKey = &GcpServiceAccountUserManagedKey{
+			PublicKeyData: "TUlJQ1dnSUJBQUtCZ1FD...",
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
@@ -149,6 +172,51 @@ var _ = ginkgo.Describe("GcpServiceAccountSpec", func() {
 	ginkgo.It("should reject org_iam_roles without org_id", func() {
 		msg := minimal()
 		msg.Spec.OrgIamRoles = []string{"roles/resourcemanager.organizationViewer"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "ABANDON"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject public_key_data combined with private_key_type (upload vs generate)", func() {
+		msg := minimal()
+		msg.Spec.UserManagedKey = &GcpServiceAccountUserManagedKey{
+			PublicKeyData:  "TUlJQ1dnSUJBQUtCZ1FD...",
+			PrivateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject public_key_data combined with public_key_type (upload vs generate)", func() {
+		msg := minimal()
+		msg.Spec.UserManagedKey = &GcpServiceAccountUserManagedKey{
+			PublicKeyData: "TUlJQ1dnSUJBQUtCZ1FD...",
+			PublicKeyType: "TYPE_X509_PEM_FILE",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid key algorithm", func() {
+		msg := minimal()
+		msg.Spec.UserManagedKey = &GcpServiceAccountUserManagedKey{
+			Algorithm: "KEY_ALG_ED25519",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid key deletion_policy (ABANDON is not a key policy)", func() {
+		msg := minimal()
+		msg.Spec.UserManagedKey = &GcpServiceAccountUserManagedKey{
+			DeletionPolicy: "ABANDON",
+		}
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})

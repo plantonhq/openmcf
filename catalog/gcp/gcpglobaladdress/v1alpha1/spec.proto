@@ -114,4 +114,25 @@ message GcpGlobalAddressSpec {
     message: "purpose must be empty, VPC_PEERING, or PRIVATE_SERVICE_CONNECT"
     expression: "this in ['', 'VPC_PEERING', 'PRIVATE_SERVICE_CONNECT']"
   }];
+
+  // User labels attached to the reserved global address, merged with
+  // Planton's platform labels (which win on key conflicts). The one mutable
+  // surface on this resource — every other change destroys and re-reserves.
+  map<string, string> labels = 10;
+
+  // Deletion policy for the reserved global address — what happens on
+  // destroy:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the reservation is released (GCP refuses while a global
+  //                forwarding rule or PSA range still uses it); a released
+  //                external anycast IP is gone for good
+  //   "PREVENT" -- destroy FAILS; protects an IP that external DNS and
+  //                client allow-lists may still point at
+  //   "ABANDON" -- the reservation is removed from management but stays
+  //                reserved in GCP
+  string deletion_policy = 11 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

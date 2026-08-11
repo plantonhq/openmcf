@@ -1,8 +1,10 @@
 # GcpGcsBucket scenario: the depth arms — versioning with bounded history,
 # the explicit-zero lifecycle contract (ageDays: 0 + prefix = TTL-on-write,
-# proving the send-zero flags land identically on both engines), autoclass,
-# a shortened soft-delete window, and an additive IAM member resolved live
-# from the GcpServiceAccount prerequisite.
+# proving the send-zero flags land identically on both engines), a
+# size-banded transition rule, autoclass, a shortened soft-delete window,
+# CSEK write-restriction enforcement (no KMS dependency), an explicit
+# deletion policy, and an additive IAM member resolved live from the
+# GcpServiceAccount prerequisite.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGcsBucket
 metadata:
@@ -49,6 +51,23 @@ spec:
         type: AbortIncompleteMultipartUpload
       condition:
         ageDays: 7
+    # Size band: only large current objects age into COLDLINE — proves the
+    # 7.x size conditions land on both engines. (Autoclass owns the general
+    # transitions; this rule's SetStorageClass would conflict, so it stays
+    # a Delete on very large tmp uploads instead.)
+    - action:
+        type: Delete
+      condition:
+        ageDays: 30
+        sizeAboveBytes: 1073741824
+        matchesPrefix:
+          - uploads/
+  # New objects may not use customer-supplied (raw) keys — the mandatory
+  # half of the encryption posture, with no KMS dependency in this scenario.
+  encryptionEnforcement:
+    customerSuppliedRestrictionMode: FullyRestricted
+  # Explicit provider-default deletion policy: proves the field round-trips.
+  deletionPolicy: DELETE
   iamMembers:
     - role: roles/storage.objectViewer
       member:

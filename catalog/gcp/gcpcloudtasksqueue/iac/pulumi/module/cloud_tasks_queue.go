@@ -2,6 +2,7 @@ package module
 
 import (
 	"github.com/pkg/errors"
+	gcpcloudtasksqueuev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpcloudtasksqueue/v1alpha1"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/cloudtasks"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
@@ -38,10 +39,16 @@ func cloudTasksQueue(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 		Name:     pulumi.String(spec.QueueName),
 		Location: pulumi.String(spec.Location),
 
-		// PARITY: the bridged provider carries a client-side deletion_policy
-		// flag the released 6.x Terraform line does not have. Pinned to
-		// DELETE so destroy really deletes the queue on both engines.
-		DeletionPolicy: pulumi.StringPtr("DELETE"),
+		// Declarative pause/resume: sent explicitly so a PAUSED -> RUNNING
+		// spec edit resumes dispatch — mirrors the Terraform module.
+		DesiredState: pulumi.StringPtr(desiredState(spec)),
+	}
+
+	// DELETE (provider default) removes the queue and its backlog on
+	// destroy; PREVENT fails the destroy; ABANDON leaves the queue
+	// running. Sent only when set — mirrors the Terraform module.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	// Honor the spec contract: an empty project_id falls back to the
@@ -215,4 +222,14 @@ func cloudTasksQueue(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 	ctx.Export(OpMaxBurstSize, createdQueue.RateLimits.MaxBurstSize())
 
 	return nil
+}
+
+// desiredState resolves the queue's dispatch state, defaulting to RUNNING
+// (the provider default) so the field is always reconciled explicitly and
+// an out-of-band pause is reverted on the next apply.
+func desiredState(spec *gcpcloudtasksqueuev1alpha1.GcpCloudTasksQueueSpec) string {
+	if spec.DesiredState != "" {
+		return spec.DesiredState
+	}
+	return "RUNNING"
 }

@@ -153,6 +153,56 @@ var _ = ginkgo.Describe("GcpAlloydbInstanceSpec", func() {
 		expectInvalid(r, "ssl_mode")
 	})
 
+	ginkgo.It("accepts the UNSPECIFIED sentinels the provider validates", func() {
+		r := minimalReadPool()
+		r.Spec.ActivationPolicy = "ACTIVATION_POLICY_UNSPECIFIED"
+		r.Spec.AvailabilityType = "AVAILABILITY_TYPE_UNSPECIFIED"
+		expectValid(r)
+	})
+
+	ginkgo.It("accepts gce_zone on a ZONAL instance", func() {
+		r := minimalReadPool()
+		r.Spec.AvailabilityType = "ZONAL"
+		r.Spec.GceZone = "us-central1-a"
+		expectValid(r)
+	})
+
+	ginkgo.It("rejects gce_zone without ZONAL availability", func() {
+		r := minimalReadPool()
+		r.Spec.AvailabilityType = "REGIONAL"
+		r.Spec.GceZone = "us-central1-a"
+		expectInvalid(r, "ZONAL")
+	})
+
+	ginkgo.It("accepts a managed connection pool", func() {
+		r := minimalReadPool()
+		r.Spec.ConnectionPoolConfig = &GcpAlloydbInstanceConnectionPoolConfig{
+			Enabled: true,
+			Flags:   map[string]string{"pool_mode": "transaction"},
+		}
+		expectValid(r)
+	})
+
+	ginkgo.It("rejects a malformed allocated_ip_range_override", func() {
+		r := minimalReadPool()
+		r.Spec.AllocatedIpRangeOverride = "Not-A-Valid-Range!"
+		expectInvalid(r, "allocated_ip_range_override")
+	})
+
+	ginkgo.It("accepts every deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON", ""} {
+			r := minimalReadPool()
+			r.Spec.DeletionPolicy = v
+			expectValid(r)
+		}
+	})
+
+	ginkgo.It("rejects an unknown deletion_policy", func() {
+		r := minimalReadPool()
+		r.Spec.DeletionPolicy = "FORCE"
+		expectInvalid(r, "deletion_policy")
+	})
+
 	ginkgo.It("rejects a wrong kind constant", func() {
 		r := minimalReadPool()
 		r.Kind = "GcpAlloydbCluster"

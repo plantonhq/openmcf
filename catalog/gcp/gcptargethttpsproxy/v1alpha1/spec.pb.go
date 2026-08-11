@@ -141,9 +141,21 @@ type GcpTargetHttpsProxySpec struct {
 	// of Google's edge. Only meaningful when the forwarding rule that
 	// references this proxy uses the INTERNAL_SELF_MANAGED scheme (Traffic
 	// Director); leave false for internet-facing load balancers. Immutable.
-	ProxyBind     bool `protobuf:"varint,13,opt,name=proxy_bind,json=proxyBind,proto3" json:"proxy_bind,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ProxyBind bool `protobuf:"varint,13,opt,name=proxy_bind,json=proxyBind,proto3" json:"proxy_bind,omitempty"`
+	// Deletion policy for the proxy — what happens when this resource is
+	// destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the proxy is deleted (GCP refuses while a forwarding
+	//	             rule still references it, so a TLS frontend cannot be
+	//	             torn down out from under its VIP)
+	//	"PREVENT" -- destroy FAILS; protects a production TLS frontend from
+	//	             accidental teardown
+	//	"ABANDON" -- the proxy is removed from management but keeps
+	//	             terminating TLS in GCP
+	DeletionPolicy string `protobuf:"bytes,14,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpTargetHttpsProxySpec) Reset() {
@@ -267,11 +279,18 @@ func (x *GcpTargetHttpsProxySpec) GetProxyBind() bool {
 	return false
 }
 
+func (x *GcpTargetHttpsProxySpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcptargethttpsproxy_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcptargethttpsproxy_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/gcp/gcptargethttpsproxy/v1alpha1/spec.proto\x12,dev.planton.gcp.gcptargethttpsproxy.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xd2\x11\n" +
+	"3catalog/gcp/gcptargethttpsproxy/v1alpha1/spec.proto\x12,dev.planton.gcp.gcptargethttpsproxy.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x90\x13\n" +
 	"\x17GcpTargetHttpsProxySpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x87\x02\n" +
@@ -294,7 +313,9 @@ const file_catalog_gcp_gcptargethttpsproxy_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1bhttp_keep_alive_timeout_sec\x18\f \x01(\x05B\xb9\x01\xbaH\xb5\x01\xba\x01\xb1\x01\n" +
 	"!valid_http_keep_alive_timeout_sec\x12bhttp_keep_alive_timeout_sec must be between 5 and 1200 seconds (or 0 to let GCP apply its default)\x1a(this == 0 || (this >= 5 && this <= 1200)R\x17httpKeepAliveTimeoutSec\x12\x1d\n" +
 	"\n" +
-	"proxy_bind\x18\r \x01(\bR\tproxyBind:\x92\x03\xbaH\x8e\x03\x1a\x8b\x03\n" +
+	"proxy_bind\x18\r \x01(\bR\tproxyBind\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x0e \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy:\x92\x03\xbaH\x8e\x03\x1a\x8b\x03\n" +
 	"\x19single_certificate_source\x12\xd9\x01choose one certificate mechanism: ssl_certificates (classic compute certificates), certificate_manager_certificates (cross-region internal ALB), or certificate_map (SNI-scale external ALB) — GCP rejects combinations\x1a\x91\x01(size(this.ssl_certificates) > 0 ? 1 : 0) + (size(this.certificate_manager_certificates) > 0 ? 1 : 0) + (this.certificate_map != '' ? 1 : 0) <= 1B\x10\n" +
 	"\x0e_quic_overrideB\xf5\x02\n" +
 	"0com.dev.planton.gcp.gcptargethttpsproxy.v1alpha1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/catalog/gcp/gcptargethttpsproxy/v1alpha1;gcptargethttpsproxyv1alpha1\xa2\x02\x04DPGG\xaa\x02,Dev.Planton.Gcp.Gcptargethttpsproxy.V1alpha1\xca\x02,Dev\\Planton\\Gcp\\Gcptargethttpsproxy\\V1alpha1\xe2\x028Dev\\Planton\\Gcp\\Gcptargethttpsproxy\\V1alpha1\\GPBMetadata\xea\x020Dev::Planton::Gcp::Gcptargethttpsproxy::V1alpha1b\x06proto3"

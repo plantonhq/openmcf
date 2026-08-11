@@ -11,7 +11,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Network Interfaces** -- one or more vNICs with optional external IPv4/IPv6 access configs, static internal/external IPs (reserved GcpAddress references), and alias IP ranges
 - **Disk Attachments** -- created only when `attachedDisks` is configured; first-class GcpComputeDisk resources attached in READ_WRITE or READ_ONLY mode, plus optional ephemeral local-SSD `scratchDisks`
 - **Service Account Binding** -- created only when `serviceAccount` is configured; binds a GCP service account with specified OAuth scopes to the instance
-- **Scheduling Configuration** -- created only when `scheduling` is configured; the Spot provisioning model, automatic restart, host maintenance policy, lifetime limits, and sole-tenant node affinities
+- **Scheduling Configuration** -- created only when `scheduling` is configured; the provisioning model (STANDARD, SPOT, FLEX_START, RESERVATION_BOUND), automatic restart, host maintenance policy, lifetime limits, and sole-tenant node affinities
 - **Hardening** -- Shielded VM boot-chain options, confidential computing (`confidentialInstanceConfig`), and GPU accelerators when configured
 - **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
@@ -41,7 +41,7 @@ Open the deployment store, find **GCP Compute Instance**, and click **Deploy**. 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpComputeInstance
 metadata:
   name: app-server
@@ -106,9 +106,9 @@ These are the most important decisions when configuring a Compute Engine instanc
 
 **Networking** -- Configure `networkInterfaces` with a VPC network or subnetwork reference. Omit `accessConfigs` for private-only instances (use Cloud NAT for internet egress). Add an access config for an external IP -- reference a reserved EXTERNAL GcpAddress from `natIp` to keep the address across rebuilds, and a reserved INTERNAL GcpAddress from `networkIp` for a stable private address.
 
-**Spot VMs** -- Set `scheduling.provisioningModel: SPOT` for 60-91% cost savings with the trade-off of potential preemption (the legacy preemptible flag is derived automatically). Use `scheduling.instanceTerminationAction: STOP` to preserve the stopped VM on preemption, or `DELETE` for ephemeral workloads.
+**Spot and FLEX_START VMs** -- Set `scheduling.provisioningModel: SPOT` for 60-91% cost savings with the trade-off of potential preemption (the legacy preemptible flag is derived automatically). Use `scheduling.instanceTerminationAction: STOP` to preserve the stopped VM on preemption, or `DELETE` for ephemeral workloads. `FLEX_START` trades a flexible start time for discounted capacity (bound the runtime with `maxRunDurationSeconds`); `RESERVATION_BOUND` pins the VM to one named reservation.
 
-**Security** -- `shieldedInstanceConfig` hardens the boot chain (secure boot is the deliberate opt-in), `confidentialInstanceConfig` enables hardware memory encryption (supported machine families only; requires `onHostMaintenance: TERMINATE`), and `deletionProtection` guards the VM object -- the data levers remain the disks' own lifecycles.
+**Security** -- `shieldedInstanceConfig` hardens the boot chain (secure boot is the deliberate opt-in), `confidentialInstanceConfig` enables hardware memory encryption (supported machine families only; requires `onHostMaintenance: TERMINATE`), CMEK keys apply at every level (per-disk `kmsKey`, encrypted image/snapshot sources, and instance-level `instanceEncryptionKey`), and `deletionProtection` guards the VM object -- the data levers remain the disks' own lifecycles, and `deletionPolicy: PREVENT`/`ABANDON` controls what a destroy may do.
 
 **Service account** -- Bind a dedicated `serviceAccount.email` with the single cloud-platform scope instead of the default Compute Engine service account. Reference a GcpServiceAccount Cloud Resource via ValueFromRef.
 
@@ -121,7 +121,7 @@ These are the most important decisions when configuring a Compute Engine instanc
 | **GcpProject** | `projectId` | `status.outputs.project_id` |
 | **GcpComputeDisk** (optional) | `bootDisk.sourceDisk` | `status.outputs.self_link` |
 | **GcpComputeDisk** (optional) | `attachedDisks[].source` | `status.outputs.self_link` |
-| **GcpKmsKey** (optional) | `bootDisk.kmsKey`, `attachedDisks[].kmsKey` | `status.outputs.key_id` |
+| **GcpKmsKey** (optional) | `bootDisk.kmsKey`, `attachedDisks[].kmsKey`, `bootDisk.sourceImageEncryption.kmsKey`, `bootDisk.sourceSnapshotEncryption.kmsKey`, `instanceEncryptionKey.kmsKey` | `status.outputs.key_id` |
 | **GcpVpcNetwork** (optional) | `networkInterfaces[].network` | `status.outputs.network_self_link` |
 | **GcpSubnetwork** (optional) | `networkInterfaces[].subnetwork` | `status.outputs.subnetwork_self_link` |
 | **GcpAddress** (optional) | `networkInterfaces[].networkIp` (INTERNAL), `networkInterfaces[].accessConfigs[].natIp` (EXTERNAL) | `status.outputs.address` |

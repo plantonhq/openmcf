@@ -95,19 +95,44 @@ func instance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) er
 		args.ClientConnectionConfig = clientConfig
 	}
 
-	// Managed connection pooling is not modeled: the released google provider
-	// does not expose it for AlloyDB instances.
 	if spec.ActivationPolicy != "" {
 		args.ActivationPolicy = pulumi.StringPtr(spec.ActivationPolicy)
 	}
 
-	if spec.EnablePublicIp || spec.EnableOutboundPublicIp || len(spec.AuthorizedExternalNetworks) > 0 {
+	// Client tool metadata, paired with the computed effective_annotations.
+	if len(spec.Annotations) > 0 {
+		args.Annotations = pulumi.ToStringMap(spec.Annotations)
+	}
+
+	// ZONAL instances only — GCP rejects it on REGIONAL instances
+	// (spec-enforced pairing). Changing it live-migrates the instance.
+	if spec.GceZone != "" {
+		args.GceZone = pulumi.StringPtr(spec.GceZone)
+	}
+
+	// AlloyDB managed connection pooling (built-in pooler). Flags only
+	// apply while enabled is true.
+	if spec.ConnectionPoolConfig != nil {
+		poolArgs := &alloydb.InstanceConnectionPoolConfigArgs{
+			Enabled: pulumi.Bool(spec.ConnectionPoolConfig.Enabled),
+		}
+		if len(spec.ConnectionPoolConfig.Flags) > 0 {
+			poolArgs.Flags = pulumi.ToStringMap(spec.ConnectionPoolConfig.Flags)
+		}
+		args.ConnectionPoolConfig = poolArgs
+	}
+
+	if spec.EnablePublicIp || spec.EnableOutboundPublicIp || len(spec.AuthorizedExternalNetworks) > 0 || spec.AllocatedIpRangeOverride != "" {
 		netConfig := &alloydb.InstanceNetworkConfigArgs{}
 		if spec.EnablePublicIp {
 			netConfig.EnablePublicIp = pulumi.BoolPtr(true)
 		}
 		if spec.EnableOutboundPublicIp {
 			netConfig.EnableOutboundPublicIp = pulumi.BoolPtr(true)
+		}
+		// Immutable: a different PSA range recreates the instance.
+		if spec.AllocatedIpRangeOverride != "" {
+			netConfig.AllocatedIpRangeOverride = pulumi.StringPtr(spec.AllocatedIpRangeOverride)
 		}
 		if len(spec.AuthorizedExternalNetworks) > 0 {
 			nets := make(alloydb.InstanceNetworkConfigAuthorizedExternalNetworkArray, len(spec.AuthorizedExternalNetworks))
@@ -151,6 +176,10 @@ func instance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) er
 			pscArgs.PscInterfaceConfigs = ifaces
 		}
 		args.PscInstanceConfig = pscArgs
+	}
+
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	createdInstance, err := alloydb.NewInstance(ctx, "alloydb-instance", args,

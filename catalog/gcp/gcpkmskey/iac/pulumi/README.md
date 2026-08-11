@@ -6,7 +6,7 @@ This Pulumi (Go) module provisions a Cloud KMS crypto key (`kms.CryptoKey`) insi
 
 The module enables the Cloud KMS API (project extracted from the ring path, `disable_on_destroy=false`) so a fresh project works first try and teardown never disables the API project-wide. User labels are merged beneath the platform attribution labels (`planton-ai_*`), identically to the Terraform module.
 
-**Destroy destroys versions, not the key**: crypto keys have no delete API. `destroy` schedules every key version for destruction (data encrypted under them becomes unrecoverable once the recovery window elapses), disables automatic rotation, and removes the key from state — the key object remains permanently in the ring and its name can never be reused there. The bridged provider's client-side `deletion_policy` knob is pinned to `DELETE` so destroy behavior is byte-identical to the Terraform module.
+**Destroy destroys versions, not the key**: crypto keys have no delete API. Under the default `deletion_policy` (DELETE), `destroy` schedules every key version for destruction (data encrypted under them becomes unrecoverable once the recovery window elapses), disables automatic rotation, and removes the key from state — the key object remains permanently in the ring and its name can never be reused there. The spec's `deletion_policy` field offers PREVENT (destroy fails) and ABANDON (the key leaves management with every version intact), wired identically to the Terraform module.
 
 ## Usage with Planton CLI
 

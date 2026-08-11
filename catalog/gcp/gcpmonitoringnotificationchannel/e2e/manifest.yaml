@@ -1,0 +1,43 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringNotificationChannel
+metadata:
+  name: my-sample-channel
+spec:
+  # GCP project that owns the channel.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Delivery mechanism; GCP validates the value and its configuration
+  # keys server-side (email/sms/slack/pagerduty/webhook_tokenauth/
+  # webhook_basicauth/pubsub, ...).
+  type: email
+
+  # Shown in the console and in notification footers; omit to default to
+  # metadata.name.
+  displayName: On-call email
+
+  # Who owns the endpoint and why it exists.
+  description: Primary paging channel for the platform team
+
+  # Type-specific NON-SECRET configuration. Which keys apply depends on
+  # type (email -> email_address; slack -> channel_name; webhook -> url).
+  # Credentials belong in sensitiveLabels, never here.
+  channelLabels:
+    email_address: oncall@example.com
+
+  # Whether notifications are forwarded (default true). Disabled channels
+  # keep configuration and references but deliver nothing.
+  enabled: true
+
+  # If true, deletion proceeds even while alert policies reference the
+  # channel (they lose it in the same operation). Default false — the
+  # safe posture.
+  forceDelete: false
+
+  # User metadata labels, merged with Planton's platform labels.
+  labels:
+    team: platform
+
+  # What a destroy does: DELETE (default), PREVENT, or ABANDON.
+  deletionPolicy: DELETE

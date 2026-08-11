@@ -41,10 +41,26 @@ variable "spec" {
     private_service_connect_config = optional(object({
       enable_private_service_connect = optional(bool, true)
       project_allowlist              = optional(list(string), [])
+
+      # PSC endpoints Vertex AI creates automatically in consumer
+      # projects/networks. network arrives resolved (a GcpVpcNetwork
+      # reference's self-link), normalized to the API's relative form
+      # in locals.tf.
+      psc_automation_configs = optional(list(object({
+        network    = string
+        project_id = string
+      })), [])
     }), null)
 
     # User labels; merged beneath the platform attribution labels.
     labels = optional(map(string), {})
+
+    # CMEK key resource path (a GcpKmsKey reference resolves to it).
+    # Empty means Google-managed encryption. Immutable (ForceNew).
+    kms_key_name = optional(string, "")
+
+    # Client-side destroy behavior: DELETE (default), PREVENT, ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {
@@ -56,12 +72,4 @@ variable "spec" {
     condition     = var.spec.display_name != ""
     error_message = "display_name is required."
   }
-}
-
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = optional(string, "")
-  })
-  default = { service_account_key = "" }
 }

@@ -1,0 +1,55 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_monitoring_notification_channel:
+    mappings:
+      - spec: spec.project_id
+        arg: project
+
+      # The resource carries TWO label maps and the spec names them by what
+      # they ARE: the provider's `labels` is type-specific channel
+      # CONFIGURATION (an email address, a Slack channel name) -> the
+      # spec's channel_labels; the provider's `user_labels` is freeform
+      # user metadata -> the spec's labels (the catalog-wide labels idiom,
+      # merged with platform attribution labels by the modules).
+      - spec: spec.channel_labels
+        arg: labels
+      - spec: spec.labels
+        arg: user_labels
+    exclusions:
+      # Write-only twins of the modeled sensitive_labels fields: same
+      # credential material, Terraform-state-only plumbing (the spec's
+      # sensitive fields already never persist plaintext -- the platform
+      # stores managed-secret references). Re-evaluate trigger: the catalog
+      # declaring a >= 1.11 toolchain floor.
+      - arg: sensitive_labels.auth_token_wo
+        reason: >-
+          write-only twin of the modeled sensitive_labels.auth_token --
+          same credential material, Terraform-state-only plumbing
+      - arg: sensitive_labels.auth_token_wo_version
+        reason: version selector for the write-only twin; see auth_token_wo
+      - arg: sensitive_labels.password_wo
+        reason: >-
+          write-only twin of the modeled sensitive_labels.password -- same
+          credential material, Terraform-state-only plumbing
+      - arg: sensitive_labels.password_wo_version
+        reason: version selector for the write-only twin; see password_wo
+      - arg: sensitive_labels.service_key_wo
+        reason: >-
+          write-only twin of the modeled sensitive_labels.service_key --
+          same credential material, Terraform-state-only plumbing
+      - arg: sensitive_labels.service_key_wo_version
+        reason: version selector for the write-only twin; see service_key_wo
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      monitoring.googleapis.com with fixed arguments (disable_on_destroy
+      false so destroying one channel never disables monitoring
+      project-wide); not spec surface.

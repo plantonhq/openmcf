@@ -62,6 +62,7 @@ This schedules daily backups, keeping each for 7 days, in the provider's default
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `projectId` | `StringValueOrRef` | provider default | GCP project owning the database. |
+| `deletionPolicy` | `string` | `DELETE` | `DELETE`, `PREVENT` (destroy fails — protects a compliance-mandated cadence), or `ABANDON` (unmanage; backups keep being taken). |
 
 ## Stack Outputs
 

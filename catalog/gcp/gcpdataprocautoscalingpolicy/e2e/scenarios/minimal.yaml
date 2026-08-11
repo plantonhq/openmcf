@@ -32,3 +32,6 @@ spec:
       gracefulDecommissionTimeout: 3600s
       scaleUpFactor: 0.5
       scaleDownFactor: 1.0
+  # Explicit DELETE must be a no-op against the provider default on
+  # re-plan.
+  deletionPolicy: DELETE

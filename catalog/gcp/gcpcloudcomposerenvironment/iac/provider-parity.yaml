@@ -1,0 +1,141 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The provider wraps nearly its whole surface in one `config` block; the
+# spec flattens that wrapper so authors configure node networking, software,
+# and workloads sizing directly. Each modeled sub-block below is one subtree
+# mapping -- matching resumes name-for-name beneath it. The excluded
+# arguments are the Composer 1.x generation's knobs: Google deprecated
+# Composer 1, this component deliberately targets Composer 2/3 only, and
+# every exclusion quotes the provider's own version constraint.
+
+resources:
+  google_composer_environment:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.environment_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      # The spec flattens the provider's single-field storage_config
+      # wrapper: the bucket IS the storage configuration.
+      - spec: spec.storage_bucket
+        arg: storage_config.bucket
+      # The config-wrapper flattening: one subtree mapping per modeled
+      # sub-block, plus the config-level scalars.
+      - spec: spec.node_config
+        arg: config.node_config
+      - spec: spec.software_config
+        arg: config.software_config
+      - spec: spec.private_environment_config
+        arg: config.private_environment_config
+      - spec: spec.workloads_config
+        arg: config.workloads_config
+      - spec: spec.environment_size
+        arg: config.environment_size
+      - spec: spec.resilience_mode
+        arg: config.resilience_mode
+      - spec: spec.maintenance_window
+        arg: config.maintenance_window
+      - spec: spec.master_authorized_networks_config
+        arg: config.master_authorized_networks_config
+      - spec: spec.enable_private_environment
+        arg: config.enable_private_environment
+      - spec: spec.enable_private_builds_only
+        arg: config.enable_private_builds_only
+      # The spec flattens the provider's single-field encryption_config
+      # wrapper: the KMS key IS the CMEK configuration.
+      - spec: spec.kms_key_name
+        arg: config.encryption_config.kms_key_name
+      # The spec flattens the recovery_config's single scheduled-snapshots
+      # child; its four fields sit directly on the recovery message.
+      - spec: spec.recovery_config
+        arg: config.recovery_config.scheduled_snapshots_config
+      # The provider's singular repeated-block name; the spec uses the
+      # plural (each entry is one allowed IP range).
+      - spec: spec.web_server_network_access_control.allowed_ip_ranges
+        arg: config.web_server_network_access_control.allowed_ip_range
+      # The spec flattens data retention's two single-field wrapper blocks
+      # into three plainly named fields on one message.
+      - spec: spec.data_retention_config.task_logs_storage_mode
+        arg: config.data_retention_config.task_logs_retention_config.storage_mode
+      - spec: spec.data_retention_config.airflow_metadata_retention_mode
+        arg: config.data_retention_config.airflow_metadata_retention_config.retention_mode
+      - spec: spec.data_retention_config.airflow_metadata_retention_days
+        arg: config.data_retention_config.airflow_metadata_retention_config.retention_days
+    exclusions:
+      # -- The Composer 1.x generation (deprecated by Google; this
+      # component targets Composer 2/3 only). Every reason quotes the
+      # provider's own version constraint.
+      - arg: config.node_count
+        reason: >-
+          provider-documented "supported for Cloud Composer environments
+          in versions composer-1.*.*-airflow-*.*.*" -- Composer 2/3 size
+          through workloads_config and environment_size instead
+      - arg: config.node_config.zone
+        reason: >-
+          provider-documented "supported for Cloud Composer environments
+          in versions composer-1.*.*-airflow-*.*.*" -- Composer 2/3 GKE
+          nodes are managed per region, never pinned to a zone
+      - arg: config.node_config.machine_type
+        reason: >-
+          provider-documented "supported for Cloud Composer environments
+          in versions composer-1.*.*-airflow-*.*.*" -- Composer 2/3 size
+          workloads through workloads_config CPU/memory, not node shapes
+      - arg: config.node_config.disk_size_gb
+        reason: >-
+          provider-documented "supported for Cloud Composer environments
+          in versions composer-1.*.*-airflow-*.*.*" -- Composer 2/3 size
+          workloads through workloads_config storage_gb, not node disks
+      - arg: config.node_config.oauth_scopes
+        reason: >-
+          provider-documented "supported for Cloud Composer environments
+          in versions composer-1.*.*-airflow-*.*.*" -- Composer 2/3 node
+          access rides the workloads service account's IAM roles
+      - arg: config.node_config.ip_allocation_policy.use_ip_aliases
+        reason: >-
+          provider-documented "only supported for Cloud Composer
+          environments in versions composer-1.*.*-airflow-*.*.*.
+          Environments in newer versions always use VPC-native GKE
+          clusters" -- the toggle has exactly one legal value on 2/3
+      - arg: config.software_config.python_version
+        reason: >-
+          provider-documented "supported for Cloud Composer environments
+          in versions composer-1.*.*-airflow-*.*.*. Environments in newer
+          versions always use Python major version 3"
+      - arg: config.software_config.scheduler_count
+        reason: >-
+          provider-documented "supported for Cloud Composer environments
+          in versions composer-1.*.*-airflow-2.*.*" -- Composer 2/3 set
+          scheduler count through workloads_config.scheduler.count
+      - arg: config.private_environment_config.web_server_ipv4_cidr_block
+        reason: >-
+          provider-documented "supported for Cloud Composer environments
+          in versions composer-1.*.*-airflow-*.*.*" -- Composer 2/3 web
+          servers run inside the environment's own network, needing no
+          reserved tenant-project range
+      - arg: config.database_config
+        reason: >-
+          the Cloud SQL sizing block is provider-documented "supported
+          for Cloud Composer environments in versions
+          composer-1.*.*-airflow-*.*.*" -- Composer 2/3 size the metadata
+          database through environment_size
+      - arg: config.web_server_config
+        reason: >-
+          the web-server machine-type block is provider-documented
+          "supported for Cloud Composer environments in versions
+          composer-1.*.*-airflow-*.*.*" -- Composer 2/3 size the web
+          server through workloads_config.web_server
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      composer.googleapis.com with fixed arguments (disable_on_destroy
+      false so destroying one environment never disables the API
+      project-wide); not spec surface.

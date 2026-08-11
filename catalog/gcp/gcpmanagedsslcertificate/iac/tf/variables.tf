@@ -30,6 +30,10 @@ variable "spec" {
     # Domains the certificate is valid for (1-100). Each must be a fully-
     # qualified domain name; wildcards are not supported. Immutable (ForceNew).
     domains = list(string)
+
+    # What happens to the certificate when this resource is destroyed:
+    # DELETE (default), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   # NOTE: never guard optional strings with coalesce() here — HCL's coalesce

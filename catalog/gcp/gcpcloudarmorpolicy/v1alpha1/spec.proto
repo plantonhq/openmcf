@@ -569,6 +569,16 @@ message GcpCloudArmorAdvancedOptionsConfig {
   // Additional Content-Type values to parse as JSON. Only meaningful
   // when json_parsing is STANDARD or STANDARD_WITH_GRAPHQL.
   GcpCloudArmorJsonCustomConfig json_custom_config = 4;
+
+  // How much of each request body the WAF inspects. One of "8KB", "16KB",
+  // "32KB", "48KB", "64KB" (provider default 8KB). Larger sizes catch
+  // attacks buried deeper in POST bodies at higher processing cost; bodies
+  // beyond the limit pass uninspected. Mutable.
+  string request_body_inspection_size = 5 [(buf.validate.field).cel = {
+    id: "request_body_inspection_size_valid"
+    message: "request_body_inspection_size must be one of: 8KB, 16KB, 32KB, 48KB, 64KB"
+    expression: "this == '' || this in ['8KB', '16KB', '32KB', '48KB', '64KB']"
+  }];
 }
 
 // GcpCloudArmorRecaptchaOptionsConfig customizes the reCAPTCHA site key
@@ -671,4 +681,23 @@ message GcpCloudArmorPolicySpec {
   // Leave empty to get the API's automatic default "allow all" rule; a
   // non-empty set must include the priority-2147483647 default rule.
   repeated GcpCloudArmorRule rules = 8;
+
+  // User labels attached to the security policy, merged with Planton's
+  // platform labels (which win on key conflicts). Mutable.
+  map<string, string> labels = 9;
+
+  // Deletion policy for the security policy — what happens on destroy:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the policy and every rule in it are deleted (GCP
+  //                refuses while a backend service still attaches it);
+  //                the traffic it filtered flows unfiltered once detached
+  //   "PREVENT" -- destroy FAILS; protects the WAF/DDoS shield in front
+  //                of production backends
+  //   "ABANDON" -- the policy is removed from management but keeps
+  //                enforcing in GCP
+  string deletion_policy = 10 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

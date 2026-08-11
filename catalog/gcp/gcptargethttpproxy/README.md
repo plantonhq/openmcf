@@ -47,6 +47,7 @@ This creates a proxy ready for a port-80 global forwarding rule to bind.
 | `urlMap` | The URL map to route through (required; `GcpUrlMap` reference or self-link). **Mutable in place** — repointing a live frontend causes no downtime |
 | `httpKeepAliveTimeoutSec` | Idle client keep-alive, 5-1200s; only honored by `EXTERNAL_MANAGED` load balancers (GCP default 610). Immutable |
 | `proxyBind` | Bind to Traffic Director mesh VIPs instead of Google's edge (`INTERNAL_SELF_MANAGED` only). Immutable |
+| `deletionPolicy` | What destroy does: `DELETE` (default) removes the proxy, `PREVENT` fails the destroy to protect a production frontend, `ABANDON` leaves it serving unmanaged |
 
 ## Stack Outputs
 

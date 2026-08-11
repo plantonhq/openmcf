@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpKmsKeySpec defines the configuration for a GCP Cloud KMS cryptographic key.
 
 A key belongs to a key ring and performs the actual cryptographic operations:
@@ -45,6 +47,8 @@ spec:
   rotationPeriod: "7776000s"
   labels:
     team: platform
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -63,6 +67,7 @@ spec:
 | `spec.importOnly` | `bool` |  |  |  |
 | `spec.cryptoKeyBackend` | `string \| valueFrom` |  |  |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -240,6 +245,27 @@ User-defined labels attached to the key, for cost attribution and
 fleet queries. Merged with Planton's platform labels (which win on
 key conflicts). Mutable in place.
 
+### spec.deletionPolicy
+
+`string`
+
+What destroying this resource does to the key. KMS keys can NEVER be
+deleted from GCP — only their versions can — so the choice here is
+about the versions, and it is the most consequential destroy switch
+in this spec:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- EVERY key version is scheduled for destruction (after
+               destroy_scheduled_duration) and rotation is disabled;
+               data encrypted under this key becomes UNRECOVERABLE
+               once the versions are destroyed. The key shell remains
+               in the project.
+  "PREVENT" -- destroy FAILS; the right default posture for any key
+               protecting data you cannot afford to lose
+  "ABANDON" -- the key leaves management with every version intact
+               and enabled — encrypted data stays decryptable
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `rotation_only_for_encrypt_decrypt`: rotation_period can only be set for ENCRYPT_DECRYPT keys — other purposes require manual key version management
@@ -284,27 +310,50 @@ Fields on other kinds that can point at this resource:
 | GcpCloudRunJob | `spec.template.encryptionKey` | `status.outputs.key_id` |
 | GcpCloudSql | `spec.encryptionKeyName` | `status.outputs.key_id` |
 | GcpComputeDisk | `spec.kmsKey` | `status.outputs.key_id` |
+| GcpComputeDisk | `spec.sourceImageEncryption.kmsKey` | `status.outputs.key_id` |
+| GcpComputeDisk | `spec.sourceSnapshotEncryption.kmsKey` | `status.outputs.key_id` |
 | GcpComputeInstance | `spec.bootDisk.kmsKey` | `status.outputs.key_id` |
+| GcpComputeInstance | `spec.bootDisk.sourceImageEncryption.kmsKey` | `status.outputs.key_id` |
+| GcpComputeInstance | `spec.bootDisk.sourceSnapshotEncryption.kmsKey` | `status.outputs.key_id` |
 | GcpComputeInstance | `spec.attachedDisks[].kmsKey` | `status.outputs.key_id` |
+| GcpComputeInstance | `spec.instanceEncryptionKey.kmsKey` | `status.outputs.key_id` |
+| GcpComputeMig | `spec.template.disks[].diskEncryption.kmsKey` | `status.outputs.key_id` |
+| GcpComputeMig | `spec.template.disks[].sourceImageEncryption.kmsKey` | `status.outputs.key_id` |
+| GcpComputeMig | `spec.template.disks[].sourceSnapshotEncryption.kmsKey` | `status.outputs.key_id` |
 | GcpDataprocCluster | `spec.clusterConfig.encryptionKmsKeyName` | `status.outputs.key_id` |
 | GcpDataprocCluster | `spec.clusterConfig.securityConfig.kerberosConfig.kmsKeyUri` | `status.outputs.key_id` |
+| GcpEventarcMessageBus | `spec.cryptoKey` | `status.outputs.key_id` |
+| GcpEventarcMessageBus | `spec.googleApiSources[].cryptoKey` | `status.outputs.key_id` |
+| GcpEventarcMessageBus | `spec.pipelines[].cryptoKey` | `status.outputs.key_id` |
+| GcpEventarcTrigger | `spec.partnerChannel.cryptoKey` | `status.outputs.key_id` |
+| GcpEventarcTrigger | `spec.googleChannelCryptoKey` | `status.outputs.key_id` |
 | GcpFilestoreInstance | `spec.kmsKeyName` | `status.outputs.key_id` |
 | GcpFirestoreDatabase | `spec.kmsKeyName` | `status.outputs.key_id` |
 | GcpGcsBucket | `spec.kmsKeyName` | `status.outputs.key_id` |
 | GcpGkeCluster | `spec.clusterAutoscaling.autoProvisioningDefaults.bootDiskKmsKey` | `status.outputs.key_id` |
 | GcpGkeCluster | `spec.databaseEncryption.keyName` | `status.outputs.key_id` |
+| GcpGkeCluster | `spec.userManagedKeys.controlPlaneDiskEncryptionKey` | `status.outputs.key_id` |
+| GcpGkeCluster | `spec.userManagedKeys.gkeopsEtcdBackupEncryptionKey` | `status.outputs.key_id` |
 | GcpGkeNodePool | `spec.nodeConfig.bootDiskKmsKey` | `status.outputs.key_id` |
 | GcpKmsKeyIamMember | `spec.cryptoKeyId` | `status.outputs.key_id` |
+| GcpLogBucket | `spec.cmekKmsKey` | `status.outputs.key_id` |
+| GcpLogBucket | `spec.scopeSettings.kmsKey` | `status.outputs.key_id` |
 | GcpMemorystoreInstance | `spec.kmsKey` | `status.outputs.key_id` |
 | GcpPubSubTopic | `spec.kmsKeyName` | `status.outputs.key_id` |
 | GcpRedisInstance | `spec.customerManagedKey` | `status.outputs.key_id` |
+| GcpSecretManagerSecret | `spec.replication.auto.customerManagedEncryption.kmsKey` | `status.outputs.key_id` |
+| GcpSecretManagerSecret | `spec.replication.userManaged.replicas[].customerManagedEncryption.kmsKey` | `status.outputs.key_id` |
+| GcpSecretManagerSecret | `spec.customerManagedEncryption.kmsKey` | `status.outputs.key_id` |
 | GcpSpannerBackupSchedule | `spec.encryptionConfig.kmsKeyName` | `status.outputs.key_id` |
 | GcpSpannerBackupSchedule | `spec.encryptionConfig.kmsKeyNames` | `status.outputs.key_id` |
 | GcpSpannerDatabase | `spec.encryptionConfig.kmsKeyName` | `status.outputs.key_id` |
 | GcpSpannerDatabase | `spec.encryptionConfig.kmsKeyNames` | `status.outputs.key_id` |
 | GcpVertexAiEndpoint | `spec.kmsKeyName` | `status.outputs.key_id` |
+| GcpVertexAiIndex | `spec.kmsKeyName` | `status.outputs.key_id` |
+| GcpVertexAiIndexEndpoint | `spec.kmsKeyName` | `status.outputs.key_id` |
 | GcpVertexAiNotebook | `spec.bootDisk.kmsKey` | `status.outputs.key_id` |
 | GcpVertexAiNotebook | `spec.dataDisk.kmsKey` | `status.outputs.key_id` |
+| GcpWorkflow | `spec.cryptoKey` | `status.outputs.key_id` |
 | KubernetesOpenBao | `spec.autoUnseal.gcpKms.cryptoKey` | `status.outputs.key_name` |
 
 ## See Also

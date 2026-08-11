@@ -55,6 +55,14 @@ func spannerBackupSchedule(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp
 		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
 	}
 
+	// Client-side destroy behavior for the SCHEDULE only — backups already
+	// taken live until their retention expires regardless: DELETE
+	// (default), PREVENT (destroy fails), or ABANDON (drop from state,
+	// keep the schedule running in GCP).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	// Exactly one backup kind, expressed by the provider as a pair of empty
 	// marker blocks. INCREMENTAL chains store only changes since the
 	// previous backup (cheaper storage, same restore semantics) and require

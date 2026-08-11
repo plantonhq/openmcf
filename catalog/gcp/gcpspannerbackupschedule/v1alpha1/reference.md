@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpSpannerBackupScheduleSpec defines a backup schedule
 (`google_spanner_backup_schedule`) on a Cloud Spanner database.
 
@@ -44,6 +46,9 @@ spec:
     value: orders
   cron: "0 2 * * *" # daily at 02:00 UTC
   retentionDuration: 2678400s # 31 days
+  # Explicit DELETE (the provider default) proves the round-trip; the
+  # backups already taken outlive the schedule either way.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -61,6 +66,7 @@ spec:
 | `spec.encryptionConfig.encryptionType` | `string` | yes |  |  |
 | `spec.encryptionConfig.kmsKeyName` | `string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
 | `spec.encryptionConfig.kmsKeyNames` | `[]string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -188,6 +194,24 @@ Only valid with CUSTOMER_MANAGED_ENCRYPTION.
 
 - references: GcpKmsKey (`status.outputs.key_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the schedule — what happens when this resource
+is destroyed. The schedule is a control-plane object: none of these
+values touches the BACKUPS it already created (those live until
+their retention expires):
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the schedule is deleted; no further backups are taken
+  "PREVENT" -- destroy FAILS; protects the cadence a recovery
+               objective depends on from riding along with a
+               stack teardown
+  "ABANDON" -- the schedule is removed from management but keeps
+               running (and creating backups) in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

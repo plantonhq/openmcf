@@ -495,6 +495,66 @@ var _ = ginkgo.Describe("GcpRedisInstanceSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
+	// ──────────────── Labels, Destroy Guards, Maintenance Description ────────────────
+
+	ginkgo.It("should accept user labels", func() {
+		msg := minimal()
+		msg.Spec.Labels = map[string]string{"team": "payments", "env": "prod"}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept deletion_protection set explicitly", func() {
+		for _, protection := range []bool{true, false} {
+			msg := minimal()
+			msg.Spec.DeletionProtection = &protection
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should accept a maintenance window with a description", func() {
+		msg := minimal()
+		msg.Spec.MaintenanceWindow = &GcpRedisInstanceMaintenanceWindow{
+			Day:         "SUNDAY",
+			Hour:        3,
+			Minute:      30,
+			Description: "post-midnight window, after the nightly batch completes",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a maintenance description longer than 512 characters", func() {
+		msg := minimal()
+		description := ""
+		for len(description) < 513 {
+			description += "x"
+		}
+		msg.Spec.MaintenanceWindow = &GcpRedisInstanceMaintenanceWindow{
+			Day:         "SUNDAY",
+			Description: description,
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept each valid deletion_policy value", func() {
+		for _, policy := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = policy
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "deletion_policy %q should be accepted", policy)
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy value", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "KEEP"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
 	ginkgo.It("should reject when metadata is missing", func() {
 		msg := minimal()
 		msg.Metadata = nil

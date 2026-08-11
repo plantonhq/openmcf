@@ -10,8 +10,11 @@ spec:
   # REGIONAL tiers, replication, and PSA/PSC connect modes are proven
   # offline (cost + slow provisioning).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # The prior green predates the current spec shape (LDAP directory
+  # services, PSC endpoint project, per-export network, BackupDR restore,
+  # desired_replica_state sent explicitly, deletion_policy modeled from
+  # the spec instead of the Pulumi-side DELETE pin) — awaits live
+  # re-proof.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 40

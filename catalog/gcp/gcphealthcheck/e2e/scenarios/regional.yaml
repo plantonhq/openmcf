@@ -21,3 +21,6 @@ spec:
   region: us-central1
   tcp:
     port: 5432
+  # Explicit provider default on the REGIONAL resource: the one spec field
+  # fans to both provider resources — this arm proves the regional side.
+  deletionPolicy: DELETE

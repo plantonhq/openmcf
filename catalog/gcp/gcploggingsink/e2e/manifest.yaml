@@ -1,0 +1,50 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLoggingSink
+metadata:
+  name: my-sample-logging-sink
+  # GcpGcsBucket is this kind's REGISTRY prerequisite — the harness deploys
+  # the bucket fixture first and resolves the reference below; no
+  # annotation needed.
+spec:
+  # Where the sink lives. Omit entirely for a project sink in the
+  # provider's default project — the common case. (Folder, organization,
+  # and billing-account scopes take folderId / organizationId /
+  # billingAccount instead.)
+
+  # The sink name; omit to default to metadata.name. Renaming recreates
+  # the sink and mints a NEW writer identity — re-grant the destination.
+  sinkName: my-sample-logging-sink
+
+  # Where matching entries export — exactly one arm. The module renders
+  # the service-scheme URI (storage.googleapis.com/...) so the manifest
+  # references the resource naturally.
+  destination:
+    gcsBucket:
+      valueFrom:
+        kind: GcpGcsBucket
+        # The bucket kind's PUBLISHED prerequisite fixture name.
+        name: planton-oss-e2e-gcsb-prereq
+        fieldPath: status.outputs.bucket_id
+
+  # Which entries export. Empty exports EVERYTHING in scope — deliberate
+  # for audit archives, expensive otherwise.
+  filter: severity>=ERROR
+
+  # Why this sink exists and where its data lands.
+  description: Archives error-level logs for compliance review
+
+  # Carve noisy sub-streams out of the export; sample() drops a
+  # percentage of matches.
+  exclusions:
+    - name: drop-health-checks
+      filter: httpRequest.requestUrl:"/healthz"
+      description: Health-check noise is never evidence
+
+  # Project scope only (default true; other scopes always mint a unique
+  # writer). Required true for BigQuery destinations and cross-project
+  # export.
+  uniqueWriterIdentity: true
+
+  # What a destroy does: DELETE (default), PREVENT, or ABANDON.
+  # PREVENT is the honest posture for compliance-mandated exports.
+  deletionPolicy: DELETE

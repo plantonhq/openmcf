@@ -55,3 +55,6 @@ spec:
     sampleRate: 0.5
   customResponseHeaders:
     - "X-Cache-Status: {cdn_cache_status}"
+
+  # Ephemeral test fixture: fully delete on destroy.
+  deletionPolicy: DELETE

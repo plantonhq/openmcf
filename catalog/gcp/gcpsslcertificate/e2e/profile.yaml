@@ -12,8 +12,9 @@ spec:
   # every managed-cert manifest's. deploy -> compute sslCertificates get
   # verify -> destroy -> verify gone, on both provisioners.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # The 6.x-era proof predates this spec surface (deletion_policy; the
+  # recorded write-only-key and name_prefix exclusions) — the kind awaits
+  # live re-proof at the current shape.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 10

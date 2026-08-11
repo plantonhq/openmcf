@@ -37,8 +37,20 @@ variable "spec" {
     # bindings but cannot authenticate until re-enabled.
     disabled = optional(bool)
 
-    # Whether to create a user-managed JSON key. Defaults to false (keyless).
-    create_key = optional(bool)
+    # User-managed key configuration. The object's PRESENCE is the decision
+    # to create a key (null = keyless, the recommended default); every field
+    # inside defaults to GCP's own defaults, so {} creates the classic
+    # 2048-bit RSA JSON key. public_key_data (upload flow) conflicts with
+    # private_key_type / public_key_type (generate flow) — enforced by the
+    # spec's CEL rules before the module runs.
+    user_managed_key = optional(object({
+      algorithm        = optional(string)
+      private_key_type = optional(string)
+      public_key_type  = optional(string)
+      public_key_data  = optional(string)
+      keepers          = optional(map(string))
+      deletion_policy  = optional(string)
+    }))
 
     # IAM roles granted at the project level (additive member grants).
     # Example: ["roles/logging.logWriter", "roles/storage.objectViewer"]
@@ -50,6 +62,14 @@ variable "spec" {
     # IAM roles granted at the organization level (additive member grants).
     # Example: ["roles/resourcemanager.organizationViewer"]
     org_iam_roles = optional(list(string))
+
+    # If true, creating the account adopts an existing one with the same
+    # email instead of failing (idempotent bootstrap flows).
+    create_ignore_already_exists = optional(bool)
+
+    # Destroy-time guard: "" / "DELETE" allows deletion, "PREVENT" fails
+    # the destroy while set.
+    deletion_policy = optional(string)
   })
 
   validation {

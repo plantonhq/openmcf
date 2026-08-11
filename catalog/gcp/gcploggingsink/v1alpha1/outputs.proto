@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcploggingsink.v1alpha1;
+
+// Outputs produced after provisioning a Cloud Logging sink.
+message GcpLoggingSinkStackOutputs {
+  // The sink name as it exists in GCP.
+  string sink_name = 1;
+
+  // The service-account identity GCP minted (or adopted) for this sink —
+  // format "serviceAccount:{email}". THE chart output: grant this identity
+  // write access on the destination (roles/storage.objectCreator on a
+  // bucket, roles/bigquery.dataEditor on a dataset,
+  // roles/pubsub.publisher on a topic) via the destination kind's
+  // iam_members, or the sink silently exports nothing.
+  string writer_identity = 2;
+}

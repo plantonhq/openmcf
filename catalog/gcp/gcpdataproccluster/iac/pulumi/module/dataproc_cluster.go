@@ -65,6 +65,12 @@ func dataprocCluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 		args.GracefulDecommissionTimeout = pulumi.StringPtr(spec.GracefulDecommissionTimeout)
 	}
 
+	// Engine-side teardown behavior (DELETE / PREVENT / ABANDON) — the
+	// ABANDON lever hands the cluster to out-of-band management.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	if spec.ClusterConfig != nil {
 		args.ClusterConfig = buildClusterConfig(spec.ClusterConfig)
 	}
@@ -102,7 +108,7 @@ func dataprocCluster(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 
 // buildDiskConfig converts the shared disk-config message for any node
 // group into the given block constructor via the supplied setter.
-func diskFields(d *gcpdataprocclusterv1alpha1.GcpDataprocClusterDiskConfig) (bootDiskSizeGb *int, bootDiskType *string, numLocalSsds *int, localSsdInterface *string) {
+func diskFields(d *gcpdataprocclusterv1alpha1.GcpDataprocClusterDiskConfig) (bootDiskSizeGb *int, bootDiskType *string, numLocalSsds *int, localSsdInterface *string, provisionedIops *int, provisionedThroughput *int) {
 	if d.BootDiskSizeGb > 0 {
 		v := int(d.BootDiskSizeGb)
 		bootDiskSizeGb = &v
@@ -118,6 +124,15 @@ func diskFields(d *gcpdataprocclusterv1alpha1.GcpDataprocClusterDiskConfig) (boo
 	if d.LocalSsdInterface != "" {
 		v := d.LocalSsdInterface
 		localSsdInterface = &v
+	}
+	// Provisioned-performance dials (hyperdisk classes).
+	if d.BootDiskProvisionedIops != nil {
+		v := int(*d.BootDiskProvisionedIops)
+		provisionedIops = &v
+	}
+	if d.BootDiskProvisionedThroughput != nil {
+		v := int(*d.BootDiskProvisionedThroughput)
+		provisionedThroughput = &v
 	}
 	return
 }
@@ -136,6 +151,14 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 	}
 	if cfg.ClusterTier != "" {
 		clusterConfig.ClusterTier = pulumi.StringPtr(cfg.ClusterTier)
+	}
+	// Structural type (STANDARD / SINGLE_NODE / ZERO_SCALE) and execution
+	// engine (DEFAULT / LIGHTNING). Both immutable.
+	if cfg.ClusterType != "" {
+		clusterConfig.ClusterType = pulumi.StringPtr(cfg.ClusterType)
+	}
+	if cfg.Engine != "" {
+		clusterConfig.Engine = pulumi.StringPtr(cfg.Engine)
 	}
 
 	// ── GCE environment: networking, identity, hardening, placement ──
@@ -167,6 +190,10 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 		}
 		if len(gce.Metadata) > 0 {
 			gceArgs.Metadata = pulumi.ToStringMap(gce.Metadata)
+		}
+		// IAM-governed secure tags (distinct from network tags).
+		if len(gce.ResourceManagerTags) > 0 {
+			gceArgs.ResourceManagerTags = pulumi.ToStringMap(gce.ResourceManagerTags)
 		}
 
 		if gce.ShieldedInstanceConfig != nil {
@@ -225,7 +252,7 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 			masterArgs.ImageUri = pulumi.StringPtr(m.ImageUri)
 		}
 		if m.DiskConfig != nil {
-			sizeGb, diskType, ssds, ssdIface := diskFields(m.DiskConfig)
+			sizeGb, diskType, ssds, ssdIface, provIops, provThroughput := diskFields(m.DiskConfig)
 			diskArgs := &dataproc.ClusterClusterConfigMasterConfigDiskConfigArgs{}
 			if sizeGb != nil {
 				diskArgs.BootDiskSizeGb = pulumi.IntPtr(*sizeGb)
@@ -239,6 +266,12 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 			if ssdIface != nil {
 				diskArgs.LocalSsdInterface = pulumi.StringPtr(*ssdIface)
 			}
+			if provIops != nil {
+				diskArgs.BootDiskProvisionedIops = pulumi.IntPtr(*provIops)
+			}
+			if provThroughput != nil {
+				diskArgs.BootDiskProvisionedThroughput = pulumi.IntPtr(*provThroughput)
+			}
 			masterArgs.DiskConfig = diskArgs
 		}
 		if len(m.Accelerators) > 0 {
@@ -250,6 +283,22 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 				})
 			}
 			masterArgs.Accelerators = accels
+		}
+
+		// Ranked machine-type fallbacks (masters carry no provisioning
+		// mix — that argument exists on secondary workers only; spec CEL
+		// enforces it).
+		if m.InstanceFlexibilityPolicy != nil && len(m.InstanceFlexibilityPolicy.InstanceSelectionList) > 0 {
+			var selections dataproc.ClusterClusterConfigMasterConfigInstanceFlexibilityPolicyInstanceSelectionListArray
+			for _, sel := range m.InstanceFlexibilityPolicy.InstanceSelectionList {
+				selections = append(selections, &dataproc.ClusterClusterConfigMasterConfigInstanceFlexibilityPolicyInstanceSelectionListArgs{
+					MachineTypes: pulumi.ToStringArray(sel.MachineTypes),
+					Rank:         pulumi.IntPtr(int(sel.Rank)),
+				})
+			}
+			masterArgs.InstanceFlexibilityPolicy = &dataproc.ClusterClusterConfigMasterConfigInstanceFlexibilityPolicyArgs{
+				InstanceSelectionLists: selections,
+			}
 		}
 
 		clusterConfig.MasterConfig = masterArgs
@@ -280,7 +329,7 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 			workerArgs.MinNumInstances = pulumi.IntPtr(int(w.MinNumInstances))
 		}
 		if w.DiskConfig != nil {
-			sizeGb, diskType, ssds, ssdIface := diskFields(w.DiskConfig)
+			sizeGb, diskType, ssds, ssdIface, provIops, provThroughput := diskFields(w.DiskConfig)
 			diskArgs := &dataproc.ClusterClusterConfigWorkerConfigDiskConfigArgs{}
 			if sizeGb != nil {
 				diskArgs.BootDiskSizeGb = pulumi.IntPtr(*sizeGb)
@@ -294,6 +343,12 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 			if ssdIface != nil {
 				diskArgs.LocalSsdInterface = pulumi.StringPtr(*ssdIface)
 			}
+			if provIops != nil {
+				diskArgs.BootDiskProvisionedIops = pulumi.IntPtr(*provIops)
+			}
+			if provThroughput != nil {
+				diskArgs.BootDiskProvisionedThroughput = pulumi.IntPtr(*provThroughput)
+			}
 			workerArgs.DiskConfig = diskArgs
 		}
 		if len(w.Accelerators) > 0 {
@@ -305,6 +360,22 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 				})
 			}
 			workerArgs.Accelerators = accels
+		}
+
+		// Ranked machine-type fallbacks (primary workers carry no
+		// provisioning mix — that argument exists on secondary workers
+		// only; spec CEL enforces it).
+		if w.InstanceFlexibilityPolicy != nil && len(w.InstanceFlexibilityPolicy.InstanceSelectionList) > 0 {
+			var selections dataproc.ClusterClusterConfigWorkerConfigInstanceFlexibilityPolicyInstanceSelectionListArray
+			for _, sel := range w.InstanceFlexibilityPolicy.InstanceSelectionList {
+				selections = append(selections, &dataproc.ClusterClusterConfigWorkerConfigInstanceFlexibilityPolicyInstanceSelectionListArgs{
+					MachineTypes: pulumi.ToStringArray(sel.MachineTypes),
+					Rank:         pulumi.IntPtr(int(sel.Rank)),
+				})
+			}
+			workerArgs.InstanceFlexibilityPolicy = &dataproc.ClusterClusterConfigWorkerConfigInstanceFlexibilityPolicyArgs{
+				InstanceSelectionLists: selections,
+			}
 		}
 
 		clusterConfig.WorkerConfig = workerArgs
@@ -326,7 +397,7 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 			secondaryArgs.Preemptibility = pulumi.StringPtr(s.Preemptibility)
 		}
 		if s.DiskConfig != nil {
-			sizeGb, diskType, ssds, ssdIface := diskFields(s.DiskConfig)
+			sizeGb, diskType, ssds, ssdIface, provIops, provThroughput := diskFields(s.DiskConfig)
 			diskArgs := &dataproc.ClusterClusterConfigPreemptibleWorkerConfigDiskConfigArgs{}
 			if sizeGb != nil {
 				diskArgs.BootDiskSizeGb = pulumi.IntPtr(*sizeGb)
@@ -339,6 +410,12 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 			}
 			if ssdIface != nil {
 				diskArgs.LocalSsdInterface = pulumi.StringPtr(*ssdIface)
+			}
+			if provIops != nil {
+				diskArgs.BootDiskProvisionedIops = pulumi.IntPtr(*provIops)
+			}
+			if provThroughput != nil {
+				diskArgs.BootDiskProvisionedThroughput = pulumi.IntPtr(*provThroughput)
 			}
 			secondaryArgs.DiskConfig = diskArgs
 		}
@@ -507,6 +584,13 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 		if cfg.LifecycleConfig.AutoDeleteTime != "" {
 			lifecycleArgs.AutoDeleteTime = pulumi.StringPtr(cfg.LifecycleConfig.AutoDeleteTime)
 		}
+		// Stop (not delete): VMs shut down, cluster stays restartable.
+		if cfg.LifecycleConfig.IdleStopTtl != "" {
+			lifecycleArgs.IdleStopTtl = pulumi.StringPtr(cfg.LifecycleConfig.IdleStopTtl)
+		}
+		if cfg.LifecycleConfig.AutoStopTime != "" {
+			lifecycleArgs.AutoStopTime = pulumi.StringPtr(cfg.LifecycleConfig.AutoStopTime)
+		}
 		clusterConfig.LifecycleConfig = lifecycleArgs
 	}
 
@@ -558,7 +642,7 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 					configArgs.MinCpuPlatform = pulumi.StringPtr(ngc.MinCpuPlatform)
 				}
 				if ngc.DiskConfig != nil {
-					sizeGb, diskType, ssds, ssdIface := diskFields(ngc.DiskConfig)
+					sizeGb, diskType, ssds, ssdIface, provIops, provThroughput := diskFields(ngc.DiskConfig)
 					diskArgs := &dataproc.ClusterClusterConfigAuxiliaryNodeGroupNodeGroupNodeGroupConfigDiskConfigArgs{}
 					if sizeGb != nil {
 						diskArgs.BootDiskSizeGb = pulumi.IntPtr(*sizeGb)
@@ -571,6 +655,12 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 					}
 					if ssdIface != nil {
 						diskArgs.LocalSsdInterface = pulumi.StringPtr(*ssdIface)
+					}
+					if provIops != nil {
+						diskArgs.BootDiskProvisionedIops = pulumi.IntPtr(*provIops)
+					}
+					if provThroughput != nil {
+						diskArgs.BootDiskProvisionedThroughput = pulumi.IntPtr(*provThroughput)
 					}
 					configArgs.DiskConfig = diskArgs
 				}

@@ -3,6 +3,9 @@
 # proof of the policy FK resolving to the full resource name the API
 # requires. project_id is deliberately omitted (ambient project); the
 # cloud-side cluster name carries ${E2E_RUN_ID}.
+# Also proves primary-worker instance flexibility live: a ranked
+# machine-type fallback list (the scenario's own type first) that must
+# apply cleanly and leave re-plans diff-free.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDataprocCluster
 metadata:
@@ -47,6 +50,12 @@ spec:
       diskConfig:
         bootDiskSizeGb: 50
         bootDiskType: pd-balanced
+      instanceFlexibilityPolicy:
+        instanceSelectionList:
+          - machineTypes:
+              - e2-standard-2
+              - n2-standard-2
+            rank: 1
     autoscalingPolicyUri:
       valueFrom:
         kind: GcpDataprocAutoscalingPolicy

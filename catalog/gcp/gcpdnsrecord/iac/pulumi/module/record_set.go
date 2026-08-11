@@ -38,6 +38,12 @@ func recordSet(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider, p
 		args.RoutingPolicy = buildRoutingPolicy(spec.RoutingPolicy)
 	}
 
+	// What destroy does to the record set: DELETE (default), PREVENT
+	// (refuse), or ABANDON (drop from state, keep answering queries).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdRecordSet, err := dns.NewRecordSet(ctx,
 		locals.GcpDnsRecord.Metadata.Name,
 		args,

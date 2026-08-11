@@ -39,6 +39,9 @@ resource "google_compute_ssl_certificate" "this" {
   certificate = var.spec.certificate
   private_key = var.spec.private_key # secret material; never surfaced in outputs
 
+  # Empty defers to the provider default (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.compute_api]
 }
 
@@ -55,6 +58,9 @@ resource "google_compute_region_ssl_certificate" "this" {
 
   certificate = var.spec.certificate
   private_key = var.spec.private_key # secret material; never surfaced in outputs
+
+  # Empty defers to the provider default (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   depends_on = [google_project_service.compute_api]
 }

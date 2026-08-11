@@ -6,7 +6,7 @@ This Terraform/OpenTofu module provisions a Filestore instance (`google_filestor
 
 The module enables the Filestore API (`disable_on_destroy=false`) so a fresh project works first try and teardown never disables the API project-wide. User labels are merged beneath the platform attribution labels (`planton-ai_*`), identically to the Pulumi module. An empty `instance_name` falls back to `metadata.name`; an empty `project_id` falls back to the provider's default project; empty `modes` becomes `["MODE_IPV4"]` — all via explicit conditionals so both engines realize the identical instance.
 
-**Immutability is the sharp edge**: name, location, tier, protocol, network attachment, KMS key, and replication are all ForceNew — changing any of them replaces the instance and its data. File share capacity grows in place but never shrinks. `deletion_protection_enabled` is the destroy guard: it must be flipped false before a protected instance can be destroyed. `source_backup` and `initial_replication` apply at create time only.
+**Immutability is the sharp edge**: name, location, tier, protocol, network attachment, KMS key, LDAP directory services, and replication are all ForceNew — changing any of them replaces the instance and its data. File share capacity grows in place but never shrinks. `deletion_protection_enabled` is the destroy guard (it must be flipped false before a protected instance can be destroyed); `deletion_policy` is the second, client-side lever evaluated after it (empty/`DELETE` deletes, `PREVENT` refuses, `ABANDON` keeps the instance running outside management). The restore sources (`source_backup` / `source_backupdr_backup`, mutually exclusive) and `initial_replication` apply at create time only; `desired_replica_state` pauses/resumes an existing replica relationship in place.
 
 ## Usage with Planton CLI
 
@@ -21,10 +21,10 @@ Credentials are provided via stack input (by the CLI), not in the manifest `spec
 
 ## Module Layout
 
-- `provider.tf` — google provider pin (`~> 6.0`; all fields GA on the released line)
+- `provider.tf` — google provider pin (`~> 7.43`; all fields GA on the released line)
 - `variables.tf` — the converter-contract `metadata`/`spec` variables
 - `locals.tf` — instance-name and project fallbacks, empty-string→null normalization, modes default, label merge
-- `main.tf` — API enablement + the instance (file share, network, performance config, replication)
+- `main.tf` — API enablement + the instance (file share, network incl. PSC config, LDAP directory services, performance config, replication)
 - `outputs.tf` — `instance_id`, `instance_name`, `ip_addresses`, `file_share_name`, `create_time`, `reserved_ip_range`, `etag`
 
 ## Outputs

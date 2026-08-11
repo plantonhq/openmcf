@@ -84,6 +84,10 @@ variable "spec" {
       max_backoff_duration = optional(string, "")
       max_doublings        = optional(number, 0)
     }), null)
+
+    # DELETE (default) removes the job on destroy; PREVENT fails the
+    # destroy; ABANDON leaves the job firing on schedule in GCP.
+    deletion_policy = optional(string, "")
   })
 
   validation {

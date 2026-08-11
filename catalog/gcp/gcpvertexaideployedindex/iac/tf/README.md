@@ -27,7 +27,10 @@ module "vertex_ai_deployed_index" {
 |------|------|----------|-------------|
 | metadata | object | yes | Planton resource metadata |
 | spec | object | yes | GcpVertexAiDeployedIndex specification |
-| provider_config | object | no | GCP provider configuration |
+
+Credentials are never module inputs: the provider block is empty and the
+runner injects `GOOGLE_CREDENTIALS` (or the ambient ADC chain applies) —
+the catalog-wide contract.
 
 ## Outputs
 
@@ -53,9 +56,15 @@ The GCP API gives this resource class no labels and no project field (the
 deployment lives inside the endpoint resource). The module therefore applies
 no platform attribution labels — none can exist here.
 
+## Destroy Behavior
+
+`spec.deletion_policy` is the client-side destroy lever: empty/`DELETE`
+undeploys the index, `PREVENT` makes destroy fail, `ABANDON` drops the
+deployment from state but keeps it serving (and billing).
+
 ## Provider Requirements
 
-- `hashicorp/google` ~> 6.0
+- `hashicorp/google` ~> 7.43
 
 Note: deploy timeouts are 45 minutes (create/update) and 20 (delete) —
 deploys genuinely take tens of minutes.

@@ -1,0 +1,25 @@
+# Minimal GcpMonitoringNotificationChannel scenario: an email channel — the
+# cheapest, credential-free channel type. project_id is deliberately
+# omitted: the module falls back to the provider's default project, which
+# the E2E harness exports as GOOGLE_PROJECT from the resolved test project.
+# Channel names are server-assigned (the display name is not an identity),
+# so fixed metadata is safe across runs.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringNotificationChannel
+metadata:
+  name: planton-oss-e2e-gcpnotifchan-smoke
+  id: planton-oss-e2e-gcpnotifchan-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmonitoringnotificationchannel
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  type: email
+  channelLabels:
+    email_address: planton-e2e-noreply@example.com
+  description: E2E smoke channel — receives nothing (no policy references it)

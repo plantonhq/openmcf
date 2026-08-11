@@ -1,0 +1,33 @@
+# Extra-instance fixture for the enterprise scenario: a MongoDB-dedicated
+# ENTERPRISE database (the only edition whose databases accept
+# MONGODB_COMPATIBLE_API, multikey, and search-config indexes). Deployed via
+# the scenario's planton.dev/e2e-prerequisites manifest-path entry ALONGSIDE
+# the kind's standard Native-mode prerequisite — two database instances in
+# one chain, so every reference must name its instance exactly. Cloud-side
+# name is consumer-unique, scenario-scoped, AND run-scoped: deleted database
+# names are reserved for a window, and prerequisite chains redeploy per
+# scenario, so the scenario token keeps every scenario's database name
+# distinct — no name is ever deleted and recreated within one run.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpFirestoreDatabase
+metadata:
+  name: planton-oss-e2e-gcpfsdb-ent-idx
+  id: planton-oss-e2e-gcpfsdb-ent-idx
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpfirestoreindex
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  databaseName: e2e-fsidx-entdb-${E2E_SCENARIO}-${E2E_RUN_ID}
+  locationId: nam5
+  type: FIRESTORE_NATIVE
+  databaseEdition: ENTERPRISE
+  firestoreDataAccessMode: DATA_ACCESS_MODE_DISABLED
+  mongodbCompatibleDataAccessMode: DATA_ACCESS_MODE_ENABLED
+  deleteProtectionState: DELETE_PROTECTION_DISABLED
+  deletionPolicy: DELETE

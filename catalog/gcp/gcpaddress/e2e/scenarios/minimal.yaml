@@ -24,3 +24,6 @@ spec:
   region: us-central1
   addressType: EXTERNAL
   ipVersion: IPV4
+
+  # Ephemeral test fixture: fully delete on destroy.
+  deletionPolicy: DELETE

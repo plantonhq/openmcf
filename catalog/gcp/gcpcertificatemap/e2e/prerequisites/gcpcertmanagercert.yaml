@@ -1,0 +1,30 @@
+# Certificate fixture the map kind's lanes deploy first — a managed
+# certificate with load-balancer authorization (no DNS-auth chain
+# needed): it stays PROVISIONING without published DNS, which Certificate
+# Manager accepts for map-entry attachment (serving starts only at
+# ACTIVE — the map lane proves attachment, not issuance). Owned by THIS
+# kind's folder (consumer-side prerequisite override) so the fixture
+# rides the map's lanes without touching the GcpCertManagerCert folder.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCertManagerCert
+metadata:
+  name: planton-oss-e2e-gcpcert-prereq
+  id: planton-oss-e2e-gcpcert-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcertificatemap
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  certName: planton-oss-e2e-gcpcert-prereq-${E2E_RUN_ID}
+  description: Ephemeral managed certificate fixture for the certificate-map E2E chain
+  managed:
+    domains:
+      - map-e2e-${E2E_RUN_ID}.example.com
+  labels:
+    e2e-suite: gcp
+  deletionPolicy: DELETE

@@ -27,3 +27,6 @@ spec:
           fieldPath: status.outputs.authorization_id
   labels:
     e2e-suite: gcp
+  # Explicit DELETE (the provider default) proves the deletion_policy
+  # round-trip: create accepts it and re-plans stay diff-free.
+  deletionPolicy: DELETE

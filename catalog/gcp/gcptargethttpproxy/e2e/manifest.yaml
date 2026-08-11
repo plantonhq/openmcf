@@ -21,3 +21,6 @@ spec:
 
   # Idle client keep-alive (EXTERNAL_MANAGED only); omit for GCP's default.
   httpKeepAliveTimeoutSec: 610
+
+  # DELETE keeps destroys real; PREVENT belongs on production frontends.
+  deletionPolicy: DELETE

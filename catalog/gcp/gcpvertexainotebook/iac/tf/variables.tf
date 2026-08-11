@@ -100,6 +100,9 @@ variable "spec" {
 
     enable_managed_euc          = optional(bool, false)
     enable_third_party_identity = optional(bool, false)
+
+    # Client-side destroy behavior: DELETE (default), PREVENT, ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {
@@ -111,12 +114,4 @@ variable "spec" {
     condition     = var.spec.machine_type != ""
     error_message = "machine_type is required."
   }
-}
-
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = optional(string, "")
-  })
-  default = { service_account_key = "" }
 }

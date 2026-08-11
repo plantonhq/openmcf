@@ -1,6 +1,9 @@
 # Private-IP Postgres flagship: consumes the full private-services-access
 # chain the registry installs (VPC → VPC_PEERING range → service networking
 # connection) and asserts a PRIVATE address with no public PRIMARY IP.
+# Also proves the CA Service certificate posture live: a Google-managed CAS
+# CA with automatic rotation during maintenance, plus the explicit DELETE
+# teardown policy (no-op against the provider default on re-plan).
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
@@ -23,6 +26,7 @@ spec:
   tier: db-f1-micro
   deletionProtection: false
   deletionProtectionEnabled: false
+  deletionPolicy: DELETE
   network:
     ipv4Enabled: false
     privateNetwork:
@@ -31,3 +35,5 @@ spec:
         name: planton-oss-e2e-gcpvpc-prereq
         fieldPath: status.outputs.network_id
     enablePrivatePathForGoogleCloudServices: true
+    serverCaMode: GOOGLE_MANAGED_CAS_CA
+    serverCertificateRotationMode: AUTOMATIC_ROTATION_DURING_MAINTENANCE

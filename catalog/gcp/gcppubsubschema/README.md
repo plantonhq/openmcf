@@ -57,6 +57,7 @@ schemaSettings:
 | **Identity** | `schemaName` — 3-255 chars, starts with a letter; names beginning with `goog` are reserved by Google; immutable. `projectId` — optional; omitted rides the provider default; reference `GcpProject` |
 | **Contract language** | `type` — `AVRO` (JSON Avro schema; best default) or `PROTOCOL_BUFFER` (a single proto2/proto3 message) |
 | **Definition** | `definition` — the schema text; changing it commits a new revision in place |
+| **Lifecycle** | `deletionPolicy` — `DELETE` (default), `PREVENT` (destroy fails; protects a schema many topics validate against), or `ABANDON` (remove from management, leave serving) |
 
 ### Choosing a type
 
@@ -68,6 +69,7 @@ schemaSettings:
 |--------|------|-------------|
 | `schema_id` | string | Fully qualified schema path (`projects/{p}/schemas/{name}`) — the exact string a topic's `schemaSettings.schema` reference consumes |
 | `schema_name` | string | The short name of the schema |
+| `revision_id` | string | The current revision ID (a new one is committed on every definition change) — the exact value a topic's `schemaSettings.firstRevisionId`/`lastRevisionId` consume for revision pinning |
 
 ## Important Notes
 
@@ -75,10 +77,12 @@ schemaSettings:
 - **Keep revisions compatible**: attached topics accept messages conforming to any available revision; an incompatible new revision silently widens (or breaks) what publishers can send. Evolve additively.
 - **Keep the type stable**: revisions should keep the declared type; a type flip mid-life invalidates existing publishers.
 
-### Deliberately not modeled (recorded reasons)
+### Provider parity
 
-- **`deletion_policy`** — a client-side lever that conflicts with Planton-managed destroy (catalog-wide skip).
-- **`revision_id` output** — the released `google ~> 6.x` line does not expose the committed revision ID as a resource attribute (it exists only on the provider's unreleased line), so neither engine can export it without breaking parity. Revisit when the catalog moves to a provider line that carries it.
+Every configurable argument of `google_pubsub_schema` at the pinned
+provider version is representable through this spec; the recorded
+judgment lives in `iac/provider-parity.yaml`, checked by
+`planton provider-parity --check`.
 
 ## Related Components
 

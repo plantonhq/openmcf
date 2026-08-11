@@ -82,13 +82,13 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 - **`splitKeys` is a creation-time decision**: changing it replaces the table and its data. Set it right at creation or manage splits operationally.
 - **GC policy changes on replicated instances**: expanding what is eligible for collection needs `ignoreWarnings: true` — Bigtable otherwise rejects it as a data-loss safety measure.
 - **No labels surface**: the Bigtable table resource has no labels (instance-level labels only) — both engines skip labels identically.
+- **`deletionPolicy` covers both objects**: one field drives the destroy behavior of the table AND its per-family GC policies — `DELETE` (default), `PREVENT` (destroy fails), or `ABANDON` (drop from management, keep the table; also the escape hatch when a GC-policy delete is rejected on a replicated instance).
+- **`automatedBackupPolicy.locations` needs ENTERPRISE_PLUS**: restricting backup placement to specific zones (`projects/{project}/locations/{zone}`) is only accepted for tables on ENTERPRISE_PLUS instances; empty means all zones of the instance.
 
 ### Deliberately not modeled (recorded reasons)
 
-- **`automated_backup_policy.locations`** — absent from the released google provider 6.x line (schema-probe verified); Enterprise-Plus-only on newer lines.
 - **App profiles, authorized/logical/materialized views, schema bundles** — separate provider resources with real but second-order demand; Tier-2 candidates on concrete pull.
 - **Table IAM trio** — resource-scoped IAM stays unmodeled catalog-wide (additive project grants compose instead).
-- **`deletion_policy`** — client-side Terraform lever conflicting with Planton-managed destroy (catalog-wide decision).
 
 ## Related Components
 

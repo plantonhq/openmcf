@@ -1,6 +1,6 @@
 # GCP Firestore Database
 
-Deploys a Firestore database in a GCP project with configurable database type (Native or Datastore mode), location (single-region or multi-region), concurrency mode, point-in-time recovery, delete protection, edition tier (Standard or Enterprise), and CMEK encryption. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and KMS keys.
+Deploys a Firestore database in a GCP project with configurable database type (Native or Datastore mode), location (single-region or multi-region), concurrency mode, point-in-time recovery, delete protection, edition tier (Standard or Enterprise), CMEK encryption, ENTERPRISE data-access modes (classic Firestore API, MongoDB-compatible API, realtime updates), resource-manager tags, and teardown policy. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and KMS keys.
 
 ## What Gets Created
 
@@ -10,8 +10,10 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Point-in-Time Recovery** -- created only when `pointInTimeRecoveryEnablement` is set to `POINT_IN_TIME_RECOVERY_ENABLED`; retains 7 days of version history for timestamp-based reads and recovery
 - **Delete Protection** -- enabled when `deleteProtectionState` is set to `DELETE_PROTECTION_ENABLED` (GCP's default leaves the database deletable); prevents accidental database deletion through any interface until explicitly disabled
 - **CMEK Encryption** -- created only when `kmsKeyName` is provided; encrypts database data at rest using a customer-managed Cloud KMS key in the same location as the database
+- **Data-Access Modes** -- on ENTERPRISE databases, three switches control which protocols can read and write: the classic Firestore API (`firestoreDataAccessMode`), MongoDB drivers (`mongodbCompatibleDataAccessMode`), and realtime query snapshots (`realtimeUpdatesMode`)
+- **Teardown Policy** -- `deletionPolicy` defaults to DELETE so destroys manage the full lifecycle; PREVENT makes a destroy fail, ABANDON unmanages the database while it keeps serving
 
-Firestore databases do not support GCP labels. Resource tracking relies on the Planton metadata (organization, environment, resource kind) stored in the Cloud Resource record.
+Firestore databases do not support GCP labels. Resource Manager tags (`resourceManagerTags`) are applied at create time only; day-to-day resource tracking relies on the Planton metadata (organization, environment, resource kind) stored in the Cloud Resource record.
 
 ## Before You Deploy
 
@@ -37,7 +39,7 @@ Open the deployment store, find **GCP Firestore Database**, and click **Deploy**
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirestoreDatabase
 metadata:
   name: app-database

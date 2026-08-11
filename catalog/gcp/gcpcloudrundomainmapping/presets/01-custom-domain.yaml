@@ -1,0 +1,19 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCloudRunDomainMapping
+metadata:
+  name: app-domain
+spec:
+  region: us-central1
+  # MUST already be verified by the deploying identity (Search Console /
+  # `gcloud domains verify`) — GCP rejects the mapping otherwise.
+  domain: app.example.com
+  # The Cloud Run service the domain routes to — referencing the service
+  # keeps the mapping pointed at whatever the deployment actually created.
+  route:
+    valueFrom:
+      kind: GcpCloudRun
+      name: my-service
+      fieldPath: status.outputs.service_name
+  # AUTOMATIC is the default: Cloud Run provisions and renews the TLS
+  # certificate once the emitted DNS records are published.
+  certificateMode: AUTOMATIC

@@ -6,7 +6,7 @@ Deploys a Firestore composite index (`google_firestore_index`) on an existing Fi
 
 When you deploy a GcpFirestoreIndex resource, Planton provisions:
 
-- **Composite Index** — a `google_firestore_index` on the specified collection with the declared field roles (order, array-contains, or vector); the Firestore API is enabled automatically
+- **Composite Index** — a `google_firestore_index` on the specified collection with the declared field roles (order, array-contains, vector, or Enterprise text/geo search); the Firestore API is enabled automatically
 
 ## Prerequisites
 
@@ -60,6 +60,8 @@ planton apply -f index.yaml
 | `fields[].order` | `string` | `ASCENDING` or `DESCENDING` for scalar sort/filter. |
 | `fields[].arrayConfig` | `string` | `CONTAINS` for array-membership queries. |
 | `fields[].vectorConfig.dimension` | `int32` | Vector dimension for nearest-neighbor queries (must be last). |
+| `fields[].searchConfig.textSpec.indexSpecs[]` | `object[]` | Text search indexing (`indexType`/`matchType`, e.g. `TOKENIZED`/`MATCH_GLOBALLY`). Enterprise-edition databases only. |
+| `fields[].searchConfig.geoSpec.geoJsonIndexingDisabled` | `bool` | Geo search indexing; set true to skip GeoJSON points (GeoPoints always index). Enterprise-edition databases only. |
 
 ### Optional Fields
 
@@ -68,8 +70,12 @@ planton apply -f index.yaml
 | `projectId` | `StringValueOrRef` | provider default | GCP project owning the database. |
 | `database` | `StringValueOrRef` | `(default)` | Database name. Immutable. |
 | `queryScope` | `string` | `COLLECTION` | `COLLECTION`, `COLLECTION_GROUP`, or `COLLECTION_RECURSIVE`. |
-| `apiScope` | `string` | `ANY_API` | `ANY_API` or `DATASTORE_MODE_API`. |
+| `apiScope` | `string` | `ANY_API` | `ANY_API`, `DATASTORE_MODE_API`, or `MONGODB_COMPATIBLE_API` (Enterprise). |
 | `density` | `string` | GCP default (`SPARSE_ALL`) | `SPARSE_ALL`, `SPARSE_ANY`, or `DENSE`. |
+| `multikey` | `bool` | `false` | MongoDB-style array indexing (at most one indexed path traverses an array). Requires `apiScope: MONGODB_COMPATIBLE_API`. Immutable. |
+| `unique` | `bool` | `false` | Enforce uniqueness of the indexed field values across documents. Immutable. |
+| `skipWait` | `bool` | `false` | Return once creation is requested instead of waiting for the background build. |
+| `deletionPolicy` | `string` | `DELETE` | `PREVENT` fails destroys; `ABANDON` unmanages the index without deleting it. |
 
 ## Stack Outputs
 

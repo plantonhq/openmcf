@@ -5,8 +5,6 @@ metadata:
 spec:
   # Public and private managed zone scenarios (~2–5 minutes each).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30
