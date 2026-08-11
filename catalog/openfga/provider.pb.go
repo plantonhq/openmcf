@@ -25,7 +25,7 @@ const (
 // OpenFgaProviderConfig represents the configuration required to connect to an OpenFGA server.
 //
 // IMPORTANT: OpenFGA only has a Terraform provider - there is no Pulumi provider available.
-// All OpenFGA deployment components must use Terraform/Tofu as the provisioner.
+// All OpenFGA components must use Terraform/Tofu as the provisioner.
 // Pulumi modules for OpenFGA resources will be empty placeholder modules.
 //
 // OpenFGA supports two authentication methods:

@@ -1,7 +1,7 @@
 # AzureApplicationInsightsStandardWebTest - Pulumi Module
 
 Pulumi implementation for the AzureApplicationInsightsStandardWebTest
-deployment component.
+component.
 
 ## Architecture
 

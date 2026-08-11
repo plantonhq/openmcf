@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesIngress** is a Planton deployment component that creates and manages Kubernetes `networking/v1` Ingress objects as first-class, declaratively managed resources. An Ingress declares HTTP(S) exposure for in-cluster Services: host rules and path matches routing to Service backends, with optional TLS termination from certificate Secrets.
+**KubernetesIngress** is a Planton component that creates and manages Kubernetes `networking/v1` Ingress objects as first-class, declaratively managed resources. An Ingress declares HTTP(S) exposure for in-cluster Services: host rules and path matches routing to Service backends, with optional TLS termination from certificate Secrets.
 
 The component covers the complete `networking/v1` IngressSpec surface — ingress class selection, a default backend, TLS blocks, and host/path rules with all three path types. The single deliberate omission is the `resource` backend variant (an ObjectRef to an arbitrary same-namespace object): it is controller-specific and rarely implemented, and Service backends cover the real exposure paths.
 

@@ -1,7 +1,7 @@
 # AzureStorageObjectReplication - Terraform Module
 
 Terraform implementation for the AzureStorageObjectReplication
-deployment component.
+component.
 
 ## Resources Created
 

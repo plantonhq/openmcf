@@ -1,7 +1,7 @@
 # AzureManagedRedisAccessPolicyAssignment - Terraform Module
 
 Terraform implementation for the AzureManagedRedisAccessPolicyAssignment
-deployment component.
+component.
 
 ## Resources Created
 

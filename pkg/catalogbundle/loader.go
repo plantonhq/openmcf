@@ -23,8 +23,10 @@ type Bundle struct {
 	// validation rules in options, the kind registry enum).
 	Files *protoregistry.Files
 	// entries holds the raw bundle contents by entry name (conversions/**,
-	// presets/**, descriptors.binpb).
+	// presets/**, entries/**, descriptors.binpb).
 	entries map[string][]byte
+	// catalogEntries are the decoded entries/** documents, sorted by kind.
+	catalogEntries []CatalogEntry
 }
 
 // Load opens a bundle zip, verifies every entry against the manifest's
@@ -91,7 +93,12 @@ func Load(path string) (*Bundle, error) {
 		return nil, fmt.Errorf("building a registry from the bundle's descriptors: %w", err)
 	}
 
-	return &Bundle{Manifest: manifest, Files: files, entries: entries}, nil
+	catalogEntries, err := parseCatalogEntries(entries)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Bundle{Manifest: manifest, Files: files, entries: entries, catalogEntries: catalogEntries}, nil
 }
 
 // ConversionSpecs returns the bundle's conversion spec contents keyed by
@@ -104,6 +111,13 @@ func (b *Bundle) ConversionSpecs() map[string][]byte {
 // (presets/<provider>/<kind>/<file>), sorted.
 func (b *Bundle) Presets() map[string][]byte {
 	return b.subtree("presets/")
+}
+
+// CatalogEntries returns the bundle's catalog entries sorted by kind name,
+// decoded and shape-checked at load. Whether the set agrees with the kind
+// registry is the conformance gate's verdict, not the loader's.
+func (b *Bundle) CatalogEntries() []CatalogEntry {
+	return b.catalogEntries
 }
 
 func (b *Bundle) subtree(prefix string) map[string][]byte {

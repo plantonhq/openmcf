@@ -153,4 +153,4 @@ This bypasses the entire resolution chain and uses the local directory directly.
 
 - **[Dual IaC Engines](dual-iac-engines)** -- The Pulumi and OpenTofu/Terraform modules that the module system resolves
 - **[State Management](state-management)** -- How deployment state is stored and managed
-- **[Deployment Components](deployment-components)** -- The anatomy of a component including its IaC modules
+- **[Components](components)** -- The anatomy of a component including its IaC modules

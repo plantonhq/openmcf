@@ -12,10 +12,10 @@ import (
 )
 
 var GenerateVariables = &cobra.Command{
-	Use:   "generate-variables <deployment-component>",
-	Short: "Generate Terraform variables for a specified deployment component",
+	Use:   "generate-variables <component>",
+	Short: "Generate Terraform variables for a specified component",
 	Long: `The "generate-variables" command takes a specified planton 
-deployment component type (e.g., "S3Bucket", "RedisKubernetes") and generates 
+component type (e.g., "S3Bucket", "RedisKubernetes") and generates 
 Terraform variable definitions (variables.tf) and a corresponding 
 terraform.tfvars file.
 
@@ -25,10 +25,10 @@ variables file. These variables can then be passed into Terraform modules,
 streamlining infrastructure provisioning and ensuring a consistent, 
 declarative workflow.`,
 	Example: `
-  # Generate variables for an S3Bucket deployment component
+  # Generate variables for an S3Bucket component
   planton tofu generate-variables S3Bucket
 
-  # Generate variables for a RedisKubernetes deployment component
+  # Generate variables for a RedisKubernetes component
   planton tofu generate-variables RedisKubernetes
 `,
 	Args: cobra.ExactArgs(1), // "s3-bucket", "redis-kubernetes", etc.

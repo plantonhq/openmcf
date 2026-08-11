@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesHorizontalPodAutoscaler** is a Planton deployment component that creates and manages Kubernetes HorizontalPodAutoscalers — automatic replica scaling driven by observed metrics — as first-class, declaratively managed resources. An HPA points at one scale target (`scale_target`) and adjusts its replica count between a floor (`min_replicas`) and a ceiling (`max_replicas`), driven by one or more metrics.
+**KubernetesHorizontalPodAutoscaler** is a Planton component that creates and manages Kubernetes HorizontalPodAutoscalers — automatic replica scaling driven by observed metrics — as first-class, declaratively managed resources. An HPA points at one scale target (`scale_target`) and adjusts its replica count between a floor (`min_replicas`) and a ceiling (`max_replicas`), driven by one or more metrics.
 
 The component covers the complete `autoscaling/v2` surface: resource utilization metrics (CPU/memory), per-container resource metrics, custom per-pod metrics, metrics on other objects, external metrics (queue depths, cloud load balancer QPS), and fine-grained scaling behavior — per-direction velocity policies and stabilization windows. There is nothing an upstream `autoscaling/v2` HPA can express that this spec cannot.
 

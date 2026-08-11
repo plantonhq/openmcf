@@ -1,6 +1,6 @@
 # AzureEventHub - Pulumi Module
 
-Pulumi (Go) implementation for the AzureEventHub deployment component,
+Pulumi (Go) implementation for the AzureEventHub component,
 at 100% behavioral parity with the Terraform module.
 
 ## Resources Created

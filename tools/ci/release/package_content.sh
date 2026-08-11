@@ -2,16 +2,22 @@
 # =============================================================================
 # Package Planton content for distribution via Cloudflare R2.
 #
-# Creates five zip files, each scoped to a single concern:
+# Creates six zip files, each scoped to a single concern:
 #
-#   presets.zip        -- Preset YAML + MD files, kind enum proto
-#   iac-source.zip     -- IaC source (.go, .tf, .md, .yaml under iac/)
-#   catalog-pages.zip  -- Per-component kind-root catalog.md files
-#   proto-source.zip   -- Raw proto source (spec, api, input, outputs)
-#   reference-pack.zip -- The component reference pack: generated reference
-#                         pages, catalog indexes, the cross-reference graph,
-#                         the commons page, and the authored GUIDE.md /
-#                         patterns wisdom layer
+#   presets.zip           -- Preset YAML + MD files, kind enum proto
+#   iac-source.zip        -- IaC source (.go, .tf, .md, .yaml under iac/)
+#   catalog-pages.zip     -- Per-component kind-root catalog.md files
+#   proto-source.zip      -- Raw proto source (spec, api, input, outputs)
+#   reference-pack.zip    -- The component reference pack: generated reference
+#                            pages, catalog indexes, the cross-reference graph,
+#                            the commons page, and the authored GUIDE.md /
+#                            patterns wisdom layer
+#   conversion-corpus.zip -- The golden conversion corpus: every authored
+#                            ConversionSpec plus its testdata fixtures. Gates
+#                            every conversion engine (in-repo and external) --
+#                            engine certification data, not user catalog
+#                            content, so its transport is download + verify
+#                            like every other release artifact.
 #
 # All zips preserve repo-relative paths so they can be extracted into a single
 # directory and overlay into a virtual Planton root. Consumers like the Planton
@@ -44,10 +50,10 @@ DRY_RUN=""
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN="--dry-run" ;;
-    presets|iac-source|catalog-pages|proto-source|reference-pack) TARGET="$arg" ;;
+    presets|iac-source|catalog-pages|proto-source|reference-pack|conversion-corpus) TARGET="$arg" ;;
     *)
       echo "ERROR: Unknown argument: $arg"
-      echo "       Valid zip names: presets, iac-source, catalog-pages, proto-source, reference-pack"
+      echo "       Valid zip names: presets, iac-source, catalog-pages, proto-source, reference-pack, conversion-corpus"
       exit 1
       ;;
   esac
@@ -72,6 +78,7 @@ echo ""
 create_zip() {
   local zip_name="$1"
   local description="$2"
+  local test_policy="${3:-}"
   shift 2
 
   local tmp_list
@@ -86,7 +93,9 @@ create_zip() {
   # The _test provider is permanent internal test infrastructure ("never
   # shipped to users"). Refusing it HERE -- not only in the selectors --
   # means a future selector edit cannot quietly start shipping it.
-  if grep -q "/_test/" "$tmp_list"; then
+  # The single sanctioned exception is the conversion corpus (see its
+  # section): certification fixtures whose subject IS the test kind.
+  if [ "$test_policy" != "allow-test-fixtures" ] && grep -q "/_test/" "$tmp_list"; then
     echo "  ERROR: ${zip_name} selected _test provider content, which must"
     echo "         never ship to users:"
     grep "/_test/" "$tmp_list" | head -5 | sed 's/^/           /'
@@ -186,6 +195,23 @@ if wants reference-pack; then
       -o -name 'reference-commons.md' \
       -o -path "$CATALOG_ROOT/_patterns/*.md" \
     \) ! -path '*/_test/*' | create_zip "reference-pack.zip" "reference pack"
+fi
+
+# ─── Conversion Corpus ───────────────────────────────────────────────────────
+# The golden corpus lives beside each kind (catalog/{provider}/{kind}/
+# conversions/): the authored specs plus their testdata fixtures. Every
+# conversion engine -- in this repo or outside it -- proves itself against
+# this one corpus, so it ships as a verifiable artifact instead of forcing
+# consumers to clone the repository at a tag. It is engine-certification
+# data, not user catalog content, which is why it is the one artifact
+# allowed to carry the _test kind: the torture kind's fixtures ARE the
+# corpus (the never-ships boundary keeps the kind out of every SERVING
+# surface; certification data is not one).
+if wants conversion-corpus; then
+  echo "Conversion corpus..."
+  find "$CATALOG_ROOT" -type f -path '*/conversions/*' \
+    | grep -E "^${CATALOG_ROOT}/[^/]+/[^/]+/conversions/" \
+    | create_zip "conversion-corpus.zip" "conversion corpus" allow-test-fixtures
 fi
 
 echo ""

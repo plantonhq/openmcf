@@ -35,7 +35,7 @@ Reference:
 ```yaml
 # OpenFgaRelationshipTuple Test Manifest
 #
-# This manifest is used for testing the OpenFGA Relationship Tuple deployment component.
+# This manifest is used for testing the OpenFGA Relationship Tuple component.
 #
 # Prerequisites:
 # - OpenFGA server running (locally or cloud-hosted)

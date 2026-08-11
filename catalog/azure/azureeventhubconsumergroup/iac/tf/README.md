@@ -1,7 +1,7 @@
 # AzureEventHubConsumerGroup - Terraform Module
 
 OpenTofu/Terraform implementation for the AzureEventHubConsumerGroup
-deployment component, at 100% behavioral parity with the Pulumi module.
+component, at 100% behavioral parity with the Pulumi module.
 
 ## Resources Created
 

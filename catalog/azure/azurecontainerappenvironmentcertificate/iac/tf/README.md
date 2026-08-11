@@ -1,7 +1,7 @@
 # AzureContainerAppEnvironmentCertificate - Terraform Module
 
 Terraform implementation for the AzureContainerAppEnvironmentCertificate
-deployment component.
+component.
 
 ## Resources Created
 

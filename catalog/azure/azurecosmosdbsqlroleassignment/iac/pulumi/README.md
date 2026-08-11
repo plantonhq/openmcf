@@ -1,7 +1,7 @@
 # AzureCosmosdbSqlRoleAssignment - Pulumi Module
 
 Pulumi implementation for the AzureCosmosdbSqlRoleAssignment
-deployment component.
+component.
 
 ## Architecture
 

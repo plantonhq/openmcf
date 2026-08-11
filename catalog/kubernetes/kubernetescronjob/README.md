@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesCronJob** is a Planton deployment component that runs work on a recurring schedule as a batch/v1 CronJob. At each scheduled time, the controller creates a Job from the template, and that Job runs pods to completion. This is the kind for scheduled work: nightly backups, report generation, periodic cleanup, data synchronization.
+**KubernetesCronJob** is a Planton component that runs work on a recurring schedule as a batch/v1 CronJob. At each scheduled time, the controller creates a Job from the template, and that Job runs pods to completion. This is the kind for scheduled work: nightly backups, report generation, periodic cleanup, data synchronization.
 
 For one-shot work, use **KubernetesJob**. For always-on services, use **KubernetesDeployment**.
 

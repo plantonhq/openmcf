@@ -1,6 +1,6 @@
 # Documentation Build System
 
-This directory contains the build scripts that power Planton's documentation site. If you're wondering how deployment component documentation magically appears on the website, you're in the right place.
+This directory contains the build scripts that power Planton's documentation site. If you're wondering how component documentation magically appears on the website, you're in the right place.
 
 ## The Problem We're Solving
 
@@ -14,7 +14,7 @@ That's exactly what `copy-component-docs.ts` does.
 
 Think of this script as a **build-time librarian** with a simple job:
 
-1. **Scan** the `catalog/` directory for deployment component documentation
+1. **Scan** the `catalog/` directory for component documentation
 2. **Transform** each README into a web-ready page with metadata
 3. **Organize** components into a browsable catalog by provider
 4. **Generate** index pages that list all available components
@@ -37,7 +37,7 @@ catalog/
     └── argocdkubernetes/v1/docs/README.md ← Source of truth
 ```
 
-These README files live alongside the protobuf definitions for each deployment component. They're created using Planton's research-driven documentation workflow and contain comprehensive deployment guides.
+These README files live alongside the protobuf definitions for each component. They're created using Planton's research-driven documentation workflow and contain comprehensive deployment guides.
 
 ### The Build-Time Transformation
 
@@ -90,7 +90,7 @@ site/public/docs/catalog/
 
 ### 1. Provider Scanning
 
-The script walks through each provider directory and looks for the characteristic structure of a deployment component:
+The script walks through each provider directory and looks for the characteristic structure of a component:
 
 ```typescript
 // Looking for this pattern:
@@ -173,14 +173,14 @@ The top-level catalog index provides a visual grid of provider cards with icons 
 ```markdown
 ---
 title: "Catalog"
-description: "Browse deployment components organized by cloud provider"
+description: "Browse components organized by cloud provider"
 icon: "package"
 order: 50
 ---
 
 # Catalog
 
-Browse deployment components by cloud provider:
+Browse components by cloud provider:
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
   <a href="/docs/catalog/aws">

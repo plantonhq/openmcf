@@ -177,7 +177,7 @@ Each change section should:
 
 Use the same scope heuristics as `@pr-info`:
 
-- Catalog (deployment components)
+- Catalog (components)
   - `catalog/<provider>/<kind>/**` → `catalog/<provider>/<kind>`
   - Multiple kinds under the same provider → `catalog/<provider>`
   - Shared proto surfaces (`shared/**`, `qa/**`, `iac/**`) → `shared`, `qa`, or `iac`

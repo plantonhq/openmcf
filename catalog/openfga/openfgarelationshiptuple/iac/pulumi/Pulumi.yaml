@@ -1,6 +1,6 @@
 name: openfga-relationship-tuple
 description: |
-  OpenFGA Relationship Tuple deployment component.
+  OpenFGA Relationship Tuple component.
   
   IMPORTANT: OpenFGA does not have a Pulumi provider. This module is a
   pass-through placeholder. Use Terraform/Tofu provisioner instead:

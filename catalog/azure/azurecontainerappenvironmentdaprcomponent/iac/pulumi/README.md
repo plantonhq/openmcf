@@ -1,7 +1,7 @@
 # AzureContainerAppEnvironmentDaprComponent - Pulumi Module
 
 Pulumi implementation for the AzureContainerAppEnvironmentDaprComponent
-deployment component.
+component.
 
 ## Architecture
 

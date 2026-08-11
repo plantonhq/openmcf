@@ -1,7 +1,7 @@
 # AzureCosmosdbSqlRoleDefinition - Pulumi Module
 
 Pulumi implementation for the AzureCosmosdbSqlRoleDefinition
-deployment component.
+component.
 
 ## Architecture
 

@@ -1,7 +1,7 @@
 # AzureEventHubDisasterRecoveryConfig - Pulumi Module
 
 Pulumi (Go) implementation for the AzureEventHubDisasterRecoveryConfig
-deployment component, at 100% behavioral parity with the Terraform
+component, at 100% behavioral parity with the Terraform
 module.
 
 ## Resources Created

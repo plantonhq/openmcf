@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesResourceQuota** is a Planton deployment component that governs resource consumption in one namespace. It manages a governance PAIR: a `core/v1` **ResourceQuota** carrying aggregate caps on what the namespace may consume in total, and — when `spec.limit_defaults` is set — a companion `core/v1` **LimitRange** applying per-object defaults and bounds to individual pods, containers, and claims. They are two Kubernetes objects but one governance story — "how much may this namespace consume, and what does a workload get when it doesn't say?" — which is why this kind manages both.
+**KubernetesResourceQuota** is a Planton component that governs resource consumption in one namespace. It manages a governance PAIR: a `core/v1` **ResourceQuota** carrying aggregate caps on what the namespace may consume in total, and — when `spec.limit_defaults` is set — a companion `core/v1` **LimitRange** applying per-object defaults and bounds to individual pods, containers, and claims. They are two Kubernetes objects but one governance story — "how much may this namespace consume, and what does a workload get when it doesn't say?" — which is why this kind manages both.
 
 The component covers the complete `core/v1` ResourceQuotaSpec and LimitRangeSpec surfaces: compute, storage, and object-count caps; coarse scopes and fine-grained scope selectors; and per-container, per-pod, and per-claim defaults, bounds, and burst ratios.
 

@@ -26,7 +26,7 @@ func AddManifestSourceFlags(cmd *cobra.Command) {
 	_ = cmd.PersistentFlags().MarkHidden("cb")
 
 	cmd.PersistentFlags().StringP(string(flag.Manifest), "f", "",
-		"path of the deployment-component manifest file")
+		"path of the component manifest file")
 
 	cmd.PersistentFlags().StringP(string(flag.StackInput), "i", "",
 		"path to a YAML file containing the stack input (extracts manifest from target field)")

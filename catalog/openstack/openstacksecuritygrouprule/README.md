@@ -1,6 +1,6 @@
 # OpenStackSecurityGroupRule
 
-A standalone OpenStack Neutron security group rule, managed as an independent deployment component.
+A standalone OpenStack Neutron security group rule, managed as an independent component.
 
 ## Overview
 

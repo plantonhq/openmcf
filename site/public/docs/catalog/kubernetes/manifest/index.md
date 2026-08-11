@@ -8,7 +8,7 @@ componentName: "kubernetesmanifest"
 
 # Kubernetes Manifest
 
-Deploys raw Kubernetes YAML manifests to any Kubernetes cluster, acting as a generic escape hatch for resources that do not have a dedicated deployment component. Supports single-document and multi-document manifests (separated by `---`), including Deployments, Services, ConfigMaps, CRDs, Custom Resources, and any other valid Kubernetes resource types. Integrates with Planton's Provider Connections, ValueFromRef, and Stack Job tracking.
+Deploys raw Kubernetes YAML manifests to any Kubernetes cluster, acting as a generic escape hatch for resources that do not have a dedicated component. Supports single-document and multi-document manifests (separated by `---`), including Deployments, Services, ConfigMaps, CRDs, Custom Resources, and any other valid Kubernetes resource types. Integrates with Planton's Provider Connections, ValueFromRef, and Stack Job tracking.
 
 ## What Gets Created
 

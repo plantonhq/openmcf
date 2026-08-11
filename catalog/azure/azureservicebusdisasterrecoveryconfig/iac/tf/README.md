@@ -1,7 +1,7 @@
 # AzureServiceBusDisasterRecoveryConfig - Terraform Module
 
 OpenTofu/Terraform implementation for the
-AzureServiceBusDisasterRecoveryConfig deployment component, at 100%
+AzureServiceBusDisasterRecoveryConfig component, at 100%
 behavioral parity with the Pulumi module.
 
 ## Resources Created

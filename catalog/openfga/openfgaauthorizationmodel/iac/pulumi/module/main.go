@@ -8,7 +8,7 @@ import (
 // Resources is a pass-through placeholder for OpenFGA Authorization Model.
 //
 // IMPORTANT: OpenFGA does not have a Pulumi provider. This module exists only
-// to maintain consistency with the Planton deployment component structure.
+// to maintain consistency with the Planton component structure.
 // It does not create any resources.
 //
 // To deploy OpenFGA resources, use Terraform/Tofu as the provisioner:

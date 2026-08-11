@@ -12,7 +12,7 @@ message CloudResourceMetadata {
   string slug = 2;
   // id of the resource
   string id = 3;
-  // id of the organization to which the api-resource belongs to
+  // slug of the organization to which the api-resource belongs to
   string org = 4;
   // environment to which the resource belongs to
   string env = 5;

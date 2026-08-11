@@ -55,7 +55,7 @@ Here is what each field does:
 | Field | Purpose |
 |-------|---------|
 | `apiVersion` | Identifies the provider and API version (`aws.planton.dev/v1alpha1`) |
-| `kind` | The deployment component type (`AwsS3Bucket`) |
+| `kind` | The component type (`AwsS3Bucket`) |
 | `metadata.name` | A unique name for this resource instance |
 | `metadata.labels` | The `planton.dev/provisioner` label tells Planton which IaC engine to use |
 | `spec.awsRegion` | AWS region where the bucket will be created (required) |
@@ -71,7 +71,7 @@ Before deploying, preview what Planton will create:
 planton plan -f s3-bucket.yaml
 ```
 
-Planton reads the manifest, resolves the `AwsS3Bucket` deployment component module, and delegates to Pulumi to generate an execution plan. You will see output describing the resources that will be created — an S3 bucket with the configuration you specified.
+Planton reads the manifest, resolves the `AwsS3Bucket` component module, and delegates to Pulumi to generate an execution plan. You will see output describing the resources that will be created — an S3 bucket with the configuration you specified.
 
 Review the plan to confirm it matches your expectations before proceeding.
 
@@ -182,5 +182,5 @@ Planton reads the manifest, identifies the managed resources, and removes them f
 
 - [Deploy Your First Kubernetes Resource](./first-kubernetes-resource) — deploy PostgreSQL on Kubernetes with custom databases and users
 - [Writing Manifests](../guides/manifests) — practical guide to writing manifests for any component
-- [Deployment Components](../concepts/deployment-components) — understand the anatomy of the component you just deployed
+- [Components](../concepts/components) — understand the anatomy of the component you just deployed
 - [CLI Reference](../cli/cli-reference) — full reference for all flags available on `apply`, `plan`, and `destroy`

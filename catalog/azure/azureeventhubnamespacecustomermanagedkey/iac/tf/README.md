@@ -1,7 +1,7 @@
 # AzureEventHubNamespaceCustomerManagedKey - Terraform Module
 
 OpenTofu/Terraform implementation for the
-AzureEventHubNamespaceCustomerManagedKey deployment component, at 100%
+AzureEventHubNamespaceCustomerManagedKey component, at 100%
 behavioral parity with the Pulumi module.
 
 ## Resources Created

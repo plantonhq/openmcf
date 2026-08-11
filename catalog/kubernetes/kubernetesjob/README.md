@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesJob** is a Planton deployment component that runs work to completion on a Kubernetes cluster as a batch/v1 Job. Pods are created, execute until they succeed (or exhaust their retry budget), and are never restarted once the Job finishes. This is the kind for one-shot work: database migrations, backfills, report generation, parallel batch processing.
+**KubernetesJob** is a Planton component that runs work to completion on a Kubernetes cluster as a batch/v1 Job. Pods are created, execute until they succeed (or exhaust their retry budget), and are never restarted once the Job finishes. This is the kind for one-shot work: database migrations, backfills, report generation, parallel batch processing.
 
 The component covers the complete batch/v1 JobSpec surface that matters for declarative batch work — parallelism, completions, Indexed completion mode, global and per-index retry budgets, deadlines, TTL cleanup, suspension, pod failure policies, and success policies — on top of the same fully-modeled container and pod core shared by every Planton workload kind.
 

@@ -2,7 +2,7 @@
 # Pulumi Runner - Pre-Built Binaries Variant
 # =============================================================================
 # A base image for running Pulumi programs with pre-built binaries for all
-# platform deployment components. Includes Go toolchain for organization
+# platform components. Includes Go toolchain for organization
 # (custom) modules that require compilation.
 #
 # Usage:
@@ -31,7 +31,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # OCI labels
 LABEL org.opencontainers.image.source="https://github.com/plantonhq/planton"
-LABEL org.opencontainers.image.description="Pulumi Runner with pre-built binaries for all deployment components"
+LABEL org.opencontainers.image.description="Pulumi Runner with pre-built binaries for all components"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 EXPOSE 8080
@@ -59,10 +59,10 @@ RUN wget -q "https://get.pulumi.com/releases/sdk/pulumi-${PULUMI_VERSION}-linux-
     rm -rf pulumi "pulumi-${PULUMI_VERSION}-linux-x64.tar.gz"
 
 # =============================================================================
-# PRE-BUILT DEPLOYMENT COMPONENT BINARIES
+# PRE-BUILT COMPONENT BINARIES
 # =============================================================================
 # These binaries are compiled during the GitHub Actions workflow from the
-# source code of each deployment component. This eliminates:
+# source code of each component. This eliminates:
 #   - Go module download time at runtime
 #   - Go compilation time at runtime
 #   - Need for pre-warmed Go caches

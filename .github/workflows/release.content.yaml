@@ -1,29 +1,34 @@
 # =============================================================================
 # Content Distribution Release (Reusable Workflow)
 # =============================================================================
-# Packages Planton content into six zips and uploads them to Cloudflare R2
+# Packages Planton content into seven zips and uploads them to Cloudflare R2
 # (downloads.planton.dev). These zips decouple downstream consumers (e.g. the
 # Planton upgrade-planton script) from needing a local Planton checkout.
 #
 # Every artifact is built by its OWN job so the Actions UI shows exactly what
-# a release ships -- the job list IS the artifact inventory. The five
+# a release ships -- the job list IS the artifact inventory. The six
 # source-file zips share one matrix job (each entry displayed by artifact
 # name); the catalog bundle has a dedicated job because it is a compiled,
 # verified artifact with its own toolchain (Go + buf), not a file collection.
 #
 # Artifacts created:
-#   presets.zip         -- Preset YAML + MD, kind enum proto
-#   iac-source.zip      -- IaC module source (.go, .tf, .md, .yaml)
-#   catalog-pages.zip   -- Per-component kind-root catalog.md
-#   proto-source.zip    -- Raw proto source (spec, api, input, outputs)
-#   reference-pack.zip  -- Component reference pack (generated reference pages,
-#                          indexes, cross-reference graph, commons, GUIDE.md /
-#                          patterns wisdom layer)
-#   catalog-bundle.zip  -- The catalog as DATA: buf-built descriptor set
-#                          (schemas + validation rules + kind registry),
-#                          conversion specs, presets, checksummed manifest.
-#                          Verified against the compiled registry BEFORE
-#                          upload; a non-conformant bundle fails the release.
+#   presets.zip           -- Preset YAML + MD, kind enum proto
+#   iac-source.zip        -- IaC module source (.go, .tf, .md, .yaml)
+#   catalog-pages.zip     -- Per-component kind-root catalog.md
+#   proto-source.zip      -- Raw proto source (spec, api, input, outputs)
+#   reference-pack.zip    -- Component reference pack (generated reference pages,
+#                            indexes, cross-reference graph, commons, GUIDE.md /
+#                            patterns wisdom layer)
+#   conversion-corpus.zip -- The golden conversion corpus: authored
+#                            ConversionSpecs + testdata fixtures. Engine
+#                            certification data (every conversion engine,
+#                            in-repo or external, gates on this one corpus).
+#   catalog-bundle.zip    -- The catalog as DATA: buf-built descriptor set
+#                            (schemas + validation rules + kind registry),
+#                            conversion specs, presets, catalog entries,
+#                            checksummed manifest. Verified against the
+#                            compiled registry BEFORE upload; a non-conformant
+#                            bundle fails the release.
 #
 # Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/content/{name}.zip
 # Public URL:  https://downloads.planton.dev/releases/{tag}/content/{name}.zip
@@ -74,6 +79,7 @@ jobs:
           - catalog-pages
           - proto-source
           - reference-pack
+          - conversion-corpus
     steps:
       - name: Checkout
         uses: actions/checkout@v4

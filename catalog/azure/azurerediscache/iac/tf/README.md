@@ -1,6 +1,6 @@
 # AzureRedisCache - Terraform Module
 
-Terraform implementation for the AzureRedisCache deployment component.
+Terraform implementation for the AzureRedisCache component.
 
 ## Resources Created
 
