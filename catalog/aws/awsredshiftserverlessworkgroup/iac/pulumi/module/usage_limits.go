@@ -17,14 +17,25 @@ import (
 // the same normalization), so imports and out-of-band CLI operations can
 // address each limit identically on both engines. The resource is
 // untagged in AWS (unlike the provisioned cluster's usage limits).
+//
+// Usage-limit calls are conflict-IMMUNE (live-probed: create and delete
+// both succeed against a busy workgroup) but each call flips the
+// workgroup to MODIFYING for ~15-30s after returning -- and
+// CreateEndpointAccess is conflict-SENSITIVE with no provider retry.
+// Limits therefore apply LAST (extraDeps carries the endpoint accesses
+// and custom domain); on destroy the order reverses over immune
+// operations, so no edge can conflict. Full contract in
+// endpoint_access.go.
 func usageLimits(
 	ctx *pulumi.Context,
 	locals *Locals,
 	provider *aws.Provider,
 	createdWorkgroup *redshiftserverless.Workgroup,
+	extraDeps []pulumi.Resource,
 ) (pulumi.StringMap, error) {
 	spec := locals.AwsRedshiftServerlessWorkgroup.Spec
 
+	dependencies := append([]pulumi.Resource{createdWorkgroup}, extraDeps...)
 	limitIds := pulumi.StringMap{}
 	for _, limit := range spec.UsageLimits {
 		period := limit.Period
@@ -49,7 +60,7 @@ func usageLimits(
 		}
 
 		createdLimit, err := redshiftserverless.NewUsageLimit(ctx, "usage-limit-"+key, args,
-			pulumi.Provider(provider), pulumi.DependsOn([]pulumi.Resource{createdWorkgroup}))
+			pulumi.Provider(provider), pulumi.DependsOn(dependencies))
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to create usage limit %s", key)
 		}

@@ -89,7 +89,7 @@ These are the most important decisions when configuring a serverless workgroup. 
 
 **Spend caps** -- `usageLimits` bound consumption per day, week, or month: `serverless-compute` limits are RPU-hours, `cross-region-datasharing` limits are terabytes transferred. Breach actions escalate from `log` through `emit-metric` to `deactivate`, which stops queries until the period resets (data is untouched). Note the serverless vocabulary: `deactivate`, where provisioned clusters say `disable`.
 
-**Cross-VPC access and identity** -- `endpointAccesses` create VPC endpoints into consuming VPCs' subnets (or reuse the workgroup's own); each endpoint's private address is exported in `endpoint_access_addresses` keyed by name. `customDomain` fronts the endpoint with a branded DNS name and an ACM certificate -- one per workgroup, the certificate must live in the workgroup's region and cover the domain, and the CNAME pointing the domain at the workgroup endpoint stays yours to manage.
+**Cross-VPC access and identity** -- `endpointAccesses` create VPC endpoints into consuming VPCs' subnets (or reuse the workgroup's own); each endpoint's private address is exported in `endpoint_access_addresses` keyed by name. `customDomain` fronts the endpoint with a branded DNS name and an ACM certificate -- one per workgroup, the certificate must live in the workgroup's region and cover the domain, and the CNAME pointing the domain at the workgroup endpoint stays yours to manage. AWS serializes management operations on a workgroup, so these satellites apply in a fixed order (custom domain, then endpoint accesses, then usage limits) rather than concurrently -- declaring several simply extends the apply a little.
 
 ## Outputs and Dependencies
 

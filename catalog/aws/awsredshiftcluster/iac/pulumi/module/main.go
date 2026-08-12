@@ -77,6 +77,11 @@ func Resources(ctx *pulumi.Context, stackInput *awsredshiftclusterv1alpha1.AwsRe
 	ctx.Export(OpClusterNamespaceArn, createdCluster.ClusterNamespaceArn)
 	ctx.Export(OpEndpoint, createdCluster.Endpoint)
 	ctx.Export(OpDnsName, createdCluster.DnsName)
+
+	// Empty when the spec omitted database_name: AWS creates its
+	// documented default initial database ("dev") but DescribeClusters
+	// echoes no name back, so the attribute stays unset (live-verified
+	// on both engines).
 	ctx.Export(OpDatabaseName, createdCluster.DatabaseName)
 	ctx.Export(OpPort, createdCluster.Port)
 

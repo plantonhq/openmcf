@@ -35,12 +35,30 @@ func Resources(ctx *pulumi.Context, stackInput *awsredshiftserverlessworkgroupv1
 		return errors.Wrap(err, "failed to associate custom domain")
 	}
 
-	createdEndpointAddresses, err := endpointAccesses(ctx, locals, provider, createdWorkgroup)
+	// Satellite groups apply in a fixed serial order (custom domain ->
+	// endpoint accesses -> usage limits): the endpoint-access create
+	// conflicts unless the workgroup is idle, a usage-limit call keeps
+	// the workgroup busy for ~15-30s after returning, and the provider
+	// retries the ConflictException only on the workgroup's own
+	// delete/update -- so the conflict-sensitive create runs first
+	// (straight after the provider's own wait-for-available) and the
+	// conflict-immune limit calls run last. On destroy the endpoints
+	// ride the workgroup's cascading, conflict-retried delete via
+	// DeletedWith (contract and parity exception in endpoint_access.go).
+	// Terraform mirrors the order via depends_on and protects its
+	// destroy crossing with a time_sleep settle.
+	satelliteDeps := []pulumi.Resource{}
+	if createdCustomDomain != nil {
+		satelliteDeps = append(satelliteDeps, createdCustomDomain)
+	}
+
+	createdEndpointAddresses, createdEndpoints, err := endpointAccesses(ctx, locals, provider, createdWorkgroup, satelliteDeps)
 	if err != nil {
 		return errors.Wrap(err, "failed to create endpoint accesses")
 	}
 
-	createdUsageLimitIds, err := usageLimits(ctx, locals, provider, createdWorkgroup)
+	createdUsageLimitIds, err := usageLimits(ctx, locals, provider, createdWorkgroup,
+		append(satelliteDeps, createdEndpoints...))
 	if err != nil {
 		return errors.Wrap(err, "failed to create usage limits")
 	}

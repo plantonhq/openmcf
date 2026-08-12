@@ -13,6 +13,20 @@ resource "aws_redshiftserverless_usage_limit" "this" {
     "${l.usage_type}/${l.period != "" ? l.period : "monthly"}" => l
   }
 
+  # Usage-limit calls are conflict-IMMUNE (live-probed: create and
+  # delete both succeed against a busy workgroup) but each call flips
+  # the workgroup to MODIFYING for ~15-30s after returning -- while the
+  # endpoint-access create AND delete are conflict-SENSITIVE with no
+  # provider retry. Limits therefore apply LAST (endpoint accesses
+  # first, on the idle workgroup), and the destroy path crosses back
+  # over the settle sleep so the endpoint delete never lands in a
+  # limit-delete's busy window. Full contract in satellite_settle.tf.
+  depends_on = [
+    time_sleep.endpoint_access_settle,
+    aws_redshiftserverless_endpoint_access.this,
+    aws_redshiftserverless_custom_domain_association.this,
+  ]
+
   resource_arn = aws_redshiftserverless_workgroup.this.arn
 
   usage_type = each.value.usage_type

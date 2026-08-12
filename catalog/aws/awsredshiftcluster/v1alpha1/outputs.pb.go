@@ -39,7 +39,12 @@ type AwsRedshiftClusterStackOutputs struct {
 	// The DNS hostname of the cluster's leader node (without port), for
 	// building connection strings and DNS alias records.
 	DnsName string `protobuf:"bytes,5,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
-	// The name of the first database in the cluster.
+	// The name of the first database in the cluster. Populated only when
+	// the spec set database_name: with it omitted, AWS creates its
+	// documented default initial database ("dev") but DescribeClusters
+	// echoes no name back, so both engines surface an empty string here
+	// (live-verified) -- clients relying on the default should connect to
+	// "dev".
 	DatabaseName string `protobuf:"bytes,6,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
 	// The port the cluster accepts connections on.
 	Port int32 `protobuf:"varint,7,opt,name=port,proto3" json:"port,omitempty"`

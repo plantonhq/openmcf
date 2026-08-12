@@ -23,8 +23,11 @@ output "dns_name" {
   value       = aws_redshift_cluster.this.dns_name
 }
 
+# Empty when the spec omitted database_name: AWS creates its documented
+# default initial database ("dev") but DescribeClusters echoes no name
+# back, so the attribute stays unset (live-verified on both engines).
 output "database_name" {
-  description = "The name of the first database in the cluster."
+  description = "The name of the first database in the cluster (empty when the spec omitted it -- the cluster's initial database is then AWS's default \"dev\")."
   value       = aws_redshift_cluster.this.database_name
 }
 

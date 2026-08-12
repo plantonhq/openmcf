@@ -772,6 +772,36 @@ throwaway resources (the default VPC makes MI-class probes fixture-free)
 before touching the module — ten minutes of probing settled both the
 defect and the correct design.
 
+**Parent-serializing control planes: conflict-sensitivity is
+PER-OPERATION — probe it, and treat a single probe success as
+non-immunity.** Redshift Serverless holds a per-workgroup operation
+lock, and the visible failure is 400 `ConflictException` ("An operation
+is running on the serverless workgroup") on a satellite operation
+seconds after the workgroup went available. Three traps inside the
+class, all live-caught in one session: (1) ordering satellite groups
+serially is NOT enough, because an operation holds the lock
+ASYNCHRONOUSLY after its call returns — a usage-limit create/delete
+returns in <1s but flips the workgroup to MODIFYING for ~15-30s
+afterward, so the "serialized" next call still conflicts; (2) the
+sensitivity is per-operation — CLI probes on throwaway resources
+(default-VPC subnets, ~$0, ten minutes) showed usage-limit create/delete
+are conflict-immune while endpoint-access create AND delete are
+conflict-sensitive; (3) a probe that PASSES once does not prove
+immunity — the endpoint DELETE passed a 2-second-gap probe and then
+failed the identical crossing in the real lane (the async window's
+onset varies); only a conflict OBSERVED proves sensitivity, and repeated
+lane greens are what prove a crossing safe. The fix shape that survived:
+conflict-sensitive creates first (on the provider-waiter-fresh idle
+parent), immune calls last, and the destroy crossing protected
+per-engine — Pulumi rides the parent's cascading, conflict-retried
+delete via `DeletedWith` (AWS cascades live endpoint accesses;
+live-probed), Terraform crosses behind a `time_sleep` destroy settle.
+The provider (v6.58.0) retries the conflict only on the workgroup's own
+delete/update — never on satellites (upstream gap, recorded). A
+provisioned Redshift cluster does NOT serialize this way (its
+satellites apply concurrently, live-proven) — never generalize the
+class across a service family without evidence.
+
 **Values that advance monotonically across same-name recreates cannot be
 pinned literally in scenarios.** Lambda never reuses version numbers for a
 function NAME — a recreated function's first publish CONTINUES the deleted

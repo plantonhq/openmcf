@@ -14,20 +14,25 @@ spec:
   # provisioning dominates the runtime at roughly five to ten minutes
   # each way per engine.
   #
-  # pending_proof (depth closure, T02 s24): the governance satellites
-  # folded in -- usage limits, scheduled actions (incl. the
-  # scheduler.redshift.amazonaws.com trust contract via the
-  # consumer-scoped AwsIamRole prerequisite), managed VPC endpoint
-  # accesses (per-endpoint address outputs), endpoint authorizations,
-  # and the snapshot-schedule association -- plus four provider-mirrored
-  # format CELs and the secret_kms_requires_managed heal. The scenario
-  # carries the free arms (usage limit, DISABLED scheduled action,
-  # self-VPC endpoint access); endpoint AUTHORIZATION (needs a second
-  # AWS account) and the schedule ASSOCIATION (needs the future
-  # AwsRedshiftSnapshotSchedule kind) are offline-proven arms with named
-  # unblocks. The prior green predates this surface -- demoted per the
-  # badge-honesty rule.
+  # PROVEN 2026-08-12 (live, both engines, zero defects): all eight
+  # phases green per engine (~9-10 min/lane; the ra3.large reached
+  # available in ~2 min). The depth-closure arms API-evidenced per
+  # engine window with distinct per-instance discriminators --
+  # DescribeScheduledActions echoed State=DISABLED (the
+  # scheduler.redshift.amazonaws.com trust accepted at create via the
+  # consumer-scoped AwsIamRole prerequisite, first try on both
+  # engines), DescribeEndpointAccess echoed Active with distinct
+  # AWS-generated addresses surfacing in each engine's
+  # endpoint_access_addresses output keyed "e2e-self-vpc", and the
+  # usage-limit IDs (distinct per engine) surfaced in usage_limit_ids
+  # keyed exactly "spectrum/data-scanned/monthly". One truth landed in
+  # passing: with database_name omitted, DescribeClusters echoes no
+  # name back, so the database_name output is empty on both engines
+  # (AWS's actual default database is "dev" -- taught on the outputs
+  # contract). Offline-proven arms with named unblocks stand: endpoint
+  # AUTHORIZATION (needs a second AWS account) and the schedule
+  # ASSOCIATION (needs the future AwsRedshiftSnapshotSchedule kind).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

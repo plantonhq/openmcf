@@ -24,7 +24,12 @@ message AwsRedshiftClusterStackOutputs {
   // building connection strings and DNS alias records.
   string dns_name = 5;
 
-  // The name of the first database in the cluster.
+  // The name of the first database in the cluster. Populated only when
+  // the spec set database_name: with it omitted, AWS creates its
+  // documented default initial database ("dev") but DescribeClusters
+  // echoes no name back, so both engines surface an empty string here
+  // (live-verified) -- clients relying on the default should connect to
+  // "dev".
   string database_name = 6;
 
   // The port the cluster accepts connections on.
