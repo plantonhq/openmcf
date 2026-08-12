@@ -21,9 +21,17 @@ metadata:
 spec:
   region: us-west-2
   repositoryName: orders-api
-  imageImmutable: true
+  imageTagMutability: IMMUTABLE
   scanOnPush: true
   forceDelete: true
-  lifecyclePolicy:
-    expireUntaggedAfterDays: 14
-    maxImageCount: 100
+  lifecycleRules:
+    - rulePriority: 1
+      description: Expire untagged images after 14 days
+      tagStatus: untagged
+      countType: sinceImagePushed
+      countNumber: 14
+    - rulePriority: 2
+      description: Keep the newest 100 images
+      tagStatus: any
+      countType: imageCountMoreThan
+      countNumber: 100
