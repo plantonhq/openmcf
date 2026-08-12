@@ -12,10 +12,10 @@ spec:
   # protection policies, and per-protocol delivery logging -- all proven by
   # CEL spec tests and the offline gate.
   tier: 1
-  # pending_proof: the Pulumi module's FIFO content_based_deduplication send
-  # converged to state-pinned (matching Terraform; provider default false,
-  # same cloud state) -- a module change, so the prior green is demoted per
-  # the badge-honesty rule even though behavior is unchanged.
-  status: pending_proof
-  validated_provisioners: []
+  # Proven live 2026-08-12, both engines, plus the blind import round-trip
+  # on the Terraform lane (topic_arn re-imported, plan zero-diff) -- the
+  # re-proof after the Pulumi FIFO content_based_deduplication send
+  # converged to state-pinned.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

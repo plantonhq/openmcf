@@ -719,6 +719,18 @@ a fresh `aws sso login --sso-session <name>` (a browser approval); re-run the
 preflight afterward and start the lanes while the session is young rather
 than letting a stale login sit ahead of a multi-hour suite.
 
+**A mid-run token death is rescuable IN PLACE — do not kill a retrying
+lane.** When the refresh token dies while a lane is running (live hit
+2026-08-12: the fixture chain's Pulumi provider looped on "Failed to refresh
+cached SSO credentials" between dependency deploys), a fresh `aws sso login`
+writes a new token into the shared SSO cache and the running process's SDK
+picks it up on its next refresh — the lane recovers and proceeds without a
+restart. Trigger the login immediately and let the lane's own retries absorb
+the gap; kill and re-run only if the retries exhaust first, and expect the
+failed run's teardown to ALSO have failed on credentials — sweep its fixture
+chain before relaunching (deployed dependencies stay cloud-side when
+DEPENDENCIES-DOWN never got usable credentials).
+
 Timing observed live (us-west-2): IAM/EIP/Cognito lanes run 30-90s per
 engine; a zonal NAT gateway scenario ~7 min per engine end-to-end (create
 ~2 min, delete ~1 min, fixture chain ~1.5 min up + ~2 min down); a regional
@@ -825,7 +837,27 @@ a live sibling lane, not an orphan) before deleting ANYTHING — deleting a
 concurrent lane's live fixture wrecks that lane's destroy. The recovery
 is to wait for the holder's teardown window (poll `get-role` until
 NoSuchEntity) and launch immediately; the collision recurs at most until
-the sibling session's lanes finish.
+the sibling session's lanes finish. Kinds that expose no creation
+timestamp (an SNS topic, say) cannot use the CreateDate test — there the
+diagnosis is process evidence: with no concurrent session holding lanes,
+an already-existing fixed-name fixture is an orphan of an earlier
+interrupted teardown; delete it by CLI and re-run.
+
+**Before diagnosing a cloud-side anomaly, rule out a SIBLING EXECUTION of
+your own lane.** A lane launch that your tooling REPORTS as failed can
+still have spawned (live hit 2026-08-12: a launcher errored on argument
+validation after forking — the "failed" lane deployed its fixture chain
+minutes later), and an interrupted supervising shell can kill a lane
+mid-DEPENDENCIES-DOWN, stranding the whole fixture chain. The signatures:
+already-exists 409s on fixed-name fixtures nothing should hold, evidence
+watchers capturing MORE resource lifecycles than your lanes explain, a
+lane log growing after its process "finished", or two `ok`/`FAIL` package
+trailers in one log file. The checks are cheap and decisive: `ps` for
+`go test`/`aws.test`, `lsof` on the lane log, and RUN-header/trailer
+counts in the log. This is the session-level "an interrupted session is
+alive until its window is CLOSED" rule at process granularity — and a
+killed-mid-teardown lane means a manual dependency-ordered sweep
+(attachment before gateway, subnets before VPC) before any relaunch.
 
 **A stale AWS CLI silently DROPS new API surface from its output — verify
 the CLI's model before diagnosing a missing field.** The CLI parses
@@ -865,6 +897,16 @@ calls the moment it exists, and let it idle through both engines' windows
 so each lane's instance is sampled independently. The poller doubles as
 per-engine attribution: two capture blocks with different resource IDs
 prove BOTH engines' instances carried the arm.
+
+**Destroy-ORDER claims need the engine's own log, never a poller.** A
+polling watcher cannot order two deletions that land inside one poll
+interval (live hit 2026-08-12: an event archive and its bus both went
+absent within one 5s window, leaving the archive-before-bus ordering
+unprovable from the watcher alone). Terraform's destroy log states the
+order explicitly per resource ("Destruction complete" lines); Pulumi
+guarantees child-before-parent structurally when the module parents the
+dependent resource (`pulumi.Parent`). Cite those; keep the watcher for
+per-engine attribute evidence, not sequencing.
 
 **A change-deduping watcher must RE-ARM on absence, or the second
 engine's instance is silently skipped.** Deduping captures by snapshot

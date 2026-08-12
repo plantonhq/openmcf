@@ -13,11 +13,11 @@ spec:
   # scenario: Lambda, HTTP/S, email, Firehose, and cross-account topics --
   # all proven by CEL spec tests and the offline gate.
   tier: 1
-  # pending_proof: the Pulumi module's raw_message_delivery and
-  # endpoint_auto_confirms sends converged to state-pinned (matching
-  # Terraform; provider defaults false, same cloud state) -- a module
-  # change, so the prior green is demoted per the badge-honesty rule even
-  # though behavior is unchanged.
-  status: pending_proof
-  validated_provisioners: []
+  # Proven live 2026-08-12, both engines -- the re-proof after the Pulumi
+  # raw_message_delivery and endpoint_auto_confirms sends converged to
+  # state-pinned. (The first attempt hit an orphaned fixed-name topic
+  # prerequisite from an earlier interrupted teardown; cleared by CLI and
+  # re-run green -- see the e2e README's fixed-name-fixture guidance.)
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

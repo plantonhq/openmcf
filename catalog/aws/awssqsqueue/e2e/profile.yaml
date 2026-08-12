@@ -20,10 +20,14 @@ spec:
   # offline gate; SQS-as-DLQ wiring is exercised live by the
   # AwsEventBridgeBus lane.
   tier: 1
-  # pending_proof: the SSE flag converted to presence-typed (explicit-false
-  # now expressible and SENT by both engines; the exclusivity CEL moved to
-  # presence) and the Pulumi FIFO dedup send converged to state-pinned --
-  # the prior green predates this surface.
-  status: pending_proof
-  validated_provisioners: []
+  # Proven live 2026-08-12, both engines, both scenarios, plus the blind
+  # import round-trip on the Terraform lane (queue_url re-imported, plan
+  # zero-diff, both scenarios). The SSE tri-state was API-evidenced per
+  # engine via GetQueueAttributes: the opt-out scenario echoed
+  # SqsManagedSseEnabled=false (the explicit-false send path), the FIFO
+  # scenario echoed true (explicit-true), and the shared prerequisite
+  # fixture echoed true on the omit path in every consumer lane window
+  # (AWS's default-on encryption stands when the field is unset).
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

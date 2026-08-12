@@ -15,9 +15,12 @@ spec:
   # proven by CEL spec tests and the offline gate (the canonical manifest
   # renders both archive shapes incl. the KMS arm).
   tier: 1
-  # pending_proof: the kind gained the archives fold (aws_cloudwatch_event_archive
-  # rendered per spec.archives entry in both engines, new archives output) --
-  # the prior green predates this surface.
-  status: pending_proof
-  validated_provisioners: []
+  # Proven live 2026-08-12, both engines -- the archives fold's first live
+  # proof. DescribeArchive echoed the arm per engine (state ENABLED,
+  # retention 1 day, the pattern-scoped source, EventSourceArn = the bus's
+  # own ARN), and the destroy removed the archive BEFORE the bus
+  # (explicit in the Terraform destroy log; structural on Pulumi via the
+  # archive's pulumi.Parent(bus)).
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15
