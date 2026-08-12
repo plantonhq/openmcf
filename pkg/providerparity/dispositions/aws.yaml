@@ -2392,7 +2392,7 @@ resources:
     reason: "broadcast media services vertical; deferred pending demand"
   - resource: aws_memorydb_multi_region_cluster
     disposition: model-planned
-    reason: "multi-region clusters fold into the existing AwsMemorydbCluster kind as its spec deepens"
+    reason: "cross-region active-active parent with its own lifecycle (suffix-named by AWS, own node type/engine/shards/TLS/parameter group, per-call update_strategy) -- a future AwsMemorydbMultiRegionCluster kind; AwsMemorydbCluster already models the regional join path (multi_region_cluster_name), mirroring how AwsRedisElasticache joins its global replication group"
   - resource: aws_memorydb_snapshot
     disposition: deferred
     reason: "database snapshot operations are imperative backup actions, a poor declarative fit; deferred"

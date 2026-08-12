@@ -184,9 +184,11 @@ supported:
 
 Time to live in seconds — how long resolvers cache the record. Required
 for standard records; must be omitted for alias records (the target's
-TTL applies).
-Common values: 60 (fast cutover during incidents), 300 (general
-default), 86400 (static records like MX/NS).
+TTL applies). AWS accepts 0 to 2147483647; an explicit 0 means "never
+cache" (every lookup hits Route 53 — valid, but billed per query).
+Common values: 60 (fast cutover during incidents, and the recommended
+ceiling for health-checked records), 300 (general default), 86400
+(static records like MX/NS).
 
 - rule: ttl must be between 0 and 2147483647 seconds (AWS's contract; 0 = never cache)
 
@@ -200,6 +202,7 @@ The record data for standard records. Format depends on type:
   - CNAME: one target hostname (e.g. ["target.example.com"])
   - MX: priority + mail server (e.g. ["10 mail1.example.com"])
   - TXT: text values (e.g. ["v=spf1 include:_spf.google.com ~all"])
+Each value is at most 4,000 characters (AWS's per-value limit).
 Mutually exclusive with alias_target — a record is standard or alias,
 never both.
 
@@ -288,6 +291,11 @@ The AWS region this record's resource lives in — the region whose
 latency measurements represent this group member.
 Example: "us-east-1", "eu-west-1", "ap-southeast-1"
 
+Format-checked rather than enumerated on purpose: the provider's region
+enum grows with every AWS region launch, and freezing today's list here
+would reject tomorrow's regions until the next pin sweep. AWS itself
+rejects unknown regions at change time.
+
 - rule: {"required":true,"string":{"pattern":"^[a-z]{2,4}(-[a-z]+)+-[0-9]+$"}}
 
 ### spec.routingPolicy.failover
@@ -320,8 +328,9 @@ US state). Compliance boundaries, localized content.
 
 `string`
 
-Two-letter continent code: "AF", "AN", "AS", "EU", "OC", "NA", "SA".
-Use continent OR country, not both.
+Two-letter continent code: "AF", "AN", "AS", "EU", "OC", "NA", "SA"
+(a frozen set — continents don't churn). Use continent OR country, not
+both.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["AF","AN","AS","EU","OC","NA","SA"]}}
 
@@ -339,7 +348,7 @@ Two-letter ISO 3166-1 alpha-2 country code (e.g. "US", "GB", "DE"), or
 `string`
 
 Subdivision code — US states only (e.g. "CA", "NY"); requires country
-"US".
+"US". At most 3 characters (AWS's limit).
 
 - rule: {"string":{"maxLen":"3"}}
 
@@ -358,6 +367,8 @@ area. Traffic shifting between nearby regions.
 `string`
 
 The AWS region hosting the resource (for resources in AWS regions).
+Format-checked rather than enumerated (the region list grows; AWS
+rejects unknown regions at change time).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[a-z]{2,4}(-[a-z]+)+-[0-9]+$"}}
 

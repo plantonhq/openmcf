@@ -352,9 +352,10 @@ Require at least one special character.
 
 `int32`
 
-Number of previous passwords a new password must differ from. Range: 0-24
-(0 disables history checking). Password history requires the pool to be on
-the ESSENTIALS tier or higher.
+Number of previous passwords a new password must differ from. Range: 0-24.
+0 is AWS's default posture (history checking off), so leaving this unset
+and setting 0 are the same policy. Password history requires the pool to
+be on the ESSENTIALS tier or higher.
 
 - rule: {"int32":{"lte":24,"gte":0}}
 
@@ -362,8 +363,10 @@ the ESSENTIALS tier or higher.
 
 `int32`
 
-Number of days temporary passwords (admin-created) are valid.
-Range: 0-365 (0 means no expiration). AWS default: 7.
+Number of days temporary passwords (admin-created) are valid. Range:
+0-365. AWS default: 7 -- and AWS treats a submitted 0 as null, applying
+that default, so 0 is NOT "no expiration"; there is no way to make
+temporary passwords permanent. Leaving this unset keeps the 7-day default.
 
 - rule: {"int32":{"lte":365,"gte":0}}
 
@@ -572,7 +575,8 @@ Email sending mode. Valid values:
 `string | valueFrom`
 
 SES verified identity ARN for sending emails. Required when
-`email_sending_account` is "DEVELOPER". Example:
+`email_sending_account` is "DEVELOPER". Accepts a direct identity ARN or
+a reference to an AwsSesEmailIdentity resource. Example:
 "arn:aws:ses:us-east-1:123456789012:identity/noreply@example.com"
 
 - references: AwsSesEmailIdentity (`status.outputs.identity_arn`)
@@ -596,7 +600,9 @@ instead of the "from" address.
 
 `string | valueFrom`
 
-SES configuration set name for tracking email delivery metrics.
+SES configuration set for tracking email delivery metrics (opens, bounces,
+complaints). Accepts a direct configuration-set name or a reference to an
+AwsSesConfigurationSet resource.
 
 - references: AwsSesConfigurationSet (`status.outputs.configuration_set_name`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSesConfigurationSet, name: <that resource's name>, fieldPath: status.outputs.configuration_set_name}} -- a bare string does not parse
@@ -1048,11 +1054,23 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `AwsCognitoUserPoolRiskConfiguration`
 
+Pool-wide risk configuration for threat protection: automated responses
+to account-takeover and compromised-credentials risk, notification
+templates, and IP allow/block exceptions. Applies to every app client
+that does not carry its own client-scoped risk configuration (a client
+sets that on the AwsCognitoUserPoolClient spec). Requires threat
+protection to be active (`user_pool_add_ons.advanced_security_mode` of
+"AUDIT" or "ENFORCED"); automated responses act only in ENFORCED mode.
+
 - rule: set at least one of account_takeover, compromised_credentials, or risk_exception
 
 ### spec.riskConfiguration.accountTakeover
 
 `AwsCognitoUserPoolAccountTakeoverConfig`
+
+Automated responses to sign-in attempts Cognito assesses as possible
+account takeover, by risk level, plus the notification templates for
+"notify the user" actions.
 
 - rule: set at least one of low_action, medium_action, or high_action
 - rule: notify_configuration requires at least one action with notify enabled
@@ -1061,11 +1079,21 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `AwsCognitoUserPoolAccountTakeoverAction`
 
+Response to a LOW-risk assessment.
+
 - rule: event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'
 
 ### spec.riskConfiguration.accountTakeover.lowAction.eventAction
 
 `string` · required
+
+The response Cognito takes (acts only in ENFORCED mode; AUDIT gathers
+metrics without acting):
+- "BLOCK": reject the sign-in attempt.
+- "MFA_IF_CONFIGURED": require MFA when the user has a factor set up,
+  otherwise allow the attempt.
+- "MFA_REQUIRED": require MFA; users without a factor are blocked.
+- "NO_ACTION": allow the attempt (pair with notify to warn the user).
 
 - rule: {"required":true}
 
@@ -1073,9 +1101,14 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `bool`
 
+Whether Cognito emails the user about the event using the templates in
+notify_configuration.
+
 ### spec.riskConfiguration.accountTakeover.mediumAction
 
 `AwsCognitoUserPoolAccountTakeoverAction`
+
+Response to a MEDIUM-risk assessment.
 
 - rule: event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'
 
@@ -1083,15 +1116,28 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `string` · required
 
+The response Cognito takes (acts only in ENFORCED mode; AUDIT gathers
+metrics without acting):
+- "BLOCK": reject the sign-in attempt.
+- "MFA_IF_CONFIGURED": require MFA when the user has a factor set up,
+  otherwise allow the attempt.
+- "MFA_REQUIRED": require MFA; users without a factor are blocked.
+- "NO_ACTION": allow the attempt (pair with notify to warn the user).
+
 - rule: {"required":true}
 
 ### spec.riskConfiguration.accountTakeover.mediumAction.notify
 
 `bool`
 
+Whether Cognito emails the user about the event using the templates in
+notify_configuration.
+
 ### spec.riskConfiguration.accountTakeover.highAction
 
 `AwsCognitoUserPoolAccountTakeoverAction`
+
+Response to a HIGH-risk assessment.
 
 - rule: event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'
 
@@ -1099,19 +1145,37 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `string` · required
 
+The response Cognito takes (acts only in ENFORCED mode; AUDIT gathers
+metrics without acting):
+- "BLOCK": reject the sign-in attempt.
+- "MFA_IF_CONFIGURED": require MFA when the user has a factor set up,
+  otherwise allow the attempt.
+- "MFA_REQUIRED": require MFA; users without a factor are blocked.
+- "NO_ACTION": allow the attempt (pair with notify to warn the user).
+
 - rule: {"required":true}
 
 ### spec.riskConfiguration.accountTakeover.highAction.notify
 
 `bool`
 
+Whether Cognito emails the user about the event using the templates in
+notify_configuration.
+
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration
 
 `AwsCognitoUserPoolRiskNotifyConfig`
 
+SES sending configuration and message templates for the notification
+emails sent when an action has notify enabled. Required by AWS when any
+action notifies the user.
+
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.sourceArn
 
 `string | valueFrom` · required
+
+The SES identity Cognito sends notification emails from. Accepts a
+direct identity ARN or a reference to an AwsSesEmailIdentity resource.
 
 - references: AwsSesEmailIdentity (`status.outputs.identity_arn`)
 - rule: {"required":true}
@@ -1121,17 +1185,26 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `string`
 
+"From" address shown on notification emails. When omitted, AWS derives
+it from the source identity.
+
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.replyTo
 
 `string`
+
+Reply-to address on notification emails.
 
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail
 
 `AwsCognitoUserPoolRiskNotifyEmail`
 
+Template for the "we blocked a sign-in attempt" notification.
+
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.subject
 
 `string` · required
+
+Email subject. 1-140 characters.
 
 - rule: {"string":{"minLen":"1","maxLen":"140"}}
 
@@ -1139,11 +1212,15 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `string` · required
 
+HTML email body. 6-20000 characters.
+
 - rule: {"string":{"minLen":"6","maxLen":"20000"}}
 
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.textBody
 
 `string` · required
+
+Plain-text email body. 6-20000 characters.
 
 - rule: {"string":{"minLen":"6","maxLen":"20000"}}
 
@@ -1151,9 +1228,13 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `AwsCognitoUserPoolRiskNotifyEmail`
 
+Template for the "we required MFA on a sign-in attempt" notification.
+
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.subject
 
 `string` · required
+
+Email subject. 1-140 characters.
 
 - rule: {"string":{"minLen":"1","maxLen":"140"}}
 
@@ -1161,11 +1242,15 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `string` · required
 
+HTML email body. 6-20000 characters.
+
 - rule: {"string":{"minLen":"6","maxLen":"20000"}}
 
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.textBody
 
 `string` · required
+
+Plain-text email body. 6-20000 characters.
 
 - rule: {"string":{"minLen":"6","maxLen":"20000"}}
 
@@ -1173,9 +1258,14 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `AwsCognitoUserPoolRiskNotifyEmail`
 
+Template for the "we observed a risky sign-in attempt" (no action taken)
+notification.
+
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.subject
 
 `string` · required
+
+Email subject. 1-140 characters.
 
 - rule: {"string":{"minLen":"1","maxLen":"140"}}
 
@@ -1183,17 +1273,24 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `string` · required
 
+HTML email body. 6-20000 characters.
+
 - rule: {"string":{"minLen":"6","maxLen":"20000"}}
 
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.textBody
 
 `string` · required
 
+Plain-text email body. 6-20000 characters.
+
 - rule: {"string":{"minLen":"6","maxLen":"20000"}}
 
 ### spec.riskConfiguration.compromisedCredentials
 
 `AwsCognitoUserPoolCompromisedCredentialsConfig`
+
+Automated response when Cognito detects the presented credentials in a
+known-compromised set.
 
 - rule: event_action must be 'BLOCK' or 'NO_ACTION'
 - rule: event_filter must contain only 'SIGN_IN', 'PASSWORD_CHANGE', and/or 'SIGN_UP'
@@ -1202,15 +1299,25 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `string` · required
 
+The response Cognito takes (acts only in ENFORCED mode):
+- "BLOCK": reject the attempt.
+- "NO_ACTION": allow the attempt (still logged/audited).
+
 - rule: {"required":true}
 
 ### spec.riskConfiguration.compromisedCredentials.eventFilter
 
 `[]string`
 
+Which authentication events are checked against the compromised set.
+When empty, AWS checks all supported events. Valid values: "SIGN_IN",
+"PASSWORD_CHANGE", "SIGN_UP".
+
 ### spec.riskConfiguration.riskException
 
 `AwsCognitoUserPoolRiskExceptionConfig`
+
+IP-range exceptions that bypass or force the risk decision.
 
 - rule: set at least one of blocked_ip_ranges or skipped_ip_ranges
 - rule: blocked_ip_ranges and skipped_ip_ranges entries must be CIDR notation (e.g. '192.0.2.0/24' or '2001:db8::/32')
@@ -1219,11 +1326,17 @@ challenges), which standard mode does not cover. Valid values: "AUDIT",
 
 `[]string`
 
+Always-BLOCK list: authentication requests from these CIDR ranges are
+rejected regardless of risk assessment. Up to 200 entries.
+
 - rule: {"repeated":{"maxItems":"200","items":{"string":{"minLen":"1"}}}}
 
 ### spec.riskConfiguration.riskException.skippedIpRanges
 
 `[]string`
+
+Always-ALLOW list: risk detection is skipped for these CIDR ranges.
+Up to 200 entries.
 
 - rule: {"repeated":{"maxItems":"200","items":{"string":{"minLen":"1"}}}}
 
@@ -1347,9 +1460,20 @@ When omitted, AWS defaults new domains to managed login (2).
 
 `[]AwsCognitoUserPoolUserGroup`
 
+User groups in this pool. Groups organize users for authorization: a
+user's group memberships appear in the "cognito:groups" claim of their
+tokens, and a group's IAM role flows into credentials vended through
+identity-pool federation. Groups are pool-scoped configuration with no
+independent AWS lifecycle, so they live here rather than as a separate
+component. Users are ASSIGNED to groups at runtime (admin API) -- group
+membership is data-plane content, not infrastructure.
+
 ### spec.userGroups[].name
 
 `string` · required
+
+Group name. Unique within the pool. 1-128 characters. Renaming a group
+replaces it (AWS has no rename API) -- memberships do not survive.
 
 - rule: {"string":{"minLen":"1","maxLen":"128"}}
 
@@ -1357,17 +1481,31 @@ When omitted, AWS defaults new domains to managed login (2).
 
 `string`
 
+Human-readable purpose of the group. Up to 2048 characters.
+
 - rule: {"string":{"maxLen":"2048"}}
 
 ### spec.userGroups[].precedence
 
 `int32`
 
+Priority when a user belongs to multiple groups: the LOWEST value wins
+for the "cognito:preferred_role" claim. Note an AWS/provider asymmetry:
+AWS accepts precedence 0 (the strongest priority) and defaults to null,
+but the Terraform provider's zero-value gating cannot send an explicit 0
+-- through either engine -- so 0 here means "no precedence" (AWS null).
+Use 1 as the strongest expressible priority.
+
 - rule: {"int32":{"gte":0}}
 
 ### spec.userGroups[].roleArn
 
 `string | valueFrom`
+
+The IAM role whose ARN lands in members' "cognito:roles" and
+"cognito:preferred_role" claims (and is assumable through identity-pool
+federation). Accepts a direct role ARN or a reference to an AwsIamRole
+resource.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse

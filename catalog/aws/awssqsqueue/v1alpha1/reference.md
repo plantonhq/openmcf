@@ -17,8 +17,10 @@ Notes:
 - Set `fifo_queue` to true to create a FIFO queue. This cannot be changed after creation.
 - FIFO queue names must end with `.fifo`; the IaC modules append this suffix automatically
   when `fifo_queue` is true and the metadata name does not already include it.
-- Encryption at rest is supported via SQS-managed SSE or a customer-managed KMS key
-  (mutually exclusive).
+- Encryption at rest: AWS enables SQS-managed SSE (SSE-SQS) on new queues by
+  default. Set `sqs_managed_sse_enabled` explicitly to pin it on or off, or
+  supply a customer-managed KMS key via `kms_key_id` (mutually exclusive with
+  setting `sqs_managed_sse_enabled` at all).
 - Dead letter queue configuration allows routing failed messages to a separate queue
   for investigation and reprocessing.
 - Credentials, region, and deployment workflow live outside this spec in stack inputs.
@@ -214,9 +216,17 @@ Only relevant when `kms_key_id` is set.
 
 `bool` · optional (explicit presence)
 
-Enable SQS-managed server-side encryption (SSE-SQS). SQS manages the
-encryption key automatically with no additional cost. Mutually exclusive
-with `kms_key_id`.
+SQS-managed server-side encryption (SSE-SQS). SQS manages the encryption
+key automatically at no additional cost. AWS enables SSE-SQS on newly
+created queues by default, so this field is PRESENCE-typed:
+- unset  — keep AWS's default (new queues come up encrypted with SSE-SQS)
+- true   — pin SSE-SQS on explicitly
+- false  — explicitly disable server-side encryption (an unencrypted queue)
+
+Setting this field at all (either value) conflicts with `kms_key_id`:
+the provider rejects the combination on config PRESENCE, not value, so
+an explicit `false` alongside a KMS key is still an error — leave this
+field unset when using customer-managed KMS encryption.
 
 ### spec.policy
 

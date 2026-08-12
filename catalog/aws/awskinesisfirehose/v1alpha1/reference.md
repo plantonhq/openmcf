@@ -1033,7 +1033,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.extendedS3.s3Backup.logging.logStreamName
 
@@ -1275,7 +1280,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.extendedS3.logging.logStreamName
 
@@ -1875,7 +1885,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.opensearch.s3Config.logging.logStreamName
 
@@ -2115,7 +2130,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.opensearch.logging.logStreamName
 
@@ -2389,7 +2409,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.opensearchServerless.s3Config.logging.logStreamName
 
@@ -2629,7 +2654,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.opensearchServerless.logging.logStreamName
 
@@ -2946,7 +2976,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.httpEndpoint.s3Config.logging.logStreamName
 
@@ -3186,7 +3221,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.httpEndpoint.logging.logStreamName
 
@@ -3467,7 +3507,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.redshift.s3Config.logging.logStreamName
 
@@ -3615,7 +3660,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.redshift.s3Backup.logging.logStreamName
 
@@ -3855,7 +3905,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.redshift.logging.logStreamName
 
@@ -4129,7 +4184,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.splunk.s3Config.logging.logStreamName
 
@@ -4369,7 +4429,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.splunk.logging.logStreamName
 
@@ -4720,7 +4785,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.snowflake.s3Config.logging.logStreamName
 
@@ -4960,7 +5030,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.snowflake.logging.logStreamName
 
@@ -5233,7 +5308,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.iceberg.s3Config.logging.logStreamName
 
@@ -5475,7 +5555,12 @@ Enable CloudWatch error logging for this delivery target.
 `string`
 
 CloudWatch Logs log group name where errors are published.
-Required when enabled is true.
+Required when enabled is true. Firehose neither creates nor
+validates this group: CreateDeliveryStream accepts a nonexistent
+name (live-verified 2026-08-12), and delivery errors are silently
+dropped until a log group with exactly this name exists -- create
+it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+trail you configured here never materializes.
 
 ### spec.iceberg.logging.logStreamName
 

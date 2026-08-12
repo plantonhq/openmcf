@@ -427,9 +427,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsVpc, name: <r
 | `status.outputs.default_network_acl_id` | `string` | The ID of the default network ACL created with the VPC. |
 | `status.outputs.default_route_table_id` | `string` | The ID of the default route table created with the VPC (equal to the main route table). |
 | `status.outputs.region` | `string` | The region the VPC was created in (mirrors spec.region, included for convenience). |
-| `status.outputs.secondary_ipv4_cidr_association_ids` | `map<string, string>` |  |
-| `status.outputs.secondary_ipv6_cidr_association_ids` | `map<string, string>` |  |
-| `status.outputs.encryption_control_id` | `string` |  |
+| `status.outputs.secondary_ipv4_cidr_association_ids` | `map<string, string>` | The association IDs ("vpc-cidr-assoc-...") of the secondary IPv4 CIDR blocks, keyed exactly as the module keys each association: by the entry's literal CIDR, or "ipam-<index>" for IPAM-sized entries. These are the handles `aws ec2 disassociate-vpc-cidr-block` and state import take; AWS generates them at association time. |
+| `status.outputs.secondary_ipv6_cidr_association_ids` | `map<string, string>` | The association IDs of the secondary IPv6 CIDR blocks, keyed exactly as the module keys each association: by the entry's pinned CIDR, or "ipv6-<index>" for Amazon-provided/BYOIP-pool/IPAM entries. |
+| `status.outputs.encryption_control_id` | `string` | The ID ("vpcec-...") of the VPC Encryption Control resource, empty when spec.encryption_control is not configured. |
 
 ## Referenced By
 

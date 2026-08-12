@@ -285,11 +285,16 @@ digits, and _:/- .
 
 `string | valueFrom` · required
 
-The principal the grant permits to use the key: an IAM role (the
-mainstream pattern -- reference an AwsIamRole's role_arn output),
-an IAM user ARN, or an AWS service principal (e.g.
-"logs.amazonaws.com"). Cross-account delegation works by naming a
-principal in another account.
+The IAM principal the grant permits to use the key, in ARN form: an
+IAM role (the mainstream pattern -- reference an AwsIamRole's
+role_arn output), an IAM user, an account root, or a federated/
+assumed-role principal. Cross-account delegation works by naming a
+principal in another account. NOT a service principal: AWS's
+CreateGrant takes those through a separate GranteeServicePrincipal
+parameter (paired with a mandatory SourceArn constraint) that the
+Terraform provider does not expose -- a bare service principal here
+is rejected live with "InvalidArnException: GranteePrincipal does
+not refer to a valid principal" (live-verified 2026-08-11).
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}
@@ -310,10 +315,12 @@ an HMAC key) -- AWS validates that pairing at grant creation.
 
 `string | valueFrom`
 
-The principal allowed to retire the grant when it is no longer
-needed (in addition to the key administrators). Reference an
-AwsIamRole's role_arn output, or pass a literal role/user ARN or
-service principal.
+The IAM principal (ARN form) allowed to retire the grant when it is
+no longer needed, in addition to the key administrators. Reference
+an AwsIamRole's role_arn output or pass a literal role/user ARN.
+Service principals are not accepted here for the same reason as
+grantee_principal (AWS's RetiringServicePrincipal parameter is not
+in the provider surface).
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
@@ -370,7 +377,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsKmsKey, name:
 | `status.outputs.key_id` | `string` | The generated key ID (UUID; "mrk-..." for multi-Region keys). |
 | `status.outputs.key_arn` | `string` | The key ARN -- the join key encryption-at-rest fields across the catalog reference (databases, queues, buckets, functions, ...). |
 | `status.outputs.alias_names` | `[]string` | The alias names attached to the key (each "alias/..."), in spec order -- the human-friendly addresses SDK callers may use instead of the key ID. |
-| `status.outputs.grant_ids` | `map<string, string>` |  |
+| `status.outputs.grant_ids` | `map<string, string>` | The AWS-generated grant IDs, keyed exactly as the module keys each grant: by the entry's position in spec.grants ("0", "1", ...). Grant identity lives in these IDs, not in the optional friendly name -- RetireGrant/RevokeGrant and state import take them. (The one-time grant TOKEN from creation stays deliberately unexposed: it is a sensitive eventual-consistency bridge, not an identifier.) |
 
 ## References
 

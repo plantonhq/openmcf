@@ -135,6 +135,10 @@ Display name for this identity provider within the User Pool. Must be
 unique within the pool. Referenced by User Pool Clients in their
 `supported_identity_providers` list.
 
+For the SOCIAL provider types AWS requires the name to EQUAL the type
+("Google", "Facebook", "LoginWithAmazon", "SignInWithApple") -- custom
+names are an OIDC/SAML feature.
+
 Examples: "Google", "CorpOkta", "AzureAD-SAML"
 
 1-32 UTF-8 characters. This field is ForceNew.

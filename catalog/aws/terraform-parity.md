@@ -47,7 +47,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**78 of 112 kinds are at total accounting; 82 proven live.**
+**81 of 112 kinds are at total accounting; 82 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -123,9 +123,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsLbListenerRule | 61 | 3 | 55 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbTargetGroup | 48 | 34 | 7 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsMemcachedElasticache | 48 | 21 | 3 | 24 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsMemorydbAcl | 6 | 2 | 0 | 0 | 4 | ❌ | — |
-| AwsMemorydbCluster | 46 | 31 | 0 | 0 | 18 | ❌ | — |
-| AwsMemorydbUser | 7 | 4 | 0 | 0 | 3 | ❌ | — |
+| AwsMemorydbAcl | 6 | 2 | 0 | 4 | 0 | ✅ | — |
+| AwsMemorydbCluster | 46 | 29 | 3 | 14 | 0 | ✅ | — |
+| AwsMemorydbUser | 7 | 4 | 0 | 3 | 0 | ✅ | — |
 | AwsMskCluster | 50 | 9 | 0 | 0 | 74 | ❌ | partial: pulumi, terraform |
 | AwsMskServerlessCluster | 7 | 1 | 0 | 0 | 8 | ❌ | partial: pulumi, terraform |
 | AwsMwaaEnvironment | 38 | 32 | 0 | 0 | 9 | ❌ | partial: pulumi, terraform |

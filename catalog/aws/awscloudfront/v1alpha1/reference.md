@@ -1607,7 +1607,12 @@ The request header CloudFront reads cache tags from (for tag-based
 invalidation): origin responses carry tags in this header, and an
 invalidation by tag purges every object labeled with it -- far
 cheaper than path invalidations for content that clusters by
-topic. Example: "Cache-Tag".
+topic. Lowercase only: AWS stores the header name lowercased in the
+distribution config (live-verified 2026-08-12: "Cache-Tag" read back
+as "cache-tag") while the provider passes the value through verbatim
+with no case suppression, so a mixed-case value re-plans as a
+perpetual cosmetic diff on both engines. HTTP header matching is
+case-insensitive, so lowercase loses nothing. Example: "cache-tag".
 
 - rule: {"string":{"maxLen":"128","pattern":"^$|^[a-z0-9][a-z0-9\\-\\_]*$"}}
 

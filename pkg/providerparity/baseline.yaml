@@ -27,9 +27,6 @@ entries:
   - kind:AwsInternetGateway
   - kind:AwsKinesisStream
   - kind:AwsKinesisStreamConsumer
-  - kind:AwsMemorydbAcl
-  - kind:AwsMemorydbCluster
-  - kind:AwsMemorydbUser
   - kind:AwsMskCluster
   - kind:AwsMskServerlessCluster
   - kind:AwsMwaaEnvironment

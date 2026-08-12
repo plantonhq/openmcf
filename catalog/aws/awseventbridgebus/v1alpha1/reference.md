@@ -206,9 +206,24 @@ account can put events.
 
 `[]AwsEventBridgeBusArchive`
 
+Event archives on this bus. An archive continuously records events
+delivered to the bus (all events, or the subset matching its event
+pattern) so they can be replayed later — the disaster-recovery and
+backfill lever for event-driven systems. Replay itself is an on-demand
+operation (EventBridge StartReplay), not declarative configuration; the
+archive defines what is recorded and for how long.
+
+Each entry materializes one archive sourced from THIS bus. Archives are
+bus-scoped children: they cannot outlive the bus and cannot record from
+any other source. An empty archive costs nothing — storage is billed
+per GB of archived events.
+
 ### spec.archives[].name
 
 `string` · required
+
+Name of the archive. Unique per AWS account and region; at most 48
+characters of letters, digits, dots, hyphens, and underscores.
 
 - rule: {"required":true,"string":{"maxLen":"48","pattern":"^[.\\-_A-Za-z0-9]+$"}}
 
@@ -216,11 +231,17 @@ account can put events.
 
 `string`
 
+Human-readable description of the archive.
+Maximum length is 512 characters.
+
 - rule: {"string":{"maxLen":"512"}}
 
 ### spec.archives[].retentionDays
 
 `int32`
+
+Maximum number of days to retain archived events. Leave at 0 to retain
+events indefinitely (the AWS default).
 
 - rule: {"int32":{"gte":0}}
 
@@ -228,9 +249,25 @@ account can put events.
 
 `object`
 
+Event pattern selecting which of the bus's events are archived,
+expressed as the standard EventBridge pattern structure. When omitted,
+EVERY event delivered to the bus is archived.
+
+Example:
+  source: ["orders.service"]
+  detail-type: ["OrderPlaced"]
+
 ### spec.archives[].kmsKeyIdentifier
 
 `string | valueFrom`
+
+KMS key for encrypting this archive. Accepts a KMS key ARN, key ID, key
+alias, or key alias ARN. When omitted, the archive is encrypted with an
+AWS-owned key at no additional cost. Note: this is the ARCHIVE's key —
+it is independent of the bus's own kms_key_identifier, and AWS applies
+it only to events at rest in the archive.
+
+Accepts a direct value or a reference to an AwsKmsKey resource.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
@@ -248,9 +285,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEventBridgeBu
 |---|---|---|
 | `status.outputs.bus_name` | `string` | The name of the event bus. This is the primary identifier used in EventBridge API calls and in rule configurations that target this bus. |
 | `status.outputs.bus_arn` | `string` | The Amazon Resource Name (ARN) of the event bus. Used for IAM policies, cross-account event delivery, and as a reference in other resources. |
-| `status.outputs.archives` | `[]AwsEventBridgeBusArchiveOutput` |  |
-| `status.outputs.archives[].name` | `string` |  |
-| `status.outputs.archives[].arn` | `string` |  |
+| `status.outputs.archives` | `[]AwsEventBridgeBusArchiveOutput` | The archives declared in spec.archives — one entry per archive, exposing the identifiers replay operations (EventBridge StartReplay) and IAM policies need. |
+| `status.outputs.archives[].name` | `string` | The archive's spec.archives entry name. |
+| `status.outputs.archives[].arn` | `string` | The Amazon Resource Name (ARN) of the archive. StartReplay calls and IAM policies reference the archive by this ARN. |
 
 ## References
 

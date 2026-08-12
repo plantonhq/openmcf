@@ -147,6 +147,9 @@ downgrades are not supported).
 Engine version to deploy. Examples: "7.1", "7.0", "6.2" for Redis;
 "7.2", "7.3" for Valkey. Leave empty to let AWS pick the default for
 the engine. Upgrades apply in place; downgrades are not supported.
+One-way once applied: removing the field keeps the running version
+(the provider adopts the live value rather than reverting) — change
+it by naming the new version explicitly.
 
 ### spec.description
 
@@ -278,7 +281,9 @@ in place.
 `bool` · optional (explicit presence)
 
 Enable TLS for in-transit encryption on all client connections. Default
-true. When false, AWS only accepts the "open-access" ACL (no
+true — and the provider enforces that default itself, so omitting the
+field is identical to sending true; explicit false is the only way to
+disable. When false, AWS only accepts the "open-access" ACL (no
 authentication without encryption). ForceNew — changing it destroys and
 recreates the cluster. IAM-authenticated users also require TLS.
 
@@ -301,7 +306,9 @@ AWS-managed one. ForceNew — choose the key at create time.
 
 Weekly maintenance window in UTC, minimum 60 minutes.
 Format: "ddd:hh24:mi-ddd:hh24:mi". Example: "sun:05:00-sun:06:00".
-Leave empty for an AWS-assigned window.
+Leave empty for an AWS-assigned window. One-way once applied: removing
+the field keeps the current window rather than reverting to an
+AWS-assigned one — change it by naming a new window explicitly.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$"}}
 
@@ -320,6 +327,9 @@ snapshots. Range: 0–35. Updates in place.
 
 Daily snapshot window in UTC. Format: "hh24:mi-hh24:mi".
 Example: "05:00-09:00". Leave empty for an AWS-assigned window.
+One-way once applied: removing the field keeps the current window
+rather than reverting to an AWS-assigned one — change it by naming a
+new window explicitly.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$"}}
 
@@ -329,7 +339,13 @@ Example: "05:00-09:00". Leave empty for an AWS-assigned window.
 
 Name of the final snapshot to create when the cluster is deleted. If not
 provided, the cluster's data is gone when the cluster is. Consumed only
-at delete time — it never affects the running cluster.
+at delete time — it never affects the running cluster. Format: 1–255
+lowercase alphanumeric or hyphen characters, no consecutive hyphens, no
+trailing hyphen (the provider rejects violations at plan time; the rule
+below fails them at manifest time, before any engine runs).
+
+- rule: final_snapshot_name must be 1-255 lowercase alphanumeric or hyphen characters, with no consecutive hyphens and no trailing hyphen
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
 ### spec.snapshotArns
 
@@ -337,8 +353,12 @@ at delete time — it never affects the running cluster.
 
 ARN(s) of RDB snapshot files stored in S3 to seed the new cluster from
 (the offline-migration path from self-managed Redis). ForceNew — only
-read at cluster creation. Mutually exclusive with snapshot_name. Object
-names must not contain commas (an AWS API constraint).
+read at cluster creation. Mutually exclusive with snapshot_name. Each
+entry must be an S3 object ARN (AWS's CreateCluster contract; the
+provider itself accepts any ARN shape — a recorded looseness) and must
+not contain commas (an AWS API constraint).
+
+- rule: {"repeated":{"items":{"string":{"pattern":"^arn:aws[a-zA-Z-]*:s3:::[^,]+$"}}}}
 
 ### spec.snapshotName
 
@@ -415,7 +435,9 @@ notifications.
 `bool` · optional (explicit presence)
 
 Automatically apply minor engine version upgrades during maintenance
-windows. Default: true. ForceNew — AWS fixes this posture at create
+windows. Default: true — and the provider enforces that default itself,
+so omitting the field is identical to sending true; explicit false is
+the only way to opt out. ForceNew — AWS fixes this posture at create
 time.
 
 - default: `true`

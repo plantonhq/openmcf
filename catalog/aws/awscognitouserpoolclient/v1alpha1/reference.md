@@ -351,7 +351,10 @@ rejects the combination.
 
 How long (seconds) the RETIRED refresh token keeps working after a
 rotation, absorbing clients that lose the response carrying the new token.
-Range: 0-60. AWS default: 0 (immediate retirement).
+Range: 0-60, where an EXPLICIT 0 disables the grace period (immediate
+retirement -- AWS's default posture). Tri-state: unset leaves the choice
+to AWS, explicit 0 pins immediate retirement, 1-60 grants that many
+seconds of grace.
 
 - rule: {"int32":{"lte":60,"gte":0}}
 
@@ -445,11 +448,23 @@ it publishes.
 
 `AwsCognitoUserPoolClientRiskConfiguration`
 
+Client-scoped risk configuration for threat protection. When set, this
+client stops following the pool-wide risk configuration (set on the
+AwsCognitoUserPool spec) and uses these responses instead. Requires the
+POOL to have threat protection active (`user_pool_add_ons.
+advanced_security_mode` of "AUDIT" or "ENFORCED") -- a cross-resource
+requirement this spec cannot validate; AWS rejects the configuration
+when threat protection is off.
+
 - rule: set at least one of account_takeover, compromised_credentials, or risk_exception
 
 ### spec.riskConfiguration.accountTakeover
 
 `AwsCognitoUserPoolClientAccountTakeoverConfig`
+
+Automated responses to sign-in attempts Cognito assesses as possible
+account takeover, by risk level, plus the notification templates for
+"notify the user" actions.
 
 - rule: set at least one of low_action, medium_action, or high_action
 - rule: notify_configuration requires at least one action with notify enabled
@@ -458,11 +473,21 @@ it publishes.
 
 `AwsCognitoUserPoolClientAccountTakeoverAction`
 
+Response to a LOW-risk assessment.
+
 - rule: event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'
 
 ### spec.riskConfiguration.accountTakeover.lowAction.eventAction
 
 `string` · required
+
+The response Cognito takes (acts only in ENFORCED mode; AUDIT gathers
+metrics without acting):
+- "BLOCK": reject the sign-in attempt.
+- "MFA_IF_CONFIGURED": require MFA when the user has a factor set up,
+  otherwise allow the attempt.
+- "MFA_REQUIRED": require MFA; users without a factor are blocked.
+- "NO_ACTION": allow the attempt (pair with notify to warn the user).
 
 - rule: {"required":true}
 
@@ -470,9 +495,14 @@ it publishes.
 
 `bool`
 
+Whether Cognito emails the user about the event using the templates in
+notify_configuration.
+
 ### spec.riskConfiguration.accountTakeover.mediumAction
 
 `AwsCognitoUserPoolClientAccountTakeoverAction`
+
+Response to a MEDIUM-risk assessment.
 
 - rule: event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'
 
@@ -480,15 +510,28 @@ it publishes.
 
 `string` · required
 
+The response Cognito takes (acts only in ENFORCED mode; AUDIT gathers
+metrics without acting):
+- "BLOCK": reject the sign-in attempt.
+- "MFA_IF_CONFIGURED": require MFA when the user has a factor set up,
+  otherwise allow the attempt.
+- "MFA_REQUIRED": require MFA; users without a factor are blocked.
+- "NO_ACTION": allow the attempt (pair with notify to warn the user).
+
 - rule: {"required":true}
 
 ### spec.riskConfiguration.accountTakeover.mediumAction.notify
 
 `bool`
 
+Whether Cognito emails the user about the event using the templates in
+notify_configuration.
+
 ### spec.riskConfiguration.accountTakeover.highAction
 
 `AwsCognitoUserPoolClientAccountTakeoverAction`
+
+Response to a HIGH-risk assessment.
 
 - rule: event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'
 
@@ -496,19 +539,37 @@ it publishes.
 
 `string` · required
 
+The response Cognito takes (acts only in ENFORCED mode; AUDIT gathers
+metrics without acting):
+- "BLOCK": reject the sign-in attempt.
+- "MFA_IF_CONFIGURED": require MFA when the user has a factor set up,
+  otherwise allow the attempt.
+- "MFA_REQUIRED": require MFA; users without a factor are blocked.
+- "NO_ACTION": allow the attempt (pair with notify to warn the user).
+
 - rule: {"required":true}
 
 ### spec.riskConfiguration.accountTakeover.highAction.notify
 
 `bool`
 
+Whether Cognito emails the user about the event using the templates in
+notify_configuration.
+
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration
 
 `AwsCognitoUserPoolClientRiskNotifyConfig`
 
+SES sending configuration and message templates for the notification
+emails sent when an action has notify enabled. Required by AWS when any
+action notifies the user.
+
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.sourceArn
 
 `string | valueFrom` · required
+
+The SES identity Cognito sends notification emails from. Accepts a
+direct identity ARN or a reference to an AwsSesEmailIdentity resource.
 
 - references: AwsSesEmailIdentity (`status.outputs.identity_arn`)
 - rule: {"required":true}
@@ -518,17 +579,26 @@ it publishes.
 
 `string`
 
+"From" address shown on notification emails. When omitted, AWS derives
+it from the source identity.
+
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.replyTo
 
 `string`
+
+Reply-to address on notification emails.
 
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail
 
 `AwsCognitoUserPoolClientRiskNotifyEmail`
 
+Template for the "we blocked a sign-in attempt" notification.
+
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.subject
 
 `string` · required
+
+Email subject. 1-140 characters.
 
 - rule: {"string":{"minLen":"1","maxLen":"140"}}
 
@@ -536,11 +606,15 @@ it publishes.
 
 `string` · required
 
+HTML email body. 6-20000 characters.
+
 - rule: {"string":{"minLen":"6","maxLen":"20000"}}
 
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.textBody
 
 `string` · required
+
+Plain-text email body. 6-20000 characters.
 
 - rule: {"string":{"minLen":"6","maxLen":"20000"}}
 
@@ -548,9 +622,13 @@ it publishes.
 
 `AwsCognitoUserPoolClientRiskNotifyEmail`
 
+Template for the "we required MFA on a sign-in attempt" notification.
+
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.subject
 
 `string` · required
+
+Email subject. 1-140 characters.
 
 - rule: {"string":{"minLen":"1","maxLen":"140"}}
 
@@ -558,11 +636,15 @@ it publishes.
 
 `string` · required
 
+HTML email body. 6-20000 characters.
+
 - rule: {"string":{"minLen":"6","maxLen":"20000"}}
 
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.textBody
 
 `string` · required
+
+Plain-text email body. 6-20000 characters.
 
 - rule: {"string":{"minLen":"6","maxLen":"20000"}}
 
@@ -570,9 +652,14 @@ it publishes.
 
 `AwsCognitoUserPoolClientRiskNotifyEmail`
 
+Template for the "we observed a risky sign-in attempt" (no action taken)
+notification.
+
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.subject
 
 `string` · required
+
+Email subject. 1-140 characters.
 
 - rule: {"string":{"minLen":"1","maxLen":"140"}}
 
@@ -580,17 +667,24 @@ it publishes.
 
 `string` · required
 
+HTML email body. 6-20000 characters.
+
 - rule: {"string":{"minLen":"6","maxLen":"20000"}}
 
 ### spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.textBody
 
 `string` · required
 
+Plain-text email body. 6-20000 characters.
+
 - rule: {"string":{"minLen":"6","maxLen":"20000"}}
 
 ### spec.riskConfiguration.compromisedCredentials
 
 `AwsCognitoUserPoolClientCompromisedCredentialsConfig`
+
+Automated response when Cognito detects the presented credentials in a
+known-compromised set.
 
 - rule: event_action must be 'BLOCK' or 'NO_ACTION'
 - rule: event_filter must contain only 'SIGN_IN', 'PASSWORD_CHANGE', and/or 'SIGN_UP'
@@ -599,15 +693,25 @@ it publishes.
 
 `string` · required
 
+The response Cognito takes (acts only in ENFORCED mode):
+- "BLOCK": reject the attempt.
+- "NO_ACTION": allow the attempt (still logged/audited).
+
 - rule: {"required":true}
 
 ### spec.riskConfiguration.compromisedCredentials.eventFilter
 
 `[]string`
 
+Which authentication events are checked against the compromised set.
+When empty, AWS checks all supported events. Valid values: "SIGN_IN",
+"PASSWORD_CHANGE", "SIGN_UP".
+
 ### spec.riskConfiguration.riskException
 
 `AwsCognitoUserPoolClientRiskExceptionConfig`
+
+IP-range exceptions that bypass or force the risk decision.
 
 - rule: set at least one of blocked_ip_ranges or skipped_ip_ranges
 - rule: blocked_ip_ranges and skipped_ip_ranges entries must be CIDR notation (e.g. '192.0.2.0/24' or '2001:db8::/32')
@@ -616,11 +720,17 @@ it publishes.
 
 `[]string`
 
+Always-BLOCK list: authentication requests from these CIDR ranges are
+rejected regardless of risk assessment. Up to 200 entries.
+
 - rule: {"repeated":{"maxItems":"200","items":{"string":{"minLen":"1"}}}}
 
 ### spec.riskConfiguration.riskException.skippedIpRanges
 
 `[]string`
+
+Always-ALLOW list: risk detection is skipped for these CIDR ranges.
+Up to 200 entries.
 
 - rule: {"repeated":{"maxItems":"200","items":{"string":{"minLen":"1"}}}}
 

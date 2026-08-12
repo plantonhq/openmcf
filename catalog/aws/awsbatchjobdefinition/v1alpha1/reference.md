@@ -24,11 +24,14 @@ that references it by output picks up each new revision on its next
 deployment -- "change the image tag, the schedule runs the new code"
 falls out of the composition.
 
-This kind models single-container ECS-based jobs (type "container" with
-containerProperties) for EC2 and Fargate -- the shape nearly every Batch
-workload uses. Multi-node parallel jobs (nodeProperties), multi-container
-ECS jobs (ecsProperties), and Batch-on-EKS pod jobs (eksProperties) are
-separate long-tail arms, deliberately not modeled yet.
+This kind models type "container" job definitions in both of their
+workload arms: single-container ECS-based jobs (containerProperties --
+the shape nearly every Batch workload uses, for EC2 and Fargate) and
+Batch-on-EKS pod jobs (eksProperties -- the workload half of an
+EKS-attached compute environment). Exactly one arm is set per
+definition. Multi-node parallel jobs (nodeProperties, type "multinode")
+and multi-container ECS jobs (ecsProperties) remain separate long-tail
+workload shapes, deliberately not modeled.
 
 ## Example
 
@@ -211,8 +214,9 @@ Example: "us-west-2", "eu-west-1".
 
 `AwsBatchJobDefinitionContainer`
 
-The container the job runs: image, command, sizing, identities,
-logging, and storage.
+The ECS-based container the job runs: image, command, sizing,
+identities, logging, and storage. Exactly one of container or eks is
+set -- this arm targets EC2/Fargate compute environments.
 
 - rule: environment variable names must not start with 'AWS_BATCH' -- that prefix is reserved for variables AWS Batch sets on every job
 - rule: ephemeral_storage_gib must be between 21 and 200 when set (Fargate includes 20 GiB by default)
@@ -797,11 +801,21 @@ running old revisions.
 
 `AwsBatchJobDefinitionEks`
 
+The Batch-on-EKS pod the job runs: containers, pod networking, and
+Kubernetes-native volumes. Exactly one of container or eks is set --
+this arm targets compute environments attached to an EKS cluster
+(eks_configuration on AwsBatchComputeEnvironment). Jobs are submitted
+the same way; Batch translates the definition into a pod on the
+attached cluster.
+
 - rule: every volume_mounts entry (containers and init_containers) must reference the name of a volume declared in volumes
 
 ### spec.eks.containers
 
 `[]AwsBatchJobDefinitionEksContainer` · required
+
+The pod's main containers (1-10). Batch watches these to decide job
+success: the job completes when every main container exits.
 
 - rule: {"repeated":{"minItems":"1","maxItems":"10"}}
 - rule: environment variable names must not start with 'AWS_BATCH' -- that prefix is reserved for variables AWS Batch sets on every job
@@ -810,11 +824,21 @@ running old revisions.
 
 `string` · required
 
+The container image, as a full reference: "<repository>:<tag>" or
+"<repository>@<digest>". The image architecture must match the
+cluster's node architecture.
+Example: "123456789012.dkr.ecr.us-west-2.amazonaws.com/genomics:2.1".
+
 - rule: {"required":true,"string":{"maxLen":"255"}}
 
 ### spec.eks.containers[].name
 
 `string`
+
+The container's name -- a Kubernetes DNS-1123 label (lowercase
+alphanumerics and hyphens, max 63 chars). Required by Kubernetes when
+the pod has more than one container; Batch names a lone unnamed
+container "default".
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"63","pattern":"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"}}
 
@@ -822,17 +846,33 @@ running old revisions.
 
 `[]string`
 
+Entrypoint override (Kubernetes command / Docker ENTRYPOINT).
+Supports "Ref::<key>" placeholders resolved from spec.parameters.
+
 ### spec.eks.containers[].args
 
 `[]string`
+
+Arguments to the entrypoint (Kubernetes args / Docker CMD). Supports
+"Ref::<key>" placeholders resolved from spec.parameters.
 
 ### spec.eks.containers[].env
 
 `map<string, string>`
 
+Plain-text environment variables (name -> value). Names must not
+start with "AWS_BATCH" (reserved by the service). For secrets, mount
+a Kubernetes secret volume instead -- EKS jobs have no ECS-style
+secrets injection.
+
 ### spec.eks.containers[].imagePullPolicy
 
 `string`
+
+When Kubernetes pulls the image: "Always", "IfNotPresent", or
+"Never". AWS defaults to Always, matching Kubernetes for :latest
+tags -- pinned tags commonly use IfNotPresent to spare registry
+traffic.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Always","IfNotPresent","Never"]}}
 
@@ -840,23 +880,43 @@ running old revisions.
 
 `AwsBatchJobDefinitionEksResources`
 
+The container's compute sizing -- Kubernetes resource requests and
+limits. Batch schedules the job by these (its EKS counterpart of the
+container arm's vcpus/memory_mib/gpus).
+
 - rule: resources must set at least one of limits or requests (Batch requires cpu and memory sizing for EKS jobs)
 
 ### spec.eks.containers[].resources.limits
 
 `map<string, string>`
 
+Hard caps (Kubernetes limits): keys "cpu" (e.g. "1", "500m"),
+"memory" (e.g. "2Gi", "512Mi"), and "nvidia.com/gpu" for GPU nodes.
+Batch treats limits as the job's sizing; GPU quantities must be
+whole numbers.
+
 ### spec.eks.containers[].resources.requests
 
 `map<string, string>`
+
+Scheduling reservations (Kubernetes requests), same keys as limits.
+When both are set for a key, request must not exceed limit; Batch
+fills a missing request from the limit.
 
 ### spec.eks.containers[].securityContext
 
 `AwsBatchJobDefinitionEksSecurityContext`
 
+The container's Kubernetes securityContext -- run-as identity and
+privilege hardening.
+
 ### spec.eks.containers[].securityContext.runAsUser
 
 `int64` · optional (explicit presence)
+
+Run the container process as this numeric UID. 0 (root) is a legal
+explicit value -- UNSET leaves the image's own USER in effect, which
+is why presence matters here.
 
 - rule: {"int64":{"gte":"0"}}
 
@@ -864,31 +924,53 @@ running old revisions.
 
 `int64` · optional (explicit presence)
 
+Run the container process as this numeric GID. As with run_as_user,
+0 is legal and distinct from unset.
+
 - rule: {"int64":{"gte":"0"}}
 
 ### spec.eks.containers[].securityContext.runAsNonRoot
 
 `bool`
 
+Have Kubernetes REJECT the pod at start if the effective user
+resolves to root -- an assertion, not an identity setting.
+
 ### spec.eks.containers[].securityContext.allowPrivilegeEscalation
 
 `bool` · optional (explicit presence)
+
+Whether the process may gain more privileges than its parent
+(setuid binaries, file capabilities). UNSET means Kubernetes'
+default (allowed, unless the container is otherwise restricted);
+an explicit false is the hardening posture.
 
 ### spec.eks.containers[].securityContext.privileged
 
 `bool`
 
+Run the container privileged (root-equivalent on the node).
+Default false, like Kubernetes.
+
 ### spec.eks.containers[].securityContext.readOnlyRootFileSystem
 
 `bool`
+
+Mount the container's root filesystem read-only -- writable paths
+must come from volumes.
 
 ### spec.eks.containers[].volumeMounts
 
 `[]AwsBatchJobDefinitionEksVolumeMount`
 
+Mounts of the pod's declared volumes into this container's
+filesystem.
+
 ### spec.eks.containers[].volumeMounts[].name
 
 `string` · required
+
+The name of a volume declared in eks.volumes.
 
 - rule: {"required":true}
 
@@ -896,15 +978,24 @@ running old revisions.
 
 `string` · required
 
+The path inside the container where the volume mounts.
+Example: "/mnt/data".
+
 - rule: {"required":true}
 
 ### spec.eks.containers[].volumeMounts[].readOnly
 
 `bool`
 
+Mount read-only.
+
 ### spec.eks.initContainers
 
 `[]AwsBatchJobDefinitionEksContainer`
+
+Init containers (0-10), run sequentially to completion before the
+main containers start -- setup steps like fetching data or waiting
+for a dependency.
 
 - rule: {"repeated":{"maxItems":"10"}}
 - rule: environment variable names must not start with 'AWS_BATCH' -- that prefix is reserved for variables AWS Batch sets on every job
@@ -913,11 +1004,21 @@ running old revisions.
 
 `string` · required
 
+The container image, as a full reference: "<repository>:<tag>" or
+"<repository>@<digest>". The image architecture must match the
+cluster's node architecture.
+Example: "123456789012.dkr.ecr.us-west-2.amazonaws.com/genomics:2.1".
+
 - rule: {"required":true,"string":{"maxLen":"255"}}
 
 ### spec.eks.initContainers[].name
 
 `string`
+
+The container's name -- a Kubernetes DNS-1123 label (lowercase
+alphanumerics and hyphens, max 63 chars). Required by Kubernetes when
+the pod has more than one container; Batch names a lone unnamed
+container "default".
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"63","pattern":"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"}}
 
@@ -925,17 +1026,33 @@ running old revisions.
 
 `[]string`
 
+Entrypoint override (Kubernetes command / Docker ENTRYPOINT).
+Supports "Ref::<key>" placeholders resolved from spec.parameters.
+
 ### spec.eks.initContainers[].args
 
 `[]string`
+
+Arguments to the entrypoint (Kubernetes args / Docker CMD). Supports
+"Ref::<key>" placeholders resolved from spec.parameters.
 
 ### spec.eks.initContainers[].env
 
 `map<string, string>`
 
+Plain-text environment variables (name -> value). Names must not
+start with "AWS_BATCH" (reserved by the service). For secrets, mount
+a Kubernetes secret volume instead -- EKS jobs have no ECS-style
+secrets injection.
+
 ### spec.eks.initContainers[].imagePullPolicy
 
 `string`
+
+When Kubernetes pulls the image: "Always", "IfNotPresent", or
+"Never". AWS defaults to Always, matching Kubernetes for :latest
+tags -- pinned tags commonly use IfNotPresent to spare registry
+traffic.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Always","IfNotPresent","Never"]}}
 
@@ -943,23 +1060,43 @@ running old revisions.
 
 `AwsBatchJobDefinitionEksResources`
 
+The container's compute sizing -- Kubernetes resource requests and
+limits. Batch schedules the job by these (its EKS counterpart of the
+container arm's vcpus/memory_mib/gpus).
+
 - rule: resources must set at least one of limits or requests (Batch requires cpu and memory sizing for EKS jobs)
 
 ### spec.eks.initContainers[].resources.limits
 
 `map<string, string>`
 
+Hard caps (Kubernetes limits): keys "cpu" (e.g. "1", "500m"),
+"memory" (e.g. "2Gi", "512Mi"), and "nvidia.com/gpu" for GPU nodes.
+Batch treats limits as the job's sizing; GPU quantities must be
+whole numbers.
+
 ### spec.eks.initContainers[].resources.requests
 
 `map<string, string>`
+
+Scheduling reservations (Kubernetes requests), same keys as limits.
+When both are set for a key, request must not exceed limit; Batch
+fills a missing request from the limit.
 
 ### spec.eks.initContainers[].securityContext
 
 `AwsBatchJobDefinitionEksSecurityContext`
 
+The container's Kubernetes securityContext -- run-as identity and
+privilege hardening.
+
 ### spec.eks.initContainers[].securityContext.runAsUser
 
 `int64` · optional (explicit presence)
+
+Run the container process as this numeric UID. 0 (root) is a legal
+explicit value -- UNSET leaves the image's own USER in effect, which
+is why presence matters here.
 
 - rule: {"int64":{"gte":"0"}}
 
@@ -967,31 +1104,53 @@ running old revisions.
 
 `int64` · optional (explicit presence)
 
+Run the container process as this numeric GID. As with run_as_user,
+0 is legal and distinct from unset.
+
 - rule: {"int64":{"gte":"0"}}
 
 ### spec.eks.initContainers[].securityContext.runAsNonRoot
 
 `bool`
 
+Have Kubernetes REJECT the pod at start if the effective user
+resolves to root -- an assertion, not an identity setting.
+
 ### spec.eks.initContainers[].securityContext.allowPrivilegeEscalation
 
 `bool` · optional (explicit presence)
+
+Whether the process may gain more privileges than its parent
+(setuid binaries, file capabilities). UNSET means Kubernetes'
+default (allowed, unless the container is otherwise restricted);
+an explicit false is the hardening posture.
 
 ### spec.eks.initContainers[].securityContext.privileged
 
 `bool`
 
+Run the container privileged (root-equivalent on the node).
+Default false, like Kubernetes.
+
 ### spec.eks.initContainers[].securityContext.readOnlyRootFileSystem
 
 `bool`
+
+Mount the container's root filesystem read-only -- writable paths
+must come from volumes.
 
 ### spec.eks.initContainers[].volumeMounts
 
 `[]AwsBatchJobDefinitionEksVolumeMount`
 
+Mounts of the pod's declared volumes into this container's
+filesystem.
+
 ### spec.eks.initContainers[].volumeMounts[].name
 
 `string` · required
+
+The name of a volume declared in eks.volumes.
 
 - rule: {"required":true}
 
@@ -999,19 +1158,35 @@ running old revisions.
 
 `string` · required
 
+The path inside the container where the volume mounts.
+Example: "/mnt/data".
+
 - rule: {"required":true}
 
 ### spec.eks.initContainers[].volumeMounts[].readOnly
 
 `bool`
 
+Mount read-only.
+
 ### spec.eks.hostNetwork
 
 `bool` · optional (explicit presence)
 
+Whether the pod uses the NODE's network namespace (Kubernetes
+hostNetwork). UNSET means AWS's default, which is TRUE for Batch
+pods -- the opposite of the plain-Kubernetes default -- so an
+explicit false is a real choice: it gives the pod its own namespace
+(required for VPC-CNI pod networking with security groups per pod).
+
 ### spec.eks.dnsPolicy
 
 `string`
+
+The pod's DNS resolution policy. AWS defaults to "ClusterFirst"
+(resolve through the cluster's DNS first); "Default" inherits the
+NODE's resolution; "ClusterFirstWithHostNet" is the cluster-first
+behavior for pods running with host_network.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Default","ClusterFirst","ClusterFirstWithHostNet"]}}
 
@@ -1019,13 +1194,26 @@ running old revisions.
 
 `string`
 
+The Kubernetes service account the pod runs as -- the EKS-native way
+to grant the JOB's code AWS permissions (IRSA / Pod Identity), the
+counterpart of the container arm's job_role.
+
 ### spec.eks.podLabels
 
 `map<string, string>`
 
+Labels applied to the pod's metadata -- Kubernetes selectors,
+cost-allocation, and policy engines key off these.
+Example: {"team": "genomics", "workload": "batch"}.
+
 ### spec.eks.imagePullSecretNames
 
 `[]string`
+
+Names of Kubernetes imagePullSecrets in the job's namespace, for
+pulling from private non-ECR registries (the EKS counterpart of the
+container arm's repository_credentials_secret_arn). ECR images need
+no secret -- the node role's pull access covers them.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -1033,9 +1221,18 @@ running old revisions.
 
 `bool`
 
+Share one process namespace across the pod's containers (Kubernetes
+shareProcessNamespace) -- lets a sidecar signal or observe the main
+container's processes. Default false, like plain Kubernetes.
+
 ### spec.eks.volumes
 
 `[]AwsBatchJobDefinitionEksVolume`
+
+Kubernetes-native volumes the pod's containers mount by name:
+emptyDir scratch space, node hostPath directories, or Kubernetes
+secrets. (EFS rides the cluster's CSI driver and static
+PersistentVolumes -- outside the job definition's surface.)
 
 - rule: a volume is backed by exactly one of empty_dir, host_path, or secret
 
@@ -1043,15 +1240,24 @@ running old revisions.
 
 `string` · required
 
+The volume's name (a DNS-1123 label), referenced by containers'
+volume_mounts.
+
 - rule: {"required":true,"string":{"maxLen":"63","pattern":"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"}}
 
 ### spec.eks.volumes[].emptyDir
 
 `AwsBatchJobDefinitionEksEmptyDir`
 
+Scratch space that lives and dies with the job's pod.
+
 ### spec.eks.volumes[].emptyDir.medium
 
 `string`
+
+Where the scratch lives: unset backs it with node storage; "Memory"
+backs it with tmpfs (fast, counts against the container's memory
+sizing).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"const":"Memory"}}
 
@@ -1059,25 +1265,41 @@ running old revisions.
 
 `string` · required
 
+The scratch size cap, as a Kubernetes quantity.
+Example: "1Gi", "500Mi".
+
 - rule: {"required":true,"string":{"pattern":"^[0-9]+(\\.[0-9]+)?(Ki|Mi|Gi|Ti|K|M|G|T)?$"}}
 
 ### spec.eks.volumes[].hostPath
 
 `string`
 
+A directory on the NODE's filesystem (Kubernetes hostPath.path) --
+data outlives the pod but is pinned to whichever node ran it.
+Example: "/mnt/scratch".
+
 ### spec.eks.volumes[].secret
 
 `AwsBatchJobDefinitionEksSecretVolume`
 
+Project a Kubernetes secret (from the job's namespace) into the
+volume.
+
 ### spec.eks.volumes[].secret.secretName
 
 `string` · required
+
+The name of the Kubernetes secret in the job's namespace (the
+namespace comes from the compute environment's eks_configuration).
 
 - rule: {"required":true}
 
 ### spec.eks.volumes[].secret.optional
 
 `bool`
+
+Mount successfully even when the secret does not exist yet (an empty
+volume) instead of failing the pod.
 
 ## Validation Rules
 

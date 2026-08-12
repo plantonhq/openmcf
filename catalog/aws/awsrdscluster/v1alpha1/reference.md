@@ -804,7 +804,11 @@ attach and detach without touching the cluster.
 
 The IAM role to associate. Reference an AwsIamRole role_arn output
 or pass a literal role ARN. The role owns its policies; the
-cluster only assumes it. Required.
+cluster only assumes it. The role's trust policy MUST allow
+rds.amazonaws.com to assume it -- AWS validates that server-side at
+association time and rejects the call with InvalidParameterValue
+("IAM role ARN value is invalid or does not include the required
+permissions") otherwise; no plan-time check catches it. Required.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}

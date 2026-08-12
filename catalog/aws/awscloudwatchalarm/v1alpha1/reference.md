@@ -458,7 +458,10 @@ Actions to execute when the alarm transitions to ALARM state. Each action
 is an ARN — typically an SNS topic ARN, but can also be an Auto Scaling
 policy, EC2 automation action, Lambda function, or SSM OpsItem.
 
-Maximum 5 actions.
+Maximum 5 actions — AWS's quota is 5 actions per alarm state. (The
+provider caps only ok_actions and insufficient_data_actions; the missing
+cap on alarm_actions is provider looseness — the spec holds AWS's
+contract.)
 
 - references: AwsSnsTopic (`status.outputs.topic_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSnsTopic, name: <that resource's name>, fieldPath: status.outputs.topic_arn}} -- a bare string does not parse

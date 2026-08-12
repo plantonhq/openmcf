@@ -190,9 +190,11 @@ Required for (and only valid with) HTTP_STR_MATCH / HTTPS_STR_MATCH.
 
 `int32` · optional (explicit presence)
 
-Seconds between probes from each checker: 10 or 30 (default 30).
-Create-time immutable (ForceNew). Fast (10s) checks cost more but detect
-failures ~3x sooner.
+Seconds between probes from each checker: 10 or 30. AWS defaults to 30
+when omitted — no default is materialized here, because the field only
+exists for endpoint checks and a manufactured value would be dead
+configuration on every other type. Create-time immutable (ForceNew).
+Fast (10s) checks cost more but detect failures ~3x sooner.
 
 - rule: {"int32":{"in":[10,30]}}
 
@@ -200,8 +202,9 @@ failures ~3x sooner.
 
 `int32` · optional (explicit presence)
 
-Consecutive probe results required to flip the health state (1–10,
-default 3). Lower reacts faster; higher rides out blips.
+Consecutive probe results required to flip the health state (1–10; AWS
+defaults to 3 when omitted). Lower reacts faster; higher rides out
+blips. Endpoint checks only.
 
 - rule: {"int32":{"lte":10,"gte":1}}
 
@@ -263,8 +266,11 @@ Can reference other AwsRoute53HealthCheck resources.
 `int32` · optional (explicit presence)
 
 Minimum number of healthy children for this check to report healthy
-(1–256). Defaults to the number of children when omitted (all must be
-healthy).
+(0–256). AWS's contract (per the CreateHealthCheck API): an explicit 0
+makes the check ALWAYS HEALTHY; a value greater than the number of
+children makes it always unhealthy; when omitted, Route 53 applies its
+own server-side default. Explicit 0 and omitted are therefore different
+configurations — presence carries the distinction.
 
 - rule: {"int32":{"lte":256,"gte":0}}
 
@@ -280,6 +286,8 @@ Name of the CloudWatch alarm whose state this check mirrors.
 
 Region the CloudWatch alarm lives in (alarms are regional even though
 the health check is global). Example: "us-west-2".
+Format-checked rather than enumerated on purpose: the provider's region
+enum grows with every AWS region launch; AWS rejects unknown regions.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[a-z]{2,4}(-[a-z]+)+-[0-9]+$"}}
 
