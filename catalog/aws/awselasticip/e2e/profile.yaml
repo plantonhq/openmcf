@@ -4,16 +4,24 @@ metadata:
   name: awselasticip
 spec:
   # An Elastic IP under live E2E: the harness runs deploy -> DescribeAddresses
-  # verify -> destroy -> verify-destroyed on both provisioners. The scenario is
-  # allocation-only (the spec's BYOIP arms -- public_ipv4_pool, address -- need
-  # a pool the test account does not carry, and network_border_group needs an
-  # enabled Local Zone; all three are proven by the offline gate and spec
-  # tests). AWS bills public IPv4 addresses per-hour (~$0.005), so a lane
-  # costs under a cent; a leaked allocation keeps billing, which is exactly
-  # what verify-destroyed guards.
+  # verify -> destroy -> verify-destroyed on both provisioners across two
+  # scenarios -- the allocation-only smoke and the instance-associated lane
+  # (the depth close's association fold: spec.instance/network_interface/
+  # associate_with_private_ip plus the aws_eip_domain_name reverse-DNS fold).
+  # Deferrals recorded with unblocks: the BYOIP arms (public_ipv4_pool,
+  # address) need a provisioned BYOIP pool and network_border_group needs an
+  # enabled Local Zone (account-level fixtures); ipam_pool_id needs an IPAM
+  # public pool provisioned for EIP allocation (account setup + IPAM cost
+  # posture); reverse_dns_domain_name needs a controlled public domain whose
+  # A record resolves to the fresh EIP BEFORE AWS grants the PTR (a
+  # two-phase apply against a real zone -- unblock: a Route53 fixture zone
+  # on a purchasable test domain); associate_with_private_ip's explicit-IP
+  # arm needs a multi-IP ENI fixture. All deferred arms are offline-proven
+  # (plans/previews render them arm-for-arm on both engines) and spec-test
+  # covered. AWS bills public IPv4 addresses per-hour (~$0.005), so lanes
+  # cost cents; a leaked allocation keeps billing, which is exactly what
+  # verify-destroyed guards -- the associated lane also proves the
+  # disassociate-then-release destroy path.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
-  timeout_minutes: 10
+  status: pending_proof
+  timeout_minutes: 15

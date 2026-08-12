@@ -13,14 +13,15 @@ spec:
   # a managed-prefix-list egress rule (the region-stable S3 gateway list),
   # and revoke_rules_on_delete -- so one fast lane proves the whole rule
   # vocabulary live at zero resource cost (a group provisions in
-  # seconds). Deliberately not in the live scenario: cross-group
-  # references to a SECOND group (mechanically identical to the
-  # self-reference; avoiding a self-kind prerequisite keeps the chain
+  # seconds). The depth close added the multi-VPC share arm
+  # (spec.additional_vpc_ids -- one association into a second VPC fixture
+  # composed via the path-form e2e-prerequisites seam); the evidence bar
+  # is DescribeSecurityGroupVpcAssociations echoing the second VPC with
+  # state associated per engine. Deliberately not in the live scenario:
+  # cross-group references to a SECOND group (mechanically identical to
+  # the self-reference; avoiding a self-kind prerequisite keeps the chain
   # acyclic) -- proven by CEL spec tests and every consumer chain that
   # attaches the shared SG fixtures.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
-  timeout_minutes: 15
+  status: pending_proof
+  timeout_minutes: 20

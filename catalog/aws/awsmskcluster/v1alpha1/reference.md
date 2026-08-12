@@ -665,6 +665,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsMskCluster, n
 | `status.outputs.zookeeper_connect_string` | `string` | zookeeper_connect_string is a comma-separated list of ZooKeeper endpoints for plaintext connections. Empty on KRaft-mode clusters (Kafka versions without ZooKeeper). |
 | `status.outputs.zookeeper_connect_string_tls` | `string` | zookeeper_connect_string_tls is a comma-separated list of ZooKeeper endpoints for TLS connections. Empty on KRaft-mode clusters (Kafka versions without ZooKeeper). |
 | `status.outputs.configuration_arn` | `string` | configuration_arn is the ARN of the module-managed MSK Configuration resource, if one was created from server_properties in the spec. |
+| `status.outputs.topic_arns` | `map<string, string>` | topic_arns are the ARNs of the Kafka topics declared in spec.topics, keyed by topic name. |
 
 ## References
 

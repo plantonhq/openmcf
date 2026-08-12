@@ -36,6 +36,7 @@ spec: { ... }
 | `vpcId` | StringValueOrRef | **yes** | — | VPC the group belongs to. Supports `value` or `valueFrom` (AwsVpc). **ForceNew**. |
 | `description` | string | **yes** | — | Purpose of the group (max 255 chars). **ForceNew** — AWS cannot edit a group description in place. |
 | `revokeRulesOnDelete` | bool | no | false | Forcibly revoke this group's rules — and rules in other groups referencing it — before delete, so cross-referenced groups tear down without a `DependencyViolation`. |
+| `additionalVpcIds` | list(StringValueOrRef) | no | [] | Share this group into OTHER VPCs (same account/region) so resources there attach the same group instead of per-VPC copies. Supports `valueFrom` (AwsVpc). Associations add/remove in place. AWS ignores cross-VPC group references in rules — prefer CIDR/prefix-list rules on shared groups. |
 
 ### Rules (`ingress[]` / `egress[]`)
 
@@ -49,8 +50,8 @@ Rules are managed INLINE on the group: the manifest owns the complete rule set, 
 | `ipv4Cidrs` | list(string) | no | [] | IPv4 CIDR sources (ingress) / destinations (egress). |
 | `ipv6Cidrs` | list(string) | no | [] | IPv6 CIDR sources / destinations. |
 | `prefixListIds` | list(string) | no | [] | Managed prefix list IDs (`pl-...`). Target a named CIDR set — an AWS service like S3/DynamoDB gateway endpoints, or a customer-maintained office/partner range — by stable ID instead of hardcoding addresses. |
-| `sourceSecurityGroupIds` | list(StringValueOrRef) | no | [] | Ingress: groups whose members may send traffic. Supports `valueFrom` (AwsSecurityGroup). |
-| `destinationSecurityGroupIds` | list(StringValueOrRef) | no | [] | Egress: groups whose members may receive traffic. Supports `valueFrom` (AwsSecurityGroup). |
+| `sourceSecurityGroupIds` | list(StringValueOrRef) | no | [] | Ingress ONLY: groups whose members may send traffic (CEL rejects it on egress rules). Supports `valueFrom` (AwsSecurityGroup). |
+| `destinationSecurityGroupIds` | list(StringValueOrRef) | no | [] | Egress ONLY: groups whose members may receive traffic (CEL rejects it on ingress rules). Supports `valueFrom` (AwsSecurityGroup). |
 | `selfReference` | bool | no | false | Allow traffic from/to this group itself — the standard intra-cluster pattern. |
 | `description` | string | no | "" | Per-rule description (max 255 chars). |
 
@@ -63,12 +64,14 @@ A single rule may carry several sources at once (CIDRs + prefix lists + groups +
 | `security_group_id` | Group ID (`sg-...`) — the join key other resources reference to attach the group. |
 | `security_group_arn` | Group ARN — the form IAM policy conditions and resource-level permissions expect. |
 | `owner_id` | Owning AWS account ID — needed for cross-account rule references (`<owner_id>/<group_id>`). |
+| `additional_vpc_association_ids` | Association ids of the group's shares into other VPCs, keyed by VPC id (import form `<group_id>,<vpc_id>`); empty for single-VPC groups. |
 
 ## Deliberately omitted (with reasons)
 
 | Provider surface | Why omitted |
 |---|---|
-| Standalone rule resources (`aws_vpc_security_group_ingress_rule` / `_egress_rule`) | Rules have no independent lifecycle here and are never referenced individually — they are folded into the group. AWS forbids mixing inline and standalone rules on one group, so the module never emits standalone rule resources. |
+| Standalone rule resources (`aws_vpc_security_group_ingress_rule` / `_egress_rule`) | Rules have no independent lifecycle here and are never referenced individually — they are folded into the group. AWS forbids mixing inline and standalone rules on one group, so the module never emits standalone rule resources. Per-rule TAGS are the standalone resources' one extra — operational metadata on individual permissions, never modeled. |
+| Exclusive rule-set lockdown (`aws_vpc_security_group_rules_exclusive`) | Asserts a full rule-id set and removes everything else — the exclusive-management class; inline rules already own the rule set declaratively. |
 | `name` / `name_prefix` overrides | The group name is `metadata.name` on both engines — one identity basis for the whole catalog. |
 | Cross-account `<owner_id>/<group_id>` source modeling | A literal string in `sourceSecurityGroupIds.value` already carries the form; a structured field is not warranted until a real cross-account chart composes it. |
 

@@ -59,6 +59,20 @@ spec:
   securityGroupIds:
     - value: sg-0a1b2c3d4e5f67890
   privateDnsEnabled: true
+  # Endpoint policy as a structured IAM document (not an embedded JSON
+  # string) -- here, registry pulls only; the endpoint becomes a
+  # data-exfiltration control.
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: PullOnlyThroughEndpoint
+        Effect: Allow
+        Principal: "*"
+        Action:
+          - ecr:GetDownloadUrlForLayer
+          - ecr:BatchGetImage
+          - ecr:GetAuthorizationToken
+        Resource: "*"
 ```
 
 ## Spec Fields
@@ -81,7 +95,7 @@ spec:
 | `spec.dnsOptions.privateDnsPreference` | `string` |  |  |  |
 | `spec.dnsOptions.privateDnsSpecifiedDomains` | `[]string` |  |  |  |
 | `spec.ipAddressType` | `string` |  |  |  |
-| `spec.policy` | `string` |  |  |  |
+| `spec.policy` | `object` |  |  |  |
 | `spec.subnetConfigurations` | `[]AwsVpcEndpointSubnetConfiguration` |  |  |  |
 | `spec.subnetConfigurations[].subnetId` | `string \| valueFrom` | yes |  | AwsSubnet (`status.outputs.subnet_id`) |
 | `spec.subnetConfigurations[].ipv4` | `string` |  |  |  |
@@ -193,7 +207,7 @@ only. Updates in place.
 
 ### spec.privateDnsEnabled
 
-`bool`
+`bool` · optional (explicit presence)
 
 Resolve the service's PUBLIC DNS name (e.g. sts.us-west-2.
 amazonaws.com) to the endpoint's private IPs inside the VPC, via an
@@ -202,7 +216,11 @@ this on -- clients keep their default SDK endpoints and privately
 reach the service with zero code changes. Requires the VPC to have
 BOTH DNS support and DNS hostnames enabled. Interface endpoints
 only (AWS replaces the endpoint if this changes on other types --
-on Interface it updates in place). Off by default, matching AWS.
+on Interface it updates in place). Tri-state: unset lets AWS use
+its default (off) and keeps an existing endpoint's current setting
+(the provider attribute is Optional+Computed -- an omitted value is
+never sent); true enables private DNS; an EXPLICIT false is the
+only way to turn it back off once enabled.
 
 ### spec.dnsOptions
 
@@ -268,14 +286,16 @@ support the chosen type. Updates in place.
 
 ### spec.policy
 
-`string`
+`object`
 
-An IAM policy document (JSON) controlling which principals may use
-the endpoint to reach which resources -- e.g. "only this account's
+An IAM policy document controlling which principals may use the
+endpoint to reach which resources -- e.g. "only this account's
 buckets" on an S3 gateway endpoint, turning the endpoint into a
-data-exfiltration control. Empty means full access (AWS's
-default). All gateway and most interface endpoints support
-policies. Updates in place.
+data-exfiltration control. Expressed as a structured document
+(standard IAM policy shape: Version, Statement, ...) rather than an
+embedded JSON string. Empty means full access (AWS's default). All
+gateway and most interface endpoints support policies. Updates in
+place.
 
 ### spec.subnetConfigurations
 
@@ -339,6 +359,7 @@ Cross-account services must accept on their side regardless.
 - `eni_fields_not_gateway`: subnet_ids, security_group_ids, private_dns_enabled, subnet_configurations, and service_region do not apply to Gateway endpoints -- set endpoint_type to 'Interface' (or another ENI-based type)
 - `sg_and_private_dns_interface_only`: security_group_ids and private_dns_enabled apply only to Interface endpoints
 - `service_region_interface_only`: service_region (cross-region endpoints) applies only to Interface endpoints
+- `inbound_resolver_requires_private_dns`: dns_options.private_dns_only_for_inbound_resolver_endpoint requires private_dns_enabled to be true
 - `ip_address_type_valid`: ip_address_type must be 'ipv4', 'dualstack', or 'ipv6' when set
 
 ## Outputs

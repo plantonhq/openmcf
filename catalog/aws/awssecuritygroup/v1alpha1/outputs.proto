@@ -16,4 +16,9 @@ message AwsSecurityGroupStackOutputs {
   // account references this group in a cross-account rule
   // ("<owner_id>/<group_id>").
   string owner_id = 3;
+
+  // association IDs of the group's shares into other VPCs, keyed by the
+  // resolved VPC id from spec.additional_vpc_ids (import id form
+  // "<group_id>,<vpc_id>"); empty when the group lives in one VPC.
+  map<string, string> additional_vpc_association_ids = 4;
 }

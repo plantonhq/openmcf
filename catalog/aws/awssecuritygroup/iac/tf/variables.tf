@@ -42,5 +42,6 @@ variable "spec" {
       description = optional(string, "")
     })), [])
     revoke_rules_on_delete = optional(bool, false)
+    additional_vpc_ids = optional(list(string), [])
   })
 }

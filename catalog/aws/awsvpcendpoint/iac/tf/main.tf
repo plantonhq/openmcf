@@ -35,11 +35,13 @@ resource "aws_vpc_endpoint" "this" {
   subnet_ids         = length(var.spec.subnet_ids) > 0 ? var.spec.subnet_ids : null
   security_group_ids = length(var.spec.security_group_ids) > 0 ? var.spec.security_group_ids : null
 
-  # private_dns_enabled is only expressible on Interface endpoints
-  # (CEL), where it updates in place. Forwarded only when true so a
-  # gateway endpoint's create call carries no DNS argument at all --
-  # matching the Pulumi module, which prunes the false boolean.
-  private_dns_enabled = var.spec.private_dns_enabled ? true : null
+  # private_dns_enabled is only expressible on Interface endpoints (CEL),
+  # where it updates in place. Tri-state send-when-set: the provider
+  # attribute is Optional+Computed, so an omitted value keeps an existing
+  # endpoint's current setting — an EXPLICIT false is the only way to
+  # disable private DNS once enabled. Unset stays null (never sent), so a
+  # gateway endpoint's create call carries no DNS argument at all.
+  private_dns_enabled = var.spec.private_dns_enabled
 
   dynamic "dns_options" {
     for_each = var.spec.dns_options != null ? [var.spec.dns_options] : []
@@ -60,9 +62,10 @@ resource "aws_vpc_endpoint" "this" {
 
   ip_address_type = var.spec.ip_address_type != "" ? var.spec.ip_address_type : null
 
-  # Empty policy means AWS's full-access default; forwarding nothing
-  # (instead of an empty string) lets AWS attach its default document.
-  policy = var.spec.policy != "" ? var.spec.policy : null
+  # Empty policy means AWS's full-access default; forwarding nothing lets
+  # AWS attach its default document. The spec carries the policy as a
+  # structured document; it is serialized to JSON here.
+  policy = var.spec.policy != null ? jsonencode(var.spec.policy) : null
 
   # Pin specific ENI addresses per subnet -- for appliances or firewall
   # rules that need stable endpoint IPs. Each listed subnet must also

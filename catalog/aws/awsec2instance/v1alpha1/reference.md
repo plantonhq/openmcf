@@ -1102,6 +1102,8 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsElasticIp | `spec.instance` | `status.outputs.instance_id` |
+| AwsElasticIp | `spec.networkInterface` | `status.outputs.primary_network_interface_id` |
 | AwsLbTargetGroup | `spec.targets[].targetId` | `status.outputs.instance_id` |
 
 ## See Also

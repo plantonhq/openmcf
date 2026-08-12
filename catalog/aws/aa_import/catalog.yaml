@@ -151,6 +151,11 @@ spec:
       # before deleting, for groups other groups reference) -- EC2 never
       # reports it, so it can never round-trip through import.
       config_only_attributes: [revoke_rules_on_delete]
+    # The group's share into another VPC (spec.additional_vpc_ids) imports
+    # by both halves of its config-time identity, comma-separated.
+    - terraform_type: aws_vpc_security_group_vpc_association
+      pulumi_type: aws:vpc/securityGroupVpcAssociation:SecurityGroupVpcAssociation
+      id_format: "{security_group_id},{vpc_id}"
 
     # --- ECR -----------------------------------------------------------------
     - terraform_type: aws_ecr_repository

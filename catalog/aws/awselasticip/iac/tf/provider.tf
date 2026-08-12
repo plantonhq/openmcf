@@ -7,6 +7,10 @@ terraform {
       # a deliberate catalog-wide decision, and floor-at-latest-released-minor
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: the newest surfaces this module uses predate the v6
+      # line — aws_eip.ipam_pool_id landed in 5.71.0 and aws_eip_domain_name
+      # (the reverse-DNS fold) in 5.46.0.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

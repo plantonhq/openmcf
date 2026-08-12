@@ -1554,11 +1554,8 @@ resources:
     disposition: model-planned
     reason: "task sets exist only under the EXTERNAL deployment controller; folds into AwsEcsService if the external-controller workflow is ever admitted (its native and blue/green controllers are fully modeled)"
   - resource: aws_eip_association
-    disposition: model-planned
-    reason: "EIP companion surface (associations, domain names); folds into the existing AwsElasticIp kind as its spec deepens"
-  - resource: aws_eip_domain_name
-    disposition: model-planned
-    reason: "EIP companion surface (associations, domain names); folds into the existing AwsElasticIp kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsElasticIp's own association surface (spec.instance / spec.network_interface / spec.associate_with_private_ip -- the provider's inline aws_eip association); the standalone resource adds only allow_reassociation (steal an already-associated address), an adoption-time concern the declarative model expresses by updating the owning EIP instead"
   - resource: aws_eks_capability
     disposition: model-planned
     reason: "EKS managed capabilities (ACK, KRO, Argo CD; provider 6.25.0) with their own configuration tree (IAM Identity Center wiring, RBAC role mappings, network access); a cluster-scoped companion with independent lifecycle -- its own kind (AwsEksCapability) on the EKS family's composition pattern (addon/fargate-profile/access-entry precedent), not a cluster fold-in"
@@ -1986,8 +1983,8 @@ resources:
     disposition: excluded-deprecated
     reason: "Inspector Classic is superseded by Inspector v2 (planned AwsInspector kind)"
   - resource: aws_internet_gateway_attachment
-    disposition: model-planned
-    reason: "gateway attachments fold into the existing AwsInternetGateway kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsInternetGateway's required vpc_id (the attachment IS the gateway's one relationship; vpc_id updates in place, detach+attach); the split-management form exists for adopting gateways created elsewhere, which the declarative model expresses on the gateway itself"
   - resource: aws_internetmonitor_monitor
     disposition: deferred
     reason: "Internet Monitor observability; deferred pending demand"
@@ -3387,8 +3384,8 @@ resources:
     disposition: model-planned
     reason: "judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags)"
   - resource: aws_security_group_rule
-    disposition: model-planned
-    reason: "security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsSecurityGroup's inline ingress/egress rules (same payload: protocol/ports/CIDRs/prefix lists/groups/self/description); the legacy standalone rule resource cannot be mixed with inline rules on one group -- the module's inline blocks are the single owner of the rule set"
   - resource: aws_securityhub_account
     disposition: model-planned
     reason: "judged as a planned AwsSecurityHub kind (account enablement v1/v2, organization configuration, standards, insights, action targets, automation rules, aggregators, connectors)"
@@ -3939,17 +3936,17 @@ resources:
     disposition: model-planned
     reason: "judged as a planned AwsVpcEndpointService kind (PrivateLink provider side: services, allowed principals, DNS verification, connection accepters/notifications)"
   - resource: aws_vpc_endpoint_policy
-    disposition: model-planned
-    reason: "endpoint companion surface (policies, private DNS, route table/security group/subnet associations); folds into the existing AwsVpcEndpoint kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsVpcEndpoint's spec.policy (structured IAM document, updates in place); the standalone form exists for split management of endpoints created elsewhere, which the declarative model expresses on the endpoint itself"
   - resource: aws_vpc_endpoint_private_dns
-    disposition: model-planned
-    reason: "endpoint companion surface (policies, private DNS, route table/security group/subnet associations); folds into the existing AwsVpcEndpoint kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsVpcEndpoint's spec.private_dns_enabled (tri-state: explicit false is the disable path); the standalone form exists for split management of endpoints created elsewhere, which the declarative model expresses on the endpoint itself"
   - resource: aws_vpc_endpoint_route_table_association
-    disposition: model-planned
-    reason: "endpoint companion surface (policies, private DNS, route table/security group/subnet associations); folds into the existing AwsVpcEndpoint kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsVpcEndpoint's spec.route_table_ids (gateway endpoints); the standalone form exists for split management of endpoints created elsewhere, which the declarative model expresses on the endpoint itself"
   - resource: aws_vpc_endpoint_security_group_association
-    disposition: model-planned
-    reason: "endpoint companion surface (policies, private DNS, route table/security group/subnet associations); folds into the existing AwsVpcEndpoint kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsVpcEndpoint's spec.security_group_ids (interface endpoints); the standalone form exists for split management of endpoints created elsewhere, which the declarative model expresses on the endpoint itself"
   - resource: aws_vpc_endpoint_service
     disposition: model-planned
     reason: "judged as a planned AwsVpcEndpointService kind (PrivateLink provider side: services, allowed principals, DNS verification, connection accepters/notifications)"
@@ -3960,8 +3957,8 @@ resources:
     disposition: model-planned
     reason: "judged as a planned AwsVpcEndpointService kind (PrivateLink provider side: services, allowed principals, DNS verification, connection accepters/notifications)"
   - resource: aws_vpc_endpoint_subnet_association
-    disposition: model-planned
-    reason: "endpoint companion surface (policies, private DNS, route table/security group/subnet associations); folds into the existing AwsVpcEndpoint kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsVpcEndpoint's spec.subnet_ids (ENI-based endpoints); the standalone form exists for split management of endpoints created elsewhere, which the declarative model expresses on the endpoint itself"
   - resource: aws_vpc_ipam
     disposition: model-planned
     reason: "judged as a planned AwsVpcIpam kind (IPAM, scopes, pools, CIDR allocations, resource discovery, organization admin)"
@@ -4017,17 +4014,14 @@ resources:
     disposition: deferred
     reason: "VPC route servers; deferred pending demand"
   - resource: aws_vpc_security_group_egress_rule
-    disposition: model-planned
-    reason: "security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsSecurityGroup's inline egress rules (same payload); the framework resource adds only per-rule tags -- operational metadata on individual permissions, never modeled (group-level tags come from metadata)"
   - resource: aws_vpc_security_group_ingress_rule
-    disposition: model-planned
-    reason: "security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens"
+    disposition: composed
+    reason: "covered by AwsSecurityGroup's inline ingress rules (same payload; a spec rule may carry several sources, which AWS expands server-side exactly like per-rule resources); the framework resource adds only per-rule tags -- operational metadata on individual permissions, never modeled (group-level tags come from metadata)"
   - resource: aws_vpc_security_group_rules_exclusive
-    disposition: model-planned
-    reason: "security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens"
-  - resource: aws_vpc_security_group_vpc_association
-    disposition: model-planned
-    reason: "security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens"
+    disposition: deferred
+    reason: "exclusive-management lockdown (asserts the full rule-id set and removes everything else) -- the IAM exclusive-management / route53 records_exclusive class; the catalog's inline rules already own the group's rule set declaratively"
   - resource: aws_vpclattice_access_log_subscription
     disposition: model-planned
     reason: "judged as a planned AwsVpcLatticeServiceNetwork kind (service networks, associations, auth/resource policies, resource gateways/configurations, log subscriptions, domain verifications)"

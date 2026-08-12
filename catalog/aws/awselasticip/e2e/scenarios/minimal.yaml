@@ -2,11 +2,16 @@
 # one region -- exercising allocation, the allocation_id/public_ip/arn/
 # public_dns output contract, and released-allocation detection on destroy
 # (DescribeAddresses returns InvalidAllocationID.NotFound) on both engines.
-# The BYOIP arms (public_ipv4_pool + address) and network_border_group are
-# deliberately absent: they need account-level fixtures (a provisioned BYOIP
-# pool, an enabled Local Zone) no generic test account carries; their wiring
-# is proven by the offline gate and the spec's CEL tests. AwsElasticIp has no
-# registry prerequisites, so the harness applies this directly; the composed
+# The BYOIP arms (public_ipv4_pool + address), network_border_group,
+# ipam_pool_id, and reverse_dns_domain_name are deliberately absent: the
+# first three need account-level fixtures (a provisioned BYOIP pool, an
+# enabled Local Zone, an IPAM public pool) no generic test account carries,
+# and reverse DNS needs a forward A record already resolving to the address
+# BEFORE AWS grants the PTR (a controlled public domain + two-phase apply);
+# their wiring is proven by the offline gate and the spec's CEL tests, with
+# the deferrals recorded in the profile. The association surface is proven
+# live by the associated.yaml scenario. AwsElasticIp has no registry
+# prerequisites, so the harness applies this directly; the composed
 # allocation-reference path is exercised live by the AwsNatGateway scenario,
 # which deploys this kind's prerequisite manifest first. Full metadata is
 # supplied for tagging/orphan cleanup.

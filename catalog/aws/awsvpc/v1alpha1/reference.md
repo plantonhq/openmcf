@@ -448,6 +448,7 @@ Fields on other kinds that can point at this resource:
 | AwsRoute53Zone | `spec.vpcAssociations[].vpcId` | `status.outputs.vpc_id` |
 | AwsSagemakerDomain | `spec.vpcId` | `status.outputs.vpc_id` |
 | AwsSecurityGroup | `spec.vpcId` | `status.outputs.vpc_id` |
+| AwsSecurityGroup | `spec.additionalVpcIds` | `status.outputs.vpc_id` |
 | AwsSubnet | `spec.vpcId` | `status.outputs.vpc_id` |
 | AwsTransitGatewayVpcAttachment | `spec.vpcId` | `status.outputs.vpc_id` |
 | AwsVpcEndpoint | `spec.vpcId` | `status.outputs.vpc_id` |

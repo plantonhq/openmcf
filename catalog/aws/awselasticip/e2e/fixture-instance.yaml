@@ -1,0 +1,29 @@
+# Extra-instance fixture: the EC2 instance the associated scenario attaches
+# its EIP to (spec.instance). Composed via the PATH form of the
+# e2e-prerequisites annotation. Deliberately BARE -- no subnet or security
+# groups -- so it rides the instance kind's default-VPC fallback and the
+# chain stays two resources (this instance, then the EIP); the association
+# needs a running instance, not a hardened one. Same pinned Amazon Linux
+# 2023 AMI as the instance kind's own lanes (us-west-2). IMDSv2 kept
+# required (secure-by-default even for fixtures). Full metadata is supplied
+# for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEc2Instance
+metadata:
+  name: planton-oss-e2e-awseip-instance
+  id: planton-oss-e2e-awseip-instance
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awselasticip
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  ami: ami-0b0b27dd5c039480f
+  instanceType: t3.micro
+  metadataOptions:
+    httpTokens: required

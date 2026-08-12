@@ -14,3 +14,17 @@ spec:
   securityGroupIds:
     - value: sg-0a1b2c3d4e5f67890
   privateDnsEnabled: true
+  # Endpoint policy as a structured IAM document (not an embedded JSON
+  # string) -- here, registry pulls only; the endpoint becomes a
+  # data-exfiltration control.
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: PullOnlyThroughEndpoint
+        Effect: Allow
+        Principal: "*"
+        Action:
+          - ecr:GetDownloadUrlForLayer
+          - ecr:BatchGetImage
+          - ecr:GetAuthorizationToken
+        Resource: "*"

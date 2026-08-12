@@ -8,6 +8,7 @@ package awselasticipv1alpha1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -25,22 +26,31 @@ const (
 // AwsElasticIpSpec defines the desired configuration for an AWS Elastic IP address.
 //
 // An Elastic IP (EIP) is a static, public IPv4 address allocated from Amazon's
-// address pool (or optionally from a Bring-Your-Own-IP pool). Unlike ephemeral
-// public IPs that change when an instance stops, an EIP persists until explicitly
-// released — making it the foundation for stable public endpoints.
+// address pool (or optionally from a Bring-Your-Own-IP or IPAM pool). Unlike
+// ephemeral public IPs that change when an instance stops, an EIP persists until
+// explicitly released — making it the foundation for stable public endpoints.
 //
 // Common consumers of Elastic IPs:
-// - Network Load Balancers (static IP per subnet via allocation_id)
-// - NAT Gateways (stable outbound IP for private subnets)
-// - EC2 instances (persistent public IP across stop/start cycles)
+//   - Network Load Balancers (static IP per subnet via allocation_id)
+//   - NAT Gateways (stable outbound IP for private subnets)
+//   - EC2 instances (persistent public IP across stop/start cycles — attach with
+//     the `instance` or `network_interface` field below)
 //
 // For the 95%+ use case, no spec fields are required — simply create the resource
 // to allocate a VPC EIP from Amazon's pool. The optional fields below support
-// advanced scenarios such as Bring-Your-Own-IP (BYOIP) and AWS Local/Wavelength
-// zone deployments.
+// attachment, Bring-Your-Own-IP (BYOIP), IPAM-managed pools, AWS Local/Wavelength
+// zone deployments, and reverse DNS.
 //
-// All optional fields are ForceNew in the underlying provider: changing any value
-// requires replacing the EIP (new allocation). Treat allocated EIPs as immutable.
+// Mutability: the allocation-shaping fields (pools, address, border group) are
+// ForceNew — changing any of them replaces the EIP (a NEW public address). The
+// association fields (instance, network_interface, associate_with_private_ip)
+// and reverse_dns_domain_name update in place without re-allocating.
+//
+// AWS's legacy EC2-Classic ("standard" domain) addresses are retired — the
+// provider itself refuses them — so every EIP this component manages is a VPC
+// EIP; the modules pin domain = "vpc". Outposts customer-owned IP pools
+// (customer_owned_ipv4_pool) are excluded with the catalog's recorded Outposts
+// exclusion class.
 //
 // Credentials, region, and deployment workflow live outside this spec in stack inputs.
 type AwsElasticIpSpec struct {
@@ -69,8 +79,48 @@ type AwsElasticIpSpec struct {
 	//
 	// This field is ForceNew: changing it requires replacing the EIP.
 	NetworkBorderGroup string `protobuf:"bytes,4,opt,name=network_border_group,json=networkBorderGroup,proto3" json:"network_border_group,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Amazon VPC IP Address Manager (IPAM) pool to allocate this EIP from, e.g.
+	// "ipam-pool-07ccc86aa41bef7ce". IPAM pools let network teams plan, track,
+	// and audit public IPv4 usage centrally; an EIP allocated from a pool is
+	// recorded against that pool's allocations. The pool must be a public-scope
+	// pool provisioned for Elastic IP allocation in this region. May be combined
+	// with `address` to recover a specific address the pool holds.
+	//
+	// Takes a literal pool id today; when the platform's IPAM component lands,
+	// reference its pool output instead.
+	//
+	// This field is ForceNew: changing it requires replacing the EIP.
+	IpamPoolId string `protobuf:"bytes,5,opt,name=ipam_pool_id,json=ipamPoolId,proto3" json:"ipam_pool_id,omitempty"`
+	// EC2 instance to associate this EIP with. Reference an AwsEc2Instance's
+	// instance_id output or pass a literal "i-..." id. The address follows the
+	// instance across stop/start cycles until disassociated. At most one of
+	// `instance` and `network_interface` may be set — associating with an
+	// instance targets its primary network interface's primary private IP.
+	// Updates in place: changing the target re-associates the same address
+	// (the allocation is never replaced).
+	Instance *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=instance,proto3" json:"instance,omitempty"`
+	// Network interface (ENI) to associate this EIP with — the precise form of
+	// association: pick the exact ENI (and, with associate_with_private_ip, the
+	// exact private address) the public IP maps to. Reference an
+	// AwsEc2Instance's primary_network_interface_id output or pass a literal
+	// "eni-..." id (standalone ENIs, appliance interfaces). At most one of
+	// `instance` and `network_interface` may be set. Updates in place.
+	NetworkInterface *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=network_interface,json=networkInterface,proto3" json:"network_interface,omitempty"`
+	// The specific private IPv4 address on the association target that this
+	// EIP maps to. Only meaningful when the target (instance or ENI) carries
+	// multiple private addresses — omitted, AWS uses the primary private IP.
+	// Requires `instance` or `network_interface` to be set. Updates in place.
+	AssociateWithPrivateIp string `protobuf:"bytes,8,opt,name=associate_with_private_ip,json=associateWithPrivateIp,proto3" json:"associate_with_private_ip,omitempty"`
+	// Fully qualified domain name to set as this EIP's reverse DNS (PTR)
+	// record, e.g. "mail.example.com" — required by many mail providers before
+	// they accept SMTP traffic from the address. AWS validates SERVER-SIDE that
+	// a forward DNS record (A) for this domain already resolves to the EIP's
+	// address BEFORE granting the PTR record, so create the EIP first, point
+	// the domain at its public_ip output, then set this field on a follow-up
+	// apply. Updates in place; clearing the field resets the PTR record.
+	ReverseDnsDomainName string `protobuf:"bytes,9,opt,name=reverse_dns_domain_name,json=reverseDnsDomainName,proto3" json:"reverse_dns_domain_name,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *AwsElasticIpSpec) Reset() {
@@ -131,17 +181,62 @@ func (x *AwsElasticIpSpec) GetNetworkBorderGroup() string {
 	return ""
 }
 
+func (x *AwsElasticIpSpec) GetIpamPoolId() string {
+	if x != nil {
+		return x.IpamPoolId
+	}
+	return ""
+}
+
+func (x *AwsElasticIpSpec) GetInstance() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Instance
+	}
+	return nil
+}
+
+func (x *AwsElasticIpSpec) GetNetworkInterface() *v1.StringValueOrRef {
+	if x != nil {
+		return x.NetworkInterface
+	}
+	return nil
+}
+
+func (x *AwsElasticIpSpec) GetAssociateWithPrivateIp() string {
+	if x != nil {
+		return x.AssociateWithPrivateIp
+	}
+	return ""
+}
+
+func (x *AwsElasticIpSpec) GetReverseDnsDomainName() string {
+	if x != nil {
+		return x.ReverseDnsDomainName
+	}
+	return ""
+}
+
 var File_catalog_aws_awselasticip_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awselasticip_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	",catalog/aws/awselasticip/v1alpha1/spec.proto\x12%dev.planton.aws.awselasticip.v1alpha1\x1a\x1bbuf/validate/validate.proto\"\xe7\x02\n" +
+	",catalog/aws/awselasticip/v1alpha1/spec.proto\x12%dev.planton.aws.awselasticip.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xa4\n" +
+	"\n" +
 	"\x10AwsElasticIpSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12(\n" +
 	"\x10public_ipv4_pool\x18\x02 \x01(\tR\x0epublicIpv4Pool\x12\x18\n" +
 	"\aaddress\x18\x03 \x01(\tR\aaddress\x120\n" +
-	"\x14network_border_group\x18\x04 \x01(\tR\x12networkBorderGroup:\xbb\x01\xbaH\xb7\x01\x1a\xb4\x01\n" +
-	"\x1baddress_requires_byoip_pool\x12baddress requires public_ipv4_pool to be set (specific IPs can only be requested from a BYOIP pool)\x1a1this.address == '' || this.public_ipv4_pool != ''B\xc4\x02\n" +
+	"\x14network_border_group\x18\x04 \x01(\tR\x12networkBorderGroup\x12 \n" +
+	"\fipam_pool_id\x18\x05 \x01(\tR\n" +
+	"ipamPoolId\x12s\n" +
+	"\binstance\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xfc\a\x92\xd4a\x1astatus.outputs.instance_idR\binstance\x12\x95\x01\n" +
+	"\x11network_interface\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\x88\xd4a\xfc\a\x92\xd4a+status.outputs.primary_network_interface_idR\x10networkInterface\x12E\n" +
+	"\x19associate_with_private_ip\x18\b \x01(\tB\n" +
+	"\xbaH\a\xd8\x01\x01r\x02x\x01R\x16associateWithPrivateIp\x12}\n" +
+	"\x17reverse_dns_domain_name\x18\t \x01(\tBF\xbaHC\xd8\x01\x01r>2<^([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}\\.?$R\x14reverseDnsDomainName:\x83\x05\xbaH\xff\x04\x1a\xe3\x01\n" +
+	"\x15address_requires_pool\x12|address requires public_ipv4_pool or ipam_pool_id to be set (specific IPs can only be requested from a pool that holds them)\x1aLthis.address == '' || this.public_ipv4_pool != '' || this.ipam_pool_id != ''\x1a\xc4\x01\n" +
+	"\x1eat_most_one_association_target\x12lat most one of instance and network_interface may be set (AWS associates an address with exactly one target)\x1a4!(has(this.instance) && has(this.network_interface))\x1a\xcf\x01\n" +
+	"&private_ip_requires_association_target\x12Jassociate_with_private_ip requires instance or network_interface to be set\x1aYthis.associate_with_private_ip == '' || has(this.instance) || has(this.network_interface)B\xc4\x02\n" +
 	")com.dev.planton.aws.awselasticip.v1alpha1B\tSpecProtoP\x01ZSgithub.com/plantonhq/planton/catalog/aws/awselasticip/v1alpha1;awselasticipv1alpha1\xa2\x02\x04DPAA\xaa\x02%Dev.Planton.Aws.Awselasticip.V1alpha1\xca\x02%Dev\\Planton\\Aws\\Awselasticip\\V1alpha1\xe2\x021Dev\\Planton\\Aws\\Awselasticip\\V1alpha1\\GPBMetadata\xea\x02)Dev::Planton::Aws::Awselasticip::V1alpha1b\x06proto3"
 
 var (
@@ -158,14 +253,17 @@ func file_catalog_aws_awselasticip_v1alpha1_spec_proto_rawDescGZIP() []byte {
 
 var file_catalog_aws_awselasticip_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_catalog_aws_awselasticip_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsElasticIpSpec)(nil), // 0: dev.planton.aws.awselasticip.v1alpha1.AwsElasticIpSpec
+	(*AwsElasticIpSpec)(nil),    // 0: dev.planton.aws.awselasticip.v1alpha1.AwsElasticIpSpec
+	(*v1.StringValueOrRef)(nil), // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awselasticip_v1alpha1_spec_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awselasticip.v1alpha1.AwsElasticIpSpec.instance:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.aws.awselasticip.v1alpha1.AwsElasticIpSpec.network_interface:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awselasticip_v1alpha1_spec_proto_init() }
