@@ -442,6 +442,7 @@ Fields on other kinds that can point at this resource:
 | AwsSagemakerDomain | `spec.defaultUserSettings.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.defaultSpaceSettings.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.domainSecurityGroupIds` | `status.outputs.security_group_id` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSecurityGroup | `spec.ingress[].sourceSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsSecurityGroup | `spec.ingress[].destinationSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsSecurityGroup | `spec.egress[].sourceSecurityGroupIds` | `status.outputs.security_group_id` |

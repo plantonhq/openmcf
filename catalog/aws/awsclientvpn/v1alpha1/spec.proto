@@ -80,14 +80,15 @@ message AwsClientVpnSpec {
   // ---------------------------------------------------------------------------
 
   // The IPv4 range, in CIDR notation, from which connecting clients are
-  // assigned addresses. Block size between /22 and /12; must not overlap
-  // the VPC CIDR or any manually added route, and cannot change after
-  // creation. Required — except when `traffic_ip_address_type` is "ipv6",
-  // where AWS derives client addressing and the field must be empty.
-  // Example: "10.100.0.0/22".
+  // assigned addresses. Block size between /22 and /12 (AWS's documented
+  // bounds — enforced here so the mistake fails at manifest time, not at
+  // apply); must not overlap the VPC CIDR or any manually added route, and
+  // cannot change after creation. Required — except when
+  // `traffic_ip_address_type` is "ipv6", where AWS derives client
+  // addressing and the field must be empty. Example: "10.100.0.0/22".
   string client_cidr_block = 5 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string.pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$"
+    (buf.validate.field).string.pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}/(1[2-9]|2[0-2])$"
   ];
 
   // Split-tunnel routing. When true, only traffic destined for the
@@ -241,17 +242,22 @@ message AwsClientVpnSpec {
 
   // Run a Lambda function on every new connection — allow/deny posture
   // checks beyond authentication (device compliance, source IP policy,
-  // time-of-day rules). Presence enables the hook. Updates in place.
+  // time-of-day rules). Presence enables the hook; removing the block
+  // disables it (both engines send the explicit disabled state — AWS
+  // otherwise keeps a once-enabled hook active forever). Updates in place.
   AwsClientVpnClientConnectOptions client_connect_options = 20;
 
   // Text banner displayed on AWS-provided clients when a session is
   // established (legal notices, acceptable-use reminders). Presence enables
-  // the banner. Updates in place.
+  // the banner; removing the block disables it (both engines send the
+  // explicit disabled state). Updates in place.
   AwsClientVpnLoginBanner client_login_banner = 21;
 
   // Enforce administrator-defined routes on connected devices, blocking
   // client-side route manipulation from bypassing the tunnel (a
-  // security-posture hardening dial for managed fleets). Updates in place.
+  // security-posture hardening dial for managed fleets). Both engines send
+  // the explicit value in both states, so flipping back to false genuinely
+  // disables enforcement. Updates in place.
   bool client_route_enforcement_enabled = 22;
 
   // Custom DNS server IPs pushed to connected clients (max 2). When empty,
@@ -358,13 +364,20 @@ message AwsClientVpnAuthenticationOption {
   // For "federated-authentication": the ARN of the IAM SAML identity
   // provider that brokers sign-on (e.g.
   // "arn:aws:iam::123456789012:saml-provider/okta"). IAM SAML providers
-  // have no Planton kind — pass the literal ARN.
-  string saml_provider_arn = 4;
+  // have no Planton kind — pass the literal ARN (shape-checked here, since
+  // no reference can supply it).
+  string saml_provider_arn = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:saml-provider/.+$"
+  ];
 
   // For "federated-authentication", optional: a second IAM SAML provider
   // used only by the self-service portal (when the portal needs a
   // different SAML app than the VPN itself).
-  string self_service_saml_provider_arn = 5;
+  string self_service_saml_provider_arn = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:saml-provider/.+$"
+  ];
 
   // type valid values.
   option (buf.validate.message).cel = {
@@ -416,18 +429,27 @@ message AwsClientVpnAuthenticationOption {
 message AwsClientVpnAuthorizationRule {
   // The destination network being authorized, in CIDR notation — a VPC
   // CIDR, one subnet, an on-prem range, or "0.0.0.0/0" for internet access
-  // (full-tunnel setups).
+  // (full-tunnel setups). Must be the canonical network address (host bits
+  // zero: "10.0.1.0/24", never "10.0.1.5/24") — the provider rejects
+  // non-canonical forms at plan time.
   string target_network_cidr = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$"
+    (buf.validate.field).string.pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$",
+    (buf.validate.field).cel = {
+      id: "target_network_cidr_canonical"
+      message: "target_network_cidr must be a canonical network address — host bits must be zero (e.g. \"10.0.1.0/24\", not \"10.0.1.5/24\")"
+      expression: "this == '' || this.isIpPrefix(4, true)"
+    }
   ];
 
   // Grant access only to one identity-provider group: an Active Directory
   // group SID (directory authentication) or a SAML group attribute value
   // (federated authentication). Exactly one of this and
   // `authorize_all_groups` must be set. Certificate-only endpoints have no
-  // group concept — use `authorize_all_groups`.
-  string access_group_id = 2;
+  // group concept — use `authorize_all_groups`. Must not contain a comma —
+  // the provider uses the comma as its internal rule-ID separator, and a
+  // comma here corrupts the rule's identity.
+  string access_group_id = 2 [(buf.validate.field).string.not_contains = ","];
 
   // Grant access to every authenticated client. Exactly one of this and
   // `access_group_id` must be set.
@@ -453,10 +475,17 @@ message AwsClientVpnAuthorizationRule {
 message AwsClientVpnRoute {
   // Destination network, in CIDR notation. "0.0.0.0/0" routes all client
   // internet traffic through the VPN (full tunnel) — the target subnet
-  // then needs a NAT path or clients lose internet access.
+  // then needs a NAT path or clients lose internet access. Must be the
+  // canonical network address (host bits zero) — the provider rejects
+  // non-canonical forms at plan time.
   string destination_cidr_block = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$"
+    (buf.validate.field).string.pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$",
+    (buf.validate.field).cel = {
+      id: "destination_cidr_block_canonical"
+      message: "destination_cidr_block must be a canonical network address — host bits must be zero (e.g. \"10.0.1.0/24\", not \"10.0.1.5/24\")"
+      expression: "this == '' || this.isIpPrefix(4, true)"
+    }
   ];
 
   // The associated subnet traffic to this destination egresses through.

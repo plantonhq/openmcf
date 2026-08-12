@@ -52,8 +52,13 @@ type AwsMwaaEnvironmentSpec struct {
 	// airflow_configuration_options overrides specific Apache Airflow configuration properties.
 	// Keys use the Airflow "section.property" format, e.g., "core.default_timezone",
 	// "webserver.dag_default_view", "celery.worker_autoscale".
-	// Values may contain sensitive information (database URIs, API keys) -- treat as confidential.
-	// See https://docs.aws.amazon.com/mwaa/latest/userguide/configuring-env-variables.html for allowed keys.
+	// Values may contain sensitive information (database URIs, API keys) -- treat as
+	// confidential. The Terraform provider marks the whole map Sensitive and redacts it in
+	// plan output; prefer Airflow connections/variables backed by Secrets Manager for real
+	// credentials rather than pasting them here.
+	// Machinery note: the platform's sensitive marker cannot attach to map
+	// fields (and the coverage gate scopes to name-flagged fields), so the
+	// Terraform provider's Sensitive treatment is the redaction this map gets.
 	AirflowConfigurationOptions map[string]string `protobuf:"bytes,3,rep,name=airflow_configuration_options,json=airflowConfigurationOptions,proto3" json:"airflow_configuration_options,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// source_bucket_arn is the ARN of the S3 bucket containing DAGs, plugins, and requirements.
 	// The bucket must have versioning enabled and a bucket policy granting MWAA access.
@@ -134,6 +139,8 @@ type AwsMwaaEnvironmentSpec struct {
 	// webserver_access_mode controls how the Airflow web UI is accessed.
 	// "PRIVATE_ONLY" (default): accessible only within the VPC via VPC endpoint.
 	// "PUBLIC_ONLY": accessible over the internet with IAM-based login.
+	// "PUBLIC_AND_PRIVATE": reachable both over the internet and privately from
+	// within the VPC.
 	WebserverAccessMode *string `protobuf:"bytes,22,opt,name=webserver_access_mode,json=webserverAccessMode,proto3,oneof" json:"webserver_access_mode,omitempty"`
 	// endpoint_management controls who manages the VPC endpoints for the environment.
 	// "SERVICE" (default): AWS creates and manages VPC endpoints automatically.
@@ -523,7 +530,7 @@ var File_catalog_aws_awsmwaaenvironment_v1alpha1_spec_proto protoreflect.FileDes
 
 const file_catalog_aws_awsmwaaenvironment_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/aws/awsmwaaenvironment/v1alpha1/spec.proto\x12+dev.planton.aws.awsmwaaenvironment.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x81\x16\n" +
+	"2catalog/aws/awsmwaaenvironment/v1alpha1/spec.proto\x12+dev.planton.aws.awsmwaaenvironment.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xdf\x16\n" +
 	"\x16AwsMwaaEnvironmentSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12'\n" +
 	"\x0fairflow_version\x18\x02 \x01(\tR\x0eairflowVersion\x12\xa8\x01\n" +
@@ -555,11 +562,11 @@ const file_catalog_aws_awsmwaaenvironment_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0emax_webservers\x18\x14 \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18\x05(\x01R\rmaxWebservers\x12,\n" +
 	"\n" +
 	"schedulers\x18\x15 \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18\x05(\x02R\n" +
-	"schedulers\x12i\n" +
-	"\x15webserver_access_mode\x18\x16 \x01(\tB0\xbaH\x1dr\x1bR\fPRIVATE_ONLYR\vPUBLIC_ONLY\x8a\xa6\x1d\fPRIVATE_ONLYH\x00R\x13webserverAccessMode\x88\x01\x01\x12L\n" +
+	"schedulers\x12}\n" +
+	"\x15webserver_access_mode\x18\x16 \x01(\tBD\xbaH1r/R\fPRIVATE_ONLYR\vPUBLIC_ONLYR\x12PUBLIC_AND_PRIVATE\x8a\xa6\x1d\fPRIVATE_ONLYH\x00R\x13webserverAccessMode\x88\x01\x01\x12L\n" +
 	"\x13endpoint_management\x18\x17 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x13R\aSERVICER\bCUSTOMERR\x12endpointManagement\x12\x88\x01\n" +
-	"\x15logging_configuration\x18\x18 \x01(\v2S.dev.planton.aws.awsmwaaenvironment.v1alpha1.AwsMwaaEnvironmentLoggingConfigurationR\x14loggingConfiguration\x12E\n" +
-	"\x1fweekly_maintenance_window_start\x18\x19 \x01(\tR\x1cweeklyMaintenanceWindowStart\x12Z\n" +
+	"\x15logging_configuration\x18\x18 \x01(\v2S.dev.planton.aws.awsmwaaenvironment.v1alpha1.AwsMwaaEnvironmentLoggingConfigurationR\x14loggingConfiguration\x12\x8e\x01\n" +
+	"\x1fweekly_maintenance_window_start\x18\x19 \x01(\tBG\xbaHD\xd8\x01\x01r?2=^(MON|TUE|WED|THU|FRI|SAT|SUN):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1cweeklyMaintenanceWindowStart\x12Z\n" +
 	"\x1bworker_replacement_strategy\x18\x1a \x01(\tB\x1a\xbaH\x17\xd8\x01\x01r\x12R\x06FORCEDR\bGRACEFULR\x19workerReplacementStrategy\x1aN\n" +
 	" AirflowConfigurationOptionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +

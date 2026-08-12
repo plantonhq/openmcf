@@ -78,11 +78,12 @@ type AwsClientVpnSpec struct {
 	// the server certificate never replaces the endpoint).
 	ServerCertificateArn *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=server_certificate_arn,json=serverCertificateArn,proto3" json:"server_certificate_arn,omitempty"`
 	// The IPv4 range, in CIDR notation, from which connecting clients are
-	// assigned addresses. Block size between /22 and /12; must not overlap
-	// the VPC CIDR or any manually added route, and cannot change after
-	// creation. Required — except when `traffic_ip_address_type` is "ipv6",
-	// where AWS derives client addressing and the field must be empty.
-	// Example: "10.100.0.0/22".
+	// assigned addresses. Block size between /22 and /12 (AWS's documented
+	// bounds — enforced here so the mistake fails at manifest time, not at
+	// apply); must not overlap the VPC CIDR or any manually added route, and
+	// cannot change after creation. Required — except when
+	// `traffic_ip_address_type` is "ipv6", where AWS derives client
+	// addressing and the field must be empty. Example: "10.100.0.0/22".
 	ClientCidrBlock string `protobuf:"bytes,5,opt,name=client_cidr_block,json=clientCidrBlock,proto3" json:"client_cidr_block,omitempty"`
 	// Split-tunnel routing. When true, only traffic destined for the
 	// endpoint's route table goes through the VPN and everything else stays
@@ -154,15 +155,20 @@ type AwsClientVpnSpec struct {
 	SelfServicePortalEnabled bool `protobuf:"varint,19,opt,name=self_service_portal_enabled,json=selfServicePortalEnabled,proto3" json:"self_service_portal_enabled,omitempty"`
 	// Run a Lambda function on every new connection — allow/deny posture
 	// checks beyond authentication (device compliance, source IP policy,
-	// time-of-day rules). Presence enables the hook. Updates in place.
+	// time-of-day rules). Presence enables the hook; removing the block
+	// disables it (both engines send the explicit disabled state — AWS
+	// otherwise keeps a once-enabled hook active forever). Updates in place.
 	ClientConnectOptions *AwsClientVpnClientConnectOptions `protobuf:"bytes,20,opt,name=client_connect_options,json=clientConnectOptions,proto3" json:"client_connect_options,omitempty"`
 	// Text banner displayed on AWS-provided clients when a session is
 	// established (legal notices, acceptable-use reminders). Presence enables
-	// the banner. Updates in place.
+	// the banner; removing the block disables it (both engines send the
+	// explicit disabled state). Updates in place.
 	ClientLoginBanner *AwsClientVpnLoginBanner `protobuf:"bytes,21,opt,name=client_login_banner,json=clientLoginBanner,proto3" json:"client_login_banner,omitempty"`
 	// Enforce administrator-defined routes on connected devices, blocking
 	// client-side route manipulation from bypassing the tunnel (a
-	// security-posture hardening dial for managed fleets). Updates in place.
+	// security-posture hardening dial for managed fleets). Both engines send
+	// the explicit value in both states, so flipping back to false genuinely
+	// disables enforcement. Updates in place.
 	ClientRouteEnforcementEnabled bool `protobuf:"varint,22,opt,name=client_route_enforcement_enabled,json=clientRouteEnforcementEnabled,proto3" json:"client_route_enforcement_enabled,omitempty"`
 	// Custom DNS server IPs pushed to connected clients (max 2). When empty,
 	// clients keep their device DNS — set this to the VPC resolver (the VPC
@@ -409,7 +415,8 @@ type AwsClientVpnAuthenticationOption struct {
 	// For "federated-authentication": the ARN of the IAM SAML identity
 	// provider that brokers sign-on (e.g.
 	// "arn:aws:iam::123456789012:saml-provider/okta"). IAM SAML providers
-	// have no Planton kind — pass the literal ARN.
+	// have no Planton kind — pass the literal ARN (shape-checked here, since
+	// no reference can supply it).
 	SamlProviderArn string `protobuf:"bytes,4,opt,name=saml_provider_arn,json=samlProviderArn,proto3" json:"saml_provider_arn,omitempty"`
 	// For "federated-authentication", optional: a second IAM SAML provider
 	// used only by the self-service portal (when the portal needs a
@@ -493,13 +500,17 @@ type AwsClientVpnAuthorizationRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The destination network being authorized, in CIDR notation — a VPC
 	// CIDR, one subnet, an on-prem range, or "0.0.0.0/0" for internet access
-	// (full-tunnel setups).
+	// (full-tunnel setups). Must be the canonical network address (host bits
+	// zero: "10.0.1.0/24", never "10.0.1.5/24") — the provider rejects
+	// non-canonical forms at plan time.
 	TargetNetworkCidr string `protobuf:"bytes,1,opt,name=target_network_cidr,json=targetNetworkCidr,proto3" json:"target_network_cidr,omitempty"`
 	// Grant access only to one identity-provider group: an Active Directory
 	// group SID (directory authentication) or a SAML group attribute value
 	// (federated authentication). Exactly one of this and
 	// `authorize_all_groups` must be set. Certificate-only endpoints have no
-	// group concept — use `authorize_all_groups`.
+	// group concept — use `authorize_all_groups`. Must not contain a comma —
+	// the provider uses the comma as its internal rule-ID separator, and a
+	// comma here corrupts the rule's identity.
 	AccessGroupId string `protobuf:"bytes,2,opt,name=access_group_id,json=accessGroupId,proto3" json:"access_group_id,omitempty"`
 	// Grant access to every authenticated client. Exactly one of this and
 	// `access_group_id` must be set.
@@ -578,7 +589,9 @@ type AwsClientVpnRoute struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Destination network, in CIDR notation. "0.0.0.0/0" routes all client
 	// internet traffic through the VPN (full tunnel) — the target subnet
-	// then needs a NAT path or clients lose internet access.
+	// then needs a NAT path or clients lose internet access. Must be the
+	// canonical network address (host bits zero) — the provider rejects
+	// non-canonical forms at plan time.
 	DestinationCidrBlock string `protobuf:"bytes,1,opt,name=destination_cidr_block,json=destinationCidrBlock,proto3" json:"destination_cidr_block,omitempty"`
 	// The associated subnet traffic to this destination egresses through.
 	// Must be one of the endpoint's `subnet_ids` — AWS rejects a route whose
@@ -868,14 +881,14 @@ var File_catalog_aws_awsclientvpn_v1alpha1_spec_proto protoreflect.FileDescripto
 
 const file_catalog_aws_awsclientvpn_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	",catalog/aws/awsclientvpn/v1alpha1/spec.proto\x12%dev.planton.aws.awsclientvpn.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xc7\x1c\n" +
+	",catalog/aws/awsclientvpn/v1alpha1/spec.proto\x12%dev.planton.aws.awsclientvpn.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xbd\x1c\n" +
 	"\x10AwsClientVpnSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x8d\x01\n" +
 	"\x16authentication_options\x18\x03 \x03(\v2G.dev.planton.aws.awsclientvpn.v1alpha1.AwsClientVpnAuthenticationOptionB\r\xbaH\n" +
 	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x02R\x15authenticationOptions\x12\x90\x01\n" +
-	"\x16server_certificate_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x14serverCertificateArn\x12m\n" +
-	"\x11client_cidr_block\x18\x05 \x01(\tBA\xbaH>\xd8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x0fclientCidrBlock\x12!\n" +
+	"\x16server_certificate_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x14serverCertificateArn\x12c\n" +
+	"\x11client_cidr_block\x18\x05 \x01(\tB7\xbaH4\xd8\x01\x01r/2-^([0-9]{1,3}\\.){3}[0-9]{1,3}/(1[2-9]|2[0-2])$R\x0fclientCidrBlock\x12!\n" +
 	"\fsplit_tunnel\x18\x06 \x01(\bR\vsplitTunnel\x12H\n" +
 	"\x12transport_protocol\x18\a \x01(\tB\x19\xbaH\x0f\xd8\x01\x01r\n" +
 	"R\x03udpR\x03tcp\x8a\xa6\x1d\x03udpR\x11transportProtocol\x122\n" +
@@ -913,28 +926,30 @@ const file_catalog_aws_awsclientvpn_v1alpha1_spec_proto_rawDesc = "" +
 	"&self_service_portal_requires_federated\x12Wthe self-service portal is only available with a federated (SAML) authentication option\x1ap!this.self_service_portal_enabled || this.authentication_options.exists(a, a.type == 'federated-authentication')\x1a\x8c\x01\n" +
 	"\x12dns_servers_format\x120dns_servers must be valid IPv4 addresses (max 2)\x1aDthis.dns_servers.all(s, s.matches(\"^([0-9]{1,3}\\\\.){3}[0-9]{1,3}$\"))B\v\n" +
 	"\t_vpn_portB\x18\n" +
-	"\x16_session_timeout_hours\"\xcb\x0e\n" +
+	"\x16_session_timeout_hours\"\xca\x0f\n" +
 	" AwsClientVpnAuthenticationOption\x12\x1a\n" +
 	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\x91\x01\n" +
 	"\x1aroot_certificate_chain_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x17rootCertificateChainArn\x12.\n" +
-	"\x13active_directory_id\x18\x03 \x01(\tR\x11activeDirectoryId\x12*\n" +
-	"\x11saml_provider_arn\x18\x04 \x01(\tR\x0fsamlProviderArn\x12B\n" +
-	"\x1eself_service_saml_provider_arn\x18\x05 \x01(\tR\x1aselfServiceSamlProviderArn:\xd6\v\xbaH\xd2\v\x1a\x82\x02\n" +
+	"\x13active_directory_id\x18\x03 \x01(\tR\x11activeDirectoryId\x12i\n" +
+	"\x11saml_provider_arn\x18\x04 \x01(\tB=\xbaH:\xd8\x01\x01r523^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:saml-provider/.+$R\x0fsamlProviderArn\x12\x81\x01\n" +
+	"\x1eself_service_saml_provider_arn\x18\x05 \x01(\tB=\xbaH:\xd8\x01\x01r523^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:saml-provider/.+$R\x1aselfServiceSamlProviderArn:\xd6\v\xbaH\xd2\v\x1a\x82\x02\n" +
 	"\x16auth_type_valid_values\x12{authentication type must be 'certificate-authentication', 'directory-service-authentication', or 'federated-authentication'\x1akthis.type in ['certificate-authentication', 'directory-service-authentication', 'federated-authentication']\x1a\xef\x01\n" +
 	"\x1fcertificate_requires_root_chain\x12ycertificate-authentication requires root_certificate_chain_arn — the client CA chain certificates are validated against\x1aQthis.type != 'certificate-authentication' || has(this.root_certificate_chain_arn)\x1a\xb3\x01\n" +
 	"\x1fdirectory_requires_directory_id\x12=directory-service-authentication requires active_directory_id\x1aQthis.type != 'directory-service-authentication' || this.active_directory_id != ''\x1a\xa0\x01\n" +
 	" federated_requires_saml_provider\x123federated-authentication requires saml_provider_arn\x1aGthis.type != 'federated-authentication' || this.saml_provider_arn != ''\x1a\xc2\x01\n" +
 	"\x1froot_chain_only_for_certificate\x12Kroot_certificate_chain_arn is only accepted with certificate-authentication\x1aRthis.type == 'certificate-authentication' || !has(this.root_certificate_chain_arn)\x1a\xc0\x01\n" +
 	"\x1fdirectory_id_only_for_directory\x12Jactive_directory_id is only accepted with directory-service-authentication\x1aQthis.type == 'directory-service-authentication' || this.active_directory_id == ''\x1a\xf7\x01\n" +
-	"\x17saml_only_for_federated\x12dsaml_provider_arn and self_service_saml_provider_arn are only accepted with federated-authentication\x1avthis.type == 'federated-authentication' || (this.saml_provider_arn == '' && this.self_service_saml_provider_arn == '')\"\xdd\x03\n" +
-	"\x1dAwsClientVpnAuthorizationRule\x12q\n" +
-	"\x13target_network_cidr\x18\x01 \x01(\tBA\xbaH>\xc8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x11targetNetworkCidr\x12&\n" +
-	"\x0faccess_group_id\x18\x02 \x01(\tR\raccessGroupId\x120\n" +
+	"\x17saml_only_for_federated\x12dsaml_provider_arn and self_service_saml_provider_arn are only accepted with federated-authentication\x1avthis.type == 'federated-authentication' || (this.saml_provider_arn == '' && this.self_service_saml_provider_arn == '')\"\xb2\x05\n" +
+	"\x1dAwsClientVpnAuthorizationRule\x12\xba\x02\n" +
+	"\x13target_network_cidr\x18\x01 \x01(\tB\x89\x02\xbaH\x85\x02\xba\x01\xc3\x01\n" +
+	"\x1dtarget_network_cidr_canonical\x12ztarget_network_cidr must be a canonical network address — host bits must be zero (e.g. \"10.0.1.0/24\", not \"10.0.1.5/24\")\x1a&this == '' || this.isIpPrefix(4, true)\xc8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x11targetNetworkCidr\x121\n" +
+	"\x0faccess_group_id\x18\x02 \x01(\tB\t\xbaH\x06r\x04\xba\x01\x01,R\raccessGroupId\x120\n" +
 	"\x14authorize_all_groups\x18\x03 \x01(\bR\x12authorizeAllGroups\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription:\xcc\x01\xbaH\xc8\x01\x1a\xc5\x01\n" +
-	"\x13exactly_one_grantee\x12sset exactly one of access_group_id (grant one IdP group) or authorize_all_groups (grant every authenticated client)\x1a9(this.access_group_id != '') != this.authorize_all_groups\"\xba\x02\n" +
-	"\x11AwsClientVpnRoute\x12w\n" +
-	"\x16destination_cidr_block\x18\x01 \x01(\tBA\xbaH>\xc8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x14destinationCidrBlock\x12\x89\x01\n" +
+	"\x13exactly_one_grantee\x12sset exactly one of access_group_id (grant one IdP group) or authorize_all_groups (grant every authenticated client)\x1a9(this.access_group_id != '') != this.authorize_all_groups\"\x8a\x04\n" +
+	"\x11AwsClientVpnRoute\x12\xc6\x02\n" +
+	"\x16destination_cidr_block\x18\x01 \x01(\tB\x8f\x02\xbaH\x8b\x02\xba\x01\xc9\x01\n" +
+	" destination_cidr_block_canonical\x12}destination_cidr_block must be a canonical network address — host bits must be zero (e.g. \"10.0.1.0/24\", not \"10.0.1.5/24\")\x1a&this == '' || this.isIpPrefix(4, true)\xc8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x14destinationCidrBlock\x12\x89\x01\n" +
 	"\x10target_subnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x0etargetSubnetId\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\"\xb3\x01\n" +
 	" AwsClientVpnClientConnectOptions\x12\x8e\x01\n" +

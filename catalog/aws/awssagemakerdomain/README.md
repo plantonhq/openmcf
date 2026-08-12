@@ -103,6 +103,40 @@ Nested message `defaultSpaceSettings` — inherited by all shared (collaborative
 | `customFileSystemConfigs` | list(CustomFileSystemConfig) | no | [] | Additional file systems mounted into space apps. |
 | `customPosixUserConfig` | CustomPosixUserConfig | no | — | POSIX identity for space file-system operations. |
 
+### User Profiles (folded satellites)
+
+Repeated `userProfiles` — the per-person workspaces inside the domain, one
+`aws_sagemaker_user_profile` per entry, keyed by name (adding or removing a
+person never disturbs the others; removing an entry deletes that profile
+and its home-directory surfaces). Profiles created outside the manifest
+(SSO auto-provisioning, console) are not managed or removed by it.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `userProfileName` | string | **yes** | — | Unique in the domain; 1–63 chars, alphanumeric + hyphens. **ForceNew**. |
+| `singleSignOnUserIdentifier` | string | no | — | SSO domains: must be `UserName`; set together with the value below. **ForceNew**. |
+| `singleSignOnUserValue` | string | no | — | SSO domains: the Identity Center username this profile belongs to. **ForceNew**. |
+| `userSettings` | UserSettings | no | — | Per-user overrides of `defaultUserSettings` — the SAME settings tree (`executionRoleArn` required inside when set). |
+
+### Spaces (folded satellites)
+
+Repeated `spaces` — named shared (or private) workspaces, one
+`aws_sagemaker_space` per entry, keyed by name. A space's runtime and EBS
+volume are shared by everyone with access. The space settings tree is
+deliberately different from `defaultSpaceSettings` (AWS uses distinct
+types): it adds `appType`, requires a resource spec per configured app,
+carries a timeout-only idle dial, and mounts existing EFS file systems by
+id. Profiles create before spaces (ownership references the profile by
+name).
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `spaceName` | string | **yes** | — | Unique in the domain; 1–63 chars. **ForceNew**. |
+| `displayName` | string | no | — | Studio display name (mutable; max 64 chars). |
+| `ownershipSettings.ownerUserProfileName` | string | with sharing | — | The owning profile. Declared together with `spaceSharingSettings`; not updatable after create. |
+| `spaceSharingSettings.sharingType` | string | with ownership | — | `Private` or `Shared`. Not updatable after create. |
+| `spaceSettings` | SpaceSettings | no | — | `appType` (`JupyterLab`/`CodeEditor`/`JupyterServer`/`KernelGateway`), per-app blocks (resource spec required), `customFileSystems` (EFS by id), `spaceStorageSettings.ebsVolumeSizeInGb` (5–16384). |
+
 ### JupyterLabAppSettings
 
 Used by `defaultUserSettings.jupyterLabAppSettings` and `defaultSpaceSettings.jupyterLabAppSettings`:

@@ -469,6 +469,8 @@ Fields on other kinds that can point at this resource:
 | AwsSagemakerDomain | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.canvasAppSettings.workspaceSettings.s3KmsKeyId` | `status.outputs.key_arn` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.sharingSettings.s3KmsKeyId` | `status.outputs.key_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.workspaceSettings.s3KmsKeyId` | `status.outputs.key_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.sharingSettings.s3KmsKeyId` | `status.outputs.key_arn` |
 | AwsServerlessElasticache | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsSnsTopic | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsSqsQueue | `spec.kmsKeyId` | `status.outputs.key_arn` |

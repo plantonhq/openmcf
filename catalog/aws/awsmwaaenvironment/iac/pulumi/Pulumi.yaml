@@ -1,6 +1,4 @@
-name: aws-mwaa-environment
+name: awsmwaaenvironment-pulumi-project
 runtime:
   name: go
-  options:
-    binary: main
 description: AWS MWAA (Managed Workflows for Apache Airflow) Environment deployment component

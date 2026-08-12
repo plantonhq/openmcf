@@ -1714,7 +1714,7 @@ resources:
     reason: "standalone Glacier vaults; S3 lifecycle transitions (covered by AwsS3Bucket) are the mainstream path; deferred"
   - resource: aws_globalaccelerator_cross_account_attachment
     disposition: model-planned
-    reason: "cross-account attachments fold into the existing AwsGlobalAccelerator kind as its spec deepens"
+    reason: "judged as a planned AwsGlobalAcceleratorCrossAccountAttachment kind: the resource has NO accelerator linkage (no accelerator_arn anywhere in its schema) -- it is the resource-OWNER account's sharing object (its resource blocks are the owner's ALBs/EIPs/CIDRs; principals allow other accounts' accelerators), so it cannot be a satellite of an accelerator it never references (reopens the recorded fold-into-AwsGlobalAccelerator promise on schema evidence)"
   - resource: aws_globalaccelerator_custom_routing_accelerator
     disposition: deferred
     reason: "custom-routing accelerators; deferred pending demand"
@@ -3231,11 +3231,11 @@ resources:
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
   - resource: aws_sagemaker_app
-    disposition: model-planned
-    reason: "Studio domain companion surface (apps, spaces, user profiles, lifecycle configs, portfolio status); folds into the existing AwsSagemakerDomain kind as its spec deepens"
+    disposition: deferred
+    reason: "a RUNNING app instance, not declarative config: every argument ForceNew, the provider's Update is a tags-only no-op, and delete tolerates already-deleted apps -- runtime state that Studio starts and stops; deferred (split from the former Studio-companion fold blanket, which the user_profiles/spaces folds executed)"
   - resource: aws_sagemaker_app_image_config
     disposition: model-planned
-    reason: "Studio domain companion surface (apps, spaces, user profiles, lifecycle configs, portfolio status); folds into the existing AwsSagemakerDomain kind as its spec deepens"
+    reason: "judged as a planned AwsSagemakerAppImageConfig kind: an account-level named object (ID is its own name, no domain linkage) referenced BY NAME from domain/user-profile/space custom-image blocks -- the natural sibling of the planned AwsSagemakerImage kind (split from the former Studio-companion fold blanket)"
   - resource: aws_sagemaker_code_repository
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
@@ -3319,19 +3319,13 @@ resources:
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
   - resource: aws_sagemaker_servicecatalog_portfolio_status
     disposition: model-planned
-    reason: "Studio domain companion surface (apps, spaces, user profiles, lifecycle configs, portfolio status); folds into the existing AwsSagemakerDomain kind as its spec deepens"
-  - resource: aws_sagemaker_space
-    disposition: model-planned
-    reason: "Studio domain companion surface (apps, spaces, user profiles, lifecycle configs, portfolio status); folds into the existing AwsSagemakerDomain kind as its spec deepens"
+    reason: "judged as a planned AwsSagemakerServicecatalogPortfolio kind: an account/region singleton toggle (one Required enum, ID is the region, delete is a no-op) enabling SageMaker Projects templates -- the account-settings singleton class, never a per-domain satellite (split from the former Studio-companion fold blanket)"
   - resource: aws_sagemaker_studio_lifecycle_config
     disposition: model-planned
-    reason: "Studio domain companion surface (apps, spaces, user profiles, lifecycle configs, portfolio status); folds into the existing AwsSagemakerDomain kind as its spec deepens"
+    reason: "judged as a planned AwsSagemakerStudioLifecycleConfig kind: an account-level, fully immutable named script object referenced by ARN across domain/profile/space/app surfaces -- own identity and lifecycle, not a domain satellite (split from the former Studio-companion fold blanket)"
   - resource: aws_sagemaker_training_job
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
-  - resource: aws_sagemaker_user_profile
-    disposition: model-planned
-    reason: "Studio domain companion surface (apps, spaces, user profiles, lifecycle configs, portfolio status); folds into the existing AwsSagemakerDomain kind as its spec deepens"
   - resource: aws_sagemaker_workforce
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"

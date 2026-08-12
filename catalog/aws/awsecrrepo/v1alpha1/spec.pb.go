@@ -125,8 +125,10 @@ type AwsEcrRepoSpec struct {
 	// Rules are evaluated by ascending rule_priority; an image is expired by the
 	// first rule that selects it. AWS constraints (enforced here so they fail at
 	// authoring time, not at apply): rule priorities must be unique, and at most
-	// one rule may use tag_status "any" (AWS additionally requires that rule to
-	// carry the highest priority — keep it last).
+	// one rule may use tag_status "any" PER storage class — the provider's own
+	// tested archive example pairs an "any" transition rule (standard images)
+	// with an "any" expire rule selecting storage_class "archive", so the cap
+	// applies per selection tier, not per policy.
 	LifecycleRules []*AwsEcrRepoLifecycleRule `protobuf:"bytes,9,rep,name=lifecycle_rules,json=lifecycleRules,proto3" json:"lifecycle_rules,omitempty"`
 	// Resource-based access policy for the repository, as a standard IAM policy
 	// document. The primary uses are cross-account pulls (granting another
@@ -240,10 +242,12 @@ func (x *AwsEcrRepoSpec) GetRepositoryPolicy() *structpb.Struct {
 	return nil
 }
 
-// AwsEcrRepoLifecycleRule is one image-expiration rule in the repository's
-// lifecycle policy — a structured model of the ECR lifecycle policy JSON rule
-// (selection + expire action; expire is the only action ECR supports, so it is
-// implied and not modeled).
+// AwsEcrRepoLifecycleRule is one image-lifecycle rule in the repository's
+// policy — a structured model of the ECR lifecycle policy JSON rule
+// (selection + action). Rules either EXPIRE selected images (the default) or
+// TRANSITION them to the cheaper archive storage class; a two-rule pair
+// (transition-by-disuse, then expire-from-archive) is the canonical
+// cost-optimization policy.
 type AwsEcrRepoLifecycleRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Evaluation order: lower priorities are evaluated first, and an image is
@@ -270,18 +274,40 @@ type AwsEcrRepoLifecycleRule struct {
 	// tag_status "tagged", and mutually exclusive with tag_prefixes.
 	// Maximum 100 patterns.
 	TagPatterns []string `protobuf:"bytes,5,rep,name=tag_patterns,json=tagPatterns,proto3" json:"tag_patterns,omitempty"`
-	// How the rule counts images for expiry:
+	// How the rule counts images:
 	//   - "imageCountMoreThan": keep the newest count_number selected images and
-	//     expire the rest ("keep last N").
-	//   - "sinceImagePushed": expire selected images older than count_number days
-	//     ("expire by age").
+	//     act on the rest ("keep last N").
+	//   - "sinceImagePushed": act on selected images older than count_number days
+	//     ("by age").
+	//   - "sinceImagePulled": act on selected images not pulled for count_number
+	//     days ("by disuse") — the natural selector for archive transitions.
+	//   - "sinceImageTransitioned": act on selected images that have been in the
+	//     archive storage class for count_number days (requires storage_class
+	//     "archive").
 	CountType string `protobuf:"bytes,6,opt,name=count_type,json=countType,proto3" json:"count_type,omitempty"`
 	// The count for count_type: an image count for "imageCountMoreThan", or a
-	// number of days for "sinceImagePushed" (the "days" unit is the only unit
-	// ECR supports and is implied).
-	CountNumber   int32 `protobuf:"varint,7,opt,name=count_number,json=countNumber,proto3" json:"count_number,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// number of days for the three "since..." types (the "days" unit is the
+	// only unit ECR supports and is implied).
+	CountNumber int32 `protobuf:"varint,7,opt,name=count_number,json=countNumber,proto3" json:"count_number,omitempty"`
+	// Selects images by their CURRENT storage class: "standard" (the default
+	// when unset — freshly pushed images) or "archive" (images a transition
+	// rule already moved). "archive" is required with count_type
+	// "sinceImageTransitioned" and is only valid there — with every other
+	// count_type ECR supports only "standard".
+	StorageClass string `protobuf:"bytes,8,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
+	// What the rule does to selected images:
+	//   - "expire" (the default when unset): delete them.
+	//   - "transition": move them to the cheaper archive storage class instead of
+	//     deleting (pair with target_storage_class "archive"). The canonical
+	//     archive policy is two rules: transition after N days without a pull,
+	//     then expire after M days in archive (count_type
+	//     "sinceImageTransitioned" + storage_class "archive").
+	ActionType string `protobuf:"bytes,9,opt,name=action_type,json=actionType,proto3" json:"action_type,omitempty"`
+	// For action_type "transition": the storage class images move to. "archive"
+	// is the only value ECR supports.
+	TargetStorageClass string `protobuf:"bytes,10,opt,name=target_storage_class,json=targetStorageClass,proto3" json:"target_storage_class,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *AwsEcrRepoLifecycleRule) Reset() {
@@ -363,11 +389,32 @@ func (x *AwsEcrRepoLifecycleRule) GetCountNumber() int32 {
 	return 0
 }
 
+func (x *AwsEcrRepoLifecycleRule) GetStorageClass() string {
+	if x != nil {
+		return x.StorageClass
+	}
+	return ""
+}
+
+func (x *AwsEcrRepoLifecycleRule) GetActionType() string {
+	if x != nil {
+		return x.ActionType
+	}
+	return ""
+}
+
+func (x *AwsEcrRepoLifecycleRule) GetTargetStorageClass() string {
+	if x != nil {
+		return x.TargetStorageClass
+	}
+	return ""
+}
+
 var File_catalog_aws_awsecrrepo_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsecrrepo_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"*catalog/aws/awsecrrepo/v1alpha1/spec.proto\x12#dev.planton.aws.awsecrrepo.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x80\x14\n" +
+	"*catalog/aws/awsecrrepo/v1alpha1/spec.proto\x12#dev.planton.aws.awsecrrepo.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xcd\x16\n" +
 	"\x0eAwsEcrRepoSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12x\n" +
 	"\x0frepository_name\x18\x02 \x01(\tBO\xbaHL\xc8\x01\x01rG\x10\x02\x18\x80\x022@^(?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*$R\x0erepositoryName\x12\x8d\x01\n" +
@@ -381,16 +428,16 @@ const file_catalog_aws_awsecrrepo_v1alpha1_spec_proto_rawDesc = "" +
 	"\fforce_delete\x18\b \x01(\bR\vforceDelete\x12e\n" +
 	"\x0flifecycle_rules\x18\t \x03(\v2<.dev.planton.aws.awsecrrepo.v1alpha1.AwsEcrRepoLifecycleRuleR\x0elifecycleRules\x12D\n" +
 	"\x11repository_policy\x18\n" +
-	" \x01(\v2\x17.google.protobuf.StructR\x10repositoryPolicy:\xa7\f\xbaH\xa3\f\x1a\xec\x02\n" +
+	" \x01(\v2\x17.google.protobuf.StructR\x10repositoryPolicy:\xf4\x0e\xbaH\xf0\x0e\x1a\xec\x02\n" +
 	"(exclusion_filters_require_exclusion_mode\x12\x8a\x01image_tag_mutability_exclusion_filters can only be set when image_tag_mutability is 'IMMUTABLE_WITH_EXCLUSION' or 'MUTABLE_WITH_EXCLUSION'\x1a\xb2\x01this.image_tag_mutability_exclusion_filters.size() == 0 || (has(this.image_tag_mutability) && this.image_tag_mutability in ['IMMUTABLE_WITH_EXCLUSION', 'MUTABLE_WITH_EXCLUSION'])\x1a\xf2\x02\n" +
 	"\x1fexclusion_mode_requires_filters\x12\x99\x01at least one image_tag_mutability_exclusion_filters entry is required when image_tag_mutability is 'IMMUTABLE_WITH_EXCLUSION' or 'MUTABLE_WITH_EXCLUSION'\x1a\xb2\x01!(has(this.image_tag_mutability) && this.image_tag_mutability in ['IMMUTABLE_WITH_EXCLUSION', 'MUTABLE_WITH_EXCLUSION']) || this.image_tag_mutability_exclusion_filters.size() > 0\x1a\xf2\x01\n" +
 	"\x1fkms_key_requires_kms_encryption\x12jkms_key_id can only be set when encryption_type is 'KMS' or 'KMS_DSSE' (AES256 uses an Amazon-managed key)\x1ac!has(this.kms_key_id) || (has(this.encryption_type) && this.encryption_type in ['KMS', 'KMS_DSSE'])\x1a\xcc\x01\n" +
-	" lifecycle_rule_priorities_unique\x12;each lifecycle_rules entry must have a unique rule_priority\x1akthis.lifecycle_rules.all(r, this.lifecycle_rules.filter(x, x.rule_priority == r.rule_priority).size() == 1)\x1a\xcc\x01\n" +
-	"\x19lifecycle_single_any_rule\x12lat most one lifecycle_rules entry may use tag_status 'any' (AWS requires it to be the highest-priority rule)\x1aAthis.lifecycle_rules.filter(r, r.tag_status == 'any').size() <= 1\x1a\xa9\x01\n" +
-	"\x1elifecycle_single_untagged_rule\x12?at most one lifecycle_rules entry may use tag_status 'untagged'\x1aFthis.lifecycle_rules.filter(r, r.tag_status == 'untagged').size() <= 1B\x17\n" +
+	" lifecycle_rule_priorities_unique\x12;each lifecycle_rules entry must have a unique rule_priority\x1akthis.lifecycle_rules.all(r, this.lifecycle_rules.filter(x, x.rule_priority == r.rule_priority).size() == 1)\x1a\xf7\x02\n" +
+	"\x19lifecycle_single_any_rule\x12\x90\x01at most one lifecycle_rules entry may use tag_status 'any' per storage-class tier (one selecting standard images, one selecting archived images)\x1a\xc6\x01this.lifecycle_rules.filter(r, r.tag_status == 'any' && r.storage_class != 'archive').size() <= 1 && this.lifecycle_rules.filter(r, r.tag_status == 'any' && r.storage_class == 'archive').size() <= 1\x1a\xcb\x02\n" +
+	"\x1elifecycle_single_untagged_rule\x12Vat most one lifecycle_rules entry may use tag_status 'untagged' per storage-class tier\x1a\xd0\x01this.lifecycle_rules.filter(r, r.tag_status == 'untagged' && r.storage_class != 'archive').size() <= 1 && this.lifecycle_rules.filter(r, r.tag_status == 'untagged' && r.storage_class == 'archive').size() <= 1B\x17\n" +
 	"\x15_image_tag_mutabilityB\x12\n" +
 	"\x10_encryption_typeB\x0f\n" +
-	"\r_scan_on_push\"\xfc\x05\n" +
+	"\r_scan_on_push\"\xca\r\n" +
 	"\x17AwsEcrRepoLifecycleRule\x12/\n" +
 	"\rrule_priority\x18\x01 \x01(\x05B\n" +
 	"\xbaH\a\xc8\x01\x01\x1a\x02(\x01R\frulePriority\x12 \n" +
@@ -398,12 +445,21 @@ const file_catalog_aws_awsecrrepo_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
 	"tag_status\x18\x03 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x17R\x06taggedR\buntaggedR\x03anyR\ttagStatus\x124\n" +
 	"\ftag_prefixes\x18\x04 \x03(\tB\x11\xbaH\x0e\x92\x01\v\x10d\"\ar\x05\x10\x01\x18\x80\x01R\vtagPrefixes\x12_\n" +
-	"\ftag_patterns\x18\x05 \x03(\tB<\xbaH9\x92\x016\x10d\"2r0\x10\x01\x18\x80\x012)^[a-zA-Z0-9._-]*(\\*[a-zA-Z0-9._-]*){0,4}$R\vtagPatterns\x12M\n" +
+	"\ftag_patterns\x18\x05 \x03(\tB<\xbaH9\x92\x016\x10d\"2r0\x10\x01\x18\x80\x012)^[a-zA-Z0-9._-]*(\\*[a-zA-Z0-9._-]*){0,4}$R\vtagPatterns\x12w\n" +
 	"\n" +
-	"count_type\x18\x06 \x01(\tB.\xbaH+\xc8\x01\x01r&R\x12imageCountMoreThanR\x10sinceImagePushedR\tcountType\x12-\n" +
+	"count_type\x18\x06 \x01(\tBX\xbaHU\xc8\x01\x01rPR\x12imageCountMoreThanR\x10sinceImagePushedR\x10sinceImagePulledR\x16sinceImageTransitionedR\tcountType\x12-\n" +
 	"\fcount_number\x18\a \x01(\x05B\n" +
-	"\xbaH\a\xc8\x01\x01\x1a\x02(\x01R\vcountNumber:\xb8\x02\xbaH\xb4\x02\x1a\xb1\x02\n" +
-	"\x1ctagged_requires_one_selector\x12ktag_status 'tagged' requires exactly one of tag_prefixes or tag_patterns; 'untagged' and 'any' take neither\x1a\xa3\x01this.tag_status == 'tagged' ? ((this.tag_prefixes.size() > 0) != (this.tag_patterns.size() > 0)) : (this.tag_prefixes.size() == 0 && this.tag_patterns.size() == 0)B\xb6\x02\n" +
+	"\xbaH\a\xc8\x01\x01\x1a\x02(\x01R\vcountNumber\x12@\n" +
+	"\rstorage_class\x18\b \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x13R\bstandardR\aarchiveR\fstorageClass\x12=\n" +
+	"\vaction_type\x18\t \x01(\tB\x1c\xbaH\x19\xd8\x01\x01r\x14R\x06expireR\n" +
+	"transitionR\n" +
+	"actionType\x12C\n" +
+	"\x14target_storage_class\x18\n" +
+	" \x01(\tB\x11\xbaH\x0e\xd8\x01\x01r\tR\aarchiveR\x12targetStorageClass:\x96\b\xbaH\x92\b\x1a\xb1\x02\n" +
+	"\x1ctagged_requires_one_selector\x12ktag_status 'tagged' requires exactly one of tag_prefixes or tag_patterns; 'untagged' and 'any' take neither\x1a\xa3\x01this.tag_status == 'tagged' ? ((this.tag_prefixes.size() > 0) != (this.tag_patterns.size() > 0)) : (this.tag_prefixes.size() == 0 && this.tag_patterns.size() == 0)\x1a\xea\x01\n" +
+	"\x1atransition_requires_target\x12\x82\x01action_type 'transition' requires target_storage_class 'archive'; target_storage_class is only valid with action_type 'transition'\x1aG(this.action_type == 'transition') == (this.target_storage_class != '')\x1a\xaa\x02\n" +
+	" storage_class_matches_count_type\x12ucount_type 'sinceImageTransitioned' requires storage_class 'archive'; every other count_type supports only 'standard'\x1a\x8e\x01this.count_type == 'sinceImageTransitioned' ? this.storage_class == 'archive' : (this.storage_class == '' || this.storage_class == 'standard')\x1a\xc1\x01\n" +
+	"\x1ano_transition_from_archive\x12Raction_type 'transition' cannot select images already in the archive storage class\x1aOthis.action_type != 'transition' || this.count_type != 'sinceImageTransitioned'B\xb6\x02\n" +
 	"'com.dev.planton.aws.awsecrrepo.v1alpha1B\tSpecProtoP\x01ZOgithub.com/plantonhq/planton/catalog/aws/awsecrrepo/v1alpha1;awsecrrepov1alpha1\xa2\x02\x04DPAA\xaa\x02#Dev.Planton.Aws.Awsecrrepo.V1alpha1\xca\x02#Dev\\Planton\\Aws\\Awsecrrepo\\V1alpha1\xe2\x02/Dev\\Planton\\Aws\\Awsecrrepo\\V1alpha1\\GPBMetadata\xea\x02'Dev::Planton::Aws::Awsecrrepo::V1alpha1b\x06proto3"
 
 var (

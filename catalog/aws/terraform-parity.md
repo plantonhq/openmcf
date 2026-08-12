@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 267 |
-| Spec fields authored across all kinds | 4554 |
+| Distinct provider resources consumed | 269 |
+| Spec fields authored across all kinds | 4692 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
@@ -48,7 +48,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**105 of 112 kinds are at total accounting; 92 proven live.**
+**110 of 112 kinds are at total accounting; 91 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -64,7 +64,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsBatchJobQueue | 12 | 5 | 5 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchSchedulingPolicy | 8 | 1 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCertManagerCert | 18 | 7 | 7 | 4 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsClientVpn | 47 | 28 | 0 | 0 | 32 | ❌ | — |
+| AwsClientVpn | 47 | 29 | 7 | 11 | 0 | ✅ | — |
 | AwsCloudFront | 126 | 32 | 88 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudwatchAlarm | 39 | 24 | 12 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
@@ -78,7 +78,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsDynamodb | 71 | 27 | 38 | 6 | 0 | ✅ | partial: pulumi, terraform |
 | AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEcrRepo | 17 | 5 | 0 | 0 | 25 | ❌ | ✅ pulumi, terraform |
+| AwsEcrRepo | 17 | 5 | 7 | 5 | 0 | ✅ | — |
 | AwsEcsCluster | 80 | 7 | 64 | 9 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsService | 98 | 53 | 34 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsTaskDefinition | 56 | 13 | 22 | 21 | 0 | ✅ | ✅ pulumi, terraform |
@@ -102,7 +102,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsFsxOntapVolume | 34 | 31 | 0 | 3 | 0 | ✅ | — |
 | AwsFsxOpenzfsFileSystem | 35 | 31 | 2 | 2 | 0 | ✅ | — |
 | AwsFsxWindowsFileSystem | 34 | 28 | 2 | 4 | 0 | ✅ | — |
-| AwsGlobalAccelerator | 28 | 3 | 0 | 0 | 48 | ❌ | ✅ pulumi, terraform |
+| AwsGlobalAccelerator | 28 | 12 | 11 | 5 | 0 | ✅ | — |
 | AwsGlueCatalogDatabase | 15 | 10 | 2 | 3 | 0 | ✅ | partial: pulumi, terraform |
 | AwsHttpApiDomain | 26 | 7 | 11 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiGateway | 91 | 42 | 11 | 38 | 0 | ✅ | ✅ pulumi, terraform |
@@ -124,12 +124,12 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsLbListenerRule | 61 | 3 | 55 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbTargetGroup | 48 | 34 | 7 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsMemcachedElasticache | 48 | 21 | 3 | 24 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsMemorydbAcl | 6 | 2 | 0 | 4 | 0 | ✅ | — |
+| AwsMemorydbAcl | 6 | 2 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsMemorydbCluster | 46 | 29 | 3 | 14 | 0 | ✅ | — |
-| AwsMemorydbUser | 7 | 4 | 0 | 3 | 0 | ✅ | — |
+| AwsMemorydbUser | 7 | 4 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsMskCluster | 56 | 13 | 34 | 9 | 0 | ✅ | partial: pulumi, terraform |
 | AwsMskServerlessCluster | 7 | 1 | 2 | 4 | 0 | ✅ | partial: pulumi, terraform |
-| AwsMwaaEnvironment | 38 | 32 | 0 | 0 | 9 | ❌ | partial: pulumi, terraform |
+| AwsMwaaEnvironment | 38 | 32 | 3 | 3 | 0 | ✅ | partial: pulumi, terraform |
 | AwsNatGateway | 15 | 10 | 3 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsNeptuneCluster | 88 | 35 | 13 | 40 | 0 | ✅ | partial: pulumi, terraform |
 | AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | ✅ pulumi, terraform |
@@ -146,7 +146,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsRoute53Zone | 17 | 5 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3Bucket | 204 | 24 | 102 | 78 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3ObjectSet | 28 | 3 | 0 | 0 | 46 | ❌ | ✅ pulumi, terraform |
-| AwsSagemakerDomain | 159 | 93 | 0 | 0 | 126 | ❌ | ✅ pulumi, terraform |
+| AwsSagemakerDomain | 299 | 184 | 104 | 11 | 0 | ✅ | — |
 | AwsSecurityGroup | 13 | 5 | 3 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsServerlessElasticache | 19 | 12 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSesConfigurationSet | 27 | 6 | 16 | 5 | 0 | ✅ | ✅ pulumi, terraform |
@@ -171,11 +171,11 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 266 | consumed by a kind's Terraform module today |
+| Modeled | 268 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 26 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 730 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 540 | deliberately not offered, each with the recorded reason |
+| Planned | 727 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 541 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -184,7 +184,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (266)
+### Modeled (268)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -427,6 +427,8 @@ rather than trusted.
 | `aws_s3_bucket_website_configuration` | consumed by AwsS3Bucket |
 | `aws_s3_object` | consumed by AwsS3ObjectSet |
 | `aws_sagemaker_domain` | consumed by AwsSagemakerDomain |
+| `aws_sagemaker_space` | consumed by AwsSagemakerDomain |
+| `aws_sagemaker_user_profile` | consumed by AwsSagemakerDomain |
 | `aws_secretsmanager_secret` | consumed by AwsPlantonRunner |
 | `aws_secretsmanager_secret_version` | consumed by AwsPlantonRunner |
 | `aws_security_group` | consumed by AwsPlantonRunner, AwsSecurityGroup |
@@ -486,7 +488,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (730)
+### Planned (727)
 
 | Resource | Recorded reason |
 |---|---|
@@ -806,7 +808,7 @@ rather than trusted.
 | `aws_flow_log` | VPC companion surface (flow logs, IPv6 associations, block-public-access, encryption control, route management); folds into the existing AwsVpc kind as its spec deepens |
 | `aws_fsx_openzfs_volume` | judged as a planned AwsFsxOpenzfsVolume kind (child-volume hierarchy, NFS exports, quotas, clone-from-snapshot origin) -- standalone lifecycle on the AwsFsxOntapVolume precedent; the AwsFsxOpenzfsFileSystem spec records child volumes as out of its scope |
 | `aws_fsx_s3_access_point_attachment` | attaches an S3 access point to an OpenZFS volume -- satellite of the planned AwsFsxOpenzfsVolume kind; judged with that kind's family |
-| `aws_globalaccelerator_cross_account_attachment` | cross-account attachments fold into the existing AwsGlobalAccelerator kind as its spec deepens |
+| `aws_globalaccelerator_cross_account_attachment` | judged as a planned AwsGlobalAcceleratorCrossAccountAttachment kind: the resource has NO accelerator linkage (no accelerator_arn anywhere in its schema) -- it is the resource-OWNER account's sharing object (its resource blocks are the owner's ALBs/EIPs/CIDRs; principals allow other accounts' accelerators), so it cannot be a satellite of an accelerator it never references (reopens the recorded fold-into-AwsGlobalAccelerator promise on schema evidence) |
 | `aws_glue_catalog` | judged as a planned AwsGlueCatalog kind -- a catalog is a standalone object (multi-catalog hierarchies, Redshift-federated catalogs) with its own lifecycle, not a per-database satellite |
 | `aws_glue_catalog_table` | judged as a planned AwsGlueCatalogTable kind (tables, partitions, indexes, optimizers) |
 | `aws_glue_catalog_table_optimizer` | judged as a planned AwsGlueCatalogTable kind (tables, partitions, indexes, optimizers) |
@@ -1026,8 +1028,7 @@ rather than trusted.
 | `aws_s3vectors_index` | judged as a planned AwsS3VectorBucket kind (vector buckets, indexes, policies) |
 | `aws_s3vectors_vector_bucket` | judged as a planned AwsS3VectorBucket kind (vector buckets, indexes, policies) |
 | `aws_s3vectors_vector_bucket_policy` | judged as a planned AwsS3VectorBucket kind (vector buckets, indexes, policies) |
-| `aws_sagemaker_app` | Studio domain companion surface (apps, spaces, user profiles, lifecycle configs, portfolio status); folds into the existing AwsSagemakerDomain kind as its spec deepens |
-| `aws_sagemaker_app_image_config` | Studio domain companion surface (apps, spaces, user profiles, lifecycle configs, portfolio status); folds into the existing AwsSagemakerDomain kind as its spec deepens |
+| `aws_sagemaker_app_image_config` | judged as a planned AwsSagemakerAppImageConfig kind: an account-level named object (ID is its own name, no domain linkage) referenced BY NAME from domain/user-profile/space custom-image blocks -- the natural sibling of the planned AwsSagemakerImage kind (split from the former Studio-companion fold blanket) |
 | `aws_sagemaker_endpoint` | judged as a planned AwsSagemakerEndpoint kind (endpoints with configurations) |
 | `aws_sagemaker_endpoint_configuration` | judged as a planned AwsSagemakerEndpoint kind (endpoints with configurations) |
 | `aws_sagemaker_feature_group` | judged as a planned AwsSagemakerFeatureGroup kind |
@@ -1041,10 +1042,8 @@ rather than trusted.
 | `aws_sagemaker_notebook_instance` | judged as a planned AwsSagemakerNotebookInstance kind (instances with lifecycle configurations) |
 | `aws_sagemaker_notebook_instance_lifecycle_configuration` | judged as a planned AwsSagemakerNotebookInstance kind (instances with lifecycle configurations) |
 | `aws_sagemaker_pipeline` | judged as a planned AwsSagemakerPipeline kind |
-| `aws_sagemaker_servicecatalog_portfolio_status` | Studio domain companion surface (apps, spaces, user profiles, lifecycle configs, portfolio status); folds into the existing AwsSagemakerDomain kind as its spec deepens |
-| `aws_sagemaker_space` | Studio domain companion surface (apps, spaces, user profiles, lifecycle configs, portfolio status); folds into the existing AwsSagemakerDomain kind as its spec deepens |
-| `aws_sagemaker_studio_lifecycle_config` | Studio domain companion surface (apps, spaces, user profiles, lifecycle configs, portfolio status); folds into the existing AwsSagemakerDomain kind as its spec deepens |
-| `aws_sagemaker_user_profile` | Studio domain companion surface (apps, spaces, user profiles, lifecycle configs, portfolio status); folds into the existing AwsSagemakerDomain kind as its spec deepens |
+| `aws_sagemaker_servicecatalog_portfolio_status` | judged as a planned AwsSagemakerServicecatalogPortfolio kind: an account/region singleton toggle (one Required enum, ID is the region, delete is a no-op) enabling SageMaker Projects templates -- the account-settings singleton class, never a per-domain satellite (split from the former Studio-companion fold blanket) |
+| `aws_sagemaker_studio_lifecycle_config` | judged as a planned AwsSagemakerStudioLifecycleConfig kind: an account-level, fully immutable named script object referenced by ARN across domain/profile/space/app surfaces -- own identity and lifecycle, not a domain satellite (split from the former Studio-companion fold blanket) |
 | `aws_scheduler_schedule` | judged as a planned AwsEventbridgeScheduler kind (schedules with groups) |
 | `aws_scheduler_schedule_group` | judged as a planned AwsEventbridgeScheduler kind (schedules with groups) |
 | `aws_secretsmanager_secret_policy` | judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags) |
@@ -1221,7 +1220,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (540)
+### Deferred (541)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1669,6 +1668,7 @@ rather than trusted.
 | `aws_s3files_synchronization_configuration` | the new S3 file-system service; deferred pending maturity and demand |
 | `aws_s3outposts_endpoint` | S3 on Outposts endpoints; deferred pending demand |
 | `aws_sagemaker_algorithm` | SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred |
+| `aws_sagemaker_app` | a RUNNING app instance, not declarative config: every argument ForceNew, the provider's Update is a tags-only no-op, and delete tolerates already-deleted apps -- runtime state that Studio starts and stops; deferred (split from the former Studio-companion fold blanket, which the user_profiles/spaces folds executed) |
 | `aws_sagemaker_code_repository` | SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred |
 | `aws_sagemaker_data_quality_job_definition` | SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred |
 | `aws_sagemaker_device` | SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred |

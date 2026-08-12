@@ -226,7 +226,10 @@ pass the literal ID.
 For "federated-authentication": the ARN of the IAM SAML identity
 provider that brokers sign-on (e.g.
 "arn:aws:iam::123456789012:saml-provider/okta"). IAM SAML providers
-have no Planton kind — pass the literal ARN.
+have no Planton kind — pass the literal ARN (shape-checked here, since
+no reference can supply it).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:saml-provider/.+$"}}
 
 ### spec.authenticationOptions[].selfServiceSamlProviderArn
 
@@ -235,6 +238,8 @@ have no Planton kind — pass the literal ARN.
 For "federated-authentication", optional: a second IAM SAML provider
 used only by the self-service portal (when the portal needs a
 different SAML app than the VPN itself).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:saml-provider/.+$"}}
 
 ### spec.serverCertificateArn
 
@@ -254,13 +259,14 @@ the server certificate never replaces the endpoint).
 `string`
 
 The IPv4 range, in CIDR notation, from which connecting clients are
-assigned addresses. Block size between /22 and /12; must not overlap
-the VPC CIDR or any manually added route, and cannot change after
-creation. Required — except when `traffic_ip_address_type` is "ipv6",
-where AWS derives client addressing and the field must be empty.
-Example: "10.100.0.0/22".
+assigned addresses. Block size between /22 and /12 (AWS's documented
+bounds — enforced here so the mistake fails at manifest time, not at
+apply); must not overlap the VPC CIDR or any manually added route, and
+cannot change after creation. Required — except when
+`traffic_ip_address_type` is "ipv6", where AWS derives client
+addressing and the field must be empty. Example: "10.100.0.0/22".
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$"}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^([0-9]{1,3}\\.){3}[0-9]{1,3}/(1[2-9]|2[0-2])$"}}
 
 ### spec.splitTunnel
 
@@ -411,8 +417,11 @@ endpoint authorizes no traffic by default). Rules add/remove in place.
 
 The destination network being authorized, in CIDR notation — a VPC
 CIDR, one subnet, an on-prem range, or "0.0.0.0/0" for internet access
-(full-tunnel setups).
+(full-tunnel setups). Must be the canonical network address (host bits
+zero: "10.0.1.0/24", never "10.0.1.5/24") — the provider rejects
+non-canonical forms at plan time.
 
+- rule: target_network_cidr must be a canonical network address — host bits must be zero (e.g. "10.0.1.0/24", not "10.0.1.5/24")
 - rule: {"required":true,"string":{"pattern":"^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$"}}
 
 ### spec.authorizationRules[].accessGroupId
@@ -423,7 +432,11 @@ Grant access only to one identity-provider group: an Active Directory
 group SID (directory authentication) or a SAML group attribute value
 (federated authentication). Exactly one of this and
 `authorize_all_groups` must be set. Certificate-only endpoints have no
-group concept — use `authorize_all_groups`.
+group concept — use `authorize_all_groups`. Must not contain a comma —
+the provider uses the comma as its internal rule-ID separator, and a
+comma here corrupts the rule's identity.
+
+- rule: {"string":{"notContains":","}}
 
 ### spec.authorizationRules[].authorizeAllGroups
 
@@ -455,8 +468,11 @@ gateway. Each route's target subnet must be one of the associated
 
 Destination network, in CIDR notation. "0.0.0.0/0" routes all client
 internet traffic through the VPN (full tunnel) — the target subnet
-then needs a NAT path or clients lose internet access.
+then needs a NAT path or clients lose internet access. Must be the
+canonical network address (host bits zero) — the provider rejects
+non-canonical forms at plan time.
 
+- rule: destination_cidr_block must be a canonical network address — host bits must be zero (e.g. "10.0.1.0/24", not "10.0.1.5/24")
 - rule: {"required":true,"string":{"pattern":"^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$"}}
 
 ### spec.routes[].targetSubnetId
@@ -509,7 +525,9 @@ federated (SAML) authentication option. Updates in place.
 
 Run a Lambda function on every new connection — allow/deny posture
 checks beyond authentication (device compliance, source IP policy,
-time-of-day rules). Presence enables the hook. Updates in place.
+time-of-day rules). Presence enables the hook; removing the block
+disables it (both engines send the explicit disabled state — AWS
+otherwise keeps a once-enabled hook active forever). Updates in place.
 
 ### spec.clientConnectOptions.lambdaFunctionArn
 
@@ -531,7 +549,8 @@ user.
 
 Text banner displayed on AWS-provided clients when a session is
 established (legal notices, acceptable-use reminders). Presence enables
-the banner. Updates in place.
+the banner; removing the block disables it (both engines send the
+explicit disabled state). Updates in place.
 
 ### spec.clientLoginBanner.bannerText
 
@@ -548,7 +567,9 @@ acceptable-use reminders, support contacts.
 
 Enforce administrator-defined routes on connected devices, blocking
 client-side route manipulation from bypassing the tunnel (a
-security-posture hardening dial for managed fleets). Updates in place.
+security-posture hardening dial for managed fleets). Both engines send
+the explicit value in both states, so flipping back to false genuinely
+disables enforcement. Updates in place.
 
 ### spec.dnsServers
 

@@ -1,0 +1,272 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The mapping tables below encode the spec's systematic renames against the
+# provider tree: the app_lifecycle_management wrapper is unwrapped (the spec
+# folds idle_settings directly under each app-settings block), repeated
+# blocks are pluralized (custom_image -> custom_images, code_repository ->
+# code_repositories, custom_file_system_config -> custom_file_system_configs),
+# single-purpose wrappers are flattened (domain_settings.*, retention_policy,
+# the Canvas status wrappers, default_ebs_storage_settings), and role/group
+# fields carry the catalog's _arn/_ids naming.
+
+resources:
+  aws_sagemaker_domain:
+    mappings:
+      - spec: spec.default_space_settings.custom_file_system_configs.efs_file_system_config.file_system_id
+        arg: default_space_settings.custom_file_system_config.efs_file_system_config.file_system_id
+      - spec: spec.default_space_settings.custom_file_system_configs.efs_file_system_config.file_system_path
+        arg: default_space_settings.custom_file_system_config.efs_file_system_config.file_system_path
+      - spec: spec.default_space_settings.execution_role_arn
+        arg: default_space_settings.execution_role
+      - spec: spec.default_space_settings.jupyter_lab_app_settings.idle_settings.idle_timeout_in_minutes
+        arg: default_space_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.idle_timeout_in_minutes
+      - spec: spec.default_space_settings.jupyter_lab_app_settings.idle_settings.lifecycle_management
+        arg: default_space_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.lifecycle_management
+      - spec: spec.default_space_settings.jupyter_lab_app_settings.idle_settings.max_idle_timeout_in_minutes
+        arg: default_space_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.max_idle_timeout_in_minutes
+      - spec: spec.default_space_settings.jupyter_lab_app_settings.idle_settings.min_idle_timeout_in_minutes
+        arg: default_space_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.min_idle_timeout_in_minutes
+      - spec: spec.default_space_settings.jupyter_lab_app_settings.code_repositories.repository_url
+        arg: default_space_settings.jupyter_lab_app_settings.code_repository.repository_url
+      - spec: spec.default_space_settings.jupyter_lab_app_settings.custom_images.app_image_config_name
+        arg: default_space_settings.jupyter_lab_app_settings.custom_image.app_image_config_name
+      - spec: spec.default_space_settings.jupyter_lab_app_settings.custom_images.image_name
+        arg: default_space_settings.jupyter_lab_app_settings.custom_image.image_name
+      - spec: spec.default_space_settings.jupyter_lab_app_settings.custom_images.image_version_number
+        arg: default_space_settings.jupyter_lab_app_settings.custom_image.image_version_number
+      - spec: spec.default_space_settings.jupyter_server_app_settings.code_repositories.repository_url
+        arg: default_space_settings.jupyter_server_app_settings.code_repository.repository_url
+      - spec: spec.default_space_settings.kernel_gateway_app_settings.custom_images.app_image_config_name
+        arg: default_space_settings.kernel_gateway_app_settings.custom_image.app_image_config_name
+      - spec: spec.default_space_settings.kernel_gateway_app_settings.custom_images.image_name
+        arg: default_space_settings.kernel_gateway_app_settings.custom_image.image_name
+      - spec: spec.default_space_settings.kernel_gateway_app_settings.custom_images.image_version_number
+        arg: default_space_settings.kernel_gateway_app_settings.custom_image.image_version_number
+      - spec: spec.default_space_settings.security_group_ids
+        arg: default_space_settings.security_groups
+      - spec: spec.default_space_settings.space_storage_settings.default_ebs_volume_size_in_gb
+        arg: default_space_settings.space_storage_settings.default_ebs_storage_settings.default_ebs_volume_size_in_gb
+      - spec: spec.default_space_settings.space_storage_settings.maximum_ebs_volume_size_in_gb
+        arg: default_space_settings.space_storage_settings.default_ebs_storage_settings.maximum_ebs_volume_size_in_gb
+      - spec: spec.default_user_settings.canvas_app_settings.direct_deploy_status
+        arg: default_user_settings.canvas_app_settings.direct_deploy_settings.status
+      - spec: spec.default_user_settings.canvas_app_settings.generative_ai_bedrock_role_arn
+        arg: default_user_settings.canvas_app_settings.generative_ai_settings.amazon_bedrock_role_arn
+      - spec: spec.default_user_settings.canvas_app_settings.kendra_settings_status
+        arg: default_user_settings.canvas_app_settings.kendra_settings.status
+      - spec: spec.default_user_settings.code_editor_app_settings.idle_settings.idle_timeout_in_minutes
+        arg: default_user_settings.code_editor_app_settings.app_lifecycle_management.idle_settings.idle_timeout_in_minutes
+      - spec: spec.default_user_settings.code_editor_app_settings.idle_settings.lifecycle_management
+        arg: default_user_settings.code_editor_app_settings.app_lifecycle_management.idle_settings.lifecycle_management
+      - spec: spec.default_user_settings.code_editor_app_settings.idle_settings.max_idle_timeout_in_minutes
+        arg: default_user_settings.code_editor_app_settings.app_lifecycle_management.idle_settings.max_idle_timeout_in_minutes
+      - spec: spec.default_user_settings.code_editor_app_settings.idle_settings.min_idle_timeout_in_minutes
+        arg: default_user_settings.code_editor_app_settings.app_lifecycle_management.idle_settings.min_idle_timeout_in_minutes
+      - spec: spec.default_user_settings.code_editor_app_settings.custom_images.app_image_config_name
+        arg: default_user_settings.code_editor_app_settings.custom_image.app_image_config_name
+      - spec: spec.default_user_settings.code_editor_app_settings.custom_images.image_name
+        arg: default_user_settings.code_editor_app_settings.custom_image.image_name
+      - spec: spec.default_user_settings.code_editor_app_settings.custom_images.image_version_number
+        arg: default_user_settings.code_editor_app_settings.custom_image.image_version_number
+      - spec: spec.default_user_settings.custom_file_system_configs.efs_file_system_config.file_system_id
+        arg: default_user_settings.custom_file_system_config.efs_file_system_config.file_system_id
+      - spec: spec.default_user_settings.custom_file_system_configs.efs_file_system_config.file_system_path
+        arg: default_user_settings.custom_file_system_config.efs_file_system_config.file_system_path
+      - spec: spec.default_user_settings.execution_role_arn
+        arg: default_user_settings.execution_role
+      - spec: spec.default_user_settings.jupyter_lab_app_settings.idle_settings.idle_timeout_in_minutes
+        arg: default_user_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.idle_timeout_in_minutes
+      - spec: spec.default_user_settings.jupyter_lab_app_settings.idle_settings.lifecycle_management
+        arg: default_user_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.lifecycle_management
+      - spec: spec.default_user_settings.jupyter_lab_app_settings.idle_settings.max_idle_timeout_in_minutes
+        arg: default_user_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.max_idle_timeout_in_minutes
+      - spec: spec.default_user_settings.jupyter_lab_app_settings.idle_settings.min_idle_timeout_in_minutes
+        arg: default_user_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.min_idle_timeout_in_minutes
+      - spec: spec.default_user_settings.jupyter_lab_app_settings.code_repositories.repository_url
+        arg: default_user_settings.jupyter_lab_app_settings.code_repository.repository_url
+      - spec: spec.default_user_settings.jupyter_lab_app_settings.custom_images.app_image_config_name
+        arg: default_user_settings.jupyter_lab_app_settings.custom_image.app_image_config_name
+      - spec: spec.default_user_settings.jupyter_lab_app_settings.custom_images.image_name
+        arg: default_user_settings.jupyter_lab_app_settings.custom_image.image_name
+      - spec: spec.default_user_settings.jupyter_lab_app_settings.custom_images.image_version_number
+        arg: default_user_settings.jupyter_lab_app_settings.custom_image.image_version_number
+      - spec: spec.default_user_settings.jupyter_server_app_settings.code_repositories.repository_url
+        arg: default_user_settings.jupyter_server_app_settings.code_repository.repository_url
+      - spec: spec.default_user_settings.kernel_gateway_app_settings.custom_images.app_image_config_name
+        arg: default_user_settings.kernel_gateway_app_settings.custom_image.app_image_config_name
+      - spec: spec.default_user_settings.kernel_gateway_app_settings.custom_images.image_name
+        arg: default_user_settings.kernel_gateway_app_settings.custom_image.image_name
+      - spec: spec.default_user_settings.kernel_gateway_app_settings.custom_images.image_version_number
+        arg: default_user_settings.kernel_gateway_app_settings.custom_image.image_version_number
+      - spec: spec.default_user_settings.r_session_app_settings.custom_images.app_image_config_name
+        arg: default_user_settings.r_session_app_settings.custom_image.app_image_config_name
+      - spec: spec.default_user_settings.r_session_app_settings.custom_images.image_name
+        arg: default_user_settings.r_session_app_settings.custom_image.image_name
+      - spec: spec.default_user_settings.r_session_app_settings.custom_images.image_version_number
+        arg: default_user_settings.r_session_app_settings.custom_image.image_version_number
+      - spec: spec.default_user_settings.security_group_ids
+        arg: default_user_settings.security_groups
+      - spec: spec.default_user_settings.space_storage_settings.default_ebs_volume_size_in_gb
+        arg: default_user_settings.space_storage_settings.default_ebs_storage_settings.default_ebs_volume_size_in_gb
+      - spec: spec.default_user_settings.space_storage_settings.maximum_ebs_volume_size_in_gb
+        arg: default_user_settings.space_storage_settings.default_ebs_storage_settings.maximum_ebs_volume_size_in_gb
+      - spec: spec.docker_settings.enable_docker_access
+        arg: domain_settings.docker_settings.enable_docker_access
+      - spec: spec.docker_settings.vpc_only_trusted_accounts
+        arg: domain_settings.docker_settings.vpc_only_trusted_accounts
+      - spec: spec.execution_role_identity_config
+        arg: domain_settings.execution_role_identity_config
+      - spec: spec.r_studio_server_pro_domain_settings.default_resource_spec.instance_type
+        arg: domain_settings.r_studio_server_pro_domain_settings.default_resource_spec.instance_type
+      - spec: spec.r_studio_server_pro_domain_settings.default_resource_spec.lifecycle_config_arn
+        arg: domain_settings.r_studio_server_pro_domain_settings.default_resource_spec.lifecycle_config_arn
+      - spec: spec.r_studio_server_pro_domain_settings.default_resource_spec.sagemaker_image_arn
+        arg: domain_settings.r_studio_server_pro_domain_settings.default_resource_spec.sagemaker_image_arn
+      - spec: spec.r_studio_server_pro_domain_settings.default_resource_spec.sagemaker_image_version_alias
+        arg: domain_settings.r_studio_server_pro_domain_settings.default_resource_spec.sagemaker_image_version_alias
+      - spec: spec.r_studio_server_pro_domain_settings.default_resource_spec.sagemaker_image_version_arn
+        arg: domain_settings.r_studio_server_pro_domain_settings.default_resource_spec.sagemaker_image_version_arn
+      - spec: spec.r_studio_server_pro_domain_settings.domain_execution_role_arn
+        arg: domain_settings.r_studio_server_pro_domain_settings.domain_execution_role_arn
+      - spec: spec.r_studio_server_pro_domain_settings.r_studio_connect_url
+        arg: domain_settings.r_studio_server_pro_domain_settings.r_studio_connect_url
+      - spec: spec.r_studio_server_pro_domain_settings.r_studio_package_manager_url
+        arg: domain_settings.r_studio_server_pro_domain_settings.r_studio_package_manager_url
+      - spec: spec.domain_security_group_ids
+        arg: domain_settings.security_group_ids
+      - spec: spec.trusted_identity_propagation_status
+        arg: domain_settings.trusted_identity_propagation_settings.status
+      - spec: spec.home_efs_retention_policy
+        arg: retention_policy.home_efs_file_system
+    exclusions:
+      # Identity is the kind's own contract. The provider's name rule (1-63
+      # chars, alphanumeric and hyphens) is enforced on metadata.name at
+      # manifest level.
+      - arg: domain_name
+        reason: derived from metadata.name (create-time-immutable) -- never free-form user surface
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the planton.ai identity keys; no Name tag -- the domain carries its own name argument) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_sagemaker_user_profile:
+    # One profile per spec.user_profiles entry, keyed by profile name. A
+    # profile's user_settings is the SAME settings tree as the domain's
+    # default_user_settings (AWS shares one UserSettings type), so the
+    # mapping table mirrors the domain's tree renames.
+    specRoot: spec.user_profiles
+    mappings:
+      - spec: spec.user_profiles.user_settings.canvas_app_settings.direct_deploy_status
+        arg: user_settings.canvas_app_settings.direct_deploy_settings.status
+      - spec: spec.user_profiles.user_settings.canvas_app_settings.generative_ai_bedrock_role_arn
+        arg: user_settings.canvas_app_settings.generative_ai_settings.amazon_bedrock_role_arn
+      - spec: spec.user_profiles.user_settings.canvas_app_settings.kendra_settings_status
+        arg: user_settings.canvas_app_settings.kendra_settings.status
+      - spec: spec.user_profiles.user_settings.code_editor_app_settings.idle_settings.idle_timeout_in_minutes
+        arg: user_settings.code_editor_app_settings.app_lifecycle_management.idle_settings.idle_timeout_in_minutes
+      - spec: spec.user_profiles.user_settings.code_editor_app_settings.idle_settings.lifecycle_management
+        arg: user_settings.code_editor_app_settings.app_lifecycle_management.idle_settings.lifecycle_management
+      - spec: spec.user_profiles.user_settings.code_editor_app_settings.idle_settings.max_idle_timeout_in_minutes
+        arg: user_settings.code_editor_app_settings.app_lifecycle_management.idle_settings.max_idle_timeout_in_minutes
+      - spec: spec.user_profiles.user_settings.code_editor_app_settings.idle_settings.min_idle_timeout_in_minutes
+        arg: user_settings.code_editor_app_settings.app_lifecycle_management.idle_settings.min_idle_timeout_in_minutes
+      - spec: spec.user_profiles.user_settings.code_editor_app_settings.custom_images.app_image_config_name
+        arg: user_settings.code_editor_app_settings.custom_image.app_image_config_name
+      - spec: spec.user_profiles.user_settings.code_editor_app_settings.custom_images.image_name
+        arg: user_settings.code_editor_app_settings.custom_image.image_name
+      - spec: spec.user_profiles.user_settings.code_editor_app_settings.custom_images.image_version_number
+        arg: user_settings.code_editor_app_settings.custom_image.image_version_number
+      - spec: spec.user_profiles.user_settings.custom_file_system_configs.efs_file_system_config.file_system_id
+        arg: user_settings.custom_file_system_config.efs_file_system_config.file_system_id
+      - spec: spec.user_profiles.user_settings.custom_file_system_configs.efs_file_system_config.file_system_path
+        arg: user_settings.custom_file_system_config.efs_file_system_config.file_system_path
+      - spec: spec.user_profiles.user_settings.execution_role_arn
+        arg: user_settings.execution_role
+      - spec: spec.user_profiles.user_settings.jupyter_lab_app_settings.idle_settings.idle_timeout_in_minutes
+        arg: user_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.idle_timeout_in_minutes
+      - spec: spec.user_profiles.user_settings.jupyter_lab_app_settings.idle_settings.lifecycle_management
+        arg: user_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.lifecycle_management
+      - spec: spec.user_profiles.user_settings.jupyter_lab_app_settings.idle_settings.max_idle_timeout_in_minutes
+        arg: user_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.max_idle_timeout_in_minutes
+      - spec: spec.user_profiles.user_settings.jupyter_lab_app_settings.idle_settings.min_idle_timeout_in_minutes
+        arg: user_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.min_idle_timeout_in_minutes
+      - spec: spec.user_profiles.user_settings.jupyter_lab_app_settings.code_repositories.repository_url
+        arg: user_settings.jupyter_lab_app_settings.code_repository.repository_url
+      - spec: spec.user_profiles.user_settings.jupyter_lab_app_settings.custom_images.app_image_config_name
+        arg: user_settings.jupyter_lab_app_settings.custom_image.app_image_config_name
+      - spec: spec.user_profiles.user_settings.jupyter_lab_app_settings.custom_images.image_name
+        arg: user_settings.jupyter_lab_app_settings.custom_image.image_name
+      - spec: spec.user_profiles.user_settings.jupyter_lab_app_settings.custom_images.image_version_number
+        arg: user_settings.jupyter_lab_app_settings.custom_image.image_version_number
+      - spec: spec.user_profiles.user_settings.jupyter_server_app_settings.code_repositories.repository_url
+        arg: user_settings.jupyter_server_app_settings.code_repository.repository_url
+      - spec: spec.user_profiles.user_settings.kernel_gateway_app_settings.custom_images.app_image_config_name
+        arg: user_settings.kernel_gateway_app_settings.custom_image.app_image_config_name
+      - spec: spec.user_profiles.user_settings.kernel_gateway_app_settings.custom_images.image_name
+        arg: user_settings.kernel_gateway_app_settings.custom_image.image_name
+      - spec: spec.user_profiles.user_settings.kernel_gateway_app_settings.custom_images.image_version_number
+        arg: user_settings.kernel_gateway_app_settings.custom_image.image_version_number
+      - spec: spec.user_profiles.user_settings.r_session_app_settings.custom_images.app_image_config_name
+        arg: user_settings.r_session_app_settings.custom_image.app_image_config_name
+      - spec: spec.user_profiles.user_settings.r_session_app_settings.custom_images.image_name
+        arg: user_settings.r_session_app_settings.custom_image.image_name
+      - spec: spec.user_profiles.user_settings.r_session_app_settings.custom_images.image_version_number
+        arg: user_settings.r_session_app_settings.custom_image.image_version_number
+      - spec: spec.user_profiles.user_settings.security_group_ids
+        arg: user_settings.security_groups
+      - spec: spec.user_profiles.user_settings.space_storage_settings.default_ebs_volume_size_in_gb
+        arg: user_settings.space_storage_settings.default_ebs_storage_settings.default_ebs_volume_size_in_gb
+      - spec: spec.user_profiles.user_settings.space_storage_settings.maximum_ebs_volume_size_in_gb
+        arg: user_settings.space_storage_settings.default_ebs_storage_settings.maximum_ebs_volume_size_in_gb
+    exclusions:
+      - arg: region
+        reason: wired by the module -- satellites follow the domain's spec.region through the provider connection
+      - arg: domain_id
+        reason: module-shaped plumbing -- always this domain's own ID (profiles are folded sub-resources)
+      - arg: tags
+        reason: wired by the module from metadata (the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_sagemaker_space:
+    # One space per spec.spaces entry, keyed by space name. The space
+    # settings tree is deliberately distinct from the domain baseline (AWS
+    # uses SpaceSettings vs DefaultSpaceSettings).
+    specRoot: spec.spaces
+    mappings:
+      - spec: spec.spaces.display_name
+        arg: space_display_name
+      - spec: spec.spaces.space_settings.code_editor_app_settings.idle_settings.idle_timeout_in_minutes
+        arg: space_settings.code_editor_app_settings.app_lifecycle_management.idle_settings.idle_timeout_in_minutes
+      - spec: spec.spaces.space_settings.custom_file_systems.file_system_id
+        arg: space_settings.custom_file_system.efs_file_system.file_system_id
+      - spec: spec.spaces.space_settings.jupyter_lab_app_settings.idle_settings.idle_timeout_in_minutes
+        arg: space_settings.jupyter_lab_app_settings.app_lifecycle_management.idle_settings.idle_timeout_in_minutes
+      - spec: spec.spaces.space_settings.jupyter_lab_app_settings.code_repositories.repository_url
+        arg: space_settings.jupyter_lab_app_settings.code_repository.repository_url
+      - spec: spec.spaces.space_settings.jupyter_server_app_settings.code_repositories.repository_url
+        arg: space_settings.jupyter_server_app_settings.code_repository.repository_url
+      - spec: spec.spaces.space_settings.kernel_gateway_app_settings.custom_images.app_image_config_name
+        arg: space_settings.kernel_gateway_app_settings.custom_image.app_image_config_name
+      - spec: spec.spaces.space_settings.kernel_gateway_app_settings.custom_images.image_name
+        arg: space_settings.kernel_gateway_app_settings.custom_image.image_name
+      - spec: spec.spaces.space_settings.kernel_gateway_app_settings.custom_images.image_version_number
+        arg: space_settings.kernel_gateway_app_settings.custom_image.image_version_number
+      - spec: spec.spaces.space_settings.space_storage_settings.ebs_volume_size_in_gb
+        arg: space_settings.space_storage_settings.ebs_storage_settings.ebs_volume_size_in_gb
+    exclusions:
+      - arg: region
+        reason: wired by the module -- satellites follow the domain's spec.region through the provider connection
+      - arg: domain_id
+        reason: module-shaped plumbing -- always this domain's own ID (spaces are folded sub-resources)
+      - arg: tags
+        reason: wired by the module from metadata (the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

@@ -51,7 +51,9 @@ Remote access is a whole posture, not just a server:
 - IPv6/dual-stack endpoint and tunnel addressing
 - Session timeout (8/10/12/24h) with optional hard disconnect
 - Login banner, connection posture-check Lambda, client route enforcement,
-  custom DNS servers, CloudWatch connection logging
+  custom DNS servers, CloudWatch connection logging — each toggles OFF as
+  cleanly as on: removing the block (or flipping the flag) sends the
+  explicit disabled state on both engines
 
 ### Transit-gateway attachment
 

@@ -13,9 +13,12 @@ const (
 	OpSecurityGroupIdForDomainBoundary         = "security_group_id_for_domain_boundary"
 	OpSingleSignOnApplicationArn               = "single_sign_on_application_arn"
 	OpSingleSignOnManagedApplicationInstanceId = "single_sign_on_managed_application_instance_id"
+	OpUserProfileArns                          = "user_profile_arns"
+	OpSpaceArns                                = "space_arns"
+	OpSpaceUrls                                = "space_urls"
 )
 
-func outputs(ctx *pulumi.Context, createdDomain *sagemaker.Domain) {
+func outputs(ctx *pulumi.Context, createdDomain *sagemaker.Domain, profileArns, spaceArns, spaceUrls pulumi.StringMap) {
 	ctx.Export(OpDomainId, createdDomain.ID())
 	ctx.Export(OpDomainArn, createdDomain.Arn)
 	ctx.Export(OpDomainUrl, createdDomain.Url)
@@ -25,4 +28,8 @@ func outputs(ctx *pulumi.Context, createdDomain *sagemaker.Domain) {
 	// strings under IAM auth.
 	ctx.Export(OpSingleSignOnApplicationArn, createdDomain.SingleSignOnApplicationArn)
 	ctx.Export(OpSingleSignOnManagedApplicationInstanceId, createdDomain.SingleSignOnManagedApplicationInstanceId)
+	// Folded satellite maps, keyed by the spec names (the import feed).
+	ctx.Export(OpUserProfileArns, profileArns)
+	ctx.Export(OpSpaceArns, spaceArns)
+	ctx.Export(OpSpaceUrls, spaceUrls)
 }

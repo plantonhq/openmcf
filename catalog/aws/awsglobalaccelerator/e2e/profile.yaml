@@ -20,9 +20,12 @@ spec:
   # destroy (EIP fixture 20s up / 7s down), minimal 2m37s / 2m11s; Terraform
   # composed 3m02s / 1m16s, minimal 3m13s / 1m26s; all verify stages green;
   # zero-orphan sweep clean.
+  #
+  # pending_proof: the depth closure healed the endpoint weight zero-drain
+  # defect (both modules now materialize AWS's documented 128 default; an
+  # omitted weight previously transmitted 0 = route-no-traffic) and stripped
+  # the legacy pulumi annotations from the canonical manifest; the previous
+  # green run predates the heal.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 40

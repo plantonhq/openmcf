@@ -111,7 +111,7 @@ type AwsSagemakerDomainSpec struct {
 	// in the domain. These settings control the execution environment, per-IDE app
 	// configurations, security boundaries, and storage defaults. Individual user profiles
 	// can override these defaults.
-	DefaultUserSettings *AwsSagemakerDomainDefaultUserSettings `protobuf:"bytes,10,opt,name=default_user_settings,json=defaultUserSettings,proto3" json:"default_user_settings,omitempty"`
+	DefaultUserSettings *AwsSagemakerDomainUserSettings `protobuf:"bytes,10,opt,name=default_user_settings,json=defaultUserSettings,proto3" json:"default_user_settings,omitempty"`
 	// default_space_settings defines the default configuration inherited by all shared
 	// (collaborative) spaces in the domain. Spaces are workspaces multiple users can attach
 	// to; they carry their own execution role and app baselines, separate from the per-user
@@ -150,8 +150,23 @@ type AwsSagemakerDomainSpec struct {
 	// Domains with AWS IAM Identity Center enabled"), even when set to "DISABLED".
 	// Leave unset on IAM domains.
 	TrustedIdentityPropagationStatus *string `protobuf:"bytes,16,opt,name=trusted_identity_propagation_status,json=trustedIdentityPropagationStatus,proto3,oneof" json:"trusted_identity_propagation_status,omitempty"`
-	unknownFields                    protoimpl.UnknownFields
-	sizeCache                        protoimpl.SizeCache
+	// user_profiles are the per-person workspaces inside the domain, keyed by
+	// name. Each profile inherits `default_user_settings` and may override any
+	// of it via its own `user_settings`. Profiles add/remove in place as the
+	// list changes; removing an entry deletes that profile AND its apps and
+	// data surfaces, so treat removals as destructive. Profiles created
+	// outside this manifest (IAM Identity Center auto-provisioning, console)
+	// are not managed or removed by it.
+	UserProfiles []*AwsSagemakerDomainUserProfile `protobuf:"bytes,17,rep,name=user_profiles,json=userProfiles,proto3" json:"user_profiles,omitempty"`
+	// spaces are named shared (or private) workspaces inside the domain, keyed
+	// by name — the collaboration plane, where a JupyterLab or Code Editor
+	// runtime is shared rather than per-user. Spaces inherit
+	// `default_space_settings` and may override via their own
+	// `space_settings`. Add/remove in place; removing an entry deletes the
+	// space and its EBS volume.
+	Spaces        []*AwsSagemakerDomainSpace `protobuf:"bytes,18,rep,name=spaces,proto3" json:"spaces,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsSagemakerDomainSpec) Reset() {
@@ -247,7 +262,7 @@ func (x *AwsSagemakerDomainSpec) GetHomeEfsRetentionPolicy() string {
 	return ""
 }
 
-func (x *AwsSagemakerDomainSpec) GetDefaultUserSettings() *AwsSagemakerDomainDefaultUserSettings {
+func (x *AwsSagemakerDomainSpec) GetDefaultUserSettings() *AwsSagemakerDomainUserSettings {
 	if x != nil {
 		return x.DefaultUserSettings
 	}
@@ -296,10 +311,25 @@ func (x *AwsSagemakerDomainSpec) GetTrustedIdentityPropagationStatus() string {
 	return ""
 }
 
-// AwsSagemakerDomainDefaultUserSettings defines the default configuration inherited by all
-// user profiles in the domain. Each setting establishes a baseline that individual user
-// profiles inherit unless explicitly overridden.
-type AwsSagemakerDomainDefaultUserSettings struct {
+func (x *AwsSagemakerDomainSpec) GetUserProfiles() []*AwsSagemakerDomainUserProfile {
+	if x != nil {
+		return x.UserProfiles
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainSpec) GetSpaces() []*AwsSagemakerDomainSpace {
+	if x != nil {
+		return x.Spaces
+	}
+	return nil
+}
+
+// AwsSagemakerDomainUserSettings is the per-user configuration tree — the same shape
+// serves two homes: the domain's `default_user_settings` (the baseline every profile
+// inherits) and each entry in `user_profiles` (per-user overrides). AWS uses one
+// UserSettings type for both, and so does this spec.
+type AwsSagemakerDomainUserSettings struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// execution_role_arn is the IAM role assumed by SageMaker when running notebooks,
 	// training jobs, and other ML workloads on behalf of users. This role determines what
@@ -391,20 +421,20 @@ type AwsSagemakerDomainDefaultUserSettings struct {
 	sizeCache               protoimpl.SizeCache
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) Reset() {
-	*x = AwsSagemakerDomainDefaultUserSettings{}
+func (x *AwsSagemakerDomainUserSettings) Reset() {
+	*x = AwsSagemakerDomainUserSettings{}
 	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) String() string {
+func (x *AwsSagemakerDomainUserSettings) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AwsSagemakerDomainDefaultUserSettings) ProtoMessage() {}
+func (*AwsSagemakerDomainUserSettings) ProtoMessage() {}
 
-func (x *AwsSagemakerDomainDefaultUserSettings) ProtoReflect() protoreflect.Message {
+func (x *AwsSagemakerDomainUserSettings) ProtoReflect() protoreflect.Message {
 	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -416,131 +446,131 @@ func (x *AwsSagemakerDomainDefaultUserSettings) ProtoReflect() protoreflect.Mess
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AwsSagemakerDomainDefaultUserSettings.ProtoReflect.Descriptor instead.
-func (*AwsSagemakerDomainDefaultUserSettings) Descriptor() ([]byte, []int) {
+// Deprecated: Use AwsSagemakerDomainUserSettings.ProtoReflect.Descriptor instead.
+func (*AwsSagemakerDomainUserSettings) Descriptor() ([]byte, []int) {
 	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetExecutionRoleArn() *v1.StringValueOrRef {
+func (x *AwsSagemakerDomainUserSettings) GetExecutionRoleArn() *v1.StringValueOrRef {
 	if x != nil {
 		return x.ExecutionRoleArn
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetSecurityGroupIds() []*v1.StringValueOrRef {
+func (x *AwsSagemakerDomainUserSettings) GetSecurityGroupIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.SecurityGroupIds
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetDefaultLandingUri() string {
+func (x *AwsSagemakerDomainUserSettings) GetDefaultLandingUri() string {
 	if x != nil {
 		return x.DefaultLandingUri
 	}
 	return ""
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetStudioWebPortal() string {
+func (x *AwsSagemakerDomainUserSettings) GetStudioWebPortal() string {
 	if x != nil && x.StudioWebPortal != nil {
 		return *x.StudioWebPortal
 	}
 	return ""
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetAutoMountHomeEfs() string {
+func (x *AwsSagemakerDomainUserSettings) GetAutoMountHomeEfs() string {
 	if x != nil && x.AutoMountHomeEfs != nil {
 		return *x.AutoMountHomeEfs
 	}
 	return ""
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetJupyterLabAppSettings() *AwsSagemakerDomainJupyterLabAppSettings {
+func (x *AwsSagemakerDomainUserSettings) GetJupyterLabAppSettings() *AwsSagemakerDomainJupyterLabAppSettings {
 	if x != nil {
 		return x.JupyterLabAppSettings
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetJupyterServerAppSettings() *AwsSagemakerDomainJupyterServerAppSettings {
+func (x *AwsSagemakerDomainUserSettings) GetJupyterServerAppSettings() *AwsSagemakerDomainJupyterServerAppSettings {
 	if x != nil {
 		return x.JupyterServerAppSettings
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetKernelGatewayAppSettings() *AwsSagemakerDomainKernelGatewayAppSettings {
+func (x *AwsSagemakerDomainUserSettings) GetKernelGatewayAppSettings() *AwsSagemakerDomainKernelGatewayAppSettings {
 	if x != nil {
 		return x.KernelGatewayAppSettings
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetCodeEditorAppSettings() *AwsSagemakerDomainCodeEditorAppSettings {
+func (x *AwsSagemakerDomainUserSettings) GetCodeEditorAppSettings() *AwsSagemakerDomainCodeEditorAppSettings {
 	if x != nil {
 		return x.CodeEditorAppSettings
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetTensorBoardAppSettings() *AwsSagemakerDomainTensorBoardAppSettings {
+func (x *AwsSagemakerDomainUserSettings) GetTensorBoardAppSettings() *AwsSagemakerDomainTensorBoardAppSettings {
 	if x != nil {
 		return x.TensorBoardAppSettings
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetRSessionAppSettings() *AwsSagemakerDomainRSessionAppSettings {
+func (x *AwsSagemakerDomainUserSettings) GetRSessionAppSettings() *AwsSagemakerDomainRSessionAppSettings {
 	if x != nil {
 		return x.RSessionAppSettings
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetRStudioServerProAppSettings() *AwsSagemakerDomainRStudioServerProAppSettings {
+func (x *AwsSagemakerDomainUserSettings) GetRStudioServerProAppSettings() *AwsSagemakerDomainRStudioServerProAppSettings {
 	if x != nil {
 		return x.RStudioServerProAppSettings
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetCanvasAppSettings() *AwsSagemakerDomainCanvasAppSettings {
+func (x *AwsSagemakerDomainUserSettings) GetCanvasAppSettings() *AwsSagemakerDomainCanvasAppSettings {
 	if x != nil {
 		return x.CanvasAppSettings
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetSharingSettings() *AwsSagemakerDomainSharingSettings {
+func (x *AwsSagemakerDomainUserSettings) GetSharingSettings() *AwsSagemakerDomainSharingSettings {
 	if x != nil {
 		return x.SharingSettings
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetSpaceStorageSettings() *AwsSagemakerDomainSpaceStorageSettings {
+func (x *AwsSagemakerDomainUserSettings) GetSpaceStorageSettings() *AwsSagemakerDomainSpaceStorageSettings {
 	if x != nil {
 		return x.SpaceStorageSettings
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetCustomFileSystemConfigs() []*AwsSagemakerDomainCustomFileSystemConfig {
+func (x *AwsSagemakerDomainUserSettings) GetCustomFileSystemConfigs() []*AwsSagemakerDomainCustomFileSystemConfig {
 	if x != nil {
 		return x.CustomFileSystemConfigs
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetCustomPosixUserConfig() *AwsSagemakerDomainCustomPosixUserConfig {
+func (x *AwsSagemakerDomainUserSettings) GetCustomPosixUserConfig() *AwsSagemakerDomainCustomPosixUserConfig {
 	if x != nil {
 		return x.CustomPosixUserConfig
 	}
 	return nil
 }
 
-func (x *AwsSagemakerDomainDefaultUserSettings) GetStudioWebPortalSettings() *AwsSagemakerDomainStudioWebPortalSettings {
+func (x *AwsSagemakerDomainUserSettings) GetStudioWebPortalSettings() *AwsSagemakerDomainStudioWebPortalSettings {
 	if x != nil {
 		return x.StudioWebPortalSettings
 	}
@@ -664,6 +694,660 @@ func (x *AwsSagemakerDomainDefaultSpaceSettings) GetCustomPosixUserConfig() *Aws
 	return nil
 }
 
+// AwsSagemakerDomainUserProfile is one per-person workspace inside the domain —
+// the folded aws_sagemaker_user_profile satellite. A profile is the identity apps
+// run under: it carries the user's home EFS directory, their settings overrides,
+// and (on SSO domains) the link to the IAM Identity Center user.
+type AwsSagemakerDomainUserProfile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The profile name — unique within the domain, and the key both IaC modules
+	// use for the satellite resource. 1-63 characters: alphanumeric and hyphens,
+	// starting and ending alphanumeric. ForceNew: renaming replaces the profile
+	// (and its home directory association).
+	UserProfileName string `protobuf:"bytes,1,opt,name=user_profile_name,json=userProfileName,proto3" json:"user_profile_name,omitempty"`
+	// For SSO-auth domains: the IAM Identity Center attribute that identifies the
+	// user. AWS supports exactly one identifier scheme, "UserName". Set together
+	// with `single_sign_on_user_value`. ForceNew.
+	SingleSignOnUserIdentifier string `protobuf:"bytes,2,opt,name=single_sign_on_user_identifier,json=singleSignOnUserIdentifier,proto3" json:"single_sign_on_user_identifier,omitempty"`
+	// For SSO-auth domains: the Identity Center username this profile belongs to.
+	// Set together with `single_sign_on_user_identifier`. ForceNew.
+	SingleSignOnUserValue string `protobuf:"bytes,3,opt,name=single_sign_on_user_value,json=singleSignOnUserValue,proto3" json:"single_sign_on_user_value,omitempty"`
+	// Per-user overrides of the domain's `default_user_settings` — the same
+	// settings tree, applied on top of the domain baseline. Unset means the
+	// profile inherits the baseline unchanged. `execution_role_arn` is required
+	// inside this block whenever it is set (the AWS contract for UserSettings).
+	UserSettings  *AwsSagemakerDomainUserSettings `protobuf:"bytes,4,opt,name=user_settings,json=userSettings,proto3" json:"user_settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsSagemakerDomainUserProfile) Reset() {
+	*x = AwsSagemakerDomainUserProfile{}
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsSagemakerDomainUserProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsSagemakerDomainUserProfile) ProtoMessage() {}
+
+func (x *AwsSagemakerDomainUserProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsSagemakerDomainUserProfile.ProtoReflect.Descriptor instead.
+func (*AwsSagemakerDomainUserProfile) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsSagemakerDomainUserProfile) GetUserProfileName() string {
+	if x != nil {
+		return x.UserProfileName
+	}
+	return ""
+}
+
+func (x *AwsSagemakerDomainUserProfile) GetSingleSignOnUserIdentifier() string {
+	if x != nil {
+		return x.SingleSignOnUserIdentifier
+	}
+	return ""
+}
+
+func (x *AwsSagemakerDomainUserProfile) GetSingleSignOnUserValue() string {
+	if x != nil {
+		return x.SingleSignOnUserValue
+	}
+	return ""
+}
+
+func (x *AwsSagemakerDomainUserProfile) GetUserSettings() *AwsSagemakerDomainUserSettings {
+	if x != nil {
+		return x.UserSettings
+	}
+	return nil
+}
+
+// AwsSagemakerDomainSpace is one named workspace inside the domain — the folded
+// aws_sagemaker_space satellite. Spaces are the collaboration plane: a space's
+// JupyterLab or Code Editor runtime (and its EBS volume) is shared by everyone
+// with access, unlike the per-user plane of `user_profiles`. Note the space's
+// settings tree is DELIBERATELY different from the domain's
+// `default_space_settings` — AWS uses distinct types (SpaceSettings vs
+// DefaultSpaceSettings), and so does this spec.
+type AwsSagemakerDomainSpace struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The space name — unique within the domain, and the key both IaC modules use
+	// for the satellite resource. 1-63 characters: alphanumeric and hyphens,
+	// starting alphanumeric. ForceNew.
+	SpaceName string `protobuf:"bytes,1,opt,name=space_name,json=spaceName,proto3" json:"space_name,omitempty"`
+	// Display name shown in Studio (the space name itself is immutable; this is
+	// not). Maximum 64 characters. Updates in place.
+	DisplayName string `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	// Ownership: names the user profile that owns this space. Required for
+	// PRIVATE spaces and for shared spaces alike when sharing is configured —
+	// AWS requires ownership and sharing to be declared together (or neither,
+	// which creates a legacy unscoped space). The owner profile must exist in
+	// the domain; it is usually one of `user_profiles`, but profiles provisioned
+	// outside this manifest (SSO auto-provisioning) are equally valid owners.
+	// Not updatable after create — the provider never sends changes to it.
+	OwnershipSettings *AwsSagemakerDomainSpaceOwnership `protobuf:"bytes,3,opt,name=ownership_settings,json=ownershipSettings,proto3" json:"ownership_settings,omitempty"`
+	// Sharing posture: "Private" (one owner, one runtime) or "Shared"
+	// (collaborative). Declared together with `ownership_settings`. Not
+	// updatable after create.
+	SpaceSharingSettings *AwsSagemakerDomainSpaceSharing `protobuf:"bytes,4,opt,name=space_sharing_settings,json=spaceSharingSettings,proto3" json:"space_sharing_settings,omitempty"`
+	// The space's own settings — app type, per-app configuration, storage, and
+	// mounted file systems.
+	SpaceSettings *AwsSagemakerDomainSpaceSettings `protobuf:"bytes,5,opt,name=space_settings,json=spaceSettings,proto3" json:"space_settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsSagemakerDomainSpace) Reset() {
+	*x = AwsSagemakerDomainSpace{}
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsSagemakerDomainSpace) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsSagemakerDomainSpace) ProtoMessage() {}
+
+func (x *AwsSagemakerDomainSpace) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsSagemakerDomainSpace.ProtoReflect.Descriptor instead.
+func (*AwsSagemakerDomainSpace) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsSagemakerDomainSpace) GetSpaceName() string {
+	if x != nil {
+		return x.SpaceName
+	}
+	return ""
+}
+
+func (x *AwsSagemakerDomainSpace) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *AwsSagemakerDomainSpace) GetOwnershipSettings() *AwsSagemakerDomainSpaceOwnership {
+	if x != nil {
+		return x.OwnershipSettings
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainSpace) GetSpaceSharingSettings() *AwsSagemakerDomainSpaceSharing {
+	if x != nil {
+		return x.SpaceSharingSettings
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainSpace) GetSpaceSettings() *AwsSagemakerDomainSpaceSettings {
+	if x != nil {
+		return x.SpaceSettings
+	}
+	return nil
+}
+
+// AwsSagemakerDomainSpaceOwnership names the user profile that owns a space.
+type AwsSagemakerDomainSpaceOwnership struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The owning user profile's name (not ARN).
+	OwnerUserProfileName string `protobuf:"bytes,1,opt,name=owner_user_profile_name,json=ownerUserProfileName,proto3" json:"owner_user_profile_name,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *AwsSagemakerDomainSpaceOwnership) Reset() {
+	*x = AwsSagemakerDomainSpaceOwnership{}
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsSagemakerDomainSpaceOwnership) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsSagemakerDomainSpaceOwnership) ProtoMessage() {}
+
+func (x *AwsSagemakerDomainSpaceOwnership) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsSagemakerDomainSpaceOwnership.ProtoReflect.Descriptor instead.
+func (*AwsSagemakerDomainSpaceOwnership) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AwsSagemakerDomainSpaceOwnership) GetOwnerUserProfileName() string {
+	if x != nil {
+		return x.OwnerUserProfileName
+	}
+	return ""
+}
+
+// AwsSagemakerDomainSpaceSharing declares a space's sharing posture.
+type AwsSagemakerDomainSpaceSharing struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// "Private" or "Shared".
+	SharingType   string `protobuf:"bytes,1,opt,name=sharing_type,json=sharingType,proto3" json:"sharing_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsSagemakerDomainSpaceSharing) Reset() {
+	*x = AwsSagemakerDomainSpaceSharing{}
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsSagemakerDomainSpaceSharing) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsSagemakerDomainSpaceSharing) ProtoMessage() {}
+
+func (x *AwsSagemakerDomainSpaceSharing) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsSagemakerDomainSpaceSharing.ProtoReflect.Descriptor instead.
+func (*AwsSagemakerDomainSpaceSharing) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AwsSagemakerDomainSpaceSharing) GetSharingType() string {
+	if x != nil {
+		return x.SharingType
+	}
+	return ""
+}
+
+// AwsSagemakerDomainSpaceSettings is a space's own configuration. AWS's
+// SpaceSettings type differs from the domain-default tree: it adds `app_type`
+// and per-space Code Editor settings, requires a resource spec on each
+// configured app, carries a slimmer idle-shutdown dial (timeout only, no
+// min/max guardrails), and mounts existing EFS file systems directly by id.
+type AwsSagemakerDomainSpaceSettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Which app this space runs: "JupyterLab", "CodeEditor", "JupyterServer",
+	// or "KernelGateway". Spaces are single-app workspaces; the matching
+	// app-settings block below configures it.
+	AppType *string `protobuf:"bytes,1,opt,name=app_type,json=appType,proto3,oneof" json:"app_type,omitempty"`
+	// JupyterLab configuration for the space. `default_resource_spec` is
+	// required here (unlike the domain baseline) — AWS's space contract.
+	JupyterLabAppSettings *AwsSagemakerDomainSpaceJupyterLabAppSettings `protobuf:"bytes,2,opt,name=jupyter_lab_app_settings,json=jupyterLabAppSettings,proto3" json:"jupyter_lab_app_settings,omitempty"`
+	// Code Editor (VS Code / Code-OSS) configuration for the space.
+	CodeEditorAppSettings *AwsSagemakerDomainSpaceCodeEditorAppSettings `protobuf:"bytes,3,opt,name=code_editor_app_settings,json=codeEditorAppSettings,proto3" json:"code_editor_app_settings,omitempty"`
+	// Classic Jupyter Server configuration for the space. Same shape as the
+	// domain baseline, but `default_resource_spec` is required here.
+	JupyterServerAppSettings *AwsSagemakerDomainJupyterServerAppSettings `protobuf:"bytes,4,opt,name=jupyter_server_app_settings,json=jupyterServerAppSettings,proto3" json:"jupyter_server_app_settings,omitempty"`
+	// KernelGateway configuration for the space. Same shape as the domain
+	// baseline, but `default_resource_spec` is required here.
+	KernelGatewayAppSettings *AwsSagemakerDomainKernelGatewayAppSettings `protobuf:"bytes,5,opt,name=kernel_gateway_app_settings,json=kernelGatewayAppSettings,proto3" json:"kernel_gateway_app_settings,omitempty"`
+	// Existing EFS file systems mounted into the space's apps (by id — the
+	// space form has no per-mount path, unlike the domain baseline's config).
+	CustomFileSystems []*AwsSagemakerDomainSpaceCustomFileSystem `protobuf:"bytes,6,rep,name=custom_file_systems,json=customFileSystems,proto3" json:"custom_file_systems,omitempty"`
+	// The space's EBS boot/work volume size, in GB (5-16384). Persists across
+	// app restarts; deleted with the space.
+	SpaceStorageSettings *AwsSagemakerDomainSpaceStorage `protobuf:"bytes,7,opt,name=space_storage_settings,json=spaceStorageSettings,proto3" json:"space_storage_settings,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *AwsSagemakerDomainSpaceSettings) Reset() {
+	*x = AwsSagemakerDomainSpaceSettings{}
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsSagemakerDomainSpaceSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsSagemakerDomainSpaceSettings) ProtoMessage() {}
+
+func (x *AwsSagemakerDomainSpaceSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsSagemakerDomainSpaceSettings.ProtoReflect.Descriptor instead.
+func (*AwsSagemakerDomainSpaceSettings) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AwsSagemakerDomainSpaceSettings) GetAppType() string {
+	if x != nil && x.AppType != nil {
+		return *x.AppType
+	}
+	return ""
+}
+
+func (x *AwsSagemakerDomainSpaceSettings) GetJupyterLabAppSettings() *AwsSagemakerDomainSpaceJupyterLabAppSettings {
+	if x != nil {
+		return x.JupyterLabAppSettings
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainSpaceSettings) GetCodeEditorAppSettings() *AwsSagemakerDomainSpaceCodeEditorAppSettings {
+	if x != nil {
+		return x.CodeEditorAppSettings
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainSpaceSettings) GetJupyterServerAppSettings() *AwsSagemakerDomainJupyterServerAppSettings {
+	if x != nil {
+		return x.JupyterServerAppSettings
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainSpaceSettings) GetKernelGatewayAppSettings() *AwsSagemakerDomainKernelGatewayAppSettings {
+	if x != nil {
+		return x.KernelGatewayAppSettings
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainSpaceSettings) GetCustomFileSystems() []*AwsSagemakerDomainSpaceCustomFileSystem {
+	if x != nil {
+		return x.CustomFileSystems
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainSpaceSettings) GetSpaceStorageSettings() *AwsSagemakerDomainSpaceStorage {
+	if x != nil {
+		return x.SpaceStorageSettings
+	}
+	return nil
+}
+
+// AwsSagemakerDomainSpaceJupyterLabAppSettings configures JupyterLab on one
+// space. The space form differs from the domain baseline: the resource spec is
+// required, and idle shutdown carries only the timeout (no min/max guardrails).
+type AwsSagemakerDomainSpaceJupyterLabAppSettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The compute instance type and image for the space's JupyterLab runtime.
+	DefaultResourceSpec *AwsSagemakerDomainResourceSpec `protobuf:"bytes,1,opt,name=default_resource_spec,json=defaultResourceSpec,proto3" json:"default_resource_spec,omitempty"`
+	// Git repositories cloned into the space's JupyterLab on startup. Maximum 10.
+	CodeRepositories []*AwsSagemakerDomainCodeRepository `protobuf:"bytes,2,rep,name=code_repositories,json=codeRepositories,proto3" json:"code_repositories,omitempty"`
+	// Automatic shutdown of the space's JupyterLab when idle.
+	IdleSettings  *AwsSagemakerDomainSpaceIdleSettings `protobuf:"bytes,3,opt,name=idle_settings,json=idleSettings,proto3" json:"idle_settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsSagemakerDomainSpaceJupyterLabAppSettings) Reset() {
+	*x = AwsSagemakerDomainSpaceJupyterLabAppSettings{}
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsSagemakerDomainSpaceJupyterLabAppSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsSagemakerDomainSpaceJupyterLabAppSettings) ProtoMessage() {}
+
+func (x *AwsSagemakerDomainSpaceJupyterLabAppSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsSagemakerDomainSpaceJupyterLabAppSettings.ProtoReflect.Descriptor instead.
+func (*AwsSagemakerDomainSpaceJupyterLabAppSettings) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AwsSagemakerDomainSpaceJupyterLabAppSettings) GetDefaultResourceSpec() *AwsSagemakerDomainResourceSpec {
+	if x != nil {
+		return x.DefaultResourceSpec
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainSpaceJupyterLabAppSettings) GetCodeRepositories() []*AwsSagemakerDomainCodeRepository {
+	if x != nil {
+		return x.CodeRepositories
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainSpaceJupyterLabAppSettings) GetIdleSettings() *AwsSagemakerDomainSpaceIdleSettings {
+	if x != nil {
+		return x.IdleSettings
+	}
+	return nil
+}
+
+// AwsSagemakerDomainSpaceCodeEditorAppSettings configures Code Editor on one
+// space (the space form: required resource spec, timeout-only idle shutdown).
+type AwsSagemakerDomainSpaceCodeEditorAppSettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The compute instance type and image for the space's Code Editor runtime.
+	DefaultResourceSpec *AwsSagemakerDomainResourceSpec `protobuf:"bytes,1,opt,name=default_resource_spec,json=defaultResourceSpec,proto3" json:"default_resource_spec,omitempty"`
+	// Automatic shutdown of the space's Code Editor when idle.
+	IdleSettings  *AwsSagemakerDomainSpaceIdleSettings `protobuf:"bytes,2,opt,name=idle_settings,json=idleSettings,proto3" json:"idle_settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsSagemakerDomainSpaceCodeEditorAppSettings) Reset() {
+	*x = AwsSagemakerDomainSpaceCodeEditorAppSettings{}
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsSagemakerDomainSpaceCodeEditorAppSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsSagemakerDomainSpaceCodeEditorAppSettings) ProtoMessage() {}
+
+func (x *AwsSagemakerDomainSpaceCodeEditorAppSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsSagemakerDomainSpaceCodeEditorAppSettings.ProtoReflect.Descriptor instead.
+func (*AwsSagemakerDomainSpaceCodeEditorAppSettings) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AwsSagemakerDomainSpaceCodeEditorAppSettings) GetDefaultResourceSpec() *AwsSagemakerDomainResourceSpec {
+	if x != nil {
+		return x.DefaultResourceSpec
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainSpaceCodeEditorAppSettings) GetIdleSettings() *AwsSagemakerDomainSpaceIdleSettings {
+	if x != nil {
+		return x.IdleSettings
+	}
+	return nil
+}
+
+// AwsSagemakerDomainSpaceIdleSettings is the space-scoped idle-shutdown dial.
+// Spaces carry only the timeout — the min/max user-override guardrails and the
+// lifecycle_management switch exist only on the domain/user plane.
+type AwsSagemakerDomainSpaceIdleSettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Minutes of inactivity before the space's app shuts down. Range: 60-525600.
+	IdleTimeoutInMinutes *int32 `protobuf:"varint,1,opt,name=idle_timeout_in_minutes,json=idleTimeoutInMinutes,proto3,oneof" json:"idle_timeout_in_minutes,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *AwsSagemakerDomainSpaceIdleSettings) Reset() {
+	*x = AwsSagemakerDomainSpaceIdleSettings{}
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsSagemakerDomainSpaceIdleSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsSagemakerDomainSpaceIdleSettings) ProtoMessage() {}
+
+func (x *AwsSagemakerDomainSpaceIdleSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsSagemakerDomainSpaceIdleSettings.ProtoReflect.Descriptor instead.
+func (*AwsSagemakerDomainSpaceIdleSettings) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AwsSagemakerDomainSpaceIdleSettings) GetIdleTimeoutInMinutes() int32 {
+	if x != nil && x.IdleTimeoutInMinutes != nil {
+		return *x.IdleTimeoutInMinutes
+	}
+	return 0
+}
+
+// AwsSagemakerDomainSpaceCustomFileSystem mounts one existing EFS file system
+// into a space's apps.
+type AwsSagemakerDomainSpaceCustomFileSystem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The EFS file system to mount. The file system must have mount targets in
+	// the domain's VPC.
+	FileSystemId  *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=file_system_id,json=fileSystemId,proto3" json:"file_system_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsSagemakerDomainSpaceCustomFileSystem) Reset() {
+	*x = AwsSagemakerDomainSpaceCustomFileSystem{}
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsSagemakerDomainSpaceCustomFileSystem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsSagemakerDomainSpaceCustomFileSystem) ProtoMessage() {}
+
+func (x *AwsSagemakerDomainSpaceCustomFileSystem) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsSagemakerDomainSpaceCustomFileSystem.ProtoReflect.Descriptor instead.
+func (*AwsSagemakerDomainSpaceCustomFileSystem) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *AwsSagemakerDomainSpaceCustomFileSystem) GetFileSystemId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.FileSystemId
+	}
+	return nil
+}
+
+// AwsSagemakerDomainSpaceStorage is a space's EBS volume sizing (the space
+// form is a single concrete size — the domain baseline's default/maximum pair
+// governs what spaces may pick).
+type AwsSagemakerDomainSpaceStorage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The EBS volume size in GB. Range: 5-16384.
+	EbsVolumeSizeInGb int32 `protobuf:"varint,1,opt,name=ebs_volume_size_in_gb,json=ebsVolumeSizeInGb,proto3" json:"ebs_volume_size_in_gb,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AwsSagemakerDomainSpaceStorage) Reset() {
+	*x = AwsSagemakerDomainSpaceStorage{}
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsSagemakerDomainSpaceStorage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsSagemakerDomainSpaceStorage) ProtoMessage() {}
+
+func (x *AwsSagemakerDomainSpaceStorage) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsSagemakerDomainSpaceStorage.ProtoReflect.Descriptor instead.
+func (*AwsSagemakerDomainSpaceStorage) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AwsSagemakerDomainSpaceStorage) GetEbsVolumeSizeInGb() int32 {
+	if x != nil {
+		return x.EbsVolumeSizeInGb
+	}
+	return 0
+}
+
 // AwsSagemakerDomainJupyterLabAppSettings configures the JupyterLab IDE.
 // JupyterLab is the recommended primary IDE for SageMaker Studio, providing notebooks,
 // code editors, terminals, and extension support in a modern web interface.
@@ -701,7 +1385,7 @@ type AwsSagemakerDomainJupyterLabAppSettings struct {
 
 func (x *AwsSagemakerDomainJupyterLabAppSettings) Reset() {
 	*x = AwsSagemakerDomainJupyterLabAppSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -713,7 +1397,7 @@ func (x *AwsSagemakerDomainJupyterLabAppSettings) String() string {
 func (*AwsSagemakerDomainJupyterLabAppSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainJupyterLabAppSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -726,7 +1410,7 @@ func (x *AwsSagemakerDomainJupyterLabAppSettings) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use AwsSagemakerDomainJupyterLabAppSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainJupyterLabAppSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AwsSagemakerDomainJupyterLabAppSettings) GetDefaultResourceSpec() *AwsSagemakerDomainResourceSpec {
@@ -798,7 +1482,7 @@ type AwsSagemakerDomainJupyterServerAppSettings struct {
 
 func (x *AwsSagemakerDomainJupyterServerAppSettings) Reset() {
 	*x = AwsSagemakerDomainJupyterServerAppSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -810,7 +1494,7 @@ func (x *AwsSagemakerDomainJupyterServerAppSettings) String() string {
 func (*AwsSagemakerDomainJupyterServerAppSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainJupyterServerAppSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -823,7 +1507,7 @@ func (x *AwsSagemakerDomainJupyterServerAppSettings) ProtoReflect() protoreflect
 
 // Deprecated: Use AwsSagemakerDomainJupyterServerAppSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainJupyterServerAppSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AwsSagemakerDomainJupyterServerAppSettings) GetDefaultResourceSpec() *AwsSagemakerDomainResourceSpec {
@@ -867,7 +1551,7 @@ type AwsSagemakerDomainKernelGatewayAppSettings struct {
 
 func (x *AwsSagemakerDomainKernelGatewayAppSettings) Reset() {
 	*x = AwsSagemakerDomainKernelGatewayAppSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -879,7 +1563,7 @@ func (x *AwsSagemakerDomainKernelGatewayAppSettings) String() string {
 func (*AwsSagemakerDomainKernelGatewayAppSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainKernelGatewayAppSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -892,7 +1576,7 @@ func (x *AwsSagemakerDomainKernelGatewayAppSettings) ProtoReflect() protoreflect
 
 // Deprecated: Use AwsSagemakerDomainKernelGatewayAppSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainKernelGatewayAppSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AwsSagemakerDomainKernelGatewayAppSettings) GetDefaultResourceSpec() *AwsSagemakerDomainResourceSpec {
@@ -940,7 +1624,7 @@ type AwsSagemakerDomainCodeEditorAppSettings struct {
 
 func (x *AwsSagemakerDomainCodeEditorAppSettings) Reset() {
 	*x = AwsSagemakerDomainCodeEditorAppSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -952,7 +1636,7 @@ func (x *AwsSagemakerDomainCodeEditorAppSettings) String() string {
 func (*AwsSagemakerDomainCodeEditorAppSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainCodeEditorAppSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -965,7 +1649,7 @@ func (x *AwsSagemakerDomainCodeEditorAppSettings) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use AwsSagemakerDomainCodeEditorAppSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainCodeEditorAppSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *AwsSagemakerDomainCodeEditorAppSettings) GetDefaultResourceSpec() *AwsSagemakerDomainResourceSpec {
@@ -1016,7 +1700,7 @@ type AwsSagemakerDomainTensorBoardAppSettings struct {
 
 func (x *AwsSagemakerDomainTensorBoardAppSettings) Reset() {
 	*x = AwsSagemakerDomainTensorBoardAppSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1028,7 +1712,7 @@ func (x *AwsSagemakerDomainTensorBoardAppSettings) String() string {
 func (*AwsSagemakerDomainTensorBoardAppSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainTensorBoardAppSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1041,7 +1725,7 @@ func (x *AwsSagemakerDomainTensorBoardAppSettings) ProtoReflect() protoreflect.M
 
 // Deprecated: Use AwsSagemakerDomainTensorBoardAppSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainTensorBoardAppSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *AwsSagemakerDomainTensorBoardAppSettings) GetDefaultResourceSpec() *AwsSagemakerDomainResourceSpec {
@@ -1066,7 +1750,7 @@ type AwsSagemakerDomainRSessionAppSettings struct {
 
 func (x *AwsSagemakerDomainRSessionAppSettings) Reset() {
 	*x = AwsSagemakerDomainRSessionAppSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1078,7 +1762,7 @@ func (x *AwsSagemakerDomainRSessionAppSettings) String() string {
 func (*AwsSagemakerDomainRSessionAppSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainRSessionAppSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1091,7 +1775,7 @@ func (x *AwsSagemakerDomainRSessionAppSettings) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use AwsSagemakerDomainRSessionAppSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainRSessionAppSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *AwsSagemakerDomainRSessionAppSettings) GetDefaultResourceSpec() *AwsSagemakerDomainResourceSpec {
@@ -1129,7 +1813,7 @@ type AwsSagemakerDomainRStudioServerProAppSettings struct {
 
 func (x *AwsSagemakerDomainRStudioServerProAppSettings) Reset() {
 	*x = AwsSagemakerDomainRStudioServerProAppSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1141,7 +1825,7 @@ func (x *AwsSagemakerDomainRStudioServerProAppSettings) String() string {
 func (*AwsSagemakerDomainRStudioServerProAppSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainRStudioServerProAppSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1154,7 +1838,7 @@ func (x *AwsSagemakerDomainRStudioServerProAppSettings) ProtoReflect() protorefl
 
 // Deprecated: Use AwsSagemakerDomainRStudioServerProAppSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainRStudioServerProAppSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AwsSagemakerDomainRStudioServerProAppSettings) GetAccessStatus() string {
@@ -1196,7 +1880,7 @@ type AwsSagemakerDomainRStudioServerProDomainSettings struct {
 
 func (x *AwsSagemakerDomainRStudioServerProDomainSettings) Reset() {
 	*x = AwsSagemakerDomainRStudioServerProDomainSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1208,7 +1892,7 @@ func (x *AwsSagemakerDomainRStudioServerProDomainSettings) String() string {
 func (*AwsSagemakerDomainRStudioServerProDomainSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainRStudioServerProDomainSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1221,7 +1905,7 @@ func (x *AwsSagemakerDomainRStudioServerProDomainSettings) ProtoReflect() protor
 
 // Deprecated: Use AwsSagemakerDomainRStudioServerProDomainSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainRStudioServerProDomainSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AwsSagemakerDomainRStudioServerProDomainSettings) GetDomainExecutionRoleArn() *v1.StringValueOrRef {
@@ -1291,7 +1975,7 @@ type AwsSagemakerDomainCanvasAppSettings struct {
 
 func (x *AwsSagemakerDomainCanvasAppSettings) Reset() {
 	*x = AwsSagemakerDomainCanvasAppSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1303,7 +1987,7 @@ func (x *AwsSagemakerDomainCanvasAppSettings) String() string {
 func (*AwsSagemakerDomainCanvasAppSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainCanvasAppSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1316,7 +2000,7 @@ func (x *AwsSagemakerDomainCanvasAppSettings) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use AwsSagemakerDomainCanvasAppSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainCanvasAppSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AwsSagemakerDomainCanvasAppSettings) GetDirectDeployStatus() string {
@@ -1390,7 +2074,7 @@ type AwsSagemakerDomainCanvasEmrServerlessSettings struct {
 
 func (x *AwsSagemakerDomainCanvasEmrServerlessSettings) Reset() {
 	*x = AwsSagemakerDomainCanvasEmrServerlessSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1402,7 +2086,7 @@ func (x *AwsSagemakerDomainCanvasEmrServerlessSettings) String() string {
 func (*AwsSagemakerDomainCanvasEmrServerlessSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainCanvasEmrServerlessSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1415,7 +2099,7 @@ func (x *AwsSagemakerDomainCanvasEmrServerlessSettings) ProtoReflect() protorefl
 
 // Deprecated: Use AwsSagemakerDomainCanvasEmrServerlessSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainCanvasEmrServerlessSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AwsSagemakerDomainCanvasEmrServerlessSettings) GetExecutionRoleArn() *v1.StringValueOrRef {
@@ -1452,7 +2136,7 @@ type AwsSagemakerDomainCanvasIdentityProviderOauthSettings struct {
 
 func (x *AwsSagemakerDomainCanvasIdentityProviderOauthSettings) Reset() {
 	*x = AwsSagemakerDomainCanvasIdentityProviderOauthSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1464,7 +2148,7 @@ func (x *AwsSagemakerDomainCanvasIdentityProviderOauthSettings) String() string 
 func (*AwsSagemakerDomainCanvasIdentityProviderOauthSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainCanvasIdentityProviderOauthSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1477,7 +2161,7 @@ func (x *AwsSagemakerDomainCanvasIdentityProviderOauthSettings) ProtoReflect() p
 
 // Deprecated: Use AwsSagemakerDomainCanvasIdentityProviderOauthSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainCanvasIdentityProviderOauthSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AwsSagemakerDomainCanvasIdentityProviderOauthSettings) GetDataSourceName() string {
@@ -1517,7 +2201,7 @@ type AwsSagemakerDomainCanvasModelRegisterSettings struct {
 
 func (x *AwsSagemakerDomainCanvasModelRegisterSettings) Reset() {
 	*x = AwsSagemakerDomainCanvasModelRegisterSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1529,7 +2213,7 @@ func (x *AwsSagemakerDomainCanvasModelRegisterSettings) String() string {
 func (*AwsSagemakerDomainCanvasModelRegisterSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainCanvasModelRegisterSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1542,7 +2226,7 @@ func (x *AwsSagemakerDomainCanvasModelRegisterSettings) ProtoReflect() protorefl
 
 // Deprecated: Use AwsSagemakerDomainCanvasModelRegisterSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainCanvasModelRegisterSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *AwsSagemakerDomainCanvasModelRegisterSettings) GetCrossAccountModelRegisterRoleArn() string {
@@ -1573,7 +2257,7 @@ type AwsSagemakerDomainCanvasTimeSeriesForecastingSettings struct {
 
 func (x *AwsSagemakerDomainCanvasTimeSeriesForecastingSettings) Reset() {
 	*x = AwsSagemakerDomainCanvasTimeSeriesForecastingSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1585,7 +2269,7 @@ func (x *AwsSagemakerDomainCanvasTimeSeriesForecastingSettings) String() string 
 func (*AwsSagemakerDomainCanvasTimeSeriesForecastingSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainCanvasTimeSeriesForecastingSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1598,7 +2282,7 @@ func (x *AwsSagemakerDomainCanvasTimeSeriesForecastingSettings) ProtoReflect() p
 
 // Deprecated: Use AwsSagemakerDomainCanvasTimeSeriesForecastingSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainCanvasTimeSeriesForecastingSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *AwsSagemakerDomainCanvasTimeSeriesForecastingSettings) GetAmazonForecastRoleArn() *v1.StringValueOrRef {
@@ -1630,7 +2314,7 @@ type AwsSagemakerDomainCanvasWorkspaceSettings struct {
 
 func (x *AwsSagemakerDomainCanvasWorkspaceSettings) Reset() {
 	*x = AwsSagemakerDomainCanvasWorkspaceSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[16]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1642,7 +2326,7 @@ func (x *AwsSagemakerDomainCanvasWorkspaceSettings) String() string {
 func (*AwsSagemakerDomainCanvasWorkspaceSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainCanvasWorkspaceSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[16]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1655,7 +2339,7 @@ func (x *AwsSagemakerDomainCanvasWorkspaceSettings) ProtoReflect() protoreflect.
 
 // Deprecated: Use AwsSagemakerDomainCanvasWorkspaceSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainCanvasWorkspaceSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *AwsSagemakerDomainCanvasWorkspaceSettings) GetS3ArtifactPath() string {
@@ -1685,6 +2369,10 @@ type AwsSagemakerDomainResourceSpec struct {
 	//	"ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
 	//	"ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
 	//	"system" - lightweight system-managed instance for JupyterServer
+	//
+	// The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+	// fails at manifest time; membership in AWS's instance-type list grows with
+	// every hardware launch and is validated by AWS at deploy time.
 	InstanceType string `protobuf:"bytes,1,opt,name=instance_type,json=instanceType,proto3" json:"instance_type,omitempty"`
 	// lifecycle_config_arn is the ARN of a lifecycle configuration script that runs
 	// when this specific app type starts.
@@ -1705,7 +2393,7 @@ type AwsSagemakerDomainResourceSpec struct {
 
 func (x *AwsSagemakerDomainResourceSpec) Reset() {
 	*x = AwsSagemakerDomainResourceSpec{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[17]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1717,7 +2405,7 @@ func (x *AwsSagemakerDomainResourceSpec) String() string {
 func (*AwsSagemakerDomainResourceSpec) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainResourceSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[17]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1730,7 +2418,7 @@ func (x *AwsSagemakerDomainResourceSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsSagemakerDomainResourceSpec.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainResourceSpec) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *AwsSagemakerDomainResourceSpec) GetInstanceType() string {
@@ -1789,7 +2477,7 @@ type AwsSagemakerDomainCustomImage struct {
 
 func (x *AwsSagemakerDomainCustomImage) Reset() {
 	*x = AwsSagemakerDomainCustomImage{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[18]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1801,7 +2489,7 @@ func (x *AwsSagemakerDomainCustomImage) String() string {
 func (*AwsSagemakerDomainCustomImage) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainCustomImage) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[18]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1814,7 +2502,7 @@ func (x *AwsSagemakerDomainCustomImage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsSagemakerDomainCustomImage.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainCustomImage) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *AwsSagemakerDomainCustomImage) GetAppImageConfigName() string {
@@ -1853,7 +2541,7 @@ type AwsSagemakerDomainCodeRepository struct {
 
 func (x *AwsSagemakerDomainCodeRepository) Reset() {
 	*x = AwsSagemakerDomainCodeRepository{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1865,7 +2553,7 @@ func (x *AwsSagemakerDomainCodeRepository) String() string {
 func (*AwsSagemakerDomainCodeRepository) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainCodeRepository) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1878,7 +2566,7 @@ func (x *AwsSagemakerDomainCodeRepository) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsSagemakerDomainCodeRepository.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainCodeRepository) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *AwsSagemakerDomainCodeRepository) GetRepositoryUrl() string {
@@ -1900,6 +2588,13 @@ func (x *AwsSagemakerDomainCodeRepository) GetRepositoryUrl() string {
 // partial block can never deploy.
 type AwsSagemakerDomainIdleSettings struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// lifecycle_management is the enforcement switch: "ENABLED" (the default when
+	// this block is present) turns automatic idle shutdown on; "DISABLED" keeps
+	// the block's timeout values as published guardrails users may adopt WITHOUT
+	// forcing auto-shutdown on — the defined-but-disabled state. Both engines
+	// send the explicit value, so flipping to "DISABLED" genuinely turns
+	// enforcement off.
+	LifecycleManagement *string `protobuf:"bytes,4,opt,name=lifecycle_management,json=lifecycleManagement,proto3,oneof" json:"lifecycle_management,omitempty"`
 	// idle_timeout_in_minutes is the duration of inactivity (in minutes) before an instance
 	// is automatically shut down. Range: 60-525600 (1 hour to 365 days).
 	// A reasonable production default is 120 (2 hours).
@@ -1918,7 +2613,7 @@ type AwsSagemakerDomainIdleSettings struct {
 
 func (x *AwsSagemakerDomainIdleSettings) Reset() {
 	*x = AwsSagemakerDomainIdleSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1930,7 +2625,7 @@ func (x *AwsSagemakerDomainIdleSettings) String() string {
 func (*AwsSagemakerDomainIdleSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainIdleSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1943,7 +2638,14 @@ func (x *AwsSagemakerDomainIdleSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsSagemakerDomainIdleSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainIdleSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *AwsSagemakerDomainIdleSettings) GetLifecycleManagement() string {
+	if x != nil && x.LifecycleManagement != nil {
+		return *x.LifecycleManagement
+	}
+	return ""
 }
 
 func (x *AwsSagemakerDomainIdleSettings) GetIdleTimeoutInMinutes() int32 {
@@ -1983,7 +2685,7 @@ type AwsSagemakerDomainEmrSettings struct {
 
 func (x *AwsSagemakerDomainEmrSettings) Reset() {
 	*x = AwsSagemakerDomainEmrSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[21]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1995,7 +2697,7 @@ func (x *AwsSagemakerDomainEmrSettings) String() string {
 func (*AwsSagemakerDomainEmrSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainEmrSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[21]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2008,7 +2710,7 @@ func (x *AwsSagemakerDomainEmrSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsSagemakerDomainEmrSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainEmrSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *AwsSagemakerDomainEmrSettings) GetAssumableRoleArns() []*v1.StringValueOrRef {
@@ -2048,7 +2750,7 @@ type AwsSagemakerDomainSharingSettings struct {
 
 func (x *AwsSagemakerDomainSharingSettings) Reset() {
 	*x = AwsSagemakerDomainSharingSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[22]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2060,7 +2762,7 @@ func (x *AwsSagemakerDomainSharingSettings) String() string {
 func (*AwsSagemakerDomainSharingSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainSharingSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[22]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2073,7 +2775,7 @@ func (x *AwsSagemakerDomainSharingSettings) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AwsSagemakerDomainSharingSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainSharingSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *AwsSagemakerDomainSharingSettings) GetNotebookOutputOption() string {
@@ -2113,7 +2815,7 @@ type AwsSagemakerDomainSpaceStorageSettings struct {
 
 func (x *AwsSagemakerDomainSpaceStorageSettings) Reset() {
 	*x = AwsSagemakerDomainSpaceStorageSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[23]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2125,7 +2827,7 @@ func (x *AwsSagemakerDomainSpaceStorageSettings) String() string {
 func (*AwsSagemakerDomainSpaceStorageSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainSpaceStorageSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[23]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2138,7 +2840,7 @@ func (x *AwsSagemakerDomainSpaceStorageSettings) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use AwsSagemakerDomainSpaceStorageSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainSpaceStorageSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *AwsSagemakerDomainSpaceStorageSettings) GetDefaultEbsVolumeSizeInGb() int32 {
@@ -2168,7 +2870,7 @@ type AwsSagemakerDomainCustomFileSystemConfig struct {
 
 func (x *AwsSagemakerDomainCustomFileSystemConfig) Reset() {
 	*x = AwsSagemakerDomainCustomFileSystemConfig{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[24]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2180,7 +2882,7 @@ func (x *AwsSagemakerDomainCustomFileSystemConfig) String() string {
 func (*AwsSagemakerDomainCustomFileSystemConfig) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainCustomFileSystemConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[24]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2193,7 +2895,7 @@ func (x *AwsSagemakerDomainCustomFileSystemConfig) ProtoReflect() protoreflect.M
 
 // Deprecated: Use AwsSagemakerDomainCustomFileSystemConfig.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainCustomFileSystemConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *AwsSagemakerDomainCustomFileSystemConfig) GetEfsFileSystemConfig() *AwsSagemakerDomainEfsFileSystemConfig {
@@ -2220,7 +2922,7 @@ type AwsSagemakerDomainEfsFileSystemConfig struct {
 
 func (x *AwsSagemakerDomainEfsFileSystemConfig) Reset() {
 	*x = AwsSagemakerDomainEfsFileSystemConfig{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[25]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2232,7 +2934,7 @@ func (x *AwsSagemakerDomainEfsFileSystemConfig) String() string {
 func (*AwsSagemakerDomainEfsFileSystemConfig) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainEfsFileSystemConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[25]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2245,7 +2947,7 @@ func (x *AwsSagemakerDomainEfsFileSystemConfig) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use AwsSagemakerDomainEfsFileSystemConfig.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainEfsFileSystemConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{25}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *AwsSagemakerDomainEfsFileSystemConfig) GetFileSystemId() *v1.StringValueOrRef {
@@ -2276,7 +2978,7 @@ type AwsSagemakerDomainCustomPosixUserConfig struct {
 
 func (x *AwsSagemakerDomainCustomPosixUserConfig) Reset() {
 	*x = AwsSagemakerDomainCustomPosixUserConfig{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[26]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2288,7 +2990,7 @@ func (x *AwsSagemakerDomainCustomPosixUserConfig) String() string {
 func (*AwsSagemakerDomainCustomPosixUserConfig) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainCustomPosixUserConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[26]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2301,7 +3003,7 @@ func (x *AwsSagemakerDomainCustomPosixUserConfig) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use AwsSagemakerDomainCustomPosixUserConfig.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainCustomPosixUserConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{26}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *AwsSagemakerDomainCustomPosixUserConfig) GetUid() int64 {
@@ -2340,7 +3042,7 @@ type AwsSagemakerDomainStudioWebPortalSettings struct {
 
 func (x *AwsSagemakerDomainStudioWebPortalSettings) Reset() {
 	*x = AwsSagemakerDomainStudioWebPortalSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[27]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2352,7 +3054,7 @@ func (x *AwsSagemakerDomainStudioWebPortalSettings) String() string {
 func (*AwsSagemakerDomainStudioWebPortalSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainStudioWebPortalSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[27]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2365,7 +3067,7 @@ func (x *AwsSagemakerDomainStudioWebPortalSettings) ProtoReflect() protoreflect.
 
 // Deprecated: Use AwsSagemakerDomainStudioWebPortalSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainStudioWebPortalSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *AwsSagemakerDomainStudioWebPortalSettings) GetHiddenAppTypes() []string {
@@ -2402,7 +3104,8 @@ type AwsSagemakerDomainDockerSettings struct {
 	// vpc_only_trusted_accounts restricts Docker image pulling to images from specified
 	// AWS account IDs when app_network_access_type is "VpcOnly". This prevents users from
 	// pulling arbitrary images from public registries, enforcing approved image sources.
-	// Maximum 20 account IDs.
+	// Maximum 20 account IDs, each exactly 12 digits — a malformed entry would make this
+	// security control silently not match the intended account.
 	VpcOnlyTrustedAccounts []string `protobuf:"bytes,2,rep,name=vpc_only_trusted_accounts,json=vpcOnlyTrustedAccounts,proto3" json:"vpc_only_trusted_accounts,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
@@ -2410,7 +3113,7 @@ type AwsSagemakerDomainDockerSettings struct {
 
 func (x *AwsSagemakerDomainDockerSettings) Reset() {
 	*x = AwsSagemakerDomainDockerSettings{}
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[28]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2422,7 +3125,7 @@ func (x *AwsSagemakerDomainDockerSettings) String() string {
 func (*AwsSagemakerDomainDockerSettings) ProtoMessage() {}
 
 func (x *AwsSagemakerDomainDockerSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[28]
+	mi := &file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2435,7 +3138,7 @@ func (x *AwsSagemakerDomainDockerSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsSagemakerDomainDockerSettings.ProtoReflect.Descriptor instead.
 func (*AwsSagemakerDomainDockerSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
+	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *AwsSagemakerDomainDockerSettings) GetEnableDockerAccess() string {
@@ -2456,7 +3159,7 @@ var File_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto protoreflect.FileDes
 
 const file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/aws/awssagemakerdomain/v1alpha1/spec.proto\x12+dev.planton.aws.awssagemakerdomain.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb6\x1c\n" +
+	"2catalog/aws/awssagemakerdomain/v1alpha1/spec.proto\x12+dev.planton.aws.awssagemakerdomain.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x98 \n" +
 	"\x16AwsSagemakerDomainSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12#\n" +
 	"\tauth_mode\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bauthMode\x12o\n" +
@@ -2469,15 +3172,17 @@ const file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1dapp_security_group_management\x18\a \x01(\tH\x01R\x1aappSecurityGroupManagement\x88\x01\x01\x12:\n" +
 	"\x0ftag_propagation\x18\b \x01(\tB\f\x8a\xa6\x1d\bDISABLEDH\x02R\x0etagPropagation\x88\x01\x01\x12J\n" +
 	"\x19home_efs_retention_policy\x18\t \x01(\tB\n" +
-	"\x8a\xa6\x1d\x06RetainH\x03R\x16homeEfsRetentionPolicy\x88\x01\x01\x12\x8e\x01\n" +
+	"\x8a\xa6\x1d\x06RetainH\x03R\x16homeEfsRetentionPolicy\x88\x01\x01\x12\x87\x01\n" +
 	"\x15default_user_settings\x18\n" +
-	" \x01(\v2R.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettingsB\x06\xbaH\x03\xc8\x01\x01R\x13defaultUserSettings\x12\x89\x01\n" +
+	" \x01(\v2K.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettingsB\x06\xbaH\x03\xc8\x01\x01R\x13defaultUserSettings\x12\x89\x01\n" +
 	"\x16default_space_settings\x18\v \x01(\v2S.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettingsR\x14defaultSpaceSettings\x12\xa0\x01\n" +
 	"\x19domain_security_group_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x03\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x16domainSecurityGroupIds\x12v\n" +
 	"\x0fdocker_settings\x18\r \x01(\v2M.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDockerSettingsR\x0edockerSettings\x12H\n" +
 	"\x1eexecution_role_identity_config\x18\x0e \x01(\tH\x04R\x1bexecutionRoleIdentityConfig\x88\x01\x01\x12\xaa\x01\n" +
 	"#r_studio_server_pro_domain_settings\x18\x0f \x01(\v2].dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProDomainSettingsR\x1erStudioServerProDomainSettings\x12R\n" +
-	"#trusted_identity_propagation_status\x18\x10 \x01(\tH\x05R trustedIdentityPropagationStatus\x88\x01\x01:\x8f\x0e\xbaH\x8b\x0e\x1aU\n" +
+	"#trusted_identity_propagation_status\x18\x10 \x01(\tH\x05R trustedIdentityPropagationStatus\x88\x01\x01\x12o\n" +
+	"\ruser_profiles\x18\x11 \x03(\v2J.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserProfileR\fuserProfiles\x12\\\n" +
+	"\x06spaces\x18\x12 \x03(\v2D.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceR\x06spaces:\xa9\x10\xbaH\xa5\x10\x1aU\n" +
 	"\x0fauth_mode_valid\x12 auth_mode must be 'IAM' or 'SSO'\x1a this.auth_mode in ['IAM', 'SSO']\x1a\xcb\x01\n" +
 	"\x1dapp_network_access_type_valid\x12Aapp_network_access_type must be 'PublicInternetOnly' or 'VpcOnly'\x1ag!has(this.app_network_access_type) || this.app_network_access_type in ['PublicInternetOnly', 'VpcOnly']\x1a\xcf\x01\n" +
 	"#app_security_group_management_valid\x12=app_security_group_management must be 'Service' or 'Customer'\x1ai!has(this.app_security_group_management) || this.app_security_group_management in ['Service', 'Customer']\x1a\xf1\x01\n" +
@@ -2486,14 +3191,16 @@ const file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1fhome_efs_retention_policy_valid\x126home_efs_retention_policy must be 'Retain' or 'Delete'\x1a^!has(this.home_efs_retention_policy) || this.home_efs_retention_policy in ['Retain', 'Delete']\x1a\xe7\x01\n" +
 	"$execution_role_identity_config_valid\x12Hexecution_role_identity_config must be 'USER_PROFILE_NAME' or 'DISABLED'\x1au!has(this.execution_role_identity_config) || this.execution_role_identity_config in ['USER_PROFILE_NAME', 'DISABLED']\x1a\xe7\x01\n" +
 	")trusted_identity_propagation_status_valid\x12Ctrusted_identity_propagation_status must be 'ENABLED' or 'DISABLED'\x1au!has(this.trusted_identity_propagation_status) || this.trusted_identity_propagation_status in ['ENABLED', 'DISABLED']\x1a\xf3\x01\n" +
-	")trusted_identity_propagation_requires_sso\x12{trusted_identity_propagation_status requires auth_mode 'SSO' (AWS rejects the setting on IAM-auth domains, even 'DISABLED')\x1aI!has(this.trusted_identity_propagation_status) || this.auth_mode == 'SSO'B\x1a\n" +
+	")trusted_identity_propagation_requires_sso\x12{trusted_identity_propagation_status requires auth_mode 'SSO' (AWS rejects the setting on IAM-auth domains, even 'DISABLED')\x1aI!has(this.trusted_identity_propagation_status) || this.auth_mode == 'SSO'\x1a\x9c\x01\n" +
+	"\x19user_profile_names_unique\x12Fuser_profiles names must be unique — each name keys one user profile\x1a7this.user_profiles.map(p, p.user_profile_name).unique()\x1ay\n" +
+	"\x12space_names_unique\x128spaces names must be unique — each name keys one space\x1a)this.spaces.map(s, s.space_name).unique()B\x1a\n" +
 	"\x18_app_network_access_typeB \n" +
 	"\x1e_app_security_group_managementB\x12\n" +
 	"\x10_tag_propagationB\x1c\n" +
 	"\x1a_home_efs_retention_policyB!\n" +
 	"\x1f_execution_role_identity_configB&\n" +
-	"$_trusted_identity_propagation_status\"\xd7\x15\n" +
-	"%AwsSagemakerDomainDefaultUserSettings\x12\x88\x01\n" +
+	"$_trusted_identity_propagation_status\"\xd0\x15\n" +
+	"\x1eAwsSagemakerDomainUserSettings\x12\x88\x01\n" +
 	"\x12execution_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x10executionRoleArn\x12\x93\x01\n" +
 	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12.\n" +
 	"\x13default_landing_uri\x18\x03 \x01(\tR\x11defaultLandingUri\x12<\n" +
@@ -2525,7 +3232,54 @@ const file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1bkernel_gateway_app_settings\x18\x05 \x01(\v2W.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettingsR\x18kernelGatewayAppSettings\x12\x89\x01\n" +
 	"\x16space_storage_settings\x18\x06 \x01(\v2S.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceStorageSettingsR\x14spaceStorageSettings\x12\x92\x01\n" +
 	"\x1acustom_file_system_configs\x18\a \x03(\v2U.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomFileSystemConfigR\x17customFileSystemConfigs\x12\x8d\x01\n" +
-	"\x18custom_posix_user_config\x18\b \x01(\v2T.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomPosixUserConfigR\x15customPosixUserConfig\"\x84\x06\n" +
+	"\x18custom_posix_user_config\x18\b \x01(\v2T.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomPosixUserConfigR\x15customPosixUserConfig\"\xc6\x04\n" +
+	"\x1dAwsSagemakerDomainUserProfile\x12Z\n" +
+	"\x11user_profile_name\x18\x01 \x01(\tB.\xbaH+\xc8\x01\x01r&\x18?2\"^[0-9A-Za-z](-*[0-9A-Za-z]){0,62}$R\x0fuserProfileName\x12V\n" +
+	"\x1esingle_sign_on_user_identifier\x18\x02 \x01(\tB\x12\xbaH\x0f\xd8\x01\x01r\n" +
+	"\n" +
+	"\bUserNameR\x1asingleSignOnUserIdentifier\x128\n" +
+	"\x19single_sign_on_user_value\x18\x03 \x01(\tR\x15singleSignOnUserValue\x12p\n" +
+	"\ruser_settings\x18\x04 \x01(\v2K.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettingsR\fuserSettings:\xc4\x01\xbaH\xc0\x01\x1a\xbd\x01\n" +
+	"\x11sso_pair_together\x12Qsingle_sign_on_user_identifier and single_sign_on_user_value must be set together\x1aU(this.single_sign_on_user_identifier == '') == (this.single_sign_on_user_value == '')\"\xfc\x05\n" +
+	"\x17AwsSagemakerDomainSpace\x12M\n" +
+	"\n" +
+	"space_name\x18\x01 \x01(\tB.\xbaH+\xc8\x01\x01r&\x18?2\"^[0-9A-Za-z](-*[0-9A-Za-z]){0,62}$R\tspaceName\x12*\n" +
+	"\fdisplay_name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18@R\vdisplayName\x12|\n" +
+	"\x12ownership_settings\x18\x03 \x01(\v2M.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceOwnershipR\x11ownershipSettings\x12\x81\x01\n" +
+	"\x16space_sharing_settings\x18\x04 \x01(\v2K.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceSharingR\x14spaceSharingSettings\x12s\n" +
+	"\x0espace_settings\x18\x05 \x01(\v2L.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceSettingsR\rspaceSettings:\xee\x01\xbaH\xea\x01\x1a\xe7\x01\n" +
+	"\x1eownership_and_sharing_together\x12\x82\x01ownership_settings and space_sharing_settings must be set together — AWS requires both (or neither, for a legacy unscoped space)\x1a@has(this.ownership_settings) == has(this.space_sharing_settings)\"a\n" +
+	" AwsSagemakerDomainSpaceOwnership\x12=\n" +
+	"\x17owner_user_profile_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x14ownerUserProfileName\"^\n" +
+	"\x1eAwsSagemakerDomainSpaceSharing\x12<\n" +
+	"\fsharing_type\x18\x01 \x01(\tB\x19\xbaH\x16\xc8\x01\x01r\x11R\aPrivateR\x06SharedR\vsharingType\"\xcb\f\n" +
+	"\x1fAwsSagemakerDomainSpaceSettings\x12\x1e\n" +
+	"\bapp_type\x18\x01 \x01(\tH\x00R\aappType\x88\x01\x01\x12\x92\x01\n" +
+	"\x18jupyter_lab_app_settings\x18\x02 \x01(\v2Y.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceJupyterLabAppSettingsR\x15jupyterLabAppSettings\x12\x92\x01\n" +
+	"\x18code_editor_app_settings\x18\x03 \x01(\v2Y.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceCodeEditorAppSettingsR\x15codeEditorAppSettings\x12\x96\x01\n" +
+	"\x1bjupyter_server_app_settings\x18\x04 \x01(\v2W.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterServerAppSettingsR\x18jupyterServerAppSettings\x12\x96\x01\n" +
+	"\x1bkernel_gateway_app_settings\x18\x05 \x01(\v2W.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettingsR\x18kernelGatewayAppSettings\x12\x84\x01\n" +
+	"\x13custom_file_systems\x18\x06 \x03(\v2T.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceCustomFileSystemR\x11customFileSystems\x12\x81\x01\n" +
+	"\x16space_storage_settings\x18\a \x01(\v2K.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceStorageR\x14spaceStorageSettings:\x93\x05\xbaH\x8f\x05\x1a\xca\x01\n" +
+	"\x0eapp_type_valid\x12Papp_type must be 'JupyterLab', 'CodeEditor', 'JupyterServer', or 'KernelGateway'\x1af!has(this.app_type) || this.app_type in ['JupyterLab', 'CodeEditor', 'JupyterServer', 'KernelGateway']\x1a\xde\x01\n" +
+	"+space_jupyter_server_requires_resource_spec\x12Hjupyter_server_app_settings.default_resource_spec is required on a space\x1ae!has(this.jupyter_server_app_settings) || has(this.jupyter_server_app_settings.default_resource_spec)\x1a\xde\x01\n" +
+	"+space_kernel_gateway_requires_resource_spec\x12Hkernel_gateway_app_settings.default_resource_spec is required on a space\x1ae!has(this.kernel_gateway_app_settings) || has(this.kernel_gateway_app_settings.default_resource_spec)B\v\n" +
+	"\t_app_type\"\xb6\x03\n" +
+	",AwsSagemakerDomainSpaceJupyterLabAppSettings\x12\x87\x01\n" +
+	"\x15default_resource_spec\x18\x01 \x01(\v2K.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpecB\x06\xbaH\x03\xc8\x01\x01R\x13defaultResourceSpec\x12\x84\x01\n" +
+	"\x11code_repositories\x18\x02 \x03(\v2M.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeRepositoryB\b\xbaH\x05\x92\x01\x02\x10\n" +
+	"R\x10codeRepositories\x12u\n" +
+	"\ridle_settings\x18\x03 \x01(\v2P.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceIdleSettingsR\fidleSettings\"\xaf\x02\n" +
+	",AwsSagemakerDomainSpaceCodeEditorAppSettings\x12\x87\x01\n" +
+	"\x15default_resource_spec\x18\x01 \x01(\v2K.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpecB\x06\xbaH\x03\xc8\x01\x01R\x13defaultResourceSpec\x12u\n" +
+	"\ridle_settings\x18\x02 \x01(\v2P.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceIdleSettingsR\fidleSettings\"\x8a\x01\n" +
+	"#AwsSagemakerDomainSpaceIdleSettings\x12G\n" +
+	"\x17idle_timeout_in_minutes\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xa0\x8a (<H\x00R\x14idleTimeoutInMinutes\x88\x01\x01B\x1a\n" +
+	"\x18_idle_timeout_in_minutes\"\xb2\x01\n" +
+	"'AwsSagemakerDomainSpaceCustomFileSystem\x12\x86\x01\n" +
+	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\b\x92\xd4a\x1dstatus.outputs.file_system_idR\ffileSystemId\"b\n" +
+	"\x1eAwsSagemakerDomainSpaceStorage\x12@\n" +
+	"\x15ebs_volume_size_in_gb\x18\x01 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\x80\x80\x01(\x05R\x11ebsVolumeSizeInGb\"\x84\x06\n" +
 	"'AwsSagemakerDomainJupyterLabAppSettings\x12\x7f\n" +
 	"\x15default_resource_spec\x18\x01 \x01(\v2K.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpecR\x13defaultResourceSpec\x122\n" +
 	"\x15lifecycle_config_arns\x18\x02 \x03(\tR\x13lifecycleConfigArns\x12@\n" +
@@ -2603,9 +3357,9 @@ const file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\x10s3_artifact_path\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x0es3ArtifactPath\x12v\n" +
 	"\rs3_kms_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\n" +
 	"s3KmsKeyId:\xcd\x01\xbaH\xc9\x01\x1a\xc6\x01\n" +
-	"\x17s3_artifact_path_format\x121s3_artifact_path must be an s3:// or https:// URI\x1axthis.s3_artifact_path == '' || this.s3_artifact_path.startsWith('s3://') || this.s3_artifact_path.startsWith('https://')\"\xfa\x03\n" +
-	"\x1eAwsSagemakerDomainResourceSpec\x12#\n" +
-	"\rinstance_type\x18\x01 \x01(\tR\finstanceType\x120\n" +
+	"\x17s3_artifact_path_format\x121s3_artifact_path must be an s3:// or https:// URI\x1axthis.s3_artifact_path == '' || this.s3_artifact_path.startsWith('s3://') || this.s3_artifact_path.startsWith('https://')\"\xac\x04\n" +
+	"\x1eAwsSagemakerDomainResourceSpec\x12U\n" +
+	"\rinstance_type\x18\x01 \x01(\tB0\xbaH-\xd8\x01\x01r(2&^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$R\finstanceType\x120\n" +
 	"\x14lifecycle_config_arn\x18\x02 \x01(\tR\x12lifecycleConfigArn\x12.\n" +
 	"\x13sagemaker_image_arn\x18\x03 \x01(\tR\x11sagemakerImageArn\x12A\n" +
 	"\x1dsagemaker_image_version_alias\x18\x04 \x01(\tR\x1asagemakerImageVersionAlias\x12=\n" +
@@ -2618,12 +3372,15 @@ const file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\x14image_version_number\x18\x03 \x01(\x05H\x00R\x12imageVersionNumber\x88\x01\x01B\x17\n" +
 	"\x15_image_version_number\"V\n" +
 	" AwsSagemakerDomainCodeRepository\x122\n" +
-	"\x0erepository_url\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x80\bR\rrepositoryUrl\"\xa4\x03\n" +
-	"\x1eAwsSagemakerDomainIdleSettings\x12E\n" +
+	"\x0erepository_url\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x80\bR\rrepositoryUrl\"\xb0\x05\n" +
+	"\x1eAwsSagemakerDomainIdleSettings\x12C\n" +
+	"\x14lifecycle_management\x18\x04 \x01(\tB\v\x8a\xa6\x1d\aENABLEDH\x00R\x13lifecycleManagement\x88\x01\x01\x12E\n" +
 	"\x17idle_timeout_in_minutes\x18\x01 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xa0\x8a (<R\x14idleTimeoutInMinutes\x12L\n" +
 	"\x1bmin_idle_timeout_in_minutes\x18\x02 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xa0\x8a (<R\x17minIdleTimeoutInMinutes\x12L\n" +
-	"\x1bmax_idle_timeout_in_minutes\x18\x03 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xa0\x8a (<R\x17maxIdleTimeoutInMinutes:\x9e\x01\xbaH\x9a\x01\x1a\x97\x01\n" +
-	"\vmax_gte_min\x12Bmax_idle_timeout_in_minutes must be >= min_idle_timeout_in_minutes\x1aDthis.max_idle_timeout_in_minutes >= this.min_idle_timeout_in_minutes\"\xad\x02\n" +
+	"\x1bmax_idle_timeout_in_minutes\x18\x03 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xa0\x8a (<R\x17maxIdleTimeoutInMinutes:\xcc\x02\xbaH\xc8\x02\x1a\x97\x01\n" +
+	"\vmax_gte_min\x12Bmax_idle_timeout_in_minutes must be >= min_idle_timeout_in_minutes\x1aDthis.max_idle_timeout_in_minutes >= this.min_idle_timeout_in_minutes\x1a\xab\x01\n" +
+	"\x1alifecycle_management_valid\x124lifecycle_management must be 'ENABLED' or 'DISABLED'\x1aW!has(this.lifecycle_management) || this.lifecycle_management in ['ENABLED', 'DISABLED']B\x17\n" +
+	"\x15_lifecycle_management\"\xad\x02\n" +
 	"\x1dAwsSagemakerDomainEmrSettings\x12\x84\x01\n" +
 	"\x13assumable_role_arns\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x11assumableRoleArns\x12\x84\x01\n" +
 	"\x13execution_role_arns\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x11executionRoleArns\"\xbc\x05\n" +
@@ -2650,10 +3407,10 @@ const file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDesc = "" +
 	")AwsSagemakerDomainStudioWebPortalSettings\x12(\n" +
 	"\x10hidden_app_types\x18\x01 \x03(\tR\x0ehiddenAppTypes\x122\n" +
 	"\x15hidden_instance_types\x18\x02 \x03(\tR\x13hiddenInstanceTypes\x12&\n" +
-	"\x0fhidden_ml_tools\x18\x03 \x03(\tR\rhiddenMlTools\"\xce\x02\n" +
+	"\x0fhidden_ml_tools\x18\x03 \x03(\tR\rhiddenMlTools\"\xdf\x02\n" +
 	" AwsSagemakerDomainDockerSettings\x120\n" +
-	"\x14enable_docker_access\x18\x01 \x01(\tR\x12enableDockerAccess\x12C\n" +
-	"\x19vpc_only_trusted_accounts\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x14R\x16vpcOnlyTrustedAccounts:\xb2\x01\xbaH\xae\x01\x1a\xab\x01\n" +
+	"\x14enable_docker_access\x18\x01 \x01(\tR\x12enableDockerAccess\x12T\n" +
+	"\x19vpc_only_trusted_accounts\x18\x02 \x03(\tB\x19\xbaH\x16\x92\x01\x13\x10\x14\"\x0fr\r2\v^[0-9]{12}$R\x16vpcOnlyTrustedAccounts:\xb2\x01\xbaH\xae\x01\x1a\xab\x01\n" +
 	"\x1aenable_docker_access_valid\x124enable_docker_access must be 'ENABLED' or 'DISABLED'\x1aWthis.enable_docker_access == '' || this.enable_docker_access in ['ENABLED', 'DISABLED']B\xee\x02\n" +
 	"/com.dev.planton.aws.awssagemakerdomain.v1alpha1B\tSpecProtoP\x01Z_github.com/plantonhq/planton/catalog/aws/awssagemakerdomain/v1alpha1;awssagemakerdomainv1alpha1\xa2\x02\x04DPAA\xaa\x02+Dev.Planton.Aws.Awssagemakerdomain.V1alpha1\xca\x02+Dev\\Planton\\Aws\\Awssagemakerdomain\\V1alpha1\xe2\x027Dev\\Planton\\Aws\\Awssagemakerdomain\\V1alpha1\\GPBMetadata\xea\x02/Dev::Planton::Aws::Awssagemakerdomain::V1alpha1b\x06proto3"
 
@@ -2669,107 +3426,135 @@ func file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescGZIP() []byt
 	return file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsSagemakerDomainSpec)(nil),                                // 0: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec
-	(*AwsSagemakerDomainDefaultUserSettings)(nil),                 // 1: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings
+	(*AwsSagemakerDomainUserSettings)(nil),                        // 1: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings
 	(*AwsSagemakerDomainDefaultSpaceSettings)(nil),                // 2: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings
-	(*AwsSagemakerDomainJupyterLabAppSettings)(nil),               // 3: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings
-	(*AwsSagemakerDomainJupyterServerAppSettings)(nil),            // 4: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterServerAppSettings
-	(*AwsSagemakerDomainKernelGatewayAppSettings)(nil),            // 5: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettings
-	(*AwsSagemakerDomainCodeEditorAppSettings)(nil),               // 6: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeEditorAppSettings
-	(*AwsSagemakerDomainTensorBoardAppSettings)(nil),              // 7: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainTensorBoardAppSettings
-	(*AwsSagemakerDomainRSessionAppSettings)(nil),                 // 8: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRSessionAppSettings
-	(*AwsSagemakerDomainRStudioServerProAppSettings)(nil),         // 9: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProAppSettings
-	(*AwsSagemakerDomainRStudioServerProDomainSettings)(nil),      // 10: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProDomainSettings
-	(*AwsSagemakerDomainCanvasAppSettings)(nil),                   // 11: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings
-	(*AwsSagemakerDomainCanvasEmrServerlessSettings)(nil),         // 12: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasEmrServerlessSettings
-	(*AwsSagemakerDomainCanvasIdentityProviderOauthSettings)(nil), // 13: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasIdentityProviderOauthSettings
-	(*AwsSagemakerDomainCanvasModelRegisterSettings)(nil),         // 14: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasModelRegisterSettings
-	(*AwsSagemakerDomainCanvasTimeSeriesForecastingSettings)(nil), // 15: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasTimeSeriesForecastingSettings
-	(*AwsSagemakerDomainCanvasWorkspaceSettings)(nil),             // 16: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasWorkspaceSettings
-	(*AwsSagemakerDomainResourceSpec)(nil),                        // 17: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
-	(*AwsSagemakerDomainCustomImage)(nil),                         // 18: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomImage
-	(*AwsSagemakerDomainCodeRepository)(nil),                      // 19: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeRepository
-	(*AwsSagemakerDomainIdleSettings)(nil),                        // 20: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainIdleSettings
-	(*AwsSagemakerDomainEmrSettings)(nil),                         // 21: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEmrSettings
-	(*AwsSagemakerDomainSharingSettings)(nil),                     // 22: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSharingSettings
-	(*AwsSagemakerDomainSpaceStorageSettings)(nil),                // 23: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceStorageSettings
-	(*AwsSagemakerDomainCustomFileSystemConfig)(nil),              // 24: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomFileSystemConfig
-	(*AwsSagemakerDomainEfsFileSystemConfig)(nil),                 // 25: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEfsFileSystemConfig
-	(*AwsSagemakerDomainCustomPosixUserConfig)(nil),               // 26: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomPosixUserConfig
-	(*AwsSagemakerDomainStudioWebPortalSettings)(nil),             // 27: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStudioWebPortalSettings
-	(*AwsSagemakerDomainDockerSettings)(nil),                      // 28: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDockerSettings
-	(*v1.StringValueOrRef)(nil),                                   // 29: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsSagemakerDomainUserProfile)(nil),                         // 3: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserProfile
+	(*AwsSagemakerDomainSpace)(nil),                               // 4: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpace
+	(*AwsSagemakerDomainSpaceOwnership)(nil),                      // 5: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceOwnership
+	(*AwsSagemakerDomainSpaceSharing)(nil),                        // 6: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceSharing
+	(*AwsSagemakerDomainSpaceSettings)(nil),                       // 7: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceSettings
+	(*AwsSagemakerDomainSpaceJupyterLabAppSettings)(nil),          // 8: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceJupyterLabAppSettings
+	(*AwsSagemakerDomainSpaceCodeEditorAppSettings)(nil),          // 9: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceCodeEditorAppSettings
+	(*AwsSagemakerDomainSpaceIdleSettings)(nil),                   // 10: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceIdleSettings
+	(*AwsSagemakerDomainSpaceCustomFileSystem)(nil),               // 11: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceCustomFileSystem
+	(*AwsSagemakerDomainSpaceStorage)(nil),                        // 12: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceStorage
+	(*AwsSagemakerDomainJupyterLabAppSettings)(nil),               // 13: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings
+	(*AwsSagemakerDomainJupyterServerAppSettings)(nil),            // 14: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterServerAppSettings
+	(*AwsSagemakerDomainKernelGatewayAppSettings)(nil),            // 15: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettings
+	(*AwsSagemakerDomainCodeEditorAppSettings)(nil),               // 16: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeEditorAppSettings
+	(*AwsSagemakerDomainTensorBoardAppSettings)(nil),              // 17: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainTensorBoardAppSettings
+	(*AwsSagemakerDomainRSessionAppSettings)(nil),                 // 18: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRSessionAppSettings
+	(*AwsSagemakerDomainRStudioServerProAppSettings)(nil),         // 19: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProAppSettings
+	(*AwsSagemakerDomainRStudioServerProDomainSettings)(nil),      // 20: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProDomainSettings
+	(*AwsSagemakerDomainCanvasAppSettings)(nil),                   // 21: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings
+	(*AwsSagemakerDomainCanvasEmrServerlessSettings)(nil),         // 22: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasEmrServerlessSettings
+	(*AwsSagemakerDomainCanvasIdentityProviderOauthSettings)(nil), // 23: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasIdentityProviderOauthSettings
+	(*AwsSagemakerDomainCanvasModelRegisterSettings)(nil),         // 24: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasModelRegisterSettings
+	(*AwsSagemakerDomainCanvasTimeSeriesForecastingSettings)(nil), // 25: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasTimeSeriesForecastingSettings
+	(*AwsSagemakerDomainCanvasWorkspaceSettings)(nil),             // 26: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasWorkspaceSettings
+	(*AwsSagemakerDomainResourceSpec)(nil),                        // 27: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
+	(*AwsSagemakerDomainCustomImage)(nil),                         // 28: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomImage
+	(*AwsSagemakerDomainCodeRepository)(nil),                      // 29: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeRepository
+	(*AwsSagemakerDomainIdleSettings)(nil),                        // 30: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainIdleSettings
+	(*AwsSagemakerDomainEmrSettings)(nil),                         // 31: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEmrSettings
+	(*AwsSagemakerDomainSharingSettings)(nil),                     // 32: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSharingSettings
+	(*AwsSagemakerDomainSpaceStorageSettings)(nil),                // 33: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceStorageSettings
+	(*AwsSagemakerDomainCustomFileSystemConfig)(nil),              // 34: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomFileSystemConfig
+	(*AwsSagemakerDomainEfsFileSystemConfig)(nil),                 // 35: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEfsFileSystemConfig
+	(*AwsSagemakerDomainCustomPosixUserConfig)(nil),               // 36: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomPosixUserConfig
+	(*AwsSagemakerDomainStudioWebPortalSettings)(nil),             // 37: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStudioWebPortalSettings
+	(*AwsSagemakerDomainDockerSettings)(nil),                      // 38: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDockerSettings
+	(*v1.StringValueOrRef)(nil),                                   // 39: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_depIdxs = []int32{
-	29, // 0: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // 1: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // 2: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 3: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.default_user_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings
+	39, // 0: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	39, // 1: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	39, // 2: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 3: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.default_user_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings
 	2,  // 4: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.default_space_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings
-	29, // 5: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.domain_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	28, // 6: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.docker_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDockerSettings
-	10, // 7: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.r_studio_server_pro_domain_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProDomainSettings
-	29, // 8: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.execution_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // 9: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 10: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.jupyter_lab_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings
-	4,  // 11: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.jupyter_server_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterServerAppSettings
-	5,  // 12: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.kernel_gateway_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettings
-	6,  // 13: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.code_editor_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeEditorAppSettings
-	7,  // 14: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.tensor_board_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainTensorBoardAppSettings
-	8,  // 15: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.r_session_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRSessionAppSettings
-	9,  // 16: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.r_studio_server_pro_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProAppSettings
-	11, // 17: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.canvas_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings
-	22, // 18: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.sharing_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSharingSettings
-	23, // 19: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.space_storage_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceStorageSettings
-	24, // 20: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.custom_file_system_configs:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomFileSystemConfig
-	26, // 21: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.custom_posix_user_config:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomPosixUserConfig
-	27, // 22: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultUserSettings.studio_web_portal_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStudioWebPortalSettings
-	29, // 23: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.execution_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // 24: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 25: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.jupyter_lab_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings
-	4,  // 26: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.jupyter_server_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterServerAppSettings
-	5,  // 27: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.kernel_gateway_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettings
-	23, // 28: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.space_storage_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceStorageSettings
-	24, // 29: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.custom_file_system_configs:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomFileSystemConfig
-	26, // 30: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.custom_posix_user_config:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomPosixUserConfig
-	17, // 31: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
-	18, // 32: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings.custom_images:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomImage
-	19, // 33: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings.code_repositories:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeRepository
-	20, // 34: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings.idle_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainIdleSettings
-	21, // 35: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings.emr_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEmrSettings
-	17, // 36: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterServerAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
-	19, // 37: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterServerAppSettings.code_repositories:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeRepository
-	17, // 38: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
-	18, // 39: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettings.custom_images:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomImage
-	17, // 40: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeEditorAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
-	18, // 41: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeEditorAppSettings.custom_images:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomImage
-	20, // 42: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeEditorAppSettings.idle_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainIdleSettings
-	17, // 43: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainTensorBoardAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
-	17, // 44: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRSessionAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
-	18, // 45: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRSessionAppSettings.custom_images:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomImage
-	29, // 46: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProDomainSettings.domain_execution_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 47: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProDomainSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
-	12, // 48: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings.emr_serverless_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasEmrServerlessSettings
-	29, // 49: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings.generative_ai_bedrock_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 50: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings.identity_provider_oauth_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasIdentityProviderOauthSettings
-	14, // 51: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings.model_register_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasModelRegisterSettings
-	15, // 52: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings.time_series_forecasting_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasTimeSeriesForecastingSettings
-	16, // 53: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings.workspace_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasWorkspaceSettings
-	29, // 54: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasEmrServerlessSettings.execution_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // 55: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasTimeSeriesForecastingSettings.amazon_forecast_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // 56: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasWorkspaceSettings.s3_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // 57: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEmrSettings.assumable_role_arns:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // 58: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEmrSettings.execution_role_arns:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // 59: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSharingSettings.s3_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	25, // 60: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomFileSystemConfig.efs_file_system_config:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEfsFileSystemConfig
-	29, // 61: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEfsFileSystemConfig.file_system_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	62, // [62:62] is the sub-list for method output_type
-	62, // [62:62] is the sub-list for method input_type
-	62, // [62:62] is the sub-list for extension type_name
-	62, // [62:62] is the sub-list for extension extendee
-	0,  // [0:62] is the sub-list for field type_name
+	39, // 5: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.domain_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	38, // 6: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.docker_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDockerSettings
+	20, // 7: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.r_studio_server_pro_domain_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProDomainSettings
+	3,  // 8: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.user_profiles:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserProfile
+	4,  // 9: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpec.spaces:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpace
+	39, // 10: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.execution_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	39, // 11: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 12: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.jupyter_lab_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings
+	14, // 13: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.jupyter_server_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterServerAppSettings
+	15, // 14: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.kernel_gateway_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettings
+	16, // 15: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.code_editor_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeEditorAppSettings
+	17, // 16: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.tensor_board_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainTensorBoardAppSettings
+	18, // 17: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.r_session_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRSessionAppSettings
+	19, // 18: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.r_studio_server_pro_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProAppSettings
+	21, // 19: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.canvas_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings
+	32, // 20: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.sharing_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSharingSettings
+	33, // 21: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.space_storage_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceStorageSettings
+	34, // 22: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.custom_file_system_configs:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomFileSystemConfig
+	36, // 23: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.custom_posix_user_config:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomPosixUserConfig
+	37, // 24: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings.studio_web_portal_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStudioWebPortalSettings
+	39, // 25: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.execution_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	39, // 26: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 27: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.jupyter_lab_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings
+	14, // 28: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.jupyter_server_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterServerAppSettings
+	15, // 29: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.kernel_gateway_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettings
+	33, // 30: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.space_storage_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceStorageSettings
+	34, // 31: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.custom_file_system_configs:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomFileSystemConfig
+	36, // 32: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainDefaultSpaceSettings.custom_posix_user_config:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomPosixUserConfig
+	1,  // 33: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserProfile.user_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainUserSettings
+	5,  // 34: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpace.ownership_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceOwnership
+	6,  // 35: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpace.space_sharing_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceSharing
+	7,  // 36: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpace.space_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceSettings
+	8,  // 37: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceSettings.jupyter_lab_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceJupyterLabAppSettings
+	9,  // 38: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceSettings.code_editor_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceCodeEditorAppSettings
+	14, // 39: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceSettings.jupyter_server_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterServerAppSettings
+	15, // 40: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceSettings.kernel_gateway_app_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettings
+	11, // 41: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceSettings.custom_file_systems:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceCustomFileSystem
+	12, // 42: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceSettings.space_storage_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceStorage
+	27, // 43: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceJupyterLabAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
+	29, // 44: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceJupyterLabAppSettings.code_repositories:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeRepository
+	10, // 45: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceJupyterLabAppSettings.idle_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceIdleSettings
+	27, // 46: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceCodeEditorAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
+	10, // 47: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceCodeEditorAppSettings.idle_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceIdleSettings
+	39, // 48: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSpaceCustomFileSystem.file_system_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	27, // 49: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
+	28, // 50: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings.custom_images:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomImage
+	29, // 51: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings.code_repositories:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeRepository
+	30, // 52: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings.idle_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainIdleSettings
+	31, // 53: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterLabAppSettings.emr_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEmrSettings
+	27, // 54: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterServerAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
+	29, // 55: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainJupyterServerAppSettings.code_repositories:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeRepository
+	27, // 56: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
+	28, // 57: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainKernelGatewayAppSettings.custom_images:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomImage
+	27, // 58: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeEditorAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
+	28, // 59: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeEditorAppSettings.custom_images:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomImage
+	30, // 60: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCodeEditorAppSettings.idle_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainIdleSettings
+	27, // 61: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainTensorBoardAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
+	27, // 62: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRSessionAppSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
+	28, // 63: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRSessionAppSettings.custom_images:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomImage
+	39, // 64: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProDomainSettings.domain_execution_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	27, // 65: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainRStudioServerProDomainSettings.default_resource_spec:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainResourceSpec
+	22, // 66: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings.emr_serverless_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasEmrServerlessSettings
+	39, // 67: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings.generative_ai_bedrock_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	23, // 68: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings.identity_provider_oauth_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasIdentityProviderOauthSettings
+	24, // 69: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings.model_register_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasModelRegisterSettings
+	25, // 70: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings.time_series_forecasting_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasTimeSeriesForecastingSettings
+	26, // 71: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasAppSettings.workspace_settings:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasWorkspaceSettings
+	39, // 72: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasEmrServerlessSettings.execution_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	39, // 73: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasTimeSeriesForecastingSettings.amazon_forecast_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	39, // 74: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCanvasWorkspaceSettings.s3_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	39, // 75: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEmrSettings.assumable_role_arns:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	39, // 76: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEmrSettings.execution_role_arns:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	39, // 77: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainSharingSettings.s3_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 78: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainCustomFileSystemConfig.efs_file_system_config:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEfsFileSystemConfig
+	39, // 79: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainEfsFileSystemConfig.file_system_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	80, // [80:80] is the sub-list for method output_type
+	80, // [80:80] is the sub-list for method input_type
+	80, // [80:80] is the sub-list for extension type_name
+	80, // [80:80] is the sub-list for extension extendee
+	0,  // [0:80] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_init() }
@@ -2779,16 +3564,19 @@ func file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_init() {
 	}
 	file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
-	file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[11].OneofWrappers = []any{}
-	file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[18].OneofWrappers = []any{}
-	file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[22].OneofWrappers = []any{}
+	file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[7].OneofWrappers = []any{}
+	file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[10].OneofWrappers = []any{}
+	file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[21].OneofWrappers = []any{}
+	file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[28].OneofWrappers = []any{}
+	file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[30].OneofWrappers = []any{}
+	file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_msgTypes[32].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awssagemakerdomain_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   29,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

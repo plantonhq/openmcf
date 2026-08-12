@@ -418,6 +418,12 @@ Fields on other kinds that can point at this resource:
 | AwsSagemakerDomain | `spec.defaultSpaceSettings.jupyterLabAppSettings.emrSettings.assumableRoleArns` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.defaultSpaceSettings.jupyterLabAppSettings.emrSettings.executionRoleArns` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.rStudioServerProDomainSettings.domainExecutionRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.executionRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.jupyterLabAppSettings.emrSettings.assumableRoleArns` | `status.outputs.role_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.jupyterLabAppSettings.emrSettings.executionRoleArns` | `status.outputs.role_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.emrServerlessSettings.executionRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.generativeAiBedrockRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.timeSeriesForecastingSettings.amazonForecastRoleArn` | `status.outputs.role_arn` |
 | AwsSesConfigurationSet | `spec.eventDestinations[].firehose.iamRole` | `status.outputs.role_arn` |
 | AwsSnsSubscription | `spec.subscriptionRoleArn` | `status.outputs.role_arn` |
 | AwsSnsTopic | `spec.deliveryFeedback.application.successFeedbackRole` | `status.outputs.role_arn` |

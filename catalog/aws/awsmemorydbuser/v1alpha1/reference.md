@@ -94,6 +94,13 @@ Common shapes:
 Updates apply in place — a tightened access string takes effect on new
 connections without recreating the user.
 
+AWS stores the string NORMALIZED (live-verified 2026-08-13): the API
+echoes it with Redis ACL defaults made explicit — e.g.
+"on ~orders:* +@read" comes back as
+"on ~orders:* resetchannels -@all +@read". The provider reconciles the
+normalized form, so manifests never see drift; just don't expect a
+byte-identical echo when comparing DescribeUsers output to this field.
+
 - rule: {"required":true}
 
 ### spec.authenticationMode

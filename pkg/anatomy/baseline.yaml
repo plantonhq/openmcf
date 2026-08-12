@@ -47,7 +47,6 @@ violations:
   - catalog/aws/awscodepipeline/iac/tf:missing-iac-readme
   - catalog/aws/awscognitoidentityprovider/iac/pulumi:missing-iac-readme
   - catalog/aws/awscognitoidentityprovider/iac/tf:missing-iac-readme
-  - catalog/aws/awsecrrepo/iac/pulumi:missing-iac-readme
   - catalog/aws/awsecsservice/iac/pulumi:missing-iac-readme
   - catalog/aws/awsecsservice/iac/tf:missing-iac-readme
   - catalog/aws/awsecstaskdefinition/iac/pulumi:missing-iac-readme
@@ -73,8 +72,6 @@ violations:
   - catalog/aws/awsfsxlustrefilesystem/iac/tf:missing-iac-readme
   - catalog/aws/awsfsxontapvolume/iac/pulumi:missing-iac-readme
   - catalog/aws/awsfsxontapvolume/iac/tf:missing-iac-readme
-  - catalog/aws/awsglobalaccelerator/iac/pulumi:missing-iac-readme
-  - catalog/aws/awsglobalaccelerator/iac/tf:missing-iac-readme
   - catalog/aws/awsinternetgateway/iac/pulumi:missing-iac-readme
   - catalog/aws/awsinternetgateway/iac/tf:missing-iac-readme
   - catalog/aws/awskinesisfirehose/iac/pulumi:missing-iac-readme

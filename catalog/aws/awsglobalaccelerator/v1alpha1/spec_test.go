@@ -888,3 +888,41 @@ var _ = ginkgo.Describe("AwsGlobalAccelerator API envelope validations", func() 
 		})
 	})
 })
+
+// Coverage for the value-domain promotions: the attachment ARN's full shape,
+// the endpoint-group region format, and the flow-logs prefix bound.
+var _ = ginkgo.Describe("AwsGlobalAccelerator value-domain promotions", func() {
+	ginkgo.It("accepts a real cross-account attachment ARN", func() {
+		listener := minimalListener()
+		listener.EndpointGroups[0].Endpoints = []*AwsGlobalAcceleratorEndpoint{{
+			EndpointId:    svr("arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/x/y"),
+			AttachmentArn: "arn:aws:globalaccelerator::210987654321:attachment/2f4e8b7c-0000-1111-2222-333344445555",
+		}}
+		spec := &AwsGlobalAcceleratorSpec{Region: "us-west-2", Listeners: []*AwsGlobalAcceleratorListener{listener}}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a non-attachment ARN in attachment_arn", func() {
+		listener := minimalListener()
+		listener.EndpointGroups[0].Endpoints = []*AwsGlobalAcceleratorEndpoint{{
+			EndpointId:    svr("eipalloc-0123456789abcdef0"),
+			AttachmentArn: "arn:aws:iam::123456789012:role/NotAnAttachment",
+		}}
+		spec := &AwsGlobalAcceleratorSpec{Region: "us-west-2", Listeners: []*AwsGlobalAcceleratorListener{listener}}
+		gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a malformed endpoint group region", func() {
+		listener := minimalListener()
+		listener.EndpointGroups[0].EndpointGroupRegion = "us-east"
+		spec := &AwsGlobalAcceleratorSpec{Region: "us-west-2", Listeners: []*AwsGlobalAcceleratorListener{listener}}
+		gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a well-formed endpoint group region", func() {
+		listener := minimalListener()
+		listener.EndpointGroups[0].EndpointGroupRegion = "ap-southeast-2"
+		spec := &AwsGlobalAcceleratorSpec{Region: "us-west-2", Listeners: []*AwsGlobalAcceleratorListener{listener}}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+})
