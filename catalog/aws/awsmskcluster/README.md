@@ -85,7 +85,21 @@ Spec-level companions:
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `scramSecretArns` | list(string) | [] | Secrets Manager ARNs (must be `AmazonMSK_`-prefixed, customer-managed KMS key) associated for SASL/SCRAM. Requires `saslScramEnabled`. Associations are added/removed in place. |
-| `clusterPolicy` | string (JSON) | — | Resource-based IAM policy on the cluster — the mechanism behind cross-account PrivateLink access. Updated in place. |
+| `clusterPolicy` | object (policy document) | — | Resource-based IAM policy on the cluster — the mechanism behind cross-account PrivateLink access. A structured document (the modules serialize it to JSON). Updated in place. |
+| `topics` | list(object) | [] | Kafka topics declared with the cluster and managed through the MSK topic API — no Kafka client or bootstrap connectivity needed. Keyed by `name`; see below. |
+
+### Topics
+
+One entry per topic; adding or removing an entry never churns the others. Topic ARNs are exported as the `topic_arns` output map, keyed by topic name.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `name` | string | **yes** | — | Kafka topic name (letters, digits, `.`, `_`, `-`; ≤249 chars; never `.`/`..`). **ForceNew** — topics cannot be renamed. |
+| `partitionCount` | int32 | **yes** | — | Partitions. Kafka only supports INCREASING this in place; a decrease fails the update. |
+| `replicationFactor` | int32 | **yes** | — | Replicas per partition (≤ `numberOfBrokerNodes`, CEL-enforced). **ForceNew**. |
+| `configs` | map(string) | {} | Topic-level Kafka config overrides (`retention.ms`, `cleanup.policy`, `min.insync.replicas`, ...). Updated in place. |
+
+Deleting a declared entry deletes the topic and its data — this requires `delete.topic.enable=true` on the cluster (MSK's default; only relevant if `serverProperties` overrides it).
 
 ### Configuration
 
@@ -142,6 +156,7 @@ All three destinations can be enabled simultaneously.
 | `zookeeper_connect_string` | string | ZooKeeper plaintext endpoints. Empty on KRaft-mode clusters. |
 | `zookeeper_connect_string_tls` | string | ZooKeeper TLS endpoints. Empty on KRaft-mode clusters. |
 | `configuration_arn` | string | Inline MSK Configuration ARN (if created from `serverProperties`). |
+| `topic_arns` | map(string) | ARNs of the declared `topics`, keyed by topic name — scope client IAM policies (`kafka-cluster:*Topic*` actions) per topic. |
 
 ## Examples
 

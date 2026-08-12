@@ -28,7 +28,7 @@ const (
 // managed by AWS: there are no brokers, instance types, storage volumes, or
 // Kafka version to declare -- AWS scales compute and storage automatically and
 // bills per throughput and storage consumed. The whole declaration is WHERE
-// the cluster lives (subnets + security groups) and the rest is AWS's.
+// the cluster lives (one or more VPC placements) and the rest is AWS's.
 //
 // Two properties shape this spec:
 //
@@ -41,28 +41,26 @@ const (
 //     access. Both IaC modules enable it unconditionally, so it is not a
 //     field here -- there is nothing to choose.
 //
-// Network ingress is composed, never embedded: the cluster attaches the
-// referenced security_group_ids directly, and the ingress rule that opens the
-// SASL/IAM port (9098) lives on those first-class AwsSecurityGroup nodes.
+// Network ingress is composed, never embedded: the cluster attaches each
+// placement's referenced security_group_ids directly, and the ingress rule
+// that opens the SASL/IAM port (9098) lives on those first-class
+// AwsSecurityGroup nodes.
 type AwsMskServerlessClusterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the resource will be created.
 	// Example: "us-west-2", "eu-west-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// subnet_ids are the VPC subnets where the cluster places its network
-	// interfaces. Provide subnets in at least two Availability Zones for
-	// production use; clients connect through these ENIs.
-	// ForceNew: changing subnets forces cluster replacement.
-	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
-	// security_group_ids are the security groups ATTACHED to the cluster
-	// network interfaces -- they define what can reach the brokers. The ingress
-	// rule for the SASL/IAM listener port (9098) belongs on these referenced
-	// AwsSecurityGroup nodes. Maximum 5. If omitted, AWS attaches the VPC's
-	// default security group.
-	// ForceNew: adding or removing entries after creation forces replacement.
-	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,3,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// vpc_configs are the VPC placements for the cluster -- AWS provisions
+	// client-facing network interfaces in EACH declared VPC, so applications in
+	// every listed VPC connect privately without peering or PrivateLink setup.
+	// One entry (the common shape) places the cluster in a single VPC;
+	// additional entries extend private access to more VPCs in the same
+	// account and region.
+	// ForceNew: adding, removing, or changing a placement forces cluster
+	// replacement.
+	VpcConfigs    []*AwsMskServerlessClusterVpcConfig `protobuf:"bytes,2,rep,name=vpc_configs,json=vpcConfigs,proto3" json:"vpc_configs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsMskServerlessClusterSpec) Reset() {
@@ -102,14 +100,71 @@ func (x *AwsMskServerlessClusterSpec) GetRegion() string {
 	return ""
 }
 
-func (x *AwsMskServerlessClusterSpec) GetSubnetIds() []*v1.StringValueOrRef {
+func (x *AwsMskServerlessClusterSpec) GetVpcConfigs() []*AwsMskServerlessClusterVpcConfig {
+	if x != nil {
+		return x.VpcConfigs
+	}
+	return nil
+}
+
+// AwsMskServerlessClusterVpcConfig is one VPC placement for the serverless
+// cluster: which subnets host the client-facing network interfaces in that
+// VPC, and which security groups guard them.
+type AwsMskServerlessClusterVpcConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// subnet_ids are the VPC subnets where the cluster places its network
+	// interfaces. Provide subnets in at least two Availability Zones for
+	// production use; clients connect through these ENIs. All subnets in one
+	// entry must belong to the same VPC.
+	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,1,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
+	// security_group_ids are the security groups ATTACHED to this placement's
+	// network interfaces -- they define what can reach the brokers from this
+	// VPC. The ingress rule for the SASL/IAM listener port (9098) belongs on
+	// these referenced AwsSecurityGroup nodes. Maximum 5. If omitted, AWS
+	// attaches the VPC's default security group.
+	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AwsMskServerlessClusterVpcConfig) Reset() {
+	*x = AwsMskServerlessClusterVpcConfig{}
+	mi := &file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsMskServerlessClusterVpcConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsMskServerlessClusterVpcConfig) ProtoMessage() {}
+
+func (x *AwsMskServerlessClusterVpcConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsMskServerlessClusterVpcConfig.ProtoReflect.Descriptor instead.
+func (*AwsMskServerlessClusterVpcConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsMskServerlessClusterVpcConfig) GetSubnetIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.SubnetIds
 	}
 	return nil
 }
 
-func (x *AwsMskServerlessClusterSpec) GetSecurityGroupIds() []*v1.StringValueOrRef {
+func (x *AwsMskServerlessClusterVpcConfig) GetSecurityGroupIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.SecurityGroupIds
 	}
@@ -120,12 +175,15 @@ var File_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto protoreflect.Fi
 
 const file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7catalog/aws/awsmskserverlesscluster/v1alpha1/spec.proto\x120dev.planton.aws.awsmskserverlesscluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xd2\x02\n" +
+	"7catalog/aws/awsmskserverlesscluster/v1alpha1/spec.proto\x120dev.planton.aws.awsmskserverlesscluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xbd\x01\n" +
 	"\x1bAwsMskServerlessClusterSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12|\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12}\n" +
+	"\vvpc_configs\x18\x02 \x03(\v2R.dev.planton.aws.awsmskserverlesscluster.v1alpha1.AwsMskServerlessClusterVpcConfigB\b\xbaH\x05\x92\x01\x02\b\x01R\n" +
+	"vpcConfigs\"\xb6\x02\n" +
+	" AwsMskServerlessClusterVpcConfig\x12|\n" +
 	"\n" +
-	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
-	"\x12security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIdsB\x91\x03\n" +
+	"subnet_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIdsB\x91\x03\n" +
 	"4com.dev.planton.aws.awsmskserverlesscluster.v1alpha1B\tSpecProtoP\x01Zigithub.com/plantonhq/planton/catalog/aws/awsmskserverlesscluster/v1alpha1;awsmskserverlessclusterv1alpha1\xa2\x02\x04DPAA\xaa\x020Dev.Planton.Aws.Awsmskserverlesscluster.V1alpha1\xca\x020Dev\\Planton\\Aws\\Awsmskserverlesscluster\\V1alpha1\xe2\x02<Dev\\Planton\\Aws\\Awsmskserverlesscluster\\V1alpha1\\GPBMetadata\xea\x024Dev::Planton::Aws::Awsmskserverlesscluster::V1alpha1b\x06proto3"
 
 var (
@@ -140,19 +198,21 @@ func file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_rawDescGZIP() 
 	return file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsMskServerlessClusterSpec)(nil), // 0: dev.planton.aws.awsmskserverlesscluster.v1alpha1.AwsMskServerlessClusterSpec
-	(*v1.StringValueOrRef)(nil),         // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsMskServerlessClusterSpec)(nil),      // 0: dev.planton.aws.awsmskserverlesscluster.v1alpha1.AwsMskServerlessClusterSpec
+	(*AwsMskServerlessClusterVpcConfig)(nil), // 1: dev.planton.aws.awsmskserverlesscluster.v1alpha1.AwsMskServerlessClusterVpcConfig
+	(*v1.StringValueOrRef)(nil),              // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.aws.awsmskserverlesscluster.v1alpha1.AwsMskServerlessClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.aws.awsmskserverlesscluster.v1alpha1.AwsMskServerlessClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awsmskserverlesscluster.v1alpha1.AwsMskServerlessClusterSpec.vpc_configs:type_name -> dev.planton.aws.awsmskserverlesscluster.v1alpha1.AwsMskServerlessClusterVpcConfig
+	2, // 1: dev.planton.aws.awsmskserverlesscluster.v1alpha1.AwsMskServerlessClusterVpcConfig.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 2: dev.planton.aws.awsmskserverlesscluster.v1alpha1.AwsMskServerlessClusterVpcConfig.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_init() }
@@ -166,7 +226,7 @@ func file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsmskserverlesscluster_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

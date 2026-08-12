@@ -1,12 +1,12 @@
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMskServerlessCluster
 metadata:
-  name: test-msk-serverless
+  name: shared-events-kafka
 spec:
   region: us-west-2
-  # One entry per VPC placement -- AWS provisions client-facing network
-  # interfaces in each declared VPC, so applications in every listed VPC
-  # connect privately without peering or PrivateLink setup.
+  # Two VPC placements: AWS provisions client-facing network interfaces in
+  # BOTH VPCs, so the application VPC and the analytics VPC each reach the
+  # cluster privately -- no peering, no PrivateLink setup.
   vpcConfigs:
     - subnetIds:
         - value: subnet-0aaa1111bbb222333

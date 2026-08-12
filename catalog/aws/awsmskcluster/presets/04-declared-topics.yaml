@@ -1,7 +1,7 @@
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMskCluster
 metadata:
-  name: test-msk-cluster
+  name: orders-kafka
 spec:
   region: us-west-2
   kafkaVersion: "3.6.0"
@@ -15,10 +15,14 @@ spec:
     - value: sg-0abc1234def567890
   authentication:
     saslIamEnabled: true
+  # Topic auto-creation is off: the contract topics below are the ONLY
+  # topics applications may rely on, and they deploy with the cluster.
   serverProperties:
     auto.create.topics.enable: "false"
     default.replication.factor: "3"
     min.insync.replicas: "2"
+  # Declared through the MSK topic API -- no Kafka client, bootstrap
+  # connectivity, or credentials needed at deploy time.
   topics:
     - name: orders.events
       partitionCount: 6
@@ -30,16 +34,11 @@ spec:
     - name: orders.events.dlq
       partitionCount: 1
       replicationFactor: 3
-  clusterPolicy:
-    Version: "2012-10-17"
-    Statement:
-      - Sid: AllowPartnerVpcConnection
-        Effect: Allow
-        Principal:
-          AWS: arn:aws:iam::444455556666:root
-        Action:
-          - kafka:CreateVpcConnection
-          - kafka:GetBootstrapBrokers
-          - kafka:DescribeCluster
-          - kafka:DescribeClusterV2
-        Resource: "*"
+      configs:
+        retention.ms: "2592000000"
+    - name: orders.snapshots
+      partitionCount: 3
+      replicationFactor: 3
+      configs:
+        cleanup.policy: compact
+        min.insync.replicas: "2"

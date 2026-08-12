@@ -116,6 +116,7 @@ type AwsKinesisStreamSpec struct {
 	// - "WriteProvisionedThroughputExceeded" -- throttled write requests
 	// - "ReadProvisionedThroughputExceeded" -- throttled read requests
 	// - "IteratorAgeMilliseconds" -- consumer lag per shard
+	// - "ALL" -- shorthand that enables every shard-level metric above
 	//
 	// Enhanced metrics incur additional CloudWatch cost per metric per shard.
 	// Leave empty to use stream-level metrics only (no additional cost).

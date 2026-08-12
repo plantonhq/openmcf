@@ -2094,8 +2094,8 @@ resources:
     disposition: model-planned
     reason: "judged as a planned AwsKeyspaces kind (keyspaces with tables)"
   - resource: aws_kinesis_account_settings
-    disposition: model-planned
-    reason: "account-level Kinesis settings fold into the existing AwsKinesisStream kind family's account composition"
+    disposition: deferred
+    reason: "account/region singleton carrying the minimum-throughput billing commitment -- one per account, a financial posture no per-stream kind can own (folding it into AwsKinesisStream would let any stream manifest repoint an account-wide commitment); deferred pending demand for an account-settings surface"
   - resource: aws_kinesis_video_stream
     disposition: deferred
     reason: "Kinesis Video Streams vertical; deferred pending demand"
@@ -2408,12 +2408,9 @@ resources:
   - resource: aws_msk_scram_secret_association
     disposition: excluded-deprecated
     reason: "the whole-list SCRAM association is superseded by the consumed single-secret association resource"
-  - resource: aws_msk_topic
-    disposition: model-planned
-    reason: "MSK companion surface (topics, VPC connections); folds into the existing AwsMskCluster kind as its spec deepens"
   - resource: aws_msk_vpc_connection
     disposition: model-planned
-    reason: "MSK companion surface (topics, VPC connections); folds into the existing AwsMskCluster kind as its spec deepens"
+    reason: "the CLIENT-VPC half of MSK multi-VPC private connectivity (own subnets/security groups/VPC in the consumer's network, cross-account capable via the cluster policy) -- a separate credential domain from the cluster, so it becomes a future AwsMskVpcConnection kind rather than folding into AwsMskCluster (which models the cluster-side vpc_connectivity offer)"
   - resource: aws_mskconnect_connector
     disposition: model-planned
     reason: "judged as a planned AwsMskConnect kind (connectors, custom plugins, worker configurations)"

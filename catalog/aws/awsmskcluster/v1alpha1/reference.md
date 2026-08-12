@@ -41,6 +41,30 @@ spec:
     auto.create.topics.enable: "false"
     default.replication.factor: "3"
     min.insync.replicas: "2"
+  topics:
+    - name: orders.events
+      partitionCount: 6
+      replicationFactor: 3
+      configs:
+        retention.ms: "604800000"
+        cleanup.policy: delete
+        min.insync.replicas: "2"
+    - name: orders.events.dlq
+      partitionCount: 1
+      replicationFactor: 3
+  clusterPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowPartnerVpcConnection
+        Effect: Allow
+        Principal:
+          AWS: arn:aws:iam::444455556666:root
+        Action:
+          - kafka:CreateVpcConnection
+          - kafka:GetBootstrapBrokers
+          - kafka:DescribeCluster
+          - kafka:DescribeClusterV2
+        Resource: "*"
 ```
 
 ## Spec Fields
@@ -73,7 +97,7 @@ spec:
 | `spec.authentication.tlsCertificateAuthorityArns` | `[]string \| valueFrom` |  |  |  |
 | `spec.authentication.unauthenticated` | `bool` |  |  |  |
 | `spec.scramSecretArns` | `[]string` |  |  |  |
-| `spec.clusterPolicy` | `string` |  |  |  |
+| `spec.clusterPolicy` | `object` |  |  |  |
 | `spec.configurationArn` | `string` |  |  |  |
 | `spec.configurationRevision` | `int32` |  |  |  |
 | `spec.serverProperties` | `map<string, string>` |  |  |  |
@@ -92,6 +116,11 @@ spec:
 | `spec.jmxExporterEnabled` | `bool` |  |  |  |
 | `spec.nodeExporterEnabled` | `bool` |  |  |  |
 | `spec.rebalancingStatus` | `string` |  |  |  |
+| `spec.topics` | `[]AwsMskClusterTopic` |  |  |  |
+| `spec.topics[].name` | `string` | yes |  |  |
+| `spec.topics[].partitionCount` | `int32` | yes |  |  |
+| `spec.topics[].replicationFactor` | `int32` | yes |  |  |
+| `spec.topics[].configs` | `map<string, string>` |  |  |  |
 
 ## Field Details
 
@@ -369,13 +398,14 @@ managed outside this resource.
 
 ### spec.clusterPolicy
 
-`string`
+`object`
 
 cluster_policy is a resource-based IAM policy attached to the cluster, as a
-JSON document -- the mechanism behind cross-account PrivateLink access
-(granting kafka:CreateVpcConnection and the Get*ForVpcConnection actions to
-consumer principals). A cluster setting keyed by the cluster ARN, updated in
-place.
+structured policy document -- the mechanism behind cross-account PrivateLink
+access (granting kafka:CreateVpcConnection and the Get*ForVpcConnection
+actions to consumer principals). A cluster setting keyed by the cluster ARN,
+updated in place. The IaC modules serialize this document to JSON for the
+provider.
 
 ### spec.configurationArn
 
@@ -531,6 +561,74 @@ or "PAUSED". Not applicable to standard kafka.* instance types.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ACTIVE","PAUSED"]}}
 
+### spec.topics
+
+`[]AwsMskClusterTopic`
+
+topics declares Apache Kafka topics managed WITH the cluster through the
+MSK topic API (CreateTopic/UpdateTopic/DeleteTopic) -- no Kafka client,
+bootstrap connectivity, or client authentication setup is needed; the
+control plane manages them via IAM alone. Each entry is keyed by its
+topic name and follows the cluster's lifecycle.
+
+Declare the topics your applications depend on here (the chart-wiring
+shape: a cluster and its contract topics deploy as one unit); leave
+application-owned ad-hoc topics to the applications themselves, or set
+auto.create.topics.enable in server_properties.
+
+Deleting a declared topic entry deletes the topic and its data. Topic
+deletion requires delete.topic.enable=true on the cluster (MSK's default;
+only relevant if server_properties overrides it to false, in which case
+destroy operations on declared topics hang until the server property is
+restored).
+
+- rule: a topic name cannot be '.' or '..'
+
+### spec.topics[].name
+
+`string` · required
+
+name is the Kafka topic name. Letters, digits, '.', '_', and '-' only,
+up to 249 characters (Kafka's own naming contract). Names beginning with
+"__" are reserved for Kafka-internal topics (e.g. __consumer_offsets) --
+avoid declaring them.
+ForceNew: a Kafka topic cannot be renamed; changing the name replaces the
+topic and its data.
+
+- rule: {"required":true,"string":{"pattern":"^[a-zA-Z0-9._-]{1,249}$"}}
+
+### spec.topics[].partitionCount
+
+`int32` · required
+
+partition_count is the number of partitions for the topic.
+Kafka only supports INCREASING the partition count in place; declaring a
+lower count than the topic currently has fails the update (decrease is
+not possible without replacing the topic).
+
+- rule: {"required":true,"int32":{"gte":1}}
+
+### spec.topics[].replicationFactor
+
+`int32` · required
+
+replication_factor is the number of replicas per partition. Cannot exceed
+the cluster's number_of_broker_nodes (CEL-enforced on the spec). Use 3 for
+production durability, matching MSK's default.replication.factor guidance.
+ForceNew: changing the replication factor replaces the topic.
+
+- rule: {"required":true,"int32":{"gte":1}}
+
+### spec.topics[].configs
+
+`map<string, string>`
+
+configs are topic-level Apache Kafka configuration overrides, e.g.
+"retention.ms", "cleanup.policy", "min.insync.replicas",
+"retention.bytes". Keys and values follow Kafka's topic-config vocabulary;
+values are strings exactly as Kafka accepts them ("-1" for unlimited
+retention.bytes). Updated in place via the MSK topic API.
+
 ## Validation Rules
 
 - `provisioned_throughput_requires_mbs`: provisioned_throughput_mbs must be set (250-2375) when provisioned_throughput_enabled is true
@@ -541,6 +639,8 @@ or "PAUSED". Not applicable to standard kafka.* instance types.
 - `vpc_connectivity_scram_requires_cluster_scram`: vpc_connectivity.sasl_scram_enabled requires authentication.sasl_scram_enabled on the cluster
 - `vpc_connectivity_tls_requires_cluster_tls`: vpc_connectivity.tls_enabled requires authentication.tls_enabled on the cluster
 - `public_access_requires_authenticated_tls`: public access requires TLS-only client_broker_encryption and at least one of SASL/IAM, SASL/SCRAM, or mTLS authentication with unauthenticated disabled
+- `topic_names_unique`: topic names must be unique within the cluster
+- `topic_replication_within_brokers`: a topic's replication_factor cannot exceed number_of_broker_nodes
 
 ## Outputs
 

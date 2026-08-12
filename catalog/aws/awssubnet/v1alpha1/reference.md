@@ -410,7 +410,7 @@ Fields on other kinds that can point at this resource:
 | AwsMemcachedElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsMemorydbCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsMskCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
-| AwsMskServerlessCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsMskServerlessCluster | `spec.vpcConfigs[].subnetIds` | `status.outputs.subnet_id` |
 | AwsMwaaEnvironment | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsNatGateway | `spec.subnetId` | `status.outputs.subnet_id` |
 | AwsNeptuneCluster | `spec.subnetIds` | `status.outputs.subnet_id` |

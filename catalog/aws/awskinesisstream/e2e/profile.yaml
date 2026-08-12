@@ -19,9 +19,15 @@ spec:
   # PROVISIONED mode with an explicit shard_count, and a
   # customer-managed KMS key -- all proven by CEL spec tests and the
   # offline gate.
+  #
+  # pending_proof: the depth closure converged two Pulumi send paths to
+  # the Terraform module's rendering (encryption_type now always sent --
+  # NONE on keyless streams -- and enforce_consumer_deletion state-pinned
+  # instead of only-when-true); the prior green proof predates the
+  # changed module. Both paths are offline-proven (preview renders
+  # encryptionType NONE + enforceConsumerDeletion false explicitly); the
+  # live lane re-proves the full surface on both engines.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 10

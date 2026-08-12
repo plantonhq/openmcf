@@ -3,8 +3,10 @@
 # prerequisites (broker count must be a multiple of the subnet count), the
 # security-group prerequisite attached directly (ingress lives on that
 # first-class node, never on a module-managed shadow group), SASL/IAM
-# client authentication, and a folded server_properties configuration that
-# materializes the module-managed aws_msk_configuration satellite.
+# client authentication, a folded server_properties configuration that
+# materializes the module-managed aws_msk_configuration satellite, and one
+# declared topic (a FREE arm -- topics ride the cluster through the MSK
+# topic API; replication factor 2 matches the broker count).
 # Deliberately not in the scenario: SCRAM secret associations and the
 # cluster policy (both need externally provisioned ARNs), public access,
 # and PrivateLink connectivity -- those paths are proven by CEL spec tests
@@ -50,3 +52,9 @@ spec:
     auto.create.topics.enable: "false"
     default.replication.factor: "2"
     min.insync.replicas: "1"
+  topics:
+    - name: e2e.orders
+      partitionCount: 2
+      replicationFactor: 2
+      configs:
+        retention.ms: "86400000"

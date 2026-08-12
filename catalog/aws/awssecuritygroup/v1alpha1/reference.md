@@ -394,7 +394,7 @@ Fields on other kinds that can point at this resource:
 | AwsMemcachedElasticache | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsMemorydbCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsMskCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
-| AwsMskServerlessCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsMskServerlessCluster | `spec.vpcConfigs[].securityGroupIds` | `status.outputs.security_group_id` |
 | AwsMwaaEnvironment | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsNeptuneCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsNlb | `spec.securityGroups` | `status.outputs.security_group_id` |

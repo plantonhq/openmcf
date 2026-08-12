@@ -76,8 +76,11 @@ type AwsMskClusterStackOutputs struct {
 	// configuration_arn is the ARN of the module-managed MSK Configuration resource,
 	// if one was created from server_properties in the spec.
 	ConfigurationArn string `protobuf:"bytes,17,opt,name=configuration_arn,json=configurationArn,proto3" json:"configuration_arn,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// topic_arns are the ARNs of the Kafka topics declared in spec.topics,
+	// keyed by topic name.
+	TopicArns     map[string]string `protobuf:"bytes,18,rep,name=topic_arns,json=topicArns,proto3" json:"topic_arns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsMskClusterStackOutputs) Reset() {
@@ -229,11 +232,18 @@ func (x *AwsMskClusterStackOutputs) GetConfigurationArn() string {
 	return ""
 }
 
+func (x *AwsMskClusterStackOutputs) GetTopicArns() map[string]string {
+	if x != nil {
+		return x.TopicArns
+	}
+	return nil
+}
+
 var File_catalog_aws_awsmskcluster_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsmskcluster_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/aws/awsmskcluster/v1alpha1/outputs.proto\x12&dev.planton.aws.awsmskcluster.v1alpha1\"\x9d\b\n" +
+	"0catalog/aws/awsmskcluster/v1alpha1/outputs.proto\x12&dev.planton.aws.awsmskcluster.v1alpha1\"\xcc\t\n" +
 	"\x19AwsMskClusterStackOutputs\x12\x1f\n" +
 	"\vcluster_arn\x18\x01 \x01(\tR\n" +
 	"clusterArn\x12!\n" +
@@ -253,7 +263,12 @@ const file_catalog_aws_awsmskcluster_v1alpha1_outputs_proto_rawDesc = "" +
 	"-bootstrap_brokers_vpc_connectivity_sasl_scram\x18\x0e \x01(\tR(bootstrapBrokersVpcConnectivitySaslScram\x128\n" +
 	"\x18zookeeper_connect_string\x18\x0f \x01(\tR\x16zookeeperConnectString\x12?\n" +
 	"\x1czookeeper_connect_string_tls\x18\x10 \x01(\tR\x19zookeeperConnectStringTls\x12+\n" +
-	"\x11configuration_arn\x18\x11 \x01(\tR\x10configurationArnB\xce\x02\n" +
+	"\x11configuration_arn\x18\x11 \x01(\tR\x10configurationArn\x12o\n" +
+	"\n" +
+	"topic_arns\x18\x12 \x03(\v2P.dev.planton.aws.awsmskcluster.v1alpha1.AwsMskClusterStackOutputs.TopicArnsEntryR\ttopicArns\x1a<\n" +
+	"\x0eTopicArnsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xce\x02\n" +
 	"*com.dev.planton.aws.awsmskcluster.v1alpha1B\fOutputsProtoP\x01ZUgithub.com/plantonhq/planton/catalog/aws/awsmskcluster/v1alpha1;awsmskclusterv1alpha1\xa2\x02\x04DPAA\xaa\x02&Dev.Planton.Aws.Awsmskcluster.V1alpha1\xca\x02&Dev\\Planton\\Aws\\Awsmskcluster\\V1alpha1\xe2\x022Dev\\Planton\\Aws\\Awsmskcluster\\V1alpha1\\GPBMetadata\xea\x02*Dev::Planton::Aws::Awsmskcluster::V1alpha1b\x06proto3"
 
 var (
@@ -268,16 +283,18 @@ func file_catalog_aws_awsmskcluster_v1alpha1_outputs_proto_rawDescGZIP() []byte 
 	return file_catalog_aws_awsmskcluster_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_aws_awsmskcluster_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awsmskcluster_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_aws_awsmskcluster_v1alpha1_outputs_proto_goTypes = []any{
 	(*AwsMskClusterStackOutputs)(nil), // 0: dev.planton.aws.awsmskcluster.v1alpha1.AwsMskClusterStackOutputs
+	nil,                               // 1: dev.planton.aws.awsmskcluster.v1alpha1.AwsMskClusterStackOutputs.TopicArnsEntry
 }
 var file_catalog_aws_awsmskcluster_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awsmskcluster.v1alpha1.AwsMskClusterStackOutputs.topic_arns:type_name -> dev.planton.aws.awsmskcluster.v1alpha1.AwsMskClusterStackOutputs.TopicArnsEntry
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsmskcluster_v1alpha1_outputs_proto_init() }
@@ -291,7 +308,7 @@ func file_catalog_aws_awsmskcluster_v1alpha1_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsmskcluster_v1alpha1_outputs_proto_rawDesc), len(file_catalog_aws_awsmskcluster_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
