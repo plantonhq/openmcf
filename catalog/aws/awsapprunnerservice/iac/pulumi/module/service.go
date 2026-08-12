@@ -206,9 +206,11 @@ func service(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error 
 	// (upstream provider gap): the provider sends NOTHING for an absent
 	// block on update, so removing the reference leaves tracing running at
 	// AWS and the plan never converges. Sending a disabled block here
-	// instead is NOT safe: the provider flattens a nil API response to an
-	// empty block, so an always-present disabled block risks a perpetual
-	// diff on every tracing-less service. Disable requires service
+	// instead is NOT safe: AWS echoes NO observability member at all for a
+	// tracing-less service (live DescribeService evidence, never
+	// {ObservabilityEnabled: false}) and the provider flattens that nil to
+	// an empty block, so an always-present disabled block perpetually
+	// diffs on every tracing-less service. Disable requires service
 	// replacement until the provider gains a disable path.
 	if spec.ObservabilityConfigurationArn.GetValue() != "" {
 		serviceArgs.ObservabilityConfiguration = &apprunner.ServiceObservabilityConfigurationArgs{

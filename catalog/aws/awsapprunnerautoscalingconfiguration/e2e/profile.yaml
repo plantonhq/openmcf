@@ -8,13 +8,16 @@ spec:
   # (DescribeAutoScalingConfiguration), destroys it, and verifies the
   # revision flipped to inactive -- on both provisioners. Registration is
   # near-instant (the provider waiter caps it at 2 minutes).
-  # The set_as_account_default fold (2026-08-12 depth closure) is
-  # offline-proven (canonical-manifest plan/preview render the designation
-  # on both engines); its live arm is a recorded deferral -- claiming the
-  # shared test account's regional default would repoint it under every
-  # concurrent lane and AWS never restores the previous holder on destroy.
-  # Unblock: a dedicated proof account (or an owner-approved window).
+  # The set_as_account_default fold is offline-proven (canonical-manifest
+  # plan/preview render the designation on both engines); its live arm is
+  # a recorded deferral -- claiming the shared test account's regional
+  # default would repoint it under every concurrent lane and AWS never
+  # restores the previous holder on destroy. Unblock: a dedicated proof
+  # account (or an owner-approved window). The count gate's OFF path is
+  # live-proven: with the field unset, both engines' plans rendered
+  # exactly one resource (the designation resource absent) and the lanes
+  # ran the full lifecycle green.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

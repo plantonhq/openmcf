@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 257 |
-| Spec fields authored across all kinds | 4508 |
+| Distinct provider resources consumed | 260 |
+| Spec fields authored across all kinds | 4518 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,14 +47,14 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**84 of 112 kinds are at total accounting; 85 proven live.**
+**88 of 112 kinds are at total accounting; 95 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
 | AwsAlb | 71 | 17 | 12 | 42 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsAppRunnerAutoScalingConfiguration | 9 | 5 | 1 | 3 | 0 | ✅ | — |
+| AwsAppRunnerAutoScalingConfiguration | 9 | 5 | 1 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerObservabilityConfiguration | 5 | 2 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsAppRunnerService | 55 | 6 | 38 | 11 | 0 | ✅ | — |
+| AwsAppRunnerService | 55 | 6 | 38 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerVpcConnector | 6 | 1 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAthenaWorkgroup | 37 | 4 | 0 | 0 | 59 | ❌ | ✅ pulumi, terraform |
 | AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | ✅ pulumi, terraform |
@@ -65,15 +65,15 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCertManagerCert | 18 | 7 | 7 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsClientVpn | 47 | 28 | 0 | 0 | 32 | ❌ | — |
 | AwsCloudFront | 126 | 32 | 88 | 6 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCloudwatchAlarm | 39 | 24 | 12 | 3 | 0 | ✅ | — |
+| AwsCloudwatchAlarm | 39 | 24 | 12 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCloudwatchLogGroup | 100 | 19 | 70 | 11 | 0 | ✅ | — |
+| AwsCloudwatchLogGroup | 100 | 19 | 70 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCodeBuildProject | 115 | 97 | 11 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCodePipeline | 84 | 4 | 75 | 5 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCognitoIdentityProvider | 7 | 6 | 1 | 0 | 0 | ✅ | — |
+| AwsCognitoIdentityProvider | 7 | 6 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoResourceServer | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCognitoUserPool | 122 | 59 | 52 | 11 | 0 | ✅ | — |
-| AwsCognitoUserPoolClient | 56 | 30 | 23 | 3 | 0 | ✅ | — |
+| AwsCognitoUserPool | 122 | 59 | 52 | 11 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCognitoUserPoolClient | 56 | 30 | 23 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsDynamodb | 71 | 27 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
 | AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | ✅ pulumi, terraform |
@@ -89,7 +89,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsEksFargateProfile | 9 | 4 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEksNodeGroup | 43 | 26 | 12 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsElasticFileSystem | 34 | 13 | 0 | 0 | 35 | ❌ | ✅ pulumi, terraform |
-| AwsElasticIp | 12 | 4 | 0 | 0 | 8 | ❌ | ✅ pulumi, terraform |
+| AwsElasticIp | 15 | 9 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
 | AwsElasticacheUser | 13 | 6 | 0 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsElasticacheUserGroup | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEventBridgeBus | 20 | 12 | 3 | 5 | 0 | ✅ | ✅ pulumi, terraform |
@@ -113,8 +113,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsIamUser | 15 | 3 | 4 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
 | AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsKinesisStream | 17 | 8 | 0 | 0 | 12 | ❌ | ✅ pulumi, terraform |
-| AwsKinesisStreamConsumer | 8 | 3 | 0 | 0 | 6 | ❌ | ✅ pulumi, terraform |
+| AwsKinesisStream | 17 | 8 | 3 | 6 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsKinesisStreamConsumer | 8 | 3 | 1 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsKmsKey | 29 | 15 | 6 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLambda | 108 | 51 | 30 | 27 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLambdaEventSourceMapping | 45 | 11 | 31 | 3 | 0 | ✅ | ✅ pulumi, terraform |
@@ -126,8 +126,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsMemorydbAcl | 6 | 2 | 0 | 4 | 0 | ✅ | — |
 | AwsMemorydbCluster | 46 | 29 | 3 | 14 | 0 | ✅ | — |
 | AwsMemorydbUser | 7 | 4 | 0 | 3 | 0 | ✅ | — |
-| AwsMskCluster | 50 | 9 | 0 | 0 | 74 | ❌ | partial: pulumi, terraform |
-| AwsMskServerlessCluster | 7 | 1 | 0 | 0 | 8 | ❌ | partial: pulumi, terraform |
+| AwsMskCluster | 56 | 13 | 34 | 9 | 0 | ✅ | partial: pulumi, terraform |
+| AwsMskServerlessCluster | 7 | 1 | 2 | 4 | 0 | ✅ | partial: pulumi, terraform |
 | AwsMwaaEnvironment | 38 | 32 | 0 | 0 | 9 | ❌ | partial: pulumi, terraform |
 | AwsNatGateway | 15 | 10 | 3 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsNeptuneCluster | 70 | 34 | 0 | 0 | 52 | ❌ | ✅ pulumi, terraform |
@@ -140,13 +140,13 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsRedshiftCluster | 105 | 61 | 12 | 32 | 0 | ✅ | — |
 | AwsRedshiftServerlessNamespace | 15 | 10 | 0 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRedshiftServerlessWorkgroup | 33 | 19 | 4 | 10 | 0 | ✅ | — |
-| AwsRoute53DnsRecord | 25 | 7 | 17 | 1 | 0 | ✅ | — |
-| AwsRoute53HealthCheck | 23 | 17 | 2 | 4 | 0 | ✅ | — |
-| AwsRoute53Zone | 17 | 5 | 5 | 7 | 0 | ✅ | — |
+| AwsRoute53DnsRecord | 25 | 7 | 17 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsRoute53HealthCheck | 23 | 17 | 2 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsRoute53Zone | 17 | 5 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3Bucket | 204 | 24 | 102 | 78 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3ObjectSet | 28 | 3 | 0 | 0 | 46 | ❌ | ✅ pulumi, terraform |
 | AwsSagemakerDomain | 159 | 93 | 0 | 0 | 126 | ❌ | ✅ pulumi, terraform |
-| AwsSecurityGroup | 10 | 4 | 0 | 0 | 26 | ❌ | ✅ pulumi, terraform |
+| AwsSecurityGroup | 13 | 6 | 0 | 0 | 28 | ❌ | ✅ pulumi, terraform |
 | AwsServerlessElasticache | 19 | 12 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSesConfigurationSet | 27 | 7 | 0 | 0 | 36 | ❌ | ✅ pulumi, terraform |
 | AwsSesEmailIdentity | 19 | 9 | 0 | 0 | 18 | ❌ | ✅ pulumi, terraform |
@@ -170,11 +170,11 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 257 | consumed by a kind's Terraform module today |
+| Modeled | 260 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 13 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 756 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 536 | deliberately not offered, each with the recorded reason |
+| Planned | 752 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 537 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -183,7 +183,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (257)
+### Modeled (260)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -289,6 +289,7 @@ rather than trusted.
 | `aws_efs_replication_configuration` | consumed by AwsElasticFileSystem |
 | `aws_egress_only_internet_gateway` | consumed by AwsEgressOnlyInternetGateway |
 | `aws_eip` | consumed by AwsElasticIp |
+| `aws_eip_domain_name` | consumed by AwsElasticIp |
 | `aws_eks_access_entry` | consumed by AwsEksAccessEntry |
 | `aws_eks_access_policy_association` | consumed by AwsEksAccessEntry |
 | `aws_eks_addon` | consumed by AwsEksAddon |
@@ -359,6 +360,7 @@ rather than trusted.
 | `aws_msk_configuration` | consumed by AwsMskCluster |
 | `aws_msk_serverless_cluster` | consumed by AwsMskServerlessCluster |
 | `aws_msk_single_scram_secret_association` | consumed by AwsMskCluster |
+| `aws_msk_topic` | consumed by AwsMskCluster |
 | `aws_mwaa_environment` | consumed by AwsMwaaEnvironment |
 | `aws_nat_gateway` | consumed by AwsNatGateway |
 | `aws_neptune_cluster` | consumed by AwsNeptuneCluster |
@@ -439,6 +441,7 @@ rather than trusted.
 | `aws_vpc_endpoint` | consumed by AwsVpcEndpoint |
 | `aws_vpc_ipv4_cidr_block_association` | consumed by AwsVpc |
 | `aws_vpc_ipv6_cidr_block_association` | consumed by AwsVpc |
+| `aws_vpc_security_group_vpc_association` | consumed by AwsSecurityGroup |
 | `aws_wafv2_ip_set` | consumed by AwsWafIpSet |
 | `aws_wafv2_regex_pattern_set` | consumed by AwsWafRegexPatternSet |
 | `aws_wafv2_web_acl` | consumed by AwsWafWebAcl |
@@ -463,7 +466,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (756)
+### Planned (752)
 
 | Resource | Recorded reason |
 |---|---|
@@ -769,7 +772,6 @@ rather than trusted.
 | `aws_ecs_express_gateway_service` | ECS Express -- a distinct gateway-fronted service paradigm with its own lifecycle; planned as its own kind admission, not a fold into AwsEcsService |
 | `aws_ecs_task_set` | task sets exist only under the EXTERNAL deployment controller; folds into AwsEcsService if the external-controller workflow is ever admitted (its native and blue/green controllers are fully modeled) |
 | `aws_eip_association` | EIP companion surface (associations, domain names); folds into the existing AwsElasticIp kind as its spec deepens |
-| `aws_eip_domain_name` | EIP companion surface (associations, domain names); folds into the existing AwsElasticIp kind as its spec deepens |
 | `aws_eks_capability` | EKS managed capabilities (ACK, KRO, Argo CD; provider 6.25.0) with their own configuration tree (IAM Identity Center wiring, RBAC role mappings, network access); a cluster-scoped companion with independent lifecycle -- its own kind (AwsEksCapability) on the EKS family's composition pattern (addon/fargate-profile/access-entry precedent), not a cluster fold-in |
 | `aws_eks_identity_provider_config` | associates an external OIDC identity provider with a cluster for user authentication; an associable cluster companion with independent (create-only) lifecycle -- its own kind (AwsEksIdentityProviderConfig) on the EKS family's composition pattern, not a cluster fold-in |
 | `aws_eks_pod_identity_association` | maps any Kubernetes service account to an IAM role via EKS Pod Identity; the per-ADDON arm is already modeled on AwsEksAddon (pod_identity_associations), and the standalone workload-scoped association is its own kind (AwsEksPodIdentityAssociation) -- per-workload IAM identity is chart-wiring surface, not cluster or addon configuration |
@@ -862,7 +864,6 @@ rather than trusted.
 | `aws_key_pair` | judged as a planned AwsKeyPair kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): account-level public-key material referenced by many instances and launch templates -- AwsEc2Instance.key_name consumes a key pair by name but cannot create the material |
 | `aws_keyspaces_keyspace` | judged as a planned AwsKeyspaces kind (keyspaces with tables) |
 | `aws_keyspaces_table` | judged as a planned AwsKeyspaces kind (keyspaces with tables) |
-| `aws_kinesis_account_settings` | account-level Kinesis settings fold into the existing AwsKinesisStream kind family's account composition |
 | `aws_kinesisanalyticsv2_application` | judged as a planned AwsManagedFlink kind (applications with snapshots) |
 | `aws_kinesisanalyticsv2_application_snapshot` | judged as a planned AwsManagedFlink kind (applications with snapshots) |
 | `aws_kms_external_key` | judged as a planned AwsKmsExternalKey kind (BYOK imported key material -- its own creation lifecycle with sensitive-material handling, per the provider's own resource split) |
@@ -897,8 +898,7 @@ rather than trusted.
 | `aws_memorydb_multi_region_cluster` | cross-region active-active parent with its own lifecycle (suffix-named by AWS, own node type/engine/shards/TLS/parameter group, per-call update_strategy) -- a future AwsMemorydbMultiRegionCluster kind; AwsMemorydbCluster already models the regional join path (multi_region_cluster_name), mirroring how AwsRedisElasticache joins its global replication group |
 | `aws_mq_broker` | judged as a planned AwsMqBroker kind (brokers with configurations) |
 | `aws_mq_configuration` | judged as a planned AwsMqBroker kind (brokers with configurations) |
-| `aws_msk_topic` | MSK companion surface (topics, VPC connections); folds into the existing AwsMskCluster kind as its spec deepens |
-| `aws_msk_vpc_connection` | MSK companion surface (topics, VPC connections); folds into the existing AwsMskCluster kind as its spec deepens |
+| `aws_msk_vpc_connection` | the CLIENT-VPC half of MSK multi-VPC private connectivity (own subnets/security groups/VPC in the consumer's network, cross-account capable via the cluster policy) -- a separate credential domain from the cluster, so it becomes a future AwsMskVpcConnection kind rather than folding into AwsMskCluster (which models the cluster-side vpc_connectivity offer) |
 | `aws_mskconnect_connector` | judged as a planned AwsMskConnect kind (connectors, custom plugins, worker configurations) |
 | `aws_mskconnect_custom_plugin` | judged as a planned AwsMskConnect kind (connectors, custom plugins, worker configurations) |
 | `aws_mskconnect_worker_configuration` | judged as a planned AwsMskConnect kind (connectors, custom plugins, worker configurations) |
@@ -1193,7 +1193,6 @@ rather than trusted.
 | `aws_vpc_security_group_egress_rule` | security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens |
 | `aws_vpc_security_group_ingress_rule` | security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens |
 | `aws_vpc_security_group_rules_exclusive` | security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens |
-| `aws_vpc_security_group_vpc_association` | security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens |
 | `aws_vpclattice_access_log_subscription` | judged as a planned AwsVpcLatticeServiceNetwork kind (service networks, associations, auth/resource policies, resource gateways/configurations, log subscriptions, domain verifications) |
 | `aws_vpclattice_auth_policy` | judged as a planned AwsVpcLatticeServiceNetwork kind (service networks, associations, auth/resource policies, resource gateways/configurations, log subscriptions, domain verifications) |
 | `aws_vpclattice_domain_verification` | judged as a planned AwsVpcLatticeServiceNetwork kind (service networks, associations, auth/resource policies, resource gateways/configurations, log subscriptions, domain verifications) |
@@ -1224,7 +1223,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (536)
+### Deferred (537)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1468,6 +1467,7 @@ rather than trusted.
 | `aws_kendra_index` | Kendra enterprise search; the Bedrock knowledge-base path covers retrieval-augmented generation; deferred |
 | `aws_kendra_query_suggestions_block_list` | Kendra enterprise search; the Bedrock knowledge-base path covers retrieval-augmented generation; deferred |
 | `aws_kendra_thesaurus` | Kendra enterprise search; the Bedrock knowledge-base path covers retrieval-augmented generation; deferred |
+| `aws_kinesis_account_settings` | account/region singleton carrying the minimum-throughput billing commitment -- one per account, a financial posture no per-stream kind can own (folding it into AwsKinesisStream would let any stream manifest repoint an account-wide commitment); deferred pending demand for an account-settings surface |
 | `aws_kinesis_video_stream` | Kinesis Video Streams vertical; deferred pending demand |
 | `aws_kms_ciphertext` | ciphertext is an imperative encrypt operation, a poor declarative fit |
 | `aws_kms_custom_key_store` | CloudHSM-backed custom key stores; deferred pending demand |
