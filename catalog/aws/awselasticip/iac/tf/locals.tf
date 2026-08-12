@@ -1,9 +1,15 @@
 locals {
   resource_name = coalesce(try(var.metadata.name, null), "awselasticip")
 
-  tags = merge({
-    "Name" = local.resource_name
-  }, try(var.metadata.labels, {}))
+  # Resource-identity tags match the Pulumi module key-for-key.
+  aws_tags = {
+    "Name"                     = local.resource_name
+    "planton.ai/resource"      = "true"
+    "planton.ai/organization"  = var.metadata.org
+    "planton.ai/environment"   = var.metadata.env
+    "planton.ai/resource-kind" = "AwsElasticIp"
+    "planton.ai/resource-id"   = var.metadata.id
+  }
 
   # Allocation-shaping settings — null when not configured.
   public_ipv4_pool     = try(var.spec.public_ipv4_pool, null) != "" ? try(var.spec.public_ipv4_pool, null) : null

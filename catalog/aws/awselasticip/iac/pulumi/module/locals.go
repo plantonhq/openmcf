@@ -19,7 +19,9 @@ func initializeLocals(ctx *pulumi.Context, stackInput *awselasticipv1alpha1.AwsE
 	locals := &Locals{}
 	locals.AwsElasticIp = stackInput.Target
 
+	// Resource-identity tags match the Terraform module key-for-key.
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsElasticIp.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.AwsElasticIp.Metadata.Org,
 		awstagkeys.Environment:  locals.AwsElasticIp.Metadata.Env,

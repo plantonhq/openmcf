@@ -22,7 +22,7 @@ resource "aws_eip" "this" {
   network_interface         = local.network_interface
   associate_with_private_ip = local.associate_with_private_ip
 
-  tags = local.tags
+  tags = local.aws_tags
 }
 
 # Reverse DNS (PTR) record for the address. AWS validates SERVER-SIDE that a
