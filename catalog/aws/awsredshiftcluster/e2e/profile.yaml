@@ -13,9 +13,21 @@ spec:
   # subnet-group materialization on the cheapest footprint. Cluster
   # provisioning dominates the runtime at roughly five to ten minutes
   # each way per engine.
+  #
+  # pending_proof (depth closure, T02 s24): the governance satellites
+  # folded in -- usage limits, scheduled actions (incl. the
+  # scheduler.redshift.amazonaws.com trust contract via the
+  # consumer-scoped AwsIamRole prerequisite), managed VPC endpoint
+  # accesses (per-endpoint address outputs), endpoint authorizations,
+  # and the snapshot-schedule association -- plus four provider-mirrored
+  # format CELs and the secret_kms_requires_managed heal. The scenario
+  # carries the free arms (usage limit, DISABLED scheduled action,
+  # self-VPC endpoint access); endpoint AUTHORIZATION (needs a second
+  # AWS account) and the schedule ASSOCIATION (needs the future
+  # AwsRedshiftSnapshotSchedule kind) are offline-proven arms with named
+  # unblocks. The prior green predates this surface -- demoted per the
+  # badge-honesty rule.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 60

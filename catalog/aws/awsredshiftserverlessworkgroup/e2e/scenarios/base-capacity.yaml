@@ -7,6 +7,16 @@
 # attaches the VPC's default group (the documented default this
 # component preserves). Full metadata is supplied for tagging/orphan
 # cleanup.
+#
+# Free governance arms (depth-closure additions):
+# - a daily serverless-compute usage limit with breachAction deactivate
+#   (a cap is configuration, never a charge; the lane runs no queries);
+# - a VPC endpoint reusing the workgroup's own subnets (the entry omits
+#   subnetIds -- the documented fallback; its private address must
+#   surface in the endpoint_access_addresses output map).
+# Offline-proven arm with a named unblock (never silent): the custom
+# domain needs an owned domain plus a VALIDATED ACM certificate -- no
+# fixture kind can mint one.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedshiftServerlessWorkgroup
 metadata:
@@ -43,3 +53,10 @@ spec:
         kind: AwsSubnet
         name: planton-oss-e2e-awssubnet-prereq-c
         fieldPath: status.outputs.subnet_id
+  usageLimits:
+    - usageType: serverless-compute
+      amount: 100
+      period: daily
+      breachAction: deactivate
+  endpointAccesses:
+    - endpointName: e2e-self-vpc

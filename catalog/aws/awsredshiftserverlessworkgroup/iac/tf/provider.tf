@@ -10,7 +10,10 @@ terraform {
       #
       # Feature floor: the v6 line carries the full
       # aws_redshiftserverless_workgroup surface this module uses,
-      # including price_performance_target and track_name.
+      # including price_performance_target and track_name, plus the
+      # satellites this module also renders
+      # (aws_redshiftserverless_endpoint_access, _usage_limit,
+      # _custom_domain_association) -- all predate the v6 line.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

@@ -30,6 +30,21 @@ func Resources(ctx *pulumi.Context, stackInput *awsredshiftserverlessworkgroupv1
 		return errors.Wrap(err, "failed to create Redshift Serverless workgroup")
 	}
 
+	createdCustomDomain, err := customDomain(ctx, locals, provider, createdWorkgroup)
+	if err != nil {
+		return errors.Wrap(err, "failed to associate custom domain")
+	}
+
+	createdEndpointAddresses, err := endpointAccesses(ctx, locals, provider, createdWorkgroup)
+	if err != nil {
+		return errors.Wrap(err, "failed to create endpoint accesses")
+	}
+
+	createdUsageLimitIds, err := usageLimits(ctx, locals, provider, createdWorkgroup)
+	if err != nil {
+		return errors.Wrap(err, "failed to create usage limits")
+	}
+
 	ctx.Export(OpWorkgroupName, createdWorkgroup.WorkgroupName)
 	ctx.Export(OpWorkgroupId, createdWorkgroup.WorkgroupId)
 	ctx.Export(OpArn, createdWorkgroup.Arn)
@@ -40,6 +55,20 @@ func Resources(ctx *pulumi.Context, stackInput *awsredshiftserverlessworkgroupv1
 	// Elem both resolve to zero values when the endpoint is not yet
 	// known, so the export shape is stable without an ApplyT applier.
 	ctx.Export(OpEndpointAddress, createdWorkgroup.Endpoints.Index(pulumi.Int(0)).Address().Elem())
+
+	// Per-satellite maps: endpoint addresses and AWS-generated usage-limit
+	// IDs, keyed identically on both engines (imports and out-of-band CLI
+	// operations address entries by these keys).
+	ctx.Export(OpEndpointAccessAddresses, createdEndpointAddresses)
+	ctx.Export(OpUsageLimitIds, createdUsageLimitIds)
+
+	// The expiry keeps a stable string shape whether or not a custom
+	// domain is configured.
+	if createdCustomDomain != nil {
+		ctx.Export(OpCustomDomainCertificateExpiryTime, createdCustomDomain.CustomDomainCertificateExpiryTime)
+	} else {
+		ctx.Export(OpCustomDomainCertificateExpiryTime, pulumi.String(""))
+	}
 
 	return nil
 }

@@ -47,3 +47,13 @@ output "master_password_secret_arn" {
   description = "The ARN of the AWS-managed admin-password secret in Secrets Manager (only when manage_master_password is true) -- the handle applications use to fetch credentials at runtime."
   value       = try(coalesce(aws_redshift_cluster.this.master_password_secret_arn, ""), "")
 }
+
+output "endpoint_access_addresses" {
+  description = "The private DNS addresses of the cluster's managed VPC endpoints, keyed by endpoint name."
+  value       = { for k, e in aws_redshift_endpoint_access.this : k => e.address }
+}
+
+output "usage_limit_ids" {
+  description = "The AWS-generated usage-limit IDs, keyed by feature_type/limit_type/period (unset period rendered as monthly) -- the handles delete-usage-limit and state import take."
+  value       = { for k, l in aws_redshift_usage_limit.this : k => l.id }
+}

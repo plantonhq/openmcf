@@ -444,6 +444,7 @@ Fields on other kinds that can point at this resource:
 | AwsInternetGateway | `spec.vpcId` | `status.outputs.vpc_id` |
 | AwsLbTargetGroup | `spec.vpcId` | `status.outputs.vpc_id` |
 | AwsNatGateway | `spec.vpcId` | `status.outputs.vpc_id` |
+| AwsRedshiftCluster | `spec.endpointAuthorizations[].vpcIds` | `status.outputs.vpc_id` |
 | AwsRoute53Zone | `spec.vpcAssociations[].vpcId` | `status.outputs.vpc_id` |
 | AwsSagemakerDomain | `spec.vpcId` | `status.outputs.vpc_id` |
 | AwsSecurityGroup | `spec.vpcId` | `status.outputs.vpc_id` |

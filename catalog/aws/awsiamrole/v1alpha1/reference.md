@@ -403,6 +403,7 @@ Fields on other kinds that can point at this resource:
 | AwsRdsInstance | `spec.iamRoles[].role` | `status.outputs.role_arn` |
 | AwsRedshiftCluster | `spec.iamRoles` | `status.outputs.role_arn` |
 | AwsRedshiftCluster | `spec.defaultIamRoleArn` | `status.outputs.role_arn` |
+| AwsRedshiftCluster | `spec.scheduledActions[].iamRoleArn` | `status.outputs.role_arn` |
 | AwsRedshiftServerlessNamespace | `spec.iamRoles` | `status.outputs.role_arn` |
 | AwsRedshiftServerlessNamespace | `spec.defaultIamRoleArn` | `status.outputs.role_arn` |
 | AwsS3Bucket | `spec.replication.roleArn` | `status.outputs.role_arn` |

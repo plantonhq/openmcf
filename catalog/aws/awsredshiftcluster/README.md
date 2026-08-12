@@ -13,11 +13,14 @@ The cluster owns the warehouse brain: compute topology (node type and count), cr
 - **Restore shapes** -- create from a snapshot by name (`snapshotIdentifier`, with `snapshotClusterIdentifier` disambiguation) or by ARN (`snapshotArn`), including cross-account restores via `ownerAccount`.
 - **Data movement** -- `iamRoles` + `defaultIamRoleArn` for COPY/UNLOAD/Spectrum, and `enhancedVpcRouting` to force warehouse data movement through the VPC.
 - **Observability** -- folded `logging` delivers connection/user-activity/user audit logs to S3 or CloudWatch Logs.
-- **Parameters** -- inline `parameters` (a module-managed parameter group; the family is always `redshift-1.0`) or an existing `clusterParameterGroupName`.
+- **Parameters** -- inline `parameters` (a module-managed parameter group; `parameterGroupFamily` selects `redshift-2.0` when needed, defaulting to `redshift-1.0`) or an existing `clusterParameterGroupName`.
+- **Cost governance** -- `usageLimits` cap per-feature consumption (Spectrum scans, concurrency-scaling time, cross-region datasharing) with log/emit-metric/disable breach actions; `scheduledActions` pause, resume, or resize the cluster on cron/at schedules (the classic nights-and-weekends lever). The action's IAM role must TRUST `scheduler.redshift.amazonaws.com` -- AWS validates the trust at create -- and action names are unique per AWS account, so keep the cluster name in them.
+- **Cross-VPC and cross-account access** -- `endpointAccesses` create Redshift-managed VPC endpoints into other subnet groups (RA3 only; per-endpoint private addresses exported); `endpointAuthorizations` grant other AWS accounts permission to create their own endpoints to this cluster (the grantor side -- the grantee's endpoint lives in their account).
+- **Snapshot schedule** -- `snapshotScheduleIdentifier` associates the cluster with an existing account-level schedule (AWS keeps one per cluster), replacing the default automated-snapshot cadence.
 
 ## Stack outputs
 
-`cluster_identifier`, `cluster_arn`, `cluster_namespace_arn`, `endpoint` (address:port), `dns_name`, `database_name`, `port`, `subnet_group_name`, `parameter_group_name`, `master_password_secret_arn`.
+`cluster_identifier`, `cluster_arn`, `cluster_namespace_arn`, `endpoint` (address:port), `dns_name`, `database_name`, `port`, `subnet_group_name`, `parameter_group_name`, `master_password_secret_arn`, `endpoint_access_addresses` (keyed by endpoint name), `usage_limit_ids` (AWS-generated, keyed by feature/limit-type/period).
 
 ## How it works
 

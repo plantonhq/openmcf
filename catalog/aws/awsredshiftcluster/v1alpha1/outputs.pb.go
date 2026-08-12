@@ -53,8 +53,18 @@ type AwsRedshiftClusterStackOutputs struct {
 	// Manager. Populated only when manage_master_password is true -- the
 	// handle applications use to fetch credentials at runtime.
 	MasterPasswordSecretArn string `protobuf:"bytes,10,opt,name=master_password_secret_arn,json=masterPasswordSecretArn,proto3" json:"master_password_secret_arn,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// The private DNS addresses of the cluster's managed VPC endpoints,
+	// keyed by endpoint name (spec.endpoint_accesses entries) -- what
+	// consumers inside the endpoint's VPC put in connection strings.
+	EndpointAccessAddresses map[string]string `protobuf:"bytes,11,rep,name=endpoint_access_addresses,json=endpointAccessAddresses,proto3" json:"endpoint_access_addresses,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The AWS-generated usage-limit IDs, keyed exactly as the module keys
+	// each limit: "<feature_type>/<limit_type>/<period>", with an unset
+	// period rendered as "monthly" (the AWS default). These are the
+	// handles `aws redshift delete-usage-limit` and state import take;
+	// AWS generates them at creation time.
+	UsageLimitIds map[string]string `protobuf:"bytes,12,rep,name=usage_limit_ids,json=usageLimitIds,proto3" json:"usage_limit_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsRedshiftClusterStackOutputs) Reset() {
@@ -157,11 +167,25 @@ func (x *AwsRedshiftClusterStackOutputs) GetMasterPasswordSecretArn() string {
 	return ""
 }
 
+func (x *AwsRedshiftClusterStackOutputs) GetEndpointAccessAddresses() map[string]string {
+	if x != nil {
+		return x.EndpointAccessAddresses
+	}
+	return nil
+}
+
+func (x *AwsRedshiftClusterStackOutputs) GetUsageLimitIds() map[string]string {
+	if x != nil {
+		return x.UsageLimitIds
+	}
+	return nil
+}
+
 var File_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/aws/awsredshiftcluster/v1alpha1/outputs.proto\x12+dev.planton.aws.awsredshiftcluster.v1alpha1\"\xaf\x03\n" +
+	"5catalog/aws/awsredshiftcluster/v1alpha1/outputs.proto\x12+dev.planton.aws.awsredshiftcluster.v1alpha1\"\xed\x06\n" +
 	"\x1eAwsRedshiftClusterStackOutputs\x12-\n" +
 	"\x12cluster_identifier\x18\x01 \x01(\tR\x11clusterIdentifier\x12\x1f\n" +
 	"\vcluster_arn\x18\x02 \x01(\tR\n" +
@@ -174,7 +198,15 @@ const file_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto_rawDesc = "" +
 	"\x11subnet_group_name\x18\b \x01(\tR\x0fsubnetGroupName\x120\n" +
 	"\x14parameter_group_name\x18\t \x01(\tR\x12parameterGroupName\x12;\n" +
 	"\x1amaster_password_secret_arn\x18\n" +
-	" \x01(\tR\x17masterPasswordSecretArnB\xf1\x02\n" +
+	" \x01(\tR\x17masterPasswordSecretArn\x12\xa4\x01\n" +
+	"\x19endpoint_access_addresses\x18\v \x03(\v2h.dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterStackOutputs.EndpointAccessAddressesEntryR\x17endpointAccessAddresses\x12\x86\x01\n" +
+	"\x0fusage_limit_ids\x18\f \x03(\v2^.dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterStackOutputs.UsageLimitIdsEntryR\rusageLimitIds\x1aJ\n" +
+	"\x1cEndpointAccessAddressesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a@\n" +
+	"\x12UsageLimitIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xf1\x02\n" +
 	"/com.dev.planton.aws.awsredshiftcluster.v1alpha1B\fOutputsProtoP\x01Z_github.com/plantonhq/planton/catalog/aws/awsredshiftcluster/v1alpha1;awsredshiftclusterv1alpha1\xa2\x02\x04DPAA\xaa\x02+Dev.Planton.Aws.Awsredshiftcluster.V1alpha1\xca\x02+Dev\\Planton\\Aws\\Awsredshiftcluster\\V1alpha1\xe2\x027Dev\\Planton\\Aws\\Awsredshiftcluster\\V1alpha1\\GPBMetadata\xea\x02/Dev::Planton::Aws::Awsredshiftcluster::V1alpha1b\x06proto3"
 
 var (
@@ -189,16 +221,20 @@ func file_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto_rawDescGZIP() []
 	return file_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto_goTypes = []any{
 	(*AwsRedshiftClusterStackOutputs)(nil), // 0: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterStackOutputs
+	nil,                                    // 1: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterStackOutputs.EndpointAccessAddressesEntry
+	nil,                                    // 2: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterStackOutputs.UsageLimitIdsEntry
 }
 var file_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterStackOutputs.endpoint_access_addresses:type_name -> dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterStackOutputs.EndpointAccessAddressesEntry
+	2, // 1: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterStackOutputs.usage_limit_ids:type_name -> dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterStackOutputs.UsageLimitIdsEntry
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto_init() }
@@ -212,7 +248,7 @@ func file_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto_rawDesc), len(file_catalog_aws_awsredshiftcluster_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

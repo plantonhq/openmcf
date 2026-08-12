@@ -117,15 +117,24 @@ message AwsRedshiftClusterSpec {
   string cluster_version = 13;
 
   // The name of the first database created in the cluster. Empty keeps
-  // the AWS default ("dev"). 1-64 lowercase alphanumeric/underscore
-  // characters.
-  string database_name = 14;
+  // the AWS default ("dev"). 1-64 characters: lowercase alphanumeric,
+  // underscore, or dollar sign, starting with a letter or underscore
+  // (AWS's CreateCluster contract).
+  string database_name = 14 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[a-z_][0-9a-z_$]{0,63}$"
+  ];
 
   // The admin username. Required for a brand-new cluster -- AWS has no
-  // default and rejects a blank value at CreateCluster. Only clusters
-  // restored from a snapshot leave it empty and inherit the source's
-  // credentials. Create-time only -- changing it replaces the cluster.
-  string master_username = 15;
+  // default and rejects a blank value at CreateCluster. 1-128
+  // characters starting with a letter; letters, digits, and _.@+- are
+  // legal. Only clusters restored from a snapshot leave it empty and
+  // inherit the source's credentials. Create-time only -- changing it
+  // replaces the cluster.
+  string master_username = 15 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[A-Za-z][0-9A-Za-z_.@+-]{0,127}$"
+  ];
 
   // Let AWS manage the admin password in Secrets Manager: AWS
   // generates it, stores it, rotates it on schedule, and no secret ever
@@ -289,6 +298,40 @@ message AwsRedshiftClusterSpec {
   // should track that family. Only meaningful alongside `parameters`.
   string parameter_group_family = 40;
 
+  // The identifier of an existing snapshot schedule to associate with
+  // this cluster (AWS allows exactly ONE schedule per cluster -- the
+  // schedule replaces the default automated-snapshot cadence with
+  // explicit cron/rate definitions). The schedule itself is an
+  // account-scoped resource shared by many clusters and is not created
+  // here. Empty keeps AWS's default snapshot cadence.
+  string snapshot_schedule_identifier = 41;
+
+  // Usage limits capping what individual Redshift features may consume
+  // on this cluster -- Spectrum data scanned, concurrency-scaling time,
+  // cross-region datasharing transfer -- each with a breach action from
+  // logging to hard disable. Cluster-scoped settings keyed by the
+  // cluster itself (folded, never standalone nodes).
+  repeated AwsRedshiftClusterUsageLimit usage_limits = 42;
+
+  // Scheduled actions that pause, resume, or resize this cluster on a
+  // cron/at schedule -- the standard nights-and-weekends cost lever for
+  // non-production warehouses. Each entry keys one scheduled action
+  // targeting this cluster.
+  repeated AwsRedshiftClusterScheduledAction scheduled_actions = 43;
+
+  // Redshift-managed VPC endpoints that expose this cluster inside
+  // another subnet group (same-account cross-VPC access without
+  // peering; requires RA3 node types). Each entry keys one managed
+  // endpoint; its private address and port are exported per endpoint on
+  // the outputs contract.
+  repeated AwsRedshiftClusterEndpointAccess endpoint_accesses = 44;
+
+  // Grants that authorize OTHER AWS accounts to create managed VPC
+  // endpoints to this cluster (the grantor side of cross-account
+  // access; the grantee creates its endpoint in its own account). Each
+  // entry keys one per-account authorization.
+  repeated AwsRedshiftClusterEndpointAuthorization endpoint_authorizations = 45;
+
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
   // ---------------------------------------------------------------------------
@@ -315,6 +358,28 @@ message AwsRedshiftClusterSpec {
     id: "password_xor_managed"
     message: "master_password cannot be set when manage_master_password is true -- pick one password strategy"
     expression: "this.manage_master_password ? this.master_password == '' : true"
+  };
+
+  // AWS's CreateCluster password contract, mirrored from the provider's
+  // own validators so a bad password fails at validate instead of at
+  // deploy: 8-64 characters with at least one lowercase letter, one
+  // uppercase letter, and one digit; '/', '@', double quote, single
+  // quote, and space are forbidden (\x2F \x40 \x22 \x27 hex escapes).
+  option (buf.validate.message).cel = {
+    id: "master_password_complexity"
+    message: "master_password must be 8-64 characters with at least one lowercase letter, one uppercase letter, and one digit, and must not contain /, @, quotes, or spaces"
+    expression: "this.master_password == '' || (this.master_password.matches('^[^\\x2F\\x40\\x22\\x27 ]{8,64}$') && this.master_password.matches('[a-z]') && this.master_password.matches('[A-Z]') && this.master_password.matches('[0-9]'))"
+  };
+
+  // The secret KMS key encrypts the MANAGED admin secret -- AWS's
+  // CreateCluster contract states it can only be used when
+  // ManageMasterPassword is true (the provider forwards it
+  // unconditionally and lets AWS reject it; this fails at validate
+  // instead). Mirrors the namespace sibling's secret_kms_requires_managed.
+  option (buf.validate.message).cel = {
+    id: "secret_kms_requires_managed"
+    message: "master_password_secret_kms_key_id is only meaningful with manage_master_password -- it encrypts the AWS-managed secret"
+    expression: "!has(this.master_password_secret_kms_key_id) || this.manage_master_password"
   };
 
   option (buf.validate.message).cel = {
@@ -347,6 +412,14 @@ message AwsRedshiftClusterSpec {
     expression: "this.skip_final_snapshot ? true : this.final_snapshot_identifier != ''"
   };
 
+  // AWS's snapshot-identifier format, mirrored from the provider's own
+  // validators (RE2 has no lookahead, hence the conjunction form).
+  option (buf.validate.message).cel = {
+    id: "final_snapshot_identifier_format"
+    message: "final_snapshot_identifier must be 1-255 alphanumeric/hyphen characters with no consecutive hyphens and no trailing hyphen"
+    expression: "this.final_snapshot_identifier == '' || (this.final_snapshot_identifier.matches('^[0-9A-Za-z-]{1,255}$') && !this.final_snapshot_identifier.contains('--') && !this.final_snapshot_identifier.endsWith('-'))"
+  };
+
   option (buf.validate.message).cel = {
     id: "snapshot_id_xor_arn"
     message: "snapshot_identifier and snapshot_arn are mutually exclusive create-time restore sources"
@@ -375,6 +448,41 @@ message AwsRedshiftClusterSpec {
     id: "family_requires_parameters"
     message: "parameter_group_family is only meaningful alongside inline parameters -- an existing group carries its own family"
     expression: "this.parameter_group_family == '' || this.parameters.size() > 0"
+  };
+
+  // Each usage limit keys one aws_redshift_usage_limit resource by its
+  // (feature, limit type, period) triple -- AWS rejects duplicates for
+  // the same cluster anyway. An empty period normalizes to "monthly"
+  // (the AWS default) so it collides with an explicit monthly entry.
+  option (buf.validate.message).cel = {
+    id: "usage_limits_unique"
+    message: "usage_limits must be unique per (feature_type, limit_type, period) -- AWS allows one limit per feature/type/period combination, and an empty period means monthly"
+    expression: "this.usage_limits.map(l, l.feature_type + '/' + l.limit_type + '/' + (l.period == '' ? 'monthly' : l.period)).unique()"
+  };
+
+  // Each scheduled action keys one aws_redshift_scheduled_action
+  // resource by name.
+  option (buf.validate.message).cel = {
+    id: "scheduled_action_names_unique"
+    message: "scheduled action names must be unique"
+    expression: "this.scheduled_actions.map(a, a.name).unique()"
+  };
+
+  // Each endpoint access keys one aws_redshift_endpoint_access resource
+  // by endpoint name.
+  option (buf.validate.message).cel = {
+    id: "endpoint_access_names_unique"
+    message: "endpoint access names must be unique"
+    expression: "this.endpoint_accesses.map(e, e.endpoint_name).unique()"
+  };
+
+  // Each endpoint authorization keys one
+  // aws_redshift_endpoint_authorization resource by grantee account --
+  // AWS keeps one authorization per account per cluster.
+  option (buf.validate.message).cel = {
+    id: "endpoint_authorization_accounts_unique"
+    message: "endpoint authorization grantee accounts must be unique -- AWS keeps one authorization per account"
+    expression: "this.endpoint_authorizations.map(a, a.account).unique()"
   };
 }
 
@@ -480,4 +588,256 @@ message AwsRedshiftClusterParameter {
 
   // The parameter value. Required.
   string value = 2 [(buf.validate.field).required = true];
+}
+
+// AwsRedshiftClusterUsageLimit caps what one Redshift feature may
+// consume on this cluster in a given period, with a configurable breach
+// action. AWS pairs each feature with exactly one limit type -- the
+// pairing is enforced here so a mismatch fails at validate instead of
+// at deploy.
+message AwsRedshiftClusterUsageLimit {
+  // The Redshift feature the limit applies to: "spectrum" (external S3
+  // scans), "concurrency-scaling" (burst clusters),
+  // "cross-region-datasharing" (data transferred to consumers in other
+  // regions), or "extra-compute-for-automatic-optimization". Required;
+  // changing it replaces the limit.
+  string feature_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "spectrum",
+        "concurrency-scaling",
+        "cross-region-datasharing",
+        "extra-compute-for-automatic-optimization"
+      ]
+    }
+  ];
+
+  // How the limit is measured: "time" (minutes of feature usage) or
+  // "data-scanned" (terabytes). AWS's contract pairs spectrum and
+  // cross-region-datasharing with "data-scanned", concurrency-scaling
+  // and extra-compute-for-automatic-optimization with "time"
+  // (CEL-enforced). Required; changing it replaces the limit.
+  string limit_type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "time",
+        "data-scanned"
+      ]
+    }
+  ];
+
+  // The limit amount: minutes when limit_type is "time", terabytes
+  // when it is "data-scanned". Must be positive.
+  int64 amount = 3 [(buf.validate.field).int64.gt = 0];
+
+  // The period the amount applies to: "daily", "weekly", or "monthly".
+  // Empty keeps the AWS default (monthly). A weekly period begins on
+  // Sunday. Changing it replaces the limit.
+  string period = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "daily",
+        "weekly",
+        "monthly"
+      ]
+    }
+  ];
+
+  // What Redshift does when the limit is breached: "log" writes an
+  // event to the system table, "emit-metric" additionally publishes a
+  // CloudWatch metric, "disable" turns the feature off until the
+  // period resets (spectrum and concurrency-scaling only -- AWS
+  // rejects disable for cross-region datasharing). Empty keeps the AWS
+  // default (log).
+  string breach_action = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "log",
+        "emit-metric",
+        "disable"
+      ]
+    }
+  ];
+
+  // AWS's CreateUsageLimit contract, verbatim: spectrum ->
+  // data-scanned; concurrency-scaling -> time; cross-region-datasharing
+  // -> data-scanned; extra-compute-for-automatic-optimization -> time.
+  option (buf.validate.message).cel = {
+    id: "feature_limit_type_pairing"
+    message: "limit_type must be 'data-scanned' for spectrum/cross-region-datasharing and 'time' for concurrency-scaling/extra-compute-for-automatic-optimization (AWS's CreateUsageLimit contract)"
+    expression: "(this.feature_type in ['spectrum', 'cross-region-datasharing']) ? this.limit_type == 'data-scanned' : (this.feature_type == '' || this.limit_type == 'time')"
+  };
+}
+
+// AwsRedshiftClusterScheduledAction pauses, resumes, or resizes this
+// cluster on a schedule -- exactly one action arm per entry. The
+// classic nights-and-weekends lever: pause at close of business, resume
+// before it opens.
+message AwsRedshiftClusterScheduledAction {
+  // The scheduled action's name: 1-63 lowercase alphanumeric/hyphen
+  // characters. NOTE: names are unique per AWS ACCOUNT (not per
+  // cluster) -- include something cluster-specific to avoid collisions
+  // across clusters. Changing it replaces the action.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9a-z-]{1,63}$"
+  ];
+
+  // An optional description of what the action does and why.
+  string description = 2;
+
+  // Suspend the action without deleting it. The zero value (false)
+  // keeps the AWS default: the action is enabled and fires on
+  // schedule.
+  bool disabled = 3;
+
+  // When the action fires, in at() or cron() format -- e.g.
+  // "cron(0 22 * * ? *)" (daily 22:00 UTC) or
+  // "at(2026-09-01T03:00:00)". Cron fields are
+  // Minutes Hours Day-of-month Month Day-of-week Year, in UTC.
+  string schedule = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^(at|cron)\\(.+\\)$"
+  ];
+
+  // When the schedule becomes active (RFC 3339, e.g.
+  // "2026-09-01T00:00:00Z"). Empty activates it immediately.
+  string start_time = 5;
+
+  // When the schedule expires (RFC 3339). Empty keeps it active until
+  // deleted.
+  string end_time = 6;
+
+  // The IAM role Redshift assumes to perform the action. The role's
+  // TRUST POLICY must allow the "scheduler.redshift.amazonaws.com"
+  // service principal to sts:AssumeRole (AWS validates the trust at
+  // create -- a role trusting only redshift.amazonaws.com or ec2 is
+  // rejected; the provider retries briefly on trust-propagation
+  // delays). Reference an AwsIamRole role_arn output or pass a literal
+  // role ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef iam_role_arn = 7 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Pause the cluster (compute stops billing; storage persists).
+  // Exactly one action arm must be set (CEL-enforced).
+  bool pause_cluster = 8;
+
+  // Resume a paused cluster. Exactly one action arm must be set
+  // (CEL-enforced).
+  bool resume_cluster = 9;
+
+  // Resize the cluster to a new node count/type. Exactly one action
+  // arm must be set (CEL-enforced).
+  AwsRedshiftClusterResizeAction resize_cluster = 10;
+
+  option (buf.validate.message).cel = {
+    id: "exactly_one_action_arm"
+    message: "exactly one of pause_cluster, resume_cluster, or resize_cluster must be set"
+    expression: "(this.pause_cluster ? 1 : 0) + (this.resume_cluster ? 1 : 0) + (has(this.resize_cluster) ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "start_time_rfc3339"
+    message: "start_time must be an RFC 3339 timestamp (e.g., '2026-09-01T00:00:00Z') when set"
+    expression: "this.start_time == '' || this.start_time.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "end_time_rfc3339"
+    message: "end_time must be an RFC 3339 timestamp (e.g., '2026-09-30T00:00:00Z') when set"
+    expression: "this.end_time == '' || this.end_time.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')"
+  };
+}
+
+// AwsRedshiftClusterResizeAction is the resize arm of a scheduled
+// action: the new topology the cluster resizes to when the schedule
+// fires. Unset members keep the cluster's current value.
+message AwsRedshiftClusterResizeAction {
+  // Force a CLASSIC resize (full data redistribution -- hours, but
+  // works between any topologies) instead of the default elastic
+  // resize (minutes, but constrained to compatible node counts).
+  bool classic = 1;
+
+  // The target cluster type. Empty keeps the current type; AWS derives
+  // it from the node count otherwise.
+  string cluster_type = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "single-node",
+        "multi-node"
+      ]
+    }
+  ];
+
+  // The target node class (e.g. "ra3.large"). Empty keeps the current
+  // class.
+  string node_type = 3;
+
+  // The target node count. 0 keeps the current count.
+  int32 number_of_nodes = 4 [(buf.validate.field).int32.gte = 0];
+}
+
+// AwsRedshiftClusterEndpointAccess is one Redshift-managed VPC endpoint
+// exposing this cluster inside another subnet group -- same-account
+// cross-VPC access without peering. Requires RA3 node types. The
+// endpoint's private address and port are exported per endpoint on the
+// outputs contract.
+message AwsRedshiftClusterEndpointAccess {
+  // The endpoint's name: 1-30 lowercase alphanumeric/hyphen
+  // characters, unique within the cluster. Changing it replaces the
+  // endpoint.
+  string endpoint_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9a-z-]{1,30}$"
+  ];
+
+  // The Redshift subnet group the endpoint lands in -- typically a
+  // group in the CONSUMING VPC. Empty reuses the cluster's own subnet
+  // group (module-managed or referenced), which yields an extra
+  // endpoint in the cluster's own VPC. Changing it replaces the
+  // endpoint.
+  string subnet_group_name = 2;
+
+  // Security groups attached to the endpoint's network interfaces.
+  // Empty uses the VPC's default security group. Reference
+  // AwsSecurityGroup security_group_id outputs or pass literal SG IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_security_group_ids = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}
+
+// AwsRedshiftClusterEndpointAuthorization grants ONE other AWS account
+// permission to create managed VPC endpoints to this cluster -- the
+// grantor side of cross-account access. The grantee account creates
+// its own endpoint from its own catalog/tooling; that half lives in
+// the grantee's credential domain and is not modeled here.
+message AwsRedshiftClusterEndpointAuthorization {
+  // The AWS account ID being authorized (12 digits). Changing it
+  // replaces the authorization.
+  string account = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9]{12}$"
+  ];
+
+  // Restrict the grant to specific VPCs in the grantee account. Empty
+  // authorizes ALL of the account's VPCs. Reference AwsVpc vpc_id
+  // outputs or pass literal VPC IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // Revoke the authorization on delete even if the grantee still has
+  // live endpoints against the cluster (their endpoints are deleted
+  // too). Off by default: delete fails while grantee endpoints exist.
+  bool force_delete = 3;
 }

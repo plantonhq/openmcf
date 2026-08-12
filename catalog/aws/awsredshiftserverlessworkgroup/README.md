@@ -11,10 +11,13 @@ A workgroup computes; the data it serves lives on the `AwsRedshiftServerlessName
 - **Reachability** -- `publiclyAccessible` (off by default), `port` (only 5431-5455 or 8191-8215 -- the ranges Redshift Serverless accepts), `enhancedVpcRouting` to force COPY/UNLOAD data movement through the VPC.
 - **Query configuration** -- `configParameters` applies engine parameters (TLS enforcement, search path, query monitoring limits) directly to the workgroup; serverless has no parameter groups.
 - **Release track** -- `trackName` (`current` / `trailing` / a named track).
+- **Cost governance** -- `usageLimits` cap `serverless-compute` (RPU-hours) or `cross-region-datasharing` (terabytes) per day/week/month, with log/emit-metric/deactivate breach actions (`deactivate` stops queries until the period resets -- note the serverless vocabulary differs from provisioned clusters' `disable`).
+- **Cross-VPC access** -- `endpointAccesses` create VPC endpoints into other subnets (or reuse the workgroup's own); per-endpoint private addresses are exported.
+- **Custom domain** -- one per workgroup (AWS's model): a branded DNS name fronted by an ACM certificate (`AwsCertManagerCert` by reference); the CNAME pointing the domain at the workgroup endpoint stays yours to manage.
 
 ## Stack outputs
 
-`workgroup_name`, `workgroup_id`, `arn`, `endpoint_address`, `port`.
+`workgroup_name`, `workgroup_id`, `arn`, `endpoint_address`, `port`, `endpoint_access_addresses` (keyed by endpoint name), `usage_limit_ids` (AWS-generated, keyed by usage-type/period), `custom_domain_certificate_expiry_time`.
 
 ## How it works
 

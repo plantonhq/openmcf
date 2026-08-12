@@ -2946,29 +2946,23 @@ resources:
     disposition: excluded-deprecated
     reason: "Aurora Limitless shard group -- AWS discontinued Aurora Limitless Database (the cluster kind excludes cluster_scalability_type on the same judgment); superseded surface not flagged in the schema"
   - resource: aws_redshift_authentication_profile
-    disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
+    disposition: deferred
+    reason: "account-scoped named JSON blob of client connection settings -- operator content rather than modelable configuration (the CloudWatch query-definitions class); deferred pending demand"
   - resource: aws_redshift_cluster_iam_roles
-    disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
+    disposition: composed
+    reason: "attaches/detaches IAM roles on an existing cluster -- an out-of-band alternative to the inline surface AwsRedshiftCluster spec.iam_roles already owns (the autoscaling-attachment class)"
   - resource: aws_redshift_cluster_snapshot
-    disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
+    disposition: deferred
+    reason: "imperative manual snapshot action, a poor declarative fit (the aws_db_snapshot class); restores from snapshots are modeled on AwsRedshiftCluster's snapshot_identifier/snapshot_arn"
   - resource: aws_redshift_data_share_authorization
     disposition: model-planned
     reason: "judged as a planned AwsRedshiftDataShare kind (share authorizations and consumer associations)"
   - resource: aws_redshift_data_share_consumer_association
     disposition: model-planned
     reason: "judged as a planned AwsRedshiftDataShare kind (share authorizations and consumer associations)"
-  - resource: aws_redshift_endpoint_access
-    disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
-  - resource: aws_redshift_endpoint_authorization
-    disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
   - resource: aws_redshift_event_subscription
     disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
+    reason: "judged as a future AwsRedshiftEventSubscription kind: an account-scoped SNS notification subscription whose source sets span many clusters (the AwsRdsEventSubscription class)"
   - resource: aws_redshift_hsm_client_certificate
     disposition: excluded-deprecated
     reason: "CloudHSM Classic surface is legacy; superseded by KMS-based encryption (covered by AwsRedshiftCluster)"
@@ -2982,47 +2976,29 @@ resources:
     disposition: model-planned
     reason: "judged as part of the planned AwsRdsZeroEtlIntegration kind (Redshift-side zero-ETL integration)"
   - resource: aws_redshift_namespace_registration
-    disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
+    disposition: deferred
+    reason: "registers provisioned or serverless namespaces with external consumers (Glue Data Catalog / Lake Formation); spans both Redshift families and belongs to the catalog-integration wave; deferred pending demand"
   - resource: aws_redshift_partner
     disposition: deferred
     reason: "Identity Center application wiring and partner integrations; deferred pending demand"
   - resource: aws_redshift_resource_policy
     disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
-  - resource: aws_redshift_scheduled_action
-    disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
+    reason: "judged as a future AwsRedshiftResourcePolicy kind: an IAM resource policy attached to an arbitrary Redshift ARN (the AwsCloudwatchLogResourcePolicy class), primarily the datashare/snapshot cross-account plane"
   - resource: aws_redshift_snapshot_copy_grant
     disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
+    reason: "judged as a future AwsRedshiftSnapshotCopyGrant kind: a DESTINATION-REGION KMS grant referenced by AwsRedshiftCluster spec.snapshot_copy.snapshot_copy_grant_name (the AwsKmsReplicaKey destination-region class)"
   - resource: aws_redshift_snapshot_schedule
     disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
-  - resource: aws_redshift_snapshot_schedule_association
-    disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
-  - resource: aws_redshift_usage_limit
-    disposition: model-planned
-    reason: "cluster companion surface (auth profiles, IAM roles, endpoint access/authorization, event subscriptions, scheduled actions, snapshot schedules/copies, usage limits, resource policies, namespace registration); folds into the existing AwsRedshiftCluster kind as its spec deepens"
+    reason: "judged as a future AwsRedshiftSnapshotSchedule kind: an account-scoped cron/rate snapshot schedule shared by many clusters (the AwsRoute53DelegationSet class); the one-per-cluster association is modeled on AwsRedshiftCluster spec.snapshot_schedule_identifier"
   - resource: aws_redshiftdata_statement
     disposition: deferred
     reason: "imperative SQL statement execution, a poor declarative fit"
-  - resource: aws_redshiftserverless_custom_domain_association
-    disposition: model-planned
-    reason: "serverless companion surface (custom domains, endpoint access, resource policies, usage limits); folds into the existing AwsRedshiftServerlessNamespace/AwsRedshiftServerlessWorkgroup kinds as their specs deepen"
-  - resource: aws_redshiftserverless_endpoint_access
-    disposition: model-planned
-    reason: "serverless companion surface (custom domains, endpoint access, resource policies, usage limits); folds into the existing AwsRedshiftServerlessNamespace/AwsRedshiftServerlessWorkgroup kinds as their specs deepen"
   - resource: aws_redshiftserverless_resource_policy
-    disposition: model-planned
-    reason: "serverless companion surface (custom domains, endpoint access, resource policies, usage limits); folds into the existing AwsRedshiftServerlessNamespace/AwsRedshiftServerlessWorkgroup kinds as their specs deepen"
+    disposition: deferred
+    reason: "attaches resource policies to serverless ARNs -- primarily snapshot restore-sharing, whose snapshot surface is itself deferred as imperative; deferred pending demand"
   - resource: aws_redshiftserverless_snapshot
     disposition: deferred
     reason: "database snapshot operations are imperative backup actions, a poor declarative fit; deferred"
-  - resource: aws_redshiftserverless_usage_limit
-    disposition: model-planned
-    reason: "serverless companion surface (custom domains, endpoint access, resource policies, usage limits); folds into the existing AwsRedshiftServerlessNamespace/AwsRedshiftServerlessWorkgroup kinds as their specs deepen"
   - resource: aws_rekognition_collection
     disposition: deferred
     reason: "computer-vision vertical (Rekognition); deferred pending demand"

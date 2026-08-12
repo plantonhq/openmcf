@@ -347,6 +347,7 @@ Fields on other kinds that can point at this resource:
 | AwsLbListener | `spec.certificateArn` | `status.outputs.cert_arn` |
 | AwsLbListener | `spec.additionalCertificateArns` | `status.outputs.cert_arn` |
 | AwsOpenSearchDomain | `spec.domainEndpointOptions.customEndpointCertificateArn` | `status.outputs.cert_arn` |
+| AwsRedshiftServerlessWorkgroup | `spec.customDomain.certificateArn` | `status.outputs.cert_arn` |
 
 ## See Also
 

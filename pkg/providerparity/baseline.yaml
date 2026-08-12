@@ -33,9 +33,6 @@ entries:
   - kind:AwsNeptuneCluster
   - kind:AwsOpenSearchDomain
   - kind:AwsPlantonRunner
-  - kind:AwsRedshiftCluster
-  - kind:AwsRedshiftServerlessNamespace
-  - kind:AwsRedshiftServerlessWorkgroup
   - kind:AwsS3ObjectSet
   - kind:AwsSagemakerDomain
   - kind:AwsSecurityGroup

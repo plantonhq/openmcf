@@ -13,9 +13,17 @@ spec:
   # dominates the runtime (the provider allows up to 20 minutes each
   # way); AWS also serializes namespace/workgroup operations, so lanes
   # must run serially.
+  #
+  # pending_proof (depth closure, T02 s24): the workgroup satellites
+  # folded in -- VPC endpoint accesses (per-endpoint address outputs,
+  # workgroup-subnet fallback), usage limits (serverless-compute /
+  # cross-region-datasharing; breach vocabulary is deactivate), and the
+  # one-per-workgroup custom domain. The scenario carries the free arms
+  # (daily deactivate limit, self-subnet endpoint access); the CUSTOM
+  # DOMAIN needs an owned domain plus a validated ACM certificate -- an
+  # offline-proven arm with that named unblock. The prior green predates
+  # this surface -- demoted per the badge-honesty rule.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 60

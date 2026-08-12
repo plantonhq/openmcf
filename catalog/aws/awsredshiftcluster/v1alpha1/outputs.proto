@@ -42,4 +42,16 @@ message AwsRedshiftClusterStackOutputs {
   // Manager. Populated only when manage_master_password is true -- the
   // handle applications use to fetch credentials at runtime.
   string master_password_secret_arn = 10;
+
+  // The private DNS addresses of the cluster's managed VPC endpoints,
+  // keyed by endpoint name (spec.endpoint_accesses entries) -- what
+  // consumers inside the endpoint's VPC put in connection strings.
+  map<string, string> endpoint_access_addresses = 11;
+
+  // The AWS-generated usage-limit IDs, keyed exactly as the module keys
+  // each limit: "<feature_type>/<limit_type>/<period>", with an unset
+  // period rendered as "monthly" (the AWS default). These are the
+  // handles `aws redshift delete-usage-limit` and state import take;
+  // AWS generates them at creation time.
+  map<string, string> usage_limit_ids = 12;
 }

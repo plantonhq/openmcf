@@ -11,3 +11,22 @@ spec:
     - value: subnet-0a1b2c3d4e5f60001
     - value: subnet-0a1b2c3d4e5f60002
     - value: subnet-0a1b2c3d4e5f60003
+  # Governance: cap compute spend per day and datasharing transfer per
+  # month; deactivate stops queries until the period resets.
+  usageLimits:
+    - usageType: serverless-compute
+      amount: 100
+      period: daily
+      breachAction: deactivate
+    - usageType: cross-region-datasharing
+      amount: 5
+  # Cross-VPC access: a VPC endpoint reusing the workgroup's own subnets
+  # (an entry may bring its own consuming-VPC subnets instead).
+  endpointAccesses:
+    - endpointName: analytics-consumers
+  # A branded TLS endpoint fronted by an ACM certificate; the CNAME
+  # pointing the domain at the workgroup endpoint stays yours.
+  customDomain:
+    domainName: warehouse.example.com
+    certificateArn:
+      value: arn:aws:acm:us-west-2:123456789012:certificate/11111111-2222-3333-4444-555555555555

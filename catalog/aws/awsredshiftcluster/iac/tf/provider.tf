@@ -12,7 +12,10 @@ terraform {
       # encrypted defaults to true, publicly_accessible defaults to
       # false, and the inline logging/snapshot_copy blocks gave way to
       # the standalone aws_redshift_logging and aws_redshift_snapshot_copy
-      # resources this module uses.
+      # resources this module uses. The governance satellites this module
+      # also renders (aws_redshift_usage_limit, _scheduled_action,
+      # _endpoint_access, _endpoint_authorization,
+      # _snapshot_schedule_association) all predate the v6 line.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }
