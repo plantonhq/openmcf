@@ -502,6 +502,23 @@ fixture gateway occupies the fixture hub's slot, so the gateway and
 connection lanes must run SEQUENTIALLY, and a wedged gateway teardown
 blocks every subsequent lane needing that slot until swept.
 
+### Long-running Azure components (point-to-site VPN gateways)
+
+A point-to-site VPN gateway in a Virtual WAN hub is the vWAN family's
+fourth slow class, timing-identical to its site-to-site sibling:
+measured live (one scale unit, eastus, consistent across both
+engines), the create ran **32-33 minutes** and the delete **11-14
+minutes**, and the gateway bills (~$0.36/hr per scale unit) from
+creation. Its lane pays the fixture-hub cycle first (hub ~17-23m up,
+~14m down) plus a seconds-fast fixture VPN server configuration -- a
+single-engine lane totals **~80 minutes**; budget `-timeout=180m` per
+engine (240m with the import round-trip enabled). ARM allows ONE P2S
+gateway per hub -- a slot SEPARATE from the hub's site-to-site VPN
+gateway slot, so a P2S lane and an S2S lane never collide on the slot,
+but two P2S lanes sharing a fixture hub must run SEQUENTIALLY, and a
+wedged gateway teardown blocks the hub's P2S slot AND the hub's own
+deletion until swept.
+
 ### A dirty `e2e/profile.yaml` on a shared checkout is a LIVE proof lane's state
 
 The proof workflow flips a component's profile `pending_proof` -> `green`

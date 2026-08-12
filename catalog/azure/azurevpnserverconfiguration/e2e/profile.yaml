@@ -3,16 +3,19 @@ kind: ComponentE2EProfile
 metadata:
   name: azurevpnserverconfiguration
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The configuration is free and provisions in seconds --
-  # only the fixture resource group rides its chain. This kind is also a
-  # fixture of the point-to-site pair: the gateway lane chains through
-  # this kind's install profile. The scenario proves the certificate arm
-  # and the composed policy-group child; the AAD and RADIUS arms are
-  # offline-proven only (no tenant-independent AAD values exist, and no
-  # RADIUS server exists behind the test subscription).
+  # Proven live on both engines: full lifecycle green with the
+  # certificate arm accepted by ARM and the composed policy-group child
+  # surfacing in the name-keyed policy_group_ids output, plus a blind
+  # Terraform import round-trip (the configuration by its ARM ID AND
+  # the policy group derived from its address key; plan clean). The
+  # configuration is free and deploys in under a minute -- only the
+  # fixture resource group rides its chain. This kind is also a fixture
+  # of the point-to-site pair: the gateway lane chains through this
+  # kind's install profile. The AAD and RADIUS arms are offline-proven
+  # only (no tenant-independent AAD values exist, and no RADIUS server
+  # exists behind the test subscription); the radius.server.secret
+  # import tolerance remains declared-unproven for the same reason.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30
