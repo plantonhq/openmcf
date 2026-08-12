@@ -40,11 +40,12 @@ const (
 // warm instances are billed for memory only, not CPU.
 //
 // Revision semantics (important): AWS versions these configurations. Every
-// value is create-time immutable -- changing any of them registers a NEW
-// revision under the same configuration name and points referencing services
-// at it on their next deployment. The exported ARN carries the revision, so
-// a change here rolls referencing services naturally through the resource
-// graph.
+// scaling value is create-time immutable -- changing any of them registers a
+// NEW revision under the same configuration name and points referencing
+// services at it on their next deployment. The exported ARN carries the
+// revision, so a change here rolls referencing services naturally through
+// the resource graph. The set_as_account_default designation is the one
+// exception: it is a pointer AWS moves in place, not part of the revision.
 //
 // Credentials, region, and deployment workflow live outside this spec in
 // stack inputs.
@@ -68,9 +69,21 @@ type AwsAppRunnerAutoScalingConfigurationSpec struct {
 	// billed for memory only (CPU is billed only while actively serving).
 	// Raise above 1 for latency-sensitive services worth the standing memory
 	// charge.
-	MinSize       *int32 `protobuf:"varint,4,opt,name=min_size,json=minSize,proto3,oneof" json:"min_size,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MinSize *int32 `protobuf:"varint,4,opt,name=min_size,json=minSize,proto3,oneof" json:"min_size,omitempty"`
+	// Claim this configuration as the ACCOUNT-WIDE default for its region:
+	// App Runner services created WITHOUT an explicit auto scaling
+	// configuration use the account default. One default exists per account
+	// per region -- claiming it silently displaces whichever configuration
+	// held the designation (AWS marks it non-default), and the claim only
+	// affects services created afterwards; existing services keep their
+	// current associations. One-way at AWS: un-setting this flag (or
+	// deleting this resource) does NOT restore the previous default -- AWS
+	// has no restore API, so the designation stays with this configuration
+	// until another one claims it. Coordinate so at most one configuration
+	// per account/region sets this flag.
+	SetAsAccountDefault bool `protobuf:"varint,5,opt,name=set_as_account_default,json=setAsAccountDefault,proto3" json:"set_as_account_default,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AwsAppRunnerAutoScalingConfigurationSpec) Reset() {
@@ -131,16 +144,24 @@ func (x *AwsAppRunnerAutoScalingConfigurationSpec) GetMinSize() int32 {
 	return 0
 }
 
+func (x *AwsAppRunnerAutoScalingConfigurationSpec) GetSetAsAccountDefault() bool {
+	if x != nil {
+		return x.SetAsAccountDefault
+	}
+	return false
+}
+
 var File_catalog_aws_awsapprunnerautoscalingconfiguration_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsapprunnerautoscalingconfiguration_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Dcatalog/aws/awsapprunnerautoscalingconfiguration/v1alpha1/spec.proto\x12=dev.planton.aws.awsapprunnerautoscalingconfiguration.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cshared/options/options.proto\"\xf3\x03\n" +
+	"Dcatalog/aws/awsapprunnerautoscalingconfiguration/v1alpha1/spec.proto\x12=dev.planton.aws.awsapprunnerautoscalingconfiguration.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cshared/options/options.proto\"\xa8\x04\n" +
 	"(AwsAppRunnerAutoScalingConfigurationSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12?\n" +
 	"\x0fmax_concurrency\x18\x02 \x01(\x05B\x11\xbaH\a\x1a\x05\x18\xc8\x01(\x01\x8a\xa6\x1d\x03100H\x00R\x0emaxConcurrency\x88\x01\x01\x12-\n" +
 	"\bmax_size\x18\x03 \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0225H\x01R\amaxSize\x88\x01\x01\x12,\n" +
-	"\bmin_size\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x02R\aminSize\x88\x01\x01:\xd9\x01\xbaH\xd5\x01\x1a\xd2\x01\n" +
+	"\bmin_size\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x02R\aminSize\x88\x01\x01\x123\n" +
+	"\x16set_as_account_default\x18\x05 \x01(\bR\x13setAsAccountDefault:\xd9\x01\xbaH\xd5\x01\x1a\xd2\x01\n" +
 	"\x15max_size_gte_min_size\x12kmax_size must be greater than or equal to min_size -- the scale-out ceiling cannot sit below the warm floor\x1aL!has(this.max_size) || !has(this.min_size) || this.max_size >= this.min_sizeB\x12\n" +
 	"\x10_max_concurrencyB\v\n" +
 	"\t_max_sizeB\v\n" +

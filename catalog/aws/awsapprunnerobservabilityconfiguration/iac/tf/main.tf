@@ -1,9 +1,14 @@
 # App Runner observability configuration (version).
 #
-# AWS versions this resource: the trace settings are create-time immutable,
-# so any change destroys this revision and registers the NEXT revision under
-# the same configuration name. Referencing services pick up the new
-# revision-carrying ARN through the resource graph on their next deployment.
+# AWS versions this resource, but the provider's update path is TAGS-ONLY
+# and does not replace on trace changes: adding, removing, or changing the
+# trace block on an existing configuration plans an in-place update that
+# silently changes nothing at AWS (an upstream provider gap -- it briefly
+# made trace settings ForceNew in 2023 and reverted the same day). To
+# actually change tracing posture, register a NEW configuration (a new
+# metadata.name) and repoint referencing services. With X-Ray as the only
+# vendor AWS supports, the block's practical states are present or absent
+# at creation time.
 resource "aws_apprunner_observability_configuration" "this" {
   observability_configuration_name = local.resource_name
 

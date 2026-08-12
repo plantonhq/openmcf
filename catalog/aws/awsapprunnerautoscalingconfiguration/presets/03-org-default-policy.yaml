@@ -1,0 +1,23 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAppRunnerAutoScalingConfiguration
+metadata:
+  org: example-org
+  env: prod
+  name: org-default-scaling
+  id: org-default-scaling-id
+spec:
+  region: us-west-2
+  # A balanced posture suitable as the org-wide baseline: moderate
+  # concurrency headroom, a real scale-out ceiling, one warm instance.
+  maxConcurrency: 80
+  maxSize: 10
+  minSize: 1
+
+  # Claim this configuration as the ACCOUNT-WIDE default for the region:
+  # every App Runner service created WITHOUT an explicit configuration
+  # adopts it. One default per account per region -- claiming displaces the
+  # previous holder, affects only services created afterwards, and is
+  # one-way (AWS never restores the previous default when this resource is
+  # destroyed). Keep exactly ONE configuration per account/region with this
+  # flag set.
+  setAsAccountDefault: true

@@ -367,6 +367,14 @@ Fields that can point at another resource's outputs:
 | `spec.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.subnetConfigurations[].subnetId` | AwsSubnet | `status.outputs.subnet_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAppRunnerService | `spec.vpcIngressConnections[].vpcEndpointId` | `status.outputs.vpc_endpoint_id` |
+
 ## See Also
 
 - [Overview](../README.md)

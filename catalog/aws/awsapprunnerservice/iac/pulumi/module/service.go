@@ -202,7 +202,14 @@ func service(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error 
 
 	// --- Observability --------------------------------------------------------
 	// Presence of the configuration reference IS the enable switch -- there
-	// is no separate toggle to drift out of sync.
+	// is no separate toggle to drift out of sync. One-way on a live service
+	// (upstream provider gap): the provider sends NOTHING for an absent
+	// block on update, so removing the reference leaves tracing running at
+	// AWS and the plan never converges. Sending a disabled block here
+	// instead is NOT safe: the provider flattens a nil API response to an
+	// empty block, so an always-present disabled block risks a perpetual
+	// diff on every tracing-less service. Disable requires service
+	// replacement until the provider gains a disable path.
 	if spec.ObservabilityConfigurationArn.GetValue() != "" {
 		serviceArgs.ObservabilityConfiguration = &apprunner.ServiceObservabilityConfigurationArgs{
 			ObservabilityEnabled:          pulumi.Bool(true),
@@ -284,6 +291,38 @@ func service(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error 
 		}
 	}
 
+	// --- VPC Ingress Connections --------------------------------------------
+	// One connection per spec entry, keyed by name so entries add and
+	// remove independently. Each publishes the service into one VPC through
+	// an interface VPC endpoint (AWS PrivateLink); clients inside that VPC
+	// resolve the per-connection domain_name exported below. Every value is
+	// create-time immutable by AWS design -- changing an entry replaces
+	// that one connection.
+	ingressOutputs := pulumi.Array{}
+	for _, conn := range spec.VpcIngressConnections {
+		createdConnection, err := apprunner.NewVpcIngressConnection(ctx, serviceName+"-"+conn.Name, &apprunner.VpcIngressConnectionArgs{
+			Name:       pulumi.StringPtr(conn.Name),
+			ServiceArn: createdService.Arn,
+			IngressVpcConfiguration: &apprunner.VpcIngressConnectionIngressVpcConfigurationArgs{
+				VpcId:         pulumi.StringPtr(conn.VpcId.GetValue()),
+				VpcEndpointId: pulumi.StringPtr(conn.VpcEndpointId.GetValue()),
+			},
+			Tags: pulumi.ToStringMap(locals.AwsTags),
+		}, pulumi.Provider(provider))
+		if err != nil {
+			return errors.Wrapf(err, "failed to create VPC ingress connection %q", conn.Name)
+		}
+
+		// Shaped key-for-key with the Terraform output so both engines
+		// flatten onto the same stack-outputs contract.
+		ingressOutputs = append(ingressOutputs, pulumi.Map{
+			"name":        pulumi.String(conn.Name),
+			"arn":         createdConnection.Arn,
+			"domain_name": createdConnection.DomainName,
+			"status":      createdConnection.Status,
+		})
+	}
+
 	// Export outputs matching AwsAppRunnerServiceStackOutputs.
 	ctx.Export(OpServiceArn, createdService.Arn)
 	ctx.Export(OpServiceId, createdService.ServiceId)
@@ -291,6 +330,7 @@ func service(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error 
 	ctx.Export(OpServiceName, createdService.ServiceName)
 	ctx.Export(OpServiceStatus, createdService.Status)
 	ctx.Export(OpCustomDomains, domainOutputs)
+	ctx.Export(OpVpcIngressConnections, ingressOutputs)
 
 	return nil
 }

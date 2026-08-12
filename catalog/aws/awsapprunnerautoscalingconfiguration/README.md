@@ -42,6 +42,7 @@ spec:
 | `maxConcurrency` | int | No (default 100) | Concurrent requests per instance before scale-out (1-200). Lower = more headroom per instance, higher cost. |
 | `maxSize` | int | No (default 25) | Scale-out ceiling. AWS caps at 25 by default (quota-adjustable). |
 | `minSize` | int | No (default 1) | Warm floor kept provisioned at all times (memory-only billing while idle). |
+| `setAsAccountDefault` | bool | No (default false) | Claim this configuration as the account/region default for App Runner services created WITHOUT an explicit configuration. One default per account/region; claiming displaces the previous holder; only future services are affected; one-way at AWS (destroy never restores the previous default). |
 
 ## Stack Outputs
 
@@ -50,6 +51,7 @@ spec:
 | `configuration_arn` | The revision-carrying ARN services reference via `autoScalingConfigurationArn`. |
 | `configuration_revision` | The revision this deployment registered. |
 | `latest` | Whether this revision is the latest under the configuration name. |
+| `is_default` | Whether this configuration holds the account/region default designation (true when `setAsAccountDefault` claimed it). |
 
 ## Composing into a Service
 
@@ -64,7 +66,6 @@ autoScalingConfigurationArn:
 
 ## Deliberately Omitted
 
-- **The account default-configuration setter** (`aws_apprunner_default_auto_scaling_configuration_version`): an account-level regional singleton PUT, not a graph resource; services that want a specific posture should reference it explicitly.
 - **Per-kind tags**: identity tags derive from metadata; custom user tags are a platform-wide concern.
 
 ---

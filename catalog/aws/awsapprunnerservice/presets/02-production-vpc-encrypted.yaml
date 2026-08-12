@@ -7,9 +7,11 @@ metadata:
   id: my-production-api-id
 spec:
   region: <aws-region>
-  # Private ECR image -- requires an access role for pulling
+  # Private ECR image -- requires an access role for pulling. Replace the
+  # example path with your own account/region/repo/tag (the format is
+  # validated: ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/REPO:TAG).
   imageSource:
-    imageIdentifier: "<account-id>.dkr.ecr.<region>.amazonaws.com/<repo>:<tag>"
+    imageIdentifier: "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-api:v1.0.0"
     imageRepositoryType: "ECR"
     accessRoleArn:
       valueFrom:

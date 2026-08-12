@@ -17,3 +17,20 @@ resource "aws_apprunner_auto_scaling_configuration_version" "this" {
 
   tags = local.aws_tags
 }
+
+# -----------------------------------------------------------------------------
+# Account-default designation
+#
+# Claims this configuration as the account/region default for new App Runner
+# services created without an explicit configuration. One default exists per
+# account per region: claiming it silently displaces the previous holder
+# (AWS marks it non-default), and only services created AFTERWARDS are
+# affected. One-way at AWS -- destroying this resource is a provider no-op
+# (AWS has no restore API), so dropping the flag leaves the designation in
+# place until another configuration claims it.
+# -----------------------------------------------------------------------------
+resource "aws_apprunner_default_auto_scaling_configuration_version" "this" {
+  count = var.spec.set_as_account_default ? 1 : 0
+
+  auto_scaling_configuration_arn = aws_apprunner_auto_scaling_configuration_version.this.arn
+}

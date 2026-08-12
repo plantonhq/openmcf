@@ -268,16 +268,10 @@ resources:
     reason: "App Mesh end-of-support announced by AWS (September 2026); superseded by ECS Service Connect and VPC Lattice"
   - resource: aws_apprunner_connection
     disposition: model-planned
-    reason: "App Runner companion surface; folds into the existing App Runner kinds (AwsAppRunnerService, AwsAppRunnerAutoScalingConfiguration) as their specs deepen"
-  - resource: aws_apprunner_default_auto_scaling_configuration_version
-    disposition: model-planned
-    reason: "App Runner companion surface; folds into the existing App Runner kinds (AwsAppRunnerService, AwsAppRunnerAutoScalingConfiguration) as their specs deepen"
+    reason: "future AwsAppRunnerConnection kind: account-scoped GitHub/Bitbucket authorization shared by many services and referenced by AwsAppRunnerService code sources (connection_arn); its one-time OAuth handshake belongs to that kind's own lifecycle story (the codebuild source-credential class)"
   - resource: aws_apprunner_deployment
     disposition: deferred
     reason: "imperative deployment trigger, a poor declarative fit; deployments belong to the service lifecycle"
-  - resource: aws_apprunner_vpc_ingress_connection
-    disposition: model-planned
-    reason: "App Runner companion surface; folds into the existing App Runner kinds (AwsAppRunnerService, AwsAppRunnerAutoScalingConfiguration) as their specs deepen"
   - resource: aws_appstream_directory_config
     disposition: deferred
     reason: "application-streaming vertical (AppStream); deferred pending demand"

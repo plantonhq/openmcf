@@ -137,7 +137,14 @@ resource "aws_apprunner_service" "this" {
 
   # --- Observability --------------------------------------------------------
   # Presence of the configuration reference IS the enable switch -- there is
-  # no separate toggle to drift out of sync.
+  # no separate toggle to drift out of sync. One-way on a live service
+  # (upstream provider gap): the provider sends NOTHING for an absent block
+  # on update, so removing the reference leaves tracing running at AWS and
+  # the plan never converges. Rendering a disabled block here instead is NOT
+  # safe: the provider flattens a nil API response to an empty block, so an
+  # always-present disabled block risks a perpetual diff on every
+  # tracing-less service. Disable requires service replacement until the
+  # provider gains a disable path.
   dynamic "observability_configuration" {
     for_each = var.spec.observability_configuration_arn != "" ? [1] : []
     content {
@@ -184,4 +191,27 @@ resource "aws_wafv2_web_acl_association" "this" {
 
   resource_arn = aws_apprunner_service.this.arn
   web_acl_arn  = var.spec.web_acl_arn
+}
+
+# -----------------------------------------------------------------------------
+# VPC Ingress Connections
+#
+# One connection per spec entry, keyed by name so entries add and remove
+# independently. Each publishes the service into one VPC through an
+# interface VPC endpoint (AWS PrivateLink); clients inside that VPC resolve
+# the per-connection domain_name exported below. Every value is create-time
+# immutable by AWS design -- changing an entry replaces that one connection.
+# -----------------------------------------------------------------------------
+resource "aws_apprunner_vpc_ingress_connection" "this" {
+  for_each = local.vpc_ingress_connections
+
+  name        = each.value.name
+  service_arn = aws_apprunner_service.this.arn
+
+  ingress_vpc_configuration {
+    vpc_id          = each.value.vpc_id
+    vpc_endpoint_id = each.value.vpc_endpoint_id
+  }
+
+  tags = local.aws_tags
 }

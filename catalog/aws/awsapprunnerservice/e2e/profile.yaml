@@ -11,9 +11,12 @@ spec:
   # Custom domains are excluded from the live lane: association requires a
   # domain the test tenant owns (the ACM validated-certificate class); the
   # fold is proven by spec tests and the offline plan gate.
+  # The vpc_ingress_connections fold (2026-08-12 depth closure) is
+  # offline-proven (canonical-manifest plan/preview render the connection
+  # on both engines); its live arm is a recorded deferral -- unblock: an
+  # AwsVpcEndpoint fixture for com.amazonaws.<region>.apprunner.requests
+  # (that kind is itself un-closed; pair the arm with its depth session).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

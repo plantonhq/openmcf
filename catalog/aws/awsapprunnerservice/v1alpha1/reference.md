@@ -66,6 +66,13 @@ spec:
   customDomains:
     - domainName: "app.example.com"
       enableWwwSubdomain: false
+  isPubliclyAccessible: false
+  vpcIngressConnections:
+    - name: "apprunner-demo-private"
+      vpcId:
+        value: "vpc-0abc123def4567890"
+      vpcEndpointId:
+        value: "vpce-0abc123def4567890"
 ```
 
 ## Spec Fields
@@ -103,6 +110,10 @@ spec:
 | `spec.vpcConnectorArn` | `string \| valueFrom` |  |  | AwsAppRunnerVpcConnector (`status.outputs.vpc_connector_arn`) |
 | `spec.observabilityConfigurationArn` | `string \| valueFrom` |  |  | AwsAppRunnerObservabilityConfiguration (`status.outputs.configuration_arn`) |
 | `spec.isPubliclyAccessible` | `bool` |  | `true` |  |
+| `spec.vpcIngressConnections` | `[]AwsAppRunnerServiceVpcIngressConnection` |  |  |  |
+| `spec.vpcIngressConnections[].name` | `string` | yes |  |  |
+| `spec.vpcIngressConnections[].vpcId` | `string \| valueFrom` | yes |  | AwsVpc (`status.outputs.vpc_id`) |
+| `spec.vpcIngressConnections[].vpcEndpointId` | `string \| valueFrom` | yes |  | AwsVpcEndpoint (`status.outputs.vpc_endpoint_id`) |
 | `spec.ipAddressType` | `string` |  | `IPV4` |  |
 | `spec.kmsKeyArn` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.autoDeploymentsEnabled` | `bool` |  |  |  |
@@ -131,6 +142,7 @@ stored in Amazon ECR (private) or ECR Public Gallery.
 
 - rule: image_repository_type must be 'ECR' (private registry) or 'ECR_PUBLIC' (public gallery)
 - rule: access_role_arn is required when image_repository_type is 'ECR' -- App Runner needs an IAM role to pull from a private registry
+- rule: image_identifier must be a private ECR path (ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/REPO:TAG) or an ECR Public Gallery path (public.ecr.aws/ALIAS/REPO:TAG)
 
 ### spec.imageSource.imageIdentifier
 
@@ -443,6 +455,32 @@ create it against the exported service_arn).
 
 - default: `true`
 
+### spec.vpcIngressConnections
+
+`[]AwsAppRunnerServiceVpcIngressConnection`
+
+### spec.vpcIngressConnections[].name
+
+`string` · required
+
+- rule: {"string":{"minLen":"4","maxLen":"40"}}
+
+### spec.vpcIngressConnections[].vpcId
+
+`string | valueFrom` · required
+
+- references: AwsVpc (`status.outputs.vpc_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsVpc, name: <that resource's name>, fieldPath: status.outputs.vpc_id}} -- a bare string does not parse
+
+### spec.vpcIngressConnections[].vpcEndpointId
+
+`string | valueFrom` · required
+
+- references: AwsVpcEndpoint (`status.outputs.vpc_endpoint_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsVpcEndpoint, name: <that resource's name>, fieldPath: status.outputs.vpc_endpoint_id}} -- a bare string does not parse
+
 ### spec.ipAddressType
 
 `string` · optional (explicit presence)
@@ -543,6 +581,11 @@ Reference an output from another manifest as `valueFrom: {kind: AwsAppRunnerServ
 | `status.outputs.custom_domains[].certificate_validation_records[].record_name` | `string` | The DNS record name to create (a "_<hash>.<domain>." CNAME). |
 | `status.outputs.custom_domains[].certificate_validation_records[].record_type` | `string` | The DNS record type (always "CNAME" today). |
 | `status.outputs.custom_domains[].certificate_validation_records[].record_value` | `string` | The DNS record value the name must resolve to. |
+| `status.outputs.vpc_ingress_connections` | `[]AwsAppRunnerServiceVpcIngressConnectionOutput` |  |
+| `status.outputs.vpc_ingress_connections[].name` | `string` |  |
+| `status.outputs.vpc_ingress_connections[].arn` | `string` |  |
+| `status.outputs.vpc_ingress_connections[].domain_name` | `string` |  |
+| `status.outputs.vpc_ingress_connections[].status` | `string` |  |
 
 ## References
 
@@ -555,6 +598,8 @@ Fields that can point at another resource's outputs:
 | `spec.autoScalingConfigurationArn` | AwsAppRunnerAutoScalingConfiguration | `status.outputs.configuration_arn` |
 | `spec.vpcConnectorArn` | AwsAppRunnerVpcConnector | `status.outputs.vpc_connector_arn` |
 | `spec.observabilityConfigurationArn` | AwsAppRunnerObservabilityConfiguration | `status.outputs.configuration_arn` |
+| `spec.vpcIngressConnections[].vpcId` | AwsVpc | `status.outputs.vpc_id` |
+| `spec.vpcIngressConnections[].vpcEndpointId` | AwsVpcEndpoint | `status.outputs.vpc_endpoint_id` |
 | `spec.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.webAclArn` | AwsWafWebAcl | `status.outputs.web_acl_arn` |
 
