@@ -17,6 +17,11 @@ spec:
 
 ---
 # TCP check against a static address (a database listener, a bastion).
+# The address must be YOUR endpoint's real public IP: AWS rejects local,
+# private, non-routable, multicast, and documentation/reserved ranges at
+# create ("IPv4 address x.x.x.x is forbidden") — a server-side contract no
+# offline validation can catch. Use fqdn instead when no static public IP
+# exists.
 
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53HealthCheck
@@ -25,7 +30,7 @@ metadata:
 spec:
   region: us-west-2
   checkType: TCP
-  ipAddress: 192.0.2.10
+  ipAddress: 203.0.113.25 # replace with the endpoint's real public IP
   port: 5432
 
 ---

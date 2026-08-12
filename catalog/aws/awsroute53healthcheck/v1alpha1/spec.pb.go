@@ -71,7 +71,12 @@ type AwsRoute53HealthCheckSpec struct {
 	Fqdn string `protobuf:"bytes,3,opt,name=fqdn,proto3" json:"fqdn,omitempty"`
 	// IPv4 or IPv6 address of the endpoint to probe. Use for endpoints whose
 	// address is static; use fqdn alone when the address changes (e.g. behind
-	// DNS-based scaling).
+	// DNS-based scaling). The address must be publicly routable: AWS rejects
+	// local, private, non-routable, multicast, AND documentation/reserved
+	// ranges at CreateHealthCheck with InvalidInput ("IPv4 address x.x.x.x is
+	// forbidden" — proven live against RFC 5737 192.0.2.x, even on a disabled
+	// check). The contract is server-side only — no schema mirrors it — so a
+	// placeholder manifest must use fqdn instead of a made-up address.
 	IpAddress string `protobuf:"bytes,4,opt,name=ip_address,json=ipAddress,proto3" json:"ip_address,omitempty"`
 	// TCP port of the endpoint. Defaults: 80 for HTTP/HTTP_STR_MATCH, 443 for
 	// HTTPS/HTTPS_STR_MATCH. Required for TCP checks (there is no default).

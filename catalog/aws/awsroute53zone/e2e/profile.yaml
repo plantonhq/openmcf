@@ -26,11 +26,12 @@ spec:
   # the offline gate (tofu plan + Pulumi preview render the full DNSSEC
   # shape arm-for-arm).
   #
-  # pending_proof: the depth closure made the accelerated-recovery flag
-  # tri-state (explicit-false send paths in both engines), made the KSK
-  # status configurable, and added the DNSSEC chain-of-trust outputs — the
-  # prior green proof predates all of it.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  # Proven live 2026-08-12, both engines, both scenarios. The explicit-false
+  # enable_accelerated_recovery send path (the tri-state repair) was accepted
+  # cleanly by CreateHostedZone on a fresh zone in both engines' lanes; the
+  # private-vpc arm re-proved the composed AwsVpc association per engine.
+  # DNSSEC arms stay offline-proven per the deferral above.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

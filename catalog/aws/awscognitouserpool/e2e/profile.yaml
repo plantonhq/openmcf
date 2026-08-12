@@ -16,11 +16,14 @@ spec:
   # 04-threat-protected preset is its offline fixture) are excluded from the
   # live lane; their wiring is proven by the offline gate.
   #
-  # pending_proof: the Cognito family depth closure landed the user-groups
-  # and pool-wide risk-configuration folds, three Pulumi send-convergence
-  # repairs (deletion_protection, schema.required, allow_admin_create_user_only
-  # now state-pinned), and the SES reference wiring -- the live lane must
-  # re-prove both engines at the new surface.
+  # Proven live 2026-08-12, both engines, through the depth-closure surface:
+  # the user-groups fold's first live pass (two groups applied and destroyed
+  # with the pool — no verifier probe BY DESIGN: DescribeUserPool does not
+  # report groups and creation/destroy are atomic with the pool), and the
+  # three state-pinned Pulumi sends (deletion_protection INACTIVE,
+  # schema.required, allow_admin_create_user_only) applied cleanly. The
+  # risk-configuration arm stays offline-proven per the exclusion above.
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

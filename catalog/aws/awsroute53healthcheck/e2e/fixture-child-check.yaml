@@ -1,9 +1,15 @@
 # Child-check fixture for the calculated-aggregate scenario: a DISABLED TCP
-# check against a documentation address, deployed as an EXTRA INSTANCE of
-# this same kind via the scenario's path-form e2e-prerequisites annotation
-# (the kind-name form is reserved for OTHER kinds' install profiles).
-# Disabled means the checker fleet never probes the placeholder — AWS stores
-# the configuration, which is all the parent CALCULATED check aggregates.
+# check against a placeholder domain, deployed as an EXTRA INSTANCE of this
+# same kind via the scenario's path-form e2e-prerequisites annotation (the
+# kind-name form is reserved for OTHER kinds' install profiles). Disabled
+# means the checker fleet never probes the placeholder — AWS stores the
+# configuration, which is all the parent CALCULATED check aggregates.
+#
+# The endpoint is an FQDN, not an IP, BY CONTRACT: CreateHealthCheck rejects
+# reserved/documentation addresses server-side ("IPv4 address 192.0.2.1 is
+# forbidden" — live-caught 2026-08-12, even on a disabled check), while a
+# placeholder domain name is accepted because AWS resolves it at probe time
+# and a disabled check never probes.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53HealthCheck
 metadata:
@@ -21,6 +27,6 @@ metadata:
 spec:
   region: us-west-2
   checkType: TCP
-  ipAddress: 192.0.2.1
+  fqdn: e2e-child-placeholder.example.com
   port: 443
   disabled: true

@@ -13,11 +13,13 @@ spec:
   # issuer); its wiring is proven by the offline gate and the SAML/OIDC CEL
   # spec tests.
   #
-  # pending_proof: the Cognito family depth closure added the Pulumi
-  # ignore-changes guard on the AWS-auto-populated SAML
-  # ActiveEncryptionCertificate key (mirroring Terraform's lifecycle rule)
-  # and the social-name CEL -- the live lane must re-prove both engines
-  # (first live pass of the ignoreChanges map-key property path).
+  # Proven live 2026-08-12, both engines. The Google lane's provider_name
+  # also exercises the new social-name CEL, and the Pulumi ignoreChanges
+  # map-key option ran its first live pass cleanly — which proves the option
+  # does not break the engine, NOT the SAML drift guard itself (the Google
+  # lane never populates ActiveEncryptionCertificate; the guard stays
+  # offline-observed until a SAML lane exists).
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

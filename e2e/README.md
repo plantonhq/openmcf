@@ -760,7 +760,13 @@ is invalid or does not include the required permissions") — a composed
 role fixture therefore needs the RDS-trusting shape (consumer-scoped
 override), and note the error names the generic AWS_ROLE_INTEGRATION
 class even when a feature_name WAS sent: the trust check runs first, so
-the message is not evidence the feature name was dropped. When a lane fails with a 4xx the offline
+the message is not evidence the feature name was dropped; on Route 53,
+CreateHealthCheck rejects reserved/documentation IP addresses
+("InvalidInput: IPv4 address 192.0.2.1 is forbidden" — the RFC 5737
+TEST-NET ranges included, and DISABLED does not exempt the check), so an
+endpoint-check fixture must place its placeholder in `fqdn`, never in
+`ip_address` (AWS resolves domains at probe time and a disabled check
+never probes — the domain placeholder deploys cleanly). When a lane fails with a 4xx the offline
 gates never produced, probe the contract directly with the AWS CLI on
 throwaway resources (the default VPC makes MI-class probes fixture-free)
 before touching the module — ten minutes of probing settled both the
@@ -923,7 +929,16 @@ probe answers NotFound — the absence between lanes is exactly the
 engine boundary — so each engine's instance captures even when the
 payloads match. Status-cycling kinds (caches: creating → available →
 deleting) mask this bug by hashing differently anyway; do not conclude
-from them that a watcher is correct.
+from them that a watcher is correct. Two hardenings that make the class
+structurally impossible (live-proven 2026-08-12): capture RAW snapshots
+continuously and dedupe at ANALYSIS time instead of capture time — the
+raw file is cheap for a lane-length window and nothing is lost to a
+buggy live dedupe — and key the analysis on a per-instance discriminator
+rather than the config payload: `creationTime`/`CreateDate` when the
+kind reports one (a fixed-name log group's two engine windows hash
+identically but carry distinct creation times), or the AWS-generated ID
+when the kind mints one per create (health checks, Cognito clients —
+those need no re-arm at all).
 
 ## GCP E2E
 

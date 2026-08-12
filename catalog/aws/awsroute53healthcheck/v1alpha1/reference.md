@@ -52,6 +52,11 @@ spec:
 
 ---
 # TCP check against a static address (a database listener, a bastion).
+# The address must be YOUR endpoint's real public IP: AWS rejects local,
+# private, non-routable, multicast, and documentation/reserved ranges at
+# create ("IPv4 address x.x.x.x is forbidden") — a server-side contract no
+# offline validation can catch. Use fqdn instead when no static public IP
+# exists.
 
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53HealthCheck
@@ -60,7 +65,7 @@ metadata:
 spec:
   region: us-west-2
   checkType: TCP
-  ipAddress: 192.0.2.10
+  ipAddress: 203.0.113.25 # replace with the endpoint's real public IP
   port: 5432
 
 ---
@@ -155,7 +160,12 @@ IP and this value is only the Host header. Max 255 characters.
 
 IPv4 or IPv6 address of the endpoint to probe. Use for endpoints whose
 address is static; use fqdn alone when the address changes (e.g. behind
-DNS-based scaling).
+DNS-based scaling). The address must be publicly routable: AWS rejects
+local, private, non-routable, multicast, AND documentation/reserved
+ranges at CreateHealthCheck with InvalidInput ("IPv4 address x.x.x.x is
+forbidden" — proven live against RFC 5737 192.0.2.x, even on a disabled
+check). The contract is server-side only — no schema mirrors it — so a
+placeholder manifest must use fqdn instead of a made-up address.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"ip":true}}
 

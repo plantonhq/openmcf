@@ -18,12 +18,10 @@ spec:
   # to the planned AwsRoute53CidrCollection in the dispositions ledger).
   # All proven by CEL spec tests and the offline gate.
   #
-  # pending_proof: the depth closure presence-typed ttl (an explicit 0 —
-  # AWS's "never cache" — is now expressible; the module send paths
-  # changed in both engines with variables.tf regenerated) — the prior
-  # green proof predates the change. The existing scenario's ttl arm
-  # exercises the new send path as-is.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  # Proven live 2026-08-12, both engines, through the presence-typed ttl
+  # send path (the weighted scenario's explicit ttl renders through the new
+  # optional plumbing in both engines; ListResourceRecordSets verified).
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

@@ -15,13 +15,13 @@ spec:
   # PLUS-tier threat protection -- billing posture unverified); wiring for
   # both is proven by the offline gate.
   #
-  # pending_proof: the Cognito family depth closure presence-typed the
-  # rotation grace period (Terraform previously forced an unset field to
-  # explicit 0 -- grace silently disabled), converged three Pulumi
-  # only-when-true sends (generate_secret, allowed_oauth_flows_user_pool_client,
-  # analytics user_data_shared now state-pinned), and folded the
-  # client-scoped risk configuration -- the live lane must re-prove both
-  # engines at the new surface.
+  # Proven live 2026-08-12, both engines. The tri-state repair was
+  # API-evidenced per engine: DescribeUserPoolClient echoed
+  # RefreshTokenRotation.RetryGracePeriodSeconds=0 (the explicit-zero send
+  # path, previously inexpressible on Pulumi and silently forced on
+  # Terraform) alongside AllowedOAuthFlowsUserPoolClient=true (one of the
+  # three state-pinned send convergences).
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

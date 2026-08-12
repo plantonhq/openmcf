@@ -17,12 +17,12 @@ spec:
   # an expression function). Simple-metric mode is exercised by the
   # prerequisite fixture that composite-alarm lanes deploy.
   #
-  # pending_proof: the depth closure converged two Pulumi sends — metric
-  # query return_data is now state-pinned (explicit false, matching
-  # Terraform) and metric.namespace is send-when-set (an unset namespace no
-  # longer reaches AWS as "") — and the existing scenario's three queries
-  # exercise both paths. Prior green proofs predate the convergence.
+  # Proven live 2026-08-12, both engines: the scenario's three metric
+  # queries (return_data true AND the two implicit-false arms) ran through
+  # the converged send paths cleanly — no perpetual diff, no update loop —
+  # and the expression-based query with unset metric.namespace applied
+  # without an empty-string send on either engine.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

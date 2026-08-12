@@ -21,13 +21,15 @@ spec:
   # Controller control plane, a separate service surface). Both proven by
   # CEL spec tests and the offline gate.
   #
-  # pending_proof: the depth closure converged the engines (Pulumi now
-  # state-pins invert_healthcheck/disabled/measure_latency and type-gates
-  # probe tuning like Terraform), presence-typed child_health_threshold,
-  # and dropped the two materialized probe-tuning defaults — the prior
-  # green proof predates all of it, and the CALCULATED model has never run
-  # live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  # Proven live 2026-08-12, both engines, both scenarios — the CALCULATED
+  # aggregation model's first live proof. GetHealthCheck echoed
+  # HealthThreshold=0 with the child attached per engine (the explicit-zero
+  # contract), and the https-endpoint check echoed the state-pinned
+  # Inverted/Disabled/MeasureLatency sends. Live-caught en route: AWS
+  # rejects reserved/documentation IPs at CreateHealthCheck server-side —
+  # the child fixture now places its placeholder in fqdn (see the fixture's
+  # comment and the ip_address spec field comment).
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

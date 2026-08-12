@@ -19,11 +19,15 @@ spec:
   # protection (would fail the destroy leg by design — its wiring is proven
   # by the offline gate).
   #
-  # pending_proof: the depth closure folded the transformer + log streams,
-  # presence-typed deletion_protection_enabled and both
-  # apply_on_transformed_logs flags (send-when-set in BOTH engines), and
-  # added @source.log — prior green proofs predate all of it.
+  # Proven live 2026-08-12, both engines, through the full depth-closure
+  # surface: the transformer fold's first live pass (get-transformer echoed
+  # the pipeline parser-first — parseJSON then renameKeys — per engine), the
+  # explicit-false deletion protection echo (describe-log-groups reported
+  # deletionProtectionEnabled=false per engine window — the presence
+  # repair's proof), the pre-created stream, @source.log accepted at
+  # PutSubscriptionFilter in us-west-2, and applyOnTransformedLogs=true on
+  # the metric filter.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15
