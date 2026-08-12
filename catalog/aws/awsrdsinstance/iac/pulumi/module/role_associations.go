@@ -14,7 +14,10 @@ import (
 // so roles attach and detach without touching the instance. AWS keys
 // associations by (instance, role) and REQUIRES the feature name here
 // (unlike the cluster-side association, where it is optional) -- the
-// spec's CEL mirrors that asymmetry.
+// spec's CEL mirrors that asymmetry. AWS also validates at
+// AddRoleToDBInstance that the role's trust policy allows
+// rds.amazonaws.com to assume it and 400s otherwise -- a server-side
+// contract nothing at preview time catches.
 func roleAssociations(ctx *pulumi.Context, locals *Locals, provider *aws.Provider,
 	createdInstance *rds.Instance) error {
 	for _, entry := range locals.AwsRdsInstance.Spec.IamRoles {

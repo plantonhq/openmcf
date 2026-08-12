@@ -15,10 +15,28 @@ spec:
   # opt-out. RDS instance provisioning dominates the runtime at five to ten
   # minutes each way per engine.
   #
-  # pending_proof: the depth closure changed the module's resource set
-  # (parameter group, option group, and role-association resources are new)
-  # -- the prior green badge predates this surface and must be re-earned
-  # live.
+  # PROVEN LIVE 2026-08-12: both engines all eight phases green (Pulumi
+  # 13m47s, Terraform 11m38s), with per-engine RDS-API evidence -- each
+  # engine's instance (distinct DbiResourceId) echoed the role
+  # association ACTIVE with FeatureName s3Export, the module-owned
+  # parameter group (named after the instance) attached and in-sync
+  # through the derived postgres16 family (major-only pin "16" came up
+  # 16.13), and EngineLifecycleSupport
+  # open-source-rds-extended-support-disabled. Live-caught on first
+  # contact: the association role's trust policy must allow
+  # rds.amazonaws.com (server-side AddRoleToDBInstance contract; the
+  # ec2-trusting shared fixture role 400'd) -- healed with the
+  # consumer-scoped e2e/prerequisites override and taught on the spec,
+  # both modules, and catalog.md.
+  #
+  # Offline-proven arms with recorded deferrals (never silent skips):
+  # s3_import (needs a seeded XtraBackup bucket + ingestion-role
+  # fixture; proven via the 04/05 migration presets), the option-group
+  # live arm (needs an Oracle/SQL-Server lane -- cost-gated; proven via
+  # the 04-oracle-enterprise preset), and the managed-AD domain arms
+  # (need a directory fixture -- owner budget decision). Each unblocks
+  # when its fixture ships or the owner budgets a window.
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

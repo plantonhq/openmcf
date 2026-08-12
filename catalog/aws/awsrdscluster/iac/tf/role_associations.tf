@@ -3,10 +3,13 @@
 # touching the cluster or each other. AWS keys associations by
 # (cluster, role) -- one association per role -- and the optional
 # feature_name links the role to a specific engine capability
-# (s3Import, Lambda, SageMaker, ...). The inline iam_roles argument on
-# aws_rds_cluster is deliberately unused: it cannot carry feature names
-# and, per the provider's own warning, mixing it with association
-# resources overwrites the associations.
+# (s3Import, Lambda, SageMaker, ...). AWS validates at AddRoleToDBCluster
+# that the role's trust policy allows rds.amazonaws.com to assume it and
+# 400s otherwise -- a server-side contract nothing at plan time catches.
+# The inline iam_roles argument on aws_rds_cluster is deliberately
+# unused: it cannot carry feature names and, per the provider's own
+# warning, mixing it with association resources overwrites the
+# associations.
 resource "aws_rds_cluster_role_association" "this" {
   for_each = { for entry in var.spec.iam_roles : entry.role => entry }
 

@@ -741,7 +741,14 @@ mappings on rule-mode domains, and CreateRoutingRule rejects everything
 but REST-protocol targets ("Only the REST protocol type is supported" —
 that one IS in the provider's website doc, three times, while the schema
 types api_id as a plain string: read the resource's DOC page during
-design, not only its schema). When a lane fails with a 4xx the offline
+design, not only its schema); on RDS, AddRoleToDBCluster/AddRoleToDBInstance
+validate that the associated role's trust policy allows rds.amazonaws.com
+to assume it and 400 InvalidParameterValue otherwise ("IAM role ARN value
+is invalid or does not include the required permissions") — a composed
+role fixture therefore needs the RDS-trusting shape (consumer-scoped
+override), and note the error names the generic AWS_ROLE_INTEGRATION
+class even when a feature_name WAS sent: the trust check runs first, so
+the message is not evidence the feature name was dropped. When a lane fails with a 4xx the offline
 gates never produced, probe the contract directly with the AWS CLI on
 throwaway resources (the default VPC makes MI-class probes fixture-free)
 before touching the module — ten minutes of probing settled both the

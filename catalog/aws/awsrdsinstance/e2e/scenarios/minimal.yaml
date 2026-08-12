@@ -13,9 +13,11 @@
 # Free arms proven live on this lane: the instance-owned parameter group
 # (one parameter through the derived postgres16 family -- verify the group
 # name in the outputs), one engine feature role attached BY REFERENCE (the
-# e2e-prerequisites annotation composes the AwsIamRole fixture; feature
-# names are engine-specific and s3Export is postgres-valid -- verify the
-# association via the RDS API), and the explicit extended-support opt-out.
+# e2e-prerequisites annotation composes the consumer-scoped AwsIamRole
+# fixture -- the role MUST trust rds.amazonaws.com, a server-side
+# AddRoleToDBInstance contract; feature names are engine-specific and
+# s3Export is postgres-valid -- verify the association via the RDS API),
+# and the explicit extended-support opt-out.
 # The S3-import, option-group, and Active Directory arms are
 # offline-proven (seeded bucket, Oracle/SQL-Server licensing, directory
 # costs) -- see e2e/manifest.yaml and the 04/05 presets.
@@ -62,7 +64,7 @@ spec:
     - role:
         valueFrom:
           kind: AwsIamRole
-          name: planton-oss-e2e-awsiamrole-prereq
+          name: planton-oss-e2e-rds-feature-role
           fieldPath: status.outputs.role_arn
       featureName: s3Export
   skipFinalSnapshot: true

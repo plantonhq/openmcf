@@ -16,10 +16,29 @@ spec:
   # provisioning dominates the runtime at roughly ten minutes each way per
   # engine.
   #
-  # pending_proof: the depth closure changed the module's resource set
-  # (role associations replace the inline iam_roles argument; custom
-  # endpoints and the activity stream are new resources) -- the prior green
-  # badge predates this surface and must be re-earned live.
+  # PROVEN LIVE 2026-08-12: both engines all eight phases green (Pulumi
+  # 25m23s, Terraform 25m44s), with per-engine RDS-API evidence -- each
+  # engine's cluster (distinct DbClusterResourceId) echoed the role
+  # association ACTIVE with FeatureName s3Export, the custom READER
+  # endpoint fronting the folded instance's mapped identifier, cluster
+  # auto_minor_version_upgrade true, the 0-ACU Serverless v2 floor
+  # (engine default 17.7 accepted it; no version pin needed), the active
+  # managed master secret, and the per-instance maintenance-window +
+  # copy-tags arms. Live-caught on first contact: the association role's
+  # trust policy must allow rds.amazonaws.com (server-side
+  # AddRoleToDBCluster contract; the ec2-trusting shared fixture role
+  # 400'd) -- healed with the consumer-scoped e2e/prerequisites override
+  # and taught on the spec, both modules, and catalog.md.
+  #
+  # Offline-proven arms with recorded deferrals (never silent skips):
+  # the Kerberos domain pair (needs an AWS Managed Microsoft AD fixture
+  # -- owner budget decision), s3_import (needs a seeded XtraBackup
+  # bucket + ingestion-role fixture; proven via the 04/05 migration
+  # presets), and the activity stream (needs a KMS fixture and bills
+  # Kinesis minutes; all-ForceNew with AWS-side start/stop waiters;
+  # proven via the canonical manifest). Each unblocks when its fixture
+  # ships or the owner budgets a window.
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

@@ -120,7 +120,7 @@ These are the most important decisions when configuring an Aurora cluster. Explo
 
 **Global and advanced** -- `globalClusterIdentifier` joins an Aurora Global Database (write forwarding available); `enableHttpEndpoint` turns on the Data API for connection-averse callers like Lambda; `parameters` manages inline cluster parameters (mutually exclusive with `dbClusterParameterGroupName`).
 
-**Access and audit** -- `iamRoles` attaches feature-scoped engine roles (one association per entry, with `featureName` like `s3Export` or `Lambda`); `domain` + `domainIamRoleName` join an AWS Managed Microsoft AD for Kerberos authentication; `customEndpoints` carve stable READER/ANY DNS names over chosen instances; `activityStream` streams every database event to a KMS-encrypted Kinesis stream for compliance-grade auditing (Aurora only).
+**Access and audit** -- `iamRoles` attaches feature-scoped engine roles (one association per entry, with `featureName` like `s3Export` or `Lambda`; the role's trust policy must allow `rds.amazonaws.com` to assume it — AWS validates that server-side at association time and rejects the deploy otherwise); `domain` + `domainIamRoleName` join an AWS Managed Microsoft AD for Kerberos authentication; `customEndpoints` carve stable READER/ANY DNS names over chosen instances; `activityStream` streams every database event to a KMS-encrypted Kinesis stream for compliance-grade auditing (Aurora only).
 
 ## Outputs and Dependencies
 

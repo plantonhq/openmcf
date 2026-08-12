@@ -119,7 +119,7 @@ These are the most important decisions when configuring an RDS instance. Explore
 
 **Observability** -- `performanceInsightsEnabled` is free at the 7-day retention; `monitoringInterval` + `monitoringRoleArn` stream OS-level metrics; `enabledCloudwatchLogsExports` ships the engine's own logs (legal types vary by engine family).
 
-**Engine configuration and roles** -- Inline `parameters` and `options` manage instance-owned parameter and option groups (family and major version derived from the pinned engine version; mutually exclusive with `parameterGroupName`/`optionGroupName`); `iamRoles` attaches feature-scoped engine roles (one association per entry, `featureName` required and engine-specific — e.g. `s3Import`, `s3Export`, `Lambda`); `engineLifecycleSupport: open-source-rds-extended-support-disabled` opts out of paid extended support.
+**Engine configuration and roles** -- Inline `parameters` and `options` manage instance-owned parameter and option groups (family and major version derived from the pinned engine version; mutually exclusive with `parameterGroupName`/`optionGroupName`); `iamRoles` attaches feature-scoped engine roles (one association per entry, `featureName` required and engine-specific — e.g. `s3Import`, `s3Export`, `Lambda`; the role's trust policy must allow `rds.amazonaws.com` to assume it — AWS validates that server-side at association time and rejects the deploy otherwise); `engineLifecycleSupport: open-source-rds-extended-support-disabled` opts out of paid extended support.
 
 ## Outputs and Dependencies
 

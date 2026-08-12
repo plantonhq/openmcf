@@ -2,7 +2,10 @@
 # entry, keyed by the role ARN so roles attach and detach without
 # touching the instance. AWS keys associations by (instance, role) and
 # REQUIRES the feature name here (unlike the cluster-side association,
-# where it is optional) -- the spec's CEL mirrors that asymmetry.
+# where it is optional) -- the spec's CEL mirrors that asymmetry. AWS
+# also validates at AddRoleToDBInstance that the role's trust policy
+# allows rds.amazonaws.com to assume it and 400s otherwise -- a
+# server-side contract nothing at plan time catches.
 resource "aws_db_instance_role_association" "this" {
   for_each = { for entry in var.spec.iam_roles : entry.role => entry }
 
