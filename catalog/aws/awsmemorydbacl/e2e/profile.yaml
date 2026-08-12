@@ -9,9 +9,6 @@ spec:
   # waits up to 5). Verification is DescribeACLs keyed on the ACL name,
   # state-aware (deleting counts as absent).
   tier: 1
-  status: deferred
-  deferred_reason: >-
-    Deferred by owner decision. Artifacts complete and re-runnable; dual-engine
-    create/delete cycles were exercised against the live account but a clean
-    observed completion is still pending.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

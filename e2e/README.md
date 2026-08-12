@@ -844,6 +844,23 @@ resource with the CLI before re-running — and the arm that triggered the
 rejection gets trimmed with a recorded deferral, not retried against the
 same endpoint.
 
+**Mid-rollout parameters can be ACCEPTED-BUT-INERT — a create accepting a
+new parameter is not proof the feature rolled out.** The same feature's
+second live contact (Lambda `publish_to`, us-west-2, 2026-08-13, two days
+after the rejection above): CreateFunction ACCEPTED
+`PublishTo: LATEST_PUBLISHED` with a clean 201, yet the `$LATEST.PUBLISHED`
+qualifier answered ResourceNotFoundException after publishing versions
+through BOTH the explicit publish-version path and update-code
+`--publish` — the head pointer never materialized — while UpdateFunctionCode
+still rejected the identical value with the original
+InvalidParameterValueException. Rollouts are per-OPERATION and acceptance
+is not activation. Before re-arming a deferred arm whose unblock condition
+is "the region accepts it": probe the feature's OBSERVABLE EFFECT (here,
+the qualifier resolving after a publish on a fresh throwaway function),
+never the create call's status code alone — and probe the sibling
+operations too, because a divergent reject (update rejecting what create
+accepts) is itself the mid-rollout signature.
+
 **ECS Managed Instances provider deletion can FAIL SILENTLY, and the
 cluster cannot delete until every MI provider is INACTIVE.**
 `delete-capacity-provider` answers DEPROVISIONING even when the delete is

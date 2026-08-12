@@ -203,7 +203,14 @@ type AwsLambdaSpec struct {
 	// InvalidParameterValueException ("isn't a valid value for this
 	// field") -- and AWS creates the function BEFORE rejecting this
 	// parameter, so a failed create can leave a live function behind.
-	// Set this field only where the feature is available.
+	// Mid-rollout is subtler (live-verified us-west-2, 2026-08-13):
+	// CreateFunction can ACCEPT the value yet silently not maintain the
+	// head -- the "$LATEST.PUBLISHED" qualifier answers
+	// ResourceNotFoundException even after versions publish -- while
+	// UpdateFunctionCode still rejects the same value. Acceptance at
+	// create is NOT availability; the feature is available only where
+	// the qualifier actually resolves after a publish. Set this field
+	// only where that holds.
 	PublishTo string `protobuf:"bytes,38,opt,name=publish_to,json=publishTo,proto3" json:"publish_to,omitempty"`
 	// Reserved concurrency for this function. Unset: the function draws
 	// from the account's unreserved pool (no dedicated cap). 0: all

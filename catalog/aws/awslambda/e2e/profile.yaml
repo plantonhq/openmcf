@@ -13,9 +13,14 @@ spec:
   # state (GetAlias / qualified GetFunction / ListFunctionUrlConfigs).
   # Deliberately not in the live scenario: publish_to (the $LATEST.PUBLISHED
   # head -- first live contact 2026-08-11: us-west-2 CreateFunction rejects
-  # the SDK-exact value with InvalidParameterValueException; the feature has
-  # not rolled out to the region/account, both engines render it faithfully;
-  # re-add when the region accepts it), container images, provisioned
+  # the SDK-exact value with InvalidParameterValueException; re-probed
+  # 2026-08-13: CreateFunction now ACCEPTS the value but the head is inert --
+  # the $LATEST.PUBLISHED qualifier stays ResourceNotFoundException after
+  # publishes via both the explicit and update-code paths, and
+  # UpdateFunctionCode still rejects the value outright. Mid-rollout
+  # acceptance is not availability: re-add only when a fresh-function probe
+  # shows the qualifier RESOLVING after a publish, never on create
+  # acceptance alone), container images, provisioned
   # concurrency, weighted alias routing, resource policies (proven by CEL
   # spec tests and the offline gate), plus the platform arms that need
   # unavailable or billable backing -- capacity_provider_config (no Lambda
