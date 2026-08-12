@@ -543,6 +543,32 @@ spec:
     - terraform_type: azurerm_data_factory_pipeline
       pulumi_type: azure:datafactory/pipeline:Pipeline
       id_format: "{pipeline_id}"
+    # AzureDataFactoryDataFlow covers both dataflow forms -- they share
+    # one factory-scoped namespace ({factory_id}/dataflows/{name}) and
+    # one id shape; the spec's flowlet flag decides which resource the
+    # module created, so the import addresses the matching type.
+    - terraform_type: azurerm_data_factory_data_flow
+      pulumi_type: azure:datafactory/dataFlow:DataFlow
+      id_format: "{data_flow_id}"
+    - terraform_type: azurerm_data_factory_flowlet_data_flow
+      pulumi_type: azure:datafactory/flowletDataFlow:FlowletDataFlow
+      id_format: "{data_flow_id}"
+    # AzureDataFactoryTrigger covers all four trigger types -- they
+    # share one factory-scoped namespace ({factory_id}/triggers/{name})
+    # and one id shape; the spec's variant block decides which resource
+    # the module created, so the import addresses the matching type.
+    - terraform_type: azurerm_data_factory_trigger_schedule
+      pulumi_type: azure:datafactory/triggerSchedule:TriggerSchedule
+      id_format: "{trigger_id}"
+    - terraform_type: azurerm_data_factory_trigger_tumbling_window
+      pulumi_type: azure:datafactory/triggerTumblingWindow:TriggerTumblingWindow
+      id_format: "{trigger_id}"
+    - terraform_type: azurerm_data_factory_trigger_blob_event
+      pulumi_type: azure:datafactory/triggerBlobEvent:TriggerBlobEvent
+      id_format: "{trigger_id}"
+    - terraform_type: azurerm_data_factory_trigger_custom_event
+      pulumi_type: azure:datafactory/triggerCustomEvent:TriggerCustomEvent
+      id_format: "{trigger_id}"
 
     # --- Microsoft Fabric ---------------------------------------------------------
     - terraform_type: azurerm_fabric_capacity

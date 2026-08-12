@@ -717,7 +717,9 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureDataFactoryDataFlow | `spec.dataFactoryId` | `status.outputs.data_factory_id` |
 | AzureDataFactoryPipeline | `spec.dataFactoryId` | `status.outputs.data_factory_id` |
+| AzureDataFactoryTrigger | `spec.dataFactoryId` | `status.outputs.data_factory_id` |
 
 ## See Also
 

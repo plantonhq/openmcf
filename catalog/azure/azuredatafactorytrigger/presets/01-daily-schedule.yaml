@@ -1,0 +1,29 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryTrigger
+metadata:
+  name: daily-schedule
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: nightly-ingest
+  description: Fires the nightly ingest at 02:00 UTC.
+  # Deploy stopped, verify the pipeline's Debug run, then flip to true
+  # -- a started trigger runs real, billed pipeline runs.
+  activated: false
+  schedule:
+    frequency: Day
+    interval: 1
+    # Set deliberately -- an omitted start_time starts from the moment
+    # of deployment.
+    startTime: "2026-09-01T00:00:00Z"
+    recurrenceSchedule:
+      hours: [2]
+      minutes: [0]
+    pipelines:
+      - name:
+          valueFrom:
+            name: <your-pipeline>
+        parameters:
+          # The scheduled fire time, passed per run.
+          windowStart: "@trigger().scheduledTime"

@@ -1611,6 +1611,24 @@ func TestAzureDataFactoryPipeline_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuredatafactorypipeline", "terraform")
 }
 
+// --- Data Factory data flow (chained to the factory smoke instance; the minimal scenario creates the flowlet form as a prerequisite doc, then a mapping flow embedding it -- both provider forms in one lane; authoring metadata, free at rest) ---
+
+func TestAzureDataFactoryDataFlow_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorydataflow", "pulumi")
+}
+func TestAzureDataFactoryDataFlow_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorydataflow", "terraform")
+}
+
+// --- Data Factory trigger (four scenarios, one per variant, all chained to the factory+pipeline smoke instances and deployed STARTED with never-firing conditions -- the Start/Stop lifecycle runs live at zero pipeline-run cost; blob event watches the fixture storage account, custom event subscribes to the Event Grid topic smoke instance) ---
+
+func TestAzureDataFactoryTrigger_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorytrigger", "pulumi")
+}
+func TestAzureDataFactoryTrigger_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorytrigger", "terraform")
+}
+
 // --- Microsoft Fabric Capacity (fixture RG -> the smallest F2 capacity, created-verified-destroyed tightly; bills per hour from create, and the lowercase-alnum-only name class admits NO run-id token -- a crashed run's leftover holds the name and the sweep is the remedy) ---
 
 func TestAzureFabricCapacity_Pulumi(t *testing.T) {

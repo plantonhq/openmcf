@@ -333,6 +333,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureDataFactoryTrigger | `spec.customEvent.eventgridTopicId` | `status.outputs.topic_id` |
 | AzureEventgridEventSubscription | `spec.scope` | `status.outputs.topic_id` |
 | AzureEventgridNamespace | `spec.topicSpacesConfiguration.routeTopicId` | `status.outputs.topic_id` |
 

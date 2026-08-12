@@ -1,0 +1,112 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# ONE kind covers four provider resources as variants -- exactly one of
+# the spec's schedule / tumbling_window / blob_event / custom_event
+# blocks is set, and the module creates the matching trigger resource
+# (all four share one factory-scoped trigger namespace and the
+# started/stopped lifecycle). Fields every type shares (name,
+# data_factory_id, description, annotations, activated) live at the
+# spec root; variant-scoped arguments map into their variant block
+# below.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_data_factory_trigger_schedule:
+    mappings:
+      # Variant-scoped arguments live inside the spec's schedule block.
+      - spec: spec.schedule.frequency
+        arg: frequency
+      - spec: spec.schedule.interval
+        arg: interval
+      - spec: spec.schedule.start_time
+        arg: start_time
+      - spec: spec.schedule.end_time
+        arg: end_time
+      - spec: spec.schedule.time_zone
+        arg: time_zone
+      # The provider's recurrence-narrowing block is named `schedule`
+      # -- inside the spec's schedule VARIANT that name would read
+      # schedule.schedule, so the spec calls it what it is.
+      - spec: spec.schedule.recurrence_schedule
+        arg: schedule
+      # The spec name says what the list IS (a plural collection),
+      # where the provider uses the singular block name.
+      - spec: spec.schedule.pipelines
+        arg: pipeline
+    exclusions:
+      # The pre-block legacy form: one pipeline as two flat arguments,
+      # ExactlyOneOf with the plural pipeline blocks. The plural form
+      # covers the identical wire surface (one entry = the legacy
+      # pair), and the module always sends it.
+      - arg: pipeline_name
+        reason: legacy singular alternate of the pipeline block (ExactlyOneOf) -- the module always sends the plural pipeline blocks, which carry the same wire surface
+      - arg: pipeline_parameters
+        reason: legacy singular alternate of the pipeline block (ConflictsWith) -- parameters ride each plural pipeline entry instead
+
+  azurerm_data_factory_trigger_tumbling_window:
+    mappings:
+      # Variant-scoped arguments live inside the spec's tumbling_window
+      # block.
+      - spec: spec.tumbling_window.frequency
+        arg: frequency
+      - spec: spec.tumbling_window.interval
+        arg: interval
+      - spec: spec.tumbling_window.start_time
+        arg: start_time
+      - spec: spec.tumbling_window.end_time
+        arg: end_time
+      - spec: spec.tumbling_window.delay
+        arg: delay
+      - spec: spec.tumbling_window.max_concurrency
+        arg: max_concurrency
+      - spec: spec.tumbling_window.retry
+        arg: retry
+      # The spec name says what the entries ARE (dependencies on other
+      # windows), where the provider names the block after its type.
+      - spec: spec.tumbling_window.dependencies
+        arg: trigger_dependency
+      - spec: spec.tumbling_window.additional_properties
+        arg: additional_properties
+      - spec: spec.tumbling_window.pipeline
+        arg: pipeline
+
+  azurerm_data_factory_trigger_blob_event:
+    mappings:
+      # Variant-scoped arguments live inside the spec's blob_event
+      # block.
+      - spec: spec.blob_event.storage_account_id
+        arg: storage_account_id
+      - spec: spec.blob_event.events
+        arg: events
+      - spec: spec.blob_event.blob_path_begins_with
+        arg: blob_path_begins_with
+      - spec: spec.blob_event.blob_path_ends_with
+        arg: blob_path_ends_with
+      - spec: spec.blob_event.ignore_empty_blobs
+        arg: ignore_empty_blobs
+      - spec: spec.blob_event.additional_properties
+        arg: additional_properties
+      - spec: spec.blob_event.pipelines
+        arg: pipeline
+
+  azurerm_data_factory_trigger_custom_event:
+    mappings:
+      # Variant-scoped arguments live inside the spec's custom_event
+      # block.
+      - spec: spec.custom_event.eventgrid_topic_id
+        arg: eventgrid_topic_id
+      - spec: spec.custom_event.events
+        arg: events
+      - spec: spec.custom_event.subject_begins_with
+        arg: subject_begins_with
+      - spec: spec.custom_event.subject_ends_with
+        arg: subject_ends_with
+      - spec: spec.custom_event.additional_properties
+        arg: additional_properties
+      - spec: spec.custom_event.pipelines
+        arg: pipeline

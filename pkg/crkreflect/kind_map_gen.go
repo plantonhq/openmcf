@@ -194,7 +194,9 @@ import (
 	azurecosmosdbsqlroleassignmentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbsqlroleassignment/v1alpha1"
 	azurecosmosdbsqlroledefinitionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbsqlroledefinition/v1alpha1"
 	azuredatafactoryv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactory/v1alpha1"
+	azuredatafactorydataflowv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactorydataflow/v1alpha1"
 	azuredatafactorypipelinev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactorypipeline/v1alpha1"
+	azuredatafactorytriggerv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactorytrigger/v1alpha1"
 	azuredataprotectionbackupinstancev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionbackupinstance/v1alpha1"
 	azuredataprotectionbackuppolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionbackuppolicy/v1alpha1"
 	azuredataprotectionbackupvaultv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionbackupvault/v1alpha1"
@@ -901,7 +903,9 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleAssignment:                 &azurecosmosdbsqlroleassignmentv1alpha1.AzureCosmosdbSqlRoleAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleDefinition:                 &azurecosmosdbsqlroledefinitionv1alpha1.AzureCosmosdbSqlRoleDefinition{},
 	cloudresourcekind.CloudResourceKind_AzureDataFactory:                               &azuredatafactoryv1alpha1.AzureDataFactory{},
+	cloudresourcekind.CloudResourceKind_AzureDataFactoryDataFlow:                       &azuredatafactorydataflowv1alpha1.AzureDataFactoryDataFlow{},
 	cloudresourcekind.CloudResourceKind_AzureDataFactoryPipeline:                       &azuredatafactorypipelinev1alpha1.AzureDataFactoryPipeline{},
+	cloudresourcekind.CloudResourceKind_AzureDataFactoryTrigger:                        &azuredatafactorytriggerv1alpha1.AzureDataFactoryTrigger{},
 	cloudresourcekind.CloudResourceKind_AzureDataProtectionBackupInstance:              &azuredataprotectionbackupinstancev1alpha1.AzureDataProtectionBackupInstance{},
 	cloudresourcekind.CloudResourceKind_AzureDataProtectionBackupPolicy:                &azuredataprotectionbackuppolicyv1alpha1.AzureDataProtectionBackupPolicy{},
 	cloudresourcekind.CloudResourceKind_AzureDataProtectionBackupVault:                 &azuredataprotectionbackupvaultv1alpha1.AzureDataProtectionBackupVault{},

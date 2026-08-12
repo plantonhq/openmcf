@@ -64,6 +64,8 @@ var verifiers = map[string]Verifier{
 	"azurecosmosdbsqlroledefinition":                 &cosmosdbSqlRoleDefinitionVerifier{},
 	"azuredatafactory":                               &dataFactoryVerifier{},
 	"azuredatafactorypipeline":                       &dataFactoryPipelineVerifier{},
+	"azuredatafactorydataflow":                       &dataFactoryDataFlowVerifier{},
+	"azuredatafactorytrigger":                        &dataFactoryTriggerVerifier{},
 	"azuredataprotectionbackupinstance":              &dataProtectionBackupInstanceVerifier{},
 	"azuredataprotectionbackuppolicy":                &dataProtectionBackupPolicyVerifier{},
 	"azuredataprotectionbackupvault":                 &dataProtectionBackupVaultVerifier{},

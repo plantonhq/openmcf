@@ -1,0 +1,30 @@
+# Prerequisite doc for the minimal scenario: the FLOWLET form, created
+# before the mapping data flow that embeds it. Flowlets may omit
+# sources and sinks (the embedding flow supplies them); a trivial
+# input->output script keeps the object honest. Data flow names are
+# factory-scoped (the parent factory's cloud name carries the run id),
+# so this name stays stable.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataFlow
+metadata:
+  name: planton-oss-e2e-azuredatafactorydataflow-flowlet
+  id: planton-oss-e2e-azuredatafactorydataflow-flowlet
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorydataflow
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-flowlet
+  flowlet: true
+  description: E2E smoke flowlet -- embedded by the mapping smoke flow.
+  script: |
+    input(allowSchemaDrift: true) ~> flowletInput
+    flowletInput output() ~> flowletOutput

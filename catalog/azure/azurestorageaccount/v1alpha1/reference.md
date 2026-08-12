@@ -1792,6 +1792,7 @@ Fields on other kinds that can point at this resource:
 | AzureCognitiveAccount | `spec.storage[].storageAccountId` | `status.outputs.storage_account_id` |
 | AzureContainerAppEnvironmentStorage | `spec.accountName` | `status.outputs.storage_account_name` |
 | AzureContainerAppEnvironmentStorage | `spec.accessKey` | `status.outputs.primary_access_key` |
+| AzureDataFactoryTrigger | `spec.blobEvent.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureDataProtectionBackupInstance | `spec.blobStorage.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureDataProtectionBackupInstance | `spec.dataLakeStorage.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureEventHub | `spec.captureDescription.destination.storageAccountId` | `status.outputs.storage_account_id` |

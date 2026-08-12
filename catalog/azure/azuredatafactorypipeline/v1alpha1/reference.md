@@ -179,6 +179,17 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.dataFactoryId` | AzureDataFactory | `status.outputs.data_factory_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AzureDataFactoryTrigger | `spec.schedule.pipelines[].name` | `status.outputs.pipeline_name` |
+| AzureDataFactoryTrigger | `spec.tumblingWindow.pipeline.name` | `status.outputs.pipeline_name` |
+| AzureDataFactoryTrigger | `spec.blobEvent.pipelines[].name` | `status.outputs.pipeline_name` |
+| AzureDataFactoryTrigger | `spec.customEvent.pipelines[].name` | `status.outputs.pipeline_name` |
+
 ## See Also
 
 - [Overview](../README.md)

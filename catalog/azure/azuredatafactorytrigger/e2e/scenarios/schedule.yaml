@@ -1,0 +1,41 @@
+# Schedule-variant scenario: a daily trigger with a FAR-FUTURE start
+# time -- deployed STARTED (exercising the Start lifecycle live) but
+# never firing, so no pipeline runs are billed. The registry
+# prerequisites chain the factory and the pipeline; trigger names are
+# factory-scoped (no run-id needed -- the parent factory's name
+# carries it). Free at rest.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryTrigger
+metadata:
+  name: planton-oss-e2e-azuredatafactorytrigger-schedule
+  id: planton-oss-e2e-azuredatafactorytrigger-schedule
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorytrigger
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-schedule
+  description: E2E smoke schedule trigger -- started, never fires (far-future start).
+  activated: true
+  schedule:
+    frequency: Day
+    interval: 1
+    startTime: "2035-01-01T00:00:00Z"
+    timeZone: UTC
+    recurrenceSchedule:
+      hours: [2]
+      minutes: [0]
+    pipelines:
+      - name:
+          valueFrom:
+            name: planton-oss-e2e-azuredatafactorypipeline-smoke
+        parameters:
+          window: "@trigger().scheduledTime"

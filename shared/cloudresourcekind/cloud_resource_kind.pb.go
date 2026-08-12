@@ -998,6 +998,19 @@ const (
 	// ({factory_id}/pipelines/{name}) -- an ordered set of activities
 	// that executes as a whole when triggered.
 	CloudResourceKind_AzureDataFactoryPipeline CloudResourceKind = 2199
+	// A Data Factory data flow ({factory_id}/dataflows/{name}) -- a
+	// visually-designed data transformation executed on managed Spark,
+	// or, as a flowlet, a reusable snippet other data flows embed. One
+	// kind covers both provider forms (they share one schema and one
+	// name namespace inside the factory).
+	CloudResourceKind_AzureDataFactoryDataFlow CloudResourceKind = 2200
+	// A Data Factory trigger ({factory_id}/triggers/{name}) -- the
+	// instruction that starts pipelines automatically: on a clock
+	// schedule, per contiguous tumbling window, on storage blob events,
+	// or on Event Grid custom events. One kind covers all four provider
+	// trigger resources as variants (one ARM namespace, one
+	// started/stopped lifecycle).
+	CloudResourceKind_AzureDataFactoryTrigger CloudResourceKind = 2203
 	// The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
 	// managed MongoDB: a real MongoDB engine on dedicated vCore tiers
 	// with sharding, zone-redundant HA, and point-in-time restore.
@@ -1862,6 +1875,8 @@ var (
 		2197:  "AzureEventgridNamespace",
 		2198:  "AzureDataFactory",
 		2199:  "AzureDataFactoryPipeline",
+		2200:  "AzureDataFactoryDataFlow",
+		2203:  "AzureDataFactoryTrigger",
 		2211:  "AzureMongoCluster",
 		2212:  "AzureFabricCapacity",
 		2213:  "AzureBackupContainerStorageAccount",
@@ -2542,6 +2557,8 @@ var (
 		"AzureEventgridNamespace":                        2197,
 		"AzureDataFactory":                               2198,
 		"AzureDataFactoryPipeline":                       2199,
+		"AzureDataFactoryDataFlow":                       2200,
+		"AzureDataFactoryTrigger":                        2203,
 		"AzureMongoCluster":                              2211,
 		"AzureFabricCapacity":                            2212,
 		"AzureBackupContainerStorageAccount":             2213,
@@ -3216,7 +3233,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xaa\xb0\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa9\xb1\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3511,7 +3528,9 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1fAzureEventgridEventSubscription\x10\x94\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azeges:\x02\x91\x11\x12:\n" +
 	"\x17AzureEventgridNamespace\x10\x95\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azegns:\x02\xd0\x0f\x121\n" +
 	"\x10AzureDataFactory\x10\x96\x11\x1a\x1a\xa2\xf7\x04\x16\b\r\x12\bv1alpha1\"\x04azdf:\x02\xd0\x0f\x12=\n" +
-	"\x18AzureDataFactoryPipeline\x10\x97\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazdfpipe:\x02\x96\x11\x125\n" +
+	"\x18AzureDataFactoryPipeline\x10\x97\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazdfpipe:\x02\x96\x11\x12=\n" +
+	"\x18AzureDataFactoryDataFlow\x10\x98\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazdfflow:\x02\x96\x11\x12>\n" +
+	"\x17AzureDataFactoryTrigger\x10\x9b\x11\x1a \xa2\xf7\x04\x1c\b\r\x12\bv1alpha1\"\bazdftrig:\x04\x96\x11\x97\x11\x125\n" +
 	"\x11AzureMongoCluster\x10\xa3\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazmongo:\x02\xd0\x0f\x128\n" +
 	"\x13AzureFabricCapacity\x10\xa4\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazfabcap:\x02\xd0\x0f\x12G\n" +
 	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +

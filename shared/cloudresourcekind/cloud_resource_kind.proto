@@ -2689,6 +2689,32 @@ enum CloudResourceKind {
     id_prefix: "azdfpipe"
     prerequisites: [AzureDataFactory]
   }];
+  // A Data Factory data flow ({factory_id}/dataflows/{name}) -- a
+  // visually-designed data transformation executed on managed Spark,
+  // or, as a flowlet, a reusable snippet other data flows embed. One
+  // kind covers both provider forms (they share one schema and one
+  // name namespace inside the factory).
+  AzureDataFactoryDataFlow = 2200 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdfflow"
+    prerequisites: [AzureDataFactory]
+  }];
+  // A Data Factory trigger ({factory_id}/triggers/{name}) -- the
+  // instruction that starts pipelines automatically: on a clock
+  // schedule, per contiguous tumbling window, on storage blob events,
+  // or on Event Grid custom events. One kind covers all four provider
+  // trigger resources as variants (one ARM namespace, one
+  // started/stopped lifecycle).
+  AzureDataFactoryTrigger = 2203 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdftrig"
+    prerequisites: [
+      AzureDataFactory,
+      AzureDataFactoryPipeline
+    ]
+  }];
   // The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
   // managed MongoDB: a real MongoDB engine on dedicated vCore tiers
   // with sharding, zone-redundant HA, and point-in-time restore.

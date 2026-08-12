@@ -1,0 +1,42 @@
+# Custom-event-variant scenario: subscribed to the Event Grid topic
+# kind's own smoke instance for an event type nothing publishes --
+# deployed STARTED (exercising the Start lifecycle live) but never
+# firing. The topic chain is scenario-declared (a trigger does not
+# universally need an Event Grid topic); the topic's registry
+# prerequisites bring its own chain.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryTrigger
+metadata:
+  name: planton-oss-e2e-azuredatafactorytrigger-customevent
+  id: planton-oss-e2e-azuredatafactorytrigger-customevent
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorytrigger
+  annotations:
+    planton.dev/e2e: "true"
+    # The subscribed topic is the Event Grid topic kind's smoke
+    # instance -- a scenario-level chain, not a kind-level
+    # requirement (a trigger does not universally need a topic).
+    planton.dev/e2e-prerequisites: "AzureEventgridTopic"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-customevent
+  description: E2E smoke custom event trigger -- started, event type never published.
+  activated: true
+  customEvent:
+    eventgridTopicId:
+      valueFrom:
+        name: planton-oss-e2e-azureeventgridtopic-smoke
+    events:
+      - planton.e2e.never
+    subjectBeginsWith: /planton-e2e-never/
+    pipelines:
+      - name:
+          valueFrom:
+            name: planton-oss-e2e-azuredatafactorypipeline-smoke
