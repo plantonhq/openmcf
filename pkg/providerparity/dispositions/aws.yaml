@@ -1881,11 +1881,11 @@ resources:
     disposition: excluded-deprecated
     reason: "the whole-list attachment resource is a documented footgun, superseded by per-principal attachments (consumed)"
   - resource: aws_iam_role_policies_exclusive
-    disposition: model-planned
-    reason: "role companion surface (exclusive policy lockdown, service-linked roles); folds into the existing AwsIamRole kind as its spec deepens"
+    disposition: deferred
+    reason: "exclusive-set reconciliation (purges out-of-band inline policies at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamRole already declares its full intended policy set"
   - resource: aws_iam_role_policy_attachments_exclusive
-    disposition: model-planned
-    reason: "role companion surface (exclusive policy lockdown, service-linked roles); folds into the existing AwsIamRole kind as its spec deepens"
+    disposition: deferred
+    reason: "exclusive-set reconciliation (purges out-of-band attachments at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamRole already declares its full intended policy set"
   - resource: aws_iam_saml_provider
     disposition: model-planned
     reason: "judged as a planned AwsIamSamlProvider kind"
@@ -1897,7 +1897,7 @@ resources:
     reason: "IAM-hosted certificates are legacy, superseded by ACM (covered by AwsCertManagerCert)"
   - resource: aws_iam_service_linked_role
     disposition: model-planned
-    reason: "role companion surface (exclusive policy lockdown, service-linked roles); folds into the existing AwsIamRole kind as its spec deepens"
+    reason: "judged as a planned AwsIamServiceLinkedRole kind -- a standalone role class with its own create API (aws_service_name/custom_suffix, no trust policy, no attachable policies), never a fold into AwsIamRole"
   - resource: aws_iam_service_specific_credential
     disposition: model-planned
     reason: "user-scoped service credentials (Bedrock API keys, Cassandra, CodeCommit); folds into AwsIamUser with the Bedrock wave, which brings the demand signal (API keys), the per-credential secret-delivery design, and the live fixtures its proof needs"
@@ -3580,10 +3580,10 @@ resources:
     reason: "SES v1 identity/configuration surface is superseded by the SESv2 resources consumed by the SES kinds"
   - resource: aws_sesv2_account_suppression_attributes
     disposition: model-planned
-    reason: "account-level SES attributes (suppression, VDM); fold into the existing AwsSesConfigurationSet kind family's account composition"
+    reason: "judged as a planned AwsSesAccountSettings kind (account/region singletons: suppression + VDM attributes) -- folding a singleton into the per-set AwsSesConfigurationSet would make multiple sets fight over one account object"
   - resource: aws_sesv2_account_vdm_attributes
     disposition: model-planned
-    reason: "account-level SES attributes (suppression, VDM); fold into the existing AwsSesConfigurationSet kind family's account composition"
+    reason: "judged as a planned AwsSesAccountSettings kind (account/region singletons: suppression + VDM attributes) -- folding a singleton into the per-set AwsSesConfigurationSet would make multiple sets fight over one account object"
   - resource: aws_sesv2_contact_list
     disposition: deferred
     reason: "SES tenants and contact lists; deferred pending demand"

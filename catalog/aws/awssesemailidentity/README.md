@@ -28,7 +28,7 @@ The identity's satellites are folded: the custom MAIL FROM domain, bounce/compla
 | `dkimSigning.domainSigningSelector` | string | No | — | BYODKIM selector you publish the public key under. |
 | `mailFrom.mailFromDomain` | string | No | amazonses.com | Custom MAIL FROM subdomain (needs MX + SPF records). |
 | `mailFrom.behaviorOnMxFailure` | string | No | USE_DEFAULT_VALUE | `USE_DEFAULT_VALUE` or `REJECT_MESSAGE`. |
-| `emailForwardingEnabled` | bool | No | true | Forward bounces/complaints to the mailbox. |
+| `emailForwardingEnabled` | bool | No | unset | Tri-state: unset leaves AWS's own default (forwarding on) unmanaged; an explicit true/false pins the position (materializes the feedback sub-resource). |
 | `policies[]` | list | No | — | Named cross-account authorization policies (IAM policy JSON). |
 
 ## Outputs

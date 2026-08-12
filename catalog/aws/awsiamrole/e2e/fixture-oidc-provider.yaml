@@ -1,0 +1,31 @@
+# OIDC-provider fixture: the IAM OIDC provider the oidc-trust scenario's
+# role trusts. Composed via the PATH form of the e2e-prerequisites
+# annotation (consumer-scoped -- this fixture belongs to the role's lane,
+# never a shared prerequisite surface). The issuer URL is synthetic AND
+# distinct from the provider kind's own scenario issuer: AWS allows one
+# OIDC provider per unique URL per account, so a shared URL would collide
+# whenever both lanes run concurrently. The dummy thumbprint is required
+# because AWS cannot derive one for an issuer it cannot reach. Full
+# metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamOidcProvider
+metadata:
+  name: planton-oss-e2e-awsiamrole-oidc
+  id: planton-oss-e2e-awsiamrole-oidc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  url:
+    value: https://e2e-oidc-trust.planton.dev
+  clientIdList:
+    - sts.amazonaws.com
+  thumbprintList:
+    - 9e99a48a9960b14926bb7f3b02e22da2b0ab7280

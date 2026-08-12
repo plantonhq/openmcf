@@ -101,6 +101,34 @@ var _ = ginkgo.Describe("AwsSesEmailIdentitySpec validations", func() {
 		})
 	})
 
+	ginkgo.Context("CEL: dkim_arm_required", func() {
+		ginkgo.It("fails when dkim_signing is declared empty (configures nothing)", func() {
+			input := minimalIdentity()
+			input.Spec.DkimSigning = &AwsSesEmailIdentityDkimSigning{}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts the BYODKIM arm without a key length", func() {
+			input := minimalIdentity()
+			input.Spec.DkimSigning = &AwsSesEmailIdentityDkimSigning{
+				DomainSigningPrivateKey: "dGVzdA==",
+				DomainSigningSelector:   "selector1",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("email_forwarding_enabled tri-state", func() {
+		ginkgo.It("accepts an explicit false (pins the position)", func() {
+			input := minimalIdentity()
+			input.Spec.EmailForwardingEnabled = boolPtr(false)
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+	})
+
 	ginkgo.Context("CEL: byodkim_pair", func() {
 		ginkgo.It("fails when only domain_signing_private_key is set", func() {
 			input := minimalIdentity()

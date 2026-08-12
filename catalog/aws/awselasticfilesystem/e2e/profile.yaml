@@ -15,9 +15,14 @@ spec:
   # and replication (a second file system in another region with 20-minute
   # waiters and overwrite-protection teardown interplay -- wiring is proven by
   # the offline gate and the conformance case).
+  #
+  # PENDING PROOF (2026-08-12, depth closure): the Terraform module's tag
+  # map dropped its metadata.labels merge and converged to the canonical
+  # six-key identity map (the Pulumi parity) -- and the full-surface
+  # scenario SETS labels, so the prior proven lanes deployed
+  # differently-tagged file systems per engine. The prior green predates
+  # the converged sends -- demoted per the badge-honesty rule.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

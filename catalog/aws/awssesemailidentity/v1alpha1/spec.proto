@@ -65,10 +65,13 @@ message AwsSesEmailIdentitySpec {
   AwsSesEmailIdentityMailFrom mail_from = 5;
 
   // Whether bounce and complaint notifications are forwarded by email to
-  // the identity's mailbox. Defaults to true (the AWS default). Turn it
-  // off once event destinations or SNS feedback handle bounces --
-  // forwarding is the fallback channel, not the production one.
-  optional bool email_forwarding_enabled = 6 [(dev.planton.shared.options.default) = "true"];
+  // the identity's mailbox. Tri-state: leave UNSET to accept AWS's own
+  // default (forwarding on) with no managed setting at all; set true or
+  // false to pin the position explicitly -- the modules materialize the
+  // feedback sub-resource only when a position is taken. Turn it off once
+  // event destinations or SNS feedback handle bounces -- forwarding is the
+  // fallback channel, not the production one.
+  optional bool email_forwarding_enabled = 6;
 
   // Named authorization policies on this identity -- the cross-account
   // sending grants that let another AWS account or role send mail AS this
@@ -107,13 +110,16 @@ message AwsSesEmailIdentityDkimSigning {
   // -- "RSA_1024_BIT" or "RSA_2048_BIT" (prefer 2048, the AWS default;
   // 1024 exists for DNS providers with 255-character TXT limits).
   // Setting it on a live identity rotates the key. Mutually exclusive
-  // with the BYODKIM pair.
-  string next_signing_key_length = 1 [(buf.validate.field).string = {
-    in: [
-      "RSA_1024_BIT",
-      "RSA_2048_BIT"
-    ]
-  }];
+  // with the BYODKIM pair (empty when BYODKIM is used).
+  string next_signing_key_length = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "RSA_1024_BIT",
+        "RSA_2048_BIT"
+      ]
+    }
+  ];
 
   // BYODKIM: the base64-encoded RSA PRIVATE key SES signs with (PKCS #8,
   // headers stripped). A signing secret -- never logged, never exported.
@@ -127,6 +133,16 @@ message AwsSesEmailIdentityDkimSigning {
   // ("<selector>._domainkey.<domain>" TXT record). Requires
   // domain_signing_private_key.
   string domain_signing_selector = 3 [(buf.validate.field).string.max_len = 63];
+
+  // An empty dkim_signing block configures nothing -- both engines would
+  // render an attribute block with no arguments, silently changing no DKIM
+  // behavior. Declaring the block means choosing an arm; to accept AWS's
+  // Easy DKIM default, omit dkim_signing entirely.
+  option (buf.validate.message).cel = {
+    id: "dkim_arm_required"
+    message: "dkim_signing must configure an arm -- next_signing_key_length (Easy DKIM) or the BYODKIM key/selector pair; omit the block to accept AWS's Easy DKIM default"
+    expression: "this.next_signing_key_length != '' || this.domain_signing_private_key != ''"
+  };
 
   // The BYODKIM key and selector only work as a pair.
   option (buf.validate.message).cel = {

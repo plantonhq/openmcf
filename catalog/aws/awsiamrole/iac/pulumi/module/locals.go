@@ -19,7 +19,10 @@ func initializeLocals(ctx *pulumi.Context, stackInput *iamrolev1.AwsIamRoleStack
 	locals := &Locals{}
 	locals.AwsIamRole = stackInput.Target
 
+	// Resource-identity tags match the Terraform module key-for-key
+	// (Name plus the planton.ai identity keys).
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsIamRole.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.AwsIamRole.Metadata.Org,
 		awstagkeys.Environment:  locals.AwsIamRole.Metadata.Env,

@@ -115,6 +115,7 @@ An optional human-readable description of the role's purpose, shown in
 the IAM console. Updatable in place. Maximum 1000 characters; AWS rejects
 typographic ("curly") quotes here, so stick to plain ASCII quoting.
 
+- rule: description must not contain typographic (curly) quote characters -- AWS rejects them; use plain ASCII quotes
 - rule: {"string":{"maxLen":"1000"}}
 
 ### spec.path

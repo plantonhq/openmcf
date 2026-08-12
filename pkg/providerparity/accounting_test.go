@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
 )
 
 // accountingFixture exercises every accounting shape in one hermetic

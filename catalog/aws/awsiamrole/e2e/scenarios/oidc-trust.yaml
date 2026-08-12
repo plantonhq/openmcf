@@ -1,0 +1,45 @@
+# OIDC-trust AwsIamRole scenario: the typed federated-trust arm, composed
+# against an IAM OIDC provider deployed as a path-form fixture in the same
+# lane. Exercises the trust oneof's oidc_trust composition end to end: the
+# Federated principal and condition-key prefix arrive by valueFrom from the
+# provider's outputs, an exact subject and a wildcard subject prove the
+# two-statement rendering (IAM ANDs operators within a statement, so exact
+# StringEquals and wildcard StringLike subjects ride separate statements),
+# and audiences stay unset to prove the sts.amazonaws.com default arm. The
+# evidence bar is GetRole echoing the composed AssumeRolePolicyDocument --
+# the Federated ARN, both statements, and the default audience -- per
+# engine. Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awsiamrole-oidctrust
+  id: planton-oss-e2e-awsiamrole-oidctrust
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/aws/awsiamrole/e2e/fixture-oidc-provider.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E federated role for the oidc-trust composition
+  path: /planton-e2e/
+  oidcTrust:
+    providerArn:
+      valueFrom:
+        kind: AwsIamOidcProvider
+        name: planton-oss-e2e-awsiamrole-oidc
+        fieldPath: status.outputs.provider_arn
+    providerUrl:
+      valueFrom:
+        kind: AwsIamOidcProvider
+        name: planton-oss-e2e-awsiamrole-oidc
+        fieldPath: status.outputs.provider_url
+    subjects:
+      - system:serviceaccount:planton-e2e:workload
+    wildcardSubjects:
+      - repo:planton-e2e/*
