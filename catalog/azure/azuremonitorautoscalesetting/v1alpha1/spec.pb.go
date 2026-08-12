@@ -984,16 +984,15 @@ func (x *AzureMonitorAutoscaleSettingNotification) GetWebhooks() []*AzureMonitor
 	return nil
 }
 
-// Email notification settings for scale events.
+// Email notification settings for scale events. The channel IS its
+// recipient list: ARM retired the classic subscription-administrator
+// and co-administrator email flags in April 2024
+// (SendEmailsToAdminCoAdminsNotSupported -- ARM rejects any request
+// that sets them), so explicit recipient addresses are the only email
+// wiring Azure still delivers.
 type AzureMonitorAutoscaleSettingNotificationEmail struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Whether the subscription administrator is emailed on every scale
-	// action.
-	SendToSubscriptionAdministrator bool `protobuf:"varint,1,opt,name=send_to_subscription_administrator,json=sendToSubscriptionAdministrator,proto3" json:"send_to_subscription_administrator,omitempty"`
-	// Whether the subscription co-administrators are emailed on every
-	// scale action.
-	SendToSubscriptionCoAdministrator bool `protobuf:"varint,2,opt,name=send_to_subscription_co_administrator,json=sendToSubscriptionCoAdministrator,proto3" json:"send_to_subscription_co_administrator,omitempty"`
-	// Additional email addresses notified on every scale action.
+	// Email addresses notified on every scale action.
 	CustomEmails  []string `protobuf:"bytes,3,rep,name=custom_emails,json=customEmails,proto3" json:"custom_emails,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1027,20 +1026,6 @@ func (x *AzureMonitorAutoscaleSettingNotificationEmail) ProtoReflect() protorefl
 // Deprecated: Use AzureMonitorAutoscaleSettingNotificationEmail.ProtoReflect.Descriptor instead.
 func (*AzureMonitorAutoscaleSettingNotificationEmail) Descriptor() ([]byte, []int) {
 	return file_catalog_azure_azuremonitorautoscalesetting_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *AzureMonitorAutoscaleSettingNotificationEmail) GetSendToSubscriptionAdministrator() bool {
-	if x != nil {
-		return x.SendToSubscriptionAdministrator
-	}
-	return false
-}
-
-func (x *AzureMonitorAutoscaleSettingNotificationEmail) GetSendToSubscriptionCoAdministrator() bool {
-	if x != nil {
-		return x.SendToSubscriptionCoAdministrator
-	}
-	return false
 }
 
 func (x *AzureMonitorAutoscaleSettingNotificationEmail) GetCustomEmails() []string {
@@ -1219,11 +1204,10 @@ const file_catalog_azure_azuremonitorautoscalesetting_v1alpha1_spec_proto_rawDes
 	"(AzureMonitorAutoscaleSettingNotification\x12|\n" +
 	"\x05email\x18\x01 \x01(\v2f.dev.planton.azure.azuremonitorautoscalesetting.v1alpha1.AzureMonitorAutoscaleSettingNotificationEmailR\x05email\x12\x84\x01\n" +
 	"\bwebhooks\x18\x02 \x03(\v2h.dev.planton.azure.azuremonitorautoscalesetting.v1alpha1.AzureMonitorAutoscaleSettingNotificationWebhookR\bwebhooks:\xa5\x01\xbaH\xa1\x01\x1a\x9e\x01\n" +
-	"+autoscale_notification_at_least_one_channel\x12Bconfigure at least one notification channel: email and/or webhooks\x1a+has(this.email) || this.webhooks.size() > 0\"\x81\x02\n" +
-	"-AzureMonitorAutoscaleSettingNotificationEmail\x12K\n" +
-	"\"send_to_subscription_administrator\x18\x01 \x01(\bR\x1fsendToSubscriptionAdministrator\x12P\n" +
-	"%send_to_subscription_co_administrator\x18\x02 \x01(\bR!sendToSubscriptionCoAdministrator\x121\n" +
-	"\rcustom_emails\x18\x03 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\fcustomEmails\"\xde\x03\n" +
+	"+autoscale_notification_at_least_one_channel\x12Bconfigure at least one notification channel: email and/or webhooks\x1a+has(this.email) || this.webhooks.size() > 0\"\x9e\x03\n" +
+	"-AzureMonitorAutoscaleSettingNotificationEmail\x121\n" +
+	"\rcustom_emails\x18\x03 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\fcustomEmails:\xe2\x01\xbaH\xde\x01\x1a\xdb\x01\n" +
+	"0autoscale_notification_email_recipients_required\x12\x87\x01email notifications need at least one address in custom_emails (Azure retired the subscription-administrator email flags in April 2024)\x1a\x1dthis.custom_emails.size() > 0J\x04\b\x01\x10\x02J\x04\b\x02\x10\x03R\"send_to_subscription_administratorR%send_to_subscription_co_administrator\"\xde\x03\n" +
 	"/AzureMonitorAutoscaleSettingNotificationWebhook\x12\xd0\x01\n" +
 	"\vservice_uri\x18\x01 \x01(\tB\xae\x01\xbaH\xaa\x01\xba\x01\xa3\x01\n" +
 	"\x1cautoscale_webhook_uri_scheme\x12:the webhook service_uri must be an http:// or https:// URL\x1aGthis == '' || this.startsWith('http://') || this.startsWith('https://')\xc8\x01\x01R\n" +

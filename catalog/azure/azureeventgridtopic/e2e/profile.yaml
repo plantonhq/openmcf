@@ -3,14 +3,16 @@ kind: ComponentE2EProfile
 metadata:
   name: azureeventgridtopic
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green); live dual-engine
-  # proof has not yet run. ONE scenario runs: `minimal` (a CloudEvents
-  # topic with an IP rule in the fixture resource group -- free at
-  # rest, creates in seconds; the cloud-side name carries the run id
-  # because topic names are region-wide public DNS labels). The lane
-  # also proves the sensitive access-key outputs round-trip unmasked.
+  # PROVEN live on both engines (2026-08-13): `minimal` (a CloudEvents
+  # topic with an IP rule in the fixture resource group; run-id cloud
+  # name) -- all phases green, 5/6 outputs on both engines (the empty
+  # field is identity_principal_id: the smoke deploys no identity;
+  # both sensitive access keys populated real values through the
+  # harness's --show-secrets reader -- identical counts on the
+  # natively-unmasked Terraform lane are the cross-engine check).
+  # Blind import round-trip: zero-change. Measured: Pulumi lane 2m52s,
+  # Terraform lane 2m50s incl. 13s import round-trip.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

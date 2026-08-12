@@ -33,3 +33,7 @@ Azure allows a single autoscale setting per resource. Treat the setting as the o
 ## When the count never moves, read Run history before touching rules
 
 The portal's Run history records every evaluation with the observed metric value and the decision. The three usual culprits, in order: the rule's `metric_resource_id` points at the wrong resource (nothing emits the metric), the envelope leaves no room (min == max), or a paired scale-in threshold is so close to the scale-out threshold that the flapping guard vetoes every action.
+
+## Email notifications name real inboxes, never "the administrator"
+
+Azure retired classic subscription administrators in April 2024, and ARM now rejects any autoscale notification that asks to email "the subscription administrator" (`SendEmailsToAdminCoAdminsNotSupported`) -- which is why this kind has no such flags. Put your team's on-call or alias address in `notification.email.customEmails` (an email block needs at least one), or use a webhook to reach chat and paging systems.

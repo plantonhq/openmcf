@@ -32,3 +32,14 @@ resources:
         arg: profile
       - spec: spec.notification.webhooks
         arg: notification.webhook
+    exclusions:
+      # ARM retired classic subscription administrators in April 2024 and
+      # rejects any autoscale notification that sets these flags
+      # (SendEmailsToAdminCoAdminsNotSupported -- caught live). The
+      # provider still ships them with Default: false; the modules leave
+      # them unset, and custom_emails is the only email wiring Azure
+      # still delivers.
+      - arg: notification.email.send_to_subscription_administrator
+        reason: retired by ARM (April 2024 classic-administrator retirement) -- any request setting it is rejected with SendEmailsToAdminCoAdminsNotSupported; use notification.email.custom_emails
+      - arg: notification.email.send_to_subscription_co_administrator
+        reason: retired by ARM (April 2024 classic-administrator retirement) -- any request setting it is rejected with SendEmailsToAdminCoAdminsNotSupported; use notification.email.custom_emails

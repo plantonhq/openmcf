@@ -121,8 +121,8 @@ spec:
         end: "2026-11-30T00:00:00Z"
   notification:
     email:
-      sendToSubscriptionAdministrator: true
-      sendToSubscriptionCoAdministrator: false
+      # Explicit recipients are the only email wiring ARM still accepts --
+      # the classic admin/co-admin flags were retired in April 2024.
       customEmails:
         - oncall@example.com
     webhooks:
@@ -183,8 +183,6 @@ spec:
 | `spec.profiles[].recurrence.minute` | `int32` | yes |  |  |
 | `spec.notification` | `AzureMonitorAutoscaleSettingNotification` |  |  |  |
 | `spec.notification.email` | `AzureMonitorAutoscaleSettingNotificationEmail` |  |  |  |
-| `spec.notification.email.sendToSubscriptionAdministrator` | `bool` |  |  |  |
-| `spec.notification.email.sendToSubscriptionCoAdministrator` | `bool` |  |  |  |
 | `spec.notification.email.customEmails` | `[]string` |  |  |  |
 | `spec.notification.webhooks` | `[]AzureMonitorAutoscaleSettingNotificationWebhook` |  |  |  |
 | `spec.notification.webhooks[].serviceUri` | `string` | yes |  |  |
@@ -645,25 +643,13 @@ wanted.
 Email notification settings. At least one of email and webhooks must
 be configured.
 
-### spec.notification.email.sendToSubscriptionAdministrator
-
-`bool`
-
-Whether the subscription administrator is emailed on every scale
-action.
-
-### spec.notification.email.sendToSubscriptionCoAdministrator
-
-`bool`
-
-Whether the subscription co-administrators are emailed on every
-scale action.
+- rule: email notifications need at least one address in custom_emails (Azure retired the subscription-administrator email flags in April 2024)
 
 ### spec.notification.email.customEmails
 
 `[]string`
 
-Additional email addresses notified on every scale action.
+Email addresses notified on every scale action.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 

@@ -3,20 +3,20 @@ kind: ComponentE2EProfile
 metadata:
   name: azureprivatednsrecord
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plans green for the apex-MX
-  # canonical shape and the A/SRV shapes with rendered-value
-  # inspection); live dual-engine proof has not yet run. ONE scenario
-  # runs: `minimal` (an A record in the fixture private zone, addressed
-  # by reference -- which live-proves the zone-output wiring edge and
-  # the id-parse seam the Pulumi module rides). Everything in the lane
-  # is free at rest. OFFLINE-ONLY with reasons: the six other payload
-  # types -- aaaa, cname, mx, ptr, srv, txt -- are pure ARM property
-  # writes on the exact create path the A lane proves (each is a
-  # RecordSet PUT differing only in the typed value array;
-  # plan-verified with rendered-value inspection), and the seven
-  # variants share one verifier keyed on the type-carrying ARM id.
+  # PROVEN live on both engines (2026-08-13): `minimal` (an A record in
+  # the fixture private zone, addressed by reference) -- all phases
+  # green, 2/2 outputs on both engines, the zone-output wiring edge and
+  # the Pulumi id-parse seam confirmed, the fqdn's trailing-dot DNS form
+  # verified. Blind import round-trip: zero-change (the type-carrying
+  # ARM id addressed the A variant). Measured: Pulumi lane 6m19s
+  # (deploy 31s, destroy 36s), Terraform lane 4m36s incl. 21s import
+  # round-trip; fixture chain ~2-3.5m of each lane. OFFLINE-ONLY with
+  # reasons: the six other payload types -- aaaa, cname, mx, ptr, srv,
+  # txt -- are pure ARM property writes on the exact create path the A
+  # lane proved (each is a RecordSet PUT differing only in the typed
+  # value array; plan-verified with rendered-value inspection), and the
+  # seven variants share one verifier keyed on the type-carrying ARM id.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

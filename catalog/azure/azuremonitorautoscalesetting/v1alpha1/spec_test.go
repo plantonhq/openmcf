@@ -220,8 +220,7 @@ var _ = ginkgo.Describe("AzureMonitorAutoscaleSettingSpec Validation Tests", fun
 
 			ginkgo.It("should accept email-only, webhook-only, and combined notifications", func() {
 				email := &AzureMonitorAutoscaleSettingNotificationEmail{
-					SendToSubscriptionAdministrator: true,
-					CustomEmails:                    []string{"oncall@example.com"},
+					CustomEmails: []string{"oncall@example.com"},
 				}
 				webhook := &AzureMonitorAutoscaleSettingNotificationWebhook{
 					ServiceUri: "https://hooks.example.com/scale",
@@ -532,6 +531,18 @@ var _ = ginkgo.Describe("AzureMonitorAutoscaleSettingSpec Validation Tests", fun
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 				gomega.Expect(err.Error()).To(gomega.ContainSubstring("at least one notification channel"))
+			})
+
+			ginkgo.It("should reject an email block without recipients", func() {
+				// The retired admin flags were the only other email wiring;
+				// an empty email block configures nothing ARM can deliver.
+				input := validResource()
+				input.Spec.Notification = &AzureMonitorAutoscaleSettingNotification{
+					Email: &AzureMonitorAutoscaleSettingNotificationEmail{},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("custom_emails"))
 			})
 
 			ginkgo.It("should reject a webhook without an http(s) scheme", func() {

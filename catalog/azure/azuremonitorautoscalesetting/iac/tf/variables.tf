@@ -69,9 +69,7 @@ variable "spec" {
     }))
     notification = optional(object({
       email = optional(object({
-        send_to_subscription_administrator    = optional(bool, false)
-        send_to_subscription_co_administrator = optional(bool, false)
-        custom_emails                         = optional(list(string), [])
+        custom_emails = optional(list(string), [])
       }))
       webhooks = optional(list(object({
         service_uri = string

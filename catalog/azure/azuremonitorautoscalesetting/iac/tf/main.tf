@@ -108,9 +108,10 @@ resource "azurerm_monitor_autoscale_setting" "main" {
       dynamic "email" {
         for_each = notification.value.email != null ? [notification.value.email] : []
         content {
-          send_to_subscription_administrator    = email.value.send_to_subscription_administrator
-          send_to_subscription_co_administrator = email.value.send_to_subscription_co_administrator
-          custom_emails                         = email.value.custom_emails
+          # The retired admin/co-admin flags stay unset (provider default
+          # false) -- ARM rejects true since the April 2024 classic-
+          # administrator retirement.
+          custom_emails = email.value.custom_emails
         }
       }
 

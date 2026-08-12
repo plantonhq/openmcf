@@ -144,10 +144,11 @@ func Resources(ctx *pulumi.Context, stackInput *azuremonitorautoscalesettingv1al
 	if spec.Notification != nil {
 		notificationArgs := &monitoring.AutoscaleSettingNotificationArgs{}
 		if spec.Notification.Email != nil {
+			// The provider still ships the retired subscription-administrator /
+			// co-administrator flags (ARM rejects them since April 2024); left
+			// unset they default to false on the wire, which ARM accepts.
 			notificationArgs.Email = &monitoring.AutoscaleSettingNotificationEmailArgs{
-				SendToSubscriptionAdministrator:   pulumi.Bool(spec.Notification.Email.SendToSubscriptionAdministrator),
-				SendToSubscriptionCoAdministrator: pulumi.Bool(spec.Notification.Email.SendToSubscriptionCoAdministrator),
-				CustomEmails:                      pulumi.ToStringArray(spec.Notification.Email.CustomEmails),
+				CustomEmails: pulumi.ToStringArray(spec.Notification.Email.CustomEmails),
 			}
 		}
 		if len(spec.Notification.Webhooks) > 0 {

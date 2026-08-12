@@ -3,22 +3,26 @@ kind: ComponentE2EProfile
 metadata:
   name: azuremonitorautoscalesetting
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plans green for the deep canonical
-  # shape -- three profiles, dimensions, predictive, both notification
-  # channels -- with rendered-value inspection); live dual-engine proof
-  # has not yet run. ONE scenario runs: `minimal` (default profile +
-  # CPU rule + weekend recurrence + email notification on a
-  # scenario-local Standard S1 plan -- the shared fixture plan is
-  # Basic, which autoscale rejects). The setting object is free; the
-  # S1 target bills pro-rated cents for the lane's minutes.
-  # OFFLINE-ONLY with reasons: fixed-date profiles, predictive
+  # PROVEN live on both engines (2026-08-13): `minimal` (default
+  # profile + CPU rule + weekend recurrence + email notification on a
+  # scenario-local Standard S1 plan in centralus) -- all phases green,
+  # 2/2 outputs on both engines; Standard-tier App Service capacity in
+  # centralus confirmed on the test subscription (S1 created in ~46s).
+  # ONE LIVE-FORCED CONTRACT FIX at the full bar: ARM rejects the
+  # send-to-subscription-administrator email flags
+  # (SendEmailsToAdminCoAdminsNotSupported -- classic administrators
+  # retired April 2024), so the spec dropped both flags (field numbers
+  # reserved), custom_emails became the required email wiring, and the
+  # exclusion is recorded in the provider-parity manifest. Blind import
+  # round-trip: zero-change. Measured: Pulumi lane 3m44s, Terraform
+  # lane 3m25s incl. 12s import round-trip; the S1 plan adds ~45s per
+  # chain. OFFLINE-ONLY with reasons: fixed-date profiles, predictive
   # autoscale (VM Scale Set targets only -- no VMSS in this lane), the
   # remaining statistic/aggregation/operator/action-type vocabulary
   # values, dimensions, and webhook notifications are pure ARM property
-  # writes on the exact CreateOrUpdate body the minimal lane proves
+  # writes on the exact CreateOrUpdate body the minimal lane proved
   # (plan-verified with rendered-value inspection).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

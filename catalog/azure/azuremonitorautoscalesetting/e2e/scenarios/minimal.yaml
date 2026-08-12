@@ -75,6 +75,10 @@ spec:
         minute: 0
   notification:
     email:
-      sendToSubscriptionAdministrator: true
+      # Recipient addresses are the only email wiring ARM still accepts
+      # (the admin-flag arms were retired in April 2024 -- caught live by
+      # this lane); the rule never fires, so nothing is ever sent.
+      customEmails:
+        - oncall@planton.ai
   tags:
     purpose: e2e-smoke

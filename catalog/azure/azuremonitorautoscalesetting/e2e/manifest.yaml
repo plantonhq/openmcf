@@ -86,8 +86,8 @@ spec:
         end: "2026-11-30T00:00:00Z"
   notification:
     email:
-      sendToSubscriptionAdministrator: true
-      sendToSubscriptionCoAdministrator: false
+      # Explicit recipients are the only email wiring ARM still accepts --
+      # the classic admin/co-admin flags were retired in April 2024.
       customEmails:
         - oncall@example.com
     webhooks:

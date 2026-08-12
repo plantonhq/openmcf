@@ -1,6 +1,6 @@
 # Business-Hours Schedule
 
-This preset deploys calendar-shaped capacity for an App Service plan: three instances (elastic to eight) on weekday business hours, one instance otherwise, with the subscription administrator emailed on every scale action.
+This preset deploys calendar-shaped capacity for an App Service plan: three instances (elastic to eight) on weekday business hours, one instance otherwise, with the on-call inbox emailed on every scale action (set `customEmails` to your team's address — Azure retired the subscription-administrator email flags in April 2024).
 
 ## When to Use
 

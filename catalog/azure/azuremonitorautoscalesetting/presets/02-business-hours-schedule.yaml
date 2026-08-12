@@ -59,4 +59,7 @@ spec:
         minute: 0
   notification:
     email:
-      sendToSubscriptionAdministrator: true
+      # ARM retired the subscription-administrator email flags in April
+      # 2024; name the on-call inbox explicitly.
+      customEmails:
+        - oncall@example.com

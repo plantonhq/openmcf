@@ -730,20 +730,33 @@ message AzureMonitorAutoscaleSettingNotification {
   };
 }
 
-// Email notification settings for scale events.
+// Email notification settings for scale events. The channel IS its
+// recipient list: ARM retired the classic subscription-administrator
+// and co-administrator email flags in April 2024
+// (SendEmailsToAdminCoAdminsNotSupported -- ARM rejects any request
+// that sets them), so explicit recipient addresses are the only email
+// wiring Azure still delivers.
 message AzureMonitorAutoscaleSettingNotificationEmail {
-  // Whether the subscription administrator is emailed on every scale
-  // action.
-  bool send_to_subscription_administrator = 1;
+  // Field numbers 1-2 carried the retired subscription-administrator /
+  // co-administrator flags; ARM rejects them since the April 2024
+  // classic-administrator retirement, so the catalog does not model
+  // them (recorded in the provider-parity manifest).
+  reserved 1, 2;
+  reserved "send_to_subscription_administrator", "send_to_subscription_co_administrator";
 
-  // Whether the subscription co-administrators are emailed on every
-  // scale action.
-  bool send_to_subscription_co_administrator = 2;
-
-  // Additional email addresses notified on every scale action.
+  // Email addresses notified on every scale action.
   repeated string custom_emails = 3 [(buf.validate.field).repeated.items = {
     string: {min_len: 1}
   }];
+
+  // An email block without recipients configures nothing: the retired
+  // admin flags were the only other wiring, and ARM no longer accepts
+  // them.
+  option (buf.validate.message).cel = {
+    id: "autoscale_notification_email_recipients_required"
+    message: "email notifications need at least one address in custom_emails (Azure retired the subscription-administrator email flags in April 2024)"
+    expression: "this.custom_emails.size() > 0"
+  };
 }
 
 // A webhook fired on every scale action.
