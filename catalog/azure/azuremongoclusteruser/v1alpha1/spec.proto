@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremongoclusteruser.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureMongoClusterUserSpec** grants a Microsoft Entra ID principal
+// access to an Azure Cosmos DB for MongoDB vCore cluster
+// (AzureMongoCluster). This is an ACCESS GRANT, not a password user:
+// the principal (a user, a service principal, or a managed identity's
+// service principal) authenticates to MongoDB with its Entra token
+// and receives the granted database roles. Native username/password
+// administration lives on the cluster itself
+// (administrator_username/administrator_password).
+//
+// The target cluster must list "MicrosoftEntraID" in its
+// authentication_methods -- Azure rejects the grant at deploy time
+// otherwise. Azure pins the identity provider to "MicrosoftEntraID"
+// (the only value the service accepts today); both engines send it
+// explicitly.
+//
+// EVERY field is create-only: the provider ships no update path --
+// changing anything replaces the grant (a harmless replace: dropping
+// and re-adding an access binding).
+message AzureMongoClusterUserSpec {
+  // The cluster the principal is granted access to, by ARM ID.
+  // Reference an AzureMongoCluster output or pass a literal ID.
+  //
+  // **ForceNew**: changing this destroys and recreates the grant.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef mongo_cluster_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMongoCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.mongo_cluster_id"
+  ];
+
+  // The Entra principal being granted access, by OBJECT ID (a UUID).
+  // No single kind dominates -- reference an
+  // AzureUserAssignedIdentity's principal id output with an explicit
+  // valueFrom for workload identities, or pass a human user's or
+  // service principal's object id as a literal.
+  //
+  // **ForceNew**: changing this destroys and recreates the grant.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef object_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "mongo_cluster_user_object_id_uuid"
+      message: "object_id must be the principal's object id -- a UUID like 00000000-0000-0000-0000-000000000000"
+      expression: "!has(this.value) || this.value.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+    }
+  ];
+
+  // What kind of Entra principal the object id names: "user" (a
+  // person) or "servicePrincipal" (an application or a managed
+  // identity). Managed identities are granted through their service
+  // principal -- use "servicePrincipal" for them.
+  //
+  // **ForceNew**: changing this destroys and recreates the grant.
+  string principal_type = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "user",
+        "servicePrincipal"
+      ]
+    }
+  ];
+
+  // The database roles granted to the principal, at least one. Azure
+  // currently accepts exactly one role name, "root" (full access),
+  // scoped to a database -- grant it on "admin" for cluster-wide
+  // access. Azure owns the role vocabulary and will widen it over
+  // time.
+  //
+  // **ForceNew**: changing the roles destroys and recreates the grant.
+  repeated AzureMongoClusterUserRole roles = 4 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// One database role granted to the principal.
+message AzureMongoClusterUserRole {
+  // The database the role is scoped to, e.g. "admin".
+  string database = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The role's name. Azure's Mongo vCore service accepts "root"
+  // today (the provider rejects anything else).
+  string role = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: ["root"]
+    }
+  ];
+}

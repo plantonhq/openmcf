@@ -2660,6 +2660,25 @@ enum CloudResourceKind {
     id_prefix: "azeges"
     prerequisites: [AzureEventgridTopic]
   }];
+  // The Azure Event Grid namespace -- the capacity-scaled hub of the
+  // newer Event Grid: hosts CloudEvents namespace topics and an
+  // optional MQTT broker behind one set of regional endpoints, sized
+  // in throughput units.
+  AzureEventgridNamespace = 2197 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azegns"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
+  // managed MongoDB: a real MongoDB engine on dedicated vCore tiers
+  // with sharding, zone-redundant HA, and point-in-time restore.
+  AzureMongoCluster = 2211 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmongo"
+    prerequisites: [AzureResourceGroup]
+  }];
   // Registers a storage account with a Recovery Services vault as a
   // backup container (.../protectionContainers/StorageContainer;...)
   // -- one registration per storage-account-and-vault pair, required
@@ -2740,6 +2759,34 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "azegdt"
     prerequisites: [AzureEventgridDomain]
+  }];
+  // One named CloudEvents stream inside an Azure Event Grid namespace
+  // ({namespace_id}/topics/{name}) -- many per namespace, publishers
+  // and teams creating and deleting their own against the shared
+  // namespace (which is why the topic is a standalone kind, exactly
+  // like AzureEventgridDomainTopic and AzureEventHubConsumerGroup).
+  // Part of the Event Grid family (2193-2197) despite the out-of-run
+  // number -- enum numbers are pinned by the registry snapshot; never
+  // renumber.
+  AzureEventgridNamespaceTopic = 2218 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azegnst"
+    prerequisites: [AzureEventgridNamespace]
+  }];
+  // Grants one Microsoft Entra principal access to an Azure Cosmos DB
+  // for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an
+  // access binding, not a password user: many per cluster, principals
+  // joining and leaving independently (which is why the grant is a
+  // standalone kind, the access-grant class of AzureRoleAssignment).
+  // Part of the Mongo vCore family (2211) despite the out-of-run
+  // number -- enum numbers are pinned by the registry snapshot; never
+  // renumber.
+  AzureMongoClusterUser = 2219 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmongou"
+    prerequisites: [AzureMongoCluster]
   }];
 
   // 3000–3999: GCP resources

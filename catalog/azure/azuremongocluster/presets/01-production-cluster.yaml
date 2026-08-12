@@ -1,0 +1,33 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMongoCluster
+metadata:
+  name: orders-db
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  # The name becomes a GLOBAL hostname
+  # ({name}.mongocluster.cosmos.azure.com) -- prefix with your org.
+  name: my-org-orders-db
+  region: eastus
+  administratorUsername: mongoadmin
+  # Reference a secret store -- never a literal in real use.
+  administratorPassword:
+    valueFrom:
+      kind: AzureKeyVaultSecret
+      name: <your-password-secret>
+      fieldPath: status.outputs.secret_id
+  version: "8.0"
+  computeTier: M30
+  storageSizeInGb: 128
+  shardCount: 1
+  highAvailabilityMode: ZoneRedundantPreferred
+  # Entra alongside native auth, so AzureMongoClusterUser grants work.
+  authenticationMethods:
+    - NativeAuth
+    - MicrosoftEntraID
+  # Replace with your office/VPN egress range.
+  firewallRules:
+    - name: office
+      startIpAddress: 203.0.113.0
+      endIpAddress: 203.0.113.255

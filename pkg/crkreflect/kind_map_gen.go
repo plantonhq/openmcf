@@ -203,6 +203,8 @@ import (
 	azureeventgriddomainv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgriddomain/v1alpha1"
 	azureeventgriddomaintopicv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgriddomaintopic/v1alpha1"
 	azureeventgrideventsubscriptionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgrideventsubscription/v1alpha1"
+	azureeventgridnamespacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgridnamespace/v1alpha1"
+	azureeventgridnamespacetopicv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgridnamespacetopic/v1alpha1"
 	azureeventgridsystemtopicv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgridsystemtopic/v1alpha1"
 	azureeventgridtopicv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgridtopic/v1alpha1"
 	azureeventhubv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventhub/v1alpha1"
@@ -253,6 +255,8 @@ import (
 	azuremanagedredisv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremanagedredis/v1alpha1"
 	azuremanagedredisaccesspolicyassignmentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremanagedredisaccesspolicyassignment/v1alpha1"
 	azuremanagedredisgeoreplicationv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremanagedredisgeoreplication/v1alpha1"
+	azuremongoclusterv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremongocluster/v1alpha1"
+	azuremongoclusteruserv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremongoclusteruser/v1alpha1"
 	azuremonitoractiongroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitoractiongroup/v1alpha1"
 	azuremonitoractivitylogalertv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitoractivitylogalert/v1alpha1"
 	azuremonitorautoscalesettingv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitorautoscalesetting/v1alpha1"
@@ -911,6 +915,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureEventgridDomain:                           &azureeventgriddomainv1alpha1.AzureEventgridDomain{},
 	cloudresourcekind.CloudResourceKind_AzureEventgridDomainTopic:                      &azureeventgriddomaintopicv1alpha1.AzureEventgridDomainTopic{},
 	cloudresourcekind.CloudResourceKind_AzureEventgridEventSubscription:                &azureeventgrideventsubscriptionv1alpha1.AzureEventgridEventSubscription{},
+	cloudresourcekind.CloudResourceKind_AzureEventgridNamespace:                        &azureeventgridnamespacev1alpha1.AzureEventgridNamespace{},
+	cloudresourcekind.CloudResourceKind_AzureEventgridNamespaceTopic:                   &azureeventgridnamespacetopicv1alpha1.AzureEventgridNamespaceTopic{},
 	cloudresourcekind.CloudResourceKind_AzureEventgridSystemTopic:                      &azureeventgridsystemtopicv1alpha1.AzureEventgridSystemTopic{},
 	cloudresourcekind.CloudResourceKind_AzureEventgridTopic:                            &azureeventgridtopicv1alpha1.AzureEventgridTopic{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRouteCircuit:                       &azureexpressroutecircuitv1alpha1.AzureExpressRouteCircuit{},
@@ -953,6 +959,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureManagedRedis:                              &azuremanagedredisv1alpha1.AzureManagedRedis{},
 	cloudresourcekind.CloudResourceKind_AzureManagedRedisAccessPolicyAssignment:        &azuremanagedredisaccesspolicyassignmentv1alpha1.AzureManagedRedisAccessPolicyAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureManagedRedisGeoReplication:                &azuremanagedredisgeoreplicationv1alpha1.AzureManagedRedisGeoReplication{},
+	cloudresourcekind.CloudResourceKind_AzureMongoCluster:                              &azuremongoclusterv1alpha1.AzureMongoCluster{},
+	cloudresourcekind.CloudResourceKind_AzureMongoClusterUser:                          &azuremongoclusteruserv1alpha1.AzureMongoClusterUser{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorActionGroup:                        &azuremonitoractiongroupv1alpha1.AzureMonitorActionGroup{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorActivityLogAlert:                   &azuremonitoractivitylogalertv1alpha1.AzureMonitorActivityLogAlert{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorAutoscaleSetting:                   &azuremonitorautoscalesettingv1alpha1.AzureMonitorAutoscaleSetting{},

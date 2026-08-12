@@ -835,6 +835,24 @@ func TestAzureMysqlFlexibleServer_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremysqlflexibleserver", "terraform")
 }
 
+// --- Azure Mongo Cluster (fixture RG -> Free-tier Mongo vCore sandbox with Entra + native auth and one composed firewall rule; the cloud-side name carries the run-id token -- cluster names are global hostname labels) ---
+
+func TestAzureMongoCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremongocluster", "pulumi")
+}
+func TestAzureMongoCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremongocluster", "terraform")
+}
+
+// --- Azure Mongo Cluster User (composed: cluster smoke chain + fixture identity -> the Entra access grant, the three-kind reference chain) ---
+
+func TestAzureMongoClusterUser_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremongoclusteruser", "pulumi")
+}
+func TestAzureMongoClusterUser_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremongoclusteruser", "terraform")
+}
+
 // --- Azure SQL logical server (fixture RG -> SQL-auth server with firewall rule and Defender alert policy) ---
 
 func TestAzureMssqlServer_Pulumi(t *testing.T) {
@@ -1432,6 +1450,20 @@ func TestAzureEventgridEventSubscription_Pulumi(t *testing.T) {
 }
 func TestAzureEventgridEventSubscription_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureeventgrideventsubscription", "terraform")
+}
+
+func TestAzureEventgridNamespace_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridnamespace", "pulumi")
+}
+func TestAzureEventgridNamespace_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridnamespace", "terraform")
+}
+
+func TestAzureEventgridNamespaceTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridnamespacetopic", "pulumi")
+}
+func TestAzureEventgridNamespaceTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridnamespacetopic", "terraform")
 }
 
 // --- Azure Event Hubs family (namespace container + hubs + consumer groups + SAS credentials + schema registry + geo-DR + dedicated cluster + CMK) ---

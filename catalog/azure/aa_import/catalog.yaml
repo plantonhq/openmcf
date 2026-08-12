@@ -488,3 +488,32 @@ spec:
     - terraform_type: azurerm_eventgrid_system_topic_event_subscription
       pulumi_type: azure:eventgrid/systemTopicEventSubscription:SystemTopicEventSubscription
       id_format: "{event_subscription_id}"
+    - terraform_type: azurerm_eventgrid_namespace
+      pulumi_type: azure:eventgrid/namespace:Namespace
+      id_format: "{namespace_id}"
+    # The namespace topic's ARM id is scoped under its parent namespace
+    # ({namespace_id}/topics/{name}); the component's id output carries
+    # the full scoped id, so one value serves the import.
+    - terraform_type: azurerm_eventgrid_namespace_topic
+      pulumi_type: azure:eventgrid/namespaceTopic:NamespaceTopic
+      id_format: "{namespace_topic_id}"
+
+    # --- Mongo vCore (Cosmos DB for MongoDB) -------------------------------------
+    # The bridge also carries a legacy alias token
+    # (azure:cosmosdb/mongoCluster:MongoCluster) for the cluster; the
+    # canonical module token below is the one imports use.
+    - terraform_type: azurerm_mongo_cluster
+      pulumi_type: azure:mongocluster/mongoCluster:MongoCluster
+      id_format: "{mongo_cluster_id}"
+    # Composed into AzureMongoCluster: one rule per firewall_rules
+    # entry, addressed under the cluster
+    # ({cluster_id}/firewallRules/{name}).
+    - terraform_type: azurerm_mongo_cluster_firewall_rule
+      pulumi_type: azure:mongocluster/firewallRule:FirewallRule
+      id_format: "{mongo_cluster_id}/firewallRules/{firewall_rule_name}"
+    # The grant's ARM name IS the principal's object id
+    # ({cluster_id}/users/{object_id}); the component's id output
+    # carries the full scoped id, so one value serves the import.
+    - terraform_type: azurerm_mongo_cluster_user
+      pulumi_type: azure:mongocluster/user:User
+      id_format: "{mongo_cluster_user_id}"

@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremongocluster.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuremongocluster/v1alpha1/outputs.proto";
+import "catalog/azure/azuremongocluster/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureMongoCluster represents an Azure Cosmos DB for MongoDB vCore
+// cluster -- Azure's modern managed MongoDB offering: a real MongoDB
+// engine (community drivers connect unchanged) on dedicated vCore
+// tiers from a free sandbox to M200, with optional sharding,
+// zone-redundant high availability, geo replicas, and point-in-time
+// restore. Entra-based access grants are separate resources
+// (AzureMongoClusterUser).
+message AzureMongoCluster {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureMongoCluster'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureMongoClusterSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureMongoClusterStatus status = 5;
+}
+
+// AzureMongoClusterStatus represents the status of an Azure Cosmos DB
+// for MongoDB vCore cluster deployment.
+message AzureMongoClusterStatus {
+  //stack-outputs
+  //  azure-mongo-cluster stack-outputs
+  AzureMongoClusterStackOutputs outputs = 1;
+}

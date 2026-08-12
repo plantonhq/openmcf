@@ -1,0 +1,12 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridNamespaceTopic
+metadata:
+  name: orders-stream
+spec:
+  namespaceId:
+    valueFrom:
+      name: <your-eventgrid-namespace>
+  name: orders
+  # How long events wait for delivery (1-7 days). A delivery buffer,
+  # not an archive.
+  eventRetentionInDays: 7

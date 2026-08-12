@@ -1,0 +1,40 @@
+# Deep-shape example for docs and offline validation: an MQTT-enabled
+# namespace with capacity, an inbound IP rule, a combined identity,
+# and the routing enrichments -- the route topic is included here so
+# the offline plan renders the full MQTT block. References are literal
+# values so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridNamespace
+metadata:
+  name: test-eventgrid-namespace
+  id: test-eventgrid-namespace
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  name: acme-events-hub
+  region: eastus
+  capacity: 2
+  publicNetworkAccessEnabled: true
+  inboundIpRules:
+    - 203.0.113.0/24
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-uai
+  topicSpacesConfiguration:
+    alternativeAuthenticationNameSources:
+      - ClientCertificateSubject
+    maximumClientSessionsPerAuthenticationName: 3
+    maximumSessionExpiryInHours: 4
+    routeTopicId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.EventGrid/topics/test-route-topic
+    dynamicRoutingEnrichments:
+      - key: clientname
+        value: ${client.authenticationName}
+    staticRoutingEnrichments:
+      - key: source
+        value: mqtt-broker
+  tags:
+    costCenter: platform

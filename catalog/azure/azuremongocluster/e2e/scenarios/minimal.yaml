@@ -1,0 +1,46 @@
+# Minimal AzureMongoCluster scenario: the Free-tier sandbox shape --
+# one shard, HA disabled, 32 GiB, MongoDB 8.0, both auth methods (so
+# the user kind's lane can bind an Entra grant), and one composed
+# firewall rule (proving the keyed-child machinery live). The
+# cloud-side name carries the run-id token (the name is a GLOBAL
+# hostname label). Free tier is one-per-subscription and
+# region-limited -- if Azure rejects it in this region, the proof
+# session bumps computeTier to M10 (~cents/hour) under proof design
+# authority. The throwaway admin password is a literal BY DESIGN (a
+# run-scoped sandbox credential; real deployments reference a secret
+# store).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMongoCluster
+metadata:
+  name: planton-oss-e2e-azuremongocluster-smoke
+  id: planton-oss-e2e-azuremongocluster-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremongocluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-mongo-${E2E_RUN_ID}
+  region: eastus
+  administratorUsername: mongoadmin
+  administratorPassword:
+    value: PlantonE2e-Thr0waway
+  version: "8.0"
+  computeTier: Free
+  storageSizeInGb: 32
+  shardCount: 1
+  highAvailabilityMode: Disabled
+  authenticationMethods:
+    - NativeAuth
+    - MicrosoftEntraID
+  firewallRules:
+    - name: e2e-probe
+      startIpAddress: 203.0.113.10
+      endIpAddress: 203.0.113.10

@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgridnamespace.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureeventgridnamespace/v1alpha1/outputs.proto";
+import "catalog/azure/azureeventgridnamespace/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureEventgridNamespace represents an Azure Event Grid namespace --
+// the capacity-scaled hub of the newer Event Grid: it hosts
+// CloudEvents namespace topics (AzureEventgridNamespaceTopic) and an
+// optional MQTT broker behind one set of regional endpoints. For the
+// classic single-endpoint publishers, see AzureEventgridTopic and
+// AzureEventgridDomain.
+message AzureEventgridNamespace {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureEventgridNamespace'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureEventgridNamespaceSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureEventgridNamespaceStatus status = 5;
+}
+
+// AzureEventgridNamespaceStatus represents the status of an Azure
+// Event Grid namespace deployment.
+message AzureEventgridNamespaceStatus {
+  //stack-outputs
+  //  azure-eventgrid-namespace stack-outputs
+  AzureEventgridNamespaceStackOutputs outputs = 1;
+}

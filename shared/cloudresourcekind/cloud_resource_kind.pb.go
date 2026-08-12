@@ -984,6 +984,15 @@ const (
 	// queue, hybrid connection, or webhook), with filtering, retry, and
 	// dead-letter behavior.
 	CloudResourceKind_AzureEventgridEventSubscription CloudResourceKind = 2196
+	// The Azure Event Grid namespace -- the capacity-scaled hub of the
+	// newer Event Grid: hosts CloudEvents namespace topics and an
+	// optional MQTT broker behind one set of regional endpoints, sized
+	// in throughput units.
+	CloudResourceKind_AzureEventgridNamespace CloudResourceKind = 2197
+	// The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
+	// managed MongoDB: a real MongoDB engine on dedicated vCore tiers
+	// with sharding, zone-redundant HA, and point-in-time restore.
+	CloudResourceKind_AzureMongoCluster CloudResourceKind = 2211
 	// Registers a storage account with a Recovery Services vault as a
 	// backup container (.../protectionContainers/StorageContainer;...)
 	// -- one registration per storage-account-and-vault pair, required
@@ -1031,6 +1040,24 @@ const (
 	// number -- enum numbers are pinned by the registry snapshot; never
 	// renumber.
 	CloudResourceKind_AzureEventgridDomainTopic CloudResourceKind = 2217
+	// One named CloudEvents stream inside an Azure Event Grid namespace
+	// ({namespace_id}/topics/{name}) -- many per namespace, publishers
+	// and teams creating and deleting their own against the shared
+	// namespace (which is why the topic is a standalone kind, exactly
+	// like AzureEventgridDomainTopic and AzureEventHubConsumerGroup).
+	// Part of the Event Grid family (2193-2197) despite the out-of-run
+	// number -- enum numbers are pinned by the registry snapshot; never
+	// renumber.
+	CloudResourceKind_AzureEventgridNamespaceTopic CloudResourceKind = 2218
+	// Grants one Microsoft Entra principal access to an Azure Cosmos DB
+	// for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an
+	// access binding, not a password user: many per cluster, principals
+	// joining and leaving independently (which is why the grant is a
+	// standalone kind, the access-grant class of AzureRoleAssignment).
+	// Part of the Mongo vCore family (2211) despite the out-of-run
+	// number -- enum numbers are pinned by the registry snapshot; never
+	// renumber.
+	CloudResourceKind_AzureMongoClusterUser CloudResourceKind = 2219
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
@@ -1817,11 +1844,15 @@ var (
 		2194:  "AzureEventgridDomain",
 		2195:  "AzureEventgridSystemTopic",
 		2196:  "AzureEventgridEventSubscription",
+		2197:  "AzureEventgridNamespace",
+		2211:  "AzureMongoCluster",
 		2213:  "AzureBackupContainerStorageAccount",
 		2214:  "AzureDataProtectionResourceGuard",
 		2215:  "AzurePrivateDnsResolverVirtualNetworkLink",
 		2216:  "AzureMonitorDataCollectionRuleAssociation",
 		2217:  "AzureEventgridDomainTopic",
+		2218:  "AzureEventgridNamespaceTopic",
+		2219:  "AzureMongoClusterUser",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2490,11 +2521,15 @@ var (
 		"AzureEventgridDomain":                           2194,
 		"AzureEventgridSystemTopic":                      2195,
 		"AzureEventgridEventSubscription":                2196,
+		"AzureEventgridNamespace":                        2197,
+		"AzureMongoCluster":                              2211,
 		"AzureBackupContainerStorageAccount":             2213,
 		"AzureDataProtectionResourceGuard":               2214,
 		"AzurePrivateDnsResolverVirtualNetworkLink":      2215,
 		"AzureMonitorDataCollectionRuleAssociation":      2216,
 		"AzureEventgridDomainTopic":                      2217,
+		"AzureEventgridNamespaceTopic":                   2218,
+		"AzureMongoClusterUser":                          2219,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -3160,7 +3195,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8d\xad\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xfe\xae\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3452,12 +3487,16 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x13AzureEventgridTopic\x10\x91\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azegt:\x02\xd0\x0f\x126\n" +
 	"\x14AzureEventgridDomain\x10\x92\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azegd:\x02\xd0\x0f\x12>\n" +
 	"\x19AzureEventgridSystemTopic\x10\x93\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azegst:\x04\xd0\x0f\xd9\x0f\x12B\n" +
-	"\x1fAzureEventgridEventSubscription\x10\x94\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azeges:\x02\x91\x11\x12G\n" +
+	"\x1fAzureEventgridEventSubscription\x10\x94\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azeges:\x02\x91\x11\x12:\n" +
+	"\x17AzureEventgridNamespace\x10\x95\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azegns:\x02\xd0\x0f\x125\n" +
+	"\x11AzureMongoCluster\x10\xa3\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazmongo:\x02\xd0\x0f\x12G\n" +
 	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +
 	" AzureDataProtectionResourceGuard\x10\xa6\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdprg:\x02\xd0\x0f\x12S\n" +
 	")AzurePrivateDnsResolverVirtualNetworkLink\x10\xa7\x11\x1a#\xa2\xf7\x04\x1f\b\r\x12\bv1alpha1\"\vazpdnsrlink:\x04\x8b\x11\xd6\x0f\x12N\n" +
 	")AzureMonitorDataCollectionRuleAssociation\x10\xa8\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azdcra:\x04\x90\x11\xd8\x0f\x12<\n" +
-	"\x19AzureEventgridDomainTopic\x10\xa9\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azegdt:\x02\x92\x11\x12:\n" +
+	"\x19AzureEventgridDomainTopic\x10\xa9\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azegdt:\x02\x92\x11\x12@\n" +
+	"\x1cAzureEventgridNamespaceTopic\x10\xaa\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazegnst:\x02\x95\x11\x12:\n" +
+	"\x15AzureMongoClusterUser\x10\xab\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazmongou:\x02\xa3\x11\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
 	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x124\n" +

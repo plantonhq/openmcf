@@ -311,6 +311,7 @@ Fields on other kinds that can point at this resource:
 | AzureEventHubNamespaceCustomerManagedKey | `spec.keyVaultKeyIds` | `status.outputs.versionless_id` |
 | AzureMachineLearningWorkspace | `spec.encryption.keyId` | `status.outputs.versionless_id` |
 | AzureManagedRedis | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.key_id` |
+| AzureMongoCluster | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureMssqlDatabase | `spec.transparentDataEncryptionKeyVaultKeyId` | `status.outputs.key_id` |
 | AzureMssqlServer | `spec.transparentDataEncryptionKeyVaultKeyId` | `status.outputs.key_id` |
 | AzureMysqlFlexibleServer | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |

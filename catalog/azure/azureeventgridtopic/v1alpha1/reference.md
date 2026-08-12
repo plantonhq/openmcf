@@ -334,6 +334,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AzureEventgridEventSubscription | `spec.scope` | `status.outputs.topic_id` |
+| AzureEventgridNamespace | `spec.topicSpacesConfiguration.routeTopicId` | `status.outputs.topic_id` |
 
 ## See Also
 

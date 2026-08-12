@@ -1,0 +1,15 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureeventgridnamespacetopic
+spec:
+  # The namespace topic imports by its namespace-scoped ARM resource ID
+  # ({namespace_id}/topics/{name}).
+  values:
+    - name: namespace_topic_id
+      derivations:
+        - from_stack_output: namespace_topic_id
+      where_to_find: >-
+        `az eventgrid namespace topic show --name <topic-name>
+        --namespace-name <namespace> --resource-group <rg> --query id`,
+        or the component's own namespace_topic_id stack output.

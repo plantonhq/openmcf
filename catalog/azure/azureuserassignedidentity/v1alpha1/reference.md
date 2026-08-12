@@ -171,6 +171,7 @@ Fields on other kinds that can point at this resource:
 | AzureEventgridDomain | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureEventgridEventSubscription | `spec.deliveryIdentity.userAssignedIdentity` | `status.outputs.identity_id` |
 | AzureEventgridEventSubscription | `spec.deadLetterIdentity.userAssignedIdentity` | `status.outputs.identity_id` |
+| AzureEventgridNamespace | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureEventgridSystemTopic | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureEventgridTopic | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureExpressRoutePort | `spec.identity.identityIds` | `status.outputs.identity_id` |
@@ -193,6 +194,8 @@ Fields on other kinds that can point at this resource:
 | AzureManagedRedis | `spec.customerManagedKey.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureManagedRedis | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureManagedRedisAccessPolicyAssignment | `spec.objectId` | `status.outputs.principal_id` |
+| AzureMongoCluster | `spec.userAssignedIdentityIds` | `status.outputs.identity_id` |
+| AzureMongoCluster | `spec.customerManagedKey.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureMonitorDataCollectionRule | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureMonitorScheduledQueryAlert | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureMssqlDatabase | `spec.userAssignedIdentityIds` | `status.outputs.identity_id` |

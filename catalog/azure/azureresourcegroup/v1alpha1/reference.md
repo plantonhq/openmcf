@@ -108,6 +108,7 @@ Fields on other kinds that can point at this resource:
 | AzureEventHubCluster | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureEventHubNamespace | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureEventgridDomain | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureEventgridNamespace | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureEventgridSystemTopic | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureEventgridTopic | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureExpressRouteCircuit | `spec.resourceGroup` | `status.outputs.resource_group_name` |
@@ -128,6 +129,7 @@ Fields on other kinds that can point at this resource:
 | AzureMachineLearningWorkspace | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureManagedDisk | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureManagedRedis | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureMongoCluster | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureMonitorActionGroup | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureMonitorActivityLogAlert | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureMonitorActivityLogAlert | `spec.scopes` | `status.outputs.resource_group_id` |

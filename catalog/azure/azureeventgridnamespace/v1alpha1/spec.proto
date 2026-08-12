@@ -1,0 +1,240 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgridnamespace.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureEventgridNamespaceSpec** defines an Azure Event Grid
+// namespace -- the newer Event Grid resource that hosts CloudEvents
+// namespace topics (see AzureEventgridNamespaceTopic) and, optionally,
+// an MQTT broker for IoT-style pub/sub. Where the classic resources
+// (AzureEventgridTopic, AzureEventgridDomain) each own one endpoint,
+// a namespace is a capacity-scaled HUB: throughput units set its
+// ceiling, topics are created inside it as their own resources, and
+// MQTT clients connect to it directly when the broker is enabled.
+//
+// The namespace's SKU has exactly one legal value ("Standard"), so it
+// is not part of this spec -- both engines send it explicitly.
+message AzureEventgridNamespaceSpec {
+  // The Azure Resource Group the namespace lives in. Can be a literal
+  // string or a reference to an AzureResourceGroup output.
+  //
+  // **ForceNew**: changing this destroys and recreates the namespace
+  // (and every topic inside it).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The namespace's name -- 3-50 characters (the provider validates
+  // length; Azure additionally requires letters, numbers, and hyphens
+  // and uses the name in the namespace's regional hostnames, so treat
+  // it as a DNS label and prefix it with your org).
+  //
+  // **ForceNew**: changing this destroys and recreates the namespace.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "eventgrid_namespace_name_length"
+      message: "Namespace names must be 3-50 characters"
+      expression: "this.size() >= 3 && this.size() <= 50"
+    }
+  ];
+
+  // The Azure region the namespace is created in, e.g. "eastus".
+  //
+  // **ForceNew**: changing this destroys and recreates the namespace.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Throughput units (TUs) provisioned for the namespace, 1-40. Each
+  // TU buys a slice of ingress/egress capacity shared by all topics
+  // and MQTT traffic in the namespace; capacity can be changed in
+  // place. Defaults to 1 -- the platform sends the default explicitly.
+  optional int32 capacity = 4 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 40
+    }
+  ];
+
+  // Whether the namespace's endpoints accept traffic from the public
+  // internet. Set false to restrict access to private endpoints only
+  // (inbound_ip_rules are also ignored when disabled). Default: true
+  // (Azure's default) -- the platform sends the value explicitly.
+  optional bool public_network_access_enabled = 5 [(dev.planton.shared.options.default) = "true"];
+
+  // Inbound IP firewall rules -- IPv4 CIDR ranges allowed to reach the
+  // namespace, e.g. "203.0.113.0/24", up to 128. An empty list means
+  // no IP restriction. Rules only take effect while
+  // public_network_access_enabled is true. Azure's rule action is
+  // "Allow"-only on this resource, so each entry is just the range --
+  // both engines send the action token explicitly; deny rules would
+  // widen this shape if Azure ever ships them.
+  repeated string inbound_ip_rules = 6 [(buf.validate.field).repeated = {
+    max_items: 128
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // The namespace's managed identity -- needed when namespace-topic
+  // subscriptions deliver with identity-based access or when MQTT
+  // routing writes to a protected custom topic. Omit when nothing
+  // requires one.
+  AzureEventgridNamespaceIdentity identity = 7;
+
+  // MQTT broker configuration (Azure calls it "topic spaces"). Set
+  // this block to ENABLE the namespace's MQTT broker; omit it to run
+  // a pure CloudEvents namespace. All fields inside are optional.
+  //
+  // **ForceNew**: the block cannot be added, removed, or changed after
+  // create -- the provider replaces the namespace instead. Decide the
+  // MQTT posture up front.
+  AzureEventgridNamespaceTopicSpacesConfiguration topic_spaces_configuration = 8;
+
+  // Tags to apply to the namespace, merged over the Planton-derived
+  // metadata tags (user values win on key conflicts).
+  map<string, string> tags = 9;
+}
+
+// The namespace's MQTT broker ("topic spaces") configuration. The
+// block's presence is the enable switch -- Azure has no separate
+// on/off field the provider exposes.
+message AzureEventgridNamespaceTopicSpacesConfiguration {
+  // Where the broker reads a connecting client's authentication name
+  // from, in addition to the MQTT CONNECT username: fields of the
+  // client certificate. Legal values: "ClientCertificateSubject",
+  // "ClientCertificateDns", "ClientCertificateUri",
+  // "ClientCertificateIp", "ClientCertificateEmail".
+  repeated string alternative_authentication_name_sources = 1 [(buf.validate.field).repeated = {
+    items: {
+      string: {
+        in: [
+          "ClientCertificateSubject",
+          "ClientCertificateDns",
+          "ClientCertificateUri",
+          "ClientCertificateIp",
+          "ClientCertificateEmail"
+        ]
+      }
+    }
+  }];
+
+  // How many concurrent MQTT sessions one authentication name may
+  // hold, 1-100. Defaults to 1 -- the platform sends the default
+  // explicitly.
+  optional int32 maximum_client_sessions_per_authentication_name = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 100
+    }
+  ];
+
+  // How long a disconnected client's MQTT session (subscriptions and
+  // queued messages) survives, in hours, 1-8. Defaults to 1 -- the
+  // platform sends the default explicitly.
+  optional int32 maximum_session_expiry_in_hours = 3 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 8
+    }
+  ];
+
+  // Route all MQTT messages into an Event Grid CUSTOM topic
+  // (AzureEventgridTopic) for fan-out to non-MQTT subscribers. The
+  // custom topic must live in the same region and use the CloudEvents
+  // schema. Omit to keep MQTT traffic inside the broker.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef route_topic_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventgridTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_id"
+  ];
+
+  // Enrichments stamped onto routed MQTT messages whose VALUE is
+  // resolved per message from client attributes or topic segments
+  // (e.g. "${client.authenticationName}"). Key: 1-20 characters;
+  // value: 1-128 characters.
+  repeated AzureEventgridNamespaceRoutingEnrichment dynamic_routing_enrichments = 5;
+
+  // Enrichments stamped onto routed MQTT messages with a FIXED string
+  // value. Key: 1-20 characters; value: 1-128 characters. (Azure also
+  // defines non-string static enrichment types; the provider pins the
+  // type to String -- both engines send that token.)
+  repeated AzureEventgridNamespaceRoutingEnrichment static_routing_enrichments = 6;
+}
+
+// One key/value enrichment stamped onto MQTT messages routed to the
+// route topic.
+message AzureEventgridNamespaceRoutingEnrichment {
+  // The enrichment key added to the routed event, 1-20 characters.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 20
+    }
+  ];
+
+  // The enrichment value, 1-128 characters. For dynamic enrichments
+  // this is the resolution expression (e.g.
+  // "${client.authenticationName}"); for static enrichments it is the
+  // literal string.
+  string value = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    }
+  ];
+}
+
+// The namespace's managed identity. Like the system topic (and unlike
+// the classic publisher resources), a namespace supports carrying BOTH
+// flavors at once.
+message AzureEventgridNamespaceIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the namespace; USER_ASSIGNED brings identities you manage
+  // (grantable on delivery targets BEFORE the namespace exists);
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureEventgridNamespaceIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the namespace, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so delivery-target grants can
+  // be composed before the namespace is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "eventgrid_namespace_identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The namespace's managed-identity flavor.
+enum AzureEventgridNamespaceIdentityType {
+  // Not specified: rejected -- an identity block requires a flavor.
+  azure_eventgrid_namespace_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the namespace. Wire value:
+  // "SystemAssigned".
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  // Wire value: "UserAssigned".
+  USER_ASSIGNED = 2;
+
+  // Both at once. Wire value: "SystemAssigned, UserAssigned".
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}

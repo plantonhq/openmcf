@@ -1,0 +1,416 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremongocluster.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureMongoClusterSpec** defines an Azure Cosmos DB for MongoDB
+// vCore cluster -- Azure's modern managed MongoDB offering: a real
+// MongoDB engine (wire-protocol compatible with community drivers) on
+// dedicated vCore-based compute, with vertical tiers from a free
+// sandbox to M200, optional sharding, zone-redundant high
+// availability, and point-in-time restore.
+//
+// A cluster is created in one of three modes (create_mode): "Default"
+// builds a fresh cluster from the sizing fields; "GeoReplica" builds a
+// cross-region read replica of an existing cluster; and
+// "PointInTimeRestore" clones an existing cluster from a moment in its
+// backup history. Azure never returns the mode on reads, so CHANGING
+// it after create always replaces the cluster.
+//
+// Update-surface honesty, recorded where it bites: adding or removing
+// the identity block replaces the cluster (Azure rejects in-place
+// identity transitions on this resource); disabling the Data API after
+// it is enabled replaces the cluster; and upgrades away from the
+// "Free" or "M25" tiers stage a tier-only change first (the provider
+// performs the two-step itself).
+message AzureMongoClusterSpec {
+  // The Azure Resource Group the cluster lives in. Can be a literal
+  // string or a reference to an AzureResourceGroup output.
+  //
+  // **ForceNew**: changing this destroys and recreates the cluster.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The cluster's name -- 3-40 characters; lowercase letters, numbers,
+  // and hyphens; starts and ends with a letter or number. The name
+  // becomes the cluster's public hostname
+  // ({name}.mongocluster.cosmos.azure.com), so it must be globally
+  // unique -- a taken name fails at deploy time.
+  //
+  // **ForceNew**: changing this destroys and recreates the cluster.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "mongo_cluster_name_format"
+      message: "Cluster names must be 3-40 characters of lowercase letters, numbers, and hyphens, starting and ending with a letter or number"
+      expression: "this.matches('^[a-z0-9]([-a-z0-9]{1,38}[a-z0-9])$')"
+    }
+  ];
+
+  // The Azure region the cluster is created in, e.g. "eastus".
+  //
+  // **ForceNew**: changing this destroys and recreates the cluster.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How the cluster comes into existence. "Default" (the default)
+  // builds a fresh cluster -- administrator_username, version,
+  // compute_tier, storage_size_in_gb, shard_count, and
+  // high_availability_mode are all required. "GeoReplica" builds a
+  // cross-region replica -- source_server_id and source_location are
+  // required, sizing is inherited. "PointInTimeRestore" clones from
+  // backup history -- the restore block is required, sizing is
+  // inherited.
+  //
+  // Azure never returns this property, and changing it always
+  // REPLACES the cluster (the provider forces the replacement).
+  optional string create_mode = 4 [
+    (dev.planton.shared.options.default) = "Default",
+    (buf.validate.field).string = {
+      in: [
+        "Default",
+        "GeoReplica",
+        "PointInTimeRestore"
+      ]
+    }
+  ];
+
+  // The administrator login for native MongoDB authentication.
+  // Required for "Default" mode; replicas and restores inherit the
+  // source's administrator. Must be set together with
+  // administrator_password.
+  //
+  // **ForceNew**: changing the username destroys and recreates the
+  // cluster (the password rotates in place).
+  string administrator_username = 5;
+
+  // The administrator password. Updatable in place (a password
+  // rotation). Pass a literal only in throwaway environments --
+  // reference a secret store (for example an AzureKeyVaultSecret
+  // output) everywhere else. Azure never returns the password on
+  // reads.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef administrator_password = 6 [(dev.planton.shared.options.sensitive) = true];
+
+  // The MongoDB server version: "5.0", "6.0", "7.0", or "8.0".
+  // Required for "Default" mode. Upgradable in place (an online major
+  // version upgrade -- Azure performs it rolling).
+  optional string version = 7 [(buf.validate.field).string = {
+    in: [
+      "5.0",
+      "6.0",
+      "7.0",
+      "8.0"
+    ]
+  }];
+
+  // The compute tier per shard: "Free" (one per subscription,
+  // sandbox), "M10"/"M20"/"M25" (burstable dev tiers), "M30" and up
+  // (general purpose, dedicated vCores). Required for "Default" mode;
+  // updatable in place. "Free" and "M25" clusters cannot use
+  // zone-redundant high availability and cannot shard beyond one
+  // shard.
+  optional string compute_tier = 8 [(buf.validate.field).string = {
+    in: [
+      "Free",
+      "M10",
+      "M20",
+      "M25",
+      "M30",
+      "M40",
+      "M50",
+      "M60",
+      "M80",
+      "M200"
+    ]
+  }];
+
+  // Storage per shard in GiB, 32-32768. Required for "Default" mode;
+  // grows in place (shrinking is not supported by the service).
+  optional int32 storage_size_in_gb = 9 [(buf.validate.field).int32 = {
+    gte: 32
+    lte: 32768
+  }];
+
+  // The storage performance class: "PremiumSSD" (the default) or
+  // "PremiumSSDv2". Only sent alongside storage_size_in_gb -- when the
+  // size is unset (replica/restore modes), Azure decides.
+  //
+  // **ForceNew**: changing the storage type destroys and recreates
+  // the cluster.
+  optional string storage_type = 10 [
+    (dev.planton.shared.options.default) = "PremiumSSD",
+    (buf.validate.field).string = {
+      in: [
+        "PremiumSSD",
+        "PremiumSSDv2"
+      ]
+    }
+  ];
+
+  // How many shards the cluster's data is split across, 1 or more.
+  // Required for "Default" mode. "Free" and "M25" tiers allow exactly
+  // one shard.
+  //
+  // **ForceNew**: changing the shard count destroys and recreates the
+  // cluster (re-sharding is not an in-place operation).
+  optional int32 shard_count = 11 [(buf.validate.field).int32.gte = 1];
+
+  // High availability: "Disabled" (single replica per shard) or
+  // "ZoneRedundantPreferred" (a standby replica in another availability
+  // zone where the region supports it). Required for "Default" mode;
+  // updatable in place. Azure's "SameZone" mode is not yet supported
+  // by the service on this resource. Not available on the "Free" and
+  // "M25" tiers.
+  optional string high_availability_mode = 12 [(buf.validate.field).string = {
+    in: [
+      "Disabled",
+      "ZoneRedundantPreferred"
+    ]
+  }];
+
+  // Which authentication methods the cluster accepts: "NativeAuth"
+  // (MongoDB username/password) and/or "MicrosoftEntraID" (Entra
+  // principals via AzureMongoClusterUser grants). Azure defaults an
+  // unset list to ["NativeAuth"] -- the engines send the list only
+  // when it is set, mirroring that service default. Include
+  // "MicrosoftEntraID" here before creating AzureMongoClusterUser
+  // grants against the cluster.
+  repeated string authentication_methods = 13 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "NativeAuth",
+          "MicrosoftEntraID"
+        ]
+      }
+    }
+  }];
+
+  // User-assigned identities attached to the cluster, by ARM ID (the
+  // service supports ONLY user-assigned identities on this resource).
+  // Required when customer_managed_key is set -- the key-unwrap
+  // identity must be attached here.
+  //
+  // **ForceNew**: ADDING the first identity or REMOVING the last one
+  // replaces the cluster (Azure rejects the in-place transition);
+  // changing the set of identities updates in place.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_ids = 14 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // Customer-managed encryption at rest: a Key Vault key plus the
+  // user-assigned identity Azure uses to unwrap it. The identity must
+  // also appear in user_assigned_identity_ids, and it needs
+  // unwrap/wrap permissions on the vault BEFORE create -- Azure
+  // validates both at deploy time.
+  //
+  // **ForceNew**: the block cannot be added, removed, or changed after
+  // create.
+  AzureMongoClusterCustomerManagedKey customer_managed_key = 15;
+
+  // Preview features enabled at create, e.g. "GeoReplicas" (required
+  // on a source cluster before a GeoReplica can be created from it).
+  // Azure owns the live catalog of feature names -- values are not
+  // validated beyond being non-empty and unique.
+  //
+  // **ForceNew**: changing the list destroys and recreates the
+  // cluster.
+  repeated string preview_features = 16 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // For "GeoReplica" mode: the source cluster this cluster replicates,
+  // by ARM ID. Reference an AzureMongoCluster output or pass a literal
+  // ID. The source must have the "GeoReplicas" preview feature
+  // enabled.
+  //
+  // **ForceNew**: changing this destroys and recreates the replica.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_server_id = 17 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMongoCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.mongo_cluster_id"
+  ];
+
+  // For "GeoReplica" mode: the source cluster's region (e.g.
+  // "eastus"). Azure never returns this property on reads.
+  //
+  // **ForceNew**: changing this destroys and recreates the replica.
+  string source_location = 18;
+
+  // For "PointInTimeRestore" mode: which cluster to clone and from
+  // which moment in its backup history.
+  //
+  // **ForceNew**: changing this destroys and recreates the clone.
+  AzureMongoClusterRestore restore = 19;
+
+  // Whether the cluster's Data API (REST access to the data plane) is
+  // enabled. Only settable on "Default"-mode clusters. Azure can only
+  // ENABLE it after create (the provider stages that automatically);
+  // turning it back OFF replaces the cluster. Default: false.
+  optional bool data_api_mode_enabled = 20;
+
+  // Whether the cluster accepts connections from the public internet.
+  // Set false to restrict access to private endpoints only. Default:
+  // true (Azure's default) -- the platform sends the value explicitly.
+  optional bool public_network_access_enabled = 21 [(dev.planton.shared.options.default) = "true"];
+
+  // Client IP firewall rules -- IPv4 ranges allowed to connect while
+  // public network access is enabled. Each rule is a named
+  // start/end-address range; use the same start and end for a single
+  // address, or 0.0.0.0 to 255.255.255.255 to allow all (including
+  // other Azure services). Rules update in place; names are the
+  // rules' identity, so they must be unique.
+  repeated AzureMongoClusterFirewallRule firewall_rules = 22;
+
+  // Tags to apply to the cluster, merged over the Planton-derived
+  // metadata tags (user values win on key conflicts).
+  map<string, string> tags = 23;
+
+  option (buf.validate.message).cel = {
+    id: "mongo_cluster_default_mode_requirements"
+    message: "Default-mode clusters (create_mode unset or 'Default') require administrator_username, version, compute_tier, storage_size_in_gb, shard_count, and high_availability_mode"
+    expression: "(has(this.create_mode) && this.create_mode != 'Default') || (this.administrator_username != '' && has(this.version) && has(this.compute_tier) && has(this.storage_size_in_gb) && has(this.shard_count) && has(this.high_availability_mode))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mongo_cluster_geo_replica_requirements"
+    message: "GeoReplica-mode clusters require source_server_id and source_location"
+    expression: "!(has(this.create_mode) && this.create_mode == 'GeoReplica') || (has(this.source_server_id) && this.source_location != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mongo_cluster_restore_requirements"
+    message: "PointInTimeRestore-mode clusters require the restore block"
+    expression: "!(has(this.create_mode) && this.create_mode == 'PointInTimeRestore') || has(this.restore)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mongo_cluster_admin_credentials_pair"
+    message: "administrator_username and administrator_password must be set together"
+    expression: "(this.administrator_username == '') == !(has(this.administrator_password) && (has(this.administrator_password.value) || has(this.administrator_password.value_from)))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mongo_cluster_source_location_pairs_with_source_server"
+    message: "source_location requires source_server_id"
+    expression: "this.source_location == '' || has(this.source_server_id)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mongo_cluster_burstable_tier_limits"
+    message: "The Free and M25 tiers cannot use ZoneRedundantPreferred high availability and cannot have more than one shard"
+    expression: "!(has(this.compute_tier) && (this.compute_tier == 'Free' || this.compute_tier == 'M25')) || ((!has(this.high_availability_mode) || this.high_availability_mode != 'ZoneRedundantPreferred') && (!has(this.shard_count) || this.shard_count <= 1))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mongo_cluster_data_api_default_mode_only"
+    message: "data_api_mode_enabled can only be set on Default-mode clusters"
+    expression: "!has(this.data_api_mode_enabled) || !has(this.create_mode) || this.create_mode == 'Default'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mongo_cluster_storage_type_requires_size"
+    message: "storage_type requires storage_size_in_gb"
+    expression: "!has(this.storage_type) || has(this.storage_size_in_gb)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mongo_cluster_cmk_requires_identity"
+    message: "customer_managed_key requires the unwrap identity to be listed in user_assigned_identity_ids"
+    expression: "!has(this.customer_managed_key) || this.user_assigned_identity_ids.size() > 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mongo_cluster_firewall_rule_names_unique"
+    message: "firewall_rules names must be unique -- the name is the rule's identity"
+    expression: "this.firewall_rules.map(r, r.name).unique()"
+  };
+}
+
+// Customer-managed-key encryption at rest.
+message AzureMongoClusterCustomerManagedKey {
+  // The Key Vault key that encrypts the cluster's data, by VERSIONLESS
+  // key identifier (https://{vault}.vault.azure.net/keys/{name} --
+  // Azure follows the key's rotation automatically; the provider
+  // rejects versioned identifiers). Reference an AzureKeyVaultKey
+  // output or pass a literal identifier.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+
+  // The user-assigned identity Azure authenticates as when unwrapping
+  // the key. It must be attached to the cluster
+  // (user_assigned_identity_ids) and hold unwrap/wrap permissions on
+  // the vault before the cluster is created.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+}
+
+// Point-in-time-restore source coordinates.
+message AzureMongoClusterRestore {
+  // The moment in the source cluster's backup history to clone from,
+  // as an RFC 3339 UTC timestamp (e.g. "2026-08-01T12:00:00Z").
+  string point_in_time_utc = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "mongo_cluster_restore_time_format"
+      message: "point_in_time_utc must be an RFC 3339 timestamp like 2026-08-01T12:00:00Z"
+      expression: "this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')"
+    }
+  ];
+
+  // The cluster to clone, by ARM ID. Reference an AzureMongoCluster
+  // output or pass a literal ID.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMongoCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.mongo_cluster_id"
+  ];
+}
+
+// One client-IP firewall rule on the cluster.
+message AzureMongoClusterFirewallRule {
+  // The rule's name -- 1-80 characters; starts with a letter or
+  // number; letters, numbers, dots, hyphens, and underscores. The
+  // name is the rule's identity: renaming replaces the rule.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "mongo_cluster_firewall_rule_name_format"
+      message: "Firewall rule names must be 1-80 characters, start with a letter or number, and contain only letters, numbers, dots, hyphens, and underscores"
+      expression: "this.matches('^[a-zA-Z0-9][a-zA-Z0-9.\\\\-_]{0,79}$')"
+    }
+  ];
+
+  // The first IPv4 address of the allowed range (inclusive), e.g.
+  // "203.0.113.0". Updatable in place.
+  string start_ip_address = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.ipv4 = true
+  ];
+
+  // The last IPv4 address of the allowed range (inclusive), e.g.
+  // "203.0.113.255". Use the start address again for a single-address
+  // rule. Updatable in place.
+  string end_ip_address = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.ipv4 = true
+  ];
+}
