@@ -7,8 +7,11 @@ Judgment that does not fit in field references.
 A Standard hub costs ~$0.25/hr (plus per-unit router capacity) the
 moment ARM accepts the create -- before anything is connected to it.
 Provisioning takes 15-30 minutes: ARM builds a managed router and
-brings its routing state to Provisioned. Plan maintenance windows
-around that, and never create hubs speculatively.
+brings its routing state to Provisioned (measured live: ~17-20 minutes
+for a plain hub). Composed children stretch the deploy further -- a
+route map alone ran ~17 minutes live, because ARM re-polls the router
+state around each child. Deletion runs 11-15 minutes. Plan maintenance
+windows around that, and never create hubs speculatively.
 
 ## Size the address prefix once, correctly
 

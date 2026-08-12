@@ -7,8 +7,8 @@ Judgment that does not fit in field references.
 Each scale unit costs ~$0.42/hr the moment ARM accepts the create --
 roughly $300/month per unit -- whether or not a single connection
 exists. Create the gateway when a circuit is genuinely imminent, not
-when the hub is. Deleting and recreating later costs only the ~30
-minutes of provisioning time.
+when the hub is. Deleting and recreating later costs only the
+provisioning time (measured live: create ~27 minutes, delete ~13).
 
 ## Scale units are a floor, not a size
 

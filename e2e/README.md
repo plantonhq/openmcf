@@ -459,6 +459,45 @@ DEPENDENCIES-UP), and note the peering's own DELETE runs ~7-8 minutes.
 The circuit-family component profiles carry `timeout_minutes: 45` for
 exactly this class.
 
+### Long-running Azure components (Virtual WAN hubs)
+
+A Virtual WAN hub create is dominated by its managed router reaching a
+Provisioned routing state: measured live (Standard hub, eastus/eastus2),
+the create ran **17-35 minutes** (plain fixture hub 17-20m; a hub whose
+scenario composes a route map ran ~35m -- the route-map child ALONE ran
+**~17 minutes**, because the provider polls the router state before and
+after the child create) and the delete **11-15 minutes**. A full
+single-engine hub lane totals **~50 minutes**; budget `-timeout=120m`
+per engine. Budget the SAME hub cycle inside any lane whose prerequisite
+chain deploys the fixture hub -- the hub-connection, ExpressRoute-gateway,
+and vWAN VPN-gateway families all pay ~17-20m up and ~13m down for the
+fixture before their own resource starts. One hub per region per WAN:
+scenario hubs must live in a different region than the fixture hub
+(eastus2 vs eastus in this repo) so overlapping lanes can never collide.
+
+### Long-running Azure components (ExpressRoute gateways in vWAN hubs)
+
+An ExpressRoute gateway in a Virtual WAN hub is the vWAN family's second
+slow class: measured live (one scale unit, eastus), the create ran
+**~27 minutes** and the delete **~13 minutes**, and the gateway bills
+(~$0.42/hr per scale unit) from creation. Its lane also pays the full
+fixture-hub cycle first (see above) -- a single-engine lane totals
+**~70-75 minutes**; budget `-timeout=180m` per engine.
+
+### A dirty `e2e/profile.yaml` on a shared checkout is a LIVE proof lane's state
+
+The proof workflow flips a component's profile `pending_proof` -> `green`
+immediately before its lanes and keeps the flip UNCOMMITTED until the
+session's wrap-up commit -- so on a checkout shared by concurrent agent
+sessions, an uncommitted `status: green` on a pending-proof component is
+the signature of a proof lane running RIGHT NOW, not stray drift. A
+concurrent session that discards it (observed live: an authoring session's
+wrap-up reset the flip mid-lane) makes the proof session's next lane
+silently skip with "profile status is pending_proof". Before discarding
+any dirty profile you did not edit, check for a live proof session; the
+proof session guards itself by re-checking the profile status right before
+each lane launch.
+
 ### Offer-restricted services on free/PAYG subscriptions (probe, don't roulette)
 
 Some Azure database services restrict provisioning PER REGION on free-tier
