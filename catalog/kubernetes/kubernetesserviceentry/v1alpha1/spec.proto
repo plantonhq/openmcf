@@ -253,7 +253,7 @@ message KubernetesServiceEntryEndpoint {
     (buf.validate.field).cel = {
       id: "service_entry_endpoint.uds_absolute_or_abstract"
       message: "a unix:// endpoint address must be an absolute path or an abstract socket (@)"
-      expression: "!this.startsWith('unix://') || this.substring(7, 8) == '/' || this.substring(7, 8) == '@'"
+      expression: "!this.startsWith('unix://') || this.matches('^unix://[/@]')"
     },
     (buf.validate.field).cel = {
       id: "service_entry_endpoint.uds_not_a_dir"

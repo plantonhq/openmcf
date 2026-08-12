@@ -677,14 +677,14 @@ const file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1dservice_connect_namespace_arn\x18\b \x01(\tR\x1aserviceConnectNamespaceArn:\x88\x06\xbaH\x84\x06\x1a\x83\x03\n" +
 	"+default_strategy_names_associated_providers\x12\xaa\x01every default_capacity_provider_strategy entry must name an associated provider -- a capacity_providers built-in (FARGATE/FARGATE_SPOT) or an ec2_capacity_providers entry\x1a\xa6\x01this.default_capacity_provider_strategy.all(s, s.capacity_provider in this.capacity_providers || this.ec2_capacity_providers.exists(p, p.name == s.capacity_provider))\x1a\xb4\x01\n" +
 	"\x1cdefault_strategy_single_base\x12Ionly one default_capacity_provider_strategy entry may set a non-zero base\x1aIthis.default_capacity_provider_strategy.filter(s, s.base > 0).size() <= 1\x1a\xc4\x01\n" +
-	"\"ec2_capacity_provider_names_unique\x125ec2_capacity_providers entries must have unique names\x1agthis.ec2_capacity_providers.all(p, this.ec2_capacity_providers.filter(q, q.name == p.name).size() == 1)\"\xdc\b\n" +
+	"\"ec2_capacity_provider_names_unique\x125ec2_capacity_providers entries must have unique names\x1agthis.ec2_capacity_providers.all(p, this.ec2_capacity_providers.filter(q, q.name == p.name).size() == 1)\"\x80\b\n" +
 	" AwsEcsClusterEc2CapacityProvider\x124\n" +
 	"\x04name\x18\x01 \x01(\tB \xbaH\x1d\xc8\x01\x01r\x182\x16^[a-zA-Z0-9_-]{1,255}$R\x04name\x12\x9c\x01\n" +
 	"\x16auto_scaling_group_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\x8b\b\x92\xd4a$status.outputs.autoscaling_group_arnR\x13autoScalingGroupArn\x12l\n" +
 	"\x0fmanaged_scaling\x18\x03 \x01(\v2C.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedScalingR\x0emanagedScaling\x12D\n" +
 	"\x1emanaged_termination_protection\x18\x04 \x01(\tR\x1cmanagedTerminationProtection\x12)\n" +
-	"\x10managed_draining\x18\x05 \x01(\tR\x0fmanagedDraining:\x83\x05\xbaH\xff\x04\x1a\xf6\x01\n" +
-	"\x11name_not_reserved\x12Wcapacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)\x1a\x87\x01!(this.name.lowerAscii().startsWith('aws') || this.name.lowerAscii().startsWith('ecs') || this.name.lowerAscii().startsWith('fargate'))\x1a\xdc\x01\n" +
+	"\x10managed_draining\x18\x05 \x01(\tR\x0fmanagedDraining:\xa7\x04\xbaH\xa3\x04\x1a\x9a\x01\n" +
+	"\x11name_not_reserved\x12Wcapacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)\x1a,!this.name.matches('^(?i)(aws|ecs|fargate)')\x1a\xdc\x01\n" +
 	"$managed_termination_protection_valid\x12Gmanaged_termination_protection must be 'ENABLED' or 'DISABLED' when set\x1akthis.managed_termination_protection == '' || this.managed_termination_protection in ['ENABLED', 'DISABLED']\x1a\xa4\x01\n" +
 	"\x16managed_draining_valid\x129managed_draining must be 'ENABLED' or 'DISABLED' when set\x1aOthis.managed_draining == '' || this.managed_draining in ['ENABLED', 'DISABLED']\"\x94\v\n" +
 	"\x1bAwsEcsClusterManagedScaling\x12\x16\n" +

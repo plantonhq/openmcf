@@ -1595,7 +1595,7 @@ const file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15AwsDynamodbProjection\x125\n" +
 	"\x04type\x18\x01 \x01(\tB!\xbaH\x1e\xc8\x01\x01r\x19R\x03ALLR\tKEYS_ONLYR\aINCLUDER\x04type\x126\n" +
 	"\x12non_key_attributes\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x10nonKeyAttributes:\xe5\x01\xbaH\xe1\x01\x1a\xde\x01\n" +
-	"\x1binclude_requires_attributes\x12\\non_key_attributes must be set when projection type is INCLUDE and must stay empty otherwise\x1aathis.type == 'INCLUDE' ? this.non_key_attributes.size() > 0 : this.non_key_attributes.size() == 0\"\xb5\a\n" +
+	"\x1binclude_requires_attributes\x12\\non_key_attributes must be set when projection type is INCLUDE and must stay empty otherwise\x1aathis.type == 'INCLUDE' ? this.non_key_attributes.size() > 0 : this.non_key_attributes.size() == 0\"\xd6\a\n" +
 	"\x1fAwsDynamodbGlobalSecondaryIndex\x12\x1b\n" +
 	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12j\n" +
 	"\n" +
@@ -1605,8 +1605,8 @@ const file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDesc = "" +
 	"projection\x12}\n" +
 	"\x16provisioned_throughput\x18\x04 \x01(\v2F.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbProvisionedThroughputR\x15provisionedThroughput\x12u\n" +
 	"\x14on_demand_throughput\x18\x05 \x01(\v2C.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbOnDemandThroughputR\x12onDemandThroughput\x12h\n" +
-	"\x0fwarm_throughput\x18\x06 \x01(\v2?.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbWarmThroughputR\x0ewarmThroughput:\xc3\x02\xbaH\xbf\x02\x1a\xbc\x02\n" +
-	"\x14gsi_key_schema_shape\x12}GSI key_schema must start with a HASH element and carry 1-4 HASH elements (all before any RANGE) and at most 4 RANGE elements\x1a\xa4\x01this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() <= 4 && this.key_schema.filter(k, k.key_type == 'RANGE').size() <= 4\"\xc8\x01\n" +
+	"\x0fwarm_throughput\x18\x06 \x01(\v2?.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbWarmThroughputR\x0ewarmThroughput:\xe4\x02\xbaH\xe0\x02\x1a\xdd\x02\n" +
+	"\x14gsi_key_schema_shape\x12}GSI key_schema must start with a HASH element and carry 1-4 HASH elements (all before any RANGE) and at most 4 RANGE elements\x1a\xc5\x01this.key_schema.size() == 0 || (this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() <= 4 && this.key_schema.filter(k, k.key_type == 'RANGE').size() <= 4)\"\xc8\x01\n" +
 	"\x1eAwsDynamodbLocalSecondaryIndex\x12\x1b\n" +
 	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12$\n" +
 	"\trange_key\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\brangeKey\x12c\n" +

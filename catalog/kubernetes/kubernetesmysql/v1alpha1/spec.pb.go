@@ -2079,12 +2079,12 @@ const file_catalog_kubernetes_kubernetesmysql_v1alpha1_spec_proto_rawDesc = "" +
 	"access_key\x18\x05 \x01(\tB\n" +
 	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\taccessKey\"\x84\x01\n" +
 	"\x19KubernetesMysqlPvcStorage\x12g\n" +
-	"\x06volume\x18\x01 \x01(\v2G.dev.planton.kubernetes.kubernetesmysql.v1alpha1.KubernetesMysqlStorageB\x06\xbaH\x03\xc8\x01\x01R\x06volume\"\xe1\x04\n" +
+	"\x06volume\x18\x01 \x01(\v2G.dev.planton.kubernetes.kubernetesmysql.v1alpha1.KubernetesMysqlStorageB\x06\xbaH\x03\xc8\x01\x01R\x06volume\"\xda\x04\n" +
 	"\x1dKubernetesMysqlBackupSchedule\x12\xbd\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xa8\x01\xbaH\xa4\x01\xba\x01\x9d\x01\n" +
-	"!spec.backup.schedules.name_format\x12Gschedule name must be a lowercase DNS label (letters, numbers, hyphens)\x1a/this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')\xc8\x01\x01R\x04name\x12\xd2\x01\n" +
-	"\bschedule\x18\x02 \x01(\tB\xb5\x01\xbaH\xb1\x01\xba\x01\xaa\x01\n" +
-	"&spec.backup.schedules.cron_five_fields\x12Pschedule is a five-field cron expression — e.g. '0 2 * * *' for daily at 02:00\x1a.this.split(' ').filter(f, f != '').size() == 5\xc8\x01\x01R\bschedule\x12)\n" +
+	"!spec.backup.schedules.name_format\x12Gschedule name must be a lowercase DNS label (letters, numbers, hyphens)\x1a/this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')\xc8\x01\x01R\x04name\x12\xcb\x01\n" +
+	"\bschedule\x18\x02 \x01(\tB\xae\x01\xbaH\xaa\x01\xba\x01\xa3\x01\n" +
+	"&spec.backup.schedules.cron_five_fields\x12Pschedule is a five-field cron expression — e.g. '0 2 * * *' for daily at 02:00\x1a'this.matches('^ *[^ ]+( +[^ ]+){4} *$')\xc8\x01\x01R\bschedule\x12)\n" +
 	"\fstorage_name\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vstorageName\x12 \n" +
 	"\x04keep\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\x04keep\x88\x01\x01\x12=\n" +
 	"\x13delete_from_storage\x18\x05 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x11deleteFromStorage\x88\x01\x01B\a\n" +

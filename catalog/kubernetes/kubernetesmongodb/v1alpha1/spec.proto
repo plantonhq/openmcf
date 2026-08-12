@@ -759,7 +759,7 @@ message KubernetesMongodbBackupTask {
     (buf.validate.field).cel = {
       id: "spec.backup.tasks.cron_five_fields"
       message: "schedule is a five-field cron expression — e.g. '0 2 * * *' for daily at 02:00"
-      expression: "this.split(' ').filter(f, f != '').size() == 5"
+      expression: "this.matches('^ *[^ ]+( +[^ ]+){4} *$')"
     }
   ];
 

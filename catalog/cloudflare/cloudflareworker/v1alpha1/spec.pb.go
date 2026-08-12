@@ -1810,11 +1810,11 @@ const file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDesc = "" 
 	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\"\xb1\x01\n" +
 	"\x15CloudflareWorkerRoute\x12v\n" +
 	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\x12 \n" +
-	"\apattern\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\apattern\"\xe2\x01\n" +
+	"\apattern\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\apattern\"\xe6\x01\n" +
 	"\x1dCloudflareWorkerObservability\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\xa6\x01\n" +
-	"\x12head_sampling_rate\x18\x02 \x01(\x01Bx\xbaHu\xba\x01r\n" +
-	",observability_head_sampling_rate.valid_range\x12*head_sampling_rate must be between 0 and 1\x1a\x16this >= 0 && this <= 1R\x10headSamplingRate\"\x8c\x01\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\xaa\x01\n" +
+	"\x12head_sampling_rate\x18\x02 \x01(\x01B|\xbaHy\xba\x01v\n" +
+	",observability_head_sampling_rate.valid_range\x12*head_sampling_rate must be between 0 and 1\x1a\x1athis >= 0.0 && this <= 1.0R\x10headSamplingRate\"\x8c\x01\n" +
 	"\x19CloudflareWorkerPlacement\x12o\n" +
 	"\x04mode\x18\x01 \x01(\tB[\xbaHX\xba\x01U\n" +
 	"\x14placement_mode.valid\x12\x1eplacement mode must be \"smart\"\x1a\x1dthis == '' || this == 'smart'R\x04mode\"\x8a\x02\n" +

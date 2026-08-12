@@ -141,6 +141,15 @@ protos: buf-lint buf-fmt proto-tools
 	@printf '# gazelle:ignore\njava_library(\n    name = "java",\n    srcs = glob(["**/*.java"]),\n    visibility = ["//visibility:public"],\n    deps = [\n        "@maven//:build_buf_protovalidate",\n        "@maven//:com_google_guava_guava",\n        "@maven//:com_google_protobuf_protobuf_java",\n        "@maven//:io_grpc_grpc_api",\n        "@maven//:io_grpc_grpc_protobuf",\n        "@maven//:io_grpc_grpc_stub",\n        "@maven//:javax_annotation_javax_annotation_api",\n    ],\n)\n' > generated/stubs/java/BUILD.bazel
 	@echo "Verifying generated Java stubs compile..."
 	${BAZEL} build ${BAZEL_REMOTE_FLAGS} //generated/stubs/java:java
+	# Rule-engine conformance gate: every CEL validation rule must COMPILE on
+	# protovalidate-java (the platform control plane's engine, and the
+	# strictest of the consumer engines). Walks every message descriptor --
+	# rules compile lazily per validated type, so anything narrower silently
+	# skips nested types (a rule the Java engine could not evaluate once
+	# shipped in a release and emptied every fresh local instance's chart
+	# catalog). See hack/javagate/ProtovalidateConformanceGate.java.
+	@echo "Verifying every CEL rule compiles on protovalidate-java..."
+	${BAZEL} test ${BAZEL_REMOTE_FLAGS} //hack/javagate:protovalidate_conformance_gate
 	${BAZEL} run //:gazelle
 
 .PHONY: build-optional-linter-plugin

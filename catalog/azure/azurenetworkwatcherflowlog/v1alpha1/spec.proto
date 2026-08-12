@@ -133,7 +133,7 @@ message AzureNetworkWatcherFlowLogSpec {
   option (buf.validate.message).cel = {
     id: "nsg_targets_are_retired"
     message: "Azure no longer accepts NEW NSG-targeted flow logs (retired 2025-06-30; NSG flow logs retire fully 2027-09-30) -- target the virtual network, subnet, or network interface instead"
-    expression: "!has(this.target_resource_id.value) || !this.target_resource_id.value.lowerAscii().contains('/networksecuritygroups/')"
+    expression: "!has(this.target_resource_id.value) || !this.target_resource_id.value.matches('(?i)/networksecuritygroups/')"
   };
   // A self-managed watcher is addressed by name AND resource group --
   // half an address silently lands on the wrong watcher.

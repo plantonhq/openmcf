@@ -691,7 +691,7 @@ var File_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto protorefl
 
 const file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=catalog/cloudflare/cloudflareloadbalancer/v1alpha1/spec.proto\x126dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x81\x11\n" +
+	"=catalog/cloudflare/cloudflareloadbalancer/v1alpha1/spec.proto\x126dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x86\x11\n" +
 	"\x1aCloudflareLoadBalancerSpec\x12\"\n" +
 	"\bhostname\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bhostname\x12r\n" +
 	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12'\n" +
@@ -702,11 +702,11 @@ const file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDesc
 	"\rfallback_pool\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xe36\x92\xd4a\x16status.outputs.pool_idR\ffallbackPool\x12 \n" +
 	"\vdescription\x18\n" +
 	" \x01(\tR\vdescription\x12'\n" +
-	"\aenabled\x18\v \x01(\bB\b\x92\xa6\x1d\x04trueH\x01R\aenabled\x88\x01\x01\x12q\n" +
-	"\x03ttl\x18\f \x01(\x01B_\xbaH\\\xba\x01Y\n" +
-	"\x13lb.ttl_non_negative\x127ttl must be 0 (default) or a positive number of seconds\x1a\tthis >= 0R\x03ttl\x12\xb4\x01\n" +
-	"\x14session_affinity_ttl\x18\r \x01(\x01B\x81\x01\xbaH~\xba\x01{\n" +
-	"$lb.session_affinity_ttl_non_negative\x12Hsession_affinity_ttl must be 0 (default) or a positive number of seconds\x1a\tthis >= 0R\x12sessionAffinityTtl\x12\xa7\x01\n" +
+	"\aenabled\x18\v \x01(\bB\b\x92\xa6\x1d\x04trueH\x01R\aenabled\x88\x01\x01\x12s\n" +
+	"\x03ttl\x18\f \x01(\x01Ba\xbaH^\xba\x01[\n" +
+	"\x13lb.ttl_non_negative\x127ttl must be 0 (default) or a positive number of seconds\x1a\vthis >= 0.0R\x03ttl\x12\xb7\x01\n" +
+	"\x14session_affinity_ttl\x18\r \x01(\x01B\x84\x01\xbaH\x80\x01\xba\x01}\n" +
+	"$lb.session_affinity_ttl_non_negative\x12Hsession_affinity_ttl must be 0 (default) or a positive number of seconds\x1a\vthis >= 0.0R\x12sessionAffinityTtl\x12\xa7\x01\n" +
 	"\x1bsession_affinity_attributes\x18\x0e \x01(\v2g.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSessionAffinityAttributesR\x19sessionAffinityAttributes\x12y\n" +
 	"\fregion_pools\x18\x0f \x03(\v2V.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPoolsR\vregionPools\x12{\n" +
 	"\rcountry_pools\x18\x10 \x03(\v2V.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPoolsR\fcountryPools\x12s\n" +
@@ -720,10 +720,10 @@ const file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDesc
 	"\b_enabledJ\x04\b\x03\x10\x04J\x04\b\x05\x10\x06J\x04\b\x15\x10\x16R\aoriginsR\x11health_probe_pathR\x05rules\"\xb4\x01\n" +
 	"\x1eCloudflareLoadBalancerGeoPools\x12\x1a\n" +
 	"\x04code\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04code\x12v\n" +
-	"\bpool_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xe36\x92\xd4a\x16status.outputs.pool_idR\apoolIds\"\xa3\x06\n" +
-	"/CloudflareLoadBalancerSessionAffinityAttributes\x12\x93\x01\n" +
-	"\x0edrain_duration\x18\x01 \x01(\x01Bl\xbaHi\xba\x01f\n" +
-	"\x1fsaa.drain_duration_non_negative\x128drain_duration must be 0 or a positive number of seconds\x1a\tthis >= 0R\rdrainDuration\x12\x18\n" +
+	"\bpool_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xe36\x92\xd4a\x16status.outputs.pool_idR\apoolIds\"\xa5\x06\n" +
+	"/CloudflareLoadBalancerSessionAffinityAttributes\x12\x95\x01\n" +
+	"\x0edrain_duration\x18\x01 \x01(\x01Bn\xbaHk\xba\x01h\n" +
+	"\x1fsaa.drain_duration_non_negative\x128drain_duration must be 0 or a positive number of seconds\x1a\vthis >= 0.0R\rdrainDuration\x12\x18\n" +
 	"\aheaders\x18\x02 \x03(\tR\aheaders\x12.\n" +
 	"\x13require_all_headers\x18\x03 \x01(\bR\x11requireAllHeaders\x12\xab\x01\n" +
 	"\bsamesite\x18\x04 \x01(\tB\x8e\x01\xbaH\x8a\x01\xba\x01\x86\x01\n" +
@@ -739,10 +739,10 @@ const file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDesc
 	"\rls.mode_valid\x12#mode must be \"pop\" or \"resolver_ip\"\x1a,this == '' || this in ['pop', 'resolver_ip']R\x04mode\x12\xbd\x01\n" +
 	"\n" +
 	"prefer_ecs\x18\x02 \x01(\tB\x9d\x01\xbaH\x99\x01\xba\x01\x95\x01\n" +
-	"\x13ls.prefer_ecs_valid\x12?prefer_ecs must be one of \"always\", \"never\", \"proximity\", \"geo\"\x1a=this == '' || this in ['always', 'never', 'proximity', 'geo']R\tpreferEcs\"\x82\x03\n" +
-	"$CloudflareLoadBalancerRandomSteering\x12\x86\x01\n" +
-	"\x0edefault_weight\x18\x01 \x01(\x01B_\xbaH\\\xba\x01Y\n" +
-	"\x17rs.default_weight_range\x12&default_weight must be between 0 and 1\x1a\x16this >= 0 && this <= 1R\rdefaultWeight\x12\x90\x01\n" +
+	"\x13ls.prefer_ecs_valid\x12?prefer_ecs must be one of \"always\", \"never\", \"proximity\", \"geo\"\x1a=this == '' || this in ['always', 'never', 'proximity', 'geo']R\tpreferEcs\"\x86\x03\n" +
+	"$CloudflareLoadBalancerRandomSteering\x12\x8a\x01\n" +
+	"\x0edefault_weight\x18\x01 \x01(\x01Bc\xbaH`\xba\x01]\n" +
+	"\x17rs.default_weight_range\x12&default_weight must be between 0 and 1\x1a\x1athis >= 0.0 && this <= 1.0R\rdefaultWeight\x12\x90\x01\n" +
 	"\fpool_weights\x18\x02 \x03(\v2m.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteering.PoolWeightsEntryR\vpoolWeights\x1a>\n" +
 	"\x10PoolWeightsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +

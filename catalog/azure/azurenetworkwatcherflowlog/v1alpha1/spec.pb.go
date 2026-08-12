@@ -373,7 +373,7 @@ var File_catalog_azure_azurenetworkwatcherflowlog_v1alpha1_spec_proto protorefle
 
 const file_catalog_azure_azurenetworkwatcherflowlog_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<catalog/azure/azurenetworkwatcherflowlog/v1alpha1/spec.proto\x125dev.planton.azure.azurenetworkwatcherflowlog.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe1\x0f\n" +
+	"<catalog/azure/azurenetworkwatcherflowlog/v1alpha1/spec.proto\x125dev.planton.azure.azurenetworkwatcherflowlog.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd7\x0f\n" +
 	"\x1eAzureNetworkWatcherFlowLogSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\xae\x02\n" +
@@ -391,8 +391,8 @@ const file_catalog_azure_azurenetworkwatcherflowlog_v1alpha1_spec_proto_rawDesc 
 	"\x04tags\x18\v \x03(\v2_.dev.planton.azure.azurenetworkwatcherflowlog.v1alpha1.AzureNetworkWatcherFlowLogSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xcc\x04\xbaH\xc8\x04\x1a\xc6\x02\n" +
-	"\x17nsg_targets_are_retired\x12\xb2\x01Azure no longer accepts NEW NSG-targeted flow logs (retired 2025-06-30; NSG flow logs retire fully 2027-09-30) -- target the virtual network, subnet, or network interface instead\x1av!has(this.target_resource_id.value) || !this.target_resource_id.value.lowerAscii().contains('/networksecuritygroups/')\x1a\xfc\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc2\x04\xbaH\xbe\x04\x1a\xbc\x02\n" +
+	"\x17nsg_targets_are_retired\x12\xb2\x01Azure no longer accepts NEW NSG-targeted flow logs (retired 2025-06-30; NSG flow logs retire fully 2027-09-30) -- target the virtual network, subnet, or network interface instead\x1al!has(this.target_resource_id.value) || !this.target_resource_id.value.matches('(?i)/networksecuritygroups/')\x1a\xfc\x01\n" +
 	"#custom_watcher_addressed_completely\x12\x84\x01network_watcher_name and network_watcher_resource_group are set together (leave BOTH unset to use the region's auto-created watcher)\x1aN(this.network_watcher_name == '') == !has(this.network_watcher_resource_group)B\n" +
 	"\n" +
 	"\b_enabledB\n" +

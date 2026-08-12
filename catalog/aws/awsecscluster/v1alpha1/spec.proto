@@ -174,7 +174,7 @@ message AwsEcsClusterEc2CapacityProvider {
   option (buf.validate.message).cel = {
     id: "name_not_reserved"
     message: "capacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)"
-    expression: "!(this.name.lowerAscii().startsWith('aws') || this.name.lowerAscii().startsWith('ecs') || this.name.lowerAscii().startsWith('fargate'))"
+    expression: "!this.name.matches('^(?i)(aws|ecs|fargate)')"
   };
 
   option (buf.validate.message).cel = {

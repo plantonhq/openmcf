@@ -643,7 +643,7 @@ var File_catalog_cloudflare_cloudflareloadbalancerpool_v1alpha1_spec_proto proto
 
 const file_catalog_cloudflare_cloudflareloadbalancerpool_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Acatalog/cloudflare/cloudflareloadbalancerpool/v1alpha1/spec.proto\x12:dev.planton.cloudflare.cloudflareloadbalancerpool.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x81\f\n" +
+	"Acatalog/cloudflare/cloudflareloadbalancerpool/v1alpha1/spec.proto\x12:dev.planton.cloudflare.cloudflareloadbalancerpool.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x8a\f\n" +
 	"\x1eCloudflareLoadBalancerPoolSpec\x12=\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x11^[0-9a-fA-F]{32}$\x98\x01 R\taccountId\x122\n" +
@@ -655,12 +655,12 @@ const file_catalog_cloudflare_cloudflareloadbalancerpool_v1alpha1_spec_proto_raw
 	"\vdescription\x18\a \x01(\tR\vdescription\x12'\n" +
 	"\aenabled\x18\b \x01(\bB\b\x92\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12\x9c\x01\n" +
 	"\x0fminimum_origins\x18\t \x01(\x05Bs\xbaHk\xba\x01h\n" +
-	"!pool.minimum_origins_non_negative\x128minimum_origins must be 0 (default) or a positive number\x1a\tthis >= 0\x92\xa6\x1d\x011R\x0eminimumOrigins\x12|\n" +
+	"!pool.minimum_origins_non_negative\x128minimum_origins must be 0 (default) or a positive number\x1a\tthis >= 0\x92\xa6\x1d\x011R\x0eminimumOrigins\x12\x80\x01\n" +
 	"\blatitude\x18\n" +
-	" \x01(\x01B[\xbaHX\xba\x01U\n" +
-	"\x13pool.latitude_range\x12#latitude must be between -90 and 90\x1a\x19this >= -90 && this <= 90H\x01R\blatitude\x88\x01\x01\x12\x84\x01\n" +
-	"\tlongitude\x18\v \x01(\x01Ba\xbaH^\xba\x01[\n" +
-	"\x14pool.longitude_range\x12&longitude must be between -180 and 180\x1a\x1bthis >= -180 && this <= 180H\x02R\tlongitude\x88\x01\x01\x12\x87\x01\n" +
+	" \x01(\x01B_\xbaH\\\xba\x01Y\n" +
+	"\x13pool.latitude_range\x12#latitude must be between -90 and 90\x1a\x1dthis >= -90.0 && this <= 90.0H\x01R\blatitude\x88\x01\x01\x12\x88\x01\n" +
+	"\tlongitude\x18\v \x01(\x01Be\xbaHb\xba\x01_\n" +
+	"\x14pool.longitude_range\x12&longitude must be between -180 and 180\x1a\x1fthis >= -180.0 && this <= 180.0H\x02R\tlongitude\x88\x01\x01\x12\x87\x01\n" +
 	"\rload_shedding\x18\f \x01(\v2b.dev.planton.cloudflare.cloudflareloadbalancerpool.v1alpha1.CloudflareLoadBalancerPoolLoadSheddingR\floadShedding\x12\x8d\x01\n" +
 	"\x0forigin_steering\x18\r \x01(\v2d.dev.planton.cloudflare.cloudflareloadbalancerpool.v1alpha1.CloudflareLoadBalancerPoolOriginSteeringR\x0eoriginSteering\x12\x99\x01\n" +
 	"\x13notification_filter\x18\x0e \x01(\v2h.dev.planton.cloudflare.cloudflareloadbalancerpool.v1alpha1.CloudflareLoadBalancerPoolNotificationFilterR\x12notificationFilterB\n" +
@@ -668,12 +668,12 @@ const file_catalog_cloudflare_cloudflareloadbalancerpool_v1alpha1_spec_proto_raw
 	"\b_enabledB\v\n" +
 	"\t_latitudeB\f\n" +
 	"\n" +
-	"_longitudeJ\x04\b\x05\x10\x06R\rmonitor_group\"\xf5\x04\n" +
+	"_longitudeJ\x04\b\x05\x10\x06R\rmonitor_group\"\xf9\x04\n" +
 	" CloudflareLoadBalancerPoolOrigin\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12T\n" +
-	"\aaddress\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\aaddress\x12u\n" +
-	"\x06weight\x18\x03 \x01(\x01BX\xbaHP\xba\x01M\n" +
-	"\x13origin.weight_range\x12\x1eweight must be between 0 and 1\x1a\x16this >= 0 && this <= 1\x92\xa6\x1d\x011H\x00R\x06weight\x88\x01\x01\x12'\n" +
+	"\aaddress\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\aaddress\x12y\n" +
+	"\x06weight\x18\x03 \x01(\x01B\\\xbaHT\xba\x01Q\n" +
+	"\x13origin.weight_range\x12\x1eweight must be between 0 and 1\x1a\x1athis >= 0.0 && this <= 1.0\x92\xa6\x1d\x011H\x00R\x06weight\x88\x01\x01\x12'\n" +
 	"\aenabled\x18\x04 \x01(\bB\b\x92\xa6\x1d\x04trueH\x01R\aenabled\x88\x01\x01\x12\x92\x01\n" +
 	"\x04port\x18\x05 \x01(\x05B~\xbaH{\xba\x01x\n" +
 	"\x11origin.port_range\x128port must be 0 (protocol default) or between 1 and 65535\x1a)this == 0 || (this >= 1 && this <= 65535)R\x04port\x12\x1f\n" +
@@ -684,14 +684,14 @@ const file_catalog_cloudflare_cloudflareloadbalancerpool_v1alpha1_spec_proto_raw
 	"\a_weightB\n" +
 	"\n" +
 	"\b_enabledB\x10\n" +
-	"\x0e_flatten_cname\"\x9a\x05\n" +
-	"&CloudflareLoadBalancerPoolLoadShedding\x12\x99\x01\n" +
-	"\x0fdefault_percent\x18\x01 \x01(\x01Bp\xbaHm\xba\x01j\n" +
-	"#load_shedding.default_percent_range\x12)default_percent must be between 0 and 100\x1a\x18this >= 0 && this <= 100R\x0edefaultPercent\x12\xa6\x01\n" +
+	"\x0e_flatten_cname\"\xa2\x05\n" +
+	"&CloudflareLoadBalancerPoolLoadShedding\x12\x9d\x01\n" +
+	"\x0fdefault_percent\x18\x01 \x01(\x01Bt\xbaHq\xba\x01n\n" +
+	"#load_shedding.default_percent_range\x12)default_percent must be between 0 and 100\x1a\x1cthis >= 0.0 && this <= 100.0R\x0edefaultPercent\x12\xa6\x01\n" +
 	"\x0edefault_policy\x18\x02 \x01(\tB\x7f\xbaH|\xba\x01y\n" +
-	"\"load_shedding.default_policy_valid\x12)default_policy must be \"random\" or \"hash\"\x1a(this == '' || this in ['random', 'hash']R\rdefaultPolicy\x12\x99\x01\n" +
-	"\x0fsession_percent\x18\x03 \x01(\x01Bp\xbaHm\xba\x01j\n" +
-	"#load_shedding.session_percent_range\x12)session_percent must be between 0 and 100\x1a\x18this >= 0 && this <= 100R\x0esessionPercent\x12\x8e\x01\n" +
+	"\"load_shedding.default_policy_valid\x12)default_policy must be \"random\" or \"hash\"\x1a(this == '' || this in ['random', 'hash']R\rdefaultPolicy\x12\x9d\x01\n" +
+	"\x0fsession_percent\x18\x03 \x01(\x01Bt\xbaHq\xba\x01n\n" +
+	"#load_shedding.session_percent_range\x12)session_percent must be between 0 and 100\x1a\x1cthis >= 0.0 && this <= 100.0R\x0esessionPercent\x12\x8e\x01\n" +
 	"\x0esession_policy\x18\x04 \x01(\tBg\xbaHd\xba\x01a\n" +
 	"\"load_shedding.session_policy_valid\x12\x1dsession_policy must be \"hash\"\x1a\x1cthis == '' || this == 'hash'R\rsessionPolicy\"\xa4\x02\n" +
 	"(CloudflareLoadBalancerPoolOriginSteering\x12\xf7\x01\n" +

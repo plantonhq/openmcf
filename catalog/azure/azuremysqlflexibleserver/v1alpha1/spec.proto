@@ -106,7 +106,7 @@ message AzureMysqlFlexibleServerSpec {
     (buf.validate.field).cel = {
       id: "mysql_admin_login_format"
       message: "administrator_login must contain only letters, digits, and underscores, and cannot be azure_superuser, admin, administrator, root, guest, or public"
-      expression: "this == '' || (this.matches('^[a-zA-Z0-9_]+$') && !(this.lowerAscii() in ['azure_superuser', 'admin', 'administrator', 'root', 'guest', 'public']))"
+      expression: "this == '' || (this.matches('^[a-zA-Z0-9_]+$') && !this.matches('^(?i)(azure_superuser|admin|administrator|root|guest|public)$'))"
     }
   ];
 

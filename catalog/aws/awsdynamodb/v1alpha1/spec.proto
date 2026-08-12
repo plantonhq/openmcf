@@ -448,7 +448,11 @@ message AwsDynamodbGlobalSecondaryIndex {
   option (buf.validate.message).cel = {
     id: "gsi_key_schema_shape"
     message: "GSI key_schema must start with a HASH element and carry 1-4 HASH elements (all before any RANGE) and at most 4 RANGE elements"
-    expression: "this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() <= 4 && this.key_schema.filter(k, k.key_type == 'RANGE').size() <= 4"
+    // size() guard first: indexing [0] on an empty list is an EVALUATION
+    // error on every engine, which aborts the whole document's validation
+    // instead of reporting this rule. Emptiness itself is the sibling
+    // min_items rule's job.
+    expression: "this.key_schema.size() == 0 || (this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() <= 4 && this.key_schema.filter(k, k.key_type == 'RANGE').size() <= 4)"
   };
 }
 

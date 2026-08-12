@@ -273,10 +273,10 @@ const file_catalog_azure_azurednszone_v1alpha1_spec_proto_rawDesc = "" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x9a\x02\xbaH\x96\x02\x1a\x93\x02\n" +
-	")azure_dns_zone_name_plus_soa_email_length\x12\x8f\x01The zone name and the SOA email together cannot exceed 253 characters (Azure combines them into the SOA record) -- shorten the soa_record.email\x1aT!has(this.soa_record) || (size(this.zone_name) + size(this.soa_record.email)) <= 253\"\x91\b\n" +
-	"\x15AzureDnsZoneSoaRecord\x12\xc3\x03\n" +
-	"\x05email\x18\x01 \x01(\tB\xac\x03\xbaH\xa8\x03\xba\x01\xa1\x03\n" +
-	"\x1fazure_dns_zone_soa_email_format\x12\xdb\x01SOA email must use dots instead of @ (e.g. dnsadmin.example.com for dnsadmin@example.com), contain only letters, digits, dots, underscores, and hyphens, and have 2-34 dot-separated segments of at most 63 characters each\x1a\x9f\x01this.matches('^[a-zA-Z0-9._-]+$') && !this.contains('..') && size(this.split('.')) >= 2 && size(this.split('.')) <= 34 && this.split('.').all(s, size(s) <= 63)\xc8\x01\x01R\x05email\x128\n" +
+	")azure_dns_zone_name_plus_soa_email_length\x12\x8f\x01The zone name and the SOA email together cannot exceed 253 characters (Azure combines them into the SOA record) -- shorten the soa_record.email\x1aT!has(this.soa_record) || (size(this.zone_name) + size(this.soa_record.email)) <= 253\"\x85\b\n" +
+	"\x15AzureDnsZoneSoaRecord\x12\xb7\x03\n" +
+	"\x05email\x18\x01 \x01(\tB\xa0\x03\xbaH\x9c\x03\xba\x01\x95\x03\n" +
+	"\x1fazure_dns_zone_soa_email_format\x12\xdb\x01SOA email must use dots instead of @ (e.g. dnsadmin.example.com for dnsadmin@example.com), contain only letters, digits, dots, underscores, and hyphens, and have 2-34 dot-separated segments of at most 63 characters each\x1a\x93\x01this.matches('^[a-zA-Z0-9_-]+([.][a-zA-Z0-9_-]+)*$') && this.contains('.') && !this.matches('([.][^.]*){34}') && !this.matches('[a-zA-Z0-9_-]{64}')\xc8\x01\x01R\x05email\x128\n" +
 	"\vexpire_time\x18\x02 \x01(\x03B\x12\xbaH\x04\"\x02(\x00\x8a\xa6\x1d\a2419200H\x00R\n" +
 	"expireTime\x88\x01\x01\x124\n" +
 	"\vminimum_ttl\x18\x03 \x01(\x03B\x0e\xbaH\x04\"\x02(\x00\x8a\xa6\x1d\x03300H\x01R\n" +

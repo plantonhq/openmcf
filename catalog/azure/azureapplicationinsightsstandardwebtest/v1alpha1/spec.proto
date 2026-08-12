@@ -99,7 +99,7 @@ message AzureApplicationInsightsStandardWebTestSpec {
   option (buf.validate.message).cel = {
     id: "web_test_ssl_checks_require_https"
     message: "ssl_check_enabled and ssl_cert_remaining_lifetime require the request url to be https"
-    expression: "!has(this.validation_rules) || (this.validation_rules.ssl_check_enabled != true && this.validation_rules.ssl_cert_remaining_lifetime == 0) || (has(this.request) && this.request.url.lowerAscii().startsWith('https://'))"
+    expression: "!has(this.validation_rules) || (this.validation_rules.ssl_check_enabled != true && this.validation_rules.ssl_cert_remaining_lifetime == 0) || (has(this.request) && this.request.url.matches('^(?i)https://'))"
   };
 }
 

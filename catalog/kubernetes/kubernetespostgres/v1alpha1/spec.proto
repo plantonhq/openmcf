@@ -768,7 +768,7 @@ message KubernetesPostgresBackupSchedule {
     (buf.validate.field).cel = {
       id: "spec.backup.schedules.cron_six_fields"
       message: "schedule is a SIX-field cron expression (seconds first) — e.g. '0 0 2 * * *' for daily at 02:00; the five-field Kubernetes form is missing the seconds field"
-      expression: "this.split(' ').filter(f, f != '').size() == 6"
+      expression: "this.matches('^ *[^ ]+( +[^ ]+){5} *$')"
     }
   ];
 
