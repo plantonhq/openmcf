@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryLinkedService
+metadata:
+  name: blob-storage-managed-identity
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: lakehouse-blob
+  description: Blob storage over managed identity -- no stored key anywhere.
+  azureBlobStorage:
+    # The blob endpoint URL -- the no-secret connection form.
+    serviceEndpoint:
+      valueFrom:
+        name: <your-storage-account>
+        fieldPath: status.outputs.primary_blob_endpoint
+    # The factory's identity authenticates -- grant it Storage Blob
+    # Data Contributor (or Reader) on the account.
+    useManagedIdentity: true

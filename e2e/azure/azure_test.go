@@ -1620,6 +1620,15 @@ func TestAzureDataFactoryDataFlow_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuredatafactorydataflow", "terraform")
 }
 
+// --- Data Factory linked service (three scenarios -- web anonymous, key vault via the fixture vault, blob storage via the fixture account's endpoint + managed identity -- all chained to the factory smoke instance and ALL secret-free by design; the other 20 variants are offline-proven per the profile; authoring metadata, free at rest) ---
+
+func TestAzureDataFactoryLinkedService_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorylinkedservice", "pulumi")
+}
+func TestAzureDataFactoryLinkedService_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorylinkedservice", "terraform")
+}
+
 // --- Data Factory trigger (four scenarios, one per variant, all chained to the factory+pipeline smoke instances and deployed STARTED with never-firing conditions -- the Start/Stop lifecycle runs live at zero pipeline-run cost; blob event watches the fixture storage account, custom event subscribes to the Event Grid topic smoke instance) ---
 
 func TestAzureDataFactoryTrigger_Pulumi(t *testing.T) {

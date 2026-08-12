@@ -2700,6 +2700,19 @@ enum CloudResourceKind {
     id_prefix: "azdfflow"
     prerequisites: [AzureDataFactory]
   }];
+  // A Data Factory linked service
+  // ({factory_id}/linkedservices/{name}) -- a saved connection in the
+  // factory's address book: where an external system lives and how to
+  // authenticate to it. One kind covers every connection type Azure
+  // models as a first-class resource (storage, SQL family, Cosmos DB,
+  // Databricks, Key Vault, SFTP, web APIs, and more) as variants in
+  // one factory-scoped name namespace, plus the raw-JSON custom form.
+  AzureDataFactoryLinkedService = 2201 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdfls"
+    prerequisites: [AzureDataFactory]
+  }];
   // A Data Factory trigger ({factory_id}/triggers/{name}) -- the
   // instruction that starts pipelines automatically: on a clock
   // schedule, per contiguous tumbling window, on storage blob events,

@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactorylinkedservice.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuredatafactorylinkedservice/v1alpha1/outputs.proto";
+import "catalog/azure/azuredatafactorylinkedservice/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureDataFactoryLinkedService represents an Azure Data Factory
+// linked service -- a saved connection inside a factory
+// (AzureDataFactory) that tells pipelines, datasets, and data flows
+// where an external system lives and how to authenticate to it. One
+// kind covers every connection type Azure models as a first-class
+// linked service resource, plus the raw-JSON custom form for the rest.
+message AzureDataFactoryLinkedService {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureDataFactoryLinkedService'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureDataFactoryLinkedServiceSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureDataFactoryLinkedServiceStatus status = 5;
+}
+
+// AzureDataFactoryLinkedServiceStatus represents the status of an
+// Azure Data Factory linked service deployment.
+message AzureDataFactoryLinkedServiceStatus {
+  //stack-outputs
+  //  azure-data-factory-linked-service stack-outputs
+  AzureDataFactoryLinkedServiceStackOutputs outputs = 1;
+}

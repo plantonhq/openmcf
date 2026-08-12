@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryLinkedService
+metadata:
+  name: key-vault-connection
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: secrets-vault
+  description: The vault every other connection resolves its secrets through.
+  # The factory authenticates to the vault as its managed identity --
+  # grant it get/list on the vault's secrets; no secret sits here.
+  keyVault:
+    keyVaultId:
+      valueFrom:
+        name: <your-key-vault>

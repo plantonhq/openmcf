@@ -569,6 +569,81 @@ spec:
     - terraform_type: azurerm_data_factory_trigger_custom_event
       pulumi_type: azure:datafactory/triggerCustomEvent:TriggerCustomEvent
       id_format: "{trigger_id}"
+    # AzureDataFactoryLinkedService covers all 23 connection types --
+    # they share one factory-scoped namespace
+    # ({factory_id}/linkedservices/{name}) and one id shape; the spec's
+    # variant block decides which resource the module created, so the
+    # import addresses the matching type (each importer verifies the
+    # stored connection's type discriminator).
+    - terraform_type: azurerm_data_factory_linked_service_azure_blob_storage
+      pulumi_type: azure:datafactory/linkedServiceAzureBlobStorage:LinkedServiceAzureBlobStorage
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_azure_databricks
+      pulumi_type: azure:datafactory/linkedServiceAzureDatabricks:LinkedServiceAzureDatabricks
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_azure_file_storage
+      pulumi_type: azure:datafactory/linkedServiceAzureFileStorage:LinkedServiceAzureFileStorage
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_azure_function
+      pulumi_type: azure:datafactory/linkedServiceAzureFunction:LinkedServiceAzureFunction
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_azure_search
+      pulumi_type: azure:datafactory/linkedServiceAzureSearch:LinkedServiceAzureSearch
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_azure_sql_database
+      pulumi_type: azure:datafactory/linkedServiceAzureSqlDatabase:LinkedServiceAzureSqlDatabase
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_azure_table_storage
+      pulumi_type: azure:datafactory/linkedServiceAzureTableStorage:LinkedServiceAzureTableStorage
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_cosmosdb
+      pulumi_type: azure:datafactory/linkedServiceCosmosDb:LinkedServiceCosmosDb
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_cosmosdb_mongoapi
+      pulumi_type: azure:datafactory/linkedServiceCosmosDbMongoApi:LinkedServiceCosmosDbMongoApi
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_custom_service
+      pulumi_type: azure:datafactory/linkedCustomService:LinkedCustomService
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_data_lake_storage_gen2
+      pulumi_type: azure:datafactory/linkedServiceDataLakeStorageGen2:LinkedServiceDataLakeStorageGen2
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_key_vault
+      pulumi_type: azure:datafactory/linkedServiceKeyVault:LinkedServiceKeyVault
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_kusto
+      pulumi_type: azure:datafactory/linkedServiceKusto:LinkedServiceKusto
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_mysql
+      pulumi_type: azure:datafactory/linkedServiceMysql:LinkedServiceMysql
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_odata
+      pulumi_type: azure:datafactory/linkedServiceOdata:LinkedServiceOdata
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_odbc
+      pulumi_type: azure:datafactory/linkedServiceOdbc:LinkedServiceOdbc
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_postgresql
+      pulumi_type: azure:datafactory/linkedServicePostgresql:LinkedServicePostgresql
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_sftp
+      pulumi_type: azure:datafactory/linkedServiceSftp:LinkedServiceSftp
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_snowflake
+      pulumi_type: azure:datafactory/linkedServiceSnowflake:LinkedServiceSnowflake
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_sql_managed_instance
+      pulumi_type: azure:datafactory/linkedServiceSqlManagedInstance:LinkedServiceSqlManagedInstance
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_sql_server
+      pulumi_type: azure:datafactory/linkedServiceSqlServer:LinkedServiceSqlServer
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_synapse
+      pulumi_type: azure:datafactory/linkedServiceSynapse:LinkedServiceSynapse
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_web
+      pulumi_type: azure:datafactory/linkedServiceWeb:LinkedServiceWeb
+      id_format: "{linked_service_id}"
 
     # --- Microsoft Fabric ---------------------------------------------------------
     - terraform_type: azurerm_fabric_capacity
