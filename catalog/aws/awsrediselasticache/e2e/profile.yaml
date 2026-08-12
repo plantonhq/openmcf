@@ -20,7 +20,15 @@ spec:
   # preset on both engines. Unblocks when an
   # AwsElasticacheGlobalReplicationGroup kind ships with a shared primary
   # fixture.
+  #
+  # Proven 2026-08-12, both engines, all eight phases (Pulumi 13m44s /
+  # Terraform 14m58s). DescribeReplicationGroups echoed the presence-typed
+  # arms per engine: AtRestEncryptionEnabled=true (explicit send),
+  # TransitEncryptionEnabled=false (explicit-false send), and
+  # AutoMinorVersionUpgrade=true on the OMIT path — AWS's
+  # enabled-by-default standing is the healed cross-engine divergence's
+  # live proof (the TF engine previously forced it off).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

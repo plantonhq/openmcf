@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 247 |
-| Spec fields authored across all kinds | 4470 |
+| Distinct provider resources consumed | 249 |
+| Spec fields authored across all kinds | 4474 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -47,19 +47,19 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**74 of 112 kinds are at total accounting; 76 proven live.**
+**78 of 112 kinds are at total accounting; 82 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
 | AwsAlb | 71 | 17 | 12 | 42 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsAppRunnerAutoScalingConfiguration | 7 | 4 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
-| AwsAppRunnerObservabilityConfiguration | 5 | 2 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
-| AwsAppRunnerService | 48 | 5 | 0 | 0 | 74 | ❌ | ✅ pulumi, terraform |
-| AwsAppRunnerVpcConnector | 6 | 1 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
+| AwsAppRunnerAutoScalingConfiguration | 9 | 5 | 1 | 3 | 0 | ✅ | — |
+| AwsAppRunnerObservabilityConfiguration | 5 | 2 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsAppRunnerService | 55 | 6 | 38 | 11 | 0 | ✅ | — |
+| AwsAppRunnerVpcConnector | 6 | 1 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAthenaWorkgroup | 37 | 4 | 0 | 0 | 59 | ❌ | ✅ pulumi, terraform |
 | AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchComputeEnvironment | 33 | 20 | 6 | 7 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsBatchJobDefinition | 67 | 12 | 49 | 6 | 0 | ✅ | — |
+| AwsBatchJobDefinition | 67 | 12 | 49 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchJobQueue | 12 | 5 | 5 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchSchedulingPolicy | 8 | 1 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCertManagerCert | 18 | 7 | 7 | 4 | 0 | ✅ | ✅ pulumi, terraform |
@@ -68,13 +68,13 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCloudwatchAlarm | 39 | 24 | 12 | 3 | 0 | ✅ | — |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudwatchLogGroup | 100 | 19 | 70 | 11 | 0 | ✅ | — |
-| AwsCodeBuildProject | 115 | 97 | 11 | 7 | 0 | ✅ | — |
-| AwsCodePipeline | 84 | 4 | 75 | 5 | 0 | ✅ | — |
+| AwsCodeBuildProject | 115 | 97 | 11 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCodePipeline | 84 | 4 | 75 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoIdentityProvider | 7 | 6 | 1 | 0 | 0 | ✅ | — |
 | AwsCognitoResourceServer | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoUserPool | 122 | 59 | 52 | 11 | 0 | ✅ | — |
 | AwsCognitoUserPoolClient | 56 | 30 | 23 | 3 | 0 | ✅ | — |
-| AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | — |
+| AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsDynamodb | 71 | 27 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
 | AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcrRepo | 17 | 5 | 0 | 0 | 25 | ❌ | ✅ pulumi, terraform |
@@ -122,7 +122,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsLbListener | 76 | 13 | 59 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 55 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbTargetGroup | 48 | 34 | 7 | 7 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsMemcachedElasticache | 48 | 21 | 3 | 24 | 0 | ✅ | — |
+| AwsMemcachedElasticache | 48 | 21 | 3 | 24 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsMemorydbAcl | 6 | 2 | 0 | 0 | 4 | ❌ | — |
 | AwsMemorydbCluster | 46 | 31 | 0 | 0 | 18 | ❌ | — |
 | AwsMemorydbUser | 7 | 4 | 0 | 0 | 3 | ❌ | — |
@@ -134,9 +134,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsOpenSearchDomain | 77 | 51 | 0 | 0 | 48 | ❌ | partial: pulumi, terraform |
 | AwsPlantonRunner | 216 | 9 | 0 | 0 | 216 | ❌ | ✅ pulumi, terraform |
-| AwsRdsCluster | 143 | 84 | 19 | 40 | 0 | ✅ | — |
-| AwsRdsInstance | 119 | 65 | 20 | 34 | 0 | ✅ | — |
-| AwsRedisElasticache | 66 | 40 | 12 | 14 | 0 | ✅ | — |
+| AwsRdsCluster | 143 | 84 | 19 | 40 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsRdsInstance | 119 | 65 | 20 | 34 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsRedisElasticache | 66 | 40 | 12 | 14 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRedshiftCluster | 67 | 40 | 0 | 0 | 39 | ❌ | ✅ pulumi, terraform |
 | AwsRedshiftServerlessNamespace | 15 | 10 | 0 | 0 | 5 | ❌ | ✅ pulumi, terraform |
 | AwsRedshiftServerlessWorkgroup | 17 | 12 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
@@ -170,10 +170,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 247 | consumed by a kind's Terraform module today |
+| Modeled | 249 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 12 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 771 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 769 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 532 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -183,7 +183,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (247)
+### Modeled (249)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -202,9 +202,11 @@ rather than trusted.
 | `aws_appautoscaling_target` | consumed by AwsEcsService |
 | `aws_apprunner_auto_scaling_configuration_version` | consumed by AwsAppRunnerAutoScalingConfiguration |
 | `aws_apprunner_custom_domain_association` | consumed by AwsAppRunnerService |
+| `aws_apprunner_default_auto_scaling_configuration_version` | consumed by AwsAppRunnerAutoScalingConfiguration |
 | `aws_apprunner_observability_configuration` | consumed by AwsAppRunnerObservabilityConfiguration |
 | `aws_apprunner_service` | consumed by AwsAppRunnerService |
 | `aws_apprunner_vpc_connector` | consumed by AwsAppRunnerVpcConnector |
+| `aws_apprunner_vpc_ingress_connection` | consumed by AwsAppRunnerService |
 | `aws_athena_workgroup` | consumed by AwsAthenaWorkgroup |
 | `aws_autoscaling_group` | consumed by AwsAutoScalingGroup |
 | `aws_autoscaling_lifecycle_hook` | consumed by AwsAutoScalingGroup |
@@ -452,7 +454,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (771)
+### Planned (769)
 
 | Resource | Recorded reason |
 |---|---|
@@ -514,9 +516,7 @@ rather than trusted.
 | `aws_appconfig_extension` | judged as a planned AwsAppConfig kind (application, environments, profiles, versions, deployment strategies, extensions) |
 | `aws_appconfig_extension_association` | judged as a planned AwsAppConfig kind (application, environments, profiles, versions, deployment strategies, extensions) |
 | `aws_appconfig_hosted_configuration_version` | judged as a planned AwsAppConfig kind (application, environments, profiles, versions, deployment strategies, extensions) |
-| `aws_apprunner_connection` | App Runner companion surface; folds into the existing App Runner kinds (AwsAppRunnerService, AwsAppRunnerAutoScalingConfiguration) as their specs deepen |
-| `aws_apprunner_default_auto_scaling_configuration_version` | App Runner companion surface; folds into the existing App Runner kinds (AwsAppRunnerService, AwsAppRunnerAutoScalingConfiguration) as their specs deepen |
-| `aws_apprunner_vpc_ingress_connection` | App Runner companion surface; folds into the existing App Runner kinds (AwsAppRunnerService, AwsAppRunnerAutoScalingConfiguration) as their specs deepen |
+| `aws_apprunner_connection` | future AwsAppRunnerConnection kind: account-scoped GitHub/Bitbucket authorization shared by many services and referenced by AwsAppRunnerService code sources (connection_arn); its one-time OAuth handshake belongs to that kind's own lifecycle story (the codebuild source-credential class) |
 | `aws_appsync_api` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
 | `aws_appsync_api_cache` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
 | `aws_appsync_api_key` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |

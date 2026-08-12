@@ -44,12 +44,16 @@ spec:
   # 10s). The project resource is near-instant either way; the fixture
   # chain dominates.
   #
-  # pending_proof: environment.host_kernel landed in the spec and both
-  # engines, and the Pulumi module converged three defaulted sends
-  # (image_pull_credentials_type, env-var type, project_visibility) to
-  # faithful pass-through after the last live proof; the prior green
-  # predates this surface.
+  # Proven 2026-08-12, both engines, all eight phases (Pulumi 7m45s /
+  # Terraform 7m34s; the project deploy itself 10s/26s). The host_kernel
+  # arm's first live proof: AWS ACCEPTED explicit LINUX_KERNEL_6 on
+  # LINUX_CONTAINER/amazonlinux2-standard:5.0 in us-west-2, and
+  # BatchGetProjects (pinned Go SDK — the local aws-cli's OUTPUT model
+  # drops hostKernel while its input model knows it) echoed it per
+  # engine, alongside the governance dials (autoRetryLimit,
+  # concurrentBuildLimit). The three converged Pulumi pass-through sends
+  # rode the same lane clean.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

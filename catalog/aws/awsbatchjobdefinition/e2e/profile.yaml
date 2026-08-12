@@ -28,11 +28,15 @@ spec:
   # green (the combined scheduling-policy + job-definition four-lane run
   # took 2m01s).
   #
-  # pending_proof: the depth closure restructured the rendering path
-  # (container_properties is now arm-conditional in both engines; the
-  # eks_properties block is new surface) -- the prior green badge
-  # predates this change and must be re-earned live on the container
-  # scenario.
+  # Proven 2026-08-12, both engines, all phases (Pulumi 32s / Terraform
+  # 32s) — the container arm re-earned its badge through the NEW
+  # arm-conditional rendering path. DescribeJobDefinitions (status
+  # filter) showed exactly ONE ACTIVE revision per engine's window with
+  # DISTINCT revision numbers (Batch continues numbering across
+  # same-name recreates — 6 then 7), type "container"; verify-absent
+  # confirmed no ACTIVE revision after each destroy
+  # (deregister_on_new_revision platform-default behavior verified).
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

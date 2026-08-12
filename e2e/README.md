@@ -866,6 +866,23 @@ so each lane's instance is sampled independently. The poller doubles as
 per-engine attribution: two capture blocks with different resource IDs
 prove BOTH engines' instances carried the arm.
 
+**A change-deduping watcher must RE-ARM on absence, or the second
+engine's instance is silently skipped.** Deduping captures by snapshot
+hash keeps the evidence file readable, but kinds with no status
+transitions in their describe output (a CodePipeline pipeline, a
+CodeBuild project — fully-formed on first describe, byte-identical
+across engines on a fixed name) produce ONE capture for two engines:
+the dual-engine runner destroys and recreates the same-named resource,
+and the second instance's snapshot hashes identically to the first
+(live hit 2026-08-12: the pipeline watcher captured only the Pulumi
+window; the Terraform window's evidence had to be recovered from the
+destroy-refresh in the lane log). Clear the dedupe hash whenever the
+probe answers NotFound — the absence between lanes is exactly the
+engine boundary — so each engine's instance captures even when the
+payloads match. Status-cycling kinds (caches: creating → available →
+deleting) mask this bug by hashing differently anyway; do not conclude
+from them that a watcher is correct.
+
 ## GCP E2E
 
 GCP tests live under `e2e/gcp/` and use the shared `aa_e2e` harness with

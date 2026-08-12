@@ -42,11 +42,16 @@ spec:
   # fixture chain -- roles + versioned bucket + CodeBuild project --
   # dominates both lanes).
   #
-  # pending_proof: the Compute-action family (commands / output variables /
-  # compute artifacts) and the pipeline_type/execution_mode pass-through
-  # convergence landed after the last live proof; the prior green predates
-  # this surface.
+  # Proven 2026-08-12, both engines, all eight phases (Pulumi 8m30s /
+  # Terraform 8m46s; the pipeline deploy itself 12s/34s — the composed
+  # fixture chain dominates, as before). The Compute-action family's
+  # first live proof: us-west-2 ACCEPTED the Commands action, and
+  # GetPipeline (pinned Go SDK — the local aws-cli's output model
+  # predates the family and silently drops these members) echoed the
+  # full declaration per engine: commands, outputVariables, the
+  # file-based output artifact, runOrder 2 — with PipelineType=V2 /
+  # ExecutionMode=QUEUED via the converged pass-through send paths.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20
