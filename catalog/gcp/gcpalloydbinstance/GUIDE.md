@@ -8,12 +8,17 @@ them. Know which side of that line an edit falls on.
 ## READ_POOL is the default for a reason
 
 The cluster kind already bundles the primary; this kind's everyday job
-is read pools. Size with `readPoolConfig.nodeCount` (a 1-node pool can
-only be ZONAL; 2+ nodes unlock REGIONAL) and scale by editing the count —
-node changes apply in place. PRIMARY and SECONDARY types exist for
-advanced topologies: a SECONDARY instance serves a secondary (DR)
-cluster, and destroying one is refused by the API — the secondary
-CLUSTER's `deletionPolicy: FORCE` is the designed teardown path.
+is read pools. Size with `readPoolConfig.nodeCount` and scale by editing
+the count — node changes apply in place. The node count alone decides
+availability: 1 node is zonal, 2+ nodes spread across zones for regional
+read HA. Do not set `availabilityType` on a read pool — the API derives
+it from the count and does not store a sent value (live-verified: the
+stored object omits the field, so an explicit value would drift on every
+plan; the spec refuses it up front). `availabilityType` belongs to
+PRIMARY and SECONDARY instances, which exist for advanced topologies: a
+SECONDARY instance serves a secondary (DR) cluster, and destroying one
+is refused by the API — the secondary CLUSTER's `deletionPolicy: FORCE`
+is the designed teardown path.
 
 ## The recreate line
 

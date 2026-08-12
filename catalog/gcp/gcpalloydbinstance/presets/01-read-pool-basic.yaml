@@ -12,6 +12,7 @@ spec:
       fieldPath: status.outputs.cluster_id
   instanceId: orders-read-pool
   cpuCount: 2
+  # A single-node pool is zonal by derivation — availabilityType stays empty
+  # on read pools (the API derives it from nodeCount).
   readPoolConfig:
     nodeCount: 1
-  availabilityType: ZONAL

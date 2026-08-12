@@ -45,14 +45,14 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**98 of 98 kinds are at total accounting; 67 proven live.**
+**98 of 98 kinds are at total accounting; 75 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
 | GcpAddress | 16 | 14 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpAlloydbCluster | 79 | 46 | 21 | 12 | 0 | ✅ | — |
-| GcpAlloydbInstance | 30 | 22 | 8 | 0 | 0 | ✅ | — |
-| GcpAlloydbUser | 8 | 6 | 0 | 2 | 0 | ✅ | — |
+| GcpAlloydbCluster | 79 | 46 | 21 | 12 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpAlloydbInstance | 30 | 22 | 8 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpAlloydbUser | 8 | 6 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpArtifactRegistryRepo | 52 | 33 | 12 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpBackendBucket | 29 | 22 | 6 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpBackendService | 116 | 91 | 22 | 3 | 0 | ✅ | ✅ pulumi, terraform |
@@ -89,14 +89,14 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpFirestoreBackupSchedule | 5 | 4 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreDatabase | 15 | 11 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpFirewallRule | 20 | 13 | 7 | 0 | 0 | ✅ | — |
+| GcpFirewallRule | 20 | 13 | 7 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGcsBucket | 78 | 39 | 31 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGkeCluster | 537 | 61 | 137 | 339 | 0 | ✅ | — |
 | GcpGkeNodePool | 184 | 127 | 51 | 6 | 0 | ✅ | — |
 | GcpGkeWorkloadIdentityBinding | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGlobalAddress | 11 | 9 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGlobalForwardingRule | 23 | 18 | 4 | 1 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpHealthCheck | 100 | 14 | 86 | 0 | 0 | ✅ | — |
+| GcpHealthCheck | 100 | 14 | 86 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpIamCustomRole | 7 | 6 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpIamDenyPolicy | 13 | 11 | 2 | 0 | 0 | ✅ | — |
 | GcpIamOauthClient | 18 | 12 | 3 | 3 | 0 | ✅ | ✅ pulumi, terraform |
@@ -134,18 +134,18 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpSpannerInstance | 28 | 21 | 7 | 0 | 0 | ✅ | — |
 | GcpSslCertificate | 19 | 9 | 4 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpSslPolicy | 17 | 13 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpSubnetwork | 29 | 22 | 7 | 0 | 0 | ✅ | — |
+| GcpSubnetwork | 29 | 22 | 7 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpTargetHttpProxy | 7 | 5 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpTargetHttpsProxy | 14 | 12 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpUrlMap | 333 | 74 | 259 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpVertexAiDeployedIndex | 16 | 12 | 4 | 0 | 0 | ✅ | — |
-| GcpVertexAiEndpoint | 19 | 8 | 9 | 2 | 0 | ✅ | — |
+| GcpVertexAiEndpoint | 19 | 8 | 9 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpVertexAiIndex | 17 | 5 | 12 | 0 | 0 | ✅ | — |
 | GcpVertexAiIndexEndpoint | 13 | 10 | 3 | 0 | 0 | ✅ | — |
 | GcpVertexAiNotebook | 46 | 8 | 34 | 4 | 0 | ✅ | — |
 | GcpVpcNetwork | 17 | 10 | 6 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpWorkflow | 15 | 10 | 4 | 1 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpWorkloadIdentityPool | 16 | 15 | 1 | 0 | 0 | ✅ | — |
+| GcpWorkloadIdentityPool | 16 | 15 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpWorkloadIdentityPoolProvider | 16 | 15 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 
 ## Breadth: every GA resource, one disposition

@@ -12,6 +12,7 @@ spec:
       fieldPath: status.outputs.cluster_id
   instanceId: orders-read-pool-ha
   cpuCount: 4
+  # Two nodes spread across zones — regional read HA by derivation;
+  # availabilityType stays empty on read pools.
   readPoolConfig:
     nodeCount: 2
-  availabilityType: REGIONAL

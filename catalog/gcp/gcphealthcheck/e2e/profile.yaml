@@ -9,10 +9,12 @@ spec:
   # Health checks are free, instant to create/destroy, and have no
   # dependencies — deploy -> compute healthChecks/regionHealthChecks get
   # verify -> destroy -> verify 404, on both provisioners.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency gate
+  # at the total-accounting surface: the ONE deletion_policy spec field fans
+  # to BOTH provider resources — minimal/grpc-tls proved the global arm and
+  # regional proved the regional arm, all re-plans clean.
   tier: 1
-  # pending_proof: the spec grew deletion_policy fanning to BOTH provider
-  # resources — the prior green described code that no longer exists. The
-  # minimal/grpc-tls scenarios prove the global resource's arm and the
-  # regional scenario proves the regional one.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

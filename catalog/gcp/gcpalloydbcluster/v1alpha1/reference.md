@@ -803,7 +803,9 @@ create-time only.
 
 The source cluster to restore from — its full resource name
 "projects/{project}/locations/{location}/clusters/{cluster}", or a
-reference to a GcpAlloydbCluster resource.
+reference to a GcpAlloydbCluster resource. Restore provenance, not
+physical placement: the new cluster is seeded FROM the source, never
+contained IN it (containment_exempt).
 
 - references: GcpAlloydbCluster (`status.outputs.cluster_id`)
 - rule: {"required":true}

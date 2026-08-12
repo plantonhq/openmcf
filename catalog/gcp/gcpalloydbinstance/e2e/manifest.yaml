@@ -10,8 +10,8 @@ spec:
   instanceId: orders-read-pool
   instanceType: READ_POOL
   cpuCount: 2
+  # availabilityType stays empty on read pools — derived from nodeCount.
   readPoolConfig:
     nodeCount: 2
-  availabilityType: REGIONAL
   requireConnectors: true
   sslMode: ENCRYPTED_ONLY

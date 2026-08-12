@@ -446,9 +446,13 @@ type GcpAlloydbInstanceSpec struct {
 	MachineType string `protobuf:"bytes,6,opt,name=machine_type,json=machineType,proto3" json:"machine_type,omitempty"`
 	// Read pool sizing. Required when instance_type is READ_POOL.
 	ReadPoolConfig *GcpAlloydbInstanceReadPoolConfig `protobuf:"bytes,7,opt,name=read_pool_config,json=readPoolConfig,proto3" json:"read_pool_config,omitempty"`
-	// ZONAL or REGIONAL placement. Read pools of size 1 can only be ZONAL;
-	// pools with 2+ nodes can be REGIONAL. GCP defaults to REGIONAL when
-	// unset.
+	// ZONAL or REGIONAL placement for PRIMARY/SECONDARY instances. GCP
+	// defaults to REGIONAL when unset. Must stay empty on READ_POOL
+	// instances: read-pool availability is DERIVED from node_count (1 node =
+	// ZONAL, 2+ nodes = REGIONAL spread across zones) and the AlloyDB API
+	// does not store a sent value — the stored object omits the field, so
+	// any explicit value produces a perpetual re-plan diff (live-verified
+	// against a single-node pool at google@7.43.0).
 	AvailabilityType string `protobuf:"bytes,8,opt,name=availability_type,json=availabilityType,proto3" json:"availability_type,omitempty"`
 	// PostgreSQL database flags as key-value pairs.
 	DatabaseFlags map[string]string `protobuf:"bytes,9,rep,name=database_flags,json=databaseFlags,proto3" json:"database_flags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -738,7 +742,7 @@ const file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
 	"FlagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc1 \n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8f#\n" +
 	"\x16GcpAlloydbInstanceSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12v\n" +
@@ -781,11 +785,14 @@ const file_catalog_gcp_gcpalloydbinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
 	"\x10AnnotationsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xcc\a\xbaH\xc8\a\x1a\x83\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x9a\n" +
+	"\xbaH\x96\n" +
+	"\x1a\x83\x01\n" +
 	"\x1fmachine_config_mutual_exclusion\x120only one of cpu_count or machine_type may be set\x1a.this.cpu_count == 0 || this.machine_type == ''\x1a\xe9\x01\n" +
 	"\x1dread_pool_requires_node_count\x12<READ_POOL instances require read_pool_config.node_count >= 1\x1a\x89\x01!(this.instance_type == 'READ_POOL' || this.instance_type == '') || (has(this.read_pool_config) && this.read_pool_config.node_count >= 1)\x1a\xe3\x01\n" +
 	"#read_pool_config_only_for_read_pool\x124read_pool_config applies to READ_POOL instances only\x1a\x85\x01this.instance_type == 'READ_POOL' || this.instance_type == '' || !has(this.read_pool_config) || this.read_pool_config.node_count == 0\x1a\xa6\x01\n" +
-	"%authorized_networks_require_public_ip\x126authorized_external_networks requires enable_public_ip\x1aEsize(this.authorized_external_networks) == 0 || this.enable_public_ip\x1a\xc4\x01\n" +
+	"%authorized_networks_require_public_ip\x126authorized_external_networks requires enable_public_ip\x1aEsize(this.authorized_external_networks) == 0 || this.enable_public_ip\x1a\xcb\x02\n" +
+	"#availability_type_not_for_read_pool\x12\xc1\x01availability_type applies to PRIMARY/SECONDARY instances only — read-pool availability is derived from node_count (1 node = ZONAL, 2+ nodes = REGIONAL) and the API does not store a sent value\x1a`!(this.instance_type == 'READ_POOL' || this.instance_type == '') || this.availability_type == ''\x1a\xc4\x01\n" +
 	"\x17gce_zone_requires_zonal\x12ogce_zone can only be set on ZONAL instances — GCP rejects it when availability_type is REGIONAL (the default)\x1a8this.gce_zone == '' || this.availability_type == 'ZONAL'B\x10\n" +
 	"\x0e_instance_typeB\xee\x02\n" +
 	"/com.dev.planton.gcp.gcpalloydbinstance.v1alpha1B\tSpecProtoP\x01Z_github.com/plantonhq/planton/catalog/gcp/gcpalloydbinstance/v1alpha1;gcpalloydbinstancev1alpha1\xa2\x02\x04DPGG\xaa\x02+Dev.Planton.Gcp.Gcpalloydbinstance.V1alpha1\xca\x02+Dev\\Planton\\Gcp\\Gcpalloydbinstance\\V1alpha1\xe2\x027Dev\\Planton\\Gcp\\Gcpalloydbinstance\\V1alpha1\\GPBMetadata\xea\x02/Dev::Planton::Gcp::Gcpalloydbinstance::V1alpha1b\x06proto3"
