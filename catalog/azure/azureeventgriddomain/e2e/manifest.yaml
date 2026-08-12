@@ -1,0 +1,29 @@
+# Deep-shape example for docs and offline validation: a pinned-topics
+# CloudEvents domain with an IP allowlist. References are literal
+# values so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridDomain
+metadata:
+  name: test-eventgrid-domain
+  id: test-eventgrid-domain
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  # The name becomes a PUBLIC DNS hostname, unique across the region.
+  name: test-org-tenant-events
+  region: eastus
+  inputSchema: CloudEventSchemaV1_0
+  # The pinned-topics governance posture: topics exist only as declared
+  # AzureEventgridDomainTopic resources.
+  autoCreateTopicWithFirstSubscription: false
+  autoDeleteTopicWithLastSubscription: false
+  publicNetworkAccessEnabled: true
+  localAuthEnabled: true
+  inboundIpRules:
+    - 203.0.113.0/24
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    costCenter: platform

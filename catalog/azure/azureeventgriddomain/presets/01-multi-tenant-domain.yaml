@@ -1,0 +1,17 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridDomain
+metadata:
+  name: my-tenant-events
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  # The name becomes a PUBLIC DNS hostname, unique across the region --
+  # prefix it with your org, like a storage account name.
+  name: my-org-tenant-events
+  region: eastus
+  # One schema for every topic in the domain. Create-only.
+  inputSchema: CloudEventSchemaV1_0
+  # Auto-managed topics (Azure's default): a subscription materializes
+  # its topic; the last unsubscribe removes it. See the pinned-topics
+  # preset for the governance posture.

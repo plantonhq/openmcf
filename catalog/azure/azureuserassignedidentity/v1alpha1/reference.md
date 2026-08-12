@@ -168,6 +168,8 @@ Fields on other kinds that can point at this resource:
 | AzureEventHub | `spec.captureDescription.destination.storageAuthenticationId` | `status.outputs.identity_id` |
 | AzureEventHubNamespace | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureEventHubNamespaceCustomerManagedKey | `spec.userAssignedIdentityId` | `status.outputs.identity_id` |
+| AzureEventgridDomain | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureEventgridTopic | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureExpressRoutePort | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureFederatedIdentityCredential | `spec.userAssignedIdentity` | `status.outputs.identity_id` |
 | AzureFirewallPolicy | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |

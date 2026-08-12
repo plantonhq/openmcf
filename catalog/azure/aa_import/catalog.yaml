@@ -462,3 +462,17 @@ spec:
     - terraform_type: azurerm_monitor_data_collection_rule_association
       pulumi_type: azure:monitoring/dataCollectionRuleAssociation:DataCollectionRuleAssociation
       id_format: "{data_collection_rule_association_id}"
+
+    # --- Event Grid ------------------------------------------------------------
+    - terraform_type: azurerm_eventgrid_topic
+      pulumi_type: azure:eventgrid/topic:Topic
+      id_format: "{topic_id}"
+    - terraform_type: azurerm_eventgrid_domain
+      pulumi_type: azure:eventgrid/domain:Domain
+      id_format: "{domain_id}"
+    # The domain topic's ARM id is scoped under its parent domain
+    # ({domain_id}/topics/{name}); the component's id output carries the
+    # full scoped id, so one value serves the import.
+    - terraform_type: azurerm_eventgrid_domain_topic
+      pulumi_type: azure:eventgrid/domainTopic:DomainTopic
+      id_format: "{domain_topic_id}"

@@ -1,0 +1,25 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridTopic
+metadata:
+  name: my-secure-events
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  # The name becomes a PUBLIC DNS hostname, unique across the region --
+  # prefix it with your org, like a storage account name.
+  name: my-org-secure-events
+  region: eastus
+  inputSchema: CloudEventSchemaV1_0
+  # Entra-only publishing: the access keys stop working. Grant
+  # publishers the EventGrid Data Sender role on the topic first.
+  localAuthEnabled: false
+  # Only these CIDRs may publish (public access stays on so the
+  # allowlist applies; disabling public access would ignore it and
+  # leave private endpoints as the only path).
+  inboundIpRules:
+    - <your-egress-cidr>
+  # System-assigned identity for identity-secured delivery targets
+  # (grant it on destinations before wiring subscriptions).
+  identity:
+    type: SYSTEM_ASSIGNED

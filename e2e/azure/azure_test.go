@@ -1397,6 +1397,29 @@ func TestAzureServiceBusDisasterRecoveryConfig_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureservicebusdisasterrecoveryconfig", "terraform")
 }
 
+// --- Azure Event Grid family (custom topic; domain + its declared domain topics -- the multi-tenant publishers) ---
+
+func TestAzureEventgridTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridtopic", "pulumi")
+}
+func TestAzureEventgridTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridtopic", "terraform")
+}
+
+func TestAzureEventgridDomain_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgriddomain", "pulumi")
+}
+func TestAzureEventgridDomain_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgriddomain", "terraform")
+}
+
+func TestAzureEventgridDomainTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgriddomaintopic", "pulumi")
+}
+func TestAzureEventgridDomainTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgriddomaintopic", "terraform")
+}
+
 // --- Azure Event Hubs family (namespace container + hubs + consumer groups + SAS credentials + schema registry + geo-DR + dedicated cluster + CMK) ---
 
 func TestAzureEventHubNamespace_Pulumi(t *testing.T) {

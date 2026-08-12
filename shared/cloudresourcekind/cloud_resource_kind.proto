@@ -2612,6 +2612,28 @@ enum CloudResourceKind {
       AzureLogAnalyticsWorkspace
     ]
   }];
+  // The Azure Event Grid custom topic -- the HTTPS endpoint an
+  // application publishes its own events to, fanned out to handlers by
+  // event subscriptions. One topic is one event stream with its own
+  // endpoint and access keys; for many streams behind one endpoint see
+  // AzureEventgridDomain.
+  AzureEventgridTopic = 2193 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azegt"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The Azure Event Grid domain -- ONE publishing endpoint and one
+  // pair of access keys serving many event streams (domain topics),
+  // the multi-tenant pattern. Topics inside the domain are
+  // auto-managed by Azure or declared explicitly as
+  // AzureEventgridDomainTopic resources.
+  AzureEventgridDomain = 2194 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azegd"
+    prerequisites: [AzureResourceGroup]
+  }];
   // Registers a storage account with a Recovery Services vault as a
   // backup container (.../protectionContainers/StorageContainer;...)
   // -- one registration per storage-account-and-vault pair, required
@@ -2677,6 +2699,21 @@ enum CloudResourceKind {
       AzureMonitorDataCollectionRule,
       AzureVirtualMachine
     ]
+  }];
+  // One named event stream inside an Azure Event Grid domain
+  // ({domain_id}/topics/{name}) -- the per-tenant mailbox of the
+  // multi-tenant pattern: many per domain, each with its own
+  // subscriptions and lifecycle, tenants joining and leaving without
+  // touching the domain (which is why the domain topic is a standalone
+  // kind, exactly like AzureEventHubConsumerGroup on a shared hub).
+  // Part of the Event Grid family (2193-2194) despite the out-of-run
+  // number -- enum numbers are pinned by the registry snapshot; never
+  // renumber.
+  AzureEventgridDomainTopic = 2217 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azegdt"
+    prerequisites: [AzureEventgridDomain]
   }];
 
   // 3000–3999: GCP resources

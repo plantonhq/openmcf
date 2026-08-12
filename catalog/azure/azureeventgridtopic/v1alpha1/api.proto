@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgridtopic.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureeventgridtopic/v1alpha1/outputs.proto";
+import "catalog/azure/azureeventgridtopic/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureEventgridTopic represents an Azure Event Grid custom topic --
+// the HTTPS endpoint an application publishes its own events to, from
+// which event subscriptions fan them out to handlers. One topic is one
+// event stream with its own endpoint and access keys; for many streams
+// behind one endpoint (the multi-tenant pattern) see
+// AzureEventgridDomain.
+message AzureEventgridTopic {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureEventgridTopic'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureEventgridTopicSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureEventgridTopicStatus status = 5;
+}
+
+// AzureEventgridTopicStatus represents the status of an Azure Event
+// Grid topic deployment.
+message AzureEventgridTopicStatus {
+  //stack-outputs
+  //  azure-eventgrid-topic stack-outputs
+  AzureEventgridTopicStackOutputs outputs = 1;
+}
