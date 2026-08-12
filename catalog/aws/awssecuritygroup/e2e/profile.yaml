@@ -23,5 +23,6 @@ spec:
   # acyclic) -- proven by CEL spec tests and every consumer chain that
   # attaches the shared SG fixtures.
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

@@ -15,15 +15,7 @@ spec:
   # Also deliberately not live: BYODKIM (needs a real signing key pair --
   # newly REACHABLE after the validation heal; proven by spec/CEL tests
   # and the offline gate; reopen when a fixture key ships).
-  #
-  # PENDING PROOF (2026-08-12, depth closure): the contract's
-  # email_forwarding_enabled default annotation was dropped (it was
-  # materialized by the manifest loader, so the feedback satellite rendered
-  # on EVERY identity against the authored absent-means-unmanaged design)
-  # -- default-shaped manifests now compose one fewer AWS resource. The
-  # prior green predates this composition -- demoted per the badge-honesty
-  # rule.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

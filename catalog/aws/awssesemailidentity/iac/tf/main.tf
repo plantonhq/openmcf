@@ -50,9 +50,15 @@ resource "aws_sesv2_email_identity_mail_from_attributes" "this" {
 }
 
 # Bounce/complaint email forwarding -- materialized only when the manifest
-# takes an explicit position. Absent, AWS's own default (forwarding ON)
-# applies without a resource to manage; set false once event destinations
-# or SNS feedback carry bounces.
+# takes an explicit position. Absent, the setting is UNMANAGED: a fresh
+# identity gets AWS's default (forwarding ON), but SES retains the
+# last-written value per identity name across even identity deletion
+# (live-verified 2026-08-12), so a previously-managed name keeps its old
+# position. Note the provider's DESTROY of this resource writes
+# forwarding=false (PutEmailIdentityFeedbackAttributes with the unset/zero
+# value), which then persists for the name -- removing an explicit position
+# is a one-way write to false until a new explicit true. Set false once
+# event destinations or SNS feedback carry bounces.
 resource "aws_sesv2_email_identity_feedback_attributes" "this" {
   count = var.spec.email_forwarding_enabled != null ? 1 : 0
 

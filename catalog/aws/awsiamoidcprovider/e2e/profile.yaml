@@ -9,12 +9,7 @@ spec:
   # explicit thumbprint so the test never collides with a real provider (AWS
   # allows one provider per unique URL per account) and never depends on an
   # external issuer being reachable. IAM is global and free.
-  #
-  # PENDING PROOF (2026-08-12, depth closure): the Pulumi module's tag map
-  # gained the Name key its Terraform sibling always sent (the cross-engine
-  # tag convergence class) -- tag content is live send surface. The prior
-  # green predates this send -- demoted per the badge-honesty rule.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

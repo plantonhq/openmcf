@@ -11,14 +11,7 @@ spec:
   # deploys a path-form OIDC provider fixture and proves the typed
   # federated-trust composition (both statement forms + the default
   # audience). IAM is global and free.
-  #
-  # PENDING PROOF (2026-08-12, depth closure): the Pulumi module's sends
-  # changed -- force_detach_policies is now state-pinned (always sent, the
-  # Terraform parity), managed-policy attachments are keyed by policy ARN
-  # instead of list index, and the tag map gained the Name key -- and the
-  # oidc_trust arm has never run live. The prior green predates these
-  # sends -- demoted per the badge-honesty rule.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

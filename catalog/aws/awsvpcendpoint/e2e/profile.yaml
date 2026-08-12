@@ -20,5 +20,6 @@ spec:
   # offline-proven -- a live disable arm needs an enable->disable two-phase
   # lane, recorded as the reopen bar).
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

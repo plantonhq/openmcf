@@ -23,5 +23,6 @@ spec:
   # verify-destroyed guards -- the associated lane also proves the
   # disassociate-then-release destroy path.
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

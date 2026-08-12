@@ -10,14 +10,7 @@ spec:
   # (DescribeAccessPoints, lifecycle-state-aware), destroy, and
   # verify-destroyed on both provisioners -- the access point itself creates
   # and deletes in seconds.
-  #
-  # PENDING PROOF (2026-08-12, depth closure): the Terraform module's tag
-  # map dropped its metadata.labels merge and converged to the canonical
-  # six-key identity map (the Pulumi parity) -- and the app-data scenario
-  # SETS labels, so the prior proven lanes deployed differently-tagged
-  # access points per engine. The prior green predates the converged
-  # sends -- demoted per the badge-honesty rule.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

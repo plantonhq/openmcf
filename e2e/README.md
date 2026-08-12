@@ -814,6 +814,22 @@ through the version OUTPUT, which carries whatever number AWS actually
 assigned. The class is any property whose value depends on a name's
 history rather than the current resource.
 
+**A sibling of the same class: some services RETAIN per-resource settings
+across delete/recreate of the same name — never read a fixed-name
+scenario's echo as the service's default.** SES retains an email
+identity's feedback-forwarding value keyed by the identity NAME, surviving
+DeleteEmailIdentity and re-creation (live-verified 2026-08-12: a fresh
+name echoes FeedbackForwardingStatus=true — AWS's default — while the
+fixed e2e domain echoes false, inherited from earlier lanes whose feedback
+satellite's DESTROY reset it; the provider's satellite delete writes the
+API's unset/zero value). Two consequences: (1) an evidence claim about a
+service DEFAULT must be probed on a FRESH name (a three-call CLI probe —
+create, get, delete — settles it), because a fixed-name scenario's echo is
+history-dependent; (2) a provider whose attribute-satellite delete writes
+a zero value plants that value permanently on the name — expect
+"unmanaged" reads on long-lived fixed-name fixtures to reflect the LAST
+manager, not the service default.
+
 **A 4xx from a create call does not mean nothing was created — sweep before
 re-running.** Some AWS creates are not atomic: the service materializes the
 resource, then validates a later parameter and answers 4xx (first hit:

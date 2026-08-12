@@ -3,6 +3,13 @@
 # under planton.test (no Route53 verification required for existence
 # checks; the identity stays PENDING).
 #
+# The fixed name makes GetEmailIdentity's FeedbackForwardingStatus
+# HISTORY-DEPENDENT, never asserted: SES retains the last-written
+# forwarding value per identity name across identity delete/recreate
+# (live-verified 2026-08-12 -- this name echoes false, inherited from
+# earlier lanes whose feedback satellite's destroy reset it), so evidence
+# claims about AWS's forwarding DEFAULT need a fresh name probe.
+#
 # Deliberately NOT in the live scenario: identity policies. AWS validates
 # CreateEmailIdentityPolicy strictly — the document's Resource must be the
 # identity's own ARN (which embeds the account ID and region), so a static

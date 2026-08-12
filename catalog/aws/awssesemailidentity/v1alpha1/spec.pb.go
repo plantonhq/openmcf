@@ -75,7 +75,12 @@ type AwsSesEmailIdentitySpec struct {
 	// false to pin the position explicitly -- the modules materialize the
 	// feedback sub-resource only when a position is taken. Turn it off once
 	// event destinations or SNS feedback handle bounces -- forwarding is the
-	// fallback channel, not the production one.
+	// fallback channel, not the production one. One retention caveat
+	// (live-verified 2026-08-12): SES remembers the LAST-WRITTEN forwarding
+	// value per identity name, surviving even DeleteEmailIdentity and
+	// re-creation -- so on an identity that was ever explicitly managed,
+	// clearing this field stops managing the setting but does NOT restore
+	// AWS's default; set true explicitly to turn forwarding back on.
 	EmailForwardingEnabled *bool `protobuf:"varint,6,opt,name=email_forwarding_enabled,json=emailForwardingEnabled,proto3,oneof" json:"email_forwarding_enabled,omitempty"`
 	// Named authorization policies on this identity -- the cross-account
 	// sending grants that let another AWS account or role send mail AS this
