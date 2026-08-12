@@ -493,6 +493,50 @@ func TestBuildAccounting_ManifestStaleness(t *testing.T) {
 	}
 }
 
+// A consumed resource no loaded schema knows (a utility provider like
+// hashicorp/time) is legal exactly when the manifest judges it internal --
+// the judgment is "module plumbing, no provider surface to account", so no
+// schema is needed. Without the judgment the stale-artifact guard fires.
+func TestBuildAccounting_InternalUtilityResourceNeedsNoSchema(t *testing.T) {
+	spec, _, schemas, _, _ := accountingFixture()
+
+	modules := []ModuleCensus{
+		{Kind: "TestPlain", Resources: []string{"google_plain", "time_sleep"}, Pins: map[string]string{"google": "~> 6.0"}},
+	}
+
+	// Judged internal: no stale finding, listed as internal.
+	manifests := map[string]*Manifest{
+		"TestPlain": {
+			Resources: map[string]*ResourceManifest{
+				"time_sleep": {Internal: "destroy-ordering utility from the hashicorp/time provider -- no provider surface"},
+			},
+		},
+	}
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+	plain := kindByName(t, acc, "TestPlain")
+	for _, s := range plain.ManifestStale {
+		if strings.Contains(s, "time_sleep") {
+			t.Errorf("internal utility resource flagged stale: %v", plain.ManifestStale)
+		}
+	}
+	if len(plain.InternalResources) != 1 || plain.InternalResources[0] != "time_sleep" {
+		t.Errorf("InternalResources = %v, want [time_sleep]", plain.InternalResources)
+	}
+
+	// Unjudged: the stale-artifact guard still fires.
+	acc = buildAccounting("gcp", spec, modules, schemas, "google", map[string]*Manifest{}, nil)
+	plain = kindByName(t, acc, "TestPlain")
+	found := false
+	for _, s := range plain.ManifestStale {
+		if strings.Contains(s, "time_sleep is unknown to every loaded schema") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("unjudged unknown resource not flagged; got %v", plain.ManifestStale)
+	}
+}
+
 func TestGateSemantics(t *testing.T) {
 	findings := []Finding{
 		{BaselineKey: "kind:TestPlain", Detail: "unaccounted provider argument"},

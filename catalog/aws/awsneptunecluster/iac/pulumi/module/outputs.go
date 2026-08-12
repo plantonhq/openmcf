@@ -12,4 +12,6 @@ const (
 	OpNeptuneSubnetGroupName           = "neptune_subnet_group_name"
 	OpNeptuneClusterParameterGroupName = "neptune_cluster_parameter_group_name"
 	OpInstanceEndpoints                = "instance_endpoints"
+	OpCustomEndpointAddresses          = "custom_endpoint_addresses"
+	OpNeptuneInstanceParameterGroupName = "neptune_instance_parameter_group_name"
 )

@@ -33,4 +33,10 @@ message AwsStepFunctionStackOutputs {
 
   // RFC3339 timestamp of when the state machine was created.
   string creation_date = 6;
+
+  // Alias ARNs keyed by alias name (spec.aliases[].name), e.g.
+  // "prod" -> "...:stateMachine:orders:prod". Each alias routes to the
+  // version this deployment published; consumers invoke the alias ARN to
+  // follow deployments without repointing.
+  map<string, string> alias_arns = 7;
 }

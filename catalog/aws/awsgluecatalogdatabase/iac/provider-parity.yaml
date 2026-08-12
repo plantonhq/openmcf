@@ -1,0 +1,29 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_glue_catalog_database:
+    mappings:
+      # The spec's repeated entries are plural (one entry per principal --
+      # AWS's own API shape); the provider block is singular.
+      - spec: spec.create_table_default_permissions.permissions
+        arg: create_table_default_permission.permissions
+      # The provider's principal block carries exactly one leaf
+      # (data_lake_principal_identifier) behind MaxItems 1, so the spec
+      # flattens it to a single string -- lossless by construction.
+      - spec: spec.create_table_default_permissions.principal
+        arg: create_table_default_permission.principal.data_lake_principal_identifier
+    exclusions:
+      # Identity is the kind's own contract.
+      - arg: name
+        reason: derived from metadata.name (Glue database names are create-time-immutable and lowercase-only) -- never free-form user surface
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

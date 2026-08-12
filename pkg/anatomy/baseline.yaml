@@ -31,8 +31,6 @@ violations:
   - catalog/auth0/auth0connection:missing-presets
   - catalog/auth0/auth0eventstream:missing-presets
   - catalog/auth0/auth0resourceserver:missing-presets
-  - catalog/aws/awsathenaworkgroup/iac/pulumi:missing-iac-readme
-  - catalog/aws/awsathenaworkgroup/iac/tf:missing-iac-readme
   - catalog/aws/awsautoscalinggroup/iac/pulumi:missing-iac-readme
   - catalog/aws/awsautoscalinggroup/iac/tf:missing-iac-readme
   - catalog/aws/awsbatchcomputeenvironment/iac/pulumi:missing-iac-readme
@@ -77,7 +75,6 @@ violations:
   - catalog/aws/awsfsxontapvolume/iac/tf:missing-iac-readme
   - catalog/aws/awsglobalaccelerator/iac/pulumi:missing-iac-readme
   - catalog/aws/awsglobalaccelerator/iac/tf:missing-iac-readme
-  - catalog/aws/awsgluecatalogdatabase/iac/pulumi:missing-iac-readme
   - catalog/aws/awsinternetgateway/iac/pulumi:missing-iac-readme
   - catalog/aws/awsinternetgateway/iac/tf:missing-iac-readme
   - catalog/aws/awskinesisfirehose/iac/pulumi:missing-iac-readme

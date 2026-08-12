@@ -57,17 +57,16 @@ spec:
     mode: THROTTLED_KEYS
     gsiIndexNames:
       - gsi1
-  resourcePolicy: |
-    {
-      "Version": "2012-10-17",
-      "Statement": [
-        {
-          "Sid": "AllowOwnAccountDescribe",
-          "Effect": "Allow",
-          "Principal": {"AWS": "*"},
-          "Action": "dynamodb:DescribeTable",
-          "Resource": "*",
-          "Condition": {"StringEquals": {"aws:PrincipalAccount": "${aws:ResourceAccount}"}}
-        }
-      ]
-    }
+  resourcePolicy:
+    policy:
+      Version: "2012-10-17"
+      Statement:
+        - Sid: AllowOwnAccountDescribe
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action: "dynamodb:DescribeTable"
+          Resource: "*"
+          Condition:
+            StringEquals:
+              aws:PrincipalAccount: "${aws:ResourceAccount}"

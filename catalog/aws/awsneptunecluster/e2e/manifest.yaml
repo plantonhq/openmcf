@@ -16,3 +16,6 @@ spec:
   instances:
     - name: writer
       instanceClass: db.serverless
+  customEndpoints:
+    - name: analytics
+      endpointType: READER

@@ -17,7 +17,7 @@ import (
 // Auto-Tune, log publishing -- updates in place, though topology changes
 // usually run as a blue/green deployment behind the endpoint
 // (deployment_strategy tunes how that migration provisions capacity).
-func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
+func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*opensearch.Domain, error) {
 	spec := locals.Spec
 
 	args := &opensearch.DomainArgs{
@@ -136,24 +136,37 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	// Encryption at rest -- one-way, and the KMS key is fixed at creation
 	// -------------------------------------------------------------------
 
-	if spec.EncryptAtRestEnabled {
-		encryptCfg := &opensearch.DomainEncryptAtRestArgs{
-			Enabled: pulumi.Bool(true),
-		}
-		if spec.KmsKeyId.GetValue() != "" {
-			encryptCfg.KmsKeyId = pulumi.String(spec.KmsKeyId.GetValue())
-		}
-		args.EncryptAtRest = encryptCfg
+	// Always sent with an explicit value (matching the Terraform module):
+	// the provider block is Optional+Computed, so omitting it would keep
+	// whatever AWS reports -- an explicit false is the only honest way to
+	// state "unencrypted", and stating it makes both engines plan the same
+	// replacement when a domain diverges from the manifest. Tri-state
+	// dial (proto `optional bool`, spec default true): the platform
+	// materializes the default; a nil value here gets the same secure
+	// default.
+	encryptAtRestEnabled := true
+	if spec.EncryptAtRestEnabled != nil {
+		encryptAtRestEnabled = *spec.EncryptAtRestEnabled
 	}
+	encryptCfg := &opensearch.DomainEncryptAtRestArgs{
+		Enabled: pulumi.Bool(encryptAtRestEnabled),
+	}
+	if encryptAtRestEnabled && spec.KmsKeyId.GetValue() != "" {
+		encryptCfg.KmsKeyId = pulumi.String(spec.KmsKeyId.GetValue())
+	}
+	args.EncryptAtRest = encryptCfg
 
 	// -------------------------------------------------------------------
 	// Node-to-node encryption -- one-way
 	// -------------------------------------------------------------------
 
-	if spec.NodeToNodeEncryptionEnabled {
-		args.NodeToNodeEncryption = &opensearch.DomainNodeToNodeEncryptionArgs{
-			Enabled: pulumi.Bool(true),
-		}
+	// Same always-send reasoning as encrypt_at_rest above.
+	nodeToNodeEnabled := true
+	if spec.NodeToNodeEncryptionEnabled != nil {
+		nodeToNodeEnabled = *spec.NodeToNodeEncryptionEnabled
+	}
+	args.NodeToNodeEncryption = &opensearch.DomainNodeToNodeEncryptionArgs{
+		Enabled: pulumi.Bool(nodeToNodeEnabled),
 	}
 
 	// -------------------------------------------------------------------
@@ -291,9 +304,10 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 		for _, lpo := range spec.LogPublishingOptions {
 			entry := &opensearch.DomainLogPublishingOptionArgs{
 				LogType: pulumi.String(lpo.LogType),
-			}
-			if lpo.CloudwatchLogGroupArn.GetValue() != "" {
-				entry.CloudwatchLogGroupArn = pulumi.String(lpo.CloudwatchLogGroupArn.GetValue())
+				// Provider-required; sent unconditionally (matching the
+				// Terraform module) so a reference that resolves empty at
+				// deploy time fails the same way on both engines.
+				CloudwatchLogGroupArn: pulumi.String(lpo.CloudwatchLogGroupArn.GetValue()),
 			}
 			if lpo.Enabled != nil {
 				entry.Enabled = pulumi.Bool(*lpo.Enabled)
@@ -310,7 +324,7 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	if spec.AccessPolicies != nil {
 		policyJSON, err := json.Marshal(spec.AccessPolicies.AsMap())
 		if err != nil {
-			return errors.Wrap(err, "failed to serialize access_policies to JSON")
+			return nil, errors.Wrap(err, "failed to serialize access_policies to JSON")
 		}
 		args.AccessPolicies = pulumi.String(string(policyJSON))
 	}
@@ -360,8 +374,14 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	}
 
 	if opw := spec.OffPeakWindowOptions; opw != nil {
+		// Defaults to true: AWS enables the window on every new domain and
+		// requires it enabled at create time.
+		offPeakEnabled := true
+		if opw.Enabled != nil {
+			offPeakEnabled = *opw.Enabled
+		}
 		offPeak := &opensearch.DomainOffPeakWindowOptionsArgs{
-			Enabled: pulumi.Bool(opw.Enabled),
+			Enabled: pulumi.Bool(offPeakEnabled),
 		}
 		if opw.WindowStartHour != nil {
 			minutes := 0
@@ -378,10 +398,13 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 		args.OffPeakWindowOptions = offPeak
 	}
 
-	if spec.AutoSoftwareUpdateEnabled {
-		args.SoftwareUpdateOptions = &opensearch.DomainSoftwareUpdateOptionsArgs{
-			AutoSoftwareUpdateEnabled: pulumi.Bool(true),
-		}
+	// Always sent with an explicit value (matching the Terraform module):
+	// the provider attribute is Optional+Computed, so omitting it would
+	// keep whatever AWS reports -- an explicit false is the only way to
+	// turn auto software updates OFF, and sending it keeps the two engines
+	// behaviorally identical from the same manifest.
+	args.SoftwareUpdateOptions = &opensearch.DomainSoftwareUpdateOptionsArgs{
+		AutoSoftwareUpdateEnabled: pulumi.Bool(spec.AutoSoftwareUpdateEnabled),
 	}
 
 	// -------------------------------------------------------------------
@@ -460,7 +483,7 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 
 	osDomain, err := opensearch.NewDomain(ctx, "opensearch-domain", args, pulumi.Provider(provider))
 	if err != nil {
-		return errors.Wrap(err, "create opensearch domain")
+		return nil, errors.Wrap(err, "create opensearch domain")
 	}
 
 	// -------------------------------------------------------------------
@@ -476,5 +499,5 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	ctx.Export(OpDashboardEndpointV2, osDomain.DashboardEndpointV2)
 	ctx.Export(OpDomainEndpointV2HostedZoneId, osDomain.DomainEndpointV2HostedZoneId)
 
-	return nil
+	return osDomain, nil
 }

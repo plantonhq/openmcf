@@ -188,9 +188,6 @@ resources:
   - resource: aws_app_cookie_stickiness_policy
     disposition: excluded-deprecated
     reason: "Classic Load Balancer surface, superseded by ALB/NLB (covered by AwsAlb and AwsNlb)"
-  - resource: aws_appautoscaling_scheduled_action
-    disposition: model-planned
-    reason: "application-autoscaling scheduled actions fold into the consuming kinds' scaling surface (AwsDynamodb, AwsEcsService)"
   - resource: aws_appconfig_application
     disposition: model-planned
     reason: "judged as a planned AwsAppConfig kind (application, environments, profiles, versions, deployment strategies, extensions)"
@@ -343,7 +340,7 @@ resources:
     reason: "Athena capacity reservations and saved/prepared queries are workload content, not infrastructure shape; deferred"
   - resource: aws_athena_data_catalog
     disposition: model-planned
-    reason: "federated data catalogs fold into the existing AwsAthenaWorkgroup kind as its spec deepens"
+    reason: "judged as a planned AwsAthenaDataCatalog kind -- a federated catalog is a standalone peer registration queried from any workgroup, not a workgroup satellite"
   - resource: aws_athena_database
     disposition: excluded-deprecated
     reason: "superseded by the Glue catalog database, covered by AwsGlueCatalogDatabase"
@@ -1332,8 +1329,8 @@ resources:
     disposition: model-planned
     reason: "judged as a planned AwsDxVirtualInterface kind (private/public/transit and hosted virtual interfaces, accepters, BGP peers)"
   - resource: aws_dynamodb_global_secondary_index
-    disposition: model-planned
-    reason: "table companion surface (GSIs, replicas); folds into the existing AwsDynamodb kind as its spec deepens"
+    disposition: composed
+    reason: "independent-lifecycle alternative to the inline GSIs AwsDynamodb already models (provider guidance: never mix the two shapes on one table); the spec's global_secondary_indexes cover the same AWS surface"
   - resource: aws_dynamodb_global_table
     disposition: excluded-deprecated
     reason: "the 2017 global-table resource is superseded by table replicas (folds into AwsDynamodb)"
@@ -1344,8 +1341,8 @@ resources:
     disposition: deferred
     reason: "table items and tag helpers are data-plane content and imperative helpers, not infrastructure"
   - resource: aws_dynamodb_table_replica
-    disposition: model-planned
-    reason: "table companion surface (GSIs, replicas); folds into the existing AwsDynamodb kind as its spec deepens"
+    disposition: composed
+    reason: "per-region alternative to the inline replicas AwsDynamodb already models (the standalone resource exists for multi-provider-block management); the spec's replicas cover the same AWS surface"
   - resource: aws_dynamodb_tag
     disposition: deferred
     reason: "table items and tag helpers are data-plane content and imperative helpers, not infrastructure"
@@ -1729,7 +1726,7 @@ resources:
     reason: "custom-routing accelerators; deferred pending demand"
   - resource: aws_glue_catalog
     disposition: model-planned
-    reason: "Glue catalog-level surface (policies, encryption, security configs); folds into the existing AwsGlueCatalogDatabase kind as its spec deepens"
+    reason: "judged as a planned AwsGlueCatalog kind -- a catalog is a standalone object (multi-catalog hierarchies, Redshift-federated catalogs) with its own lifecycle, not a per-database satellite"
   - resource: aws_glue_catalog_table
     disposition: model-planned
     reason: "judged as a planned AwsGlueCatalogTable kind (tables, partitions, indexes, optimizers)"
@@ -1747,7 +1744,7 @@ resources:
     reason: "judged as a planned AwsGlueCrawler kind (crawlers with classifiers)"
   - resource: aws_glue_data_catalog_encryption_settings
     disposition: model-planned
-    reason: "Glue catalog-level surface (policies, encryption, security configs); folds into the existing AwsGlueCatalogDatabase kind as its spec deepens"
+    reason: "judged as a planned AwsGlueDataCatalogSettings kind (with the resource policy) -- an account/region catalog singleton, not a per-database satellite"
   - resource: aws_glue_data_quality_ruleset
     disposition: deferred
     reason: "Glue ML transforms, data-quality rulesets and UDFs are workload content; deferred"
@@ -1771,13 +1768,13 @@ resources:
     reason: "judged as a planned AwsGlueSchemaRegistry kind (registries with schemas)"
   - resource: aws_glue_resource_policy
     disposition: model-planned
-    reason: "Glue catalog-level surface (policies, encryption, security configs); folds into the existing AwsGlueCatalogDatabase kind as its spec deepens"
+    reason: "judged as a planned AwsGlueDataCatalogSettings kind (with the encryption settings) -- an account/region catalog singleton, not a per-database satellite"
   - resource: aws_glue_schema
     disposition: model-planned
     reason: "judged as a planned AwsGlueSchemaRegistry kind (registries with schemas)"
   - resource: aws_glue_security_configuration
     disposition: model-planned
-    reason: "Glue catalog-level surface (policies, encryption, security configs); folds into the existing AwsGlueCatalogDatabase kind as its spec deepens"
+    reason: "judged as a planned AwsGlueSecurityConfiguration kind -- a named encryption profile consumed by the future Glue job/crawler family, not a per-database satellite"
   - resource: aws_glue_trigger
     disposition: model-planned
     reason: "judged as a planned AwsGlueJob kind (jobs, triggers, workflows)"
@@ -2420,21 +2417,15 @@ resources:
   - resource: aws_nat_gateway_eip_association
     disposition: composed
     reason: "covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway"
-  - resource: aws_neptune_cluster_endpoint
-    disposition: model-planned
-    reason: "Neptune companion surface (endpoints, event subscriptions, parameter groups, global clusters); folds into the existing AwsNeptuneCluster kind as its spec deepens"
   - resource: aws_neptune_cluster_snapshot
     disposition: deferred
     reason: "database snapshot operations are imperative backup actions, a poor declarative fit; deferred"
   - resource: aws_neptune_event_subscription
     disposition: model-planned
-    reason: "Neptune companion surface (endpoints, event subscriptions, parameter groups, global clusters); folds into the existing AwsNeptuneCluster kind as its spec deepens"
+    reason: "judged as a planned AwsNeptuneEventSubscription kind -- an account-level notification pipe over arbitrary sources (clusters, instances, groups), not a satellite of one cluster"
   - resource: aws_neptune_global_cluster
     disposition: model-planned
-    reason: "Neptune companion surface (endpoints, event subscriptions, parameter groups, global clusters); folds into the existing AwsNeptuneCluster kind as its spec deepens"
-  - resource: aws_neptune_parameter_group
-    disposition: model-planned
-    reason: "Neptune companion surface (endpoints, event subscriptions, parameter groups, global clusters); folds into the existing AwsNeptuneCluster kind as its spec deepens"
+    reason: "judged as a planned AwsNeptuneGlobalCluster kind -- a parent object with its own multi-region lifecycle; AwsNeptuneCluster models the join arm (global_cluster_identifier)"
   - resource: aws_neptunegraph_graph
     disposition: deferred
     reason: "Neptune Analytics graphs; deferred pending demand"
@@ -2636,15 +2627,9 @@ resources:
   - resource: aws_opensearch_application
     disposition: deferred
     reason: "OpenSearch UI applications; deferred pending demand"
-  - resource: aws_opensearch_authorize_vpc_endpoint_access
-    disposition: model-planned
-    reason: "domain companion surface (policies, SAML, VPC endpoints, packages); folds into the existing AwsOpenSearchDomain kind as its spec deepens"
   - resource: aws_opensearch_domain_policy
-    disposition: model-planned
-    reason: "domain companion surface (policies, SAML, VPC endpoints, packages); folds into the existing AwsOpenSearchDomain kind as its spec deepens"
-  - resource: aws_opensearch_domain_saml_options
-    disposition: model-planned
-    reason: "domain companion surface (policies, SAML, VPC endpoints, packages); folds into the existing AwsOpenSearchDomain kind as its spec deepens"
+    disposition: composed
+    reason: "standalone twin of the domain's own access_policies argument, which AwsOpenSearchDomain models directly; the standalone resource exists for out-of-band policy management"
   - resource: aws_opensearch_inbound_connection_accepter
     disposition: deferred
     reason: "cross-cluster search connections; deferred pending demand"
@@ -2653,13 +2638,13 @@ resources:
     reason: "cross-cluster search connections; deferred pending demand"
   - resource: aws_opensearch_package
     disposition: model-planned
-    reason: "domain companion surface (policies, SAML, VPC endpoints, packages); folds into the existing AwsOpenSearchDomain kind as its spec deepens"
+    reason: "judged as a planned AwsOpenSearchPackage kind (with its association) -- an account-level package object with its own S3-backed lifecycle, usable across many domains"
   - resource: aws_opensearch_package_association
     disposition: model-planned
-    reason: "domain companion surface (policies, SAML, VPC endpoints, packages); folds into the existing AwsOpenSearchDomain kind as its spec deepens"
+    reason: "judged as a planned AwsOpenSearchPackage kind (the association is the package kind's join to a domain)"
   - resource: aws_opensearch_vpc_endpoint
     disposition: model-planned
-    reason: "domain companion surface (policies, SAML, VPC endpoints, packages); folds into the existing AwsOpenSearchDomain kind as its spec deepens"
+    reason: "judged as a planned AwsOpenSearchVpcEndpoint kind -- a consumer-side endpoint created in the consumer's VPC (cross-account capable) with its own lifecycle"
   - resource: aws_opensearchserverless_access_policy
     disposition: model-planned
     reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
@@ -3601,10 +3586,7 @@ resources:
     reason: "SES tenants and contact lists; deferred pending demand"
   - resource: aws_sfn_activity
     disposition: model-planned
-    reason: "Step Functions companion surface (activities, aliases); folds into the existing AwsStepFunction kind as its spec deepens"
-  - resource: aws_sfn_alias
-    disposition: model-planned
-    reason: "Step Functions companion surface (activities, aliases); folds into the existing AwsStepFunction kind as its spec deepens"
+    reason: "judged as a planned AwsStepFunctionActivity kind -- an activity is a standalone worker-queue primitive with its own ARN and encryption config, referenced from state machine definitions, not a satellite of any one state machine"
   - resource: aws_shield_application_layer_automatic_response
     disposition: model-planned
     reason: "judged as a planned AwsShieldAdvanced kind (subscription, protections, protection groups, DRT access, proactive engagement)"

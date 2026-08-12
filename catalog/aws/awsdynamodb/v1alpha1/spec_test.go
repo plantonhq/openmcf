@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestAwsDynamodbSpec(t *testing.T) {
@@ -18,6 +19,15 @@ func literal(value string) *foreignkeyv1.StringValueOrRef {
 	return &foreignkeyv1.StringValueOrRef{
 		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
 	}
+}
+
+// helper to create a minimal resource-policy document as a protobuf Struct.
+func policyDoc() *structpb.Struct {
+	s, _ := structpb.NewStruct(map[string]interface{}{
+		"Version":   "2012-10-17",
+		"Statement": []interface{}{},
+	})
+	return s
 }
 
 var _ = ginkgo.Describe("AwsDynamodbSpec validations", func() {
@@ -82,7 +92,7 @@ var _ = ginkgo.Describe("AwsDynamodbSpec validations", func() {
 		spec.TableClass = "STANDARD_INFREQUENT_ACCESS"
 		spec.DeletionProtectionEnabled = true
 		spec.ContributorInsights = &AwsDynamodbContributorInsights{Enabled: true, Mode: "THROTTLED_KEYS", GsiIndexNames: []string{"gsi1"}}
-		spec.ResourcePolicy = `{"Version":"2012-10-17","Statement":[]}`
+		spec.ResourcePolicy = &AwsDynamodbResourcePolicy{Policy: policyDoc()}
 		spec.KinesisStreamingDestination = &AwsDynamodbKinesisStreamingDestination{
 			StreamArn: literal("arn:aws:kinesis:us-west-2:111122223333:stream/cdc"),
 		}
@@ -337,9 +347,111 @@ var _ = ginkgo.Describe("AwsDynamodbSpec validations", func() {
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("fails when TTL is disabled but attribute_name is set", func() {
+	ginkgo.It("accepts TTL disabled with attribute_name kept -- AWS requires the name when DISABLING TTL", func() {
 		spec.Ttl = &AwsDynamodbTtl{Enabled: false, AttributeName: "expiresAt"}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a declared attribute is used by no key -- DynamoDB rejects unused definitions", func() {
+		spec.AttributeDefinitions = append(spec.AttributeDefinitions, &AwsDynamodbAttribute{Name: "orphan", Type: "S"})
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("unused attribute definitions"))
+	})
+
+	ginkgo.It("fails when a GSI key schema interleaves a HASH after a RANGE", func() {
+		spec.AttributeDefinitions = append(spec.AttributeDefinitions,
+			&AwsDynamodbAttribute{Name: "a", Type: "S"},
+			&AwsDynamodbAttribute{Name: "b", Type: "S"},
+			&AwsDynamodbAttribute{Name: "c", Type: "S"})
+		spec.GlobalSecondaryIndexes = []*AwsDynamodbGlobalSecondaryIndex{{
+			Name: "gsi1",
+			KeySchema: []*AwsDynamodbKeySchemaElement{
+				{AttributeName: "a", KeyType: "HASH"},
+				{AttributeName: "b", KeyType: "RANGE"},
+				{AttributeName: "c", KeyType: "HASH"},
+			},
+			Projection: &AwsDynamodbProjection{Type: "ALL"},
+		}}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("no HASH may follow a RANGE"))
+	})
+
+	ginkgo.It("fails when restore_date_time is not an RFC3339 UTC timestamp", func() {
+		spec.RestoreSourceName = "source-table"
+		spec.RestoreDateTime = "07/04/2026 06:00"
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -----------------------------------------------------------------
+	// Autoscaling (the Application Auto Scaling fold)
+	// -----------------------------------------------------------------
+
+	ginkgo.It("accepts provisioned-table autoscaling with read tracking and a scheduled adjustment", func() {
+		spec.BillingMode = "PROVISIONED"
+		spec.ProvisionedThroughput = &AwsDynamodbProvisionedThroughput{ReadCapacityUnits: 5, WriteCapacityUnits: 5}
+		spec.Autoscaling = &AwsDynamodbAutoscaling{
+			Read: &AwsDynamodbCapacityAutoscaling{MinCapacity: 5, MaxCapacity: 100, TargetUtilizationPercent: 70},
+			ScheduledAdjustments: []*AwsDynamodbScheduledAdjustment{{
+				Name:        "nightly-floor",
+				Dimension:   "READ",
+				Schedule:    "cron(0 6 * * ? *)",
+				MinCapacity: 20,
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects autoscaling on a PAY_PER_REQUEST table", func() {
+		spec.Autoscaling = &AwsDynamodbAutoscaling{
+			Read: &AwsDynamodbCapacityAutoscaling{MinCapacity: 5, MaxCapacity: 100, TargetUtilizationPercent: 70},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("PROVISIONED tables only"))
+	})
+
+	ginkgo.It("rejects a scheduled adjustment whose dimension has no target", func() {
+		spec.BillingMode = "PROVISIONED"
+		spec.ProvisionedThroughput = &AwsDynamodbProvisionedThroughput{ReadCapacityUnits: 5, WriteCapacityUnits: 5}
+		spec.Autoscaling = &AwsDynamodbAutoscaling{
+			Read: &AwsDynamodbCapacityAutoscaling{MinCapacity: 5, MaxCapacity: 100, TargetUtilizationPercent: 70},
+			ScheduledAdjustments: []*AwsDynamodbScheduledAdjustment{{
+				Name:        "write-burst",
+				Dimension:   "WRITE",
+				Schedule:    "cron(0 6 * * ? *)",
+				MaxCapacity: 500,
+			}},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("must have its autoscaling target configured"))
+	})
+
+	ginkgo.It("rejects a target utilization outside AWS's 20-90 band", func() {
+		spec.BillingMode = "PROVISIONED"
+		spec.ProvisionedThroughput = &AwsDynamodbProvisionedThroughput{ReadCapacityUnits: 5, WriteCapacityUnits: 5}
+		spec.Autoscaling = &AwsDynamodbAutoscaling{
+			Read: &AwsDynamodbCapacityAutoscaling{MinCapacity: 5, MaxCapacity: 100, TargetUtilizationPercent: 95},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a scheduled adjustment with no capacity bound", func() {
+		spec.BillingMode = "PROVISIONED"
+		spec.ProvisionedThroughput = &AwsDynamodbProvisionedThroughput{ReadCapacityUnits: 5, WriteCapacityUnits: 5}
+		spec.Autoscaling = &AwsDynamodbAutoscaling{
+			Read: &AwsDynamodbCapacityAutoscaling{MinCapacity: 5, MaxCapacity: 100, TargetUtilizationPercent: 70},
+			ScheduledAdjustments: []*AwsDynamodbScheduledAdjustment{{
+				Name:      "no-op",
+				Dimension: "READ",
+				Schedule:  "cron(0 6 * * ? *)",
+			}},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("must set min_capacity, max_capacity"))
 	})
 
 	ginkgo.It("fails when a recovery period is set with PITR disabled", func() {

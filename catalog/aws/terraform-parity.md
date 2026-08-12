@@ -31,9 +31,10 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 260 |
-| Spec fields authored across all kinds | 4518 |
+| Distinct provider resources consumed | 267 |
+| Spec fields authored across all kinds | 4554 |
 | Module pins on `aws` | `~> 6.58` × 112 |
+| Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
 secondary channel (for Google, the `google-beta` provider) enters per kind
@@ -47,7 +48,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**88 of 112 kinds are at total accounting; 95 proven live.**
+**105 of 112 kinds are at total accounting; 92 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -56,7 +57,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsAppRunnerObservabilityConfiguration | 5 | 2 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerService | 55 | 6 | 38 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerVpcConnector | 6 | 1 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsAthenaWorkgroup | 37 | 4 | 0 | 0 | 59 | ❌ | ✅ pulumi, terraform |
+| AwsAthenaWorkgroup | 37 | 4 | 26 | 7 | 0 | ✅ | partial: pulumi, terraform |
 | AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchComputeEnvironment | 33 | 20 | 6 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchJobDefinition | 67 | 12 | 49 | 6 | 0 | ✅ | ✅ pulumi, terraform |
@@ -75,21 +76,21 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCognitoUserPool | 122 | 59 | 52 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoUserPoolClient | 56 | 30 | 23 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsDynamodb | 71 | 27 | 0 | 0 | 82 | ❌ | ✅ pulumi, terraform |
+| AwsDynamodb | 71 | 27 | 38 | 6 | 0 | ✅ | partial: pulumi, terraform |
 | AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcrRepo | 17 | 5 | 0 | 0 | 25 | ❌ | ✅ pulumi, terraform |
 | AwsEcsCluster | 80 | 7 | 64 | 9 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsService | 98 | 53 | 34 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsTaskDefinition | 56 | 13 | 22 | 21 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEfsAccessPoint | 11 | 9 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
-| AwsEgressOnlyInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
+| AwsEfsAccessPoint | 11 | 9 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEgressOnlyInternetGateway | 4 | 2 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEksAccessEntry | 14 | 9 | 0 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEksAddon | 14 | 10 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEksCluster | 38 | 8 | 20 | 10 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEksFargateProfile | 9 | 4 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEksNodeGroup | 43 | 26 | 12 | 5 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsElasticFileSystem | 34 | 13 | 0 | 0 | 35 | ❌ | ✅ pulumi, terraform |
-| AwsElasticIp | 15 | 9 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
+| AwsElasticFileSystem | 34 | 15 | 10 | 9 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsElasticIp | 15 | 9 | 1 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsElasticacheUser | 13 | 6 | 0 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsElasticacheUserGroup | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEventBridgeBus | 20 | 12 | 3 | 5 | 0 | ✅ | ✅ pulumi, terraform |
@@ -102,16 +103,16 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsFsxOpenzfsFileSystem | 35 | 31 | 2 | 2 | 0 | ✅ | — |
 | AwsFsxWindowsFileSystem | 34 | 28 | 2 | 4 | 0 | ✅ | — |
 | AwsGlobalAccelerator | 28 | 3 | 0 | 0 | 48 | ❌ | ✅ pulumi, terraform |
-| AwsGlueCatalogDatabase | 15 | 10 | 0 | 0 | 7 | ❌ | ✅ pulumi, terraform |
+| AwsGlueCatalogDatabase | 15 | 10 | 2 | 3 | 0 | ✅ | partial: pulumi, terraform |
 | AwsHttpApiDomain | 26 | 7 | 11 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiGateway | 91 | 42 | 11 | 38 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiVpcLink | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamInstanceProfile | 6 | 2 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsIamOidcProvider | 5 | 3 | 0 | 0 | 3 | ❌ | ✅ pulumi, terraform |
+| AwsIamOidcProvider | 5 | 3 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamPolicy | 8 | 2 | 1 | 5 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsIamRole | 16 | 5 | 0 | 0 | 20 | ❌ | ✅ pulumi, terraform |
+| AwsIamRole | 16 | 5 | 3 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamUser | 15 | 3 | 4 | 8 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsInternetGateway | 4 | 2 | 0 | 0 | 2 | ❌ | ✅ pulumi, terraform |
+| AwsInternetGateway | 4 | 2 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsKinesisStream | 17 | 8 | 3 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsKinesisStreamConsumer | 8 | 3 | 1 | 4 | 0 | ✅ | ✅ pulumi, terraform |
@@ -130,36 +131,36 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsMskServerlessCluster | 7 | 1 | 2 | 4 | 0 | ✅ | partial: pulumi, terraform |
 | AwsMwaaEnvironment | 38 | 32 | 0 | 0 | 9 | ❌ | partial: pulumi, terraform |
 | AwsNatGateway | 15 | 10 | 3 | 2 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsNeptuneCluster | 70 | 34 | 0 | 0 | 52 | ❌ | ✅ pulumi, terraform |
+| AwsNeptuneCluster | 88 | 35 | 13 | 40 | 0 | ✅ | partial: pulumi, terraform |
 | AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsOpenSearchDomain | 77 | 51 | 0 | 0 | 48 | ❌ | partial: pulumi, terraform |
+| AwsOpenSearchDomain | 90 | 51 | 30 | 9 | 0 | ✅ | partial: pulumi, terraform |
 | AwsPlantonRunner | 216 | 9 | 0 | 0 | 216 | ❌ | ✅ pulumi, terraform |
 | AwsRdsCluster | 143 | 84 | 19 | 40 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRdsInstance | 119 | 65 | 20 | 34 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRedisElasticache | 66 | 40 | 12 | 14 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsRedshiftCluster | 105 | 61 | 12 | 32 | 0 | ✅ | — |
+| AwsRedshiftCluster | 105 | 61 | 12 | 32 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRedshiftServerlessNamespace | 15 | 10 | 0 | 5 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsRedshiftServerlessWorkgroup | 33 | 19 | 4 | 10 | 0 | ✅ | — |
+| AwsRedshiftServerlessWorkgroup | 33 | 19 | 4 | 10 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRoute53DnsRecord | 25 | 7 | 17 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRoute53HealthCheck | 23 | 17 | 2 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRoute53Zone | 17 | 5 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3Bucket | 204 | 24 | 102 | 78 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3ObjectSet | 28 | 3 | 0 | 0 | 46 | ❌ | ✅ pulumi, terraform |
 | AwsSagemakerDomain | 159 | 93 | 0 | 0 | 126 | ❌ | ✅ pulumi, terraform |
-| AwsSecurityGroup | 13 | 6 | 0 | 0 | 28 | ❌ | ✅ pulumi, terraform |
+| AwsSecurityGroup | 13 | 5 | 3 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsServerlessElasticache | 19 | 12 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsSesConfigurationSet | 27 | 7 | 0 | 0 | 36 | ❌ | ✅ pulumi, terraform |
-| AwsSesEmailIdentity | 19 | 9 | 0 | 0 | 18 | ❌ | ✅ pulumi, terraform |
+| AwsSesConfigurationSet | 27 | 6 | 16 | 5 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSesEmailIdentity | 19 | 7 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSnsSubscription | 13 | 11 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSnsTopic | 33 | 10 | 18 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSqsQueue | 20 | 12 | 4 | 4 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsStepFunction | 16 | 5 | 0 | 0 | 17 | ❌ | ✅ pulumi, terraform |
+| AwsStepFunction | 21 | 6 | 8 | 7 | 0 | ✅ | partial: pulumi, terraform |
 | AwsSubnet | 33 | 22 | 0 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsTransitGateway | 14 | 12 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsTransitGatewayRouteTable | 27 | 11 | 6 | 10 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsTransitGatewayVpcAttachment | 12 | 8 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsVpc | 39 | 16 | 14 | 9 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsVpcEndpoint | 23 | 17 | 0 | 0 | 10 | ❌ | ✅ pulumi, terraform |
+| AwsVpcEndpoint | 23 | 17 | 4 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsWafIpSet | 9 | 5 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsWafRegexPatternSet | 8 | 3 | 1 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsWafWebAcl | 9727 | 7 | 9685 | 35 | 0 | ✅ | ✅ pulumi, terraform |
@@ -170,11 +171,11 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 260 | consumed by a kind's Terraform module today |
+| Modeled | 266 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 13 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 752 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 537 | deliberately not offered, each with the recorded reason |
+| Composed | 26 | capability covered through an existing kind's surface rather than a kind of its own |
+| Planned | 730 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 540 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -183,7 +184,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (260)
+### Modeled (266)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -198,8 +199,9 @@ rather than trusted.
 | `aws_apigatewayv2_routing_rule` | consumed by AwsHttpApiDomain |
 | `aws_apigatewayv2_stage` | consumed by AwsHttpApiGateway |
 | `aws_apigatewayv2_vpc_link` | consumed by AwsHttpApiVpcLink |
-| `aws_appautoscaling_policy` | consumed by AwsEcsService |
-| `aws_appautoscaling_target` | consumed by AwsEcsService |
+| `aws_appautoscaling_policy` | consumed by AwsDynamodb, AwsEcsService |
+| `aws_appautoscaling_scheduled_action` | consumed by AwsDynamodb |
+| `aws_appautoscaling_target` | consumed by AwsDynamodb, AwsEcsService |
 | `aws_apprunner_auto_scaling_configuration_version` | consumed by AwsAppRunnerAutoScalingConfiguration |
 | `aws_apprunner_custom_domain_association` | consumed by AwsAppRunnerService |
 | `aws_apprunner_default_auto_scaling_configuration_version` | consumed by AwsAppRunnerAutoScalingConfiguration |
@@ -364,10 +366,14 @@ rather than trusted.
 | `aws_mwaa_environment` | consumed by AwsMwaaEnvironment |
 | `aws_nat_gateway` | consumed by AwsNatGateway |
 | `aws_neptune_cluster` | consumed by AwsNeptuneCluster |
+| `aws_neptune_cluster_endpoint` | consumed by AwsNeptuneCluster |
 | `aws_neptune_cluster_instance` | consumed by AwsNeptuneCluster |
 | `aws_neptune_cluster_parameter_group` | consumed by AwsNeptuneCluster |
+| `aws_neptune_parameter_group` | consumed by AwsNeptuneCluster |
 | `aws_neptune_subnet_group` | consumed by AwsNeptuneCluster |
+| `aws_opensearch_authorize_vpc_endpoint_access` | consumed by AwsOpenSearchDomain |
 | `aws_opensearch_domain` | consumed by AwsOpenSearchDomain |
+| `aws_opensearch_domain_saml_options` | consumed by AwsOpenSearchDomain |
 | `aws_rds_cluster` | consumed by AwsRdsCluster |
 | `aws_rds_cluster_activity_stream` | consumed by AwsRdsCluster |
 | `aws_rds_cluster_endpoint` | consumed by AwsRdsCluster |
@@ -430,6 +436,7 @@ rather than trusted.
 | `aws_sesv2_email_identity_feedback_attributes` | consumed by AwsSesEmailIdentity |
 | `aws_sesv2_email_identity_mail_from_attributes` | consumed by AwsSesEmailIdentity |
 | `aws_sesv2_email_identity_policy` | consumed by AwsSesEmailIdentity |
+| `aws_sfn_alias` | consumed by AwsStepFunction |
 | `aws_sfn_state_machine` | consumed by AwsStepFunction |
 | `aws_sns_topic` | consumed by AwsSnsTopic |
 | `aws_sns_topic_data_protection_policy` | consumed by AwsSnsTopic |
@@ -448,25 +455,38 @@ rather than trusted.
 | `aws_wafv2_web_acl_association` | consumed by AwsAlb, AwsAppRunnerService |
 | `aws_wafv2_web_acl_logging_configuration` | consumed by AwsWafWebAcl |
 
-### Composed (13)
+### Composed (26)
 
 | Resource | Recorded reason |
 |---|---|
 | `aws_autoscaling_attachment` | covered by AwsAutoScalingGroup: target_groups registers ALB/NLB target groups and traffic_sources covers Classic ELBs -- the standalone attachment is the imperative pattern for a group that owns its attachments |
 | `aws_autoscaling_traffic_source_attachment` | covered by AwsAutoScalingGroup.traffic_sources -- the standalone attachment is the imperative pattern for a group that owns its traffic sources |
 | `aws_cloudwatch_event_permission` | per-statement delivery (PutPermission with a StatementId) of the same bus policy AwsEventBridgeBus.spec.resource_policy models as one whole document via aws_cloudwatch_event_bus_policy -- mixing them fights over one policy (the bus-policy delete issues RemoveAllPermissions, wiping permission-managed statements) |
+| `aws_dynamodb_global_secondary_index` | independent-lifecycle alternative to the inline GSIs AwsDynamodb already models (provider guidance: never mix the two shapes on one table); the spec's global_secondary_indexes cover the same AWS surface |
+| `aws_dynamodb_table_replica` | per-region alternative to the inline replicas AwsDynamodb already models (the standalone resource exists for multi-provider-block management); the spec's replicas cover the same AWS surface |
+| `aws_eip_association` | covered by AwsElasticIp's own association surface (spec.instance / spec.network_interface / spec.associate_with_private_ip -- the provider's inline aws_eip association); the standalone resource adds only allow_reassociation (steal an already-associated address), an adoption-time concern the declarative model expresses by updating the owning EIP instead |
 | `aws_elasticache_user_group_association` | covered by AwsElasticacheUserGroup's declarative user_ids membership -- the standalone one-user-at-a-time association is the imperative alternative to membership the group already owns (the autoscaling-attachment class); it attaches users to GROUPS, not to the Redis kind the prior reason named |
+| `aws_internet_gateway_attachment` | covered by AwsInternetGateway's required vpc_id (the attachment IS the gateway's one relationship; vpc_id updates in place, detach+attach); the split-management form exists for adopting gateways created elsewhere, which the declarative model expresses on the gateway itself |
 | `aws_kms_key_policy` | covered by AwsKmsKey spec.policy -- the standalone resource is the detached-management pattern for keys owned elsewhere |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
+| `aws_opensearch_domain_policy` | standalone twin of the domain's own access_policies argument, which AwsOpenSearchDomain models directly; the standalone resource exists for out-of-band policy management |
 | `aws_redshift_cluster_iam_roles` | attaches/detaches IAM roles on an existing cluster -- an out-of-band alternative to the inline surface AwsRedshiftCluster spec.iam_roles already owns (the autoscaling-attachment class) |
+| `aws_security_group_rule` | covered by AwsSecurityGroup's inline ingress/egress rules (same payload: protocol/ports/CIDRs/prefix lists/groups/self/description); the legacy standalone rule resource cannot be mixed with inline rules on one group -- the module's inline blocks are the single owner of the rule set |
 | `aws_sns_topic_policy` | out-of-band delivery of the topic's Policy attribute, which AwsSnsTopic.spec.policy models inline on aws_sns_topic -- both write the same single attribute (the standalone resource cannot even remove a policy on delete; it writes back a synthesized owner-default document, per the provider source) |
 | `aws_sqs_queue_policy` | out-of-band delivery of the queue's Policy attribute, which AwsSqsQueue.spec.policy models inline on aws_sqs_queue -- both mechanisms upsert the same single queue attribute and fight over it when mixed (the attribute-splitter class) |
 | `aws_sqs_queue_redrive_allow_policy` | out-of-band delivery of the queue's RedriveAllowPolicy attribute, which AwsSqsQueue.spec.redrive_allow_policy models inline (typed redrivePermission + sourceQueueArns) -- same single-attribute upsert, same mixing conflict (the attribute-splitter class) |
 | `aws_sqs_queue_redrive_policy` | out-of-band delivery of the queue's RedrivePolicy attribute, which AwsSqsQueue.spec.dead_letter_config models inline (chart-wired deadLetterTargetArn + maxReceiveCount) -- same single-attribute upsert, same mixing conflict (the attribute-splitter class) |
+| `aws_vpc_endpoint_policy` | covered by AwsVpcEndpoint's spec.policy (structured IAM document, updates in place); the standalone form exists for split management of endpoints created elsewhere, which the declarative model expresses on the endpoint itself |
+| `aws_vpc_endpoint_private_dns` | covered by AwsVpcEndpoint's spec.private_dns_enabled (tri-state: explicit false is the disable path); the standalone form exists for split management of endpoints created elsewhere, which the declarative model expresses on the endpoint itself |
+| `aws_vpc_endpoint_route_table_association` | covered by AwsVpcEndpoint's spec.route_table_ids (gateway endpoints); the standalone form exists for split management of endpoints created elsewhere, which the declarative model expresses on the endpoint itself |
+| `aws_vpc_endpoint_security_group_association` | covered by AwsVpcEndpoint's spec.security_group_ids (interface endpoints); the standalone form exists for split management of endpoints created elsewhere, which the declarative model expresses on the endpoint itself |
+| `aws_vpc_endpoint_subnet_association` | covered by AwsVpcEndpoint's spec.subnet_ids (ENI-based endpoints); the standalone form exists for split management of endpoints created elsewhere, which the declarative model expresses on the endpoint itself |
+| `aws_vpc_security_group_egress_rule` | covered by AwsSecurityGroup's inline egress rules (same payload); the framework resource adds only per-rule tags -- operational metadata on individual permissions, never modeled (group-level tags come from metadata) |
+| `aws_vpc_security_group_ingress_rule` | covered by AwsSecurityGroup's inline ingress rules (same payload; a spec rule may carry several sources, which AWS expands server-side exactly like per-rule resources); the framework resource adds only per-rule tags -- operational metadata on individual permissions, never modeled (group-level tags come from metadata) |
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (752)
+### Planned (730)
 
 | Resource | Recorded reason |
 |---|---|
@@ -519,7 +539,6 @@ rather than trusted.
 | `aws_apigatewayv2_integration_response` | judged into the planned AwsWebSocketApiGateway kind -- integration responses exist only in the WebSocket request/response model; HTTP APIs have no integration-response concept (they transform via response_parameters, already modeled on AwsHttpApiGateway) |
 | `aws_apigatewayv2_model` | judged into the planned AwsWebSocketApiGateway kind -- request models are consumed via route request_models/model_selection_expression, WebSocket-only route surface; HTTP APIs never reference models |
 | `aws_apigatewayv2_route_response` | judged into the planned AwsWebSocketApiGateway kind -- route responses implement WebSocket two-way communication (only the $default route response is supported); HTTP APIs have no route-response concept |
-| `aws_appautoscaling_scheduled_action` | application-autoscaling scheduled actions fold into the consuming kinds' scaling surface (AwsDynamodb, AwsEcsService) |
 | `aws_appconfig_application` | judged as a planned AwsAppConfig kind (application, environments, profiles, versions, deployment strategies, extensions) |
 | `aws_appconfig_configuration_profile` | judged as a planned AwsAppConfig kind (application, environments, profiles, versions, deployment strategies, extensions) |
 | `aws_appconfig_deployment` | judged as a planned AwsAppConfig kind (application, environments, profiles, versions, deployment strategies, extensions) |
@@ -541,7 +560,7 @@ rather than trusted.
 | `aws_appsync_resolver` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
 | `aws_appsync_source_api_association` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
 | `aws_appsync_type` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
-| `aws_athena_data_catalog` | federated data catalogs fold into the existing AwsAthenaWorkgroup kind as its spec deepens |
+| `aws_athena_data_catalog` | judged as a planned AwsAthenaDataCatalog kind -- a federated catalog is a standalone peer registration queried from any workgroup, not a workgroup satellite |
 | `aws_backup_framework` | judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans) |
 | `aws_backup_global_settings` | judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in) |
 | `aws_backup_logically_air_gapped_vault` | judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in) |
@@ -725,8 +744,6 @@ rather than trusted.
 | `aws_dx_private_virtual_interface` | judged as a planned AwsDxVirtualInterface kind (private/public/transit and hosted virtual interfaces, accepters, BGP peers) |
 | `aws_dx_public_virtual_interface` | judged as a planned AwsDxVirtualInterface kind (private/public/transit and hosted virtual interfaces, accepters, BGP peers) |
 | `aws_dx_transit_virtual_interface` | judged as a planned AwsDxVirtualInterface kind (private/public/transit and hosted virtual interfaces, accepters, BGP peers) |
-| `aws_dynamodb_global_secondary_index` | table companion surface (GSIs, replicas); folds into the existing AwsDynamodb kind as its spec deepens |
-| `aws_dynamodb_table_replica` | table companion surface (GSIs, replicas); folds into the existing AwsDynamodb kind as its spec deepens |
 | `aws_ebs_default_kms_key` | account-wide EBS security toggles fold into the planned AwsEc2AccountSettings kind |
 | `aws_ebs_encryption_by_default` | account-wide EBS security toggles fold into the planned AwsEc2AccountSettings kind |
 | `aws_ebs_fast_snapshot_restore` | judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions) |
@@ -771,7 +788,6 @@ rather than trusted.
 | `aws_ecs_daemon_task_definition` | the ECS daemon workload paradigm (provider 6.50); planned alongside aws_ecs_daemon as its own admission when daemon demand lands |
 | `aws_ecs_express_gateway_service` | ECS Express -- a distinct gateway-fronted service paradigm with its own lifecycle; planned as its own kind admission, not a fold into AwsEcsService |
 | `aws_ecs_task_set` | task sets exist only under the EXTERNAL deployment controller; folds into AwsEcsService if the external-controller workflow is ever admitted (its native and blue/green controllers are fully modeled) |
-| `aws_eip_association` | EIP companion surface (associations, domain names); folds into the existing AwsElasticIp kind as its spec deepens |
 | `aws_eks_capability` | EKS managed capabilities (ACK, KRO, Argo CD; provider 6.25.0) with their own configuration tree (IAM Identity Center wiring, RBAC role mappings, network access); a cluster-scoped companion with independent lifecycle -- its own kind (AwsEksCapability) on the EKS family's composition pattern (addon/fargate-profile/access-entry precedent), not a cluster fold-in |
 | `aws_eks_identity_provider_config` | associates an external OIDC identity provider with a cluster for user authentication; an associable cluster companion with independent (create-only) lifecycle -- its own kind (AwsEksIdentityProviderConfig) on the EKS family's composition pattern, not a cluster fold-in |
 | `aws_eks_pod_identity_association` | maps any Kubernetes service account to an IAM role via EKS Pod Identity; the per-ADDON arm is already modeled on AwsEksAddon (pod_identity_associations), and the standalone workload-scoped association is its own kind (AwsEksPodIdentityAssociation) -- per-workload IAM identity is chart-wiring surface, not cluster or addon configuration |
@@ -791,20 +807,20 @@ rather than trusted.
 | `aws_fsx_openzfs_volume` | judged as a planned AwsFsxOpenzfsVolume kind (child-volume hierarchy, NFS exports, quotas, clone-from-snapshot origin) -- standalone lifecycle on the AwsFsxOntapVolume precedent; the AwsFsxOpenzfsFileSystem spec records child volumes as out of its scope |
 | `aws_fsx_s3_access_point_attachment` | attaches an S3 access point to an OpenZFS volume -- satellite of the planned AwsFsxOpenzfsVolume kind; judged with that kind's family |
 | `aws_globalaccelerator_cross_account_attachment` | cross-account attachments fold into the existing AwsGlobalAccelerator kind as its spec deepens |
-| `aws_glue_catalog` | Glue catalog-level surface (policies, encryption, security configs); folds into the existing AwsGlueCatalogDatabase kind as its spec deepens |
+| `aws_glue_catalog` | judged as a planned AwsGlueCatalog kind -- a catalog is a standalone object (multi-catalog hierarchies, Redshift-federated catalogs) with its own lifecycle, not a per-database satellite |
 | `aws_glue_catalog_table` | judged as a planned AwsGlueCatalogTable kind (tables, partitions, indexes, optimizers) |
 | `aws_glue_catalog_table_optimizer` | judged as a planned AwsGlueCatalogTable kind (tables, partitions, indexes, optimizers) |
 | `aws_glue_classifier` | judged as a planned AwsGlueCrawler kind (crawlers with classifiers) |
 | `aws_glue_connection` | judged as a planned AwsGlueConnection kind |
 | `aws_glue_crawler` | judged as a planned AwsGlueCrawler kind (crawlers with classifiers) |
-| `aws_glue_data_catalog_encryption_settings` | Glue catalog-level surface (policies, encryption, security configs); folds into the existing AwsGlueCatalogDatabase kind as its spec deepens |
+| `aws_glue_data_catalog_encryption_settings` | judged as a planned AwsGlueDataCatalogSettings kind (with the resource policy) -- an account/region catalog singleton, not a per-database satellite |
 | `aws_glue_job` | judged as a planned AwsGlueJob kind (jobs, triggers, workflows) |
 | `aws_glue_partition` | judged as a planned AwsGlueCatalogTable kind (tables, partitions, indexes, optimizers) |
 | `aws_glue_partition_index` | judged as a planned AwsGlueCatalogTable kind (tables, partitions, indexes, optimizers) |
 | `aws_glue_registry` | judged as a planned AwsGlueSchemaRegistry kind (registries with schemas) |
-| `aws_glue_resource_policy` | Glue catalog-level surface (policies, encryption, security configs); folds into the existing AwsGlueCatalogDatabase kind as its spec deepens |
+| `aws_glue_resource_policy` | judged as a planned AwsGlueDataCatalogSettings kind (with the encryption settings) -- an account/region catalog singleton, not a per-database satellite |
 | `aws_glue_schema` | judged as a planned AwsGlueSchemaRegistry kind (registries with schemas) |
-| `aws_glue_security_configuration` | Glue catalog-level surface (policies, encryption, security configs); folds into the existing AwsGlueCatalogDatabase kind as its spec deepens |
+| `aws_glue_security_configuration` | judged as a planned AwsGlueSecurityConfiguration kind -- a named encryption profile consumed by the future Glue job/crawler family, not a per-database satellite |
 | `aws_glue_trigger` | judged as a planned AwsGlueJob kind (jobs, triggers, workflows) |
 | `aws_glue_workflow` | judged as a planned AwsGlueJob kind (jobs, triggers, workflows) |
 | `aws_grafana_license_association` | judged as a planned AwsManagedGrafana kind (workspaces with licenses, SAML, API keys, service accounts) |
@@ -836,11 +852,9 @@ rather than trusted.
 | `aws_iam_group_policy_attachment` | judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments) |
 | `aws_iam_group_policy_attachments_exclusive` | judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments) |
 | `aws_iam_organizations_features` | judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features) |
-| `aws_iam_role_policies_exclusive` | role companion surface (exclusive policy lockdown, service-linked roles); folds into the existing AwsIamRole kind as its spec deepens |
-| `aws_iam_role_policy_attachments_exclusive` | role companion surface (exclusive policy lockdown, service-linked roles); folds into the existing AwsIamRole kind as its spec deepens |
 | `aws_iam_saml_provider` | judged as a planned AwsIamSamlProvider kind |
 | `aws_iam_security_token_service_preferences` | judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features) |
-| `aws_iam_service_linked_role` | role companion surface (exclusive policy lockdown, service-linked roles); folds into the existing AwsIamRole kind as its spec deepens |
+| `aws_iam_service_linked_role` | judged as a planned AwsIamServiceLinkedRole kind -- a standalone role class with its own create API (aws_service_name/custom_suffix, no trust policy, no attachable policies), never a fold into AwsIamRole |
 | `aws_iam_service_specific_credential` | user-scoped service credentials (Bedrock API keys, Cassandra, CodeCommit); folds into AwsIamUser with the Bedrock wave, which brings the demand signal (API keys), the per-credential secret-delivery design, and the live fixtures its proof needs |
 | `aws_iam_user_group_membership` | judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments) |
 | `aws_identitystore_group` | Identity Center directory objects (users, groups, memberships) fold into the planned AwsIdentityCenterAssignment kind family |
@@ -860,7 +874,6 @@ rather than trusted.
 | `aws_inspector2_filter` | judged as a planned AwsInspector kind (enabler, delegated admin, filters, organization configuration) |
 | `aws_inspector2_member_association` | judged as a planned AwsInspector kind (enabler, delegated admin, filters, organization configuration) |
 | `aws_inspector2_organization_configuration` | judged as a planned AwsInspector kind (enabler, delegated admin, filters, organization configuration) |
-| `aws_internet_gateway_attachment` | gateway attachments fold into the existing AwsInternetGateway kind as its spec deepens |
 | `aws_key_pair` | judged as a planned AwsKeyPair kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): account-level public-key material referenced by many instances and launch templates -- AwsEc2Instance.key_name consumes a key pair by name but cannot create the material |
 | `aws_keyspaces_keyspace` | judged as a planned AwsKeyspaces kind (keyspaces with tables) |
 | `aws_keyspaces_table` | judged as a planned AwsKeyspaces kind (keyspaces with tables) |
@@ -902,10 +915,8 @@ rather than trusted.
 | `aws_mskconnect_connector` | judged as a planned AwsMskConnect kind (connectors, custom plugins, worker configurations) |
 | `aws_mskconnect_custom_plugin` | judged as a planned AwsMskConnect kind (connectors, custom plugins, worker configurations) |
 | `aws_mskconnect_worker_configuration` | judged as a planned AwsMskConnect kind (connectors, custom plugins, worker configurations) |
-| `aws_neptune_cluster_endpoint` | Neptune companion surface (endpoints, event subscriptions, parameter groups, global clusters); folds into the existing AwsNeptuneCluster kind as its spec deepens |
-| `aws_neptune_event_subscription` | Neptune companion surface (endpoints, event subscriptions, parameter groups, global clusters); folds into the existing AwsNeptuneCluster kind as its spec deepens |
-| `aws_neptune_global_cluster` | Neptune companion surface (endpoints, event subscriptions, parameter groups, global clusters); folds into the existing AwsNeptuneCluster kind as its spec deepens |
-| `aws_neptune_parameter_group` | Neptune companion surface (endpoints, event subscriptions, parameter groups, global clusters); folds into the existing AwsNeptuneCluster kind as its spec deepens |
+| `aws_neptune_event_subscription` | judged as a planned AwsNeptuneEventSubscription kind -- an account-level notification pipe over arbitrary sources (clusters, instances, groups), not a satellite of one cluster |
+| `aws_neptune_global_cluster` | judged as a planned AwsNeptuneGlobalCluster kind -- a parent object with its own multi-region lifecycle; AwsNeptuneCluster models the join arm (global_cluster_identifier) |
 | `aws_network_acl` | judged as a planned AwsNetworkAcl kind (ACLs, associations, rules) |
 | `aws_network_acl_association` | judged as a planned AwsNetworkAcl kind (ACLs, associations, rules) |
 | `aws_network_acl_rule` | judged as a planned AwsNetworkAcl kind (ACLs, associations, rules) |
@@ -924,12 +935,9 @@ rather than trusted.
 | `aws_oam_link` | judged as a planned AwsObservabilityLink kind (CloudWatch cross-account sinks and links) |
 | `aws_oam_sink` | judged as a planned AwsObservabilityLink kind (CloudWatch cross-account sinks and links) |
 | `aws_oam_sink_policy` | judged as a planned AwsObservabilityLink kind (CloudWatch cross-account sinks and links) |
-| `aws_opensearch_authorize_vpc_endpoint_access` | domain companion surface (policies, SAML, VPC endpoints, packages); folds into the existing AwsOpenSearchDomain kind as its spec deepens |
-| `aws_opensearch_domain_policy` | domain companion surface (policies, SAML, VPC endpoints, packages); folds into the existing AwsOpenSearchDomain kind as its spec deepens |
-| `aws_opensearch_domain_saml_options` | domain companion surface (policies, SAML, VPC endpoints, packages); folds into the existing AwsOpenSearchDomain kind as its spec deepens |
-| `aws_opensearch_package` | domain companion surface (policies, SAML, VPC endpoints, packages); folds into the existing AwsOpenSearchDomain kind as its spec deepens |
-| `aws_opensearch_package_association` | domain companion surface (policies, SAML, VPC endpoints, packages); folds into the existing AwsOpenSearchDomain kind as its spec deepens |
-| `aws_opensearch_vpc_endpoint` | domain companion surface (policies, SAML, VPC endpoints, packages); folds into the existing AwsOpenSearchDomain kind as its spec deepens |
+| `aws_opensearch_package` | judged as a planned AwsOpenSearchPackage kind (with its association) -- an account-level package object with its own S3-backed lifecycle, usable across many domains |
+| `aws_opensearch_package_association` | judged as a planned AwsOpenSearchPackage kind (the association is the package kind's join to a domain) |
+| `aws_opensearch_vpc_endpoint` | judged as a planned AwsOpenSearchVpcEndpoint kind -- a consumer-side endpoint created in the consumer's VPC (cross-account capable) with its own lifecycle |
 | `aws_opensearchserverless_access_policy` | judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints) |
 | `aws_opensearchserverless_collection` | judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints) |
 | `aws_opensearchserverless_collection_group` | judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints) |
@@ -1042,7 +1050,6 @@ rather than trusted.
 | `aws_secretsmanager_secret_policy` | judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags) |
 | `aws_secretsmanager_secret_rotation` | judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags) |
 | `aws_secretsmanager_tag` | judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags) |
-| `aws_security_group_rule` | security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens |
 | `aws_securityhub_account` | judged as a planned AwsSecurityHub kind (account enablement v1/v2, organization configuration, standards, insights, action targets, automation rules, aggregators, connectors) |
 | `aws_securityhub_account_v2` | judged as a planned AwsSecurityHub kind (account enablement v1/v2, organization configuration, standards, insights, action targets, automation rules, aggregators, connectors) |
 | `aws_securityhub_action_target` | judged as a planned AwsSecurityHub kind (account enablement v1/v2, organization configuration, standards, insights, action targets, automation rules, aggregators, connectors) |
@@ -1088,12 +1095,11 @@ rather than trusted.
 | `aws_ses_receipt_filter` | judged as a planned AwsSesReceiptRuleSet kind (inbound email: filters, rules, rule sets, activation) |
 | `aws_ses_receipt_rule` | judged as a planned AwsSesReceiptRuleSet kind (inbound email: filters, rules, rule sets, activation) |
 | `aws_ses_receipt_rule_set` | judged as a planned AwsSesReceiptRuleSet kind (inbound email: filters, rules, rule sets, activation) |
-| `aws_sesv2_account_suppression_attributes` | account-level SES attributes (suppression, VDM); fold into the existing AwsSesConfigurationSet kind family's account composition |
-| `aws_sesv2_account_vdm_attributes` | account-level SES attributes (suppression, VDM); fold into the existing AwsSesConfigurationSet kind family's account composition |
+| `aws_sesv2_account_suppression_attributes` | judged as a planned AwsSesAccountSettings kind (account/region singletons: suppression + VDM attributes) -- folding a singleton into the per-set AwsSesConfigurationSet would make multiple sets fight over one account object |
+| `aws_sesv2_account_vdm_attributes` | judged as a planned AwsSesAccountSettings kind (account/region singletons: suppression + VDM attributes) -- folding a singleton into the per-set AwsSesConfigurationSet would make multiple sets fight over one account object |
 | `aws_sesv2_dedicated_ip_assignment` | judged as a planned AwsSesDedicatedIpPool kind (pools with IP assignments) |
 | `aws_sesv2_dedicated_ip_pool` | judged as a planned AwsSesDedicatedIpPool kind (pools with IP assignments) |
-| `aws_sfn_activity` | Step Functions companion surface (activities, aliases); folds into the existing AwsStepFunction kind as its spec deepens |
-| `aws_sfn_alias` | Step Functions companion surface (activities, aliases); folds into the existing AwsStepFunction kind as its spec deepens |
+| `aws_sfn_activity` | judged as a planned AwsStepFunctionActivity kind -- an activity is a standalone worker-queue primitive with its own ARN and encryption config, referenced from state machine definitions, not a satellite of any one state machine |
 | `aws_shield_application_layer_automatic_response` | judged as a planned AwsShieldAdvanced kind (subscription, protections, protection groups, DRT access, proactive engagement) |
 | `aws_shield_drt_access_log_bucket_association` | judged as a planned AwsShieldAdvanced kind (subscription, protections, protection groups, DRT access, proactive engagement) |
 | `aws_shield_drt_access_role_arn_association` | judged as a planned AwsShieldAdvanced kind (subscription, protections, protection groups, DRT access, proactive engagement) |
@@ -1170,14 +1176,9 @@ rather than trusted.
 | `aws_vpc_dhcp_options_association` | judged as a planned AwsVpcDhcpOptions kind (option sets with associations) |
 | `aws_vpc_endpoint_connection_accepter` | judged as a planned AwsVpcEndpointService kind (PrivateLink provider side: services, allowed principals, DNS verification, connection accepters/notifications) |
 | `aws_vpc_endpoint_connection_notification` | judged as a planned AwsVpcEndpointService kind (PrivateLink provider side: services, allowed principals, DNS verification, connection accepters/notifications) |
-| `aws_vpc_endpoint_policy` | endpoint companion surface (policies, private DNS, route table/security group/subnet associations); folds into the existing AwsVpcEndpoint kind as its spec deepens |
-| `aws_vpc_endpoint_private_dns` | endpoint companion surface (policies, private DNS, route table/security group/subnet associations); folds into the existing AwsVpcEndpoint kind as its spec deepens |
-| `aws_vpc_endpoint_route_table_association` | endpoint companion surface (policies, private DNS, route table/security group/subnet associations); folds into the existing AwsVpcEndpoint kind as its spec deepens |
-| `aws_vpc_endpoint_security_group_association` | endpoint companion surface (policies, private DNS, route table/security group/subnet associations); folds into the existing AwsVpcEndpoint kind as its spec deepens |
 | `aws_vpc_endpoint_service` | judged as a planned AwsVpcEndpointService kind (PrivateLink provider side: services, allowed principals, DNS verification, connection accepters/notifications) |
 | `aws_vpc_endpoint_service_allowed_principal` | judged as a planned AwsVpcEndpointService kind (PrivateLink provider side: services, allowed principals, DNS verification, connection accepters/notifications) |
 | `aws_vpc_endpoint_service_private_dns_verification` | judged as a planned AwsVpcEndpointService kind (PrivateLink provider side: services, allowed principals, DNS verification, connection accepters/notifications) |
-| `aws_vpc_endpoint_subnet_association` | endpoint companion surface (policies, private DNS, route table/security group/subnet associations); folds into the existing AwsVpcEndpoint kind as its spec deepens |
 | `aws_vpc_ipam` | judged as a planned AwsVpcIpam kind (IPAM, scopes, pools, CIDR allocations, resource discovery, organization admin) |
 | `aws_vpc_ipam_organization_admin_account` | judged as a planned AwsVpcIpam kind (IPAM, scopes, pools, CIDR allocations, resource discovery, organization admin) |
 | `aws_vpc_ipam_pool` | judged as a planned AwsVpcIpam kind (IPAM, scopes, pools, CIDR allocations, resource discovery, organization admin) |
@@ -1190,9 +1191,6 @@ rather than trusted.
 | `aws_vpc_peering_connection` | judged as a planned AwsVpcPeering kind (peering connections, accepters, options) |
 | `aws_vpc_peering_connection_accepter` | judged as a planned AwsVpcPeering kind (peering connections, accepters, options) |
 | `aws_vpc_peering_connection_options` | judged as a planned AwsVpcPeering kind (peering connections, accepters, options) |
-| `aws_vpc_security_group_egress_rule` | security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens |
-| `aws_vpc_security_group_ingress_rule` | security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens |
-| `aws_vpc_security_group_rules_exclusive` | security-group rule resources; fold into the existing AwsSecurityGroup kind as its spec deepens |
 | `aws_vpclattice_access_log_subscription` | judged as a planned AwsVpcLatticeServiceNetwork kind (service networks, associations, auth/resource policies, resource gateways/configurations, log subscriptions, domain verifications) |
 | `aws_vpclattice_auth_policy` | judged as a planned AwsVpcLatticeServiceNetwork kind (service networks, associations, auth/resource policies, resource gateways/configurations, log subscriptions, domain verifications) |
 | `aws_vpclattice_domain_verification` | judged as a planned AwsVpcLatticeServiceNetwork kind (service networks, associations, auth/resource policies, resource gateways/configurations, log subscriptions, domain verifications) |
@@ -1223,7 +1221,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (537)
+### Deferred (540)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1430,6 +1428,8 @@ rather than trusted.
 | `aws_glue_ml_transform` | Glue ML transforms, data-quality rulesets and UDFs are workload content; deferred |
 | `aws_glue_user_defined_function` | Glue ML transforms, data-quality rulesets and UDFs are workload content; deferred |
 | `aws_iam_outbound_web_identity_federation` | human-credential MFA devices and outbound identity federation; deferred pending demand |
+| `aws_iam_role_policies_exclusive` | exclusive-set reconciliation (purges out-of-band inline policies at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamRole already declares its full intended policy set |
+| `aws_iam_role_policy_attachments_exclusive` | exclusive-set reconciliation (purges out-of-band attachments at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamRole already declares its full intended policy set |
 | `aws_iam_user_login_profile` | human console-login credentials (PGP-encrypted passwords) -- the human-credential class alongside aws_iam_virtual_mfa_device; the catalog provisions machine identities; revisit on demand |
 | `aws_iam_user_policies_exclusive` | exclusive-set reconciliation (purges out-of-band inline policies at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamUser already declares its full intended policy set |
 | `aws_iam_user_policy_attachments_exclusive` | exclusive-set reconciliation (purges out-of-band managed-policy attachments at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamUser already declares its full intended policy set |
@@ -1736,6 +1736,7 @@ rather than trusted.
 | `aws_vpc_route_server_peer` | VPC route servers; deferred pending demand |
 | `aws_vpc_route_server_propagation` | VPC route servers; deferred pending demand |
 | `aws_vpc_route_server_vpc_association` | VPC route servers; deferred pending demand |
+| `aws_vpc_security_group_rules_exclusive` | exclusive-management lockdown (asserts the full rule-id set and removes everything else) -- the IAM exclusive-management / route53 records_exclusive class; the catalog's inline rules already own the group's rule set declaratively |
 | `aws_workmail_default_domain` | hosted email vertical (WorkMail); deferred pending demand |
 | `aws_workmail_domain` | hosted email vertical (WorkMail); deferred pending demand |
 | `aws_workmail_group` | hosted email vertical (WorkMail); deferred pending demand |

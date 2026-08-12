@@ -13,7 +13,8 @@ spec:
   # (slows the destroy leg), and the EXPRESS type (same create path) -- all
   # proven by spec tests and the offline gate.
   tier: 1
-  status: green
+  # pending_proof: the session-043 depth closure changed the live send surface (folded aliases, tri-state tracing, explicit-OFF logging, destination send-when-set) -- Q29 proves it
+  status: pending_proof
   validated_provisioners:
     - pulumi
     - terraform

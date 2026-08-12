@@ -979,7 +979,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRedshiftClust
 | `status.outputs.cluster_namespace_arn` | `string` | The namespace ARN of the cluster, used by Redshift data sharing and the Redshift Data API. |
 | `status.outputs.endpoint` | `string` | The connection endpoint in "address:port" form, for SQL client connection strings. |
 | `status.outputs.dns_name` | `string` | The DNS hostname of the cluster's leader node (without port), for building connection strings and DNS alias records. |
-| `status.outputs.database_name` | `string` | The name of the first database in the cluster. |
+| `status.outputs.database_name` | `string` | The name of the first database in the cluster. Populated only when the spec set database_name: with it omitted, AWS creates its documented default initial database ("dev") but DescribeClusters echoes no name back, so both engines surface an empty string here (live-verified) -- clients relying on the default should connect to "dev". |
 | `status.outputs.port` | `int32` | The port the cluster accepts connections on. |
 | `status.outputs.subnet_group_name` | `string` | The name of the Redshift subnet group the cluster runs in (module-managed from subnet_ids or the referenced existing group). |
 | `status.outputs.parameter_group_name` | `string` | The name of the cluster parameter group in use (module-managed from inline parameters or the referenced existing group). |

@@ -61,11 +61,14 @@ arrive pre-resolved as plain strings.
 | `revision_id` | Revision identifier of the current definition |
 | `status` | Lifecycle status reported by AWS |
 | `creation_date` | RFC3339 creation timestamp |
+| `alias_arns` | Alias ARNs keyed by alias name (empty map without aliases) |
 
 ## Implementation Notes
 
 - **Definition**: The `definition` arrives as a nested object and is serialized to JSON using `jsonencode()`; ASL key casing survives.
 - **Versioning**: `publish = true` publishes an immutable version on create and on every configuration change; the latest version's ARN is exported.
 - **Dynamic blocks**: Tracing, logging, and encryption configurations use `dynamic` blocks to conditionally include them only when specified.
-- **Log destination suffix**: Auto-appends `:*` to CloudWatch Log Group ARNs (AWS requirement enforced at plan time by the provider).
+- **Tri-state tracing / explicit-OFF logging**: an unset `tracing_enabled` sends no block; an explicit `false` (and a logging block with level `OFF`) is the disable send -- the provider suppresses block REMOVAL, so absence alone reverts nothing.
+- **Aliases** (`aliases.tf`): one `aws_sfn_alias` per entry, keyed by name, routing 100% of traffic to the version this deployment published.
+- **Log destination suffix**: Auto-appends `:*` to CloudWatch Log Group ARNs (AWS requirement enforced at plan time by the provider); the destination is sent only when it resolves non-empty.
 - **Encryption type**: Automatically set to `CUSTOMER_MANAGED_KMS_KEY` when a KMS key is provided; an absent block leaves AWS-owned keys.

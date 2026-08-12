@@ -11,6 +11,7 @@ import (
 	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -69,9 +70,11 @@ type AwsDynamodbSpec struct {
 	KeySchema []*AwsDynamodbKeySchemaElement `protobuf:"bytes,4,rep,name=key_schema,json=keySchema,proto3" json:"key_schema,omitempty"`
 	// Reserved read/write capacity for the table. Required when the
 	// effective billing mode is PROVISIONED; must stay unset for
-	// PAY_PER_REQUEST. Pair with auto-scaling needs by sizing for the
-	// sustained baseline -- on-demand is usually the better answer for
-	// spiky traffic.
+	// PAY_PER_REQUEST. On provisioned tables the modules enforce this
+	// capacity through an Application Auto Scaling target (pinned
+	// min = max) so that capacity changes here always land -- and so that
+	// adding the autoscaling block later never replaces the table. With
+	// autoscaling configured, these values are the initial capacity only.
 	ProvisionedThroughput *AwsDynamodbProvisionedThroughput `protobuf:"bytes,5,opt,name=provisioned_throughput,json=provisionedThroughput,proto3" json:"provisioned_throughput,omitempty"`
 	// Optional ceilings on on-demand consumption -- a spend guardrail
 	// for PAY_PER_REQUEST tables. Requests beyond the ceiling are
@@ -132,10 +135,10 @@ type AwsDynamodbSpec struct {
 	// answers "which partition keys are hot / throttled". Enables at the
 	// table level and, optionally, per GSI.
 	ContributorInsights *AwsDynamodbContributorInsights `protobuf:"bytes,17,opt,name=contributor_insights,json=contributorInsights,proto3" json:"contributor_insights,omitempty"`
-	// A resource-based IAM policy attached to the table, as a JSON
-	// document -- cross-account access grants without assuming roles.
-	// Table-scoped only (stream policies are a separate niche surface).
-	ResourcePolicy string `protobuf:"bytes,18,opt,name=resource_policy,json=resourcePolicy,proto3" json:"resource_policy,omitempty"`
+	// A resource-based IAM policy attached to the table -- cross-account
+	// access grants without assuming roles. Table-scoped only (stream
+	// policies are a separate niche surface).
+	ResourcePolicy *AwsDynamodbResourcePolicy `protobuf:"bytes,18,opt,name=resource_policy,json=resourcePolicy,proto3" json:"resource_policy,omitempty"`
 	// A Kinesis Data Stream that receives the table's item-level change
 	// data -- the fan-out path for analytics and search-indexing
 	// pipelines (independent of DynamoDB Streams and usable alongside
@@ -180,7 +183,20 @@ type AwsDynamodbSpec struct {
 	// cheaper than writing items individually. Mutually exclusive with
 	// the restore sources; the key schema and attributes above are
 	// required (imports define a brand-new table).
-	ImportTable   *AwsDynamodbImportTable `protobuf:"bytes,27,opt,name=import_table,json=importTable,proto3" json:"import_table,omitempty"`
+	ImportTable *AwsDynamodbImportTable `protobuf:"bytes,27,opt,name=import_table,json=importTable,proto3" json:"import_table,omitempty"`
+	// Application Auto Scaling for PROVISIONED tables: target-tracking
+	// policies that hold read/write capacity utilization near a target,
+	// plus optional scheduled capacity adjustments. Application Auto
+	// Scaling owns the table's live capacity on EVERY provisioned table
+	// (without this block the modules register pinned min = max targets
+	// from provisioned_throughput, so declared capacity still lands),
+	// which is what lets this block be added or removed in place -- the
+	// table resource itself never changes shape. Per-GSI autoscaling is
+	// deliberately not modeled: neither engine can exempt only the inline
+	// indexes' capacity from reconciliation, so an autoscaled GSI would
+	// fight the scaler on every apply (the provider's standalone GSI
+	// resource exists for that shape).
+	Autoscaling   *AwsDynamodbAutoscaling `protobuf:"bytes,28,opt,name=autoscaling,proto3" json:"autoscaling,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -334,11 +350,11 @@ func (x *AwsDynamodbSpec) GetContributorInsights() *AwsDynamodbContributorInsigh
 	return nil
 }
 
-func (x *AwsDynamodbSpec) GetResourcePolicy() string {
+func (x *AwsDynamodbSpec) GetResourcePolicy() *AwsDynamodbResourcePolicy {
 	if x != nil {
 		return x.ResourcePolicy
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsDynamodbSpec) GetKinesisStreamingDestination() *AwsDynamodbKinesisStreamingDestination {
@@ -400,6 +416,13 @@ func (x *AwsDynamodbSpec) GetRestoreBackupArn() string {
 func (x *AwsDynamodbSpec) GetImportTable() *AwsDynamodbImportTable {
 	if x != nil {
 		return x.ImportTable
+	}
+	return nil
+}
+
+func (x *AwsDynamodbSpec) GetAutoscaling() *AwsDynamodbAutoscaling {
+	if x != nil {
+		return x.Autoscaling
 	}
 	return nil
 }
@@ -924,7 +947,10 @@ type AwsDynamodbTtl struct {
 	// Turn TTL on.
 	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	// The attribute holding the expiry time as epoch seconds. Required
-	// when enabled; must stay empty when disabled.
+	// when enabled. MAY (and should) stay set when flipping enabled to
+	// false: AWS's UpdateTimeToLive call requires the attribute name when
+	// DISABLING TTL too, so keeping it is what makes the disable
+	// expressible.
 	AttributeName string `protobuf:"bytes,2,opt,name=attribute_name,json=attributeName,proto3" json:"attribute_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1526,11 +1552,352 @@ func (x *AwsDynamodbImportTableCsv) GetHeaderList() []string {
 	return nil
 }
 
+// AwsDynamodbResourcePolicy attaches a resource-based IAM policy to the
+// table -- cross-account access grants without assuming roles.
+type AwsDynamodbResourcePolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The policy document, written as native YAML (serialized to JSON for
+	// the AWS API). Statements address the table ARN and, for index
+	// access, "{table_arn}/index/*".
+	Policy *structpb.Struct `protobuf:"bytes,1,opt,name=policy,proto3" json:"policy,omitempty"`
+	// Allow this policy to remove the applying caller's OWN access to the
+	// table. AWS refuses such a policy unless this is set -- the guard
+	// against locking yourself out. Set it deliberately for lockdown and
+	// hand-off policies where the deploying principal is meant to lose
+	// access.
+	ConfirmRemoveSelfResourceAccess bool `protobuf:"varint,2,opt,name=confirm_remove_self_resource_access,json=confirmRemoveSelfResourceAccess,proto3" json:"confirm_remove_self_resource_access,omitempty"`
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
+}
+
+func (x *AwsDynamodbResourcePolicy) Reset() {
+	*x = AwsDynamodbResourcePolicy{}
+	mi := &file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsDynamodbResourcePolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsDynamodbResourcePolicy) ProtoMessage() {}
+
+func (x *AwsDynamodbResourcePolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsDynamodbResourcePolicy.ProtoReflect.Descriptor instead.
+func (*AwsDynamodbResourcePolicy) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *AwsDynamodbResourcePolicy) GetPolicy() *structpb.Struct {
+	if x != nil {
+		return x.Policy
+	}
+	return nil
+}
+
+func (x *AwsDynamodbResourcePolicy) GetConfirmRemoveSelfResourceAccess() bool {
+	if x != nil {
+		return x.ConfirmRemoveSelfResourceAccess
+	}
+	return false
+}
+
+// AwsDynamodbAutoscaling configures Application Auto Scaling for a
+// PROVISIONED table: target-tracking on read/write capacity utilization
+// plus optional scheduled capacity adjustments. Once configured, the
+// scaler owns the table's live capacity; provisioned_throughput supplies
+// only the initial values.
+type AwsDynamodbAutoscaling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Target tracking for read capacity. At least one of read/write must
+	// be configured.
+	Read *AwsDynamodbCapacityAutoscaling `protobuf:"bytes,1,opt,name=read,proto3" json:"read,omitempty"`
+	// Target tracking for write capacity.
+	Write *AwsDynamodbCapacityAutoscaling `protobuf:"bytes,2,opt,name=write,proto3" json:"write,omitempty"`
+	// Scheduled capacity adjustments (e.g. raise the floor before a
+	// nightly batch job, lower it after). Each entry is keyed by name and
+	// targets one dimension's registered scalable target.
+	ScheduledAdjustments []*AwsDynamodbScheduledAdjustment `protobuf:"bytes,3,rep,name=scheduled_adjustments,json=scheduledAdjustments,proto3" json:"scheduled_adjustments,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *AwsDynamodbAutoscaling) Reset() {
+	*x = AwsDynamodbAutoscaling{}
+	mi := &file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsDynamodbAutoscaling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsDynamodbAutoscaling) ProtoMessage() {}
+
+func (x *AwsDynamodbAutoscaling) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsDynamodbAutoscaling.ProtoReflect.Descriptor instead.
+func (*AwsDynamodbAutoscaling) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AwsDynamodbAutoscaling) GetRead() *AwsDynamodbCapacityAutoscaling {
+	if x != nil {
+		return x.Read
+	}
+	return nil
+}
+
+func (x *AwsDynamodbAutoscaling) GetWrite() *AwsDynamodbCapacityAutoscaling {
+	if x != nil {
+		return x.Write
+	}
+	return nil
+}
+
+func (x *AwsDynamodbAutoscaling) GetScheduledAdjustments() []*AwsDynamodbScheduledAdjustment {
+	if x != nil {
+		return x.ScheduledAdjustments
+	}
+	return nil
+}
+
+// AwsDynamodbCapacityAutoscaling holds one dimension's scalable-target
+// bounds and its target-tracking policy.
+type AwsDynamodbCapacityAutoscaling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The capacity floor the scaler never goes below.
+	MinCapacity int64 `protobuf:"varint,1,opt,name=min_capacity,json=minCapacity,proto3" json:"min_capacity,omitempty"`
+	// The capacity ceiling the scaler never exceeds -- also the cost
+	// guardrail.
+	MaxCapacity int64 `protobuf:"varint,2,opt,name=max_capacity,json=maxCapacity,proto3" json:"max_capacity,omitempty"`
+	// The consumed-to-provisioned utilization percentage to hold. AWS
+	// accepts 20-90 for DynamoDB. 70 is the usual production sweet spot:
+	// headroom for spikes without paying for idle.
+	TargetUtilizationPercent int32 `protobuf:"varint,3,opt,name=target_utilization_percent,json=targetUtilizationPercent,proto3" json:"target_utilization_percent,omitempty"`
+	// Seconds to wait after a scale-in before another may follow. 0 keeps
+	// the AWS default.
+	ScaleInCooldownSeconds int32 `protobuf:"varint,4,opt,name=scale_in_cooldown_seconds,json=scaleInCooldownSeconds,proto3" json:"scale_in_cooldown_seconds,omitempty"`
+	// Seconds to wait after a scale-out before another may follow. 0 keeps
+	// the AWS default.
+	ScaleOutCooldownSeconds int32 `protobuf:"varint,5,opt,name=scale_out_cooldown_seconds,json=scaleOutCooldownSeconds,proto3" json:"scale_out_cooldown_seconds,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *AwsDynamodbCapacityAutoscaling) Reset() {
+	*x = AwsDynamodbCapacityAutoscaling{}
+	mi := &file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsDynamodbCapacityAutoscaling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsDynamodbCapacityAutoscaling) ProtoMessage() {}
+
+func (x *AwsDynamodbCapacityAutoscaling) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsDynamodbCapacityAutoscaling.ProtoReflect.Descriptor instead.
+func (*AwsDynamodbCapacityAutoscaling) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AwsDynamodbCapacityAutoscaling) GetMinCapacity() int64 {
+	if x != nil {
+		return x.MinCapacity
+	}
+	return 0
+}
+
+func (x *AwsDynamodbCapacityAutoscaling) GetMaxCapacity() int64 {
+	if x != nil {
+		return x.MaxCapacity
+	}
+	return 0
+}
+
+func (x *AwsDynamodbCapacityAutoscaling) GetTargetUtilizationPercent() int32 {
+	if x != nil {
+		return x.TargetUtilizationPercent
+	}
+	return 0
+}
+
+func (x *AwsDynamodbCapacityAutoscaling) GetScaleInCooldownSeconds() int32 {
+	if x != nil {
+		return x.ScaleInCooldownSeconds
+	}
+	return 0
+}
+
+func (x *AwsDynamodbCapacityAutoscaling) GetScaleOutCooldownSeconds() int32 {
+	if x != nil {
+		return x.ScaleOutCooldownSeconds
+	}
+	return 0
+}
+
+// AwsDynamodbScheduledAdjustment changes one dimension's capacity bounds
+// on a schedule (cron, rate, or one-shot at-time).
+type AwsDynamodbScheduledAdjustment struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The adjustment name -- keys the provider resource; renaming replaces
+	// this adjustment without touching siblings.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Which capacity dimension this adjustment changes: "READ" or "WRITE".
+	// The dimension's autoscaling target (read/write above) must be
+	// configured.
+	Dimension string `protobuf:"bytes,2,opt,name=dimension,proto3" json:"dimension,omitempty"`
+	// The schedule: "cron(...)" (recurring, e.g. "cron(0 6 * * ? *)"),
+	// "rate(...)" (fixed interval), or "at(yyyy-mm-ddThh:mm:ss)"
+	// (one-shot).
+	Schedule string `protobuf:"bytes,3,opt,name=schedule,proto3" json:"schedule,omitempty"`
+	// IANA timezone for the schedule (e.g. "America/Los_Angeles"). Empty
+	// keeps the AWS default (UTC).
+	Timezone string `protobuf:"bytes,4,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	// The new capacity floor when the schedule fires. At least one of
+	// min_capacity/max_capacity must be set. 0 leaves the floor unchanged.
+	MinCapacity int64 `protobuf:"varint,5,opt,name=min_capacity,json=minCapacity,proto3" json:"min_capacity,omitempty"`
+	// The new capacity ceiling when the schedule fires. 0 leaves the
+	// ceiling unchanged.
+	MaxCapacity int64 `protobuf:"varint,6,opt,name=max_capacity,json=maxCapacity,proto3" json:"max_capacity,omitempty"`
+	// RFC3339 UTC timestamp the schedule takes effect (e.g.
+	// "2026-09-01T00:00:00Z"). Empty starts immediately.
+	StartTime string `protobuf:"bytes,7,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	// RFC3339 UTC timestamp the schedule stops firing. Empty never
+	// expires.
+	EndTime       string `protobuf:"bytes,8,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsDynamodbScheduledAdjustment) Reset() {
+	*x = AwsDynamodbScheduledAdjustment{}
+	mi := &file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsDynamodbScheduledAdjustment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsDynamodbScheduledAdjustment) ProtoMessage() {}
+
+func (x *AwsDynamodbScheduledAdjustment) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsDynamodbScheduledAdjustment.ProtoReflect.Descriptor instead.
+func (*AwsDynamodbScheduledAdjustment) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *AwsDynamodbScheduledAdjustment) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsDynamodbScheduledAdjustment) GetDimension() string {
+	if x != nil {
+		return x.Dimension
+	}
+	return ""
+}
+
+func (x *AwsDynamodbScheduledAdjustment) GetSchedule() string {
+	if x != nil {
+		return x.Schedule
+	}
+	return ""
+}
+
+func (x *AwsDynamodbScheduledAdjustment) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
+}
+
+func (x *AwsDynamodbScheduledAdjustment) GetMinCapacity() int64 {
+	if x != nil {
+		return x.MinCapacity
+	}
+	return 0
+}
+
+func (x *AwsDynamodbScheduledAdjustment) GetMaxCapacity() int64 {
+	if x != nil {
+		return x.MaxCapacity
+	}
+	return 0
+}
+
+func (x *AwsDynamodbScheduledAdjustment) GetStartTime() string {
+	if x != nil {
+		return x.StartTime
+	}
+	return ""
+}
+
+func (x *AwsDynamodbScheduledAdjustment) GetEndTime() string {
+	if x != nil {
+		return x.EndTime
+	}
+	return ""
+}
+
 var File_catalog_aws_awsdynamodb_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"+catalog/aws/awsdynamodb/v1alpha1/spec.proto\x12$dev.planton.aws.awsdynamodb.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x889\n" +
+	"+catalog/aws/awsdynamodb/v1alpha1/spec.proto\x12$dev.planton.aws.awsdynamodb.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xa7C\n" +
 	"\x0fAwsDynamodbSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12I\n" +
 	"\fbilling_mode\x18\x02 \x01(\tB&\xbaH#\xd8\x01\x01r\x1eR\vPROVISIONEDR\x0fPAY_PER_REQUESTR\vbillingMode\x12o\n" +
@@ -1551,17 +1918,18 @@ const file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDesc = "" +
 	"\vtable_class\x18\x0f \x01(\tB.\xbaH+\xd8\x01\x01r&R\bSTANDARDR\x1aSTANDARD_INFREQUENT_ACCESSR\n" +
 	"tableClass\x12>\n" +
 	"\x1bdeletion_protection_enabled\x18\x10 \x01(\bR\x19deletionProtectionEnabled\x12w\n" +
-	"\x14contributor_insights\x18\x11 \x01(\v2D.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbContributorInsightsR\x13contributorInsights\x12'\n" +
-	"\x0fresource_policy\x18\x12 \x01(\tR\x0eresourcePolicy\x12\x90\x01\n" +
+	"\x14contributor_insights\x18\x11 \x01(\v2D.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbContributorInsightsR\x13contributorInsights\x12h\n" +
+	"\x0fresource_policy\x18\x12 \x01(\v2?.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbResourcePolicyR\x0eresourcePolicy\x12\x90\x01\n" +
 	"\x1dkinesis_streaming_destination\x18\x13 \x01(\v2L.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbKinesisStreamingDestinationR\x1bkinesisStreamingDestination\x12T\n" +
 	"\breplicas\x18\x14 \x03(\v28.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbReplicaR\breplicas\x12u\n" +
 	"\x14global_table_witness\x18\x15 \x01(\v2C.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalTableWitnessR\x12globalTableWitness\x12.\n" +
-	"\x13restore_source_name\x18\x16 \x01(\tR\x11restoreSourceName\x127\n" +
-	"\x18restore_source_table_arn\x18\x17 \x01(\tR\x15restoreSourceTableArn\x12*\n" +
-	"\x11restore_date_time\x18\x18 \x01(\tR\x0frestoreDateTime\x123\n" +
-	"\x16restore_to_latest_time\x18\x19 \x01(\bR\x13restoreToLatestTime\x12,\n" +
-	"\x12restore_backup_arn\x18\x1a \x01(\tR\x10restoreBackupArn\x12_\n" +
-	"\fimport_table\x18\x1b \x01(\v2<.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbImportTableR\vimportTable:\x9a&\xbaH\x96&\x1a\xb0\x03\n" +
+	"\x13restore_source_name\x18\x16 \x01(\tR\x11restoreSourceName\x12H\n" +
+	"\x18restore_source_table_arn\x18\x17 \x01(\tB\x0f\xbaH\f\xd8\x01\x01r\a2\x05^arn:R\x15restoreSourceTableArn\x12d\n" +
+	"\x11restore_date_time\x18\x18 \x01(\tB8\xbaH5\xd8\x01\x01r02.^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$R\x0frestoreDateTime\x123\n" +
+	"\x16restore_to_latest_time\x18\x19 \x01(\bR\x13restoreToLatestTime\x12=\n" +
+	"\x12restore_backup_arn\x18\x1a \x01(\tB\x0f\xbaH\f\xd8\x01\x01r\a2\x05^arn:R\x10restoreBackupArn\x12_\n" +
+	"\fimport_table\x18\x1b \x01(\v2<.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbImportTableR\vimportTable\x12^\n" +
+	"\vautoscaling\x18\x1c \x01(\v2<.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbAutoscalingR\vautoscaling:\xbc.\xbaH\xb8.\x1a\xb0\x03\n" +
 	"#key_schema_required_unless_restored\x12\xd4\x01key_schema and attribute_definitions are required -- omit them only when the table is created by restore (restore_source_name, restore_source_table_arn, or restore_backup_arn), which inherits them from the source\x1a\xb1\x01(this.restore_source_name != '' || this.restore_source_table_arn != '' || this.restore_backup_arn != '') || (this.key_schema.size() > 0 && this.attribute_definitions.size() > 0)\x1a\x98\x02\n" +
 	"\x16table_key_schema_shape\x12Wkey_schema must have exactly one HASH element and at most one RANGE element, HASH first\x1a\xa4\x01this.key_schema.size() == 0 || (this.key_schema.size() <= 2 && this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() == 1)\x1a\xc6\x01\n" +
 	"\x17key_attributes_declared\x12Qevery key_schema element must name an attribute declared in attribute_definitions\x1aXthis.key_schema.all(k, this.attribute_definitions.exists(a, a.name == k.attribute_name))\x1a\xec\x03\n" +
@@ -1576,7 +1944,10 @@ const file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDesc = "" +
 	"\rmrsc_topology\x12}Multi-Region Strong Consistency requires exactly two STRONG replicas, or exactly one STRONG replica plus global_table_witness\x1a\xb5\x01!this.replicas.exists(r, r.consistency_mode == 'STRONG') ? !has(this.global_table_witness) : (has(this.global_table_witness) ? this.replicas.size() == 1 : this.replicas.size() == 2)\x1a\xb4\x02\n" +
 	" restore_import_sources_exclusive\x12xat most one create source may be set: restore_source_name, restore_source_table_arn, restore_backup_arn, or import_table\x1a\x95\x01[this.restore_source_name != '', this.restore_source_table_arn != '', this.restore_backup_arn != '', has(this.import_table)].filter(x, x).size() <= 1\x1a\xa2\x03\n" +
 	"\"restore_point_requires_pitr_source\x12\xae\x01restore_date_time / restore_to_latest_time require a point-in-time restore source (restore_source_name or restore_source_table_arn), and exactly one of the two must be chosen\x1a\xca\x01(this.restore_source_name != '' || this.restore_source_table_arn != '') ? ((this.restore_date_time != '') != this.restore_to_latest_time) : (this.restore_date_time == '' && !this.restore_to_latest_time)\x1a\x83\x02\n" +
-	"\x16insights_indexes_exist\x12]contributor_insights.gsi_index_names must name global secondary indexes defined on this table\x1a\x89\x01!has(this.contributor_insights) || this.contributor_insights.gsi_index_names.all(n, this.global_secondary_indexes.exists(g, g.name == n))\"Z\n" +
+	"\x16insights_indexes_exist\x12]contributor_insights.gsi_index_names must name global secondary indexes defined on this table\x1a\x89\x01!has(this.contributor_insights) || this.contributor_insights.gsi_index_names.all(n, this.global_secondary_indexes.exists(g, g.name == n))\x1a\xab\x03\n" +
+	"\x16attributes_all_indexed\x12\x95\x01every declared attribute must be used by the table key schema, a GSI key schema, or an LSI range key -- DynamoDB rejects unused attribute definitions\x1a\xf8\x01this.attribute_definitions.all(a, this.key_schema.exists(k, k.attribute_name == a.name) || this.global_secondary_indexes.exists(g, g.key_schema.exists(k, k.attribute_name == a.name)) || this.local_secondary_indexes.exists(l, l.range_key == a.name))\x1a\x9a\x02\n" +
+	" autoscaling_requires_provisioned\x12\x8d\x01autoscaling applies to PROVISIONED tables only (on-demand tables scale natively) and requires provisioned_throughput for the initial capacity\x1af!has(this.autoscaling) || (this.billing_mode != 'PAY_PER_REQUEST' && has(this.provisioned_throughput))\x1a\xd4\x02\n" +
+	".scheduled_adjustments_require_dimension_target\x12\x85\x01each scheduled adjustment's dimension (READ/WRITE) must have its autoscaling target configured (autoscaling.read / autoscaling.write)\x1a\x99\x01!has(this.autoscaling) || this.autoscaling.scheduled_adjustments.all(s, s.dimension == 'READ' ? has(this.autoscaling.read) : has(this.autoscaling.write))\"Z\n" +
 	"\x14AwsDynamodbAttribute\x12\x1b\n" +
 	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12%\n" +
 	"\x04type\x18\x02 \x01(\tB\x11\xbaH\x0e\xc8\x01\x01r\tR\x01SR\x01NR\x01BR\x04type\"\x7f\n" +
@@ -1595,55 +1966,59 @@ const file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15AwsDynamodbProjection\x125\n" +
 	"\x04type\x18\x01 \x01(\tB!\xbaH\x1e\xc8\x01\x01r\x19R\x03ALLR\tKEYS_ONLYR\aINCLUDER\x04type\x126\n" +
 	"\x12non_key_attributes\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x10nonKeyAttributes:\xe5\x01\xbaH\xe1\x01\x1a\xde\x01\n" +
-	"\x1binclude_requires_attributes\x12\\non_key_attributes must be set when projection type is INCLUDE and must stay empty otherwise\x1aathis.type == 'INCLUDE' ? this.non_key_attributes.size() > 0 : this.non_key_attributes.size() == 0\"\xb5\a\n" +
+	"\x1binclude_requires_attributes\x12\\non_key_attributes must be set when projection type is INCLUDE and must stay empty otherwise\x1aathis.type == 'INCLUDE' ? this.non_key_attributes.size() > 0 : this.non_key_attributes.size() == 0\"\xec\f\n" +
 	"\x1fAwsDynamodbGlobalSecondaryIndex\x12\x1b\n" +
-	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12j\n" +
+	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12l\n" +
 	"\n" +
-	"key_schema\x18\x02 \x03(\v2A.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbKeySchemaElementB\b\xbaH\x05\x92\x01\x02\b\x01R\tkeySchema\x12c\n" +
+	"key_schema\x18\x02 \x03(\v2A.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbKeySchemaElementB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\bR\tkeySchema\x12c\n" +
 	"\n" +
 	"projection\x18\x03 \x01(\v2;.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbProjectionB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"projection\x12}\n" +
 	"\x16provisioned_throughput\x18\x04 \x01(\v2F.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbProvisionedThroughputR\x15provisionedThroughput\x12u\n" +
 	"\x14on_demand_throughput\x18\x05 \x01(\v2C.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbOnDemandThroughputR\x12onDemandThroughput\x12h\n" +
-	"\x0fwarm_throughput\x18\x06 \x01(\v2?.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbWarmThroughputR\x0ewarmThroughput:\xc3\x02\xbaH\xbf\x02\x1a\xbc\x02\n" +
-	"\x14gsi_key_schema_shape\x12}GSI key_schema must start with a HASH element and carry 1-4 HASH elements (all before any RANGE) and at most 4 RANGE elements\x1a\xa4\x01this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() <= 4 && this.key_schema.filter(k, k.key_type == 'RANGE').size() <= 4\"\xc8\x01\n" +
+	"\x0fwarm_throughput\x18\x06 \x01(\v2?.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbWarmThroughputR\x0ewarmThroughput:\xf8\a\xbaH\xf4\a\x1a\xf1\a\n" +
+	"\x14gsi_key_schema_shape\x12nGSI key_schema must carry 1-4 HASH elements first, then at most 4 RANGE elements -- no HASH may follow a RANGE\x1a\xe8\x06this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() <= 4 && this.key_schema.filter(k, k.key_type == 'RANGE').size() <= 4 && (this.key_schema.size() < 3 || !(this.key_schema[1].key_type == 'RANGE' && this.key_schema[2].key_type == 'HASH')) && (this.key_schema.size() < 4 || !(this.key_schema[2].key_type == 'RANGE' && this.key_schema[3].key_type == 'HASH')) && (this.key_schema.size() < 5 || !(this.key_schema[3].key_type == 'RANGE' && this.key_schema[4].key_type == 'HASH')) && (this.key_schema.size() < 6 || !(this.key_schema[4].key_type == 'RANGE' && this.key_schema[5].key_type == 'HASH')) && (this.key_schema.size() < 7 || !(this.key_schema[5].key_type == 'RANGE' && this.key_schema[6].key_type == 'HASH')) && (this.key_schema.size() < 8 || !(this.key_schema[6].key_type == 'RANGE' && this.key_schema[7].key_type == 'HASH'))\"\xc8\x01\n" +
 	"\x1eAwsDynamodbLocalSecondaryIndex\x12\x1b\n" +
 	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12$\n" +
 	"\trange_key\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\brangeKey\x12c\n" +
 	"\n" +
 	"projection\x18\x03 \x01(\v2;.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbProjectionB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"projection\"\x8f\x02\n" +
+	"projection\"\xd0\x01\n" +
 	"\x0eAwsDynamodbTtl\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12%\n" +
-	"\x0eattribute_name\x18\x02 \x01(\tR\rattributeName:\xbb\x01\xbaH\xb7\x01\x1a\xb4\x01\n" +
-	"\x1attl_attribute_when_enabled\x12Pattribute_name is required when TTL is enabled and must stay empty when disabled\x1aDthis.enabled ? this.attribute_name != '' : this.attribute_name == ''\"\xab\x02\n" +
+	"\x0eattribute_name\x18\x02 \x01(\tR\rattributeName:}\xbaHz\x1ax\n" +
+	"\x1attl_attribute_when_enabled\x12.attribute_name is required when TTL is enabled\x1a*!this.enabled || this.attribute_name != ''\"\xab\x02\n" +
 	"\x1eAwsDynamodbPointInTimeRecovery\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12C\n" +
 	"\x17recovery_period_in_days\x18\x02 \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18#(\x01R\x14recoveryPeriodInDays:\xa9\x01\xbaH\xa5\x01\x1a\xa2\x01\n" +
-	" recovery_period_requires_enabled\x12Krecovery_period_in_days only applies when point-in-time recovery is enabled\x1a1this.enabled || this.recovery_period_in_days == 0\"\xbd\x02\n" +
+	" recovery_period_requires_enabled\x12Krecovery_period_in_days only applies when point-in-time recovery is enabled\x1a1this.enabled || this.recovery_period_in_days == 0\"\xf4\x03\n" +
 	"\x1fAwsDynamodbServerSideEncryption\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12s\n" +
-	"\vkms_key_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn:\x8a\x01\xbaH\x86\x01\x1a\x83\x01\n" +
-	"\x18kms_key_requires_enabled\x12?kms_key_arn only applies when server-side encryption is enabled\x1a&this.enabled || !has(this.kms_key_arn)\"\xf3\x02\n" +
+	"\vkms_key_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn:\xc1\x02\xbaH\xbd\x02\x1a\x83\x01\n" +
+	"\x18kms_key_requires_enabled\x12?kms_key_arn only applies when server-side encryption is enabled\x1a&this.enabled || !has(this.kms_key_arn)\x1a\xb4\x01\n" +
+	"\x12kms_key_arn_format\x129kms_key_arn literal value must be a KMS key ARN (arn:...)\x1ac!has(this.kms_key_arn) || this.kms_key_arn.value == '' || this.kms_key_arn.value.startsWith('arn:')\"\xf3\x02\n" +
 	"\x1eAwsDynamodbContributorInsights\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12I\n" +
 	"\x04mode\x18\x02 \x01(\tB5\xbaH2\xd8\x01\x01r-R\x1bACCESSED_AND_THROTTLED_KEYSR\x0eTHROTTLED_KEYSR\x04mode\x120\n" +
 	"\x0fgsi_index_names\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\rgsiIndexNames:\xb9\x01\xbaH\xb5\x01\x1a\xb2\x01\n" +
-	"\x1finsights_fields_require_enabled\x12Hmode and gsi_index_names only apply when contributor insights is enabled\x1aEthis.enabled || (this.mode == '' && this.gsi_index_names.size() == 0)\"\xa1\x02\n" +
+	"\x1finsights_fields_require_enabled\x12Hmode and gsi_index_names only apply when contributor insights is enabled\x1aEthis.enabled || (this.mode == '' && this.gsi_index_names.size() == 0)\"\xe1\x03\n" +
 	"&AwsDynamodbKinesisStreamingDestination\x12{\n" +
 	"\n" +
 	"stream_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xa4\b\x92\xd4a\x19status.outputs.stream_arnR\tstreamArn\x12z\n" +
-	"(approximate_creation_date_time_precision\x18\x02 \x01(\tB\"\xbaH\x1f\xd8\x01\x01r\x1aR\vMILLISECONDR\vMICROSECONDR$approximateCreationDateTimePrecision\"\x96\x03\n" +
-	"\x12AwsDynamodbReplica\x12(\n" +
-	"\vregion_name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
+	"(approximate_creation_date_time_precision\x18\x02 \x01(\tB\"\xbaH\x1f\xd8\x01\x01r\x1aR\vMILLISECONDR\vMICROSECONDR$approximateCreationDateTimePrecision:\xbd\x01\xbaH\xb9\x01\x1a\xb6\x01\n" +
+	"\x11stream_arn_format\x12?stream_arn literal value must be a Kinesis stream ARN (arn:...)\x1a`!has(this.stream_arn) || this.stream_arn.value == '' || this.stream_arn.value.startsWith('arn:')\"\xfc\x04\n" +
+	"\x12AwsDynamodbReplica\x12H\n" +
+	"\vregion_name\x18\x01 \x01(\tB'\xbaH$r\"2 ^[a-z]{2,4}(?:-[a-z]+)+-\\d{1,2}$R\n" +
 	"regionName\x12s\n" +
 	"\vkms_key_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x123\n" +
 	"\x16point_in_time_recovery\x18\x03 \x01(\bR\x13pointInTimeRecovery\x12>\n" +
 	"\x1bdeletion_protection_enabled\x18\x04 \x01(\bR\x19deletionProtectionEnabled\x12%\n" +
 	"\x0epropagate_tags\x18\x05 \x01(\bR\rpropagateTags\x12E\n" +
-	"\x10consistency_mode\x18\x06 \x01(\tB\x1a\xbaH\x17\xd8\x01\x01r\x12R\bEVENTUALR\x06STRONGR\x0fconsistencyMode\"I\n" +
-	"\x1dAwsDynamodbGlobalTableWitness\x12(\n" +
-	"\vregion_name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
+	"\x10consistency_mode\x18\x06 \x01(\tB\x1a\xbaH\x17\xd8\x01\x01r\x12R\bEVENTUALR\x06STRONGR\x0fconsistencyMode:\xc3\x01\xbaH\xbf\x01\x1a\xbc\x01\n" +
+	"\x1areplica_kms_key_arn_format\x129kms_key_arn literal value must be a KMS key ARN (arn:...)\x1ac!has(this.kms_key_arn) || this.kms_key_arn.value == '' || this.kms_key_arn.value.startsWith('arn:')\"i\n" +
+	"\x1dAwsDynamodbGlobalTableWitness\x12H\n" +
+	"\vregion_name\x18\x01 \x01(\tB'\xbaH$r\"2 ^[a-z]{2,4}(?:-[a-z]+)+-\\d{1,2}$R\n" +
 	"regionName\"\xd1\x04\n" +
 	"\x16AwsDynamodbImportTable\x12x\n" +
 	"\ts3_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\bs3Bucket\x12&\n" +
@@ -1656,7 +2031,35 @@ const file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDesc = "" +
 	"\x19AwsDynamodbImportTableCsv\x12\x1c\n" +
 	"\tdelimiter\x18\x01 \x01(\tR\tdelimiter\x12\x1f\n" +
 	"\vheader_list\x18\x02 \x03(\tR\n" +
-	"headerListB\xbd\x02\n" +
+	"headerList\"\xa2\x01\n" +
+	"\x19AwsDynamodbResourcePolicy\x127\n" +
+	"\x06policy\x18\x01 \x01(\v2\x17.google.protobuf.StructB\x06\xbaH\x03\xc8\x01\x01R\x06policy\x12L\n" +
+	"#confirm_remove_self_resource_access\x18\x02 \x01(\bR\x1fconfirmRemoveSelfResourceAccess\"\xcb\x04\n" +
+	"\x16AwsDynamodbAutoscaling\x12X\n" +
+	"\x04read\x18\x01 \x01(\v2D.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbCapacityAutoscalingR\x04read\x12Z\n" +
+	"\x05write\x18\x02 \x01(\v2D.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbCapacityAutoscalingR\x05write\x12y\n" +
+	"\x15scheduled_adjustments\x18\x03 \x03(\v2D.dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbScheduledAdjustmentR\x14scheduledAdjustments:\xff\x01\xbaH\xfb\x01\x1a}\n" +
+	"\x16at_least_one_dimension\x12@configure autoscaling for at least one dimension (read or write)\x1a!has(this.read) || has(this.write)\x1az\n" +
+	"\x17adjustment_names_unique\x12+scheduled_adjustments[].name must be unique\x1a2this.scheduled_adjustments.map(s, s.name).unique()\"\xc3\x03\n" +
+	"\x1eAwsDynamodbCapacityAutoscaling\x12*\n" +
+	"\fmin_capacity\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02(\x01R\vminCapacity\x12*\n" +
+	"\fmax_capacity\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02(\x01R\vmaxCapacity\x12G\n" +
+	"\x1atarget_utilization_percent\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18Z(\x14R\x18targetUtilizationPercent\x12B\n" +
+	"\x19scale_in_cooldown_seconds\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x16scaleInCooldownSeconds\x12D\n" +
+	"\x1ascale_out_cooldown_seconds\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x17scaleOutCooldownSeconds:v\xbaHs\x1aq\n" +
+	"\vmax_gte_min\x12:max_capacity must be greater than or equal to min_capacity\x1a&this.max_capacity >= this.min_capacity\"\x9f\x06\n" +
+	"\x1eAwsDynamodbScheduledAdjustment\x12\x1b\n" +
+	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x123\n" +
+	"\tdimension\x18\x02 \x01(\tB\x15\xbaH\x12\xc8\x01\x01r\rR\x04READR\x05WRITER\tdimension\x129\n" +
+	"\bschedule\x18\x03 \x01(\tB\x1d\xbaH\x1ar\x182\x16^(cron|rate|at)\\(.+\\)$R\bschedule\x12\x1a\n" +
+	"\btimezone\x18\x04 \x01(\tR\btimezone\x12*\n" +
+	"\fmin_capacity\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\vminCapacity\x12*\n" +
+	"\fmax_capacity\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\vmaxCapacity\x12W\n" +
+	"\n" +
+	"start_time\x18\a \x01(\tB8\xbaH5\xd8\x01\x01r02.^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$R\tstartTime\x12S\n" +
+	"\bend_time\x18\b \x01(\tB8\xbaH5\xd8\x01\x01r02.^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$R\aendTime:\xcd\x02\xbaH\xc9\x02\x1a\x89\x01\n" +
+	"\x12at_least_one_bound\x12Ca scheduled adjustment must set min_capacity, max_capacity, or both\x1a.this.min_capacity > 0 || this.max_capacity > 0\x1a\xba\x01\n" +
+	"\x0ebounds_ordered\x12Lmax_capacity must be greater than or equal to min_capacity when both are set\x1aZthis.min_capacity == 0 || this.max_capacity == 0 || this.max_capacity >= this.min_capacityB\xbd\x02\n" +
 	"(com.dev.planton.aws.awsdynamodb.v1alpha1B\tSpecProtoP\x01ZQgithub.com/plantonhq/planton/catalog/aws/awsdynamodb/v1alpha1;awsdynamodbv1alpha1\xa2\x02\x04DPAA\xaa\x02$Dev.Planton.Aws.Awsdynamodb.V1alpha1\xca\x02$Dev\\Planton\\Aws\\Awsdynamodb\\V1alpha1\xe2\x020Dev\\Planton\\Aws\\Awsdynamodb\\V1alpha1\\GPBMetadata\xea\x02(Dev::Planton::Aws::Awsdynamodb::V1alpha1b\x06proto3"
 
 var (
@@ -1671,7 +2074,7 @@ func file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsDynamodbSpec)(nil),                        // 0: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec
 	(*AwsDynamodbAttribute)(nil),                   // 1: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbAttribute
@@ -1691,7 +2094,12 @@ var file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsDynamodbGlobalTableWitness)(nil),          // 15: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalTableWitness
 	(*AwsDynamodbImportTable)(nil),                 // 16: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbImportTable
 	(*AwsDynamodbImportTableCsv)(nil),              // 17: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbImportTableCsv
-	(*v1.StringValueOrRef)(nil),                    // 18: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsDynamodbResourcePolicy)(nil),              // 18: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbResourcePolicy
+	(*AwsDynamodbAutoscaling)(nil),                 // 19: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbAutoscaling
+	(*AwsDynamodbCapacityAutoscaling)(nil),         // 20: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbCapacityAutoscaling
+	(*AwsDynamodbScheduledAdjustment)(nil),         // 21: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbScheduledAdjustment
+	(*v1.StringValueOrRef)(nil),                    // 22: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*structpb.Struct)(nil),                        // 23: google.protobuf.Struct
 }
 var file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.attribute_definitions:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbAttribute
@@ -1705,26 +2113,32 @@ var file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_depIdxs = []int32{
 	10, // 8: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.point_in_time_recovery:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbPointInTimeRecovery
 	11, // 9: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.server_side_encryption:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbServerSideEncryption
 	12, // 10: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.contributor_insights:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbContributorInsights
-	13, // 11: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.kinesis_streaming_destination:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbKinesisStreamingDestination
-	14, // 12: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.replicas:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbReplica
-	15, // 13: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.global_table_witness:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalTableWitness
-	16, // 14: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.import_table:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbImportTable
-	2,  // 15: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalSecondaryIndex.key_schema:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbKeySchemaElement
-	6,  // 16: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalSecondaryIndex.projection:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbProjection
-	3,  // 17: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalSecondaryIndex.provisioned_throughput:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbProvisionedThroughput
-	4,  // 18: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalSecondaryIndex.on_demand_throughput:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbOnDemandThroughput
-	5,  // 19: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalSecondaryIndex.warm_throughput:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbWarmThroughput
-	6,  // 20: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbLocalSecondaryIndex.projection:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbProjection
-	18, // 21: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbServerSideEncryption.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	18, // 22: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbKinesisStreamingDestination.stream_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	18, // 23: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbReplica.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	18, // 24: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbImportTable.s3_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 25: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbImportTable.csv:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbImportTableCsv
-	26, // [26:26] is the sub-list for method output_type
-	26, // [26:26] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	18, // 11: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.resource_policy:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbResourcePolicy
+	13, // 12: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.kinesis_streaming_destination:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbKinesisStreamingDestination
+	14, // 13: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.replicas:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbReplica
+	15, // 14: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.global_table_witness:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalTableWitness
+	16, // 15: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.import_table:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbImportTable
+	19, // 16: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbSpec.autoscaling:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbAutoscaling
+	2,  // 17: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalSecondaryIndex.key_schema:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbKeySchemaElement
+	6,  // 18: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalSecondaryIndex.projection:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbProjection
+	3,  // 19: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalSecondaryIndex.provisioned_throughput:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbProvisionedThroughput
+	4,  // 20: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalSecondaryIndex.on_demand_throughput:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbOnDemandThroughput
+	5,  // 21: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbGlobalSecondaryIndex.warm_throughput:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbWarmThroughput
+	6,  // 22: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbLocalSecondaryIndex.projection:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbProjection
+	22, // 23: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbServerSideEncryption.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 24: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbKinesisStreamingDestination.stream_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 25: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbReplica.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 26: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbImportTable.s3_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 27: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbImportTable.csv:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbImportTableCsv
+	23, // 28: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbResourcePolicy.policy:type_name -> google.protobuf.Struct
+	20, // 29: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbAutoscaling.read:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbCapacityAutoscaling
+	20, // 30: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbAutoscaling.write:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbCapacityAutoscaling
+	21, // 31: dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbAutoscaling.scheduled_adjustments:type_name -> dev.planton.aws.awsdynamodb.v1alpha1.AwsDynamodbScheduledAdjustment
+	32, // [32:32] is the sub-list for method output_type
+	32, // [32:32] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_init() }
@@ -1738,7 +2152,7 @@ func file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsdynamodb_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

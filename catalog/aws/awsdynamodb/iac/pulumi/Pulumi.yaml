@@ -1,4 +1,4 @@
-name: awsdynamodb-pulumi-project
+name: awsdynamodb
 runtime:
   name: go
 

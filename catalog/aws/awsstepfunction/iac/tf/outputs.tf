@@ -27,3 +27,8 @@ output "creation_date" {
   description = "RFC3339 timestamp of when the state machine was created."
   value       = aws_sfn_state_machine.this.creation_date
 }
+
+output "alias_arns" {
+  description = "Alias ARNs keyed by alias name (spec.aliases[].name)."
+  value       = { for name, alias in aws_sfn_alias.this : name => alias.arn }
+}

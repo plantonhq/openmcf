@@ -390,6 +390,18 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 	consumed := map[string]bool{}
 	for _, res := range m.Resources {
 		consumed[res] = true
+
+		// An internal judgment is the whole judgment -- module plumbing
+		// with no arguments to account. Checked BEFORE the schema lookup
+		// so utility-provider resources (e.g. hashicorp/time's time_sleep,
+		// which no cloud-provider schema knows) can be judged internal
+		// instead of tripping the stale-artifact guard.
+		rm := manifest.Resources[res]
+		if rm != nil && rm.Internal != "" {
+			ka.InternalResources = append(ka.InternalResources, res)
+			continue
+		}
+
 		var block *Block
 		for _, name := range schemaNames {
 			if b, ok := schemas[name].Resources[res]; ok {
@@ -400,11 +412,6 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 		if block == nil {
 			ka.ManifestStale = append(ka.ManifestStale,
 				fmt.Sprintf("consumed resource %s is unknown to every loaded schema -- the module outruns its pin or the artifacts are stale", res))
-			continue
-		}
-		rm := manifest.Resources[res]
-		if rm != nil && rm.Internal != "" {
-			ka.InternalResources = append(ka.InternalResources, res)
 			continue
 		}
 		matcher := newArgMatcher(rm)

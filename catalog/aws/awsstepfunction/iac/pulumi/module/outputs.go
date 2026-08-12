@@ -7,4 +7,5 @@ const (
 	OpRevisionId             = "revision_id"
 	OpStatus                 = "status"
 	OpCreationDate           = "creation_date"
+	OpAliasArns              = "alias_arns"
 )

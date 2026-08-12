@@ -68,6 +68,14 @@ spec:
     masterUserName: admin
     masterUserPassword:
       value: "Sup3r$ecret!"
+  samlOptions:
+    idpEntityId: https://idp.example.com/saml/metadata
+    idpMetadataContent: |
+      <EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://idp.example.com/saml/metadata"></EntityDescriptor>
+    rolesKey: roles
+    sessionTimeoutMinutes: 120
+  authorizedVpcEndpointAccessAccounts:
+    - "123456789012"
   autoTuneOptions:
     desiredState: ENABLED
     useOffPeakWindow: true
@@ -152,7 +160,7 @@ spec:
 | `spec.autoTuneOptions.useOffPeakWindow` | `bool` |  |  |  |
 | `spec.automatedSnapshotStartHour` | `int32` |  |  |  |
 | `spec.offPeakWindowOptions` | `AwsOpenSearchDomainOffPeakWindowOptions` |  |  |  |
-| `spec.offPeakWindowOptions.enabled` | `bool` |  |  |  |
+| `spec.offPeakWindowOptions.enabled` | `bool` |  | `true` |  |
 | `spec.offPeakWindowOptions.windowStartHour` | `int32` |  |  |  |
 | `spec.offPeakWindowOptions.windowStartMinute` | `int32` |  |  |  |
 | `spec.autoSoftwareUpdateEnabled` | `bool` |  |  |  |
@@ -168,6 +176,15 @@ spec:
 | `spec.identityCenterOptions.identityCenterInstanceArn` | `string` |  |  |  |
 | `spec.identityCenterOptions.rolesKey` | `string` |  |  |  |
 | `spec.identityCenterOptions.subjectKey` | `string` |  |  |  |
+| `spec.samlOptions` | `AwsOpenSearchDomainSamlOptions` |  |  |  |
+| `spec.samlOptions.idpEntityId` | `string` | yes |  |  |
+| `spec.samlOptions.idpMetadataContent` | `string` | yes |  |  |
+| `spec.samlOptions.masterBackendRole` | `string` |  |  |  |
+| `spec.samlOptions.masterUserName` | `string` (sensitive) |  |  |  |
+| `spec.samlOptions.rolesKey` | `string` |  |  |  |
+| `spec.samlOptions.subjectKey` | `string` |  |  |  |
+| `spec.samlOptions.sessionTimeoutMinutes` | `int32` |  |  |  |
+| `spec.authorizedVpcEndpointAccessAccounts` | `[]string` |  |  |  |
 
 ## Field Details
 
@@ -206,6 +223,7 @@ zone awareness, warm/cold storage.
 - rule: warm_type requires warm_enabled to be true
 - rule: warm_count requires warm_enabled to be true
 - rule: warm_count must be between 2 and 150 when set
+- rule: warm_enabled requires warm_type and warm_count
 - rule: cold_storage_enabled requires warm_enabled to be true (cold storage depends on UltraWarm)
 
 ### spec.clusterConfig.instanceType
@@ -259,6 +277,8 @@ fan-out, and response aggregation so data nodes spend their capacity on
 indexing and searching. Valuable for high-concurrency dashboards and
 aggregation-heavy workloads.
 
+- rule: an enabled node pool requires instance_type and count (at least 1)
+
 ### spec.clusterConfig.nodeOptions[].nodeType
 
 `string` · required
@@ -279,13 +299,14 @@ removing its nodes.
 `string`
 
 Instance type for nodes in this pool (`.search` suffix).
-Example: "m7g.large.search".
+Example: "m7g.large.search". Required when the pool is enabled.
 
 ### spec.clusterConfig.nodeOptions[].count
 
 `int32`
 
-Number of nodes in the pool.
+Number of nodes in the pool (at least 1). Required when the pool is
+enabled.
 
 ### spec.clusterConfig.zoneAwarenessEnabled
 
@@ -307,20 +328,24 @@ Only used when `zone_awareness_enabled` is true.
 
 Enable UltraWarm storage tier for infrequently accessed, read-only data.
 UltraWarm uses S3-backed storage at lower cost per GB than hot storage.
+Requires warm_type and warm_count.
 
 ### spec.clusterConfig.warmType
 
 `string`
 
-Instance type for UltraWarm nodes. Examples: "ultrawarm1.medium.search",
-"ultrawarm1.large.search". Only used when `warm_enabled` is true.
+Instance type for UltraWarm nodes: "ultrawarm1.medium.search",
+"ultrawarm1.large.search", or "ultrawarm1.xlarge.search". Required when
+`warm_enabled` is true.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ultrawarm1.medium.search","ultrawarm1.large.search","ultrawarm1.xlarge.search"]}}
 
 ### spec.clusterConfig.warmCount
 
 `int32`
 
-Number of UltraWarm nodes. Range: 2-150.
-Only used when `warm_enabled` is true.
+Number of UltraWarm nodes. Range: 2-150. Required when `warm_enabled`
+is true.
 
 ### spec.clusterConfig.coldStorageEnabled
 
@@ -387,12 +412,15 @@ Minimum: 125 MiB/s. gp3 baseline: 125 MiB/s.
 
 ### spec.encryptAtRestEnabled
 
-`bool`
+`bool` · optional (explicit presence)
 
 Enable encryption at rest for indices and automated snapshots. Uses the
-AWS-managed `aws/es` key unless `kms_key_id` is provided.
-One-way: encryption cannot be disabled once enabled (ForceNew), and enabling
-it on very old Elasticsearch versions (< 6.7) also forces recreation.
+AWS-managed `aws/es` key unless `kms_key_id` is provided. Defaults to
+TRUE (secure by default); set an explicit false only for legacy engine
+versions that cannot encrypt.
+One-way: encryption cannot be disabled once enabled (disabling forces
+domain recreation), and enabling it on very old Elasticsearch versions
+(< 6.7) also forces recreation.
 
 - default: `true`
 
@@ -408,11 +436,11 @@ KMS key cannot be changed after domain creation.
 
 ### spec.nodeToNodeEncryptionEnabled
 
-`bool`
+`bool` · optional (explicit presence)
 
 Enable TLS encryption for all traffic between nodes in the cluster.
-Strongly recommended for production. One-way: cannot be disabled once
-enabled (ForceNew).
+Defaults to TRUE (secure by default). One-way: cannot be disabled once
+enabled (disabling forces domain recreation).
 
 - default: `true`
 
@@ -423,6 +451,8 @@ enabled (ForceNew).
 VPC placement configuration. When provided, the domain is deployed into VPC
 subnets and is not publicly accessible. ForceNew — adding or removing VPC
 options destroys and recreates the domain.
+
+- rule: vpc_options requires at least one subnet_id
 
 ### spec.vpcOptions.subnetIds
 
@@ -452,6 +482,7 @@ HTTPS enforcement, TLS policy, and custom endpoint configuration.
 
 - rule: custom_endpoint requires custom_endpoint_enabled to be true
 - rule: custom_endpoint_certificate_arn requires custom_endpoint_enabled to be true
+- rule: custom_endpoint_certificate_arn literal value must be an ACM certificate ARN (arn:...)
 
 ### spec.domainEndpointOptions.enforceHttps
 
@@ -467,8 +498,11 @@ Strongly recommended for all environments.
 `string`
 
 TLS security policy for the HTTPS endpoint. Controls the minimum TLS version
-and cipher suites. Example: "Policy-Min-TLS-1-2-PFS-2023-10" (recommended).
-Leave empty for the provider default.
+and cipher suites. "Policy-Min-TLS-1-2-PFS-2023-10" is the recommended
+baseline; the FIPS policy serves regulated workloads. Leave empty for the
+provider default.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Policy-Min-TLS-1-0-2019-07","Policy-Min-TLS-1-2-2019-07","Policy-Min-TLS-1-2-PFS-2023-10","Policy-Min-TLS-1-2-RFC9151-FIPS-2024-08"]}}
 
 ### spec.domainEndpointOptions.customEndpointEnabled
 
@@ -510,6 +544,7 @@ index-level permissions. Once enabled, FGAC cannot be disabled (ForceNew).
 - rule: master_user_password requires master_user_name to be set
 - rule: master_user_name requires advanced security (enabled) to be true
 - rule: jwt_options requires advanced security (enabled) to be true
+- rule: master_user_arn literal value must be an IAM user or role ARN (arn:...)
 
 ### spec.advancedSecurityOptions.enabled
 
@@ -569,7 +604,7 @@ JWT bearer-token authentication: clients present tokens signed by an
 external identity provider (validated against jwks_url or public_key).
 Requires OpenSearch 2.11+.
 
-- rule: provide jwks_url or public_key when JWT authentication is enabled
+- rule: provide jwks_url or public_key when jwt_options is configured
 
 ### spec.advancedSecurityOptions.jwtOptions.enabled
 
@@ -600,12 +635,18 @@ by definition -- it verifies signatures, it cannot create them.
 `string`
 
 The token claim that carries the user's roles/groups. Example: "roles".
+Up to 64 characters.
+
+- rule: {"string":{"maxLen":"64"}}
 
 ### spec.advancedSecurityOptions.jwtOptions.subjectKey
 
 `string`
 
 The token claim that identifies the user. Example: "sub", "email".
+Up to 64 characters.
+
+- rule: {"string":{"maxLen":"64"}}
 
 ### spec.cognitoOptions
 
@@ -659,6 +700,7 @@ Publish domain logs to CloudWatch Logs for monitoring and troubleshooting.
 Up to 4 configurations — one per log type (INDEX_SLOW_LOGS, SEARCH_SLOW_LOGS,
 ES_APPLICATION_LOGS, AUDIT_LOGS).
 
+- rule: cloudwatch_log_group_arn literal value must be a CloudWatch log group ARN (arn:...)
 - rule: log_type must be 'INDEX_SLOW_LOGS', 'SEARCH_SLOW_LOGS', 'ES_APPLICATION_LOGS', or 'AUDIT_LOGS'
 
 ### spec.logPublishingOptions[].logType
@@ -793,10 +835,14 @@ updates and Auto-Tune blue/green optimizations. AWS defaults the window to
 
 ### spec.offPeakWindowOptions.enabled
 
-`bool`
+`bool` · optional (explicit presence)
 
-Whether the off-peak window feature is active. AWS enables it by default
-on new domains.
+Whether the off-peak window feature is active. Defaults to TRUE -- AWS
+enables the window on every new domain and requires it enabled at create
+time; false is only meaningful as a later update (AWS may still reject
+disabling it while features depend on the window).
+
+- default: `true`
 
 ### spec.offPeakWindowOptions.windowStartHour
 
@@ -820,7 +866,9 @@ Minute (0-59) past the hour when the window opens.
 `bool`
 
 Enable automatic service software updates. When true, AWS applies mandatory
-and optional service software updates during the off-peak window.
+and optional service software updates during the off-peak window. Both
+engines always send this setting explicitly, so false actively turns
+auto-updates OFF (including on domains where they were previously on).
 
 ### spec.deploymentStrategy
 
@@ -903,6 +951,8 @@ Whether Identity Center API access is active.
 
 ARN of the IAM Identity Center instance to integrate with.
 
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^arn:"}}
+
 ### spec.identityCenterOptions.rolesKey
 
 `string`
@@ -921,6 +971,83 @@ or "Email".
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["UserName","UserId","Email"]}}
 
+### spec.samlOptions
+
+`AwsOpenSearchDomainSamlOptions`
+
+SAML authentication for OpenSearch Dashboards: users sign in through an
+external SAML 2.0 identity provider (Okta, Entra ID, ...). Managed as its
+own provider resource alongside the domain; removing the block disables
+SAML. Requires fine-grained access control (advanced_security_options).
+
+- rule: master_backend_role and master_user_name are mutually exclusive
+
+### spec.samlOptions.idpEntityId
+
+`string` · required
+
+The identity provider's entity ID (from the IdP metadata).
+Example: "https://idp.example.com/saml/metadata".
+
+- rule: {"string":{"minLen":"1"}}
+
+### spec.samlOptions.idpMetadataContent
+
+`string` · required
+
+The IdP's SAML metadata document, as an XML string (typically downloaded
+from the IdP's metadata endpoint).
+
+- rule: {"string":{"minLen":"1"}}
+
+### spec.samlOptions.masterBackendRole
+
+`string`
+
+The SAML backend role granted master (admin) access in Dashboards --
+mutually exclusive with master_user_name. Empty grants no SAML
+principal master access (map roles inside Dashboards instead).
+
+### spec.samlOptions.masterUserName
+
+`string` · sensitive
+
+The SAML username granted master (admin) access in Dashboards --
+mutually exclusive with master_backend_role.
+
+### spec.samlOptions.rolesKey
+
+`string`
+
+The SAML assertion attribute that carries the user's roles/groups.
+Empty uses the IdP's roles attribute conventions.
+
+### spec.samlOptions.subjectKey
+
+`string`
+
+The SAML assertion attribute that identifies the user. Empty uses
+NameID.
+
+### spec.samlOptions.sessionTimeoutMinutes
+
+`int32`
+
+Dashboards session lifetime in minutes, 1-1440. 0 keeps the AWS
+default (60).
+
+- rule: {"int32":{"lte":1440,"gte":0}}
+
+### spec.authorizedVpcEndpointAccessAccounts
+
+`[]string`
+
+AWS account IDs authorized to create OpenSearch-managed VPC endpoints
+against this domain (the grantor side of cross-account private access).
+Each entry is managed as its own provider resource keyed by account ID.
+
+- rule: {"repeated":{"unique":true}}
+
 ## Validation Rules
 
 - `engine_version_format`: engine_version must match 'OpenSearch_X.Y' or 'Elasticsearch_X.Y' format (e.g., 'OpenSearch_2.11', 'Elasticsearch_7.10')
@@ -928,6 +1055,9 @@ or "Email".
 - `ip_address_type_valid`: ip_address_type must be 'ipv4' or 'dualstack' when set
 - `log_options_max_four`: at most 4 log publishing options are allowed (one per log_type)
 - `audit_logs_require_fgac`: AUDIT_LOGS log type requires advanced_security_options to be enabled
+- `saml_requires_fgac`: saml_options requires advanced_security_options to be enabled (SAML roles map through fine-grained access control)
+- `jwt_requires_opensearch_2_11`: advanced_security_options.jwt_options requires engine_version OpenSearch_2.11 or newer (not available on Elasticsearch engines)
+- `authorized_accounts_format`: authorized_vpc_endpoint_access_accounts entries must be 12-digit AWS account IDs
 
 ## Outputs
 

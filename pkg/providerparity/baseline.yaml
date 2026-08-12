@@ -12,19 +12,13 @@
 # Entry format: kind:<Kind> | resource:<terraform resource type>
 # Regenerate with:  PLANTON_REGEN_PROVIDERPARITY_BASELINE=1 go test ./pkg/providerparity/
 entries:
-  - kind:AwsAthenaWorkgroup
   - kind:AwsClientVpn
-  - kind:AwsDynamodb
   - kind:AwsEcrRepo
   - kind:AwsGlobalAccelerator
-  - kind:AwsGlueCatalogDatabase
   - kind:AwsMwaaEnvironment
-  - kind:AwsNeptuneCluster
-  - kind:AwsOpenSearchDomain
   - kind:AwsPlantonRunner
   - kind:AwsS3ObjectSet
   - kind:AwsSagemakerDomain
-  - kind:AwsStepFunction
   - kind:GcpAddress
   - kind:GcpAlloydbCluster
   - kind:GcpAlloydbInstance

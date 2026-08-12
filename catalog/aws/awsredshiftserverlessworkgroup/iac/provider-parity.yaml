@@ -7,6 +7,13 @@
 # omission is a decision, never an accident.
 
 resources:
+  # Destroy-settle timer from the hashicorp/time utility provider (not an
+  # AWS resource): protects the endpoint-access delete from the
+  # workgroup's post-operation serialization window on full destroys. It
+  # carries no AWS surface to account.
+  time_sleep:
+    internal: destroy-ordering utility from the hashicorp/time provider (destroy_duration settle guarding the endpoint-access delete against the workgroup's post-operation lock window) -- no AWS surface
+
   aws_redshiftserverless_workgroup:
     mappings:
       # The provider nests query parameters under config_parameter blocks

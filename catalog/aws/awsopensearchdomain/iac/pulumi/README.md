@@ -1,6 +1,6 @@
 # Pulumi Module to Deploy AwsOpenSearchDomain
 
-This Pulumi program deploys an Amazon OpenSearch Service domain using the Planton API and module.
+This Pulumi program deploys an Amazon OpenSearch Service domain using the Planton API and module: the domain (`module/domain.go`) plus its folded satellites (`module/satellites.go`) -- SAML Dashboards sign-in when `samlOptions` is configured, and one cross-account VPC endpoint grant per `authorizedVpcEndpointAccessAccounts` entry. Encryption at rest and node-to-node TLS default to ON; the encryption, software-update, and off-peak blocks are always sent explicitly (matching the Terraform module) so a `false` genuinely turns the setting off.
 
 ## Requirements
 - Planton CLI built locally
