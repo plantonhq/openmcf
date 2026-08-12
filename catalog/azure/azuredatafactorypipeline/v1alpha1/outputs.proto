@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactorypipeline.v1alpha1;
+
+// **AzureDataFactoryPipelineStackOutputs** captures the outputs from
+// provisioning an Azure Data Factory pipeline.
+message AzureDataFactoryPipelineStackOutputs {
+  // The pipeline's Azure Resource Manager ID
+  // ({factory_id}/pipelines/{name}).
+  string pipeline_id = 1;
+
+  // The pipeline's name -- what triggers and pipeline-run API calls
+  // reference.
+  string pipeline_name = 2;
+}

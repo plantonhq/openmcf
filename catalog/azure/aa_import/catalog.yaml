@@ -517,3 +517,34 @@ spec:
     - terraform_type: azurerm_mongo_cluster_user
       pulumi_type: azure:mongocluster/user:User
       id_format: "{mongo_cluster_user_id}"
+
+    # --- Data Factory ------------------------------------------------------------
+    - terraform_type: azurerm_data_factory
+      pulumi_type: azure:datafactory/factory:Factory
+      id_format: "{data_factory_id}"
+    # Composed into AzureDataFactory: one credential per named entry
+    # (both flavors share one name namespace under the factory,
+    # {factory_id}/credentials/{name}).
+    - terraform_type: azurerm_data_factory_credential_user_managed_identity
+      pulumi_type: azure:datafactory/credentialUserManagedIdentity:CredentialUserManagedIdentity
+      id_format: "{data_factory_id}/credentials/{credential_name}"
+    - terraform_type: azurerm_data_factory_credential_service_principal
+      pulumi_type: azure:datafactory/credentialServicePrincipal:CredentialServicePrincipal
+      id_format: "{data_factory_id}/credentials/{credential_name}"
+    # Composed into AzureDataFactory: one managed private endpoint per
+    # named entry, addressed under the factory's managed virtual
+    # network (ARM names it "default").
+    - terraform_type: azurerm_data_factory_managed_private_endpoint
+      pulumi_type: azure:datafactory/managedPrivateEndpoint:ManagedPrivateEndpoint
+      id_format: "{data_factory_id}/managedVirtualNetworks/default/managedPrivateEndpoints/{managed_private_endpoint_name}"
+    # The pipeline's ARM id is scoped under its parent factory
+    # ({factory_id}/pipelines/{name}); the component's id output carries
+    # the full scoped id, so one value serves the import.
+    - terraform_type: azurerm_data_factory_pipeline
+      pulumi_type: azure:datafactory/pipeline:Pipeline
+      id_format: "{pipeline_id}"
+
+    # --- Microsoft Fabric ---------------------------------------------------------
+    - terraform_type: azurerm_fabric_capacity
+      pulumi_type: azure:fabric/capacity:Capacity
+      id_format: "{fabric_capacity_id}"

@@ -1,0 +1,70 @@
+# Deep-shape example for docs and offline validation: a factory with
+# the combined identity, a GitHub repository binding, global
+# parameters across the type vocabulary, customer-managed-key
+# encryption by reference form, both credential flavors, the managed
+# virtual network, and a managed private endpoint on each arm
+# (subresource and Private Link Service fqdns). References are literal
+# values so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactory
+metadata:
+  name: test-data-factory
+  id: test-data-factory
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  name: test-org-data-factory
+  region: eastus
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-uai
+  githubConfiguration:
+    accountName: test-org
+    branchName: main
+    repositoryName: data-pipelines
+    rootFolder: /
+    publishingEnabled: true
+  globalParameters:
+    - name: environment
+      type: String
+      value: test
+    - name: retries
+      type: Int
+      value: "3"
+    - name: regions
+      type: Array
+      value: '["eastus","westus"]'
+  managedVirtualNetworkEnabled: true
+  publicNetworkEnabled: false
+  customerManagedKey:
+    keyVaultKeyId:
+      value: https://test-vault.vault.azure.net/keys/df-cmk
+    userAssignedIdentityId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-uai
+  userManagedIdentityCredentials:
+    - name: etl-identity
+      identityId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-uai
+      description: identity the ETL linked services run as
+  servicePrincipalCredentials:
+    - name: legacy-sp
+      tenantId: 11111111-2222-3333-4444-555555555555
+      servicePrincipalId: 22222222-3333-4444-5555-666666666666
+      servicePrincipalKey:
+        linkedServiceName: keyvault-ls
+        secretName: legacy-sp-key
+  managedPrivateEndpoints:
+    - name: datalake-blob
+      targetResourceId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/testdata
+      subresourceName: blob
+    - name: partner-pls
+      targetResourceId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/privateLinkServices/partner-pls
+      fqdns:
+        - internal.partner.example
+  tags:
+    costCenter: platform

@@ -306,6 +306,7 @@ Fields on other kinds that can point at this resource:
 | AzureCognitiveAccount | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureContainerRegistry | `spec.encryption.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureCosmosdbAccount | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |
+| AzureDataFactory | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureDataProtectionBackupVault | `spec.encryption.keyId` | `status.outputs.versionless_id` |
 | AzureDiskEncryptionSet | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureEventHubNamespaceCustomerManagedKey | `spec.keyVaultKeyIds` | `status.outputs.versionless_id` |

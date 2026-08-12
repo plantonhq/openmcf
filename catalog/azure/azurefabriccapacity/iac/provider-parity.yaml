@@ -1,0 +1,30 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_fabric_capacity:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (a resource
+      # group, a region), where the provider inherits ARM's property
+      # names.
+      - spec: spec.resource_group
+        arg: resource_group_name
+      - spec: spec.region
+        arg: location
+      # The sku block has one configurable leaf (the tier is
+      # single-legal-value, see the exclusion), so the spec flattens it
+      # to one field.
+      - spec: spec.sku_name
+        arg: sku.name
+    exclusions:
+      # Single legal value at v5 ("Fabric" -- the provider's vocabulary
+      # has exactly one token). Deliberately not part of the spec; both
+      # engines send it explicitly. The field widens if Azure ships more
+      # tiers.
+      - arg: sku.tier
+        reason: single-legal-value

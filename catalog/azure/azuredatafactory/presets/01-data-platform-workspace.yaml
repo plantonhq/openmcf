@@ -1,0 +1,17 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactory
+metadata:
+  name: data-platform
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  # Factory names are GLOBALLY unique across Azure -- prefix with your
+  # org.
+  name: my-org-data-platform
+  region: eastus
+  identity:
+    type: SYSTEM_ASSIGNED
+  # Enabled up front: adding it later is in-place, but REMOVING it
+  # replaces the factory -- and managed private endpoints require it.
+  managedVirtualNetworkEnabled: true

@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFabricCapacity
+metadata:
+  name: fabric-starter
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  name: myorgfabric
+  region: eastus
+  # The smallest step -- the SKU moves up and down IN PLACE, so start
+  # small and grow with evidence from the Capacity Metrics app.
+  skuName: F2
+  administrationMembers:
+    - <admin-upn-or-object-id>

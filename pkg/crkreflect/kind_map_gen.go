@@ -193,6 +193,8 @@ import (
 	azurecosmosdbsqldatabasev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbsqldatabase/v1alpha1"
 	azurecosmosdbsqlroleassignmentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbsqlroleassignment/v1alpha1"
 	azurecosmosdbsqlroledefinitionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbsqlroledefinition/v1alpha1"
+	azuredatafactoryv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactory/v1alpha1"
+	azuredatafactorypipelinev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactorypipeline/v1alpha1"
 	azuredataprotectionbackupinstancev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionbackupinstance/v1alpha1"
 	azuredataprotectionbackuppolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionbackuppolicy/v1alpha1"
 	azuredataprotectionbackupvaultv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionbackupvault/v1alpha1"
@@ -219,6 +221,7 @@ import (
 	azureexpressroutecircuitpeeringv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressroutecircuitpeering/v1alpha1"
 	azureexpressroutegatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressroutegateway/v1alpha1"
 	azureexpressrouteportv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressrouteport/v1alpha1"
+	azurefabriccapacityv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefabriccapacity/v1alpha1"
 	azurefederatedidentitycredentialv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefederatedidentitycredential/v1alpha1"
 	azurefirewallv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefirewall/v1alpha1"
 	azurefirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefirewallpolicy/v1alpha1"
@@ -897,6 +900,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlDatabase:                       &azurecosmosdbsqldatabasev1alpha1.AzureCosmosdbSqlDatabase{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleAssignment:                 &azurecosmosdbsqlroleassignmentv1alpha1.AzureCosmosdbSqlRoleAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleDefinition:                 &azurecosmosdbsqlroledefinitionv1alpha1.AzureCosmosdbSqlRoleDefinition{},
+	cloudresourcekind.CloudResourceKind_AzureDataFactory:                               &azuredatafactoryv1alpha1.AzureDataFactory{},
+	cloudresourcekind.CloudResourceKind_AzureDataFactoryPipeline:                       &azuredatafactorypipelinev1alpha1.AzureDataFactoryPipeline{},
 	cloudresourcekind.CloudResourceKind_AzureDataProtectionBackupInstance:              &azuredataprotectionbackupinstancev1alpha1.AzureDataProtectionBackupInstance{},
 	cloudresourcekind.CloudResourceKind_AzureDataProtectionBackupPolicy:                &azuredataprotectionbackuppolicyv1alpha1.AzureDataProtectionBackupPolicy{},
 	cloudresourcekind.CloudResourceKind_AzureDataProtectionBackupVault:                 &azuredataprotectionbackupvaultv1alpha1.AzureDataProtectionBackupVault{},
@@ -923,6 +928,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureExpressRouteCircuitPeering:                &azureexpressroutecircuitpeeringv1alpha1.AzureExpressRouteCircuitPeering{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRouteGateway:                       &azureexpressroutegatewayv1alpha1.AzureExpressRouteGateway{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRoutePort:                          &azureexpressrouteportv1alpha1.AzureExpressRoutePort{},
+	cloudresourcekind.CloudResourceKind_AzureFabricCapacity:                            &azurefabriccapacityv1alpha1.AzureFabricCapacity{},
 	cloudresourcekind.CloudResourceKind_AzureFederatedIdentityCredential:               &azurefederatedidentitycredentialv1alpha1.AzureFederatedIdentityCredential{},
 	cloudresourcekind.CloudResourceKind_AzureFirewall:                                  &azurefirewallv1alpha1.AzureFirewall{},
 	cloudresourcekind.CloudResourceKind_AzureFirewallPolicy:                            &azurefirewallpolicyv1alpha1.AzureFirewallPolicy{},

@@ -98,6 +98,7 @@ Fields on other kinds that can point at this resource:
 | AzureContainerAppJob | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerRegistry | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureCosmosdbAccount | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureDataFactory | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureDataProtectionBackupInstance | `spec.disk.snapshotResourceGroupName` | `status.outputs.resource_group_name` |
 | AzureDataProtectionBackupInstance | `spec.kubernetesCluster.snapshotResourceGroupName` | `status.outputs.resource_group_name` |
 | AzureDataProtectionBackupVault | `spec.resourceGroup` | `status.outputs.resource_group_name` |
@@ -115,6 +116,7 @@ Fields on other kinds that can point at this resource:
 | AzureExpressRouteCircuitPeering | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureExpressRouteGateway | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureExpressRoutePort | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureFabricCapacity | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFirewall | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFirewallPolicy | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFrontDoorFirewallPolicy | `spec.resourceGroup` | `status.outputs.resource_group_name` |

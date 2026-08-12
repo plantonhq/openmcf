@@ -1,0 +1,21 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryPipeline
+metadata:
+  name: scheduled-copy
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: ingest-daily
+  description: Copies one day's data into the lakehouse, parameterized by window start.
+  folder: ingest
+  # Incremental loads must never overlap -- queued runs wait.
+  concurrency: 1
+  parameters:
+    # The run's date window -- the trigger supplies it per run.
+    windowStart: ""
+  # The activities array from the Data Factory Studio's Code view.
+  # Replace the Wait placeholder with your copy activity: author it in
+  # the Studio, then paste the Code view's "activities" array here.
+  activitiesJson: |
+    [{"name": "placeholder-wait", "type": "Wait", "typeProperties": {"waitTimeInSeconds": 10}}]

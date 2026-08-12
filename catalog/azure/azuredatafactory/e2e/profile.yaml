@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuredatafactory
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests,
+  # both engine builds, offline tofu plan green); live dual-engine
+  # proof has not yet run. ONE scenario runs: `minimal` (identity +
+  # global parameters + managed VNet + one managed private endpoint on
+  # the fixture storage account -- the endpoint provisions to
+  # Succeeded while its target-side connection stays Pending, and the
+  # destroy sweep must check the TARGET side for a lingering
+  # connection entry). The git-binding, CMK, and credential arms stay
+  # offline-proven (no repo/vault/principal fixtures in the lane).
+  # Free at rest; creates in a few minutes.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 45

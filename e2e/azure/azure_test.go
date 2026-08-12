@@ -1593,6 +1593,33 @@ func TestAzureFirewall_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurefirewall", "terraform")
 }
 
+// --- Azure Data Factory (fixture RG + scenario-declared fixture storage account -> system-identity factory with the managed VNet and one managed private endpoint; the cloud-side name carries the run-id token -- factory names are globally unique; the endpoint's target-side connection stays Pending by design and the sweep checks the TARGET side) ---
+
+func TestAzureDataFactory_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactory", "pulumi")
+}
+func TestAzureDataFactory_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactory", "terraform")
+}
+
+// --- Azure Data Factory Pipeline (composed: factory smoke chain -> a Wait-activity pipeline, the opaque activities_json path proven end to end; free, seconds) ---
+
+func TestAzureDataFactoryPipeline_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorypipeline", "pulumi")
+}
+func TestAzureDataFactoryPipeline_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorypipeline", "terraform")
+}
+
+// --- Microsoft Fabric Capacity (fixture RG -> the smallest F2 capacity, created-verified-destroyed tightly; bills per hour from create, and the lowercase-alnum-only name class admits NO run-id token -- a crashed run's leftover holds the name and the sweep is the remedy) ---
+
+func TestAzureFabricCapacity_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefabriccapacity", "pulumi")
+}
+func TestAzureFabricCapacity_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefabriccapacity", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

@@ -2670,6 +2670,25 @@ enum CloudResourceKind {
     id_prefix: "azegns"
     prerequisites: [AzureResourceGroup]
   }];
+  // The Azure Data Factory -- the workspace every other Data Factory
+  // resource lives inside: pipelines, data flows, linked services,
+  // datasets, triggers, and integration runtimes are all created
+  // against a factory's ARM ID.
+  AzureDataFactory = 2198 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdf"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // One unit of work inside an Azure Data Factory
+  // ({factory_id}/pipelines/{name}) -- an ordered set of activities
+  // that executes as a whole when triggered.
+  AzureDataFactoryPipeline = 2199 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdfpipe"
+    prerequisites: [AzureDataFactory]
+  }];
   // The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
   // managed MongoDB: a real MongoDB engine on dedicated vCore tiers
   // with sharding, zone-redundant HA, and point-in-time restore.
@@ -2677,6 +2696,17 @@ enum CloudResourceKind {
     provider: azure
     version: "v1alpha1"
     id_prefix: "azmongo"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The Microsoft Fabric capacity -- the billing and compute anchor of
+  // Microsoft Fabric: workspaces assign themselves to a capacity, and
+  // its F-SKU sets how much compute every workload on it shares.
+  // azurerm's entire Fabric surface is this one resource (workspaces
+  // and items live in Microsoft's dedicated fabric provider).
+  AzureFabricCapacity = 2212 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azfabcap"
     prerequisites: [AzureResourceGroup]
   }];
   // Registers a storage account with a Recovery Services vault as a
