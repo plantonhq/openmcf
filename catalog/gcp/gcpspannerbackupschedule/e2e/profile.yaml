@@ -8,6 +8,6 @@ spec:
   # database. The schedule itself creates/destroys in seconds; the chain
   # cost is the instance (~1 minute).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]  # live-proven 2026-08-12: full lifecycle + apply-idempotency on both engines
   timeout_minutes: 30

@@ -10,7 +10,14 @@ spec:
   # instance per billing account, so an ephemeral scenario would collide
   # with any existing free instance and with its own reruns — the arm is
   # proven by spec tests and the offline plan instead.
+  #
+  # Offline-proven-only arms (deferred, with unblock conditions):
+  #   - asymmetric_autoscaling_options (per-replica PU bounds, targets,
+  #     disable switches): a live arm needs a multi-region ENTERPRISE
+  #     instance (~$3+/h while up) — the offline throwaway plan rendered
+  #     every override family. Unblock: a dedicated multi-region lane if
+  #     adopter demand appears.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]  # live-proven 2026-08-12: full lifecycle + apply-idempotency on both engines
   timeout_minutes: 30

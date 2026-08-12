@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**98 of 98 kinds are at total accounting; 75 proven live.**
+**98 of 98 kinds are at total accounting; 83 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -58,15 +58,15 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpBackendService | 116 | 91 | 22 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpBigQueryDataset | 39 | 33 | 6 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpBigQueryTable | 98 | 86 | 12 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpBigtableInstance | 19 | 6 | 13 | 0 | 0 | ✅ | — |
-| GcpBigtableTable | 23 | 8 | 14 | 1 | 0 | ✅ | — |
+| GcpBigtableInstance | 19 | 6 | 13 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpBigtableTable | 23 | 8 | 14 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCertManagerCert | 12 | 10 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCertManagerDnsAuthorization | 8 | 6 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCertificateMap | 14 | 4 | 9 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudArmorPolicy | 61 | 10 | 51 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpCloudComposerEnvironment | 81 | 3 | 66 | 12 | 0 | ✅ | — |
-| GcpCloudComposerUserWorkloadsConfigMap | 6 | 4 | 2 | 0 | 0 | ✅ | — |
-| GcpCloudComposerUserWorkloadsSecret | 6 | 4 | 2 | 0 | 0 | ✅ | — |
+| GcpCloudComposerEnvironment | 81 | 3 | 66 | 12 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudComposerUserWorkloadsConfigMap | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudComposerUserWorkloadsSecret | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudFunction | 65 | 43 | 15 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudRun | 129 | 27 | 89 | 13 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudRunDomainMapping | 10 | 1 | 9 | 0 | 0 | ✅ | — |
@@ -129,9 +129,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpServiceAccountIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpServiceConnectionPolicy | 12 | 9 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpServiceNetworkingConnection | 5 | 5 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpSpannerBackupSchedule | 10 | 7 | 3 | 0 | 0 | ✅ | — |
-| GcpSpannerDatabase | 12 | 10 | 2 | 0 | 0 | ✅ | — |
-| GcpSpannerInstance | 28 | 21 | 7 | 0 | 0 | ✅ | — |
+| GcpSpannerBackupSchedule | 10 | 7 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpSpannerDatabase | 12 | 10 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpSpannerInstance | 28 | 21 | 7 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpSslCertificate | 19 | 9 | 4 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpSslPolicy | 17 | 13 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpSubnetwork | 29 | 22 | 7 | 0 | 0 | ✅ | ✅ pulumi, terraform |

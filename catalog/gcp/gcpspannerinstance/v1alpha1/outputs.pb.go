@@ -39,7 +39,10 @@ type GcpSpannerInstanceStackOutputs struct {
 	State string `protobuf:"bytes,3,opt,name=state,proto3" json:"state,omitempty"`
 	// The instance configuration the instance was created with
 	// (e.g. "regional-us-central1", "nam6") — the geographic topology
-	// handle auditors and capacity planners ask for.
+	// handle auditors and capacity planners ask for. Always the plain
+	// config name: the Spanner API reads the value back as the fully
+	// qualified projects/{project}/instanceConfigs/{name} path, and both
+	// engines normalize to the last path segment.
 	Config        string `protobuf:"bytes,4,opt,name=config,proto3" json:"config,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

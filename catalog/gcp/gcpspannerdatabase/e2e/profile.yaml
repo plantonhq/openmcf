@@ -7,6 +7,6 @@ spec:
   # (100 processing units) then creates a database on it. The scenario
   # sets deletionProtection: false so the ephemeral DESTROY can run.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]  # live-proven 2026-08-12: full lifecycle + apply-idempotency on both engines
   timeout_minutes: 30

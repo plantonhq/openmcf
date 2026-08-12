@@ -9,6 +9,6 @@ spec:
   # creates run 25-45 minutes and destroys ~10-15 minutes, so a batch
   # run for both engines needs >=240m.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]  # live-proven 2026-08-12: full lifecycle + apply-idempotency on both engines
   timeout_minutes: 240

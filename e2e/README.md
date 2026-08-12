@@ -36,6 +36,21 @@ catch: the Identity Platform config's server-materialized
 only; prerequisite fixtures belong to other kinds' contracts. Arm it per
 provider after the catalog's known no-op re-plan classes are burned down.
 
+**The gate also catches OUTPUT-ONLY drift — an exported attribute whose
+read-back form differs from its apply-time form.** `terraform plan
+-detailed-exitcode` exits 2 for a plan whose only change is `Changes to
+Outputs` (zero resource changes), and some provider attributes are stored
+as the user's input at apply but read back normalized on the first refresh
+— typically a short name flipping to the fully qualified resource path
+(twice-seen: an Eventarc trigger's `name`, a Spanner instance's `config`
+flipping to `projects/{p}/instanceConfigs/{c}`). The resource itself
+re-plans clean (the provider diff-suppresses the attribute); only the
+module OUTPUT drifts, which users meet as a perpetual "changes to outputs"
+on every re-apply. The remedy is never to silence the gate: export a
+module-derived value (built from spec/identity), or normalize the
+attribute to the form the output contract documents — in BOTH engines, so
+stack outputs stay byte-identical.
+
 ## Directory Layout
 
 ### Component E2E Structure
@@ -949,11 +964,28 @@ fields the posture assertions need. Swap to the typed client whenever the
 dependency is next upgraded for its own reasons.
 
 **Shell harnesses can DOUBLE-SPAWN a lane invocation — and an interrupted
-invocation orphans the second spawn's fixtures.** Twice-observed signature:
+invocation orphans the second spawn's fixtures.** Thrice-observed signature:
 one launch produces TWO concurrent `go test` processes with different run
 ids; the first runs to a clean PASS while the second either 409s on the
 first's fixtures or — if the invocation is interrupted/killed — dies
-mid-scenario with its run-scoped chain undestroyed. Diagnosis and recovery:
+mid-scenario with its run-scoped chain undestroyed. The third observation
+adds two facts: it strikes WITHOUT any interrupt (a chained
+`go test ... && go test ...` command was doubled whole, both siblings ran
+to clean completion), and the collision surface includes the SHARED module
+source directories — the sibling's dependency deploy overwrote the kind's
+`stack-input.yaml` between a lane's apply and its IDEMPOTENCY preview, so
+the preview compiled against the sibling's prerequisite manifest and
+reported a bogus replace (a different cloud-side name from a run id no
+logged lane used is the tell). Mitigations: launch ONE `go test` invocation
+per shell command (never chain lanes — a doubled chain multiplies the
+overlap window), and smoke-check for a sibling process right after launch.
+When killing a sibling spawn, kill its PROCESS GROUP (`kill -- -<pgid>`),
+not just the `go test`/test-binary PIDs: an in-flight `pulumi up` child
+survives a parent-only kill and COMPLETES its deploy minutes later,
+leaving a fully-created orphan chain (live-observed: a killed secret
+lane's surviving child finished a 20-minute Composer environment create
+with nobody left to destroy it).
+Diagnosis and recovery:
 before sweeping anything after a lane failure or interrupt, `ps` for a
 concurrent sibling process (a live sibling's "orphans" are its own
 resources mid-teardown — racing it corrupts both runs); once no process
