@@ -32,6 +32,9 @@ spec:
     maxUnavailable: 1
     strategy: SURGE
   deletionPolicy: DELETE
+  # Customized node drain requires per-project enablement from GCP support
+  # (the API rejects it otherwise) — shown here as the documented example
+  # of drain pacing on allowlisted projects.
   nodeDrainConfig:
     graceTerminationDuration: "60s"
     pdbTimeoutDuration: "600s"
@@ -83,8 +86,10 @@ spec:
         memoryAvailable: 200Mi
       evictionSoftGracePeriod:
         memoryAvailable: "90s"
+      # Percentage-only: GKE rejects absolute quantities for minimum
+      # reclaim (the soft thresholds above accept either form).
       evictionMinimumReclaim:
-        memoryAvailable: 100Mi
+        memoryAvailable: "10%"
       crashLoopBackOff:
         maxContainerRestartPeriod: "300s"
       topologyManager:

@@ -98,6 +98,8 @@ variable "spec" {
     ignore_node_count_changes = optional(bool, false)
 
     # Drain behavior when the pool itself is deleted or replaced.
+    # Allowlist-gated: GCP support must enable customized node drain on the
+    # project or the API rejects the create.
     node_drain_config = optional(object({
       grace_termination_duration            = optional(string, "")
       pdb_timeout_duration                  = optional(string, "")
@@ -242,6 +244,8 @@ variable "spec" {
           imagefs_inodes_free = optional(string, "")
           pid_available       = optional(string, "")
         }), null)
+        # Percentage-only values ("10%") — GKE rejects absolute quantities
+        # for minimum reclaim (the spec CEL enforces this upstream).
         eviction_minimum_reclaim = optional(object({
           memory_available    = optional(string, "")
           nodefs_available    = optional(string, "")

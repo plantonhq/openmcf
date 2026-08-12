@@ -926,6 +926,20 @@ groups hold the VPC/subnetwork against deletion past the framework's
 6×60s teardown retries, so sweep connectors (state ERROR) FIRST, wait for
 GCP to reap the fleet, then delete subnets and networks.
 
+The same class has a GKE-CREATE flavor that needs no audit-log query — the
+create error itself carries `[GCE_STOCKOUT]` verbatim: a Standard cluster
+create boots TRANSIENT default-pool instances (one per zone on a regional
+cluster) even when the module removes the default pool, and the cluster
+create fails after ~35 minutes of IGM waiting ("Not all instances running
+in IGM ... [GCE_STOCKOUT] ... does not have enough resources available")
+when any zone is stocked out. A zonal cluster in the same region can pass
+minutes earlier while the regional shape fails — regional spreads across
+three zones, so ONE exhausted zone fails the whole create. The fix is the
+same regional relocation, and because clusters must be region-matched to
+their subnetwork fixture, the kind's WHOLE chain (all scenarios + the
+consumer-scoped subnetwork + the cluster install profile, including
+same-shaped copies under consuming kinds) moves together.
+
 **Some GCP APIs require a quota project on user-credential calls:** the
 Identity Toolkit API (Identity Platform) rejects calls made with plain
 user ADC — 403 "requires a quota project, which is not set by default" —

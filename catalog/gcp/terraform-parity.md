@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**98 of 98 kinds are at total accounting; 83 proven live.**
+**98 of 98 kinds are at total accounting; 85 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -91,8 +91,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirewallRule | 20 | 13 | 7 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGcsBucket | 78 | 39 | 31 | 8 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpGkeCluster | 537 | 61 | 137 | 339 | 0 | ✅ | — |
-| GcpGkeNodePool | 184 | 127 | 51 | 6 | 0 | ✅ | — |
+| GcpGkeCluster | 537 | 61 | 137 | 339 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpGkeNodePool | 184 | 127 | 51 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGkeWorkloadIdentityBinding | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGlobalAddress | 11 | 9 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGlobalForwardingRule | 23 | 18 | 4 | 1 | 0 | ✅ | ✅ pulumi, terraform |

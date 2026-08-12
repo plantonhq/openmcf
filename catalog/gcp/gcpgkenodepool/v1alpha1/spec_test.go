@@ -846,9 +846,22 @@ var _ = ginkgo.Describe("GcpGkeNodePoolSpec Custom Validation Tests", func() {
 			spec := kubelet(func(kc *GcpGkeNodePoolKubeletConfig) {
 				kc.EvictionSoft = &GcpGkeNodePoolEvictionSignals{MemoryAvailable: "200Mi", PidAvailable: "10%"}
 				kc.EvictionSoftGracePeriod = &GcpGkeNodePoolEvictionGracePeriods{MemoryAvailable: "90s"}
-				kc.EvictionMinimumReclaim = &GcpGkeNodePoolEvictionMinimumReclaim{MemoryAvailable: "100Mi"}
+				kc.EvictionMinimumReclaim = &GcpGkeNodePoolEvictionMinimumReclaim{MemoryAvailable: "10%"}
 			})
 			gomega.Expect(protovalidate.Validate(newNodePool(spec))).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an absolute quantity in eviction minimum reclaim", func() {
+			// GKE accepts only percentages for minimum reclaim — the live API
+			// rejects quantities with 'invalid percentage "100Mi"'.
+			spec := kubelet(func(kc *GcpGkeNodePoolKubeletConfig) {
+				kc.EvictionMinimumReclaim = &GcpGkeNodePoolEvictionMinimumReclaim{MemoryAvailable: "100Mi"}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+			spec = kubelet(func(kc *GcpGkeNodePoolKubeletConfig) {
+				kc.EvictionMinimumReclaim = &GcpGkeNodePoolEvictionMinimumReclaim{NodefsAvailable: "500Mi"}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("rejects a malformed image GC age", func() {

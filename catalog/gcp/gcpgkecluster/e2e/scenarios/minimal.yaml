@@ -20,7 +20,8 @@ metadata:
     - planton-e2e
 spec:
   description: Ephemeral zonal GKE cluster created by the Planton E2E harness; safe to delete
-  location: us-central1-a
+  # us-east1 with the whole GKE chain (2026-08-12 us-central1 GCE_STOCKOUT).
+  location: us-east1-b
   network:
     valueFrom:
       kind: GcpVpcNetwork

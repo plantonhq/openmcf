@@ -8,9 +8,14 @@ spec:
   # scenarios (minimal, private-cluster, autopilot), batch runs with a
   # go test -timeout of at least 180m.
   tier: 1
-  # The spec and both modules were rebuilt to the full 7.43.0 provider
-  # surface; the prior proofs describe code that no longer exists. Flips
-  # back to green when the proof lane passes the live lanes.
-  status: pending_proof
-  validated_provisioners: []
+  # Live-proven 2026-08-12 on both engines at the full 7.43-surface spec:
+  # 3 scenarios (minimal zonal, private-cluster regional incl. RBAC
+  # lockdown + Secret Manager CSI rotation + DNS-endpoint token serving +
+  # both read-side switches, autopilot incl. autopilot_policy +
+  # node_pool_auto_config) x 2 engines, all phases green under the
+  # apply-idempotency gate. Scenarios live in us-east1: a us-central1
+  # regional create failed on GCE_STOCKOUT for its transient default-pool
+  # instances (the recurring zonal-capacity class in e2e/README.md).
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 180

@@ -23,7 +23,9 @@ metadata:
     - planton-e2e
 spec:
   description: Ephemeral private regional GKE cluster created by the Planton E2E harness; safe to delete
-  location: us-central1
+  # us-east1 with the whole GKE chain: this scenario's 3-zone regional
+  # default-pool transients hit the 2026-08-12 us-central1 GCE_STOCKOUT.
+  location: us-east1
   network:
     valueFrom:
       kind: GcpVpcNetwork
@@ -62,5 +64,9 @@ spec:
   # Safe in this composition (pools are never inline) and proves the
   # read-side performance switch live.
   skipNodePoolRefresh: true
+  # The second read-side switch, proven together with the first: skips
+  # the per-pool IGM node-count queries. Its live evidence is the clean
+  # re-plan after apply (the idempotency gate).
+  ignoreNodeCountChanges: true
   deletionPolicy: DELETE
   deletionProtection: false

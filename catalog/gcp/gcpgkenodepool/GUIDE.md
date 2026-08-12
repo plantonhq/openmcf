@@ -25,9 +25,13 @@ explicit rotation: create the successor pool (a `namePrefix` pool gets a
 fresh GKE-generated name each time, so blue and green never collide),
 let scheduling drain the old one, then delete it — with
 `nodeDrainConfig` pacing the teardown (grace period, PDB respect with a
-timeout, so one stuck budget cannot hang the delete forever). Blue-green
-`upgradeSettings` gives you the same shape for VERSION changes within
-one pool; rotation covers everything else.
+timeout, so one stuck budget cannot hang the delete forever). One gate to
+know before you reach for it: customized node drain is allowlisted per
+project — GCP support has to enable it, and until they do the API rejects
+any pool carrying the block with "customized node drain timeout is not
+enabled for this project". Blue-green `upgradeSettings` gives you the
+same shape for VERSION changes within one pool; rotation covers
+everything else.
 
 ## Spot is a discipline, not a discount
 
