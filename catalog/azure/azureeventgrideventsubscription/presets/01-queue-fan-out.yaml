@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridEventSubscription
+metadata:
+  name: orders-to-queue
+spec:
+  # The custom topic whose events this subscription consumes.
+  scope:
+    valueFrom:
+      name: <your-eventgrid-topic>
+  name: orders-to-queue
+  destination:
+    storageQueue:
+      storageAccountId:
+        valueFrom:
+          name: <your-storage-account>
+      # The queue must exist -- an AzureStorageQueue manages one.
+      queueName: order-events
+  # Park undeliverable events instead of dropping them -- the
+  # production-grade default.
+  deadLetter:
+    storageAccountId:
+      valueFrom:
+        name: <your-storage-account>
+    storageBlobContainerName: eventgrid-dead-letters

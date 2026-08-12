@@ -2634,6 +2634,32 @@ enum CloudResourceKind {
     id_prefix: "azegd"
     prerequisites: [AzureResourceGroup]
   }];
+  // The Azure Event Grid system topic -- the subscription surface for
+  // events AZURE ITSELF publishes about one of your resources (a
+  // storage account's blob events, a resource group's lifecycle
+  // events). One system topic per source resource per topic type;
+  // event subscriptions attach to it to route events to handlers.
+  AzureEventgridSystemTopic = 2195 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azegst"
+    prerequisites: [
+      AzureResourceGroup,
+      AzureStorageAccount
+    ]
+  }];
+  // The Azure Event Grid event subscription -- the delivery
+  // instruction routing events from a source (a custom topic, domain,
+  // domain topic, system topic, resource group, or subscription) to a
+  // handler (a Function, Event Hub, Service Bus queue/topic, storage
+  // queue, hybrid connection, or webhook), with filtering, retry, and
+  // dead-letter behavior.
+  AzureEventgridEventSubscription = 2196 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azeges"
+    prerequisites: [AzureEventgridTopic]
+  }];
   // Registers a storage account with a Recovery Services vault as a
   // backup container (.../protectionContainers/StorageContainer;...)
   // -- one registration per storage-account-and-vault pair, required

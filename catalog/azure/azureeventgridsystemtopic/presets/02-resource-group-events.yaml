@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridSystemTopic
+metadata:
+  name: rg-lifecycle-events
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  name: my-app-rg-lifecycle
+  # Resource groups are GLOBAL sources -- the topic's region is
+  # "Global", not the group's own region.
+  region: Global
+  # The resource group whose resource-lifecycle events (created,
+  # changed, deleted) become subscribable. A group's ARM id is
+  # /subscriptions/{sub}/resourceGroups/{name} -- reference the
+  # group's id output or pass it literally.
+  sourceResourceId:
+    value: <your-resource-group-arm-id>
+  topicType: Microsoft.Resources.ResourceGroups

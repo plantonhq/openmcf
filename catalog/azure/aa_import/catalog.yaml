@@ -476,3 +476,15 @@ spec:
     - terraform_type: azurerm_eventgrid_domain_topic
       pulumi_type: azure:eventgrid/domainTopic:DomainTopic
       id_format: "{domain_topic_id}"
+    - terraform_type: azurerm_eventgrid_system_topic
+      pulumi_type: azure:eventgrid/systemTopic:SystemTopic
+      id_format: "{system_topic_id}"
+    # ONE kind (AzureEventgridEventSubscription) covers both
+    # subscription resources as addressing variants; each id output
+    # carries the full scoped id, so one value serves either import.
+    - terraform_type: azurerm_eventgrid_event_subscription
+      pulumi_type: azure:eventgrid/eventSubscription:EventSubscription
+      id_format: "{event_subscription_id}"
+    - terraform_type: azurerm_eventgrid_system_topic_event_subscription
+      pulumi_type: azure:eventgrid/systemTopicEventSubscription:SystemTopicEventSubscription
+      id_format: "{event_subscription_id}"

@@ -409,6 +409,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | AzureEventHubAuthorizationRule | `spec.eventHubId` | `status.outputs.event_hub_id` |
 | AzureEventHubConsumerGroup | `spec.eventHubId` | `status.outputs.event_hub_id` |
+| AzureEventgridEventSubscription | `spec.destination.eventhubId` | `status.outputs.event_hub_id` |
 | AzureMonitorActionGroup | `spec.eventHubReceivers[].eventHubName` | `status.outputs.event_hub_name` |
 | AzureMonitorDataCollectionRule | `spec.destinations.eventHub.eventHubId` | `status.outputs.event_hub_id` |
 | AzureMonitorDataCollectionRule | `spec.destinations.eventHubDirect.eventHubId` | `status.outputs.event_hub_id` |

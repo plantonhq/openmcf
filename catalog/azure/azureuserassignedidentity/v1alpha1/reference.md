@@ -169,6 +169,9 @@ Fields on other kinds that can point at this resource:
 | AzureEventHubNamespace | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureEventHubNamespaceCustomerManagedKey | `spec.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureEventgridDomain | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureEventgridEventSubscription | `spec.deliveryIdentity.userAssignedIdentity` | `status.outputs.identity_id` |
+| AzureEventgridEventSubscription | `spec.deadLetterIdentity.userAssignedIdentity` | `status.outputs.identity_id` |
+| AzureEventgridSystemTopic | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureEventgridTopic | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureExpressRoutePort | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureFederatedIdentityCredential | `spec.userAssignedIdentity` | `status.outputs.identity_id` |

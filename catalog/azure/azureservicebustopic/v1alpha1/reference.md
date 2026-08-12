@@ -251,6 +251,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureEventgridEventSubscription | `spec.destination.serviceBusTopicId` | `status.outputs.topic_id` |
 | AzureServiceBusAuthorizationRule | `spec.topicId` | `status.outputs.topic_id` |
 | AzureServiceBusSubscription | `spec.topicId` | `status.outputs.topic_id` |
 

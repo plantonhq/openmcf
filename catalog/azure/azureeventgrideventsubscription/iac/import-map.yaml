@@ -1,0 +1,21 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureeventgrideventsubscription
+spec:
+  # The subscription imports by its ARM resource ID. The id's shape
+  # follows the addressing choice and discriminates the two provider
+  # resources on its own: scope-addressed ids extend the source
+  # ({scope}/providers/Microsoft.EventGrid/eventSubscriptions/{name});
+  # system-topic ids live under the topic
+  # ({system_topic_id}/eventSubscriptions/{name}).
+  values:
+    - name: event_subscription_id
+      derivations:
+        - from_stack_output: event_subscription_id
+      where_to_find: >-
+        `az eventgrid event-subscription list --source-resource-id
+        <scope> --query [].id` (or `az eventgrid system-topic
+        event-subscription show --name <name> --system-topic-name
+        <topic> --resource-group <rg> --query id`), or the component's
+        own event_subscription_id stack output.

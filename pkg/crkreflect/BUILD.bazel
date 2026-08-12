@@ -219,6 +219,8 @@ go_library(
         "//catalog/azure/azurednszone/v1alpha1",
         "//catalog/azure/azureeventgriddomain/v1alpha1",
         "//catalog/azure/azureeventgriddomaintopic/v1alpha1",
+        "//catalog/azure/azureeventgrideventsubscription/v1alpha1",
+        "//catalog/azure/azureeventgridsystemtopic/v1alpha1",
         "//catalog/azure/azureeventgridtopic/v1alpha1",
         "//catalog/azure/azureeventhub/v1alpha1",
         "//catalog/azure/azureeventhubauthorizationrule/v1alpha1",

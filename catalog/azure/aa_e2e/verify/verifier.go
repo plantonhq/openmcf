@@ -71,6 +71,8 @@ var verifiers = map[string]Verifier{
 	"azurednszone":                                   &dnsZoneVerifier{},
 	"azureeventgriddomain":                           &eventgridDomainVerifier{},
 	"azureeventgriddomaintopic":                      &eventgridDomainTopicVerifier{},
+	"azureeventgrideventsubscription":                &eventgridEventSubscriptionVerifier{},
+	"azureeventgridsystemtopic":                      &eventgridSystemTopicVerifier{},
 	"azureeventgridtopic":                            &eventgridTopicVerifier{},
 	"azureeventhub":                                  &eventHubResourceVerifier{component: "azureeventhub", idOutputKey: "event_hub_id"},
 	"azureeventhubauthorizationrule":                 &eventHubResourceVerifier{component: "azureeventhubauthorizationrule", idOutputKey: "authorization_rule_id"},

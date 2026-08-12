@@ -46,6 +46,8 @@ go_library(
         "event_hub.go",
         "eventgrid_domain.go",
         "eventgrid_domain_topic.go",
+        "eventgrid_event_subscription.go",
+        "eventgrid_system_topic.go",
         "eventgrid_topic.go",
         "express_route_circuit.go",
         "express_route_gateway.go",

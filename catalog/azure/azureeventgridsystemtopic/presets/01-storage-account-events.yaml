@@ -1,0 +1,17 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridSystemTopic
+metadata:
+  name: storage-events
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  name: my-app-storage-events
+  # Must match the STORAGE ACCOUNT's region -- a mismatch fails at
+  # deploy time.
+  region: eastus
+  # The storage account whose blob/queue events become subscribable.
+  sourceResourceId:
+    valueFrom:
+      name: <your-storage-account>
+  topicType: Microsoft.Storage.StorageAccounts

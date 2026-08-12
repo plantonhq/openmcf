@@ -108,6 +108,7 @@ Fields on other kinds that can point at this resource:
 | AzureEventHubCluster | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureEventHubNamespace | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureEventgridDomain | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureEventgridSystemTopic | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureEventgridTopic | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureExpressRouteCircuit | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureExpressRouteCircuitPeering | `spec.resourceGroup` | `status.outputs.resource_group_name` |

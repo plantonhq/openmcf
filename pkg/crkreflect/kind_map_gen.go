@@ -202,6 +202,8 @@ import (
 	azurednszonev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurednszone/v1alpha1"
 	azureeventgriddomainv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgriddomain/v1alpha1"
 	azureeventgriddomaintopicv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgriddomaintopic/v1alpha1"
+	azureeventgrideventsubscriptionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgrideventsubscription/v1alpha1"
+	azureeventgridsystemtopicv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgridsystemtopic/v1alpha1"
 	azureeventgridtopicv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgridtopic/v1alpha1"
 	azureeventhubv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventhub/v1alpha1"
 	azureeventhubauthorizationrulev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventhubauthorizationrule/v1alpha1"
@@ -908,6 +910,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureEventHubSchemaGroup:                       &azureeventhubschemagroupv1alpha1.AzureEventHubSchemaGroup{},
 	cloudresourcekind.CloudResourceKind_AzureEventgridDomain:                           &azureeventgriddomainv1alpha1.AzureEventgridDomain{},
 	cloudresourcekind.CloudResourceKind_AzureEventgridDomainTopic:                      &azureeventgriddomaintopicv1alpha1.AzureEventgridDomainTopic{},
+	cloudresourcekind.CloudResourceKind_AzureEventgridEventSubscription:                &azureeventgrideventsubscriptionv1alpha1.AzureEventgridEventSubscription{},
+	cloudresourcekind.CloudResourceKind_AzureEventgridSystemTopic:                      &azureeventgridsystemtopicv1alpha1.AzureEventgridSystemTopic{},
 	cloudresourcekind.CloudResourceKind_AzureEventgridTopic:                            &azureeventgridtopicv1alpha1.AzureEventgridTopic{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRouteCircuit:                       &azureexpressroutecircuitv1alpha1.AzureExpressRouteCircuit{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRouteCircuitPeering:                &azureexpressroutecircuitpeeringv1alpha1.AzureExpressRouteCircuitPeering{},

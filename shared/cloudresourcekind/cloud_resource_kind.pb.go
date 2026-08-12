@@ -971,6 +971,19 @@ const (
 	// auto-managed by Azure or declared explicitly as
 	// AzureEventgridDomainTopic resources.
 	CloudResourceKind_AzureEventgridDomain CloudResourceKind = 2194
+	// The Azure Event Grid system topic -- the subscription surface for
+	// events AZURE ITSELF publishes about one of your resources (a
+	// storage account's blob events, a resource group's lifecycle
+	// events). One system topic per source resource per topic type;
+	// event subscriptions attach to it to route events to handlers.
+	CloudResourceKind_AzureEventgridSystemTopic CloudResourceKind = 2195
+	// The Azure Event Grid event subscription -- the delivery
+	// instruction routing events from a source (a custom topic, domain,
+	// domain topic, system topic, resource group, or subscription) to a
+	// handler (a Function, Event Hub, Service Bus queue/topic, storage
+	// queue, hybrid connection, or webhook), with filtering, retry, and
+	// dead-letter behavior.
+	CloudResourceKind_AzureEventgridEventSubscription CloudResourceKind = 2196
 	// Registers a storage account with a Recovery Services vault as a
 	// backup container (.../protectionContainers/StorageContainer;...)
 	// -- one registration per storage-account-and-vault pair, required
@@ -1802,6 +1815,8 @@ var (
 		2192:  "AzureMonitorDataCollectionRule",
 		2193:  "AzureEventgridTopic",
 		2194:  "AzureEventgridDomain",
+		2195:  "AzureEventgridSystemTopic",
+		2196:  "AzureEventgridEventSubscription",
 		2213:  "AzureBackupContainerStorageAccount",
 		2214:  "AzureDataProtectionResourceGuard",
 		2215:  "AzurePrivateDnsResolverVirtualNetworkLink",
@@ -2473,6 +2488,8 @@ var (
 		"AzureMonitorDataCollectionRule":                 2192,
 		"AzureEventgridTopic":                            2193,
 		"AzureEventgridDomain":                           2194,
+		"AzureEventgridSystemTopic":                      2195,
+		"AzureEventgridEventSubscription":                2196,
 		"AzureBackupContainerStorageAccount":             2213,
 		"AzureDataProtectionResourceGuard":               2214,
 		"AzurePrivateDnsResolverVirtualNetworkLink":      2215,
@@ -3143,7 +3160,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x89\xac\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8d\xad\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3433,7 +3450,9 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cAzureMonitorAutoscaleSetting\x10\x8f\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\vazautoscale:\x02\xd0\x0f\x12B\n" +
 	"\x1eAzureMonitorDataCollectionRule\x10\x90\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\x05azdcr:\x04\xd0\x0f\x82\x10\x125\n" +
 	"\x13AzureEventgridTopic\x10\x91\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azegt:\x02\xd0\x0f\x126\n" +
-	"\x14AzureEventgridDomain\x10\x92\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azegd:\x02\xd0\x0f\x12G\n" +
+	"\x14AzureEventgridDomain\x10\x92\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azegd:\x02\xd0\x0f\x12>\n" +
+	"\x19AzureEventgridSystemTopic\x10\x93\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azegst:\x04\xd0\x0f\xd9\x0f\x12B\n" +
+	"\x1fAzureEventgridEventSubscription\x10\x94\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azeges:\x02\x91\x11\x12G\n" +
 	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +
 	" AzureDataProtectionResourceGuard\x10\xa6\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdprg:\x02\xd0\x0f\x12S\n" +
 	")AzurePrivateDnsResolverVirtualNetworkLink\x10\xa7\x11\x1a#\xa2\xf7\x04\x1f\b\r\x12\bv1alpha1\"\vazpdnsrlink:\x04\x8b\x11\xd6\x0f\x12N\n" +

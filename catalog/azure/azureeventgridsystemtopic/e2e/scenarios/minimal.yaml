@@ -1,0 +1,36 @@
+# Minimal AzureEventgridSystemTopic scenario: the fixture storage
+# account's event stream, exposed in the shared fixture resource
+# group. The name is resource-group-scoped (no run-id needed), but
+# Azure allows ONE system topic per source resource per topic type --
+# a leftover from a crashed run blocks the next create regardless of
+# name (the sweep is the remedy), and lanes that share the fixture
+# account's system topic must never run concurrently. Free at rest;
+# creates in seconds.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridSystemTopic
+metadata:
+  name: planton-oss-e2e-azureeventgridsystemtopic-smoke
+  id: planton-oss-e2e-azureeventgridsystemtopic-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventgridsystemtopic
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-egst-smoke
+  # The fixture storage account's region -- a system topic must sit in
+  # its source's region.
+  region: eastus
+  sourceResourceId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: planton-oss-e2e-azure-fixture-sa
+      fieldPath: status.outputs.storage_account_id
+  topicType: Microsoft.Storage.StorageAccounts

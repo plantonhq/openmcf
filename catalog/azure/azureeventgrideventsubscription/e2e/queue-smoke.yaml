@@ -1,0 +1,27 @@
+# Scenario-local delivery target for the `minimal` scenario: a storage
+# queue on the SHARED fixture account. The queue's cloud-side name
+# carries ${E2E_RUN_ID} because Azure briefly blocks recreating a
+# just-deleted queue name -- fresh names keep back-to-back lanes from
+# tripping the garbage-collection window. The doc declares its own
+# storage-account dependency so it deploys standalone in the scoped
+# scenario's chain (the queue kind carries no registry prerequisites).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageQueue
+metadata:
+  name: planton-oss-e2e-eges-queue-smoke
+  id: planton-oss-e2e-eges-queue-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventgrideventsubscription
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureStorageAccount"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sa
+  queueName: eges-smoke-${E2E_RUN_ID}

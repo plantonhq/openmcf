@@ -1420,6 +1420,20 @@ func TestAzureEventgridDomainTopic_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureeventgriddomaintopic", "terraform")
 }
 
+func TestAzureEventgridSystemTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridsystemtopic", "pulumi")
+}
+func TestAzureEventgridSystemTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridsystemtopic", "terraform")
+}
+
+func TestAzureEventgridEventSubscription_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgrideventsubscription", "pulumi")
+}
+func TestAzureEventgridEventSubscription_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgrideventsubscription", "terraform")
+}
+
 // --- Azure Event Hubs family (namespace container + hubs + consumer groups + SAS credentials + schema registry + geo-DR + dedicated cluster + CMK) ---
 
 func TestAzureEventHubNamespace_Pulumi(t *testing.T) {

@@ -1,0 +1,40 @@
+# System-topic scenario: the SECOND wiring -- a subscription on the
+# system topic kind's smoke instance (declared here, not on the
+# registry: a subscription does not universally require a system
+# topic), delivering the fixture storage account's blob events to a
+# scenario-local queue. This lane proves the system-topic provider
+# resource end to end and must never run concurrently with the system
+# topic kind's own lane (one system topic per source per topic type on
+# the shared fixture account).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridEventSubscription
+metadata:
+  name: planton-oss-e2e-azureeventgrideventsubscription-st
+  id: planton-oss-e2e-azureeventgrideventsubscription-st
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventgrideventsubscription
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureEventgridSystemTopic, catalog/azure/azureeventgrideventsubscription/e2e/queue-system-topic.yaml"
+  tags:
+    - planton-e2e
+spec:
+  systemTopicId:
+    valueFrom:
+      name: planton-oss-e2e-azureeventgridsystemtopic-smoke
+  name: eges-st-to-queue
+  destination:
+    storageQueue:
+      storageAccountId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-sa
+      # Matches queue-system-topic.yaml's queueName -- both documents
+      # expand the same run-id token.
+      queueName: eges-st-${E2E_RUN_ID}
+  # System topics emit typed platform events -- narrowing to
+  # BlobCreated exercises included_event_types live.
+  includedEventTypes:
+    - Microsoft.Storage.BlobCreated

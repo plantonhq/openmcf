@@ -330,6 +330,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureEventgridEventSubscription | `spec.destination.serviceBusQueueId` | `status.outputs.queue_id` |
 | AzureServiceBusAuthorizationRule | `spec.queueId` | `status.outputs.queue_id` |
 
 ## See Also

@@ -1795,6 +1795,8 @@ Fields on other kinds that can point at this resource:
 | AzureDataProtectionBackupInstance | `spec.blobStorage.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureDataProtectionBackupInstance | `spec.dataLakeStorage.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureEventHub | `spec.captureDescription.destination.storageAccountId` | `status.outputs.storage_account_id` |
+| AzureEventgridEventSubscription | `spec.destination.storageQueue.storageAccountId` | `status.outputs.storage_account_id` |
+| AzureEventgridEventSubscription | `spec.deadLetter.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureFunctionApp | `spec.storageAccountName` | `status.outputs.storage_account_name` |
 | AzureFunctionApp | `spec.storageAccountAccessKey` | `status.outputs.primary_access_key` |
 | AzureFunctionApp | `spec.storageMounts[].accessKey` | `status.outputs.primary_access_key` |

@@ -327,6 +327,14 @@ Fields that can point at another resource's outputs:
 | `spec.resourceGroup` | AzureResourceGroup | `status.outputs.resource_group_name` |
 | `spec.identity.identityIds` | AzureUserAssignedIdentity | `status.outputs.identity_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AzureEventgridEventSubscription | `spec.scope` | `status.outputs.topic_id` |
+
 ## See Also
 
 - [Overview](../README.md)
