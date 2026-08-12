@@ -337,7 +337,11 @@ default of 45.
 
 The IPsec pre-shared key both tunnel ends must agree on.
 Reference a secret rather than embedding the literal in
-manifests. Omit to let Azure generate one.
+manifests. Omit to let Azure generate one -- with a caveat
+proven live: the generated key is NOT readable back through
+this resource (reads return it empty), so when the branch
+device must be configured with the key, set it explicitly via
+a secret reference instead of relying on retrieval.
 
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 

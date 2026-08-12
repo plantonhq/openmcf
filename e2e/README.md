@@ -484,6 +484,24 @@ slow class: measured live (one scale unit, eastus), the create ran
 fixture-hub cycle first (see above) -- a single-engine lane totals
 **~70-75 minutes**; budget `-timeout=180m` per engine.
 
+### Long-running Azure components (vWAN VPN gateways)
+
+A site-to-site VPN gateway in a Virtual WAN hub is the vWAN family's
+third slow class: measured live (one scale unit, eastus, consistent
+across four consecutive creates on both engines), the create ran
+**32-36 minutes** and the delete **11-13 minutes**, and the gateway
+bills (~$0.36/hr per scale unit) from creation. Its lane also pays the
+full fixture-hub cycle first (see the Virtual WAN hubs section) -- a
+single-engine gateway lane totals **~80 minutes**; budget
+`-timeout=180m` per engine (more with the import round-trip enabled).
+The VPN-gateway-connection lane pays the ENTIRE family inside
+DEPENDENCIES-UP (hub ~18m + gateway ~36m deploy-and-verify) before its
+own minutes-fast tunnel -- its lane totals ~90 minutes per engine;
+budget `-timeout=210m`. ARM allows ONE VPN gateway per hub: the
+fixture gateway occupies the fixture hub's slot, so the gateway and
+connection lanes must run SEQUENTIALLY, and a wedged gateway teardown
+blocks every subsequent lane needing that slot until swept.
+
 ### A dirty `e2e/profile.yaml` on a shared checkout is a LIVE proof lane's state
 
 The proof workflow flips a component's profile `pending_proof` -> `green`
