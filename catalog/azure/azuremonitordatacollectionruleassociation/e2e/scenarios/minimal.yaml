@@ -1,0 +1,39 @@
+# Minimal AzureMonitorDataCollectionRuleAssociation scenario: the
+# fixture VM attached to the rule kind's own smoke instance -- the
+# flagship proves the target-scoped extension resource live (create on
+# the VM, read back, detach) plus the typed rule reference resolving
+# through the chain. The registry prerequisites chain everything: the
+# rule (whose install manifest is its minimal scenario, riding the
+# fixture workspace) and the VM (whose install manifest is its minimal
+# scenario, riding the NIC/subnet/VNet chain plus its managed-disk
+# extra fixture). The association itself is free and creates in
+# seconds; the lane's cost is the fixture VM's hour (~Standard_B2s).
+#
+# The association creates fine on an agent-less VM (Azure's design:
+# configuration and agent rollout are decoupled) -- the lane proves the
+# binding object, not telemetry flow.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorDataCollectionRuleAssociation
+metadata:
+  name: planton-oss-e2e-azuremonitordatacollectionruleassociation-smoke
+  id: planton-oss-e2e-azuremonitordatacollectionruleassociation-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremonitordatacollectionruleassociation
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  targetResourceId:
+    valueFrom:
+      kind: AzureVirtualMachine
+      name: planton-oss-e2e-azurevirtualmachine-smoke
+      fieldPath: status.outputs.vm_id
+  name: planton-oss-e2e-azdcra-smoke
+  dataCollectionRuleId:
+    valueFrom:
+      name: planton-oss-e2e-azuremonitordatacollectionrule-smoke
+  description: e2e smoke - fixture VM attached to the smoke rule

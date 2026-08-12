@@ -163,13 +163,15 @@ message AzureLogAnalyticsWorkspaceSpec {
   // the retention window; this switch removes that grace period.
   bool immediate_data_purge_on_30_days_enabled = 14;
 
-  // The ARM ID of an Azure Monitor Data Collection Rule to set as the
-  // workspace's default DCR (applied to data flowing in without an explicit
-  // rule). Format:
-  // /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/dataCollectionRules/{name}
-  // Provide the literal ARM ID of a rule managed outside this catalog; leave
-  // empty for Azure's default handling.
-  string data_collection_rule_id = 15;
+  // The Azure Monitor Data Collection Rule to set as the workspace's
+  // default DCR (applied to data flowing in without an explicit rule), by
+  // ARM resource ID. Can be a literal ARM ID or a reference to an
+  // AzureMonitorDataCollectionRule output. Leave unset for Azure's default
+  // handling.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef data_collection_rule_id = 15 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMonitorDataCollectionRule,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.data_collection_rule_id"
+  ];
 
   // Tags to apply to the workspace, merged over the Planton-derived
   // metadata tags (user values win on key conflicts). ARM tags are Azure's

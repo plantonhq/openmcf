@@ -1,0 +1,46 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorDataCollectionRule
+metadata:
+  name: myapp-custom-logs
+spec:
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: myapp-custom-logs
+  region: <your-region> # co-locate with the destination workspace
+  # Custom streams ingest through a Data Collection Endpoint -- Azure
+  # rejects the rule without one.
+  dataCollectionEndpointId:
+    value: "<your-data-collection-endpoint-arm-id>"
+  # The custom stream's schema IS the custom table's schema. Version the
+  # stream name (Custom-MyAppLogs2) instead of mutating a live schema.
+  streamDeclarations:
+    - streamName: Custom-MyAppLogs
+      columns:
+        - name: TimeGenerated
+          type: datetime
+        - name: Level
+          type: string
+        - name: Message
+          type: string
+  dataSources:
+    logFiles:
+      - name: myapp-json-logs
+        filePatterns:
+          - /var/log/myapp/*.json
+        format: json
+        streams:
+          - Custom-MyAppLogs
+  destinations:
+    logAnalytics:
+      - name: ops-workspace
+        workspaceResourceId:
+          valueFrom:
+            name: <your-log-analytics-workspace>
+  dataFlows:
+    - streams:
+        - Custom-MyAppLogs
+      destinations:
+        - ops-workspace
+      # Drop debug noise at ingestion -- before it bills.
+      transformKql: source | where Level != 'debug'
+      outputStream: Custom-MyAppLogs_CL

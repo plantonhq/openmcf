@@ -1,0 +1,31 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_log_analytics_workspace:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (a resource
+      # group, a region, the workspace's own name), where the provider
+      # inherits ARM's property names.
+      - spec: spec.resource_group
+        arg: resource_group_name
+      - spec: spec.workspace_name
+        arg: name
+      - spec: spec.region
+        arg: location
+      - spec: spec.identity.user_assigned_identity_ids
+        arg: identity.identity_ids
+      # The spec models the internet-access posture as booleans; the
+      # modules render the provider's Enabled/Disabled tokens. The third
+      # token (SecuredByPerimeter) is deliberately unreachable until the
+      # spec models network security perimeter association itself --
+      # recorded in both modules at the render sites.
+      - spec: spec.internet_ingestion_enabled
+        arg: internet_ingestion_access_type
+      - spec: spec.internet_query_enabled
+        arg: internet_query_access_type

@@ -452,3 +452,13 @@ spec:
     - terraform_type: azurerm_monitor_autoscale_setting
       pulumi_type: azure:monitoring/autoscaleSetting:AutoscaleSetting
       id_format: "{autoscale_setting_id}"
+    - terraform_type: azurerm_monitor_data_collection_rule
+      pulumi_type: azure:monitoring/dataCollectionRule:DataCollectionRule
+      id_format: "{data_collection_rule_id}"
+    # The association's ARM id is scoped under the TARGET machine
+    # ({target_id}/providers/Microsoft.Insights/dataCollectionRuleAssociations/{name});
+    # the component's id output carries the full scoped id, so one value
+    # serves the import.
+    - terraform_type: azurerm_monitor_data_collection_rule_association
+      pulumi_type: azure:monitoring/dataCollectionRuleAssociation:DataCollectionRuleAssociation
+      id_format: "{data_collection_rule_association_id}"

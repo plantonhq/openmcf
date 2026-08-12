@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremonitordatacollectionruleassociation.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureMonitorDataCollectionRuleAssociationSpec** attaches ONE
+// machine to an Azure Monitor data collection rule or data collection
+// endpoint. The association is how a machine enters monitoring: the
+// Azure Monitor Agent on the target discovers its associations,
+// downloads the referenced rule, and starts collecting -- and removing
+// the association detaches the machine without touching the rule.
+//
+// An association is an extension resource living ON the target machine
+// (its ARM ID is scoped under the target's ID), which is why machines
+// join and leave monitoring independently: one rule serves any number
+// of machines, and one machine can carry many associations (several
+// rules, plus at most one endpoint association).
+//
+// **Exactly one binding**: an association binds its target to EITHER a
+// data collection rule OR a data collection endpoint, never both. The
+// endpoint form exists for machines whose configuration access must go
+// through a Data Collection Endpoint (private-link scenarios) and
+// carries the fixed, Azure-mandated name "configurationAccessEndpoint".
+message AzureMonitorDataCollectionRuleAssociationSpec {
+  // The machine the rule or endpoint is attached to, by ARM resource
+  // ID -- an Azure virtual machine, a VM scale set, or an Azure
+  // Arc-enabled server. There is no default kind because several kinds
+  // can be the target: reference the resource's `*_id` output
+  // explicitly with valueFrom (kind + fieldPath), or pass a literal
+  // ARM ID.
+  //
+  // **ForceNew**: changing this destroys and recreates the association.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_resource_id = 1 [(buf.validate.field).required = true];
+
+  // The association's name, unique among the target's associations.
+  // REQUIRED when binding a data collection rule. LEAVE UNSET when
+  // binding a data collection endpoint: Azure mandates the fixed name
+  // "configurationAccessEndpoint" for endpoint associations, and both
+  // engines apply it automatically.
+  //
+  // **ForceNew**: changing this destroys and recreates the association.
+  string name = 2;
+
+  // The data collection rule to attach, by ARM resource ID. Can be a
+  // literal ARM ID or a reference to an AzureMonitorDataCollectionRule
+  // output. Set exactly one of data_collection_rule_id and
+  // data_collection_endpoint_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef data_collection_rule_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMonitorDataCollectionRule,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.data_collection_rule_id"
+  ];
+
+  // The ARM ID of the Azure Monitor Data Collection Endpoint (DCE) to
+  // attach for configuration access. Format:
+  // /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/dataCollectionEndpoints/{name}
+  // Provide the literal ARM ID of an endpoint managed outside this
+  // catalog. Set exactly one of data_collection_rule_id and
+  // data_collection_endpoint_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef data_collection_endpoint_id = 4;
+
+  // A free-text description of the association, shown in the portal.
+  string description = 5;
+
+  // The provider enforces exactly one of the two bindings.
+  option (buf.validate.message).cel = {
+    id: "dcra_exactly_one_binding"
+    message: "set exactly one of data_collection_rule_id and data_collection_endpoint_id"
+    expression: "has(this.data_collection_rule_id) != has(this.data_collection_endpoint_id)"
+  };
+
+  // The provider requires a name whenever a rule is bound (the fixed
+  // default name exists only for the endpoint form).
+  option (buf.validate.message).cel = {
+    id: "dcra_rule_binding_requires_name"
+    message: "name is required when data_collection_rule_id is set"
+    expression: "!has(this.data_collection_rule_id) || this.name != ''"
+  };
+}

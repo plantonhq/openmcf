@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorDataCollectionRuleAssociation
+metadata:
+  name: my-vm-baseline-assoc
+spec:
+  targetResourceId:
+    valueFrom:
+      kind: AzureVirtualMachine
+      name: <your-vm>
+      fieldPath: status.outputs.vm_id
+  # Name the association after the rule it binds -- association names
+  # are what fleet listings show.
+  name: linux-baseline-assoc
+  dataCollectionRuleId:
+    valueFrom:
+      name: <your-data-collection-rule>

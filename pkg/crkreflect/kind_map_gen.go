@@ -251,6 +251,8 @@ import (
 	azuremonitoractiongroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitoractiongroup/v1alpha1"
 	azuremonitoractivitylogalertv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitoractivitylogalert/v1alpha1"
 	azuremonitorautoscalesettingv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitorautoscalesetting/v1alpha1"
+	azuremonitordatacollectionrulev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitordatacollectionrule/v1alpha1"
+	azuremonitordatacollectionruleassociationv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitordatacollectionruleassociation/v1alpha1"
 	azuremonitordiagnosticsettingv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitordiagnosticsetting/v1alpha1"
 	azuremonitormetricalertv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitormetricalert/v1alpha1"
 	azuremonitorscheduledqueryalertv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitorscheduledqueryalert/v1alpha1"
@@ -944,6 +946,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureMonitorActionGroup:                        &azuremonitoractiongroupv1alpha1.AzureMonitorActionGroup{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorActivityLogAlert:                   &azuremonitoractivitylogalertv1alpha1.AzureMonitorActivityLogAlert{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorAutoscaleSetting:                   &azuremonitorautoscalesettingv1alpha1.AzureMonitorAutoscaleSetting{},
+	cloudresourcekind.CloudResourceKind_AzureMonitorDataCollectionRule:                 &azuremonitordatacollectionrulev1alpha1.AzureMonitorDataCollectionRule{},
+	cloudresourcekind.CloudResourceKind_AzureMonitorDataCollectionRuleAssociation:      &azuremonitordatacollectionruleassociationv1alpha1.AzureMonitorDataCollectionRuleAssociation{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorDiagnosticSetting:                  &azuremonitordiagnosticsettingv1alpha1.AzureMonitorDiagnosticSetting{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorMetricAlert:                        &azuremonitormetricalertv1alpha1.AzureMonitorMetricAlert{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorScheduledQueryAlert:                &azuremonitorscheduledqueryalertv1alpha1.AzureMonitorScheduledQueryAlert{},

@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremonitordatacollectionruleassociation.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuremonitordatacollectionruleassociation/v1alpha1/outputs.proto";
+import "catalog/azure/azuremonitordatacollectionruleassociation/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureMonitorDataCollectionRuleAssociation represents the attachment
+// of one machine (VM, VM scale set, or Arc-enabled server) to an Azure
+// Monitor data collection rule or data collection endpoint -- the
+// resource that actually puts a machine under monitoring. One rule
+// serves any number of machines; each machine attaches with its own
+// association and detaches without touching the rule.
+message AzureMonitorDataCollectionRuleAssociation {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureMonitorDataCollectionRuleAssociation'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureMonitorDataCollectionRuleAssociationSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureMonitorDataCollectionRuleAssociationStatus status = 5;
+}
+
+// AzureMonitorDataCollectionRuleAssociationStatus represents the
+// status of an Azure Monitor data collection rule association
+// deployment.
+message AzureMonitorDataCollectionRuleAssociationStatus {
+  //stack-outputs
+  //  azure-monitor-data-collection-rule-association stack-outputs
+  AzureMonitorDataCollectionRuleAssociationStackOutputs outputs = 1;
+}

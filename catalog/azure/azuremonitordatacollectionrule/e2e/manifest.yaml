@@ -1,0 +1,75 @@
+# Deep-shape example for docs and offline validation: a Linux rule
+# collecting filtered syslog and performance counters, landing logs in
+# a Log Analytics workspace and metrics in Azure Monitor metrics --
+# with an ingestion-time KQL filter on the syslog flow. References are
+# literal ARM ids so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorDataCollectionRule
+metadata:
+  name: test-dcr
+  id: test-dcr
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  name: linux-baseline
+  region: eastus
+  kind: Linux
+  description: Linux fleet baseline - filtered syslog and perf counters
+  dataSources:
+    syslogs:
+      - name: linux-syslog
+        facilityNames:
+          - auth
+          - authpriv
+          - daemon
+        logLevels:
+          - Warning
+          - Error
+          - Critical
+          - Alert
+          - Emergency
+        streams:
+          - Microsoft-Syslog
+    performanceCounters:
+      - name: linux-perf
+        samplingFrequencyInSeconds: 60
+        counterSpecifiers:
+          - Processor(*)\% Processor Time
+          - Memory(*)\% Used Memory
+        streams:
+          - Microsoft-Perf
+      - name: linux-insights-metrics
+        # Streams targeting Microsoft-InsightsMetrics require EXACTLY
+        # 60-second sampling (Azure enforces at deploy time).
+        samplingFrequencyInSeconds: 60
+        counterSpecifiers:
+          - Processor(*)\% Processor Time
+        streams:
+          - Microsoft-InsightsMetrics
+  destinations:
+    logAnalytics:
+      - name: ops-workspace
+        workspaceResourceId:
+          value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.OperationalInsights/workspaces/test-law
+    azureMonitorMetrics:
+      name: azure-metrics
+  dataFlows:
+    - streams:
+        - Microsoft-Syslog
+      destinations:
+        - ops-workspace
+      # Drop noisy repeated daemon chatter at ingestion, before it bills.
+      transformKql: source | where SyslogMessage !has 'systemd' or SeverityLevel != 'warning'
+      outputStream: Microsoft-Syslog
+    - streams:
+        - Microsoft-Perf
+      destinations:
+        - ops-workspace
+    - streams:
+        - Microsoft-InsightsMetrics
+      destinations:
+        - azure-metrics
+  tags:
+    cost-center: platform-observability

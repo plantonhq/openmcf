@@ -1326,6 +1326,24 @@ func TestAzureMonitorAutoscaleSetting_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremonitorautoscalesetting", "terraform")
 }
 
+// --- Azure Monitor Data Collection Rule (composed: fixture RG -> fixture workspace -> Linux syslog + perf sources, workspace + metrics destinations) ---
+
+func TestAzureMonitorDataCollectionRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitordatacollectionrule", "pulumi")
+}
+func TestAzureMonitorDataCollectionRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitordatacollectionrule", "terraform")
+}
+
+// --- Azure Monitor Data Collection Rule Association (composed: fixture VM chain + smoke rule chain -> the target-scoped attachment) ---
+
+func TestAzureMonitorDataCollectionRuleAssociation_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitordatacollectionruleassociation", "pulumi")
+}
+func TestAzureMonitorDataCollectionRuleAssociation_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitordatacollectionruleassociation", "terraform")
+}
+
 // --- Azure Monitor Scheduled Query Alert (composed: fixture RG -> fixture workspace + fixture action group -> row-count KQL rule) ---
 
 func TestAzureMonitorScheduledQueryAlert_Pulumi(t *testing.T) {

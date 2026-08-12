@@ -85,6 +85,8 @@ go_library(
         "monitor_action_group.go",
         "monitor_activity_log_alert.go",
         "monitor_autoscale_setting.go",
+        "monitor_data_collection_rule.go",
+        "monitor_data_collection_rule_association.go",
         "monitor_diagnostic_setting.go",
         "monitor_metric_alert.go",
         "monitor_scheduled_query_alert.go",

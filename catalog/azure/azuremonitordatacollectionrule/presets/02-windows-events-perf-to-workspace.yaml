@@ -1,0 +1,42 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorDataCollectionRule
+metadata:
+  name: windows-baseline
+spec:
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: windows-baseline
+  region: <your-region> # co-locate with the destination workspace
+  dataSources:
+    # XPath filters run on the machine, BEFORE ingestion bills:
+    # Critical (1), Error (2), and Warning (3) from System and
+    # Application; Security kept to logon failures (4625).
+    windowsEventLogs:
+      - name: win-events
+        xPathQueries:
+          - System!*[System[(Level=1 or Level=2 or Level=3)]]
+          - Application!*[System[(Level=1 or Level=2 or Level=3)]]
+          - Security!*[System[(EventID=4625)]]
+        streams:
+          - Microsoft-Event
+    performanceCounters:
+      - name: win-perf
+        samplingFrequencyInSeconds: 60
+        counterSpecifiers:
+          - \Processor(_Total)\% Processor Time
+          - \Memory\Available Bytes
+          - \LogicalDisk(_Total)\% Free Space
+        streams:
+          - Microsoft-Perf
+  destinations:
+    logAnalytics:
+      - name: ops-workspace
+        workspaceResourceId:
+          valueFrom:
+            name: <your-log-analytics-workspace>
+  dataFlows:
+    - streams:
+        - Microsoft-Event
+        - Microsoft-Perf
+      destinations:
+        - ops-workspace

@@ -950,6 +950,15 @@ const (
 	// so no target kind is declared here -- scenarios declare their own
 	// target fixture.
 	CloudResourceKind_AzureMonitorAutoscaleSetting CloudResourceKind = 2191
+	// The Azure Monitor data collection rule (DCR) -- the routing table
+	// declaring what telemetry the Azure Monitor Agent collects and
+	// where it lands. AzureResourceGroup is a prerequisite because a
+	// rule is created inside a referenced resource group;
+	// AzureLogAnalyticsWorkspace because a workspace is the canonical
+	// destination a rule routes to (the smoke scenario's shape).
+	// Machines attach to a rule with
+	// AzureMonitorDataCollectionRuleAssociation resources.
+	CloudResourceKind_AzureMonitorDataCollectionRule CloudResourceKind = 2192
 	// Registers a storage account with a Recovery Services vault as a
 	// backup container (.../protectionContainers/StorageContainer;...)
 	// -- one registration per storage-account-and-vault pair, required
@@ -975,6 +984,18 @@ const (
 	// out-of-run number -- enum numbers are pinned by the registry
 	// snapshot; never renumber.
 	CloudResourceKind_AzurePrivateDnsResolverVirtualNetworkLink CloudResourceKind = 2215
+	// The attachment that puts ONE machine under an Azure Monitor data
+	// collection rule ({target_id}/providers/Microsoft.Insights/
+	// dataCollectionRuleAssociations/{name}) -- an extension resource on
+	// the TARGET machine, many per rule, machines joining and leaving
+	// monitoring independently (which is why the association is a
+	// standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink).
+	// AzureVirtualMachine is a prerequisite because the smoke scenario
+	// attaches the fixture VM; the rule prerequisite chains the rule's
+	// own install manifest. Part of the Monitor family (2191-2192)
+	// despite the out-of-run number -- enum numbers are pinned by the
+	// registry snapshot; never renumber.
+	CloudResourceKind_AzureMonitorDataCollectionRuleAssociation CloudResourceKind = 2216
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
@@ -1756,9 +1777,11 @@ var (
 		2189:  "AzureTrafficManagerProfile",
 		2190:  "AzureTrafficManagerEndpoint",
 		2191:  "AzureMonitorAutoscaleSetting",
+		2192:  "AzureMonitorDataCollectionRule",
 		2213:  "AzureBackupContainerStorageAccount",
 		2214:  "AzureDataProtectionResourceGuard",
 		2215:  "AzurePrivateDnsResolverVirtualNetworkLink",
+		2216:  "AzureMonitorDataCollectionRuleAssociation",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2422,9 +2445,11 @@ var (
 		"AzureTrafficManagerProfile":                     2189,
 		"AzureTrafficManagerEndpoint":                    2190,
 		"AzureMonitorAutoscaleSetting":                   2191,
+		"AzureMonitorDataCollectionRule":                 2192,
 		"AzureBackupContainerStorageAccount":             2213,
 		"AzureDataProtectionResourceGuard":               2214,
 		"AzurePrivateDnsResolverVirtualNetworkLink":      2215,
+		"AzureMonitorDataCollectionRuleAssociation":      2216,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -3090,7 +3115,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*ȩ\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*ܪ\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3377,10 +3402,12 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x15AzurePrivateDnsRecord\x10\x8c\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\tazpdnsrec:\x02\xdf\x0f\x12?\n" +
 	"\x1aAzureTrafficManagerProfile\x10\x8d\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\baztmprof:\x02\xd0\x0f\x12>\n" +
 	"\x1bAzureTrafficManagerEndpoint\x10\x8e\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06aztmep:\x02\x8d\x11\x12D\n" +
-	"\x1cAzureMonitorAutoscaleSetting\x10\x8f\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\vazautoscale:\x02\xd0\x0f\x12G\n" +
+	"\x1cAzureMonitorAutoscaleSetting\x10\x8f\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\vazautoscale:\x02\xd0\x0f\x12B\n" +
+	"\x1eAzureMonitorDataCollectionRule\x10\x90\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\x05azdcr:\x04\xd0\x0f\x82\x10\x12G\n" +
 	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +
 	" AzureDataProtectionResourceGuard\x10\xa6\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdprg:\x02\xd0\x0f\x12S\n" +
-	")AzurePrivateDnsResolverVirtualNetworkLink\x10\xa7\x11\x1a#\xa2\xf7\x04\x1f\b\r\x12\bv1alpha1\"\vazpdnsrlink:\x04\x8b\x11\xd6\x0f\x12:\n" +
+	")AzurePrivateDnsResolverVirtualNetworkLink\x10\xa7\x11\x1a#\xa2\xf7\x04\x1f\b\r\x12\bv1alpha1\"\vazpdnsrlink:\x04\x8b\x11\xd6\x0f\x12N\n" +
+	")AzureMonitorDataCollectionRuleAssociation\x10\xa8\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azdcra:\x04\x90\x11\xd8\x0f\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
 	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x124\n" +

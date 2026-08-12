@@ -188,6 +188,7 @@ Fields on other kinds that can point at this resource:
 | AzureManagedRedis | `spec.customerManagedKey.userAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureManagedRedis | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureManagedRedisAccessPolicyAssignment | `spec.objectId` | `status.outputs.principal_id` |
+| AzureMonitorDataCollectionRule | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureMonitorScheduledQueryAlert | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureMssqlDatabase | `spec.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureMssqlServer | `spec.azureadAdministrator.objectId` | `status.outputs.principal_id` |

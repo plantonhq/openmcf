@@ -129,6 +129,7 @@ Fields on other kinds that can point at this resource:
 | AzureMonitorActivityLogAlert | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureMonitorActivityLogAlert | `spec.scopes` | `status.outputs.resource_group_id` |
 | AzureMonitorAutoscaleSetting | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureMonitorDataCollectionRule | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureMonitorMetricAlert | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureMonitorScheduledQueryAlert | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureMssqlServer | `spec.resourceGroup` | `status.outputs.resource_group_name` |

@@ -119,6 +119,8 @@ var verifiers = map[string]Verifier{
 	"azuremonitoractiongroup":                        &monitorActionGroupVerifier{},
 	"azuremonitoractivitylogalert":                   &monitorActivityLogAlertVerifier{},
 	"azuremonitorautoscalesetting":                   &monitorAutoscaleSettingVerifier{},
+	"azuremonitordatacollectionrule":                 &monitorDataCollectionRuleVerifier{},
+	"azuremonitordatacollectionruleassociation":      &monitorDataCollectionRuleAssociationVerifier{},
 	"azuremonitordiagnosticsetting":                  &monitorDiagnosticSettingVerifier{},
 	"azuremonitormetricalert":                        &monitorMetricAlertVerifier{},
 	"azuremonitorscheduledqueryalert":                &monitorScheduledQueryAlertVerifier{},
