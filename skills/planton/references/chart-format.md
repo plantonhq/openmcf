@@ -10,7 +10,7 @@ Chart.yaml IS a Planton manifest of kind `InfraChart` -- the same
 apiVersion/kind/metadata/spec structure every Planton resource uses:
 
 ```yaml
-apiVersion: infra-hub.planton.ai/v1
+apiVersion: infra-hub.planton.ai/v1alpha1
 kind: InfraChart
 metadata:
   name: EKS Environment            # human-readable display name

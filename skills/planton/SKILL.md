@@ -499,7 +499,7 @@ shared state and needs the user's explicit go-ahead:
 `Chart.yaml`:
 
 ```yaml
-apiVersion: infra-hub.planton.ai/v1
+apiVersion: infra-hub.planton.ai/v1alpha1
 kind: InfraChart
 metadata:
   name: VPC with Public Subnet

@@ -15,14 +15,18 @@
 #   - The auto `main.zip` is continuous; a tagged release gives a deliberate
 #     cadence.
 #
-# Consumers download the three assets from the stable `latest` URLs:
-#   https://github.com/plantonhq/planton/releases/latest/download/infra-charts.zip
-#   https://github.com/plantonhq/planton/releases/latest/download/infra-charts.sha256
-#   https://github.com/plantonhq/planton/releases/latest/download/version.txt
+# Consumers fetch the three assets from the PINNED per-tag URLs
+# (releases/download/<tag>/...): the plantond daemon fetches the tag its build
+# is pinned to, and the operator hands the same pinned URL to the control
+# plane's JVM seeder. Charts are validated by protos generated from this same
+# tag, so consumer and bundle can never drift. (The `latest` URLs still
+# resolve -- pre-pinning desktop builds in the field read them -- which is why
+# what the newest release publishes remains fleet-sensitive until those
+# builds age out.)
 #
 # Called by: .github/workflows/release.yaml (after the CLI job publishes the
-# release). Not triggered directly - it rides the strict-semver release so its
-# assets land on the release that /releases/latest/download resolves to.
+# release). Not triggered directly - it rides the strict-semver release so
+# every pinnable tag carries its own bundle.
 # =============================================================================
 
 name: release.charts
@@ -36,10 +40,38 @@ permissions:
 jobs:
   charts:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Release gate: the bundle must be publishable BY THIS TAG'S OWN
+      # contract before it ships. The same two gates as the PR lane
+      # (lint.charts.yaml) run here against the tag itself, because the PR
+      # lane guards main, not the ref being released: the structure guard
+      # (incl. the apiVersion identity every control plane's proto constraint
+      # enforces at apply) and the offline validator built FROM THIS TAG --
+      # charts and the protos that validate them come from one release, so a
+      # release can never publish charts its own tree rejects. An unguarded
+      # publish once shipped charts that bricked every installed desktop.
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify chart structure
+        run: bash ./hack/guards/ensure_chart_structure.sh
+
+      - name: Validate charts against this tag's own contract
+        run: |
+          set -euo pipefail
+          go build -o /tmp/planton .
+          if find charts -type f -name 'Chart.yaml' -not -path '*/build/*' | grep -q .; then
+            /tmp/planton chart validate --all charts/
+          else
+            echo "no charts in the tree; nothing to validate"
+          fi
 
       - name: Package and attach the chart catalog
         env:
