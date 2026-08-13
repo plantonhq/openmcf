@@ -36,13 +36,13 @@ stack inputs.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBedrockModelAccess
 metadata:
-  name: test-mistral-7b-access
-  id: test-mistral-7b-access
+  name: test-command-r-access
+  id: test-command-r-access
   org: test-org
   env: dev
 spec:
   region: us-west-2
-  modelId: mistral.mistral-7b-instruct-v0:2
+  modelId: cohere.command-r-v1:0
 ```
 
 ## Spec Fields

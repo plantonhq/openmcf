@@ -134,6 +134,10 @@ var verifiers = map[string]Verifier{
 	"awsbedrockinferenceprofile":      &bedrockInferenceProfileVerifier{},
 	"awsbedrockprovisionedthroughput": &bedrockProvisionedThroughputVerifier{},
 	"awsbedrockmodelaccess":           &bedrockModelAccessVerifier{},
+	"awsbedrockagent":                 &bedrockAgentVerifier{},
+	"awsbedrockknowledgebase":         &bedrockKnowledgeBaseVerifier{},
+	"awsbedrockflow":                  &bedrockFlowVerifier{},
+	"awsbedrockprompt":                &bedrockPromptVerifier{},
 
 	"awstransitgateway":              &transitGatewayVerifier{},
 	"awstransitgatewayvpcattachment": &transitGatewayVpcAttachmentVerifier{},

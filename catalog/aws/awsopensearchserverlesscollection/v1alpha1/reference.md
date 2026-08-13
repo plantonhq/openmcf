@@ -378,6 +378,14 @@ Fields that can point at another resource's outputs:
 | `spec.encryption.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.dataAccess[].principals` | AwsIamRole | `status.outputs.role_arn` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBedrockKnowledgeBase | `spec.storage.opensearchServerless.collectionArn` | `status.outputs.collection_arn` |
+
 ## See Also
 
 - [Overview](../README.md)

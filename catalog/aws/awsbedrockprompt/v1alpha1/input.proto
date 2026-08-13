@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockprompt.v1alpha1;
+
+import "catalog/aws/awsbedrockprompt/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsBedrockPromptStackInput is the input for the IaC modules that deploy
+// the Bedrock prompt.
+message AwsBedrockPromptStackInput {
+  // target is the AwsBedrockPrompt resource to deploy.
+  AwsBedrockPrompt target = 1;
+  // provider_config contains the AWS provider credentials and configuration.
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

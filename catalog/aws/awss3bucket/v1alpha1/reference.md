@@ -1730,6 +1730,10 @@ Fields on other kinds that can point at this resource:
 | AwsAlb | `spec.accessLogs.bucket` | `status.outputs.bucket_id` |
 | AwsAlb | `spec.connectionLogs.bucket` | `status.outputs.bucket_id` |
 | AwsAlb | `spec.healthCheckLogs.bucket` | `status.outputs.bucket_id` |
+| AwsBedrockAgent | `spec.actionGroups[].apiSchema.s3.bucketName` | `status.outputs.bucket_id` |
+| AwsBedrockFlow | `spec.definition.nodes[].retrieval.bucketName` | `status.outputs.bucket_id` |
+| AwsBedrockFlow | `spec.definition.nodes[].storage.bucketName` | `status.outputs.bucket_id` |
+| AwsBedrockKnowledgeBase | `spec.dataSources[].s3.bucketArn` | `status.outputs.bucket_arn` |
 | AwsCodeBuildProject | `spec.artifacts.location` | `status.outputs.bucket_id` |
 | AwsCodeBuildProject | `spec.secondaryArtifacts[].location` | `status.outputs.bucket_id` |
 | AwsCodeBuildProject | `spec.cache.location` | `status.outputs.bucket_id` |

@@ -1,0 +1,27 @@
+# AwsBedrockPrompt minimal scenario: one text variant on an auto-enabled
+# model. Proves the create/delete lifecycle and the TEXT template render
+# both engines share.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockPrompt
+metadata:
+  name: planton-oss-e2e-awsbrpmt-min
+  id: planton-oss-e2e-awsbrpmt-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockprompt
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Minimal text prompt
+  variants:
+    - name: main
+      modelId: amazon.nova-micro-v1:0
+      text:
+        text: "Summarize the following text in one sentence: {{input}}"
+        inputVariables:
+          - input

@@ -1,0 +1,70 @@
+# AwsBedrockFlow minimal scenario: the canonical three-node pipeline --
+# Input -> inline Prompt -> Output -- the smallest graph AWS accepts as a
+# complete flow. Proves the definition render (nodes, sockets, data
+# connections, the derived union members) both engines share.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockFlow
+metadata:
+  name: planton-oss-e2e-awsbrflw-min
+  id: planton-oss-e2e-awsbrflw-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockflow
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Minimal summarize pipeline
+  executionRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-bedrock-agents-role
+      fieldPath: status.outputs.role_arn
+  definition:
+    nodes:
+      - name: FlowInput
+        type: Input
+        outputs:
+          - name: document
+            type: String
+      - name: Summarize
+        type: Prompt
+        inputs:
+          - name: input
+            expression: $.data
+            type: String
+        outputs:
+          - name: modelCompletion
+            type: String
+        prompt:
+          inline:
+            modelId: amazon.nova-micro-v1:0
+            text:
+              text: "Summarize in one sentence: {{input}}"
+              inputVariables:
+                - input
+            inferenceConfiguration:
+              temperature: 0
+      - name: FlowOutput
+        type: Output
+        inputs:
+          - name: document
+            expression: $.data
+            type: String
+    connections:
+      - name: InToPrompt
+        source: FlowInput
+        target: Summarize
+        data:
+          sourceOutput: document
+          targetInput: input
+      - name: PromptToOut
+        source: Summarize
+        target: FlowOutput
+        data:
+          sourceOutput: modelCompletion
+          targetInput: document

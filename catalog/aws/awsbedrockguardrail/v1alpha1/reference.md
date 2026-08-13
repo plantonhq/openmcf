@@ -730,6 +730,16 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBedrockAgent | `spec.guardrail.guardrailId` | `status.outputs.guardrail_id` |
+| AwsBedrockFlow | `spec.definition.nodes[].prompt.guardrail.guardrailId` | `status.outputs.guardrail_id` |
+| AwsBedrockFlow | `spec.definition.nodes[].knowledgeBase.guardrail.guardrailId` | `status.outputs.guardrail_id` |
+
 ## See Also
 
 - [Overview](../README.md)

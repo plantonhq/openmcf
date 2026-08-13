@@ -400,6 +400,22 @@ Fields that can point at another resource's outputs:
 | `spec.rotation.rotationLambdaArn` | AwsLambda | `status.outputs.function_arn` |
 | `spec.rotation.externalRotationRoleArn` | AwsIamRole | `status.outputs.role_arn` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBedrockKnowledgeBase | `spec.sql.provisioned.auth.usernamePasswordSecretArn` | `status.outputs.secret_arn` |
+| AwsBedrockKnowledgeBase | `spec.sql.serverless.auth.usernamePasswordSecretArn` | `status.outputs.secret_arn` |
+| AwsBedrockKnowledgeBase | `spec.storage.rds.credentialsSecretArn` | `status.outputs.secret_arn` |
+| AwsBedrockKnowledgeBase | `spec.storage.pinecone.credentialsSecretArn` | `status.outputs.secret_arn` |
+| AwsBedrockKnowledgeBase | `spec.storage.mongodbAtlas.credentialsSecretArn` | `status.outputs.secret_arn` |
+| AwsBedrockKnowledgeBase | `spec.storage.redisEnterpriseCloud.credentialsSecretArn` | `status.outputs.secret_arn` |
+| AwsBedrockKnowledgeBase | `spec.dataSources[].confluence.credentialsSecretArn` | `status.outputs.secret_arn` |
+| AwsBedrockKnowledgeBase | `spec.dataSources[].salesforce.credentialsSecretArn` | `status.outputs.secret_arn` |
+| AwsBedrockKnowledgeBase | `spec.dataSources[].sharepoint.credentialsSecretArn` | `status.outputs.secret_arn` |
+
 ## See Also
 
 - [Overview](../README.md)

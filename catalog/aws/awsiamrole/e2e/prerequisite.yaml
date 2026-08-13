@@ -460,6 +460,59 @@ spec:
           Service: sagemaker.amazonaws.com
         Action: sts:AssumeRole
 ---
+# Bedrock agents-family role: trusts bedrock.amazonaws.com and carries the
+# permission set the upstream provider's own agent/knowledge-base
+# acceptance fixtures grant -- model invocation (agent serving and
+# embedding), S3 read (knowledge-base data sources), and the S3 Vectors
+# data-plane verbs (the standing vector-store fixture). One role serves
+# the agent, knowledge base, and flow consumers; each references it by
+# name.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-bedrock-agents-role
+  id: planton-oss-e2e-bedrock-agents-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for the Bedrock agents family
+  inlinePolicies:
+    bedrockAgentsE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - bedrock:InvokeModel
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+            - s3:GetObject
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - s3vectors:GetIndex
+            - s3vectors:QueryVectors
+            - s3vectors:PutVectors
+            - s3vectors:GetVectors
+            - s3vectors:DeleteVectors
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: bedrock.amazonaws.com
+        Action: sts:AssumeRole
+---
 # ECS Managed Instances infrastructure role: trusts ecs.amazonaws.com and
 # carries AmazonECSInfrastructureRolePolicyForManagedInstances -- the role
 # ECS assumes to launch, patch, and retire managed instances. The caller

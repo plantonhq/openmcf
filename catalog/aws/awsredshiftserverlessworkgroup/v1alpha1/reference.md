@@ -424,6 +424,14 @@ Fields that can point at another resource's outputs:
 | `spec.endpointAccesses[].subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.endpointAccesses[].vpcSecurityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBedrockKnowledgeBase | `spec.sql.serverless.workgroupArn` | `status.outputs.arn` |
+
 ## See Also
 
 - [Overview](../README.md)

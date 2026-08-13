@@ -1,0 +1,31 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockflow
+spec:
+  # A Bedrock flow under live E2E: two free lanes (flows bill per node
+  # invocation at runtime -- create/delete is $0). The minimal lane
+  # proves the smallest complete graph (Input -> inline Prompt -> Output).
+  # The full-surface lane proves a routing graph: conditional AND data
+  # connections, the condition node's default arm, and a knowledge-base
+  # node composing the MANAGED prerequisite. AWS validates the TOPOLOGY
+  # server-side at create -- the named validation classes (unreachable
+  # node, type mismatch, missing connection) are exactly what the live
+  # lanes exist to catch. Verification is GetFlow keyed on flow_id
+  # (status not Failed; the module does not prepare flows).
+  #
+  # Deliberately not exercised live: the agent node (needs the agent
+  # prerequisite's alias; the arm is offline-proven -- unblock: extend
+  # the full-surface graph once the agents family is PROVEN), the Lex
+  # node (no Lex kind or fixture exists), the inline-code and
+  # retrieval/storage nodes and the prompt node's resource/guardrail arms
+  # (offline-proven via e2e/manifest.yaml), and the Loop node family
+  # (the pinned provider cannot express Loop configurations -- an
+  # upstream gap, recorded in the parity manifest).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q34
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

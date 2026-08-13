@@ -95,6 +95,8 @@ github.com/aws/aws-sdk-go-v2/service/batch v1.67.0 h1:amCRVhE7xgdElZrfKzQ8PvWMzR
 github.com/aws/aws-sdk-go-v2/service/batch v1.67.0/go.mod h1:xAqGFEks3zOMleaWMlPj8WiRL1hrZCgLKctJde6Sn3U=
 github.com/aws/aws-sdk-go-v2/service/bedrock v1.66.2 h1:Y0BRJzxaHonjV8f2cNwIKrxV700LTYLkIGG/q/Ur0Fs=
 github.com/aws/aws-sdk-go-v2/service/bedrock v1.66.2/go.mod h1:5IYrT5MYL/B66h8eWh2eg4sgldLecW1ni+oK88chnfc=
+github.com/aws/aws-sdk-go-v2/service/bedrockagent v1.58.5 h1:ex6zvvsUIeJvBmtYe2HQ2nFRz51TWyjEGIAyp2dIJs4=
+github.com/aws/aws-sdk-go-v2/service/bedrockagent v1.58.5/go.mod h1:O3EbI281Rhfb904DDIexzx5oRBasBNAlSc0xKpANIs4=
 github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.31.0 h1:Z1RAWbDAd9u5U0c6/t9NBthX1ZT9moboRbDu5bRDTT4=
 github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.31.0/go.mod h1:EE4FBuNXJZ66BO3viCqhE9htgR2SpGc8WqSPg0ax2cI=
 github.com/aws/aws-sdk-go-v2/service/cloudfront v1.65.4 h1:4O0/LZvqivJec25Mv6SYo0jxFn7sz6ohl/2E4j2wpGk=
@@ -177,6 +179,8 @@ github.com/aws/aws-sdk-go-v2/service/route53 v1.46.2 h1:wmt05tPp/CaRZpPV5B4SaJ5T
 github.com/aws/aws-sdk-go-v2/service/route53 v1.46.2/go.mod h1:d+K9HESMpGb1EU9/UmmpInbGIUcAkwmcY6ZO/A3zZsw=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0 h1:ta8csKy5vN91F3i5gGR85lFV0srBqySEji7Jroes6rE=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0/go.mod h1:77ZAgynvx1txMvDG8gGWoWkO1augYDxkp9JElWFgjQU=
+github.com/aws/aws-sdk-go-v2/service/s3vectors v1.10.5 h1:EOZRIC8fiX1VkO4vdeM7v5qmf9rukDX3jkdxnFNBaGM=
+github.com/aws/aws-sdk-go-v2/service/s3vectors v1.10.5/go.mod h1:sbie4kxutsyAH798SGvrkMAet/bDNC/dEemThQUEFHI=
 github.com/aws/aws-sdk-go-v2/service/sagemaker v1.257.0 h1:AjmVRphbA9OREBmvmlIIzLN4hk0kgP2egsY9Lwja5fY=
 github.com/aws/aws-sdk-go-v2/service/sagemaker v1.257.0/go.mod h1:CivQlQhQJ/KgONEX70dPCPtPls/vHyhGHiqY5o1GSCw=
 github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.6 h1:1KDMKvOKNrpD667ORbZ/+4OgvUoaok1gg/MLzrHF9fw=

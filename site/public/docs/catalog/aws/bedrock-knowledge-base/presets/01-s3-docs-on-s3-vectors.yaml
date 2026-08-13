@@ -1,0 +1,37 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockKnowledgeBase
+metadata:
+  name: product-docs
+spec:
+  region: us-west-2
+  description: Product documentation retrieval over S3 Vectors
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: bedrock-kb-role
+      fieldPath: status.outputs.role_arn
+  vector:
+    embeddingModelArn: arn:aws:bedrock:us-west-2::foundation-model/amazon.titan-embed-text-v2:0
+    embeddingModel:
+      dimensions: 256
+      embeddingDataType: FLOAT32
+  storage:
+    s3Vectors:
+      indexArn: arn:aws:s3vectors:us-west-2:123456789012:bucket/docs-vectors/index/docs
+  dataSources:
+    - name: manuals
+      description: Product manuals bucket
+      dataDeletionPolicy: DELETE
+      s3:
+        bucketArn:
+          valueFrom:
+            kind: AwsS3Bucket
+            name: product-manuals
+            fieldPath: status.outputs.bucket_arn
+        inclusionPrefix: manuals/
+      vectorIngestion:
+        chunking:
+          strategy: FIXED_SIZE
+          fixedSize:
+            maxTokens: 300
+            overlapPercentage: 20

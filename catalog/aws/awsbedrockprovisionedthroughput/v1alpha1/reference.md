@@ -120,6 +120,14 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.modelArn` | AwsBedrockCustomModel | `status.outputs.custom_model_arn` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBedrockAgent | `spec.aliases[].routing.provisionedThroughput` | `status.outputs.provisioned_model_arn` |
+
 ## See Also
 
 - [Overview](../README.md)

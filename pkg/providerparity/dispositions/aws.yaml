@@ -434,33 +434,6 @@ resources:
   - resource: aws_bedrock_model_invocation_logging_configuration
     disposition: model-planned
     reason: "judged as a planned AwsBedrockInvocationLogging kind (region singleton: PutModelInvocationLoggingConfiguration, identity = the region) -- folding a region-wide observability singleton into the per-model AwsBedrockModelAccess would make multiple access instances fight over one logging object"
-  - resource: aws_bedrockagent_agent
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgent kind (agent with action groups, aliases, collaborators, knowledge-base associations)"
-  - resource: aws_bedrockagent_agent_action_group
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgent kind (agent with action groups, aliases, collaborators, knowledge-base associations)"
-  - resource: aws_bedrockagent_agent_alias
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgent kind (agent with action groups, aliases, collaborators, knowledge-base associations)"
-  - resource: aws_bedrockagent_agent_collaborator
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgent kind (agent with action groups, aliases, collaborators, knowledge-base associations)"
-  - resource: aws_bedrockagent_agent_knowledge_base_association
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgent kind (agent with action groups, aliases, collaborators, knowledge-base associations)"
-  - resource: aws_bedrockagent_data_source
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockKnowledgeBase kind (knowledge base with data sources)"
-  - resource: aws_bedrockagent_flow
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockFlow kind"
-  - resource: aws_bedrockagent_knowledge_base
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockKnowledgeBase kind (knowledge base with data sources)"
-  - resource: aws_bedrockagent_prompt
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockPrompt kind"
   - resource: aws_bedrockagentcore_agent_runtime
     disposition: model-planned
     reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"

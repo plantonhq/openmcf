@@ -72,3 +72,7 @@ Cadence is `automaticallyAfterDays` (1–1000) or a `scheduleExpression` (`rate(
 ## Spec Reference
 
 See [reference](v1alpha1/reference.md) for the complete field reference, and the [presets](presets/) for ready-to-deploy configurations.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

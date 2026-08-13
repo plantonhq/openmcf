@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>AWS Bedrock Knowledge Base</title>
+    <defs>
+        <linearGradient id="brkbGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#7C3AED"/>
+            <stop offset="100%" stop-color="#4C1D95"/>
+        </linearGradient>
+    </defs>
+    <rect width="80" height="80" rx="16" fill="url(#brkbGradient)"/>
+    <path d="M20 22 Q30 16 38 22 V58 Q30 52 20 58 Z" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M60 22 Q50 16 42 22 V58 Q50 52 60 58 Z" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="57" cy="57" r="9" fill="#4C1D95" stroke="#FFFFFF" stroke-width="4"/>
+    <line x1="63" y1="63" x2="69" y2="69" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+</svg>

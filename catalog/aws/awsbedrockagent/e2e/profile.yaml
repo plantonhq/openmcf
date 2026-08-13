@@ -1,0 +1,38 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockagent
+spec:
+  # A Bedrock agent under live E2E: two free lanes (agents bill per model
+  # invocation -- create/prepare/delete is $0). The minimal lane proves
+  # the create -> prepare -> PREPARED lifecycle. The full-surface lane
+  # assembles the satellites: a return-control action group (no Lambda
+  # needed), the reserved AMAZON.UserInput capability, memory, an
+  # ORCHESTRATION prompt override, a knowledge-base association (MANAGED
+  # prerequisite), and one alias whose creation snapshots the assembled
+  # draft -- the DRAFT-pivot choreography (satellites first, alias last)
+  # is the lane's core proof. Verification is GetAgent keyed on agent_id
+  # (status PREPARED).
+  #
+  # Deliberately not exercised live: the guardrail attachment (the
+  # guardrail kind's folder is QUEUED for live proof, so its prerequisite
+  # install manifest cannot land yet -- the arm is offline-proven
+  # arm-for-arm via e2e/manifest.yaml; unblock: after the guardrail kind
+  # is PROVEN, add its e2e/prerequisite.yaml and extend the full-surface
+  # scenario), the collaborator satellite (a collaborator targets ANOTHER
+  # agent's alias and the harness forbids self-kind prerequisites -- the
+  # cycle class; offline-proven incl. the supervisor-mode CEL and both
+  # renders; unblock: the proof lane's two-deploy choreography or a
+  # framework self-kind fixture story), the Lambda executor arm (no
+  # Lambda prerequisite manifest exists; return_control proves the
+  # executor union's other arm), the api_schema arm (function_schema
+  # proves the schema union; the OpenAPI arm is offline-proven), and
+  # alias routing pins (needs a pre-existing numbered version or
+  # provisioned throughput -- offline-proven).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q34
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 45

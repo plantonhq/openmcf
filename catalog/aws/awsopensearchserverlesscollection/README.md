@@ -66,3 +66,7 @@ Collections bill by OpenSearch Compute Units (OCUs). With standby replicas ENABL
 ## Spec Reference
 
 See [reference](v1alpha1/reference.md) for the complete field reference, and the [presets](presets/) for ready-to-deploy configurations.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

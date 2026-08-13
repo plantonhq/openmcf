@@ -21,6 +21,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.68.1
 	github.com/aws/aws-sdk-go-v2/service/batch v1.67.0
 	github.com/aws/aws-sdk-go-v2/service/bedrock v1.66.2
+	github.com/aws/aws-sdk-go-v2/service/bedrockagent v1.58.5
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.31.0
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.65.4
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.62.0
@@ -57,6 +58,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/redshiftserverless v1.35.10
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.46.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0
+	github.com/aws/aws-sdk-go-v2/service/s3vectors v1.10.5
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.257.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.6
 	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.63.0

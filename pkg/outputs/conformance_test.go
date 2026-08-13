@@ -7721,6 +7721,86 @@ func TestStackOutputsConformance(t *testing.T) {
 				"model_id",
 			},
 		},
+		{
+			// AwsBedrockAgent: agent_id keys the E2E verifier; the
+			// name-keyed satellite maps (alias_arns especially -- the
+			// value supervisors, prompts, and flows consume) feed the
+			// keyed-by-address import derivations.
+			name: "AwsBedrockAgent",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockAgent,
+			rawOutputs: map[string]interface{}{
+				"agent_id":      "GGRRAED6JP",
+				"agent_arn":     "arn:aws:bedrock:us-west-2:123456789012:agent/GGRRAED6JP",
+				"draft_version": "DRAFT",
+				"alias_ids": map[string]interface{}{
+					"live": "66IVY0GUTF",
+				},
+				"alias_arns": map[string]interface{}{
+					"live": "arn:aws:bedrock:us-west-2:123456789012:agent-alias/GGRRAED6JP/66IVY0GUTF",
+				},
+				"action_group_ids": map[string]interface{}{
+					"orders": "MMAUDBZTH4",
+				},
+				"collaborator_ids": map[string]interface{}{
+					"billing": "AG3TN4RQIY",
+				},
+				"associated_knowledge_base_ids": map[string]interface{}{
+					"docs": "EMDPPAYPZI",
+				},
+			},
+			mustPopulate: []string{
+				"agent_id", "agent_arn", "draft_version", "alias_ids",
+				"alias_arns", "action_group_ids", "collaborator_ids",
+				"associated_knowledge_base_ids",
+			},
+		},
+		{
+			// AwsBedrockKnowledgeBase: knowledge_base_id keys the E2E
+			// verifier and is what agents and flows consume; the
+			// name-keyed data_source_ids map feeds the keyed-by-address
+			// import derivations.
+			name: "AwsBedrockKnowledgeBase",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockKnowledgeBase,
+			rawOutputs: map[string]interface{}{
+				"knowledge_base_id":  "EMDPPAYPZI",
+				"knowledge_base_arn": "arn:aws:bedrock:us-west-2:123456789012:knowledge-base/EMDPPAYPZI",
+				"data_source_ids": map[string]interface{}{
+					"docs": "GWCMFMQF6T",
+				},
+			},
+			mustPopulate: []string{
+				"knowledge_base_id", "knowledge_base_arn", "data_source_ids",
+			},
+		},
+		{
+			// AwsBedrockFlow: flow_id keys the E2E verifier; flow_arn is
+			// the invocation key; draft_version is the literal DRAFT.
+			name: "AwsBedrockFlow",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockFlow,
+			rawOutputs: map[string]interface{}{
+				"flow_id":       "FLOWID1234",
+				"flow_arn":      "arn:aws:bedrock:us-west-2:123456789012:flow/FLOWID1234",
+				"draft_version": "DRAFT",
+			},
+			mustPopulate: []string{
+				"flow_id", "flow_arn", "draft_version",
+			},
+		},
+		{
+			// AwsBedrockPrompt: prompt_id keys the E2E verifier;
+			// prompt_arn is what a flow's prompt node consumes;
+			// draft_version is the literal DRAFT.
+			name: "AwsBedrockPrompt",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockPrompt,
+			rawOutputs: map[string]interface{}{
+				"prompt_id":     "1A2BC3DEFG",
+				"prompt_arn":    "arn:aws:bedrock:us-west-2:123456789012:prompt/1A2BC3DEFG",
+				"draft_version": "DRAFT",
+			},
+			mustPopulate: []string{
+				"prompt_id", "prompt_arn", "draft_version",
+			},
+		},
 	}
 
 	for _, tc := range cases {

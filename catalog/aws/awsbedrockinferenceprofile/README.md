@@ -49,3 +49,7 @@ system-defined geo profile instead
 
 See [v1alpha1/reference.md](v1alpha1/reference.md) for the full field
 reference generated from the spec proto.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

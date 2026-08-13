@@ -1065,6 +1065,51 @@ func TestAwsOpenSearchServerlessCollection_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsopensearchserverlesscollection", "terraform")
 }
 
+func TestAwsBedrockAgent_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagent", "pulumi")
+}
+
+func TestAwsBedrockAgent_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagent", "terraform")
+}
+
+// --- AWS Bedrock Knowledge Base (the VECTOR lane stores vectors in the
+// standing S3 Vectors fixture the harness ensures below; see
+// aa_e2e.EnsureS3VectorsKnowledgeBaseFixture) ---
+
+func ensureS3VectorsFixture(t *testing.T) {
+	t.Helper()
+	if err := awse2e.EnsureS3VectorsKnowledgeBaseFixture(context.Background()); err != nil {
+		t.Fatalf("S3 Vectors knowledge-base fixture: %v", err)
+	}
+}
+
+func TestAwsBedrockKnowledgeBase_Pulumi(t *testing.T) {
+	ensureS3VectorsFixture(t)
+	runAllScenariosForComponent(t, "awsbedrockknowledgebase", "pulumi")
+}
+
+func TestAwsBedrockKnowledgeBase_Terraform(t *testing.T) {
+	ensureS3VectorsFixture(t)
+	runAllScenariosForComponent(t, "awsbedrockknowledgebase", "terraform")
+}
+
+func TestAwsBedrockFlow_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockflow", "pulumi")
+}
+
+func TestAwsBedrockFlow_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockflow", "terraform")
+}
+
+func TestAwsBedrockPrompt_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockprompt", "pulumi")
+}
+
+func TestAwsBedrockPrompt_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockprompt", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

@@ -347,6 +347,29 @@ const (
 	// A dependency-free leaf: the agreement covers an AWS-listed foundation
 	// model, never a customer resource.
 	CloudResourceKind_AwsBedrockModelAccess CloudResourceKind = 1194
+	// AwsIamRole is a prerequisite because the Bedrock service assumes the
+	// agent resource role to invoke models, action-group Lambdas, and
+	// knowledge bases; the guardrail, KMS key, provisioned throughput, and
+	// collaborator/knowledge-base edges are optional composition
+	// (e2e-prerequisites annotation). Action groups, aliases, collaborators,
+	// and knowledge-base associations are folded satellites of the agent.
+	CloudResourceKind_AwsBedrockAgent CloudResourceKind = 1200
+	// AwsIamRole is a prerequisite because the Bedrock service assumes the
+	// knowledge-base role to read data sources, call the embedding model,
+	// and read/write the vector store; the vector-store and data-source
+	// reference edges (OpenSearch, S3, Secrets Manager, ...) are optional
+	// composition (e2e-prerequisites annotation). Data sources are folded
+	// satellites of the knowledge base.
+	CloudResourceKind_AwsBedrockKnowledgeBase CloudResourceKind = 1201
+	// AwsIamRole is a prerequisite because the Bedrock service assumes the
+	// flow execution role to invoke the models, agents, knowledge bases,
+	// and Lambdas its nodes reference; the node-level reference edges are
+	// optional composition (e2e-prerequisites annotation).
+	CloudResourceKind_AwsBedrockFlow CloudResourceKind = 1202
+	// A dependency-free leaf: variants target AWS-listed foundation models
+	// by ID; targeting another agent's alias is optional composition
+	// (e2e-prerequisites annotation).
+	CloudResourceKind_AwsBedrockPrompt CloudResourceKind = 1203
 	// 2000–2999: Azure resources
 	CloudResourceKind_AzureResourceGroup CloudResourceKind = 2000
 	// AzureResourceGroup is the only required parent: the cluster is created
@@ -1672,6 +1695,10 @@ var (
 		1192:  "AwsBedrockInferenceProfile",
 		1193:  "AwsBedrockProvisionedThroughput",
 		1194:  "AwsBedrockModelAccess",
+		1200:  "AwsBedrockAgent",
+		1201:  "AwsBedrockKnowledgeBase",
+		1202:  "AwsBedrockFlow",
+		1203:  "AwsBedrockPrompt",
 		2000:  "AzureResourceGroup",
 		2001:  "AzureAksCluster",
 		2002:  "AzureAksNodePool",
@@ -2360,6 +2387,10 @@ var (
 		"AwsBedrockInferenceProfile":                     1192,
 		"AwsBedrockProvisionedThroughput":                1193,
 		"AwsBedrockModelAccess":                          1194,
+		"AwsBedrockAgent":                                1200,
+		"AwsBedrockKnowledgeBase":                        1201,
+		"AwsBedrockFlow":                                 1202,
+		"AwsBedrockPrompt":                               1203,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
 		"AzureAksNodePool":                               2002,
@@ -3301,7 +3332,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x9c\xb3\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf7\xb4\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3433,7 +3464,11 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x15AwsBedrockCustomModel\x10\xa7\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsbrcm:\x02\xf0\a\x12:\n" +
 	"\x1aAwsBedrockInferenceProfile\x10\xa8\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbrip\x12?\n" +
 	"\x1fAwsBedrockProvisionedThroughput\x10\xa9\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbrpt\x125\n" +
-	"\x15AwsBedrockModelAccess\x10\xaa\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbrma\x121\n" +
+	"\x15AwsBedrockModelAccess\x10\xaa\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbrma\x124\n" +
+	"\x0fAwsBedrockAgent\x10\xb0\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawsbragt:\x02\xf0\a\x12;\n" +
+	"\x17AwsBedrockKnowledgeBase\x10\xb1\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsbrkb:\x02\xf0\a\x123\n" +
+	"\x0eAwsBedrockFlow\x10\xb2\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawsbrflw:\x02\xf0\a\x121\n" +
+	"\x10AwsBedrockPrompt\x10\xb3\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsbrpmt\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +
 	"\x0fAzureAksCluster\x10\xd1\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x03aks0\x01:\x02\xd0\x0f\x122\n" +
 	"\x10AzureAksNodePool\x10\xd2\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05aksnp:\x02\xd1\x0f\x126\n" +

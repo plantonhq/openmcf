@@ -322,7 +322,10 @@ Fields on other kinds that can point at this resource:
 | AwsBatchComputeEnvironment | `spec.computeResources.spotIamFleetRole` | `status.outputs.role_arn` |
 | AwsBatchJobDefinition | `spec.container.jobRole` | `status.outputs.role_arn` |
 | AwsBatchJobDefinition | `spec.container.executionRole` | `status.outputs.role_arn` |
+| AwsBedrockAgent | `spec.agentResourceRoleArn` | `status.outputs.role_arn` |
 | AwsBedrockCustomModel | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsBedrockFlow | `spec.executionRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockKnowledgeBase | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsCloudwatchLogGroup | `spec.subscriptionFilters[].roleArn` | `status.outputs.role_arn` |
 | AwsCodeBuildProject | `spec.serviceRole` | `status.outputs.role_arn` |
 | AwsCodeBuildProject | `spec.buildBatchConfig.serviceRole` | `status.outputs.role_arn` |

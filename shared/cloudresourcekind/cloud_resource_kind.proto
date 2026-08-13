@@ -1201,6 +1201,52 @@ enum CloudResourceKind {
     id_prefix: "awsbrma"
   }];
 
+  // AwsIamRole is a prerequisite because the Bedrock service assumes the
+  // agent resource role to invoke models, action-group Lambdas, and
+  // knowledge bases; the guardrail, KMS key, provisioned throughput, and
+  // collaborator/knowledge-base edges are optional composition
+  // (e2e-prerequisites annotation). Action groups, aliases, collaborators,
+  // and knowledge-base associations are folded satellites of the agent.
+  AwsBedrockAgent = 1200 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbragt"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // AwsIamRole is a prerequisite because the Bedrock service assumes the
+  // knowledge-base role to read data sources, call the embedding model,
+  // and read/write the vector store; the vector-store and data-source
+  // reference edges (OpenSearch, S3, Secrets Manager, ...) are optional
+  // composition (e2e-prerequisites annotation). Data sources are folded
+  // satellites of the knowledge base.
+  AwsBedrockKnowledgeBase = 1201 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrkb"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // AwsIamRole is a prerequisite because the Bedrock service assumes the
+  // flow execution role to invoke the models, agents, knowledge bases,
+  // and Lambdas its nodes reference; the node-level reference edges are
+  // optional composition (e2e-prerequisites annotation).
+  AwsBedrockFlow = 1202 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrflw"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A dependency-free leaf: variants target AWS-listed foundation models
+  // by ID; targeting another agent's alias is optional composition
+  // (e2e-prerequisites annotation).
+  AwsBedrockPrompt = 1203 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrpmt"
+  }];
+
   // 2000–2999: Azure resources
   AzureResourceGroup = 2000 [(kind_meta) = {
     provider: azure
