@@ -809,6 +809,7 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareDnsRec
 | `status.outputs.record_name` | `string` | The DNS record name as stored by Cloudflare (the record's name within the zone, e.g. "www" or "@" for the apex). |
 | `status.outputs.record_type` | `string` | The DNS record type that was created. |
 | `status.outputs.proxied` | `bool` | Whether the record is proxied through Cloudflare (orange cloud). |
+| `status.outputs.zone_id` | `string` | The Cloudflare Zone ID the record lives in. A record's API identity is (zone_id, record_id), so downstream consumers -- verification tooling, imports, chart blocks composing on the record -- need the zone alongside the record's own id. |
 
 ## References
 

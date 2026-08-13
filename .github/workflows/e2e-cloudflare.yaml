@@ -1,0 +1,57 @@
+# =============================================================================
+# Cloudflare E2E Tests
+# =============================================================================
+# Compile gate for the Cloudflare E2E test package. No Docker, kind, or
+# kubectl needed -- Cloudflare resources are SaaS API objects behind
+# api.cloudflare.com.
+#
+# Architecture:
+#   1. build-check: compile E2E code + go vet (fast gate, every trigger)
+#
+# The live E2E job is added when the shared Cloudflare test account exists
+# and its credentials (CLOUDFLARE_API_TOKEN, PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID)
+# are provisioned as repository secrets; until then this workflow guards the
+# package against compile drift from framework changes.
+#
+# Triggers:
+#   - Pull requests (path-filtered)
+#   - Manual dispatch
+# =============================================================================
+
+name: e2e-cloudflare
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'catalog/cloudflare/**'
+      - 'e2e/cloudflare/**'
+      - 'e2e/framework/**'
+      - 'pkg/iac/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/e2e-cloudflare.yaml'
+
+concurrency:
+  group: e2e-cloudflare-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ============================================================================
+  # Build Check -- fast compile + vet gate (every trigger)
+  # ============================================================================
+  build-check:
+    runs-on: ubuntu-latest
+    container: ghcr.io/plantonhq/planton/ci-toolchain:latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile Cloudflare E2E tests
+        run: go test -tags=e2e -c -o /dev/null ./e2e/cloudflare/...
+
+      - name: Vet Cloudflare E2E packages
+        run: go vet -tags=e2e ./e2e/cloudflare/...

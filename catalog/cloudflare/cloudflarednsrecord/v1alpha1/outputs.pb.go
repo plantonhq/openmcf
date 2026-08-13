@@ -33,7 +33,12 @@ type CloudflareDnsRecordStackOutputs struct {
 	// The DNS record type that was created.
 	RecordType string `protobuf:"bytes,3,opt,name=record_type,json=recordType,proto3" json:"record_type,omitempty"`
 	// Whether the record is proxied through Cloudflare (orange cloud).
-	Proxied       bool `protobuf:"varint,4,opt,name=proxied,proto3" json:"proxied,omitempty"`
+	Proxied bool `protobuf:"varint,4,opt,name=proxied,proto3" json:"proxied,omitempty"`
+	// The Cloudflare Zone ID the record lives in. A record's API identity is
+	// (zone_id, record_id), so downstream consumers -- verification tooling,
+	// imports, chart blocks composing on the record -- need the zone alongside
+	// the record's own id.
+	ZoneId        string `protobuf:"bytes,5,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -96,18 +101,26 @@ func (x *CloudflareDnsRecordStackOutputs) GetProxied() bool {
 	return false
 }
 
+func (x *CloudflareDnsRecordStackOutputs) GetZoneId() string {
+	if x != nil {
+		return x.ZoneId
+	}
+	return ""
+}
+
 var File_catalog_cloudflare_cloudflarednsrecord_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflarednsrecord_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"=catalog/cloudflare/cloudflarednsrecord/v1alpha1/outputs.proto\x123dev.planton.cloudflare.cloudflarednsrecord.v1alpha1\"\x9a\x01\n" +
+	"=catalog/cloudflare/cloudflarednsrecord/v1alpha1/outputs.proto\x123dev.planton.cloudflare.cloudflarednsrecord.v1alpha1\"\xb3\x01\n" +
 	"\x1fCloudflareDnsRecordStackOutputs\x12\x1b\n" +
 	"\trecord_id\x18\x01 \x01(\tR\brecordId\x12\x1f\n" +
 	"\vrecord_name\x18\x02 \x01(\tR\n" +
 	"recordName\x12\x1f\n" +
 	"\vrecord_type\x18\x03 \x01(\tR\n" +
 	"recordType\x12\x18\n" +
-	"\aproxied\x18\x04 \x01(\bR\aproxiedB\xa2\x03\n" +
+	"\aproxied\x18\x04 \x01(\bR\aproxied\x12\x17\n" +
+	"\azone_id\x18\x05 \x01(\tR\x06zoneIdB\xa2\x03\n" +
 	"7com.dev.planton.cloudflare.cloudflarednsrecord.v1alpha1B\fOutputsProtoP\x01Zhgithub.com/plantonhq/planton/catalog/cloudflare/cloudflarednsrecord/v1alpha1;cloudflarednsrecordv1alpha1\xa2\x02\x04DPCC\xaa\x023Dev.Planton.Cloudflare.Cloudflarednsrecord.V1alpha1\xca\x023Dev\\Planton\\Cloudflare\\Cloudflarednsrecord\\V1alpha1\xe2\x02?Dev\\Planton\\Cloudflare\\Cloudflarednsrecord\\V1alpha1\\GPBMetadata\xea\x027Dev::Planton::Cloudflare::Cloudflarednsrecord::V1alpha1b\x06proto3"
 
 var (

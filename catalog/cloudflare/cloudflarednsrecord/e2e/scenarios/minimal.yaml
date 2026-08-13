@@ -1,0 +1,30 @@
+# Minimal CloudflareDnsRecord scenario: one DNS-only A record in the
+# prerequisite zone -- the simple-content path (type + content + automatic
+# TTL), with the zone_id resolved from the CloudflareDnsZone prerequisite's
+# outputs (the kind's registry prerequisite). The record name is relative to
+# the zone, so it needs no run-scoping of its own -- the fixture zone's name
+# is already run-scoped. 192.0.2.x is TEST-NET-1, reserved for documentation
+# and never routed.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareDnsRecord
+metadata:
+  name: planton-oss-e2e-cloudflarednsrecord-minimal
+  id: planton-oss-e2e-cloudflarednsrecord-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarednsrecord
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zoneId:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  name: e2e-minimal
+  type: A
+  content: 192.0.2.10

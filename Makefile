@@ -480,6 +480,20 @@ e2e-test-auth0-pulumi:  ## Run Auth0 Pulumi E2E tests only
 e2e-test-auth0-terraform:  ## Run Auth0 Terraform E2E tests only
 	go test -tags=e2e -timeout=20m -v -count=1 -run ".*_Terraform" ./e2e/auth0/...
 
+# ── Cloudflare E2E targets ───────────────────────────────────────────────────
+
+.PHONY: e2e-test-cloudflare
+e2e-test-cloudflare:  ## Run all Cloudflare E2E tests (requires CLOUDFLARE_API_TOKEN, PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID)
+	go test -tags=e2e -timeout=30m -v -count=1 ./e2e/cloudflare/...
+
+.PHONY: e2e-test-cloudflare-pulumi
+e2e-test-cloudflare-pulumi:  ## Run Cloudflare Pulumi E2E tests only
+	go test -tags=e2e -timeout=30m -v -count=1 -run ".*_Pulumi" ./e2e/cloudflare/...
+
+.PHONY: e2e-test-cloudflare-terraform
+e2e-test-cloudflare-terraform:  ## Run Cloudflare Terraform E2E tests only
+	go test -tags=e2e -timeout=30m -v -count=1 -run ".*_Terraform" ./e2e/cloudflare/...
+
 # ── GCP E2E targets ──────────────────────────────────────────────────────────
 
 .PHONY: e2e-test-gcp
@@ -503,7 +517,8 @@ e2e_component_pkg = $(if $(findstring Kubernetes,$(component)),./e2e/,\
 $(if $(findstring Aws,$(component)),./e2e/aws/...,\
 $(if $(findstring Gcp,$(component)),./e2e/gcp/...,\
 $(if $(findstring Azure,$(component)),./e2e/azure/...,\
-$(if $(findstring Auth0,$(component)),./e2e/auth0/...,./e2e/...)))))
+$(if $(findstring Auth0,$(component)),./e2e/auth0/...,\
+$(if $(findstring Cloudflare,$(component)),./e2e/cloudflare/...,./e2e/...))))))
 
 .PHONY: e2e-test-component
 e2e-test-component:  ## Single component E2E test (usage: make e2e-test-component component=KubernetesNamespace)

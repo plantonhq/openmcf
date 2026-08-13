@@ -1542,15 +1542,24 @@ const (
 	CloudResourceKind_CivoVpc                CloudResourceKind = 6010
 	CloudResourceKind_CivoDnsRecord          CloudResourceKind = 6011
 	// 7000–7999: Cloudflare resources
-	CloudResourceKind_CloudflareDnsZone                       CloudResourceKind = 7000
-	CloudResourceKind_CloudflareKvNamespace                   CloudResourceKind = 7001
-	CloudResourceKind_CloudflareR2Bucket                      CloudResourceKind = 7002
-	CloudResourceKind_CloudflareWorker                        CloudResourceKind = 7003
-	CloudResourceKind_CloudflareLoadBalancer                  CloudResourceKind = 7004
-	CloudResourceKind_CloudflareD1Database                    CloudResourceKind = 7005
-	CloudResourceKind_CloudflareZeroTrustAccessApplication    CloudResourceKind = 7006
-	CloudResourceKind_CloudflareDnsRecord                     CloudResourceKind = 7007
-	CloudResourceKind_CloudflareRuleset                       CloudResourceKind = 7008
+	CloudResourceKind_CloudflareDnsZone     CloudResourceKind = 7000
+	CloudResourceKind_CloudflareKvNamespace CloudResourceKind = 7001
+	CloudResourceKind_CloudflareR2Bucket    CloudResourceKind = 7002
+	CloudResourceKind_CloudflareWorker      CloudResourceKind = 7003
+	// CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because
+	// a load balancer is a DNS-level construct inside a zone (the spec's zone_id
+	// reference must resolve) and traffic must land somewhere (the required
+	// fallback_pool reference must resolve to a live pool).
+	CloudResourceKind_CloudflareLoadBalancer               CloudResourceKind = 7004
+	CloudResourceKind_CloudflareD1Database                 CloudResourceKind = 7005
+	CloudResourceKind_CloudflareZeroTrustAccessApplication CloudResourceKind = 7006
+	// CloudflareDnsZone is a prerequisite because every record lives inside a
+	// zone -- the spec's zone_id reference must resolve before the record can
+	// be created.
+	CloudResourceKind_CloudflareDnsRecord CloudResourceKind = 7007
+	CloudResourceKind_CloudflareRuleset   CloudResourceKind = 7008
+	// CloudflareKvNamespace is a prerequisite because a KV pair is written into
+	// a namespace -- the spec's namespace_id reference must resolve first.
 	CloudResourceKind_CloudflareWorkersKvPair                 CloudResourceKind = 7009
 	CloudResourceKind_CloudflareHyperdriveConfig              CloudResourceKind = 7010
 	CloudResourceKind_CloudflareLoadBalancerPool              CloudResourceKind = 7011
@@ -1561,17 +1570,37 @@ const (
 	CloudResourceKind_CloudflarePagesProject                  CloudResourceKind = 7016
 	CloudResourceKind_CloudflareZeroTrustTunnel               CloudResourceKind = 7017
 	CloudResourceKind_CloudflareZeroTrustTunnelVirtualNetwork CloudResourceKind = 7018
-	CloudResourceKind_CloudflareZeroTrustTunnelRoute          CloudResourceKind = 7019
-	CloudResourceKind_CloudflareList                          CloudResourceKind = 7020
-	CloudResourceKind_CloudflareListItem                      CloudResourceKind = 7021
-	CloudResourceKind_CloudflareTurnstileWidget               CloudResourceKind = 7022
-	CloudResourceKind_CloudflareEmailRoutingZone              CloudResourceKind = 7023
-	CloudResourceKind_CloudflareEmailRoutingRule              CloudResourceKind = 7024
-	CloudResourceKind_CloudflareEmailRoutingAddress           CloudResourceKind = 7025
-	CloudResourceKind_CloudflareOriginCaCertificate           CloudResourceKind = 7026
-	CloudResourceKind_CloudflareCertificatePack               CloudResourceKind = 7027
-	CloudResourceKind_CloudflareCustomHostname                CloudResourceKind = 7028
-	CloudResourceKind_CloudflareCustomHostnameFallbackOrigin  CloudResourceKind = 7029
+	// CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR
+	// through an existing tunnel -- the spec's tunnel_id reference must resolve
+	// first. (The optional virtual_network_id is scenario-declared, not a
+	// registry prerequisite.)
+	CloudResourceKind_CloudflareZeroTrustTunnelRoute CloudResourceKind = 7019
+	CloudResourceKind_CloudflareList                 CloudResourceKind = 7020
+	// CloudflareList is a prerequisite because an item exists only inside a
+	// list -- the spec's list_id reference must resolve first.
+	CloudResourceKind_CloudflareListItem        CloudResourceKind = 7021
+	CloudResourceKind_CloudflareTurnstileWidget CloudResourceKind = 7022
+	// CloudflareDnsZone is a prerequisite because email routing is enabled ON a
+	// zone -- the spec's zone_id reference must resolve first.
+	CloudResourceKind_CloudflareEmailRoutingZone CloudResourceKind = 7023
+	// CloudflareDnsZone is a prerequisite because a routing rule lives in a
+	// zone's email routing configuration -- the spec's zone_id reference must
+	// resolve first. (Forward destinations reference CloudflareEmailRoutingAddress
+	// only for forward-type rules, so that edge is scenario-declared.)
+	CloudResourceKind_CloudflareEmailRoutingRule    CloudResourceKind = 7024
+	CloudResourceKind_CloudflareEmailRoutingAddress CloudResourceKind = 7025
+	CloudResourceKind_CloudflareOriginCaCertificate CloudResourceKind = 7026
+	// CloudflareDnsZone is a prerequisite because a certificate pack is ordered
+	// for a zone's hostnames -- the spec's zone_id reference must resolve first.
+	CloudResourceKind_CloudflareCertificatePack CloudResourceKind = 7027
+	// CloudflareDnsZone is a prerequisite because a custom hostname (SSL for
+	// SaaS) is provisioned inside a zone -- the spec's zone_id reference must
+	// resolve first.
+	CloudResourceKind_CloudflareCustomHostname CloudResourceKind = 7028
+	// CloudflareDnsZone is a prerequisite because the fallback origin is a
+	// zone-level SSL-for-SaaS setting -- the spec's zone_id reference must
+	// resolve first.
+	CloudResourceKind_CloudflareCustomHostnameFallbackOrigin CloudResourceKind = 7029
 	// 8000–8999: Auth0 resources
 	CloudResourceKind_Auth0Connection     CloudResourceKind = 8000
 	CloudResourceKind_Auth0Client         CloudResourceKind = 8001
@@ -3511,7 +3540,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8f\xbe\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xb9\xbe\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4104,13 +4133,13 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x11CloudflareDnsZone\x10\xd86\x1a\x19\xa2\xf7\x04\x15\b\x0f\x12\bv1alpha1\"\x05cfdns0\x01\x123\n" +
 	"\x15CloudflareKvNamespace\x10\xd96\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfkvn\x120\n" +
 	"\x12CloudflareR2Bucket\x10\xda6\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfr2b\x12.\n" +
-	"\x10CloudflareWorker\x10\xdb6\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfwrk\x123\n" +
-	"\x16CloudflareLoadBalancer\x10\xdc6\x1a\x16\xa2\xf7\x04\x12\b\x0f\x12\bv1alpha1\"\x04cflb\x123\n" +
+	"\x10CloudflareWorker\x10\xdb6\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfwrk\x129\n" +
+	"\x16CloudflareLoadBalancer\x10\xdc6\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x04cflb:\x04\xd86\xe36\x123\n" +
 	"\x14CloudflareD1Database\x10\xdd6\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfd1db\x12B\n" +
-	"$CloudflareZeroTrustAccessApplication\x10\xde6\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfzta\x121\n" +
-	"\x13CloudflareDnsRecord\x10\xdf6\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfrec\x12.\n" +
-	"\x11CloudflareRuleset\x10\xe06\x1a\x16\xa2\xf7\x04\x12\b\x0f\x12\bv1alpha1\"\x04cfrs\x125\n" +
-	"\x17CloudflareWorkersKvPair\x10\xe16\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfkvp\x128\n" +
+	"$CloudflareZeroTrustAccessApplication\x10\xde6\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfzta\x125\n" +
+	"\x13CloudflareDnsRecord\x10\xdf6\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cfrec:\x02\xd86\x12.\n" +
+	"\x11CloudflareRuleset\x10\xe06\x1a\x16\xa2\xf7\x04\x12\b\x0f\x12\bv1alpha1\"\x04cfrs\x129\n" +
+	"\x17CloudflareWorkersKvPair\x10\xe16\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cfkvp:\x02\xd96\x128\n" +
 	"\x1aCloudflareHyperdriveConfig\x10\xe26\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfhyp\x128\n" +
 	"\x1aCloudflareLoadBalancerPool\x10\xe36\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cflbp\x12;\n" +
 	"\x1dCloudflareLoadBalancerMonitor\x10\xe46\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cflbm\x12=\n" +
@@ -4119,18 +4148,18 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x0fCloudflareQueue\x10\xe76\x1a\x15\xa2\xf7\x04\x11\b\x0f\x12\bv1alpha1\"\x03cfq\x123\n" +
 	"\x16CloudflarePagesProject\x10\xe86\x1a\x16\xa2\xf7\x04\x12\b\x0f\x12\bv1alpha1\"\x04cfpg\x128\n" +
 	"\x19CloudflareZeroTrustTunnel\x10\xe96\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztun\x12H\n" +
-	"'CloudflareZeroTrustTunnelVirtualNetwork\x10\xea6\x1a\x1a\xa2\xf7\x04\x16\b\x0f\x12\bv1alpha1\"\x06cfztvn0\x01\x12=\n" +
-	"\x1eCloudflareZeroTrustTunnelRoute\x10\xeb6\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztrt\x12-\n" +
-	"\x0eCloudflareList\x10\xec6\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cflist\x12/\n" +
-	"\x12CloudflareListItem\x10\xed6\x1a\x16\xa2\xf7\x04\x12\b\x0f\x12\bv1alpha1\"\x04cfli\x128\n" +
-	"\x19CloudflareTurnstileWidget\x10\xee6\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfturn\x128\n" +
-	"\x1aCloudflareEmailRoutingZone\x10\xef6\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cferz\x128\n" +
-	"\x1aCloudflareEmailRoutingRule\x10\xf06\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cferr\x12;\n" +
+	"'CloudflareZeroTrustTunnelVirtualNetwork\x10\xea6\x1a\x1a\xa2\xf7\x04\x16\b\x0f\x12\bv1alpha1\"\x06cfztvn0\x01\x12A\n" +
+	"\x1eCloudflareZeroTrustTunnelRoute\x10\xeb6\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfztrt:\x02\xe96\x12-\n" +
+	"\x0eCloudflareList\x10\xec6\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cflist\x123\n" +
+	"\x12CloudflareListItem\x10\xed6\x1a\x1a\xa2\xf7\x04\x16\b\x0f\x12\bv1alpha1\"\x04cfli:\x02\xec6\x128\n" +
+	"\x19CloudflareTurnstileWidget\x10\xee6\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfturn\x12<\n" +
+	"\x1aCloudflareEmailRoutingZone\x10\xef6\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cferz:\x02\xd86\x12<\n" +
+	"\x1aCloudflareEmailRoutingRule\x10\xf06\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cferr:\x02\xd86\x12;\n" +
 	"\x1dCloudflareEmailRoutingAddress\x10\xf16\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfera\x12;\n" +
-	"\x1dCloudflareOriginCaCertificate\x10\xf26\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfoca\x129\n" +
-	"\x19CloudflareCertificatePack\x10\xf36\x1a\x19\xa2\xf7\x04\x15\b\x0f\x12\bv1alpha1\"\acfcertp\x128\n" +
-	"\x18CloudflareCustomHostname\x10\xf46\x1a\x19\xa2\xf7\x04\x15\b\x0f\x12\bv1alpha1\"\acfchost\x12E\n" +
-	"&CloudflareCustomHostnameFallbackOrigin\x10\xf56\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfchfo\x12.\n" +
+	"\x1dCloudflareOriginCaCertificate\x10\xf26\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfoca\x12=\n" +
+	"\x19CloudflareCertificatePack\x10\xf36\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfcertp:\x02\xd86\x12<\n" +
+	"\x18CloudflareCustomHostname\x10\xf46\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfchost:\x02\xd86\x12I\n" +
+	"&CloudflareCustomHostnameFallbackOrigin\x10\xf56\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfchfo:\x02\xd86\x12.\n" +
 	"\x0fAuth0Connection\x10\xc0>\x1a\x18\xa2\xf7\x04\x14\b\x15\x12\bv1alpha1\"\x06a0conn\x12)\n" +
 	"\vAuth0Client\x10\xc1>\x1a\x17\xa2\xf7\x04\x13\b\x15\x12\bv1alpha1\"\x05a0cli\x12-\n" +
 	"\x10Auth0EventStream\x10\xc2>\x1a\x16\xa2\xf7\x04\x12\b\x15\x12\bv1alpha1\"\x04a0es\x120\n" +

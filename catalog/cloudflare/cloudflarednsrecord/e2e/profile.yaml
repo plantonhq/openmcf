@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarednsrecord
+spec:
+  # A DNS record under live E2E: the harness deploys the CloudflareDnsZone
+  # prerequisite first (the kind's registry prerequisite -- every record
+  # lives in a zone; the fixture zone is a run-scoped pending zone, which
+  # accepts records without registrar delegation), resolves the record's
+  # zone_id reference against its outputs, then runs deploy -> GET
+  # zones/{zone_id}/dns_records/{record_id} verify -> destroy ->
+  # verify-destroyed on both provisioners. The minimal scenario proves the
+  # simple-content path (an A record); the srv scenario proves the typed
+  # `data` union (the kind's structured-record surface) plus a comment.
+  # Deliberately not in the live scenarios: proxied records (delivery
+  # semantics need an ACTIVE zone -- the proxied flag's send path is proven
+  # by spec/CEL tests and the offline plan), record tags (paid-plan
+  # entitlement, per the program's entitlement gates), and the remaining 12
+  # structured types (same send path as SRV through the data oneof; proven
+  # by CEL spec tests). Records create in seconds at zero cost.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10
