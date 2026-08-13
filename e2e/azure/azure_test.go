@@ -29,6 +29,10 @@ var (
 	repoRoot         string
 	runID            string
 	pulumiBackendURL string
+	// assertApplyIdempotency mirrors the provider profile's
+	// assert_apply_idempotency field: when armed, every scenario lifecycle
+	// gains the IDEMPOTENCY phase (re-plan after apply must be empty).
+	assertApplyIdempotency bool
 )
 
 func TestMain(m *testing.M) {
@@ -53,6 +57,13 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "failed to login to pulumi backend: %v\n", err)
 		os.Exit(1)
 	}
+
+	providerProfile, err := profilepkg.LoadProviderProfile(repoRoot, "azure")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load Azure provider E2E profile: %v\n", err)
+		os.Exit(1)
+	}
+	assertApplyIdempotency = providerProfile.GetSpec().GetAssertApplyIdempotency()
 
 	testHarness = azuree2e.NewHarness()
 	ctx := context.Background()
@@ -1756,14 +1767,15 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 	t.Helper()
 
 	tc := &provider.ComponentTestContext{
-		Component:    component,
-		Provider:     "azure",
-		Engine:       engine,
-		ModuleDir:    moduleDir,
-		ManifestPath: scenario.ManifestPath,
-		RepoRoot:     repoRoot,
-		RunID:        runID,
-		T:            t,
+		Component:              component,
+		Provider:               "azure",
+		Engine:                 engine,
+		ModuleDir:              moduleDir,
+		ManifestPath:           scenario.ManifestPath,
+		RepoRoot:               repoRoot,
+		RunID:                  runID,
+		T:                      t,
+		AssertApplyIdempotency: assertApplyIdempotency,
 	}
 
 	if engine == "pulumi" {

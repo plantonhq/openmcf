@@ -743,6 +743,12 @@ spec:
       # Import cannot recover the group's secrets (secure environment
       # variables, volume storage keys/secret files, registry passwords,
       # the Log Analytics workspace key) -- Azure never returns them.
+      # And because the container list is ForceNew, a config carrying
+      # secure environment variables plans a ONE-TIME REPLACE on the
+      # first apply after import (live-proven) -- no tolerance can cover
+      # a replace, and none should: rotating such a secret is supposed
+      # to replace the group. Secret-bearing E2E scenarios carry the
+      # e2e-import-roundtrip-skip annotation with this reason.
 
     # --- App Service: Flex Consumption -------------------------------------
     - terraform_type: azurerm_function_app_flex_consumption

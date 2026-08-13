@@ -883,6 +883,43 @@ record the contract in the component docs -- the next component in the
 same service family should check for sibling "managed by the parent"
 exclusions up front.
 
+### Create-only fields the provider never reads back make blind imports plan a REPLACE
+
+A provider's Read function is not guaranteed to populate every argument
+it accepts at create -- some create-only inputs (a snapshot's
+`source_resource_id`/`source_uri` at the azurerm v5 pin is the
+live-caught case) are simply never set from the ARM response. On the
+normal apply path nothing surfaces: the value persists in state from
+the apply, so even the IDEMPOTENCY re-plan stays clean. The blind
+import round-trip is the ONLY gate that catches it: a fresh import
+holds a null for the field, the config supplies a value, and when the
+field is ForceNew the post-import plan proposes destroy+create -- which
+the round-trip oracle rightly refuses (replaces always fail; declared
+tolerances cover in-place updates only). The remedy is NEVER a
+tolerance: make the field create-time-only as a CONTRACT -- lifecycle
+`ignore_changes` in BOTH engines, the spec field comment rewritten to
+teach that edits are ignored and a new capture is a new resource, and
+the kind's GUIDE carrying the operational judgment. For artifact-class
+kinds (snapshots, images) this is also the safer contract: a ForceNew
+source edit would silently DELETE the artifact and recapture from
+current state. Check the provider's Read function (does it `d.Set` the
+field?) the moment a round-trip reports a replace on a create-only
+argument.
+
+The SECRET sub-class takes the OPPOSITE remedy. When the never-read-back
+ForceNew field is a write-only SECRET (first live case: a container
+group's secure environment variables), `ignore_changes` is wrong --
+rotating the secret is SUPPOSED to replace the resource, and ignoring it
+turns rotation into a silent no-op. There the truth is that a
+secret-bearing config can only plan a one-time replace after any import;
+the secret-bearing SCENARIO opts out of the round-trip with the
+reason-carrying `planton.dev/e2e-import-roundtrip-skip` annotation, the
+recipes keep proving on the kind's secret-free scenarios, and the kind's
+docs teach the one-time convergence replace after adoption. Choose by
+asking "should editing this field replace the resource?" -- no
+(immutable creation history) means ignore_changes; yes (rotatable
+secret) means the annotation.
+
 ### "no stack named ..." for a fixture that just deployed: backend state loss, not a module defect
 
 When a scenario fails at DEPENDENCIES-UP with `failed to read outputs for

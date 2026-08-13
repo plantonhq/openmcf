@@ -147,8 +147,12 @@ spec:
     workspaceKey:
       value: dGVzdC13b3Jrc3BhY2Uta2V5
     logType: ContainerInsights
+    # Metadata keys are a CLOSED ARM vocabulary (pod-uuid /
+    # cluster-resource-id / node-name -- the Kubernetes-shaped tags
+    # Container Insights understands); values are free strings.
     metadata:
-      team: platform
+      cluster-resource-id: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ContainerService/managedClusters/test-cluster
+      node-name: aci-connector
   dnsConfig:
     nameservers:
       - 10.0.0.10
@@ -1237,6 +1241,8 @@ member is this Log Analytics form.)
 **ForceNew**: changing this destroys and recreates the group.
 
 - rule: metadata requires log_type -- the provider only sends metadata alongside a log type and silently discards it otherwise
+- rule: log_type ContainerInstanceLogs cannot be deployed: the provider always sends a metadata object alongside a log type and ARM rejects metadata for this log type (LogAnalyticsMetadataNotAllowed) -- leave log_type unset for plain log shipping or use ContainerInsights
+- rule: metadata keys are a closed vocabulary ARM validates (InvalidLogAnalyticsMetadataKeys): only pod-uuid, cluster-resource-id, and node-name are accepted
 
 ### spec.diagnosticsLogAnalytics.workspaceId
 

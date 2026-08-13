@@ -3,26 +3,29 @@ kind: ComponentE2EProfile
 metadata:
   name: azurecomputegalleryimage
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green including the version
-  # arm); live dual-engine proof has not yet run. TWO scenarios run:
-  # `minimal` (the definition alone -- free) and
-  # `version-from-snapshot` (the golden-image chain: OS-typed empty
-  # disk -> incremental snapshot -> version 1.0.0, one eastus replica
-  # -- pennies for the lane's minutes; the composed version's import
-  # derives from the image id + the version-name address key).
-  # WATCH-LIST lead: ARM accepting a version whose snapshot source is
-  # a never-attached EMPTY OS-typed disk -- if the live lane disproves
-  # it, the recorded fallback is the definition-only lane with the
-  # version arm offline-proven (the deep-arms-with-reasons class).
-  # Offline-proven with reasons: the blob-uri and managed-image
-  # sources (each needs an external artifact -- an uploaded VHD / a
-  # legacy managed image -- that the lane cannot honestly stand up);
-  # per-region disk-encryption-set replicas (needs a KV key + DES
-  # fixture chain; exercised by the canonical manifest's offline
-  # plan); Shallow replication (dev-loop form; its CEL and plan
-  # coverage carry the contract).
+  # PROVEN live on both engines: BOTH scenarios through the full
+  # lifecycle with the apply-idempotency re-plan clean and the
+  # terraform lanes' blind import round-trips zero-change. `minimal`
+  # (the definition alone, ~5-6 min/engine) and `version-from-snapshot`
+  # (the golden-image chain: OS-typed empty disk -> incremental
+  # snapshot -> version 1.0.0 with one eastus replica, ~19-20
+  # min/engine -- the version CREATE alone runs ~7-8 min and its
+  # DELETE ~6 min, replication both ways; budget accordingly). ARM
+  # ACCEPTED the version whose snapshot source is a never-attached
+  # EMPTY OS-typed disk -- the os_type genuinely travels disk ->
+  # snapshot -> version on metadata alone. The composed version's
+  # import derived from the image id + the version-name address key
+  # ({image_id}/versions/1.0.0) round-tripped zero-change including
+  # the target-region list (IMPORT-RT ~16-18s). Offline-proven with
+  # reasons: the blob-uri and managed-image sources (each needs an
+  # external artifact -- an uploaded VHD / a legacy managed image --
+  # that the lane cannot honestly stand up); per-region
+  # disk-encryption-set replicas (needs a KV key + DES fixture chain;
+  # exercised by the canonical manifest's offline plan); Shallow
+  # replication (dev-loop form; its CEL and plan coverage carry the
+  # contract). Measured lane spend: pennies (one mostly-empty 16GB
+  # snapshot replica for the lane's minutes).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60
