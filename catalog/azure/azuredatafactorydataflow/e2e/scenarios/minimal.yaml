@@ -5,9 +5,11 @@
 # The registry prerequisite chains the factory; data flow names are
 # factory-scoped (no run-id needed -- the parent factory's name
 # carries it). Free at rest; creates in seconds.
-# WATCH: ARM's save-time validation of the name-only sink (no linked
-# service -- that kind does not exist yet); the recorded fallback is
-# flowlet-only smoke until it ships.
+# LIVE-PROVEN: ARM accepts a mapping flow whose sink names no linked
+# service -- save-time validation checks the script's stream names
+# against sources/sinks, not their bindings. A linked-service binding
+# (AzureDataFactoryLinkedService) is available when a scenario needs
+# one; this smoke deliberately stays unbound.
 apiVersion: azure.planton.dev/v1alpha1
 kind: AzureDataFactoryDataFlow
 metadata:

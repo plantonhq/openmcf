@@ -591,6 +591,19 @@ region. True subscription-wide gates do exist (the quota-increase link
 in the ARM error is the fix) — but conclude that only after a
 probe-verified clean region also fails.
 
+Microsoft Fabric adds a TRUE offer-gate 401 to this class — the one
+401 in the family that really means "this subscription may not": a
+capacity create (any region, any SKU) answers
+`401 Unauthorized: "Unable to authorize with Azure Active Directory"`
+on subscription offer types Fabric does not support (verified on the
+sponsored test subscription with the Owner user's own token via direct
+`az rest` PUTs to `Microsoft.Fabric/capacities`, in two regions, with
+the provider registered). Distinguish it from the quota costume below
+by the body: no quota text, no region variance, and it reproduces
+outside any IaC engine. The fix is an account-level change (a
+supported offer, e.g. pay-as-you-go), never a credential or module
+fix — record the deferral and move on.
+
 App Service adds its own shape: new PAYG subscriptions carry ZERO
 Basic-tier VM quota in some regions, and the rejection is a misleading
 `401 Unauthorized` whose body says "Operation cannot be completed

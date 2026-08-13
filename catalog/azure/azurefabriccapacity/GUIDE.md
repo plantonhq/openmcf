@@ -17,3 +17,7 @@ Everything inside Fabric -- workspaces, lakehouses, warehouses, pipelines -- is 
 ## Administrators are declared here, exercised there
 
 The administration members list is the bridge between the two worlds: identities declared on the ARM resource, exercised in the Fabric admin experience (assigning workspaces, managing settings). Keep it to a small platform group -- the spec requires at least one at all times, because a capacity with no administrator is unmanageable from the Fabric side without an Azure-side edit.
+
+## Your subscription's offer type gates creation
+
+Fabric capacities cannot be created on every Azure subscription: unsupported offer types (sponsorships, some trial and credit offers) are rejected at create with `401 Unauthorized: "Unable to authorize with Azure Active Directory"` -- an auth-shaped error that has nothing to do with your credentials. The signal that it is the offer gate: the same error in every region, reproducible with your own Owner token against the ARM API directly, with the `Microsoft.Fabric` provider registered. The fix is account-level (a pay-as-you-go or enterprise offer), not a permissions change -- verify your offer type before planning Fabric onto a subscription.

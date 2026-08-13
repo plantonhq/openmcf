@@ -199,6 +199,14 @@ type AzureDataFactoryTriggerSchedule struct {
 	// (e.g. "2026-09-01T00:00:00Z"). Omit to start from the moment of
 	// deployment (Azure fills in the current time). A time in the past
 	// starts the recurrence immediately.
+	//
+	// LIVE CONTRACT (enforced by ARM when the trigger STARTS, not at
+	// save): the recurrence's NEXT execution must fall within 18
+	// months of the current time, or Start fails with
+	// InvalidWorkflowTriggerRecurrenceSchedule. A far-future
+	// start_time therefore cannot be combined with `activated: true`;
+	// a past start_time is always startable (the next execution is
+	// computed forward from the recurrence).
 	StartTime string `protobuf:"bytes,3,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
 	// When the recurrence ends, as an RFC 3339 timestamp in UTC. Omit
 	// for no end.
@@ -844,6 +852,13 @@ type AzureDataFactoryTriggerCustomEvent struct {
 	// ARM ID -- defaults to referencing an AzureEventgridTopic's
 	// topic_id output. FIXED AT CREATION -- changing it replaces the
 	// trigger.
+	//
+	// LIVE CONTRACT: the topic must use the "EventGridSchema" input
+	// schema. Data Factory subscribes to the topic with a webhook when
+	// the trigger STARTS, and a CloudEvents-schema topic validates
+	// webhook subscribers with an HTTP OPTIONS handshake Data
+	// Factory's endpoint does not answer -- Start fails with "Webhook
+	// endpoint validation failed ... MethodNotAllowed".
 	EventgridTopicId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=eventgrid_topic_id,json=eventgridTopicId,proto3" json:"eventgrid_topic_id,omitempty"`
 	// Which event types fire the trigger (at least one) -- free-form
 	// strings matched against the published events' eventType field

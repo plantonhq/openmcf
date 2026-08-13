@@ -236,6 +236,14 @@ When the recurrence begins, as an RFC 3339 timestamp in UTC
 deployment (Azure fills in the current time). A time in the past
 starts the recurrence immediately.
 
+LIVE CONTRACT (enforced by ARM when the trigger STARTS, not at
+save): the recurrence's NEXT execution must fall within 18
+months of the current time, or Start fails with
+InvalidWorkflowTriggerRecurrenceSchedule. A far-future
+start_time therefore cannot be combined with `activated: true`;
+a past start_time is always startable (the next execution is
+computed forward from the recurrence).
+
 - rule: start_time must be an RFC 3339 timestamp, e.g. 2026-09-01T00:00:00Z
 
 ### spec.schedule.endTime
@@ -629,6 +637,13 @@ The Event Grid custom topic whose events fire this trigger, by
 ARM ID -- defaults to referencing an AzureEventgridTopic's
 topic_id output. FIXED AT CREATION -- changing it replaces the
 trigger.
+
+LIVE CONTRACT: the topic must use the "EventGridSchema" input
+schema. Data Factory subscribes to the topic with a webhook when
+the trigger STARTS, and a CloudEvents-schema topic validates
+webhook subscribers with an HTTP OPTIONS handshake Data
+Factory's endpoint does not answer -- Start fails with "Webhook
+endpoint validation failed ... MethodNotAllowed".
 
 - references: AzureEventgridTopic (`status.outputs.topic_id`)
 - rule: {"required":true}
