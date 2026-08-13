@@ -1,7 +1,12 @@
 package module
 
 import (
+	"strconv"
+
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
+
 	awscodebuildprojectv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscodebuildproject/v1alpha1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/aws/awstagkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -14,11 +19,12 @@ type Locals struct {
 	// Same basis as the Terraform module.
 	ProjectName string
 
-	// Labels are the resource-identity tags, matching the Terraform module
-	// key-for-key. Identity tagging is the only tagging surface this module
-	// manages; user-defined custom tags are a platform-wide concern, not
-	// per-kind spec surface.
-	Labels map[string]string
+	// AwsTags are the resource-identity tags, matching the Terraform module
+	// key-for-key. DELIBERATELY five keys, no Name: the project carries its
+	// own name argument (the ECR/GA recorded convention). Identity tagging is
+	// the only tagging surface this module manages; user-defined custom tags
+	// are a platform-wide concern, not per-kind spec surface.
+	AwsTags map[string]string
 }
 
 func initializeLocals(ctx *pulumi.Context, in *awscodebuildprojectv1alpha1.AwsCodeBuildProjectStackInput) *Locals {
@@ -27,12 +33,12 @@ func initializeLocals(ctx *pulumi.Context, in *awscodebuildprojectv1alpha1.AwsCo
 
 	locals.ProjectName = locals.AwsCodeBuildProject.Metadata.Name
 
-	locals.Labels = map[string]string{
-		"planton.ai/resource":      "true",
-		"planton.ai/organization":  locals.AwsCodeBuildProject.Metadata.Org,
-		"planton.ai/environment":   locals.AwsCodeBuildProject.Metadata.Env,
-		"planton.ai/resource-kind": "AwsCodeBuildProject",
-		"planton.ai/resource-id":   locals.AwsCodeBuildProject.Metadata.Id,
+	locals.AwsTags = map[string]string{
+		awstagkeys.Resource:     strconv.FormatBool(true),
+		awstagkeys.Organization: locals.AwsCodeBuildProject.Metadata.Org,
+		awstagkeys.Environment:  locals.AwsCodeBuildProject.Metadata.Env,
+		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsCodeBuildProject.String(),
+		awstagkeys.ResourceId:   locals.AwsCodeBuildProject.Metadata.Id,
 	}
 
 	return locals

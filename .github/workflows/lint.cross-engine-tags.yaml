@@ -1,0 +1,52 @@
+# =============================================================================
+# Cross-Engine Tag-Key Gate
+# =============================================================================
+# Catches the class of failure first observed live on AwsElasticIp: the same
+# manifest produced differently-tagged AWS resources depending on which engine
+# deployed it (a Name key one engine never sent, a metadata.labels merge on one
+# side only). Tag content is live send surface -- cost allocation, orphan
+# cleanup, and console search all diverge when the engines disagree.
+#
+# The guard compares each kind's DECLARED identity-tag key sets across both
+# engines against the canonical six-key map (with a recorded exception table),
+# rejects labels merges into cloud tags, enforces the awstagkeys-constants
+# shape in Pulumi modules, and rejects legacy pulumi.planton.dev annotations
+# in canonical e2e manifests. Static, no network.
+#
+# See hack/guards/ensure_cross_engine_tag_keys.sh for the full contract.
+# =============================================================================
+
+name: lint.cross-engine-tags
+
+on:
+  pull_request:
+    paths:
+      - 'catalog/**/iac/**'
+      - 'catalog/**/e2e/manifest.yaml'
+      - 'hack/guards/ensure_cross_engine_tag_keys.sh'
+      - '.github/workflows/lint.cross-engine-tags.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'catalog/**/iac/**'
+      - 'catalog/**/e2e/manifest.yaml'
+      - 'hack/guards/ensure_cross_engine_tag_keys.sh'
+      - '.github/workflows/lint.cross-engine-tags.yaml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tag-lint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cross-engine-tag-keys:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify cross-engine identity-tag key sets
+        run: bash ./hack/guards/ensure_cross_engine_tag_keys.sh

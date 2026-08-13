@@ -1758,6 +1758,7 @@ Fields on other kinds that can point at this resource:
 | AwsS3Bucket | `spec.analyticsConfigurations[].export.bucketArn` | `status.outputs.bucket_arn` |
 | AwsS3Bucket | `spec.inventoryConfigurations[].destination.bucketArn` | `status.outputs.bucket_arn` |
 | AwsS3ObjectSet | `spec.bucket` | `status.outputs.bucket_id` |
+| AwsS3ObjectSet | `spec.objects[].copyFrom.sourceBucket` | `status.outputs.bucket_id` |
 
 ## See Also
 

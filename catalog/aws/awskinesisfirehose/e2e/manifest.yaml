@@ -5,11 +5,6 @@ metadata:
   org: test-org
   env: dev
   id: test-firehose-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsKinesisFirehose.test-firehose
 spec:
   region: us-west-2
   # Extended S3 destination: data lake storage with Direct PUT source.

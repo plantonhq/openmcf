@@ -20,6 +20,17 @@ variable "spec" {
       key = string
       content = optional(string, "")
       content_base64 = optional(string, "")
+      copy_from = optional(object({
+        source_bucket = string
+        source_key = string
+        replace_metadata = optional(bool, false)
+        copy_if_match = optional(string, "")
+        copy_if_none_match = optional(string, "")
+        copy_if_modified_since = optional(string, "")
+        copy_if_unmodified_since = optional(string, "")
+        expires = optional(string, "")
+        request_payer = optional(string, "")
+      }))
       content_type = optional(string)
       cache_control = optional(string, "")
       content_encoding = optional(string, "")

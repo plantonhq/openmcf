@@ -48,11 +48,6 @@ metadata:
   org: test-org
   env: dev
   id: test-cpu-alarm-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsCloudwatchAlarm.test-cpu-alarm
 spec:
   region: us-west-2
   comparisonOperator: GreaterThanThreshold

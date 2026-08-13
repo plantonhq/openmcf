@@ -41,11 +41,6 @@ metadata:
   org: test-org
   env: dev
   id: test-rule-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsEventBridgeRule.test-rule
 spec:
   region: us-east-1
   description: Nightly operations fan-out for local development

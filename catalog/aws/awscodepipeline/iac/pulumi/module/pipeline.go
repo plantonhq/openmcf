@@ -160,7 +160,7 @@ func pipeline(
 		RoleArn:        pulumi.String(spec.RoleArn.GetValue()),
 		ArtifactStores: artifactStores,
 		Stages:         stages,
-		Tags:           pulumi.ToStringMap(locals.Labels),
+		Tags:           pulumi.ToStringMap(locals.AwsTags),
 	}
 	if spec.GetPipelineType() != "" {
 		args.PipelineType = pulumi.StringPtr(spec.GetPipelineType())

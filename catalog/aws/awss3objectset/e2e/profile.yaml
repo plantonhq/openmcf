@@ -27,8 +27,10 @@ spec:
   # is only applicable to Object Lock enabled buckets") — the flag is the
   # governance bypass, not a versioned-cleanup knob.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # pending_proof: the depth closure changed the live send surface (the
+  # copy_from source arm rendering aws_s3_object_copy with derived
+  # directives, and the identity-tag convergence to the canonical six-key
+  # map with the labels merge dropped) -- Q31 proves it
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

@@ -25,6 +25,12 @@ func initializeLocals(ctx *pulumi.Context, stackInput *awsplantonrunnerv1alpha1.
 		AwsPlantonRunner: stackInput.Target,
 	}
 
+	// Resource-identity tags match the Terraform module key-for-key.
+	// DELIBERATELY five keys, no Name: the appliance's resources (cluster,
+	// service, roles, secret, log group) each carry their own explicit
+	// resource name -- a shared Name tag would mislabel ten distinct
+	// resources with one value (the same recorded convention as AwsEcrRepo
+	// and AwsGlobalAccelerator).
 	locals.AwsTags = map[string]string{
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.AwsPlantonRunner.Metadata.Org,

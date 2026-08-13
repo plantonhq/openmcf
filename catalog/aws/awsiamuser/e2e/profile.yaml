@@ -18,6 +18,10 @@ spec:
   # exists AND its status matches the access_key_status output against
   # ListAccessKeys (the Inactive rotation-lever arm's API evidence).
   tier: 1
-  status: green
-  validated_provisioners: [pulumi, terraform]
+  # pending_proof: the tag-convergence sweep re-keyed the Pulumi managed-policy
+  # attachments index -> sanitized-ARN (the stable-key satellite idiom; reorder
+  # becomes a no-op instead of a transient detach) and added the canonical Name
+  # key to the Pulumi identity map -- Q31 proves both classes
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 10

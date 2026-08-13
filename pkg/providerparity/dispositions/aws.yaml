@@ -3131,9 +3131,6 @@ resources:
   - resource: aws_s3_directory_bucket
     disposition: model-planned
     reason: "judged as a planned AwsS3DirectoryBucket kind (S3 Express One Zone)"
-  - resource: aws_s3_object_copy
-    disposition: model-planned
-    reason: "object copies fold into the existing AwsS3ObjectSet kind as its spec deepens"
   - resource: aws_s3control_access_grant
     disposition: model-planned
     reason: "judged as a planned AwsS3AccessGrants kind (instances, locations, grants, policies)"

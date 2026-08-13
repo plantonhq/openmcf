@@ -28,6 +28,9 @@ spec:
   # PutSubscriptionFilter in us-west-2, and applyOnTransformedLogs=true on
   # the metric filter.
   tier: 1
-  status: green
-  validated_provisioners: [pulumi, terraform]
+  # pending_proof: the tag-convergence sweep dropped the Terraform module's
+  # metadata.labels merge into cloud tags (canonical six-key identity map) --
+  # Q31 proves the labels-drop class on this kind for the whole sweep
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

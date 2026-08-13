@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/internal/valuefrom"
@@ -63,9 +64,12 @@ func iamUser(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*IamU
 	// reconcile individually: adding or removing an entry attaches or detaches
 	// just that policy, and attachments made outside this resource are left
 	// alone. valueFrom references were resolved to policy ARNs before the
-	// module ran.
-	for idx, policyArn := range valuefrom.ToStringArray(spec.ManagedPolicyArns) {
-		attachName := fmt.Sprintf("%s-attach-%d", userName, idx)
+	// module ran. Attachments are keyed by the policy ARN itself (sanitized
+	// for the logical name), never the list index -- mirrors the Terraform
+	// module's for_each = toset(...): reordering managed_policy_arns must be
+	// a no-op, not a transient detach/re-attach on a live user.
+	for _, policyArn := range valuefrom.ToStringArray(spec.ManagedPolicyArns) {
+		attachName := fmt.Sprintf("%s-attach-%s", userName, sanitizeForLogicalName(policyArn))
 		_, err := iam.NewUserPolicyAttachment(ctx, attachName, &iam.UserPolicyAttachmentArgs{
 			User:      createdUser.Name,
 			PolicyArn: pulumi.String(policyArn),
@@ -161,4 +165,17 @@ func structToJSONString(s *structpb.Struct) (string, error) {
 		return "", err
 	}
 	return string(bytes), nil
+}
+
+// sanitizeForLogicalName reduces an ARN to a stable Pulumi logical-name
+// segment: every character outside [A-Za-z0-9] becomes '-'. The full ARN
+// stays in the name so distinct policies can never collide (bare policy
+// names repeat across paths and accounts).
+func sanitizeForLogicalName(s string) string {
+	return strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return '-'
+	}, s)
 }

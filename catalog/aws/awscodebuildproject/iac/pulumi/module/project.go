@@ -109,7 +109,7 @@ func project(
 		Source:      buildSourceArgs(spec.Source),
 		Environment: envArgs,
 		Artifacts:   buildArtifactsArgs(spec.Artifacts),
-		Tags:        pulumi.ToStringMap(locals.Labels),
+		Tags:        pulumi.ToStringMap(locals.AwsTags),
 	}
 
 	// --- Secondary sources / versions / artifacts ---

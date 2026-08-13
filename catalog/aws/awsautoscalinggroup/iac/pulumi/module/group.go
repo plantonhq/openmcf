@@ -33,7 +33,7 @@ func group(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResource
 		// a plain map: propagate_at_launch=true copies the identity tags
 		// onto every launched instance, so fleet members never escape
 		// cost-allocation and orphan-cleanup queries.
-		Tags: groupTags(locals, groupName),
+		Tags: groupTags(locals),
 	}
 
 	// Leaving desired_capacity unset lets scaling policies own the number:
@@ -236,16 +236,11 @@ func group(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResource
 	return createdGroup, nil
 }
 
-// groupTags converts the identity-tag map to the ASG-native tag triple with
+// groupTags converts the identity-tag map (Name included -- locals.go owns
+// the canonical key set) to the ASG-native tag triple with
 // propagate_at_launch enabled on every entry.
-func groupTags(locals *Locals, groupName string) autoscaling.GroupTagArray {
-	tags := autoscaling.GroupTagArray{
-		&autoscaling.GroupTagArgs{
-			Key:               pulumi.String("Name"),
-			Value:             pulumi.String(groupName),
-			PropagateAtLaunch: pulumi.Bool(true),
-		},
-	}
+func groupTags(locals *Locals) autoscaling.GroupTagArray {
+	tags := autoscaling.GroupTagArray{}
 	for key, value := range locals.AwsTags {
 		tags = append(tags, &autoscaling.GroupTagArgs{
 			Key:               pulumi.String(key),

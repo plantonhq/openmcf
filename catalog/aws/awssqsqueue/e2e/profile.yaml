@@ -28,6 +28,9 @@ spec:
   # scenario echoed true (explicit-true), and the shared prerequisite
   # fixture echoed true on the omit path in every consumer lane window
   # (AWS's default-on encryption stands when the field is unset).
-  status: green
-  validated_provisioners: [pulumi, terraform]
+  # pending_proof: the tag-convergence sweep added the canonical Name key to
+  # the Pulumi identity map (the Terraform twin already sent it live) -- Q31
+  # proves the Name-addition class on this kind for the whole sweep
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

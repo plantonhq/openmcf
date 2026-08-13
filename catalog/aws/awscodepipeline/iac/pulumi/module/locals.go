@@ -1,7 +1,12 @@
 package module
 
 import (
+	"strconv"
+
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
+
 	awscodepipelinev1alpha1 "github.com/plantonhq/planton/catalog/aws/awscodepipeline/v1alpha1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/aws/awstagkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -14,11 +19,12 @@ type Locals struct {
 	// the Terraform module.
 	PipelineName string
 
-	// Labels are the resource-identity tags, matching the Terraform module
-	// key-for-key. Identity tagging is the only tagging surface this module
-	// manages; user-defined custom tags are a platform-wide concern, not
-	// per-kind spec surface.
-	Labels map[string]string
+	// AwsTags are the resource-identity tags, matching the Terraform module
+	// key-for-key. DELIBERATELY five keys, no Name: the pipeline carries its
+	// own name argument (the ECR/GA recorded convention). Identity tagging is
+	// the only tagging surface this module manages; user-defined custom tags
+	// are a platform-wide concern, not per-kind spec surface.
+	AwsTags map[string]string
 }
 
 func initializeLocals(ctx *pulumi.Context, in *awscodepipelinev1alpha1.AwsCodePipelineStackInput) *Locals {
@@ -27,12 +33,12 @@ func initializeLocals(ctx *pulumi.Context, in *awscodepipelinev1alpha1.AwsCodePi
 
 	locals.PipelineName = locals.AwsCodePipeline.Metadata.Name
 
-	locals.Labels = map[string]string{
-		"planton.ai/resource":      "true",
-		"planton.ai/organization":  locals.AwsCodePipeline.Metadata.Org,
-		"planton.ai/environment":   locals.AwsCodePipeline.Metadata.Env,
-		"planton.ai/resource-kind": "AwsCodePipeline",
-		"planton.ai/resource-id":   locals.AwsCodePipeline.Metadata.Id,
+	locals.AwsTags = map[string]string{
+		awstagkeys.Resource:     strconv.FormatBool(true),
+		awstagkeys.Organization: locals.AwsCodePipeline.Metadata.Org,
+		awstagkeys.Environment:  locals.AwsCodePipeline.Metadata.Env,
+		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsCodePipeline.String(),
+		awstagkeys.ResourceId:   locals.AwsCodePipeline.Metadata.Id,
 	}
 
 	return locals

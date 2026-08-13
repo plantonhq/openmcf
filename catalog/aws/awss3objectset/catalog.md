@@ -1,13 +1,14 @@
 # AWS S3 Object Set
 
-Deploys one or more objects into an existing S3 bucket, supporting inline text content and base64-encoded binary content. The component manages S3 objects declaratively alongside infrastructure, integrating with Planton's Provider Connections for AWS credential management and supporting ValueFromRef wiring to the target bucket.
+Deploys one or more objects into an existing S3 bucket, supporting inline text content, base64-encoded binary content, and server-side copies of existing S3 objects. The component manages S3 objects declaratively alongside infrastructure, integrating with Planton's Provider Connections for AWS credential management and supporting ValueFromRef wiring to the target bucket.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **S3 Object (one per entry)** -- an S3 object for each item in the `objects` list, uploaded to the target bucket with the specified key, content, content headers (type, caching, encoding, disposition, language), user metadata, website redirect, storage class, per-object encryption override (SSE mode, KMS key, bucket key), integrity checksum, Object Lock retention and legal hold, canned ACL, and tags
-- **Merged Tags** -- each object receives tags merged from three sources in increasing precedence: resource labels, set-level `tags`, and per-object `tags`
+- **S3 Object (one per inline-content entry)** -- an S3 object for each `objects` item carrying `content` or `contentBase64`, uploaded to the target bucket with the specified key, content, content headers (type, caching, encoding, disposition, language), user metadata, website redirect, storage class, per-object encryption override (SSE mode, KMS key, bucket key), integrity checksum, Object Lock retention and legal hold, canned ACL, and tags
+- **S3 Object Copy (one per copy entry)** -- for each `objects` item carrying `copyFrom`, a server-side copy of the named source object into the target bucket, with the same per-object destination surface plus copy-time preconditions, Requester Pays acknowledgment, and metadata preserve-or-replace control
+- **Merged Tags** -- each object receives tags merged from three sources in increasing precedence: the resource-identity tags, set-level `tags`, and per-object `tags`
 
 ## Before You Deploy
 
@@ -73,7 +74,9 @@ The InfraPipeline resolves the dependency graph, deploys the S3 bucket first, th
 
 These are the most important decisions when configuring an S3 object set. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Content source** -- Each object requires exactly one of `content` (inline UTF-8 text) or `contentBase64` (base64-encoded binary). Use `content` for configuration files, JSON, YAML, and HTML. Use `contentBase64` for images, compiled assets, or pre-compressed data.
+**Object source** -- Each object requires exactly one of `content` (inline UTF-8 text), `contentBase64` (base64-encoded binary), or `copyFrom` (server-side copy of an existing S3 object). Use `content` for configuration files, JSON, YAML, and HTML; `contentBase64` for images, compiled assets, or pre-compressed data; and `copyFrom` for content of any size that already lives in S3 -- build artifacts promoted between buckets, environments seeded from a golden bucket.
+
+**Copy behavior** -- A copy takes the source's current version at deploy time and by default preserves the source's metadata and content headers; set `copyFrom.replaceMetadata` to write this entry's own headers and metadata instead. Copy-time preconditions (`copyIfMatch`, `copyIfNoneMatch`, `copyIfModifiedSince`, `copyIfUnmodifiedSince`) fail the deploy if the source no longer matches -- the guard for promotions. The set's identity tags always reach the copy. Copies are ordered after the set's inline-content objects, so a copy may duplicate an object declared in the same set.
 
 **Content type** -- Defaults to `application/octet-stream`. Set appropriate MIME types (`application/json`, `text/html`, `image/png`) for downstream consumers and CDN serving. Incorrect content types can cause browsers to download files instead of rendering them.
 
@@ -92,6 +95,7 @@ These are the most important decisions when configuring an S3 object set. Explor
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
 | **AwsS3Bucket** | `bucket` | `status.outputs.bucket_id` |
+| **AwsS3Bucket** | `objects[].copyFrom.sourceBucket` | `status.outputs.bucket_id` |
 | **AwsKmsKey** | `objects[].kmsKey` | `status.outputs.key_arn` |
 
 ### What This Component Provides
@@ -110,6 +114,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Configuration files** -- Upload application configuration files (JSON, YAML) to an S3 bucket for applications that read config from S3 at startup. Proper MIME content types set for downstream consumers. Start from the **Configuration Files** preset.
+
+**Artifact promotion** -- Copy a released build artifact from a golden artifacts bucket into an environment's bucket with ETag preconditions guarding against a source that changed since release. Start from the **Promote Golden Artifacts** preset.
 
 ## Works With
 

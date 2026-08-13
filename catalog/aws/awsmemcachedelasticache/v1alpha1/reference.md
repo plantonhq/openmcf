@@ -54,11 +54,6 @@ metadata:
   org: test-org
   env: dev
   id: test-memcached-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsMemcachedElasticache.test-memcached
 spec:
   region: us-west-2
   engineVersion: "1.6.22"

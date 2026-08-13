@@ -31,8 +31,8 @@ that has progressed.
 | Provider schema | `google@7.43.0` |
 | Provider schema | `google-beta@7.43.0` |
 | Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 269 |
-| Spec fields authored across all kinds | 4692 |
+| Distinct provider resources consumed | 270 |
+| Spec fields authored across all kinds | 4701 |
 | Module pins on `aws` | `~> 6.58` × 112 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
@@ -48,7 +48,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**110 of 112 kinds are at total accounting; 91 proven live.**
+**112 of 112 kinds are at total accounting; 87 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -68,7 +68,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCloudFront | 126 | 32 | 88 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudwatchAlarm | 39 | 24 | 12 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCloudwatchLogGroup | 100 | 19 | 70 | 11 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudwatchLogGroup | 100 | 19 | 70 | 11 | 0 | ✅ | — |
 | AwsCodeBuildProject | 115 | 97 | 11 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCodePipeline | 84 | 4 | 75 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoIdentityProvider | 7 | 6 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
@@ -111,7 +111,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsIamOidcProvider | 5 | 3 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamPolicy | 8 | 2 | 1 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamRole | 16 | 5 | 3 | 8 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsIamUser | 15 | 3 | 4 | 8 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsIamUser | 15 | 3 | 4 | 8 | 0 | ✅ | — |
 | AwsInternetGateway | 4 | 2 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsKinesisStream | 17 | 8 | 3 | 6 | 0 | ✅ | ✅ pulumi, terraform |
@@ -134,7 +134,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsNeptuneCluster | 88 | 35 | 13 | 40 | 0 | ✅ | partial: pulumi, terraform |
 | AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsOpenSearchDomain | 90 | 51 | 30 | 9 | 0 | ✅ | partial: pulumi, terraform |
-| AwsPlantonRunner | 216 | 9 | 0 | 0 | 216 | ❌ | ✅ pulumi, terraform |
+| AwsPlantonRunner | 0 | 0 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRdsCluster | 143 | 84 | 19 | 40 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRdsInstance | 119 | 65 | 20 | 34 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRedisElasticache | 66 | 40 | 12 | 14 | 0 | ✅ | ✅ pulumi, terraform |
@@ -145,7 +145,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsRoute53HealthCheck | 23 | 17 | 2 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRoute53Zone | 17 | 5 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3Bucket | 204 | 24 | 102 | 78 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsS3ObjectSet | 28 | 3 | 0 | 0 | 46 | ❌ | ✅ pulumi, terraform |
+| AwsS3ObjectSet | 74 | 36 | 16 | 22 | 0 | ✅ | — |
 | AwsSagemakerDomain | 299 | 184 | 104 | 11 | 0 | ✅ | — |
 | AwsSecurityGroup | 13 | 5 | 3 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsServerlessElasticache | 19 | 12 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
@@ -153,7 +153,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsSesEmailIdentity | 19 | 7 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSnsSubscription | 13 | 11 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSnsTopic | 33 | 10 | 18 | 5 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsSqsQueue | 20 | 12 | 4 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSqsQueue | 20 | 12 | 4 | 4 | 0 | ✅ | — |
 | AwsStepFunction | 21 | 6 | 8 | 7 | 0 | ✅ | partial: pulumi, terraform |
 | AwsSubnet | 33 | 22 | 0 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsTransitGateway | 14 | 12 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
@@ -171,10 +171,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 268 | consumed by a kind's Terraform module today |
+| Modeled | 269 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 26 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 727 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 726 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 541 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -184,7 +184,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (268)
+### Modeled (269)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -426,6 +426,7 @@ rather than trusted.
 | `aws_s3_bucket_versioning` | consumed by AwsS3Bucket |
 | `aws_s3_bucket_website_configuration` | consumed by AwsS3Bucket |
 | `aws_s3_object` | consumed by AwsS3ObjectSet |
+| `aws_s3_object_copy` | consumed by AwsS3ObjectSet |
 | `aws_sagemaker_domain` | consumed by AwsSagemakerDomain |
 | `aws_sagemaker_space` | consumed by AwsSagemakerDomain |
 | `aws_sagemaker_user_profile` | consumed by AwsSagemakerDomain |
@@ -488,7 +489,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (727)
+### Planned (726)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1007,7 +1008,6 @@ rather than trusted.
 | `aws_s3_access_point` | judged as a planned AwsS3AccessPoint kind |
 | `aws_s3_account_public_access_block` | judged as a planned AwsS3AccountPublicAccessBlock kind |
 | `aws_s3_directory_bucket` | judged as a planned AwsS3DirectoryBucket kind (S3 Express One Zone) |
-| `aws_s3_object_copy` | object copies fold into the existing AwsS3ObjectSet kind as its spec deepens |
 | `aws_s3control_access_grant` | judged as a planned AwsS3AccessGrants kind (instances, locations, grants, policies) |
 | `aws_s3control_access_grants_instance` | judged as a planned AwsS3AccessGrants kind (instances, locations, grants, policies) |
 | `aws_s3control_access_grants_instance_resource_policy` | judged as a planned AwsS3AccessGrants kind (instances, locations, grants, policies) |
